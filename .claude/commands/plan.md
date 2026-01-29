@@ -1,6 +1,6 @@
 ---
-description: "Interactive travel planning with research and HTML itinerary generation"
-allowed-tools: Task, Read, Write, TodoWrite, WebSearch, Skill
+description: "Multi-agent travel planning with specialized subagents and interactive HTML generation"
+allowed-tools: Task, Read, Write, TodoWrite, WebSearch, Skill, Bash
 argument-hint: "[destination]"
 model: inherit
 ---
@@ -9,13 +9,41 @@ model: inherit
 
 # Plan Command
 
-Interactive travel planning with automatic web research and comprehensive HTML itinerary generation using Three-Party Architecture.
+Multi-agent travel planning system using specialized domain agents for comprehensive itinerary creation with validation and HTML generation.
 
-## Step 0: Initialize Workflow Checklist
+## Architecture Overview
 
-**Load todos from**: `scripts/todo/plan.py`
+This command follows the **equity-research orchestration pattern** with:
 
-Execute via venv:
+1. **BA + Orchestrator (You)**: Requirements collection and agent coordination
+2. **8 Specialist Agents**: Domain experts for travel components
+   - meals-agent: Restaurant and dining research
+   - accommodation-agent: Hotel and lodging research
+   - attractions-agent: Sightseeing and activities
+   - entertainment-agent: Shows and nightlife
+   - shopping-agent: Markets and retail
+   - transportation-agent: Inter-city travel (location changes only)
+   - timeline-agent: Schedule coordination and conflict detection (serial)
+   - budget-agent: Cost calculation and validation (serial)
+3. **Validation Scripts**: Data consistency checks
+4. **HTML Generation**: Script-based interactive HTML creation
+
+**Data Flow**: File-based communication via `data/{destination-slug}/{agent-name}.json`
+
+---
+
+## Usage
+
+```
+/plan [destination]
+```
+
+## Implementation
+
+### Step 0: Initialize Workflow
+
+Load todos from: `scripts/todo/plan.py`
+
 ```bash
 source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
 ```
@@ -26,766 +54,555 @@ Use output to create TodoWrite with all workflow steps.
 
 ---
 
-## Usage
+### Phase 1: BA Requirement Collection
 
+**Your Role**: Business Analyst conducting structured travel requirements interview.
+
+#### Step 1: Parse Destination Hint
+
+Extract from `$ARGUMENTS`:
+- If provided: "I'll help you plan an amazing trip to {destination}!"
+- If empty: "I'll help you plan an amazing trip! Where would you like to go?"
+
+#### Step 2: Conduct Requirements Interview
+
+**Interview naturally, collecting**:
+
+1. **Destination(s)**: City, region, multi-city route
+2. **Dates**: Start date, duration (number of days)
+3. **Travelers**: Solo, couple, family (ages if children)
+4. **Budget**: Total amount, per person, currency
+5. **Daily Plans**: For EACH day, ask: "What would you like to do on Day X in {location}?"
+   - Collect user's raw input (any language)
+   - Don't interpret or research yet
+   - Store in array per day
+6. **Preferences**:
+   - Accommodation type (budget/mid-range/luxury)
+   - Dietary restrictions
+   - Activity pace (relaxed/moderate/intensive)
+   - Special needs
+
+**Critical**: For multi-city trips, confirm location per day:
 ```
-/plan [destination]
-```
-
-## Examples
-
-```
-/plan Paris
-/plan Japan in spring
-/plan
-```
-
-## What This Command Does
-
-1. **Parses destination hint** from arguments (optional)
-2. **Conducts BA-style interview** to gather comprehensive travel requirements
-3. **Consults research subagent** (backend JSON consultant - web research for destinations)
-4. **Consults HTML subagent** (backend HTML generator - creates professional itinerary)
-5. **Delivers complete travel plan** as interactive HTML file
-6. **Multi-turn refinement** if user wants to adjust the plan
-
-## Implementation
-
-### Step 1: Parse Destination Hint
-
-Extract the destination hint from `$ARGUMENTS`:
-
-```
-Destination hint: "$ARGUMENTS" (or empty)
-```
-
-**Handle edge cases**:
-- If `$ARGUMENTS` is empty → Start interview with destination question first
-- If `$ARGUMENTS` contains destination → Start interview acknowledging the destination
-- Otherwise → Proceed to Step 2
-
-**Initial Response Pattern**:
-
-If destination provided:
-```
-I'll help you plan an amazing trip to {destination}! Let me gather some details to create a personalized travel plan for you.
+Day 1-2: Chongqing
+Day 3: Bazhong
+Day 4-5: Chengdu
+Day 6-7: Shanghai
+Day 8-9: Beijing
 ```
 
-If no destination:
-```
-I'll help you plan an amazing trip! Let me gather some details to create a personalized travel plan for you.
-```
+#### Step 3: Generate Requirements Skeleton
 
-Proceed immediately to Step 2.
+Save to: `data/{destination-slug}/requirements-skeleton.json`
 
-### Step 2: Conduct BA-Style Requirement Interview
-
-**Your Role**: You are a professional travel consultant conducting a requirements interview. Ask questions naturally and collect comprehensive information.
-
-**Architecture**: This command uses the Three-Party Architecture pattern:
-- You (main agent) orchestrate the conversation and are THE TRAVEL CONSULTANT visible to user
-- Research subagent provides JSON consultation via Task tool (backend responses only)
-- HTML subagent generates travel plan HTML via Task tool (backend responses only)
-- User sees natural dialogue only (no "I'm consulting..." meta-commentary)
-
-**Interview Questions** (ask naturally, not as a form):
-
-1. **Destination(s)** (if not already provided):
-   - "Where would you like to go?"
-   - "Any specific cities or regions in mind?"
-   - "Open to suggestions or have a specific place?"
-
-2. **Travel Dates**:
-   - "When are you planning to travel?"
-   - "How long is the trip? (number of days)"
-   - "Any specific dates or flexible?"
-
-3. **Travelers**:
-   - "Who will be traveling?"
-   - "Solo trip, couple, family, or group?"
-   - "Any children? (ages if relevant)"
-
-4. **Budget**:
-   - "What's your budget range?"
-   - "Total or per person?"
-   - "Which currency?"
-
-5. **Accommodation Preferences**:
-   - "What type of accommodation do you prefer?"
-   - "Budget hotels, mid-range, luxury, or boutique?"
-   - "Any specific location preferences (city center, beach, quiet area)?"
-
-6. **Activity Interests**:
-   - "What are you most interested in?"
-   - "Culture/history, adventure, relaxation, food, nightlife, nature?"
-   - "Any must-see attractions or experiences?"
-
-7. **Special Requirements**:
-   - "Any dietary restrictions or allergies?"
-   - "Accessibility needs?"
-   - "Other special requirements?"
-
-8. **Transportation**:
-   - "How will you get there?"
-   - "Flying, train, car rental once there?"
-   - "Need airport transfer suggestions?"
-
-**Dialogue Style**:
-- Ask 2-3 questions at a time (don't overwhelm)
-- Be conversational and friendly
-- Adapt based on user responses
-- If user provides comprehensive info upfront, acknowledge and fill gaps
-- Confirm understanding before proceeding to research
-
-**Completion Criteria**:
-- Destination(s) confirmed
-- Dates and duration confirmed
-- Number of travelers confirmed
-- Budget range confirmed
-- At least 2-3 preference areas clarified
-
-When you have enough information, confirm with user:
-```
-Perfect! Let me confirm what I've gathered:
-
-- **Destination**: {destination}
-- **Dates**: {dates} ({duration} days)
-- **Travelers**: {number and type}
-- **Budget**: {budget}
-- **Interests**: {interests}
-- **Accommodation**: {preferences}
-
-Is this correct? Any adjustments before I start researching?
-```
-
-Wait for user confirmation. If confirmed, proceed to Step 3. If adjustments needed, collect them and re-confirm.
-
-### Step 3: Initial Research Consultation (JSON)
-
-**Consult research subagent for comprehensive travel information**.
-
-After user confirms requirements, transition naturally:
-```
-Excellent! Give me a few moments to research the best options for your trip.
-```
-
-Then execute research consultation (user doesn't see this process):
-
-```
-Use Task tool with:
-- subagent_type: "research-travel"
-- description: "Research travel information and create comprehensive destination data"
-- model: "sonnet"  # Use capable model for quality research
-- prompt: "
-  ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
-
-  1. Save your research JSON to: /root/travel-planner/data/{destination-slug}/research.json
-  2. After saving the file, return ONLY the word: complete
-  3. Do NOT return the JSON content in your response
-
-  Where {destination-slug} is the destination in lowercase with hyphens (e.g., 'paris', 'new-york', 'chongqing-bazhong-chengdu-shanghai-beijing')
-
-  You are a CONSULTANT to the main /plan agent, NOT the user's travel planner.
-  The user will NEVER see your response - only the main agent will read your JSON file.
-
-  Your task: Research comprehensive travel information for this trip and save structured data as JSON file.
-
-  **User Requirements**:
-  - Destination(s): {destination}
-  - Dates: {dates} ({duration} days)
-  - Travelers: {travelers}
-  - Budget: {budget}
-  - Interests: {interests}
-  - Accommodation preferences: {accommodation}
-  - Special requirements: {special_requirements}
-
-  ---
-
-  **RESEARCH INSTRUCTIONS**:
-
-  ⚠️ **CRITICAL - WebFetch is DISABLED**: Never use WebFetch (disabled to prevent timeouts).
-
-  **ADVANCED SEARCH CAPABILITIES**:
-
-  1. **SlashCommand Tool** (for comprehensive research):
-     - Use /research-deep when: user requests \"comprehensive/thorough\" research OR initial search yields < 10 quality sources
-     - Command: `/research-deep {destination} travel guide 2026`
-     - This triggers 15-20 iterative searches across multiple sources
-     - Available commands: /research-deep, /deep-search, /search-tree
-     - Integrate results into your research data
-
-  2. **Standard WebSearch** (always required):
-     Execute multiple searches NOW:
-     - \"best time to visit {destination} {year}\"
-     - \"top attractions in {destination} 2026\"
-     - \"best hotels in {destination} {budget_tier}\"
-     - \"best restaurants in {destination}\"
-     - \"things to do in {destination} {interests}\"
-     - \"{destination} travel costs {year}\"
-     - \"{destination} transportation guide\"
-     - Additional searches based on specific interests
-
-  3. **Bilibili Search** (supplementary - Chinese video platform):
-     Search queries (use WebSearch with site:bilibili.com or general search):
-     - \"{destination} 旅游攻略\" (travel guide)
-     - \"{destination} vlog\"
-     - \"{destination} 美食探店\" (food exploration)
-     - \"{destination} 景点推荐\" (attractions recommendation)
-
-     Extract: video title, UP主 (creator), views, URL, brief summary
-     Add to video_content array in JSON
-
-     **IMPORTANT**: This is supplementary. Do NOT fail if no Bilibili results found.
-
-  4. **Xiaohongshu (小红书) Search** (supplementary - Chinese social platform):
-     Search queries (use WebSearch with site:xiaohongshu.com or general search):
-     - \"{destination} 旅游\" (travel)
-     - \"{destination} 攻略\" (guide)
-     - \"{destination} 美食\" (food)
-     - \"{destination} 酒店\" (hotels)
-     - \"{destination} 打卡\" (check-in spots)
-
-     Extract: note title, author, likes, URL, content snippet
-     Add to social_content array in JSON
-
-     **IMPORTANT**: This is supplementary. Do NOT fail if no Xiaohongshu results found.
-
-  **VALIDATION CHECK**: Your JSON must contain:
-  - At least 10 unique URLs in sources (from any combination of searches)
-  - At least 5 attractions with real data
-  - At least 3 accommodation options
-  - At least 5 restaurant/dining options
-  - Budget estimates based on research
-  - video_content array (can be empty if no results)
-  - social_content array (can be empty if no results)
-
-  Empty core fields = you did NOT execute research = CRITICAL FAILURE
-  Missing video_content/social_content arrays = acceptable (Chinese platforms are optional)
-
-  After completing actual web research, return ONLY:
-
-  {
-    \"destination_info\": {
-      \"name\": \"Destination name\",
-      \"best_time_to_visit\": \"Season/months and why\",
-      \"weather\": \"Weather during user's travel dates\",
-      \"time_zone\": \"Time zone\",
-      \"currency\": \"Local currency\",
-      \"language\": \"Primary language(s)\",
-      \"overview\": \"Brief destination overview highlighting what makes it special\"
+Format:
+```json
+{
+  "trip_summary": {
+    "dates": "2026-03-15 to 2026-03-24",
+    "duration_days": 10,
+    "travelers": "2 adults",
+    "budget": "$3000 per person",
+    "preferences": {
+      "accommodation": "mid-range",
+      "dietary": "vegetarian",
+      "pace": "moderate"
+    }
+  },
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-03-15",
+      "location": "Chongqing",
+      "user_plans": [
+        "想去洪崖洞看夜景",
+        "吃火锅",
+        "看长江索道"
+      ]
     },
-    \"attractions\": [
-      {
-        \"name\": \"Attraction name\",
-        \"category\": \"culture|adventure|nature|food|nightlife|relaxation\",
-        \"description\": \"What it is and why visit\",
-        \"location\": \"Specific location/address\",
-        \"estimated_time\": \"How long to spend there\",
-        \"estimated_cost\": \"Entrance fee or free\",
-        \"best_time\": \"Best time of day to visit\",
-        \"url\": \"Official website or info URL\"
-      }
-    ],
-    \"accommodations\": [
-      {
-        \"name\": \"Hotel/accommodation name\",
-        \"type\": \"hotel|hostel|resort|apartment|boutique\",
-        \"location\": \"Neighborhood/area\",
-        \"description\": \"Brief description\",
-        \"estimated_price_per_night\": \"Price range in local currency\",
-        \"amenities\": [\"amenity1\", \"amenity2\"],
-        \"url\": \"Booking URL or official website\"
-      }
-    ],
-    \"restaurants\": [
-      {
-        \"name\": \"Restaurant name\",
-        \"cuisine\": \"Cuisine type\",
-        \"description\": \"What they're known for\",
-        \"location\": \"Neighborhood/address\",
-        \"estimated_cost\": \"budget|moderate|expensive\",
-        \"specialties\": [\"dish1\", \"dish2\"],
-        \"url\": \"Website or review URL\"
-      }
-    ],
-    \"video_content\": [
-      {
-        \"platform\": \"bilibili\",
-        \"title\": \"Video title\",
-        \"creator\": \"UP主 name\",
-        \"views\": \"View count\",
-        \"url\": \"https://www.bilibili.com/video/...\",
-        \"summary\": \"Brief description of content\"
-      }
-    ],
-    \"social_content\": [
-      {
-        \"platform\": \"xiaohongshu\",
-        \"title\": \"Note title\",
-        \"author\": \"Author name\",
-        \"likes\": \"Like count\",
-        \"url\": \"https://www.xiaohongshu.com/...\",
-        \"snippet\": \"Content preview or key highlights\"
-      }
-    ],
-    \"transportation\": {
-      \"getting_there\": \"How to reach destination (flights, trains, etc.)\",
-      \"airport\": \"Main airport code and name\",
-      \"local_transport\": [\"metro\", \"bus\", \"taxi\", \"rental car\"],
-      \"transport_tips\": \"Tips for getting around\",
-      \"estimated_transport_cost\": \"Daily transport budget estimate\"
-    },
-    \"daily_itinerary_suggestions\": [
-      {
-        \"day\": 1,
-        \"theme\": \"Day theme (e.g., Historic Center, Nature Day)\",
-        \"activities\": [
-          {
-            \"time\": \"morning|afternoon|evening\",
-            \"activity\": \"What to do\",
-            \"location\": \"Where\"
-          }
-        ]
-      }
-    ],
-    \"estimated_costs\": {
-      \"accommodation_total\": \"Total for duration\",
-      \"food_daily\": \"Estimated daily food budget\",
-      \"activities_total\": \"Total for attractions/activities\",
-      \"transportation_total\": \"Flights + local transport\",
-      \"total_estimate\": \"Overall trip cost estimate\",
-      \"currency\": \"Currency used\",
-      \"notes\": \"Budget breakdown notes\"
-    },
-    \"practical_info\": {
-      \"visa_requirements\": \"Visa info for common nationalities\",
-      \"health_safety\": \"Health and safety tips\",
-      \"local_customs\": \"Important customs/etiquette\",
-      \"emergency_numbers\": \"Police, ambulance, etc.\"
-    },
-    \"useful_links\": [\"URL 1\", \"URL 2\", \"URL 3\"],
-    \"sources\": [\"All research source URLs\"],
-    \"confidence\": 85,
-    \"research_quality\": \"comprehensive|good|limited\"
+    {
+      "day": 2,
+      "date": "2026-03-16",
+      "location": "Chongqing",
+      "user_plans": [
+        "磁器口古镇",
+        "解放碑购物"
+      ]
+    }
+  ]
+}
+```
+
+#### Step 4: Validate Day Completion
+
+Run validation script:
+```bash
+bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
+```
+
+**Exit code 0**: All days complete → Proceed to Phase 2
+**Exit code 1**: Missing user_plans → Loop back, ask for missing days
+**Exit code 2**: File not found → Debug and retry
+
+**Loop until all days have user_plans populated**.
+
+---
+
+### Phase 2: Orchestrator Skeleton Initialization
+
+#### Step 5: Initialize Plan Skeleton
+
+**Tasks**:
+1. Read `requirements-skeleton.json`
+2. Detect location changes between consecutive days
+3. Create plan skeleton with all fields initialized
+4. Save to: `data/{destination-slug}/plan-skeleton.json`
+
+**Location Change Detection**:
+```javascript
+for (i = 1; i < days.length; i++) {
+  if (days[i].location !== days[i-1].location) {
+    days[i].location_change = {
+      from: days[i-1].location,
+      to: days[i].location,
+      transportation: null,  // filled by transportation-agent
+      departure_time: null,
+      arrival_time: null,
+      cost: null
+    }
   }
+}
+```
 
-  Save the complete JSON object to /root/travel-planner/data/{destination-slug}/research.json using the Write tool.
+**Plan Skeleton Structure**:
+```json
+{
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-03-15",
+      "location": "Chongqing",
+      "location_change": null,
+      "user_requirements": ["想去洪崖洞看夜景", "吃火锅"],
+      "breakfast": {"name": "", "location": "", "cost": 0},
+      "lunch": {"name": "", "location": "", "cost": 0},
+      "dinner": {"name": "", "location": "", "cost": 0},
+      "accommodation": {"name": "", "location": "", "cost": 0},
+      "attractions": [],
+      "entertainment": [],
+      "shopping": [],
+      "free_time": [],
+      "timeline": {},
+      "budget": {
+        "meals": 0,
+        "accommodation": 0,
+        "activities": 0,
+        "shopping": 0,
+        "transportation": 0,
+        "total": 0
+      }
+    }
+  ],
+  "emergency_info": {
+    "hospitals": [],
+    "police_stations": [],
+    "embassy": null
+  }
+}
+```
 
-  After saving, return ONLY: complete
+#### Step 6: Validate Location Continuity
 
-  DO NOT return the JSON in your response.
+Run validation script:
+```bash
+bash /root/travel-planner/scripts/check-location-continuity.sh {destination-slug}
+```
+
+**Exit code 0**: All location changes have objects → Proceed
+**Exit code 1**: Missing location_change objects → Fix and retry
+
+---
+
+### Phase 3: Specialist Agent Execution
+
+#### Step 7: Invoke Parallel Agents (6 agents simultaneously)
+
+**Invoke these agents in parallel using Task tool**:
+
+1. **meals-agent**
+2. **accommodation-agent**
+3. **attractions-agent**
+4. **entertainment-agent**
+5. **shopping-agent**
+6. **transportation-agent** (only processes days with location_change)
+
+**Invocation Pattern**:
+```
+Use Task tool with:
+- subagent_type: "meals-agent"
+- description: "Research meals for {destination} trip"
+- model: "sonnet"
+- prompt: "
+  Read from:
+  - data/{destination-slug}/requirements-skeleton.json
+  - data/{destination-slug}/plan-skeleton.json
+
+  Research and recommend breakfast, lunch, dinner for each day.
+  Save to: data/{destination-slug}/meals.json
+
+  Return ONLY: complete
   "
 ```
 
-Critical:
-- Research subagent saves JSON to file and returns ONLY "complete"
-- Main agent reads JSON from file after receiving "complete"
-- User NEVER sees research subagent's response
+**Each agent**:
+- Reads requirements and plan skeleton
+- Performs WebSearch for domain-specific research
+- Saves structured data to `data/{destination-slug}/{agent-name}.json`
+- Returns ONLY: `complete`
 
-### Step 4: Validate Research Quality
+**Wait for all 6 agents to return "complete"**.
 
-**After receiving "complete", read and validate the research JSON file**.
+#### Step 8: Verify Agent Outputs
 
-Step 1 - Verify file exists:
+Check all files exist:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/research.json && echo "verified" || echo "missing"
+cd /root/travel-planner/data/{destination-slug} && ls -1 *.json | grep -E '(meals|accommodation|attractions|entertainment|shopping|transportation)\.json'
 ```
 
-If output is "missing", STOP and debug (research subagent failed to save file).
+Expected: 6 files (or 5 if no location changes → transportation.json may be empty)
 
-Step 2 - Read JSON file:
-```
-Use Read tool on: /root/travel-planner/data/{destination-slug}/research.json
-```
+If any missing: Debug and re-invoke failed agent.
 
-Step 3 - Parse and validate the JSON:
+#### Step 9: Invoke Timeline Agent (Serial)
 
-1. **Check if response is valid JSON**:
-   - Try to parse the file content as JSON
-   - Check for required fields: `destination_info`, `attractions`, `accommodations`, `restaurants`, `sources`
-
-2. **Check research quality**:
-   - Minimum 10 sources
-   - Minimum 5 attractions
-   - Minimum 3 accommodations
-   - Minimum 5 restaurants
-   - confidence >= 70
-
-3. **If quality insufficient** → Re-invoke research subagent with escalated requirements:
-   - Force more comprehensive web searches
-   - Require minimum thresholds
-   - Maximum 2 escalation attempts
-   - Subagent overwrites same file path
-
-4. **If still insufficient after 2 attempts** → Inform user:
-   ```
-   I was able to gather some information about {destination}, but comprehensive travel data is limited. I'll create a plan with the best information available. Would you like to proceed or choose a different destination?
-   ```
-
-5. **If validation passes** → Proceed to Step 5
-
-**Result**: You now have validated research data loaded in memory to pass to HTML generation.
-
-### Step 5: Generate HTML Travel Plan
-
-**Consult HTML subagent to create professional travel plan**.
-
-Transition naturally (user doesn't see consultation):
-```
-Great! I've gathered comprehensive information. Now I'm putting together your personalized travel plan.
-```
-
-Then execute HTML generation (user doesn't see this process):
+**IMPORTANT**: Timeline agent runs AFTER all parallel agents complete.
 
 ```
 Use Task tool with:
-- subagent_type: "html-travel"
-- description: "Generate professional HTML travel plan"
-- model: "sonnet"  # Use capable model for quality HTML
+- subagent_type: "timeline-agent"
+- description: "Create timeline dictionary and detect conflicts"
+- model: "sonnet"
 - prompt: "
-  ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
+  Read ALL agent outputs:
+  - data/{destination-slug}/plan-skeleton.json
+  - data/{destination-slug}/meals.json
+  - data/{destination-slug}/accommodation.json
+  - data/{destination-slug}/attractions.json
+  - data/{destination-slug}/entertainment.json
+  - data/{destination-slug}/shopping.json
+  - data/{destination-slug}/transportation.json
 
-  1. Save your HTML to: /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
-  2. After saving the file, return ONLY the word: complete
-  3. Do NOT return the HTML content in your response
+  Create timeline as DICTIONARY:
+  - Keys: EXACT activity names from source JSONs
+  - Values: {start_time: 'HH:MM', end_time: 'HH:MM', duration_minutes: N}
 
-  Where:
-  - {destination-slug} is the destination in lowercase with hyphens (e.g., 'paris', 'new-york')
-  - {YYYY-MM-DD} is today's date in ISO format
+  Detect conflicts: overlapping times, unrealistic travel, tight schedules.
 
-  You are a CONSULTANT to the main /plan agent, NOT the user's travel planner.
-  The user will NEVER see your response - only the main agent will read your HTML file.
+  Save to: data/{destination-slug}/timeline.json
 
-  Your task: Generate a professional, beautiful HTML travel plan and save it to the specified file path.
-
-  **User Requirements**:
-  {stringify user requirements}
-
-  **Research Data**:
-  {stringify research JSON}
-
-  ---
-
-  **HTML REQUIREMENTS**:
-
-  1. **Structure**:
-     - Header with trip title, destination, dates
-     - Table of contents / quick navigation
-     - Day-by-day itinerary section
-     - Attractions detail section
-     - Accommodation recommendations section
-     - Dining recommendations section
-     - Transportation guide section
-     - Budget breakdown section
-     - Practical information section
-     - Useful links section
-     - Footer with generation timestamp
-
-  2. **Styling**:
-     - Modern, clean design
-     - Professional color scheme (avoid garish colors)
-     - Mobile-responsive (media queries for small screens)
-     - Print-friendly (hide navigation, optimize for paper)
-     - Good typography (readable fonts, proper hierarchy)
-     - Icons for sections (use Unicode emoji or CSS symbols)
-     - Cards or panels for organized information
-     - Hover effects for interactive elements
-
-  3. **Content**:
-     - Day-by-day itinerary with timeline
-     - Each attraction: name, description, location, hours, cost, tips
-     - Each hotel: name, location, description, price, amenities, booking link
-     - Each restaurant: name, cuisine, specialties, location, price range
-     - Budget breakdown table with totals
-     - Google Maps embeds or links for locations
-     - Clickable external links (open in new tab)
-
-  4. **Interactive Features**:
-     - Collapsible sections for long content
-     - Smooth scroll navigation
-     - Print button
-     - Back-to-top button
-
-  5. **Technical**:
-     - Valid HTML5
-     - Semantic tags (article, section, nav, etc.)
-     - Accessibility (alt text, ARIA labels, semantic structure)
-     - Meta tags (charset, viewport, description)
-
-  **Example Structure**:
-  ```html
-  <!DOCTYPE html>
-  <html lang=\"en\">
-  <head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-    <title>Travel Plan: {Destination}</title>
-    <style>
-      /* Embedded CSS here */
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-      /* ... more styles ... */
-      @media print { /* print styles */ }
-      @media (max-width: 768px) { /* mobile styles */ }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Your {Destination} Adventure</h1>
-      <p class=\"trip-dates\">{dates} • {duration} days</p>
-    </header>
-
-    <nav><!-- quick navigation --></nav>
-
-    <main>
-      <section id=\"overview\"><!-- destination overview --></section>
-      <section id=\"itinerary\"><!-- day by day --></section>
-      <section id=\"attractions\"><!-- detailed attractions --></section>
-      <section id=\"accommodations\"><!-- hotel options --></section>
-      <section id=\"dining\"><!-- restaurants --></section>
-      <section id=\"transportation\"><!-- getting around --></section>
-      <section id=\"budget\"><!-- cost breakdown --></section>
-      <section id=\"practical\"><!-- practical info --></section>
-      <section id=\"links\"><!-- useful links --></section>
-    </main>
-
-    <footer>
-      <p>Generated on {timestamp} by Claude Travel Planner</p>
-    </footer>
-
-    <script>
-      // Minimal JavaScript for interactivity (collapsible sections, smooth scroll, print button)
-    </script>
-  </body>
-  </html>
-  ```
-
-  Save the complete HTML document to the specified file path using the Write tool.
-
-  After saving, return ONLY: complete
-
-  DO NOT return the HTML in your response.
+  Return ONLY: complete
   "
 ```
 
-Critical:
-- HTML subagent saves HTML to file and returns ONLY "complete"
-- Main agent reads HTML from file after receiving "complete"
-- User NEVER sees HTML subagent's response
+Wait for "complete".
 
-### Step 6: Present Plan and Save to File
+#### Step 10: Validate Timeline Consistency
 
-**After receiving "complete", read HTML file and present to user**.
-
-Step 1 - Verify file exists:
+Run validation script:
 ```bash
-test -f /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html && echo "verified" || echo "missing"
+bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-slug}
 ```
 
-If output is "missing", STOP and debug (HTML subagent failed to save file).
+**Exit code 0**: Timeline valid → Proceed
+**Exit code 1**: Validation errors (mismatched keys, conflicts) → Review timeline.json warnings
 
-Step 2 - Read HTML file to validate:
+#### Step 11: Invoke Budget Agent (Serial)
+
+**IMPORTANT**: Budget agent runs AFTER timeline agent completes.
+
 ```
-Use Read tool on: /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
+Use Task tool with:
+- subagent_type: "budget-agent"
+- description: "Calculate budget and detect overages"
+- model: "sonnet"
+- prompt: "
+  Read ALL agent outputs including timeline:
+  - data/{destination-slug}/requirements-skeleton.json
+  - data/{destination-slug}/plan-skeleton.json
+  - data/{destination-slug}/meals.json
+  - data/{destination-slug}/accommodation.json
+  - data/{destination-slug}/attractions.json
+  - data/{destination-slug}/entertainment.json
+  - data/{destination-slug}/shopping.json
+  - data/{destination-slug}/transportation.json
+  - data/{destination-slug}/timeline.json
+
+  Calculate daily budget breakdown.
+  Compare to user's budget.
+  Generate warnings for overages.
+  Provide specific optimization recommendations.
+
+  Save to: data/{destination-slug}/budget.json
+
+  Return ONLY: complete
+  "
 ```
 
-Validate it's actual HTML (starts with <!DOCTYPE or <html>).
+Wait for "complete".
 
-If HTML validation fails:
-- Re-invoke HTML subagent with simplified requirements (max 1 retry)
-- If still fails: Create basic HTML manually using Write tool with research data
+---
 
-Step 3 - Attempt GitHub Pages deployment (optional):
+### Phase 4: Validation and Conflict Review
 
-Check for credentials silently:
+#### Step 12: Read Warnings
+
+Read and analyze:
+- `data/{destination-slug}/timeline.json` → Check `warnings` array
+- `data/{destination-slug}/budget.json` → Check `warnings` and `recommendations` arrays
+
+**If no warnings**: Proceed to Phase 5
+
+**If warnings exist**: Present to user
+
+Example:
+```
+I've created your travel plan, but there are a few items to review:
+
+**Timeline Conflicts**:
+- Day 3: Museum visit (14:00-16:00) overlaps with lunch reservation (15:00)
+- Day 5: Only 30 minutes between activities across town (tight schedule)
+
+**Budget Concerns**:
+- Day 2: Exceeds daily budget by $45 (dinner too expensive)
+- Total trip: $3,150 vs budget $3,000 (5% over)
+
+**Recommendations**:
+- Day 2: Switch dinner to [alternate restaurant] to save $30
+- Day 3: Adjust museum visit to 11:00-13:00 for lunch at 15:00
+- Day 5: Add 30-minute buffer or skip one attraction
+
+Would you like me to:
+1. Auto-adjust based on recommendations
+2. You tell me specific changes
+3. Proceed as-is and you'll adjust manually
+```
+
+Wait for user choice.
+
+#### Step 13: Handle Refinement
+
+**Option 1 - Auto-adjust**: Re-invoke relevant agents with specific instructions
+**Option 2 - User adjustments**: Parse and re-invoke specific agents
+**Option 3 - Proceed**: Continue to HTML generation
+
+**Re-invocation Pattern**:
+```
+Use Task tool to re-invoke specific agent(s):
+- Include refinement context in prompt
+- Agent overwrites their JSON file
+- Agent returns "complete"
+- Re-run validation scripts
+- Loop until user satisfied or max 3 iterations
+```
+
+---
+
+### Phase 5: HTML Generation
+
+#### Step 14: Generate Interactive HTML
+
+Run generation script:
 ```bash
-if [ -n "$GITHUB_TOKEN" ] || [ -f ~/.ssh/id_ed25519 ] || [ -f ~/.ssh/id_rsa ]; then
-  bash /root/travel-planner/scripts/deploy-travel-plans.sh /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
+bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug}
+```
+
+Script merges all agent JSONs and generates: `travel-plan-{destination-slug}.html`
+
+**If warnings prompted refinement**: Use version suffix
+```bash
+bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug} -v2
+```
+
+Output: `travel-plan-{destination-slug}-v2.html`
+
+#### Step 15: Verify HTML Generated
+
+Check file exists:
+```bash
+test -f /root/travel-planner/travel-plan-{destination-slug}.html && echo "verified" || echo "missing"
+```
+
+**If missing**: Debug script, check agent JSON completeness
+
+#### Step 16: Optional Deployment
+
+Attempt GitHub Pages deployment:
+```bash
+if [ -n "$GITHUB_TOKEN" ] || [ -f ~/.ssh/id_ed25519 ]; then
+  bash /root/travel-planner/scripts/deploy-travel-plans.sh /root/travel-planner/travel-plan-{destination-slug}.html
 fi
 ```
 
-If deployment succeeds:
-- Capture the live URL from script output
-- Include URL in presentation
+**If succeeds**: Capture live URL
+**If fails**: Silent graceful degradation (local file only)
 
-If deployment fails or credentials not found:
-- Continue without deployment (silent graceful degradation)
-- Only show local file path
+#### Step 17: Present Final Plan
 
-Step 4 - Present to user:
-
-If deployed successfully:
+**With deployment**:
 ```
 Your personalized travel plan is ready!
 
-📄 Saved to: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
-🌐 Live URL: https://{username}.github.io/travel-planner-graph/{destination-slug}/{YYYY-MM-DD}/
+📄 Saved to: `travel-plan-{destination-slug}.html`
+🌐 Live URL: https://{username}.github.io/travel-planner-graph/{destination-slug}/
 
 **Plan Summary**:
-- 🌍 Destination: {destination}
+- 🌍 Destination: {destinations}
 - 📅 Duration: {duration} days
-- 💰 Estimated Budget: {total_cost}
-- 🏨 {number} accommodation options
-- 🍽️ {number} dining recommendations
-- 🎯 {number} attractions and activities
+- 💰 Total Budget: ${total}
+- 🏨 {count} accommodation options
+- 🍽️ Daily meal recommendations
+- 🎯 {count} attractions and activities
+- 📅 Hour-by-hour timeline
+- 💵 Detailed budget breakdown
 
-**What's Included**:
-✓ Day-by-day itinerary
-✓ Detailed attraction information
-✓ Hotel recommendations with prices
-✓ Restaurant suggestions
-✓ Transportation guide
-✓ Budget breakdown
-✓ Practical travel tips
-✓ Interactive map links
+**Interactive Features**:
+✓ Day-by-day collapsible sections
+✓ Timeline with start/end times
+✓ Side panel for emergency info
+✓ Mobile-responsive design
+✓ Budget tracking per day
 
-You can open the HTML file locally or view it online at the URL above. It's mobile-friendly and printable!
-
-Would you like to make any adjustments to the plan?
+Open the HTML file locally or view online. Would you like any adjustments?
 ```
 
-If NOT deployed:
+**Without deployment**:
 ```
 Your personalized travel plan is ready!
 
-📄 Saved to: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
+📄 Saved to: `travel-plan-{destination-slug}.html`
 
-**Plan Summary**:
-- 🌍 Destination: {destination}
-- 📅 Duration: {duration} days
-- 💰 Estimated Budget: {total_cost}
-- 🏨 {number} accommodation options
-- 🍽️ {number} dining recommendations
-- 🎯 {number} attractions and activities
+[Same summary and features as above]
 
-**What's Included**:
-✓ Day-by-day itinerary
-✓ Detailed attraction information
-✓ Hotel recommendations with prices
-✓ Restaurant suggestions
-✓ Transportation guide
-✓ Budget breakdown
-✓ Practical travel tips
-✓ Interactive map links
-
-You can open the HTML file in any browser to view your complete travel plan. It's mobile-friendly and printable!
-
-Would you like to make any adjustments to the plan?
+Open the HTML file in any browser to view your complete travel plan.
 ```
 
-Proceed to Step 7.
+---
 
-### Step 7: Offer Iterations and Refinements
+### Phase 6: Refinement Loop
 
-**Multi-turn refinement loop with subagent re-invocation support**.
+#### Step 18: Handle User Refinements
 
-Wait for user response:
+**User satisfied**: End gracefully
 
-**User says satisfied** ("thanks", "perfect", "looks good"):
-- Acknowledge and end gracefully
-- Remind them they can run `/plan` again for future trips
-- End workflow
+**User requests changes**: Determine scope
 
-**User requests changes** - Determine change type and take appropriate action:
-
-**Type 1: Research-level changes** (require new/updated research):
-- Examples: "add more restaurants", "find budget hotels instead", "focus more on nightlife"
-- Action:
-  1. Re-invoke research subagent (Step 3) with refined requirements:
-     - Include conversation context and user refinement request
-     - Specify what changed (e.g., "User wants more budget hotels, fewer luxury options")
-     - Subagent overwrites `/root/travel-planner/data/{destination-slug}/research.json`
-     - Subagent returns "complete"
-  2. Verify updated research.json exists (test -f)
-  3. Read updated research.json
-  4. Re-invoke HTML subagent (Step 5) with updated research data
-     - Save to: `/root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
-     - Subagent returns "complete"
-  5. Verify HTML exists, read it, validate, deploy (optional)
-  6. Present updated plan to user
-  7. Loop back to refinement offer
-
-**Type 2: HTML-only changes** (no new research needed):
-- Examples: "change color scheme", "reorder sections", "make it more compact"
-- Action:
-  1. Re-invoke HTML subagent (Step 5) with same research data but new styling requirements
-     - Read existing research.json
-     - Include conversation context and user refinement request
-     - Save to: `/root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
-     - Subagent returns "complete"
-  2. Verify HTML exists, read it, validate, deploy (optional)
-  3. Present updated plan to user
-  4. Loop back to refinement offer
-
-**Type 3: Questions** ("tell me more about X", "is Y good for families?"):
-- Answer naturally using research data you have in memory
-- If you don't have the info: Offer to re-research and update plan (becomes Type 1)
-- Continue dialogue
-- Loop back to refinement offer
-
-**Versioning Pattern**:
-- Original: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
-- Version 2: `travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
-- Version 3: `travel-plan-{destination-slug}-{YYYY-MM-DD}-v3.html`
-- Track version number throughout refinement loop
-
-**Re-consultation Pattern**:
+**Type 1 - Specific agent changes**:
 ```
-Use same Task tool patterns from Steps 3-5:
-- Research subagent: Include refinement context in prompt, overwrite research.json, return "complete"
-- HTML subagent: Include refinement context in prompt, save versioned HTML, return "complete"
-- Always verify files exist before reading
-- Always read files to validate content
+Example: "Add more budget restaurants for Day 2"
+Action:
+1. Re-invoke meals-agent with refinement context
+2. Re-invoke timeline-agent (depends on meals)
+3. Re-invoke budget-agent (depends on timeline)
+4. Re-run validations
+5. Regenerate HTML with -v2 suffix
+6. Present updated plan
 ```
 
-**Maximum iterations**: 3 major revisions
-- After 3 revisions (v3), gently close: "We've created a comprehensive plan! You can always run `/plan` again if you want to start fresh with different requirements."
-
-**Dialogue Length Protection**:
-- After 15 total turns in workflow → Suggest finalizing
-- After 20 turns → Politely close and save final version
-
-### Step 8: Workflow Completion
-
-Mark final step as completed in TodoWrite.
-
-Natural ending:
+**Type 2 - Major restructure**:
 ```
-Enjoy planning your trip to {destination}! Your travel plan is saved and ready to use.
-
-💡 Tip: You can run `/plan` anytime to create plans for other destinations.
+Example: "Change Day 3 location from Beijing to Xi'an"
+Action:
+1. Update requirements-skeleton.json
+2. Re-init plan-skeleton.json (Step 5)
+3. Re-invoke ALL 8 agents
+4. Run all validations
+5. Generate new HTML with -v2 suffix
+6. Present updated plan
 ```
 
-## Architecture Notes
+**Type 3 - Questions only**:
+```
+Example: "Is this restaurant good for vegetarians?"
+Action:
+- Answer from existing data
+- No agent re-invocation needed
+```
 
-This command uses **Three-Party Architecture**:
+**Versioning**: `-v2`, `-v3`, etc.
+**Max iterations**: 3 major revisions
 
-1. **You (Main Agent)**: The travel consultant the user interacts with
-   - Conduct requirement interviews
-   - Present information naturally
-   - Orchestrate subagent consultations invisibly
-   - Handle user dialogue and refinements
+---
 
-2. **Research Subagent**: Backend JSON consultant (via Task tool)
-   - Executes web searches for travel information
-   - Returns structured JSON data
-   - User never sees this interaction
+## File Structure
 
-3. **HTML Subagent**: Backend HTML generator (via Task tool)
-   - Generates professional travel plan HTML
-   - Returns complete standalone HTML document
-   - User never sees this interaction
+```
+/root/travel-planner/
+├── data/
+│   └── {destination-slug}/
+│       ├── requirements-skeleton.json   (BA output)
+│       ├── plan-skeleton.json          (Orchestrator output)
+│       ├── meals.json                  (Agent output)
+│       ├── accommodation.json          (Agent output)
+│       ├── attractions.json            (Agent output)
+│       ├── entertainment.json          (Agent output)
+│       ├── shopping.json               (Agent output)
+│       ├── transportation.json         (Agent output)
+│       ├── timeline.json               (Agent output - serial)
+│       └── budget.json                 (Agent output - serial)
+├── scripts/
+│   ├── check-day-completion.sh
+│   ├── check-location-continuity.sh
+│   ├── validate-timeline-consistency.sh
+│   └── generate-travel-html.sh
+└── travel-plan-{destination-slug}.html  (Final output)
+```
 
-**Golden Rules**:
-- User sees: Natural conversation with a single travel consultant (you)
-- User never sees: "Let me consult the researcher...", "Generating HTML...", or any meta-commentary
-- You internalize subagent outputs and present results naturally
-- Subagents are your invisible assistants, not visible participants
+## Quality Standards
+
+**Timeline Dictionary Format**:
+```json
+{
+  "timeline": {
+    "Hongyadong Night View": {
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "duration_minutes": 120
+    },
+    "Dinner at Hotpot Restaurant": {
+      "start_time": "20:30",
+      "end_time": "22:00",
+      "duration_minutes": 90
+    }
+  }
+}
+```
+
+**Key must EXACTLY match activity name from source JSON**.
+
+**Location Change Handling**:
+- Only days with different location from previous day get location_change object
+- transportation-agent ONLY processes these days
+- Validation ensures no location changes are missed
+
+**Budget Validation**:
+- Per-day breakdown by category
+- Trip total vs user budget
+- Specific recommendations for overages
+
+**Conflict Resolution**:
+- BA presents conflicts to user
+- User chooses resolution
+- Specific agents re-invoked (not all 8)
+- Maintain data integrity across re-invocations
 
 ## Notes
 
-- Always use absolute file paths when saving HTML
-- HTML files are standalone (no external dependencies except optional CDN fonts)
-- Research quality gate ensures minimum viable plan data
-- Support iterative refinement but cap at 3 major revisions
-- Follow Three-Party Architecture strictly for clean user experience
+- Follow equity-research pattern: orchestrator never implements, only coordinates
+- File-based communication: agents save JSON and return 'complete'
+- Validation scripts catch errors before HTML generation
+- Timeline uses dictionary (not array) with activity names as keys
+- Transportation agent is optional (only for location changes)
+- Timeline and budget agents run serially after parallel agents
+- HTML generation is script-based (no HTML subagent)
+- Support multi-language user_plans (preserve original language)
+- Graceful degradation: deployment optional, local file always works
