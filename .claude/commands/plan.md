@@ -173,10 +173,9 @@ Then execute research consultation (user doesn't see this process):
 
 ```
 Use Task tool with:
-- subagent_type: "general"
+- subagent_type: "research-travel"
 - description: "Research travel information and create comprehensive destination data"
 - model: "sonnet"  # Use capable model for quality research
-- allowed_tools: WebSearch, Write, SlashCommand
 - prompt: "
   ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
 
@@ -440,10 +439,9 @@ Then execute HTML generation (user doesn't see this process):
 
 ```
 Use Task tool with:
-- subagent_type: "general"
+- subagent_type: "html-travel"
 - description: "Generate professional HTML travel plan"
 - model: "sonnet"  # Use capable model for quality HTML
-- allowed_tools: Write, Read
 - prompt: "
   ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
 
