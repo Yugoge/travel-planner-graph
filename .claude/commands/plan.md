@@ -176,20 +176,20 @@ Use Task tool with:
 - subagent_type: "general"
 - description: "Research travel information and create comprehensive destination data"
 - model: "sonnet"  # Use capable model for quality research
+- allowed_tools: WebSearch, Write, SlashCommand
 - prompt: "
-  ⚠️ CRITICAL: You MUST return ONLY valid JSON. Do NOT return Markdown.
+  ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
+
+  1. Save your research JSON to: /root/travel-planner/data/{destination-slug}/research.json
+  2. After saving the file, return ONLY the word: complete
+  3. Do NOT return the JSON content in your response
+
+  Where {destination-slug} is the destination in lowercase with hyphens (e.g., 'paris', 'new-york', 'chongqing-bazhong-chengdu-shanghai-beijing')
 
   You are a CONSULTANT to the main /plan agent, NOT the user's travel planner.
-  The user will NEVER see your response - only the main agent will.
+  The user will NEVER see your response - only the main agent will read your JSON file.
 
-  **OUTPUT REQUIREMENTS**:
-  - Return ONLY the JSON object specified below
-  - NO markdown code blocks (no ```json)
-  - NO explanatory text before or after JSON
-  - NO conversational Markdown formatting
-  - If you violate this, the main agent will fail to parse your response
-
-  Your task: Research comprehensive travel information for this trip and provide structured data as JSON.
+  Your task: Research comprehensive travel information for this trip and save structured data as JSON file.
 
   **User Requirements**:
   - Destination(s): {destination}
@@ -370,23 +370,39 @@ Use Task tool with:
     \"research_quality\": \"comprehensive|good|limited\"
   }
 
-  **IMPORTANT**: Return the JSON object above WITHOUT any wrapping.
+  Save the complete JSON object to /root/travel-planner/data/{destination-slug}/research.json using the Write tool.
+
+  After saving, return ONLY: complete
+
+  DO NOT return the JSON in your response.
   "
 ```
 
 Critical:
-- Research subagent responds with JSON ONLY (not user-facing text)
-- Main agent receives structured data
+- Research subagent saves JSON to file and returns ONLY "complete"
+- Main agent reads JSON from file after receiving "complete"
 - User NEVER sees research subagent's response
 
 ### Step 4: Validate Research Quality
 
-**Before proceeding, validate the research response**:
+**After receiving "complete", read and validate the research JSON file**.
 
-Parse and validate the JSON:
+Step 1 - Verify file exists:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/research.json && echo "verified" || echo "missing"
+```
+
+If output is "missing", STOP and debug (research subagent failed to save file).
+
+Step 2 - Read JSON file:
+```
+Use Read tool on: /root/travel-planner/data/{destination-slug}/research.json
+```
+
+Step 3 - Parse and validate the JSON:
 
 1. **Check if response is valid JSON**:
-   - Try to parse the response as JSON
+   - Try to parse the file content as JSON
    - Check for required fields: `destination_info`, `attractions`, `accommodations`, `restaurants`, `sources`
 
 2. **Check research quality**:
@@ -400,6 +416,7 @@ Parse and validate the JSON:
    - Force more comprehensive web searches
    - Require minimum thresholds
    - Maximum 2 escalation attempts
+   - Subagent overwrites same file path
 
 4. **If still insufficient after 2 attempts** → Inform user:
    ```
@@ -408,7 +425,7 @@ Parse and validate the JSON:
 
 5. **If validation passes** → Proceed to Step 5
 
-**Result**: You now have validated research data to pass to HTML generation.
+**Result**: You now have validated research data loaded in memory to pass to HTML generation.
 
 ### Step 5: Generate HTML Travel Plan
 
@@ -426,21 +443,22 @@ Use Task tool with:
 - subagent_type: "general"
 - description: "Generate professional HTML travel plan"
 - model: "sonnet"  # Use capable model for quality HTML
+- allowed_tools: Write, Read
 - prompt: "
-  ⚠️ CRITICAL: You MUST return valid standalone HTML. Do NOT return JSON or Markdown explanations.
+  ⚠️ CRITICAL OUTPUT INSTRUCTIONS:
+
+  1. Save your HTML to: /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
+  2. After saving the file, return ONLY the word: complete
+  3. Do NOT return the HTML content in your response
+
+  Where:
+  - {destination-slug} is the destination in lowercase with hyphens (e.g., 'paris', 'new-york')
+  - {YYYY-MM-DD} is today's date in ISO format
 
   You are a CONSULTANT to the main /plan agent, NOT the user's travel planner.
-  The user will NEVER see this raw response - only the final HTML file will be shown.
+  The user will NEVER see your response - only the main agent will read your HTML file.
 
-  **OUTPUT REQUIREMENTS**:
-  - Return ONLY complete, valid HTML5 document
-  - Include <!DOCTYPE html> and all standard HTML structure
-  - Embed ALL CSS in <style> tags (no external stylesheets)
-  - NO markdown formatting
-  - NO explanatory text before or after HTML
-  - Must be standalone (can only reference CDN libraries like Google Fonts)
-
-  Your task: Generate a professional, beautiful HTML travel plan.
+  Your task: Generate a professional, beautiful HTML travel plan and save it to the specified file path.
 
   **User Requirements**:
   {stringify user requirements}
@@ -544,40 +562,47 @@ Use Task tool with:
   </html>
   ```
 
-  Return ONLY the complete HTML document. No additional text.
+  Save the complete HTML document to the specified file path using the Write tool.
+
+  After saving, return ONLY: complete
+
+  DO NOT return the HTML in your response.
   "
 ```
 
-Receive HTML response → Validate it's actual HTML (starts with <!DOCTYPE or <html>) → Proceed to Step 6.
-
-If HTML generation fails:
-- Try once more with simplified requirements
-- If still fails: Create basic HTML manually using Write tool with research data
+Critical:
+- HTML subagent saves HTML to file and returns ONLY "complete"
+- Main agent reads HTML from file after receiving "complete"
+- User NEVER sees HTML subagent's response
 
 ### Step 6: Present Plan and Save to File
 
-**Present the plan to user and save HTML file**.
+**After receiving "complete", read HTML file and present to user**.
 
-Generate filename:
-```
-travel-plan-{destination-slug}-{YYYY-MM-DD}.html
-```
-
-Example: `travel-plan-paris-2026-03-15.html`
-
-Save to current directory using Write tool:
-```
-Use Write tool:
-- file_path: /root/travel-planner/{filename}
-- content: {HTML from subagent}
+Step 1 - Verify file exists:
+```bash
+test -f /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html && echo "verified" || echo "missing"
 ```
 
-Then attempt GitHub Pages deployment (optional):
+If output is "missing", STOP and debug (HTML subagent failed to save file).
+
+Step 2 - Read HTML file to validate:
+```
+Use Read tool on: /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
+```
+
+Validate it's actual HTML (starts with <!DOCTYPE or <html>).
+
+If HTML validation fails:
+- Re-invoke HTML subagent with simplified requirements (max 1 retry)
+- If still fails: Create basic HTML manually using Write tool with research data
+
+Step 3 - Attempt GitHub Pages deployment (optional):
 
 Check for credentials silently:
 ```bash
 if [ -n "$GITHUB_TOKEN" ] || [ -f ~/.ssh/id_ed25519 ] || [ -f ~/.ssh/id_rsa ]; then
-  bash /root/travel-planner/scripts/deploy-travel-plans.sh /root/travel-planner/{filename}
+  bash /root/travel-planner/scripts/deploy-travel-plans.sh /root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}.html
 fi
 ```
 
@@ -589,13 +614,13 @@ If deployment fails or credentials not found:
 - Continue without deployment (silent graceful degradation)
 - Only show local file path
 
-Then present to user:
+Step 4 - Present to user:
 
 If deployed successfully:
 ```
 Your personalized travel plan is ready!
 
-📄 Saved to: `{filename}`
+📄 Saved to: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
 🌐 Live URL: https://{username}.github.io/travel-planner-graph/{destination-slug}/{YYYY-MM-DD}/
 
 **Plan Summary**:
@@ -625,7 +650,7 @@ If NOT deployed:
 ```
 Your personalized travel plan is ready!
 
-📄 Saved to: `{filename}`
+📄 Saved to: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
 
 **Plan Summary**:
 - 🌍 Destination: {destination}
@@ -654,7 +679,7 @@ Proceed to Step 7.
 
 ### Step 7: Offer Iterations and Refinements
 
-**Multi-turn refinement loop**.
+**Multi-turn refinement loop with subagent re-invocation support**.
 
 Wait for user response:
 
@@ -663,33 +688,60 @@ Wait for user response:
 - Remind them they can run `/plan` again for future trips
 - End workflow
 
-**User requests changes** ("add more restaurants", "change hotel options", "adjust budget"):
-- Acknowledge the request
-- Determine if you need to re-consult research subagent (new information needed)
-- If minor adjustment: Make changes yourself
-- If major change: Re-consult research subagent with updated requirements
-- Re-consult HTML subagent with updated data
-- Generate new HTML file with version suffix: `{original-name}-v2.html`
-- Present updated plan
-- Loop back to refinement offer
+**User requests changes** - Determine change type and take appropriate action:
 
-**User asks questions** ("tell me more about X", "is Y good for families?"):
-- Answer naturally using research data you have
-- If you don't have the info: Offer to research and update plan
+**Type 1: Research-level changes** (require new/updated research):
+- Examples: "add more restaurants", "find budget hotels instead", "focus more on nightlife"
+- Action:
+  1. Re-invoke research subagent (Step 3) with refined requirements:
+     - Include conversation context and user refinement request
+     - Specify what changed (e.g., "User wants more budget hotels, fewer luxury options")
+     - Subagent overwrites `/root/travel-planner/data/{destination-slug}/research.json`
+     - Subagent returns "complete"
+  2. Verify updated research.json exists (test -f)
+  3. Read updated research.json
+  4. Re-invoke HTML subagent (Step 5) with updated research data
+     - Save to: `/root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
+     - Subagent returns "complete"
+  5. Verify HTML exists, read it, validate, deploy (optional)
+  6. Present updated plan to user
+  7. Loop back to refinement offer
+
+**Type 2: HTML-only changes** (no new research needed):
+- Examples: "change color scheme", "reorder sections", "make it more compact"
+- Action:
+  1. Re-invoke HTML subagent (Step 5) with same research data but new styling requirements
+     - Read existing research.json
+     - Include conversation context and user refinement request
+     - Save to: `/root/travel-planner/travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
+     - Subagent returns "complete"
+  2. Verify HTML exists, read it, validate, deploy (optional)
+  3. Present updated plan to user
+  4. Loop back to refinement offer
+
+**Type 3: Questions** ("tell me more about X", "is Y good for families?"):
+- Answer naturally using research data you have in memory
+- If you don't have the info: Offer to re-research and update plan (becomes Type 1)
 - Continue dialogue
 - Loop back to refinement offer
 
-**Re-consultation Pattern** (if needed):
+**Versioning Pattern**:
+- Original: `travel-plan-{destination-slug}-{YYYY-MM-DD}.html`
+- Version 2: `travel-plan-{destination-slug}-{YYYY-MM-DD}-v2.html`
+- Version 3: `travel-plan-{destination-slug}-{YYYY-MM-DD}-v3.html`
+- Track version number throughout refinement loop
+
+**Re-consultation Pattern**:
 ```
-Use same Task tool patterns from Steps 3-5, but:
-- Include conversation context
-- Specify what changed
-- Request targeted updates
-- Merge with existing data
+Use same Task tool patterns from Steps 3-5:
+- Research subagent: Include refinement context in prompt, overwrite research.json, return "complete"
+- HTML subagent: Include refinement context in prompt, save versioned HTML, return "complete"
+- Always verify files exist before reading
+- Always read files to validate content
 ```
 
 **Maximum iterations**: 3 major revisions
-- After 3 revisions, gently close: "We've created a comprehensive plan! You can always run `/plan` again if you want to start fresh with different requirements."
+- After 3 revisions (v3), gently close: "We've created a comprehensive plan! You can always run `/plan` again if you want to start fresh with different requirements."
 
 **Dialogue Length Protection**:
 - After 15 total turns in workflow → Suggest finalizing
