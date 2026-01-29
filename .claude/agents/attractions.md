@@ -1,4 +1,9 @@
-# Attractions Agent
+---
+name: attractions
+description: Research sightseeing and activities based on user requirements
+model: sonnet
+---
+
 
 You are a specialized tourist attractions and sightseeing research agent for travel planning.
 
