@@ -1,0 +1,413 @@
+#!/usr/bin/env bash
+# Merge all agent JSONs and generate interactive HTML travel plan
+# Usage: generate-travel-html.sh <destination-slug> [version-suffix]
+# Exit codes: 0=success, 1=generation failed, 2=missing files
+
+set -euo pipefail
+
+DESTINATION_SLUG="${1:?Missing required destination-slug}"
+VERSION_SUFFIX="${2:-}"
+
+DATA_DIR="data/${DESTINATION_SLUG}"
+PLAN_FILE="${DATA_DIR}/plan-skeleton.json"
+OUTPUT_FILE="travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
+
+# Verify required files exist
+if [[ ! -f "$PLAN_FILE" ]]; then
+  echo "Error: Plan skeleton not found: $PLAN_FILE" >&2
+  exit 2
+fi
+
+# Merge agent outputs into plan-skeleton
+echo "Merging agent outputs..."
+
+MERGED_DATA=$(jq -s '
+  .[0] as $skeleton |
+
+  # Load all agent outputs
+  .[1] as $meals |
+  .[2] as $accommodation |
+  .[3] as $attractions |
+  .[4] as $entertainment |
+  .[5] as $shopping |
+  .[6] as $transportation |
+  .[7] as $timeline |
+  .[8] as $budget |
+
+  # Merge into skeleton
+  $skeleton | .days |= [
+    .[] | . as $day |
+    . + {
+      breakfast: ($meals.data.days[] | select(.day == $day.day) | .breakfast),
+      lunch: ($meals.data.days[] | select(.day == $day.day) | .lunch),
+      dinner: ($meals.data.days[] | select(.day == $day.day) | .dinner),
+      accommodation: ($accommodation.data.days[] | select(.day == $day.day) | .accommodation),
+      attractions: ($attractions.data.days[] | select(.day == $day.day) | .attractions),
+      entertainment: ($entertainment.data.days[] | select(.day == $day.day) | .entertainment),
+      shopping: ($shopping.data.days[] | select(.day == $day.day) | .shopping),
+      location_change: (
+        if $day.location_change then
+          ($transportation.data.days[] | select(.day == $day.day) | .location_change)
+        else
+          null
+        end
+      ),
+      timeline: ($timeline.data.days[] | select(.day == $day.day) | .timeline),
+      budget: ($budget.data.days[] | select(.day == $day.day) | .budget)
+    }
+  ] |
+  . + {
+    emergency_info: $skeleton.emergency_info
+  }
+' \
+  "$PLAN_FILE" \
+  "${DATA_DIR}/meals.json" \
+  "${DATA_DIR}/accommodation.json" \
+  "${DATA_DIR}/attractions.json" \
+  "${DATA_DIR}/entertainment.json" \
+  "${DATA_DIR}/shopping.json" \
+  "${DATA_DIR}/transportation.json" \
+  "${DATA_DIR}/timeline.json" \
+  "${DATA_DIR}/budget.json" 2>/dev/null || echo "{}")
+
+if [[ "$MERGED_DATA" == "{}" ]]; then
+  echo "Warning: Some agent outputs missing, generating partial HTML" >&2
+fi
+
+# Generate HTML using template
+cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Plan - DESTINATION_TITLE</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+    .header .meta { font-size: 1.1em; opacity: 0.9; }
+
+    /* Stats Dashboard */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-card .value { font-size: 2em; font-weight: bold; color: #667eea; }
+    .stat-card .label { color: #666; font-size: 0.9em; }
+
+    /* Day Cards */
+    .day-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .day-header {
+      background: #667eea;
+      color: white;
+      padding: 15px 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .day-header:hover { background: #5568d3; }
+    .day-content {
+      padding: 20px;
+      display: none;
+    }
+    .day-content.active { display: block; }
+
+    /* Timeline */
+    .timeline-item {
+      border-left: 3px solid #667eea;
+      padding-left: 20px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #667eea;
+    }
+    .timeline-time { font-weight: bold; color: #667eea; }
+    .timeline-activity { margin: 5px 0; }
+
+    /* Activity Grid */
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .activity-card {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #667eea;
+    }
+    .activity-card h4 { color: #667eea; margin-bottom: 8px; }
+    .activity-card .cost { color: #e74c3c; font-weight: bold; }
+
+    /* Side Panel */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: -450px;
+      width: 450px;
+      height: 100vh;
+      background: white;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+      transition: right 0.3s;
+      overflow-y: auto;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .side-panel.active { right: 0; }
+    .close-panel {
+      cursor: pointer;
+      font-size: 1.5em;
+      float: right;
+      color: #999;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header h1 { font-size: 1.8em; }
+      .side-panel { width: 100%; right: -100%; }
+      .activity-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Utilities */
+    .btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover { background: #5568d3; }
+    .section { margin-bottom: 30px; }
+    .section h3 { color: #667eea; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1 id="trip-title">Loading...</h1>
+      <div class="meta" id="trip-meta"></div>
+    </div>
+
+    <!-- Stats Dashboard -->
+    <div class="stats" id="stats-container"></div>
+
+    <!-- Day by Day -->
+    <div id="days-container"></div>
+
+    <!-- Emergency Info Side Panel -->
+    <div class="side-panel" id="emergency-panel">
+      <span class="close-panel" onclick="closePanel()">×</span>
+      <h2>Emergency Information</h2>
+      <div id="emergency-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // Data will be injected here
+    const PLAN_DATA = PLAN_DATA_INJECTION;
+
+    // Initialize page
+    function init() {
+      renderHeader();
+      renderStats();
+      renderDays();
+      renderEmergencyInfo();
+    }
+
+    function renderHeader() {
+      const firstDay = PLAN_DATA.days[0];
+      const lastDay = PLAN_DATA.days[PLAN_DATA.days.length - 1];
+      document.getElementById('trip-title').textContent = `${firstDay.location} Travel Plan`;
+      document.getElementById('trip-meta').textContent =
+        `${firstDay.date} to ${lastDay.date} • ${PLAN_DATA.days.length} days`;
+    }
+
+    function renderStats() {
+      const totalBudget = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget?.total || 0), 0);
+      const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions?.length || 0), 0);
+
+      const stats = [
+        { label: 'Days', value: PLAN_DATA.days.length },
+        { label: 'Total Budget', value: `$${totalBudget}` },
+        { label: 'Attractions', value: totalAttractions },
+        { label: 'Cities', value: new Set(PLAN_DATA.days.map(d => d.location)).size }
+      ];
+
+      document.getElementById('stats-container').innerHTML = stats.map(s => `
+        <div class="stat-card">
+          <div class="value">${s.value}</div>
+          <div class="label">${s.label}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDays() {
+      const container = document.getElementById('days-container');
+      container.innerHTML = PLAN_DATA.days.map(day => `
+        <div class="day-card">
+          <div class="day-header" onclick="toggleDay(${day.day})">
+            <div>
+              <strong>Day ${day.day}</strong> - ${day.date} - ${day.location}
+            </div>
+            <div>Budget: $${day.budget?.total || 0}</div>
+          </div>
+          <div class="day-content" id="day-${day.day}">
+            ${renderDayContent(day)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderDayContent(day) {
+      let html = '';
+
+      // Location change
+      if (day.location_change) {
+        html += `<div class="section">
+          <h3>🚗 Transportation</h3>
+          <p><strong>${day.location_change.from} → ${day.location_change.to}</strong></p>
+          <p>${day.location_change.transportation} • ${day.location_change.departure_time} - ${day.location_change.arrival_time}</p>
+          <p class="cost">Cost: $${day.location_change.cost}</p>
+        </div>`;
+      }
+
+      // Timeline
+      if (day.timeline && Object.keys(day.timeline).length > 0) {
+        html += '<div class="section"><h3>📅 Timeline</h3>';
+        Object.entries(day.timeline).forEach(([activity, time]) => {
+          html += `<div class="timeline-item">
+            <div class="timeline-time">${time.start_time} - ${time.end_time}</div>
+            <div class="timeline-activity">${activity}</div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      // Meals
+      html += '<div class="section"><h3>🍽️ Meals</h3><div class="activity-grid">';
+      ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+        if (day[meal]?.name) {
+          html += `<div class="activity-card">
+            <h4>${meal.charAt(0).toUpperCase() + meal.slice(1)}</h4>
+            <p>${day[meal].name}</p>
+            <p>${day[meal].location}</p>
+            <p class="cost">$${day[meal].cost}</p>
+          </div>`;
+        }
+      });
+      html += '</div></div>';
+
+      // Attractions
+      if (day.attractions?.length > 0) {
+        html += '<div class="section"><h3>🎯 Attractions</h3><div class="activity-grid">';
+        day.attractions.forEach(attr => {
+          html += `<div class="activity-card">
+            <h4>${attr.name}</h4>
+            <p>${attr.location}</p>
+            <p class="cost">$${attr.cost}</p>
+          </div>`;
+        });
+        html += '</div></div>';
+      }
+
+      // Entertainment & Shopping
+      ['entertainment', 'shopping'].forEach(category => {
+        if (day[category]?.length > 0) {
+          const icon = category === 'entertainment' ? '🎭' : '🛍️';
+          html += `<div class="section"><h3>${icon} ${category.charAt(0).toUpperCase() + category.slice(1)}</h3><div class="activity-grid">`;
+          day[category].forEach(item => {
+            html += `<div class="activity-card">
+              <h4>${item.name}</h4>
+              <p>${item.location}</p>
+              <p class="cost">$${item.cost}</p>
+            </div>`;
+          });
+          html += '</div></div>';
+        }
+      });
+
+      return html;
+    }
+
+    function renderEmergencyInfo() {
+      const emergency = PLAN_DATA.emergency_info;
+      let html = '<div class="section"><h3>🏥 Hospitals</h3><ul>';
+      (emergency?.hospitals || []).forEach(h => {
+        html += `<li>${h.name} - ${h.phone}</li>`;
+      });
+      html += '</ul></div><button class="btn" onclick="closePanel()">Close</button>';
+      document.getElementById('emergency-content').innerHTML = html;
+    }
+
+    function toggleDay(dayNum) {
+      const content = document.getElementById(`day-${dayNum}`);
+      content.classList.toggle('active');
+    }
+
+    function openEmergencyPanel() {
+      document.getElementById('emergency-panel').classList.add('active');
+    }
+
+    function closePanel() {
+      document.getElementById('emergency-panel').classList.remove('active');
+    }
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>
+HTML_TEMPLATE
+
+# Inject merged data into HTML
+sed -i "s|PLAN_DATA_INJECTION|${MERGED_DATA}|g" "$OUTPUT_FILE"
+sed -i "s|DESTINATION_TITLE|${DESTINATION_SLUG}|g" "$OUTPUT_FILE"
+
+echo "✓ Generated HTML: $OUTPUT_FILE"
+exit 0

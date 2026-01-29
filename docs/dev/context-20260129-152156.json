@@ -1,0 +1,293 @@
+{
+  "request_id": "dev-20260129-152156",
+  "timestamp": "2026-01-29T15:21:56Z",
+  "requirement": {
+    "original": "现在开始重构我的plan步骤，我打算废弃html agent，直接在plan的最后使用一个脚本推送网页。现在我的计划是学习root/multi-asset-portfolioi的equity-research command。对于旅行中的每一个关键的要素都派遣相关的专业agent进行处理，主agent只是一个BA和orchestrator，等于说是把root/multi-asset-portfolioi的equity-research command和roo/knowledge-system中的ask合并。同时现在派出一个subagent先研究旅行计划一般如何写，如何在一页呈现，同时要包括全部要素（可以加入多级结构比如点击进入新的弹窗或者页面之类的，你可以参考budget-management的html设计）",
+    "clarified": "Refactor /plan command to use multi-agent orchestration pattern from equity-research, where main agent is BA+orchestrator and specialized subagents handle each travel component. Replace HTML generation agent with script-based HTML generation. Implement two-phase skeleton system with validation scripts.",
+    "what": "Complete architectural refactor of /plan command",
+    "why": "Current single-agent approach doesn't scale; need specialized agents for different travel components similar to equity-research's multi-analyst pattern",
+    "where": [
+      ".claude/commands/plan.md - Complete rewrite",
+      "scripts/ - New validation and generation scripts",
+      ".claude/subagents/ - New specialist agent definitions",
+      "docs/travel-itinerary-design-research.md - Already researched"
+    ],
+    "scope": {
+      "included": [
+        "Phase 1: BA requirement collection with check-day-completion.sh",
+        "Phase 2: Orchestrator skeleton initialization",
+        "Phase 3: Specialized agents (meals, accommodation, attractions, entertainment, shopping, transportation, timeline, budget)",
+        "Phase 4: Validation scripts (check-location-continuity.sh, validate-timeline-consistency.sh)",
+        "Phase 5: HTML generation script (generate-travel-html.sh)",
+        "Phase 6: Refinement loop with conflict resolution",
+        "File-based agent communication (save to data/{destination-slug}/{agent-name}.json)",
+        "Timeline as dictionary with activity names as keys",
+        "Location change detection and transportation handling"
+      ],
+      "excluded": [
+        "Existing research.json format migration (clean break)",
+        "Automatic deployment (keep manual deploy-travel-plans.sh)",
+        "Real-time collaboration features",
+        "Multi-user trip planning"
+      ]
+    },
+    "success_criteria": [
+      "BA can collect requirements and init requirements-skeleton.json with location per day",
+      "check-day-completion.sh validates all days have user_plans",
+      "Orchestrator inits plan-skeleton.json with location_change detection",
+      "8 specialist agents work in parallel/serial as designed",
+      "check-location-continuity.sh validates location changes",
+      "validate-timeline-consistency.sh validates timeline dictionary keys match activity names",
+      "Timeline dictionary uses activity names as keys with start_time/end_time/duration",
+      "generate-travel-html.sh merges all JSONs and creates HTML from template",
+      "Refinement loop allows BA to present conflicts and re-invoke agents",
+      "All agents save to data/{destination-slug}/{agent-name}.json and return 'complete'",
+      "HTML uses interactive patterns from budget-management research"
+    ],
+    "constraints": [
+      "Must follow equity-research orchestration pattern exactly",
+      "File-based communication only (no payload in agent responses)",
+      "Timeline must be dictionary (not array) with exact activity name matching",
+      "Location changes require location_change object, validated by script",
+      "All scripts must use deterministic paths",
+      "Backward incompatible (clean break from current implementation)",
+      "Must support emergency info, shopping, free_time fields",
+      "Transportation agent only processes days with location_change"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Current /plan uses monolithic research+HTML agents, lacks specialized domain knowledge, doesn't scale to complex multi-city trips",
+    "root_cause": "Initial /plan implementation (commit 22ed10a) used simple 2-agent model without considering: (1) specialized domain expertise needed for different travel components, (2) complex inter-dependencies like timeline conflicts and budget validation, (3) location continuity and transportation coordination",
+    "root_cause_commit": "22ed10a - checkpoint: Auto-save at 2026-01-29 09:29:38 (initial /plan implementation)",
+    "why_introduced": "MVP approach prioritized getting basic functionality working quickly with minimal agents",
+    "why_problematic": "Cannot handle complex scenarios: timeline conflicts between activities, budget overflow detection, location continuity validation, specialized restaurant/hotel research, transportation coordination between cities. Single research agent lacks domain depth.",
+    "timeline": "2026-01-29 09:29 - Initial /plan created; 2026-01-29 11:32 - File-based communication added (commit f666946); 2026-01-29 15:21 - Multi-agent architecture needed",
+    "affected_files": [
+      ".claude/commands/plan.md - needs complete rewrite for multi-agent orchestration",
+      "scripts/ - needs validation scripts for day completion, location continuity, timeline consistency",
+      ".claude/subagents/ - needs 8 specialist agent definitions"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working /plan with file-based communication, GitHub deployment integration complete, travel itinerary design research completed",
+    "recent_commits": "6027f8f feat: Add project-specific subagent definitions, ccd5318 refactor: Use dedicated subagents, f666946 feat: Implement file-based subagent communication",
+    "file_contents": {
+      ".claude/commands/plan.md": "Current implementation: Steps 0-7 with 2 agents (research, HTML), file-based communication working",
+      "/root/multi-asset-portfolio/.claude/commands/equity-research.md": "Reference pattern: orchestrator + multiple analyst agents, file-based data flow, human-in-the-loop decisions",
+      "docs/travel-itinerary-design-research.md": "Completed research on HTML structure, interactive patterns, mobile responsiveness",
+      "scripts/deploy-travel-plans.sh": "Working deployment script with auto-repo creation"
+    },
+    "dependencies": {
+      "runtime": "Bash, Python 3.11+, jq for JSON manipulation",
+      "packages": "No new Python packages needed, use standard library for JSON/template processing"
+    },
+    "environment": {
+      "venv_path": "Not applicable - Bash scripts only",
+      "config_files": [".claude/commands/plan.md", ".claude/subagents/*.md"]
+    },
+    "reference_patterns": {
+      "equity_research_orchestration": {
+        "file": "/root/multi-asset-portfolio/.claude/commands/equity-research.md",
+        "key_lessons": [
+          "Orchestrator never implements, only coordinates",
+          "Agents save JSON and return 'complete'",
+          "Data flows via filesystem, control flows via return values",
+          "Human-in-the-loop at critical decision points",
+          "Validation scripts check data consistency",
+          "Step-by-step TodoWrite tracking"
+        ]
+      },
+      "budget_management_html": {
+        "file": "/root/budget-management/asset-tracker.html",
+        "key_patterns": [
+          "Side panel slideouts for detail views (450px, full-width on mobile)",
+          "Responsive grid: repeat(auto-fit, minmax(180px, 1fr))",
+          "Stats dashboard with hover effects",
+          "Chart.js integration with click handlers",
+          "System fonts for instant loading",
+          "Smooth 0.3s transitions"
+        ]
+      },
+      "travel_itinerary_research": {
+        "file": "docs/travel-itinerary-design-research.md",
+        "key_findings": [
+          "Priority 1 (always visible): Trip header, stats, timeline, quick access",
+          "Priority 2 (expandable): Attraction details, accommodation, dining",
+          "Priority 3 (modal/sidebar): Map, practical info, weather",
+          "Card-based grid system with auto-fit columns",
+          "Accordion/collapsible for day-by-day breakdown",
+          "Touch gestures for mobile navigation"
+        ]
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Implement multi-agent orchestration following equity-research pattern with 4 phases + validation scripts + HTML generation",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "BA Requirement Collection",
+        "tasks": [
+          "Rewrite Step 1-2 in plan.md for BA-style interview",
+          "Create script: check-day-completion.sh to validate all days planned",
+          "Generate requirements-skeleton.json with location per day",
+          "Loop until all days have user_plans array populated"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Orchestrator Skeleton Init",
+        "tasks": [
+          "Add Step 3 to init plan-skeleton.json from requirements",
+          "Detect location changes (days[i].location != days[i-1].location)",
+          "Add location_change object for inter-city travel",
+          "Add all fields: meals, accommodation, attractions, entertainment, shopping, free_time, timeline (dict), budget"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Specialist Agent Definitions",
+        "tasks": [
+          "Create .claude/subagents/meals-agent.md",
+          "Create .claude/subagents/accommodation-agent.md",
+          "Create .claude/subagents/attractions-agent.md",
+          "Create .claude/subagents/entertainment-agent.md",
+          "Create .claude/subagents/shopping-agent.md",
+          "Create .claude/subagents/transportation-agent.md (only process location_change days)",
+          "Create .claude/subagents/timeline-agent.md (run after all others, check conflicts)",
+          "Create .claude/subagents/budget-agent.md (run after timeline, check overage)",
+          "Each agent: reads plan-skeleton.json + requirements-skeleton.json, searches if needed, saves to data/{destination-slug}/{agent-name}.json, returns 'complete'"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Validation Scripts",
+        "tasks": [
+          "Create scripts/check-day-completion.sh: verify all days have user_plans",
+          "Create scripts/check-location-continuity.sh: verify location changes have location_change object",
+          "Create scripts/validate-timeline-consistency.sh: verify timeline dict keys match activity names, check time conflicts"
+        ]
+      },
+      {
+        "phase": 5,
+        "name": "HTML Generation",
+        "tasks": [
+          "Create scripts/generate-travel-html.sh",
+          "Merge all agent JSONs into complete data structure",
+          "Use HTML template with interactive patterns from research",
+          "Support side panels, collapsible sections, responsive grid",
+          "Output to travel-plan-{destination-slug}-{date}.html"
+        ]
+      },
+      {
+        "phase": 6,
+        "name": "Refinement Loop",
+        "tasks": [
+          "Add Step 7 refinement in plan.md",
+          "BA reads timeline-agent and budget-agent warnings",
+          "Present conflicts to user with options",
+          "Allow re-invocation of specific agents based on user choice",
+          "Support versioned HTML outputs (-v2.html, -v3.html)"
+        ]
+      }
+    ],
+    "scripts_to_create": [
+      "scripts/check-day-completion.sh {destination-slug}",
+      "scripts/check-location-continuity.sh {destination-slug}",
+      "scripts/validate-timeline-consistency.sh {destination-slug}",
+      "scripts/generate-travel-html.sh {destination-slug}"
+    ],
+    "subagents_to_create": [
+      ".claude/subagents/meals-agent.md",
+      ".claude/subagents/accommodation-agent.md",
+      ".claude/subagents/attractions-agent.md",
+      ".claude/subagents/entertainment-agent.md",
+      ".claude/subagents/shopping-agent.md",
+      ".claude/subagents/transportation-agent.md",
+      ".claude/subagents/timeline-agent.md",
+      ".claude/subagents/budget-agent.md"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md - Complete rewrite with 6 phases"
+    ],
+    "validation_approach": "QA will verify: (1) BA can collect requirements and validate completion, (2) All 8 agents work correctly with file-based communication, (3) Validation scripts catch errors, (4) Timeline uses dictionary format, (5) Location continuity validated, (6) HTML generation produces interactive output"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "file_paths_deterministic": true,
+    "follow_equity_research_pattern": true,
+    "timeline_dictionary_format": true,
+    "location_change_validation": true,
+    "agent_file_based_communication": true,
+    "activity_name_consistency": true
+  },
+  "data_structures": {
+    "requirements_skeleton": {
+      "trip_summary": {
+        "dates": "string",
+        "duration_days": "number",
+        "travelers": "string",
+        "budget": "string"
+      },
+      "days": [
+        {
+          "day": "number",
+          "date": "YYYY-MM-DD",
+          "location": "string",
+          "user_plans": ["array of user's original language inputs"]
+        }
+      ]
+    },
+    "plan_skeleton": {
+      "days": [
+        {
+          "day": "number",
+          "date": "YYYY-MM-DD",
+          "location": "string",
+          "location_change": {
+            "from": "string",
+            "to": "string",
+            "transportation": "null (filled by transportation-agent)",
+            "departure_time": "null",
+            "arrival_time": "null",
+            "cost": "null"
+          },
+          "user_requirements": ["copied from requirements_skeleton"],
+          "breakfast": {"name": "", "location": "", "cost": 0},
+          "lunch": {"name": "", "location": "", "cost": 0},
+          "dinner": {"name": "", "location": "", "cost": 0},
+          "accommodation": {"name": "", "location": "", "cost": 0},
+          "attractions": [{"name": "", "location": "", "cost": 0}],
+          "entertainment": [{"name": "", "location": "", "cost": 0}],
+          "shopping": [{"name": "", "location": "", "cost": 0}],
+          "free_time": [{"description": "", "start": "", "end": ""}],
+          "timeline": {
+            "activity_name_exact_match": {
+              "start_time": "HH:MM",
+              "end_time": "HH:MM",
+              "duration_minutes": 0
+            }
+          },
+          "budget": {
+            "meals": 0,
+            "accommodation": 0,
+            "activities": 0,
+            "shopping": 0,
+            "transportation": 0,
+            "total": 0
+          }
+        }
+      ],
+      "emergency_info": {
+        "hospitals": [],
+        "police_stations": [],
+        "embassy": null
+      }
+    },
+    "agent_output_format": {
+      "agent": "agent-name",
+      "status": "complete",
+      "data": "agent-specific structure matching plan_skeleton fields"
+    }
+  }
+}
