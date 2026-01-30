@@ -1,0 +1,135 @@
+{
+  "request_id": "remove-skills-12306-yelp-amadeus-20260130",
+  "timestamp": "2026-01-30T20:00:00Z",
+  "priority": "HIGH",
+  "objective": "完全删除 3 个技能：12306, Yelp, Amadeus",
+
+  "requirement": {
+    "original": "彻底删除 12306、Yelp、Amadeus 技能",
+    "what": "删除技能目录、脚本、文档，更新所有 agent 引用",
+    "why": "12306 外部 API 不可用，Yelp 收费，Amadeus 无法注册",
+    "where": [
+      ".claude/skills/12306/ (DELETE)",
+      ".claude/skills/yelp/ (DELETE)",
+      ".claude/skills/amadeus-flight/ (DELETE)",
+      ".claude/agents/*.md (UPDATE - 移除引用)"
+    ],
+    "scope": {
+      "included": [
+        "删除 3 个技能目录（所有文件）",
+        "更新所有 agent frontmatter (移除技能声明)",
+        "移除 agent 文档中的所有引用",
+        "使用 case-insensitive grep 验证零引用",
+        "更新剩余技能清单"
+      ],
+      "excluded": [
+        "修改其他技能",
+        "重新设计 agent 工作流"
+      ]
+    },
+    "success_criteria": [
+      "3 个技能目录完全删除",
+      "grep -ri '12306' .claude/agents/ → 0 matches",
+      "grep -ri 'yelp' .claude/agents/ → 0 matches",
+      "grep -ri 'amadeus' .claude/agents/ → 0 matches",
+      "所有 agent frontmatter 不包含这 3 个技能",
+      "Transportation agent 仍有其他交通工具搜索能力"
+    ]
+  },
+
+  "skills_to_delete": {
+    "12306": {
+      "path": ".claude/skills/12306/",
+      "reason": "12306.cn API 返回 400 错误，无法使用",
+      "tools_count": 8,
+      "agents_affected": ["transportation"],
+      "replacement": "duffel-flights (国际航班), gaode-maps + google-maps (路线规划)"
+    },
+    "yelp": {
+      "path": ".claude/skills/yelp/",
+      "reason": "Yelp API 收费 ($7.99+/1K calls)，30天试用后需付费",
+      "tools_count": 1,
+      "agents_affected": ["meals"],
+      "replacement": "google-maps POI search (免费)"
+    },
+    "amadeus-flight": {
+      "path": ".claude/skills/amadeus-flight/",
+      "reason": "Amadeus 最近无法注册",
+      "tools_count": 4,
+      "agents_affected": ["transportation"],
+      "replacement": "duffel-flights (国际航班搜索)"
+    }
+  },
+
+  "agent_updates_required": {
+    "transportation": {
+      "current_skills": ["google-maps", "gaode-maps", "amadeus-flight", "12306", "duffel-flights", "weather"],
+      "remove": ["amadeus-flight", "12306"],
+      "keep": ["google-maps", "gaode-maps", "duffel-flights", "weather"],
+      "note": "仍保留 duffel-flights 作为航班搜索，gaode-maps/google-maps 作为路线规划"
+    },
+    "meals": {
+      "current_skills": ["google-maps", "gaode-maps", "weather", "yelp"],
+      "remove": ["yelp"],
+      "keep": ["google-maps", "gaode-maps", "weather"],
+      "note": "使用 google-maps POI search 替代 yelp"
+    },
+    "accommodation": {
+      "current_skills": ["google-maps", "gaode-maps", "weather", "airbnb"],
+      "remove": [],
+      "keep": ["google-maps", "gaode-maps", "weather", "airbnb"],
+      "note": "无变化"
+    },
+    "attractions": {
+      "current_skills": ["google-maps", "gaode-maps", "weather"],
+      "remove": [],
+      "keep": ["google-maps", "gaode-maps", "weather"],
+      "note": "无变化"
+    },
+    "entertainment": {
+      "current_skills": ["google-maps", "gaode-maps", "eventbrite", "weather"],
+      "remove": [],
+      "keep": ["google-maps", "gaode-maps", "eventbrite", "weather"],
+      "note": "无变化"
+    },
+    "shopping": {
+      "current_skills": ["google-maps", "gaode-maps", "weather"],
+      "remove": [],
+      "keep": ["google-maps", "gaode-maps", "weather"],
+      "note": "无变化"
+    },
+    "timeline": {
+      "current_skills": ["weather"],
+      "remove": [],
+      "keep": ["weather"],
+      "note": "无变化"
+    },
+    "budget": {
+      "current_skills": ["weather"],
+      "remove": [],
+      "keep": ["weather"],
+      "note": "无变化"
+    }
+  },
+
+  "verification_commands": {
+    "check_directories_deleted": "ls .claude/skills/ | grep -E '(12306|yelp|amadeus)'",
+    "check_12306_references": "grep -ri '12306' .claude/agents/",
+    "check_yelp_references": "grep -ri 'yelp' .claude/agents/",
+    "check_amadeus_references": "grep -ri 'amadeus' .claude/agents/",
+    "expected_results": "所有 grep 命令返回 0 matches"
+  },
+
+  "deliverables": {
+    "directories_deleted": [
+      ".claude/skills/12306/",
+      ".claude/skills/yelp/",
+      ".claude/skills/amadeus-flight/"
+    ],
+    "files_modified": [
+      ".claude/agents/transportation.md (移除 12306, amadeus-flight)",
+      ".claude/agents/meals.md (移除 yelp)"
+    ],
+    "verification_report": "确认零引用的验证报告"
+  }
+}

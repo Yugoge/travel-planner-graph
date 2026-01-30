@@ -5,8 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - amadeus-flight
-  - 12306
   - duffel-flights
   - weather
 ---
