@@ -15,62 +15,102 @@ Access real-time weather data for informed travel planning decisions.
 
 ## Prerequisites
 
-MCP server must be configured with OPENWEATHER_API_KEY environment variable.
+**Environment Variable Required**:
+- `OPENWEATHER_API_KEY` - Get free API key from https://openweathermap.org/api
+- Register at: https://home.openweathermap.org/users/sign_up
+- Copy API key to environment
 
-## Tool Categories
+**Note**: No MCP server configuration needed. Scripts communicate directly with MCP via npx.
 
-This skill uses progressive disclosure. Load only what you need:
+## Script-Based Implementation
 
-1. **current** - Current weather conditions
-   - Get current weather by location
+This skill uses Python scripts that communicate with OpenWeatherMap MCP server via JSON-RPC 2.0 over stdio.
+Scripts are executed on-demand, no MCP tools exposed to Claude.
+
+### Available Scripts
+
+**1. Current Weather** - `scripts/current.py`
+   - Get current weather conditions
    - Temperature, humidity, conditions, wind
    - UV index and visibility
 
-2. **forecast** - Weather forecasts
+**2. Forecast** - `scripts/forecast.py`
    - 5-day forecast (3-hour intervals)
-   - Hourly forecast (48 hours)
-   - Extended predictions
+   - Configurable days (1-5)
+   - Detailed hourly breakdown
 
-3. **air-quality** - Air quality data
-   - Air Quality Index (AQI)
-   - Pollutant levels (PM2.5, PM10, O3, etc.)
-   - Health recommendations
-
-4. **alerts** - Weather alerts and warnings
+**3. Alerts** - `scripts/alerts.py`
    - Severe weather alerts
    - Government warnings
-   - Storm tracking
+   - Storm tracking and notifications
 
-## Loading Tools
+## Script Execution
 
-Load categories on demand:
+### Current Weather
 
-```
-/openweathermap current   # Loads tools/current.md
-/openweathermap forecast  # Loads tools/forecast.md
-/openweathermap air-quality  # Loads tools/air-quality.md
-/openweathermap alerts    # Loads tools/alerts.md
+**Basic usage**:
+```bash
+python3 .claude/skills/openweathermap/scripts/current.py "New York, US"
 ```
 
-## MCP Server Setup
-
-Add to your MCP configuration file:
-
-```json
-{
-  "mcpServers": {
-    "openweathermap": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-openweathermap"],
-      "env": {
-        "OPENWEATHER_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
+**With units**:
+```bash
+python3 .claude/skills/openweathermap/scripts/current.py "London, GB" --units metric
+python3 .claude/skills/openweathermap/scripts/current.py "Tokyo, JP" --units imperial
 ```
 
-Get API key from: https://openweathermap.org/api
+**JSON output**:
+```bash
+python3 .claude/skills/openweathermap/scripts/current.py "Paris, FR" --json
+```
+
+### Forecast
+
+**5-day forecast**:
+```bash
+python3 .claude/skills/openweathermap/scripts/forecast.py "New York, US"
+```
+
+**Specific days**:
+```bash
+python3 .claude/skills/openweathermap/scripts/forecast.py "London, GB" --days 3
+python3 .claude/skills/openweathermap/scripts/forecast.py "Tokyo, JP" --days 1
+```
+
+**With units**:
+```bash
+python3 .claude/skills/openweathermap/scripts/forecast.py "Berlin, DE" --units metric --days 5
+```
+
+### Weather Alerts
+
+**Check alerts**:
+```bash
+python3 .claude/skills/openweathermap/scripts/alerts.py "Miami, US"
+```
+
+**Summary only**:
+```bash
+python3 .claude/skills/openweathermap/scripts/alerts.py "New Orleans, US" --summary
+```
+
+**JSON output**:
+```bash
+python3 .claude/skills/openweathermap/scripts/alerts.py "Houston, US" --json
+```
+
+## Environment Setup
+
+Set API key before running scripts:
+
+```bash
+export OPENWEATHER_API_KEY="your-api-key-here"
+```
+
+Or add to `.env` file in project root:
+```
+OPENWEATHER_API_KEY=your-api-key-here
+```
 
 ## Security
 

@@ -100,67 +100,31 @@ Scripts implement automatic retry logic with exponential backoff.
 - Output: Primarily Chinese (native API responses)
 - Distance/time: Numeric values (universal)
 
-## MCP Server Setup
+## API Key Configuration
 
-**Required**: User must configure Gaode Maps MCP server before using this skill.
+Scripts use environment variable `AMAP_MAPS_API_KEY` (defaults to project key if not set).
 
-### Step 1: Get API Key
+**Current project key**: `99e97af6fd426ce3cfc45d22d26e78e3`
 
-Register at: https://console.amap.com/dev/key/app
-
-### Step 2: Configure MCP Server
-
-**Recommended Method: Streamable HTTP**
-
-Add to `~/.config/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "amap-maps": {
-      "url": "https://mcp.amap.com/mcp?key=YOUR_AMAP_API_KEY"
-    }
-  }
-}
+**To use your own key**:
+```bash
+export AMAP_MAPS_API_KEY="your_key_here"
+python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 ```
 
-**Alternative Method: Node.js I/O**
+**Get your own API key**: https://console.amap.com/dev/key/app
 
-```json
-{
-  "mcpServers": {
-    "amap-maps": {
-      "command": "npx",
-      "args": ["-y", "@amap/amap-maps-mcp-server"],
-      "env": {
-        "AMAP_MAPS_API_KEY": "YOUR_AMAP_API_KEY"
-      }
-    }
-  }
-}
-```
+## Technical Details
 
-### Step 3: Restart Claude Desktop
+**Communication Protocol**: JSON-RPC 2.0 over stdio
+**MCP Server**: `@amap/amap-maps-mcp-server` (launched via npx)
+**Transport**: Scripts launch MCP server on-demand, communicate via stdin/stdout, and terminate after completion.
 
-Required for MCP server configuration to take effect.
-
-### Verification
-
-This skill assumes MCP tools are available:
-- `driving_route`
-- `walking_route`
-- `cycling_route`
-- `transit_route`
-- `poi_search_keyword`
-- `poi_search_nearby`
-- `poi_detail`
-- `geocode`
-- `reverse_geocode`
-- `ip_location`
-- `weather_info`
-- `distance_measure`
-
-If tools unavailable, skill will report error and suggest fallback to WebSearch.
+**Available MCP tools**:
+- `driving_route`, `walking_route`, `cycling_route`, `transit_route`
+- `poi_search_keyword`, `poi_search_nearby`, `poi_detail`
+- `geocode`, `reverse_geocode`, `ip_location`
+- `weather_info`, `distance_measure`
 
 ## Rate Limits
 
@@ -183,9 +147,30 @@ See: `/root/travel-planner/.claude/commands/gaode-maps/examples/`
 
 This skill is configured for the transportation agent. Usage pattern:
 
-1. Invoke `/gaode-maps routing` to load route planning tools
-2. Use `driving_route` or `transit_route` for inter-city transportation
-3. Parse response for distance, duration, cost estimates
-4. Fall back to WebSearch if MCP unavailable
+1. Execute routing script directly via Bash tool:
+   ```bash
+   python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
+   ```
+
+2. Parse JSON response for distance, duration, cost estimates
+
+3. Save structured data to `transportation.json`
 
 See `.claude/agents/transportation.md` for integration details.
+
+## For Other Agents
+
+**Meals Agent**: Use `poi_search.py` to find restaurants
+```bash
+python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
+```
+
+**Accommodation Agent**: Use `poi_search.py` for hotel search, `geocoding.py` for address validation
+```bash
+python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
+```
+
+**Attractions Agent**: Use `poi_search.py` to discover attractions, `utilities.py` for distances
+```bash
+python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
+```

@@ -199,7 +199,8 @@ Yelp tools return structured JSON with:
 
 ## Examples
 
-See usage examples in `examples/` directory:
+See detailed execution examples in `examples/` directory:
+- `restaurant-search-execution.md` - Script execution with real commands and output
 - `restaurant-search.md` - Complete meal planning workflow
 
 ## Security

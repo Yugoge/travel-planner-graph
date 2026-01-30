@@ -44,46 +44,93 @@ This skill uses progressive disclosure. Load only what you need:
    - Host information
    - Location coordinates
 
-## Loading Tools
+## Script Execution
 
-Load categories on demand:
+This skill uses Python scripts to communicate with the Airbnb MCP server via JSON-RPC 2.0.
 
+### Search Listings
+
+```bash
+# Basic search
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "San Francisco, CA"
+
+# Search with dates and guests
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Austin, TX" \
+  --checkin 2026-06-15 --checkout 2026-06-22 \
+  --adults 2 --children 2
+
+# Search with price filtering
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Portland, OR" \
+  --min-price 100 --max-price 250
+
+# Pagination (get next page)
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Seattle, WA" \
+  --cursor "pagination_token_here"
+
+# Raw JSON output
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Miami, FL" --raw
 ```
-/airbnb search   # Loads tools/search.md
-/airbnb details  # Loads tools/details.md
+
+### Get Listing Details
+
+```bash
+# Basic details
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678
+
+# Details with dates for pricing
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 \
+  --checkin 2026-06-15 --checkout 2026-06-22
+
+# Details with guest count
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 \
+  --adults 2 --children 2
+
+# Raw JSON output
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 --raw
 ```
+
+### Script Parameters
+
+**search.py**:
+- `location` (required): Location to search (e.g., "San Francisco, CA")
+- `--place-id`: Google Maps Place ID (overrides location)
+- `--checkin`: Check-in date (YYYY-MM-DD)
+- `--checkout`: Check-out date (YYYY-MM-DD)
+- `--adults`: Number of adults (default: 1)
+- `--children`: Number of children
+- `--infants`: Number of infants
+- `--pets`: Number of pets
+- `--min-price`: Minimum price per night (USD)
+- `--max-price`: Maximum price per night (USD)
+- `--cursor`: Pagination cursor for next page
+- `--raw`: Output raw JSON
+
+**details.py**:
+- `listing_id` (required): Airbnb listing ID (from search results)
+- `--checkin`: Check-in date (YYYY-MM-DD)
+- `--checkout`: Check-out date (YYYY-MM-DD)
+- `--adults`: Number of adults (default: 1)
+- `--children`: Number of children
+- `--infants`: Number of infants
+- `--pets`: Number of pets
+- `--raw`: Output raw JSON
 
 ## MCP Server Setup
 
-Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "airbnb": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@openbnb/mcp-server-airbnb"
-      ]
-    }
-  }
-}
-```
-
-**Requirements**:
+**Prerequisites**:
 - Node.js 18+
-- No API keys needed
+- npx installed
+- No API keys needed (uses public Airbnb data)
+
+**MCP Package**: `@openbnb/mcp-server-airbnb`
+
+Scripts launch the MCP server automatically via npx.
 
 ## Integration
 
 **Configured for agents**: accommodation
 
-**Usage**:
-```
-/airbnb search   # Search vacation rentals
-/airbnb details  # Get property details
-```
+**Usage**: Execute Python scripts via Bash tool
 
 ## Best Practices
 
@@ -103,20 +150,46 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 - Confirm amenities (WiFi, kitchen, washer/dryer)
 - Check house rules (smoking, pets, events)
 
-## Fallback Strategy
+## Error Handling
 
-If MCP unavailable or results insufficient:
-1. Use WebSearch for "airbnb [location] [dates]"
-2. Document manual search results
-3. Note MCP unavailability in agent output
+If script execution fails:
+1. Verify Node.js and npx are installed
+2. Check network connectivity
+3. Retry with increased timeout
+4. Verify listing IDs are correct (for details.py)
+
+**No WebSearch fallback** - Scripts communicate directly with Airbnb MCP server.
 
 ## Security
 
 - No API keys stored in skill files
 - No credentials required for MCP server
 - Server handles rate limiting automatically
-- Use `ignoreRobotsText` parameter only when necessary
+- Use `--ignore-robots` flag only when necessary
 
 ---
 
-**Ready to use**: Invoke `/airbnb search` or `/airbnb details` to load tools.
+## For Accommodation Agent
+
+Execute scripts via Bash tool for vacation rental search:
+
+1. **Search listings**: Run search.py with location, dates, and filters
+2. **Filter results**: Select top candidates (rating 4.5+, Superhost preferred)
+3. **Get details**: Run details.py for top 3-5 listings
+4. **Calculate costs**: Extract total cost including all fees
+5. **Format output**: Generate JSON for accommodation plan
+
+**Example workflow**:
+```bash
+# Step 1: Search
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Austin, TX" \
+  --checkin 2026-06-15 --checkout 2026-06-22 \
+  --adults 2 --children 2 --min-price 100 --max-price 250 --raw
+
+# Step 2: Get details for top listing
+python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 \
+  --checkin 2026-06-15 --checkout 2026-06-22 \
+  --adults 2 --children 2 --raw
+```
+
+**Ready to use**: Execute Python scripts via Bash tool.

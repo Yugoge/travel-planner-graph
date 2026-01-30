@@ -25,59 +25,67 @@ Invoke this skill when:
 
 ## Prerequisites
 
-TripAdvisor MCP server must be configured with valid API credentials.
+Set `TRIPADVISOR_API_KEY` environment variable with valid API credentials.
 
-**Security**: API keys configured in MCP server config (never hardcoded in files).
+**Security**: API keys stored in environment variables (never hardcoded in files).
+
+## Script Execution
+
+This skill communicates with TripAdvisor MCP server via Python scripts using JSON-RPC 2.0 over stdio.
+
+### Attractions
+
+**Search attractions by location**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/attractions.py search "Paris, France" \
+  --category museums --min-rating 4.0 --max-results 10
+```
+
+**Get attraction details**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/attractions.py details 12345
+```
+
+**Search nearby attractions**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/attractions.py nearby 48.8584 2.2945 \
+  --radius 2 --min-rating 4.0
+```
+
+### Tours and Activities
+
+**Search tours by location**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/tours.py search "Paris, France" \
+  --category food-tours --time evening --min-rating 4.5
+```
+
+**Get tour details with availability**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/tours.py details 67890 --date 2026-02-20
+```
+
+**Get user reviews**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/tours.py reviews 67890 --max-reviews 10
+```
+
+**Check booking availability**:
+```bash
+python3 .claude/skills/tripadvisor/scripts/tours.py booking 67890 2026-02-20 --party-size 4
+```
 
 ## Tool Categories
 
-This skill uses progressive disclosure. Load only what you need:
+This skill uses progressive disclosure. Load documentation only when needed:
 
 1. **attractions** - Search and discover attractions
-   - Search attractions by location and category
-   - Get detailed attraction information
-   - Filter by rating, price, and type
-   - Access user reviews and photos
+   - Documentation: `.claude/skills/tripadvisor/tools/attractions.md`
+   - Script: `scripts/attractions.py`
 
 2. **tours** - Find tours, activities, and experiences
-   - Search tours and activities
-   - Get tour details and schedules
-   - Check availability and pricing
-   - Access booking information
-
-## Loading Tools
-
-Load categories on demand using Read tool:
-
-```
-# Load attraction search tools
-Read .claude/skills/tripadvisor/tools/attractions.md
-
-# Load tour and activity tools
-Read .claude/skills/tripadvisor/tools/tours.md
-```
-
-**Pattern**: After loading, invoke MCP tools following the tool definitions.
-
-## MCP Server Setup
-
-Configure in `~/.config/claude/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "tripadvisor": {
-      "command": "npx",
-      "args": ["-y", "@apify/tripadvisor-mcp-server"],
-      "env": {
-        "TRIPADVISOR_API_KEY": "${TRIPADVISOR_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-**Environment variable**: Set `TRIPADVISOR_API_KEY` in your shell profile.
+   - Documentation: `.claude/skills/tripadvisor/tools/tours.md`
+   - Script: `scripts/tours.py`
 
 ## Integration
 
@@ -93,13 +101,11 @@ Configure in `~/.config/claude/mcp_config.json`:
 
 **Retry Logic**: 3 attempts with exponential backoff (1s, 2s, 4s)
 
-**Fallback Strategy**: If TripAdvisor unavailable, use WebSearch
-
 **Error Types**:
-- API key invalid: Check MCP server configuration
+- API key invalid: Verify TRIPADVISOR_API_KEY environment variable is set
 - Rate limit exceeded: Wait and retry with backoff
 - Location not found: Broaden search or use alternate location name
-- No results: Adjust search filters or use WebSearch
+- No results: Adjust search filters (lower min-rating, increase max-results)
 
 ## Response Structure
 
@@ -123,11 +129,11 @@ All TripAdvisor tools return structured JSON with:
 - Traveler tips and recommendations
 - Worldwide coverage (200+ countries)
 
-**When to use WebSearch instead**:
-- TripAdvisor unavailable or returning errors
-- Need very recent information (within 24 hours)
-- Searching for niche or very new attractions
-- Need local government or official source data
+**Data freshness**:
+- Reviews and ratings updated daily
+- Pricing and availability checked in real-time
+- Operating hours verified by venue owners
+- Seasonal closures reflected in availability
 
 ## Best Practices
 

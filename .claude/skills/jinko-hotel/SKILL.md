@@ -15,9 +15,11 @@ Access to 2M+ hotels worldwide with real-time pricing, availability, and compreh
 
 ## Prerequisites
 
-**MCP Server Required**: Jinko Hotel Booking MCP must be configured in Claude Desktop.
+- Python 3.7+ installed
+- npx available (Node.js)
+- JINKO_API_KEY environment variable set
 
-See **MCP Server Setup** section below for configuration instructions.
+Scripts will automatically launch MCP server via npx when needed.
 
 ## Tool Categories
 
@@ -44,75 +46,113 @@ This skill uses **progressive disclosure** to optimize token usage. Load only th
 
 **When to use**: Final step to validate availability and generate booking links.
 
-## Loading Tools
+## Script Execution
 
-Load categories on demand to reduce token usage:
+This skill uses Python scripts to communicate with Jinko Hotel Booking MCP server via JSON-RPC 2.0.
 
+**Prerequisites**:
+- JINKO_API_KEY environment variable must be set
+- Python 3.7+ installed
+- npx available (Node.js)
+
+### Search Hotels
+
+Search for hotels by location, dates, and filters:
+
+```bash
+# Basic search
+cd /root/travel-planner/.claude/skills/jinko-hotel/scripts
+python3 search.py search 'Beijing' '2026-02-15' '2026-02-17'
+
+# With filters
+python3 search.py search 'Shanghai' '2026-03-10' '2026-03-12' 2 1 200 500 4.0
+# Arguments: location checkin checkout guests rooms min_price max_price min_rating
 ```
-/jinko-hotel search   # Load search and filtering tools
-/jinko-hotel details  # Load hotel details and reviews
-/jinko-hotel booking  # Load booking and availability tools
-/jinko-hotel help     # Show all categories
+
+### Search Near POI
+
+Find hotels near specific landmarks:
+
+```bash
+python3 search.py nearby 'Beijing' 'Tiananmen Square' 3.0 '2026-02-15' '2026-02-17'
+# Arguments: location poi radius_km checkin checkout
 ```
 
-**Pattern**: Read `.claude/skills/jinko-hotel/tools/{category}.md` when category is requested.
+### Get Hotel Details
 
-## MCP Tool Naming
+Retrieve comprehensive hotel information:
 
-All MCP tools follow this naming convention:
+```bash
+python3 details.py details 'hotel_12345'
 ```
-mcp__context7_jinko-hotel__<tool-name>
+
+### Get Room Types
+
+View available rooms and pricing:
+
+```bash
+# Basic room info
+python3 details.py rooms 'hotel_12345'
+
+# With pricing for specific dates
+python3 details.py rooms 'hotel_12345' '2026-02-15' '2026-02-17'
 ```
 
-Examples:
-- `mcp__context7_jinko-hotel__search_hotels`
-- `mcp__context7_jinko-hotel__filter_by_facilities`
-- `mcp__context7_jinko-hotel__get_hotel_details`
+### Get Reviews
+
+Read guest reviews:
+
+```bash
+python3 details.py reviews 'hotel_12345' 20 'recent'
+# Arguments: hotel_id limit sort_by (recent|rating_high|rating_low)
+```
+
+### Check Availability
+
+Verify real-time availability:
+
+```bash
+python3 booking.py availability 'hotel_12345' '2026-02-15' '2026-02-17' 2 1
+# Arguments: hotel_id checkin checkout guests rooms
+```
+
+### Generate Booking Link
+
+Create booking URL with pricing:
+
+```bash
+python3 booking.py link 'hotel_12345' 'room_67890' '2026-02-15' '2026-02-17' 2 1
+# Arguments: hotel_id room_type_id checkin checkout guests rooms
+```
+
+### Compare Prices
+
+Compare across platforms:
+
+```bash
+python3 booking.py compare 'hotel_12345' '2026-02-15' '2026-02-17' 2 1 'booking.com,expedia'
+# Arguments: hotel_id checkin checkout guests rooms platforms_csv
+```
 
 ## Typical Workflow
 
-1. **Load search tools**: `/jinko-hotel search`
-2. **Search hotels**: Call `search_hotels` with location, dates, price range
-3. **Filter results**: Call `filter_by_facilities` for required amenities
-4. **Load details**: `/jinko-hotel details` (if needed for shortlist)
-5. **Get details**: Call `get_hotel_details` for top 2-3 hotels
-6. **Load booking**: `/jinko-hotel booking` (for final step)
-7. **Check availability**: Call `check_availability` to verify
-8. **Generate link**: Call `generate_booking_link` for user
+1. **Search hotels**: Execute `search.py search` with location, dates, price range
+2. **Filter results**: Parse JSON output, optionally filter by facilities
+3. **Get details**: Execute `details.py details` for top 2-3 hotels
+4. **Check availability**: Execute `booking.py availability` to verify
+5. **Generate link**: Execute `booking.py link` for user
 
-## MCP Server Setup
+## Configuration
 
-### Option 1: Streamable HTTP (Recommended)
+Set the JINKO_API_KEY environment variable:
 
-Add to Claude Desktop config (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "jinko-hotel": {
-      "url": "https://mcp.jinko.so/hotel?key=YOUR_JINKO_API_KEY"
-    }
-  }
-}
-```
-
-### Option 2: Node.js I/O
-
-```json
-{
-  "mcpServers": {
-    "jinko-hotel": {
-      "command": "npx",
-      "args": ["-y", "@jinko/hotel-mcp"],
-      "env": {
-        "JINKO_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
+```bash
+export JINKO_API_KEY="your-api-key-here"
 ```
 
 **API Key**: Obtain from Jinko Hotel Booking service.
+
+Scripts will automatically launch the MCP server via npx when needed.
 
 ## Security
 
@@ -135,10 +175,10 @@ Add to Claude Desktop config (`claude_desktop_config.json`):
 - **403 (Forbidden)**: Verify permissions
 - **404 (Not Found)**: Hotel unavailable or invalid ID
 
-### Graceful Degradation
-- **MCP Unavailable**: Fall back to WebSearch
-- **API Quota Exceeded**: Use cached results or manual search
-- **Booking Link Failure**: Provide manual search URL
+### Handling Failures
+- **Script Errors**: Check JINKO_API_KEY is set
+- **API Quota Exceeded**: Report to user, retry later
+- **Booking Link Failure**: Report error to user
 
 ## Integration
 
@@ -158,7 +198,7 @@ Add to Claude Desktop config (`claude_desktop_config.json`):
 7. Return complete
 ```
 
-**Fallback**: If MCP unavailable, use WebSearch for hotel recommendations.
+**Note**: Scripts must be executed via Bash tool with proper environment variables.
 
 ## Performance Optimization
 
