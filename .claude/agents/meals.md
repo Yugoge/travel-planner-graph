@@ -5,7 +5,7 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - openweathermap
+  - weather
   - yelp
 ---
 

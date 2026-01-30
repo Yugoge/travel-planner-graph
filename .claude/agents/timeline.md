@@ -3,7 +3,7 @@ name: timeline
 description: Create timeline dictionary and detect scheduling conflicts
 model: sonnet
 skills:
-  - openweathermap
+  - weather
 ---
 
 

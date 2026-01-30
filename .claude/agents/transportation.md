@@ -39,21 +39,31 @@ For each location change day:
 
 2. **Research transportation options**:
 
-   **For International Routes** (crossing borders or >1000km):
-   - Use Amadeus Flight search for multi-city and price analysis
+   **For Chinese Railway** (China domestic trains):
+   - Use 12306 for official Chinese railway ticket search
+   - Parse JSON output for pricing, schedules, train types, seat availability
+   - See `.claude/skills/12306/SKILL.md` for usage
+   - Supports both Chinese and pinyin station names
+   - Includes high-speed rail (G), bullet trains (D), and conventional trains
+
+   **For International Flights** (crossing borders or >1000km):
+   - Use Amadeus Flight or Duffel Flights for comprehensive flight search
+   - Amadeus: Multi-city routing, price analysis, GDS integration
+   - Duffel: Real-time pricing, global airlines, booking details
    - Parse JSON output for pricing, schedules, airline details
-   - See `.claude/skills/amadeus-flight/SKILL.md` for usage
+   - See `.claude/skills/amadeus-flight/SKILL.md` or `.claude/skills/duffel-flights/SKILL.md`
    - Check baggage policies and total journey time
    - Supports IATA airport codes (e.g., PEK, CDG, LHR)
 
-   **For Domestic China Routes** (preferred for accuracy):
+   **For Domestic China Routes** (road/transit):
    - Use Gaode Maps routing for driving and transit routes
    - Parse JSON output: distance, duration, cost, schedules
    - Supports both English and Chinese location names
    - See `.claude/skills/gaode-maps/SKILL.md` for usage
 
    **For International Routes Outside China**:
-      - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
+   - Use Google Maps for driving, transit, walking routes
+   - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
    - Parse JSON output for route details
 
    **Compare options**: prices, duration, comfort, convenience
@@ -175,8 +185,9 @@ Return only: `complete`
 
 - Only process days with location_change object (skip days in same city)
 - **Route selection logic**:
-  - Use Amadeus Flight scripts for international routes or >1000km
-  - Use Gaode Maps scripts for domestic China routes
+  - Use 12306 scripts for Chinese railway bookings (priority for China domestic trains)
+  - Use Amadeus Flight or Duffel Flights scripts for international flights
+  - Use Gaode Maps scripts for China domestic road/transit routes
   - Use Google Maps scripts for international routes outside China
   - No WebSearch fallback - report errors if scripts fail
 - All transportation options must be real and currently operating
@@ -194,7 +205,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use OpenWeatherMap to select weather-appropriate transportation**:
+**Use Weather skill for weather-appropriate transportation selection**:
 
 2. Check weather alerts for travel day and route
 3. Adjust transportation mode based on weather:
@@ -219,4 +230,4 @@ Return only: `complete`
    - "Depart early to avoid afternoon thunderstorms"
    - "Check real-time updates before departure"
 
-**See**: `.claude/skills/openweathermap/examples/alerts-example.md` for severe weather handling
+**See**: `.claude/skills/weather/SKILL.md` for comprehensive weather data including alerts

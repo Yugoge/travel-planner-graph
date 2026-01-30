@@ -1,0 +1,163 @@
+{
+  "request_id": "dev-agent-doc-cleanup-20260130",
+  "timestamp": "2026-01-30T19:00:00Z",
+  "priority": "CRITICAL",
+  "objective": "Remove all references to deleted skills (jinko-hotel, tripadvisor) from agent documentation and fix skill declarations",
+
+  "requirement": {
+    "original": "QA FAIL - Fix agent documentation to remove broken references",
+    "clarified": "Clean up 3 agent files with 25+ references to deleted skills, update 1 frontmatter with wrong skill name",
+    "what": "Agent documentation cleanup",
+    "why": "QA found critical blocking issues - agents referencing deleted skills",
+    "where": [
+      ".claude/agents/accommodation.md (lines 38-184: 13 jinko-hotel references)",
+      ".claude/agents/attractions.md (lines 38-160: 14 tripadvisor references)",
+      ".claude/agents/entertainment.md (lines 39-157: 14 tripadvisor references)",
+      ".claude/agents/shopping.md (frontmatter: openweathermap → weather)"
+    ],
+    "scope": {
+      "included": [
+        "Remove ALL jinko-hotel references from accommodation.md",
+        "Remove ALL tripadvisor references from attractions.md",
+        "Remove ALL tripadvisor references from entertainment.md",
+        "Update shopping.md frontmatter to use weather instead of openweathermap",
+        "Preserve all other content and structure",
+        "Keep remaining skills (gaode-maps, google-maps, airbnb, yelp, eventbrite, weather)",
+        "Maintain agent workflow patterns"
+      ],
+      "excluded": [
+        "Adding new content",
+        "Changing agent logic",
+        "Modifying other agents (transportation, meals, timeline are OK)",
+        "Script development"
+      ]
+    },
+    "success_criteria": [
+      "Zero references to jinko-hotel in accommodation.md",
+      "Zero references to tripadvisor in attractions.md",
+      "Zero references to tripadvisor in entertainment.md",
+      "shopping.md frontmatter has weather, not openweathermap",
+      "All agent files remain valid markdown with YAML frontmatter",
+      "No broken skill references remain",
+      "QA validation passes"
+    ],
+    "constraints": [
+      "ONLY modify documentation sections, NOT frontmatter skills arrays (except shopping.md)",
+      "DO NOT add placeholder text like 'Content removed'",
+      "Preserve the agent's workflow structure and remaining skill documentation",
+      "Keep all valid skill references intact"
+    ]
+  },
+
+  "qa_findings": {
+    "status": "FAIL",
+    "blocking_issues": 3,
+    "total_broken_references": 25,
+    "issues": [
+      {
+        "id": "ISSUE-1",
+        "severity": "critical",
+        "file": ".claude/agents/accommodation.md",
+        "location": "lines 38-184",
+        "problem": "13 references to deleted jinko-hotel skill remain in workflow documentation",
+        "examples": [
+          "#### Primary Method: Jinko Hotel Search (lines 40-108)",
+          "'Use jinko-hotel skill' (line 42)",
+          "'jinko-hotel skill to search properties' (line 45)",
+          "'**Use jinko-hotel skill for comprehensive filtering**' (line 52)"
+        ],
+        "fix_required": "Remove entire 'Primary Method: Jinko Hotel Search' section and all jinko-hotel references"
+      },
+      {
+        "id": "ISSUE-2",
+        "severity": "critical",
+        "file": ".claude/agents/attractions.md",
+        "location": "lines 38-160",
+        "problem": "14 references to deleted tripadvisor skill, declared as 'Primary Method'",
+        "examples": [
+          "#### Primary Method: TripAdvisor Integration (lines 40-118)",
+          "'Use tripadvisor skill' (line 42)",
+          "'tripadvisor skill to search attractions' (line 45)"
+        ],
+        "fix_required": "Remove entire 'Primary Method: TripAdvisor Integration' section and all tripadvisor references"
+      },
+      {
+        "id": "ISSUE-3",
+        "severity": "critical",
+        "file": ".claude/agents/entertainment.md",
+        "location": "lines 39-157",
+        "problem": "14 references to deleted tripadvisor skill, declared as 'Primary Method'",
+        "examples": [
+          "#### Primary Method: TripAdvisor Integration (lines 41-119)",
+          "'Use tripadvisor skill' (line 43)"
+        ],
+        "fix_required": "Remove entire 'Primary Method: TripAdvisor Integration' section and all tripadvisor references"
+      },
+      {
+        "id": "ISSUE-4",
+        "severity": "medium",
+        "file": ".claude/agents/shopping.md",
+        "location": "frontmatter line ~4",
+        "problem": "Frontmatter still has openweathermap instead of weather",
+        "fix_required": "Replace openweathermap with weather in skills array"
+      }
+    ]
+  },
+
+  "context": {
+    "skills_deleted": ["tripadvisor", "jinko-hotel"],
+    "skills_added": ["12306", "duffel-flights", "eventbrite"],
+    "skills_replaced": {"openweathermap": "weather"},
+    "skills_updated": ["yelp"],
+
+    "agent_skill_map_correct": {
+      "accommodation": ["gaode-maps", "google-maps", "airbnb", "weather"],
+      "attractions": ["gaode-maps", "google-maps", "weather"],
+      "entertainment": ["gaode-maps", "google-maps", "eventbrite", "weather"],
+      "shopping": ["gaode-maps", "google-maps", "weather"],
+      "transportation": ["gaode-maps", "google-maps", "amadeus-flight", "12306", "duffel-flights", "weather"],
+      "meals": ["gaode-maps", "google-maps", "yelp", "weather"],
+      "timeline": ["weather"]
+    },
+
+    "files_already_correct": [
+      ".claude/agents/transportation.md (skills: [gaode-maps, google-maps, amadeus-flight, 12306, duffel-flights, weather])",
+      ".claude/agents/meals.md (skills: [gaode-maps, google-maps, yelp, weather])",
+      ".claude/agents/timeline.md (skills: [weather])"
+    ]
+  },
+
+  "development_approach": {
+    "strategy": "Surgical documentation cleanup - remove only broken references",
+    "step_1_read_files": "Read all 4 agent files to understand current state",
+    "step_2_accommodation": "Remove entire 'Primary Method: Jinko Hotel Search' section (lines ~40-108), scan for remaining jinko-hotel mentions",
+    "step_3_attractions": "Remove entire 'Primary Method: TripAdvisor Integration' section (lines ~40-118), scan for remaining tripadvisor mentions",
+    "step_4_entertainment": "Remove entire 'Primary Method: TripAdvisor Integration' section (lines ~41-119), scan for remaining tripadvisor mentions",
+    "step_5_shopping": "Update frontmatter skills array: openweathermap → weather",
+    "step_6_verify": "Grep all 4 files to ensure zero mentions of deleted skills"
+  },
+
+  "standards_to_enforce": {
+    "preserve_structure": true,
+    "no_placeholder_text": true,
+    "keep_valid_skills": true,
+    "maintain_yaml_frontmatter": true,
+    "no_broken_references": true,
+    "clean_removal_no_traces": true
+  },
+
+  "deliverables": {
+    "files_modified": [
+      ".claude/agents/accommodation.md (remove jinko-hotel section and all references)",
+      ".claude/agents/attractions.md (remove tripadvisor section and all references)",
+      ".claude/agents/entertainment.md (remove tripadvisor section and all references)",
+      ".claude/agents/shopping.md (update frontmatter only)"
+    ],
+    "verification": [
+      "Grep check: zero matches for 'jinko-hotel' in accommodation.md",
+      "Grep check: zero matches for 'tripadvisor' in attractions.md",
+      "Grep check: zero matches for 'tripadvisor' in entertainment.md",
+      "Grep check: shopping.md has 'weather' in frontmatter, not 'openweathermap'"
+    ]
+  }
+}
