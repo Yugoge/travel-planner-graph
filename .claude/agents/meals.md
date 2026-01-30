@@ -143,7 +143,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 - When POI details in Chinese required
 
 **Workflow with Gaode Maps**:
-1. Load poi-search tools: `/gaode-maps poi-search`
+1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `poi_search_keyword` with Chinese keywords and city
 3. Use category code: "050000" (food & dining)
 4. Filter by rating (≥4.0), cost within budget
@@ -156,7 +156,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 - On permanent failure: report error to user
 - Always include data source in output (gaode_maps or fallback)
 
-**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes and search patterns
+**See**: `.claude/skills/gaode-maps/SKILL.md` for category codes and search patterns
 
 ---
 

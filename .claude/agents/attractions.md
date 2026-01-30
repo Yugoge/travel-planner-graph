@@ -201,7 +201,7 @@ Day 4 forecast: Clear, 22°C, AQI 2
 **When to use**: Chinese domestic destinations, search attractions with Chinese names, accurate location data in China.
 
 **Workflow with Gaode Maps**:
-1. Load poi-search tools: `/gaode-maps poi-search`
+1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
    - keywords: Attraction name or type (e.g., "博物馆", "公园", "寺庙")
    - city: Chinese city name
@@ -217,4 +217,4 @@ Day 4 forecast: Clear, 22°C, AQI 2
 - No WebSearch fallback - report errors if scripts fail
 - Include data source in output
 
-**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes
+**See**: `.claude/skills/gaode-maps/SKILL.md` for category codes

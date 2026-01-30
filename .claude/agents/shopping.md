@@ -157,7 +157,7 @@ Return only: `complete`
 **When to use**: Chinese domestic destinations, search shopping areas with Chinese names, accurate mall/market locations.
 
 **Workflow with Gaode Maps**:
-1. Load poi-search tools: `/gaode-maps poi-search`
+1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
    - keywords: Shopping keywords (e.g., "购物中心", "市场", "商场")
    - city: Chinese city name
@@ -173,4 +173,4 @@ Return only: `complete`
 - No WebSearch fallback - report errors if scripts fail
 - Include data source in output
 
-**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for shopping category codes
+**See**: `.claude/skills/gaode-maps/SKILL.md` for shopping category codes

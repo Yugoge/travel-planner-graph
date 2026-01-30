@@ -228,7 +228,7 @@ This agent has access to specialized accommodation search skills:
 **When to use**: Chinese domestic destinations, need accurate Chinese addresses, POI search with Chinese names.
 
 **Workflow**:
-1. Load poi-search tools: `/gaode-maps poi-search`
+1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
    - keywords: "酒店" (hotel) or specific hotel name
    - city: Chinese city name (e.g., "北京", "上海")
