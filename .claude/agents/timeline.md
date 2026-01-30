@@ -121,7 +121,7 @@ Return only: `complete`
 
 **Use OpenWeatherMap to optimize activity timing**:
 
-1. Load forecast tools: `/openweathermap forecast`
+1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for each day
 3. Optimize timeline based on weather:
    - **Rain periods**: Schedule indoor activities during high rain probability hours

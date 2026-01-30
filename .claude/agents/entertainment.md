@@ -35,17 +35,6 @@ For each day in the trip:
    - Budget for entertainment
 
 2. **Research entertainment options**:
-
-   **Primary Method: TripAdvisor Skill** (preferred for shows and tours)
-   - Load tour tools: Read `.claude/skills/tripadvisor/tools/tours.md`
-   - Use `search_tours` to find evening entertainment by category
-   - Use `search_shows` for theater, concerts, and performances
-   - Use `get_tour_details` for availability and pricing
-   - Parse real-time data: show times, ratings, reviews, booking info
-   - Get verified user reviews and traveler recommendations
-   - Supports worldwide locations
-
-   **No WebSearch fallback** - report errors if TripAdvisor scripts fail
    - Check local event calendars for travel dates
    - Research venues and show times
    - Look for special performances or seasonal events
@@ -104,34 +93,6 @@ Return only: `complete`
 - Note if advance booking required or recommended
 - Check cancellation policies for ticketed events
 - Provide alternatives if primary option is sold out
-- Prioritize TripAdvisor data for verified ratings and availability
-- Document data source: indicate data source: tripadvisor
-
-## TripAdvisor Integration
-
-**When to use TripAdvisor**:
-- For all destinations (worldwide coverage)
-- When finding theater shows and performances
-- When searching for evening tours and activities
-- When verified reviews and availability are needed
-
-**Workflow with TripAdvisor**:
-1. Load tour tools: Read `.claude/skills/tripadvisor/tools/tours.md`
-2. Call `mcp__plugin_tripadvisor_tripadvisor__search_tours` with category filter (shows, nightlife, cultural)
-3. Filter by user preferences, date, and time of day
-4. Call `mcp__plugin_tripadvisor_tripadvisor__get_tour_details` for availability and full schedule
-5. Analyze reviews for quality assurance
-6. Check schedule conflicts with dinner and other activities
-7. Select 1-2 entertainment options per 2-3 days (not every night)
-8. Save structured data to entertainment.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Provide alternatives for sold-out shows
-- Always include data source in output (tripadvisor or web_search)
-
-**See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for workflow patterns (applicable to tours)
 
 ---
 
@@ -154,15 +115,15 @@ Return only: `complete`
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
 - On permanent failure: report error to user
-- Always include data source in output (google_maps, tripadvisor, or web_search)
+- Always include data source in output (google_maps or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
 
 ## Weather Integration
 
-**Use OpenWeatherMap to select weather-appropriate entertainment**:
+**Use weather skill to select weather-appropriate entertainment**:
 
-1. Load forecast tools: Read `.claude/skills/openweathermap/tools/forecast.md`
+1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for evening hours
 3. Adjust entertainment recommendations based on weather:
    - **Clear evening**: Rooftop bars, outdoor concerts, night markets
@@ -170,7 +131,7 @@ Return only: `complete`
    - **Hot evening**: Air-conditioned venues, waterfront with breeze
    - **Cold evening**: Indoor venues with heating
 4. Check current weather for same-day decisions:
-   - Load current weather tools: Read `.claude/skills/openweathermap/tools/current.md`
+   - Load current weather tools: `/weather current`
 5. Include weather notes in entertainment recommendations
 
 **Example workflow**:
@@ -183,8 +144,6 @@ Evening forecast: Rain 60%, 12°C
 → Recommend: Indoor theater, jazz club, covered venue
 → Note: "Indoor entertainment recommended due to rain"
 ```
-
-**See**: `.claude/skills/openweathermap/tools/forecast.md` for hourly forecast usage
 
 ---
 

@@ -34,16 +34,6 @@ For each day in the trip:
    - Activity level (walking tours, physical activities)
 
 2. **Research attractions**:
-
-   **Primary Method: TripAdvisor Skill** (preferred for accuracy)
-   - Load attraction tools: Read `.claude/skills/tripadvisor/tools/attractions.md`
-   - Use `search_attractions` to find attractions by location and interests
-   - Use `get_attraction_details` for detailed information
-   - Parse real-time data: ratings, reviews, prices, hours
-   - Get verified user reviews and traveler tips
-   - Supports worldwide locations
-
-   **No WebSearch fallback** - report errors if TripAdvisor scripts fail
    - Top-rated attractions in the day's location
    - Opening hours and best visiting times
    - Ticket prices and booking requirements
@@ -101,33 +91,6 @@ Return only: `complete`
 - Note if attraction requires advance booking or timed entry
 - Consider weather and seasonal factors
 - Include backup indoor options for outdoor activities
-- Prioritize TripAdvisor data for verified ratings and reviews
-- Document data source: indicate data source: tripadvisor
-
-## TripAdvisor Integration
-
-**When to use TripAdvisor**:
-- For all destinations (worldwide coverage)
-- When verified user reviews are important
-- When accurate pricing and hours are needed
-- When traveler tips would be valuable
-
-**Workflow with TripAdvisor**:
-1. Load attraction tools: Read `.claude/skills/tripadvisor/tools/attractions.md`
-2. Call `mcp__plugin_tripadvisor_tripadvisor__search_attractions` for location and user interests
-3. Filter by rating (minimum 4.0 recommended) and budget
-4. Call `mcp__plugin_tripadvisor_tripadvisor__get_attraction_details` for top candidates
-5. Cluster attractions by geographic proximity
-6. Select 2-4 attractions per day based on available time
-7. Parse response for ratings, reviews, hours, prices, tips
-8. Save structured data to attractions.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (tripadvisor or web_search)
-
-**See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for complete example
 
 ---
 
@@ -157,15 +120,15 @@ Return only: `complete`
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
 - On permanent failure: report error to user
-- Always include data source in output (google_maps, tripadvisor, or web_search)
+- Always include data source in output (google_maps or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
 
 ## Weather Integration
 
-**Use OpenWeatherMap to optimize attraction selection**:
+**Use weather skill to optimize attraction selection**:
 
-1. Load forecast tools: Read `.claude/skills/openweathermap/tools/forecast.md`
+1. Load forecast tools: `/weather forecast`
 2. Get 5-day forecast for destination
 3. Adjust attraction recommendations based on weather:
    - **Clear weather**: Outdoor parks, viewpoints, scenic areas
@@ -190,8 +153,6 @@ Day 4 forecast: Clear, 22°C, AQI 2
 → Recommend: Parks, viewpoints, outdoor monuments
 → Note: "Excellent weather for outdoor sightseeing"
 ```
-
-**See**: `.claude/skills/openweathermap/examples/weather-check.md` for integration examples
 
 ---
 

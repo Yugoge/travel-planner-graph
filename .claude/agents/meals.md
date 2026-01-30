@@ -164,7 +164,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 
 **Use OpenWeatherMap to select weather-appropriate dining venues**:
 
-1. Load forecast tools: `/openweathermap forecast`
+1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for meal times
 3. Adjust restaurant recommendations based on weather:
    - **Clear weather**: Outdoor cafes, terrace dining, garden restaurants
@@ -184,4 +184,4 @@ Dinner time forecast: Rain 70%, 15°C
 → Note: "Indoor dining recommended due to rain"
 ```
 
-**See**: `.claude/skills/openweathermap/tools/forecast.md` for hourly forecast details
+**See**: `.claude/skills/weather/tools/forecast.md` for hourly forecast details

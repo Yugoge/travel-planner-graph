@@ -35,11 +35,6 @@ For each day in the trip:
    - Party size and duration (determines hotel vs rental)
 
 2. **Determine accommodation type**:
-   - **Hotels** (use /jinko-hotel skill):
-     - Short stays (1-3 nights)
-     - Business travel
-     - Single/couple travelers
-     - Need daily housekeeping and services
    - **Vacation Rentals** (use /airbnb skill):
      - Extended stays (5+ nights)
      - Family/group travel (4+ guests)
@@ -47,9 +42,7 @@ For each day in the trip:
      - Prefer local neighborhood experience
 
 3. **Research accommodations**:
-   - **For hotels**: Invoke `/jinko-hotel search` skill
    - **For rentals**: Invoke `/airbnb search` skill
-   - **Hybrid approach**: Compare both options for best value
    - Location should be central to planned activities
    - Check ratings, reviews, and recent feedback
    - Verify amenities and services
@@ -58,11 +51,11 @@ For each day in the trip:
 4. **Validate selection**:
    - Location is convenient for daily activities
    - Price aligns with budget (include all fees for rentals)
-   - High ratings (4+ stars for hotels, 4.5+ for rentals)
+   - High ratings (4.5+ for rentals)
    - Available for travel dates
    - Check-in/check-out times are reasonable
-   - For rentals: Check recent reviews (within 6 months)
-   - For rentals: Verify Superhost status preferred
+   - Check recent reviews (within 6 months)
+   - Verify Superhost status preferred
 
 5. **Structure data**:
    ```json
@@ -121,31 +114,19 @@ Return only: `complete`
 - Consider location changes - stay near next day's departure point if changing cities
 - Include booking platforms or direct contact if relevant
 - Note cancellation policies if restrictive
-- For rentals: Prefer Superhosts with 4.5+ rating and 10+ reviews
-- For rentals: Check reviews within past 6 months
-- Compare hotel and rental options when guests >= 4 or nights >= 5
+- Prefer Superhosts with 4.5+ rating and 10+ reviews
+- Check reviews within past 6 months
 
 ## Skills Available
 
 This agent has access to specialized accommodation search skills:
 
-1. **jinko-hotel** - Hotel and traditional lodging search
-   - Usage: `/jinko-hotel search`
-   - Best for: Short stays, business travel, standardized services
-   - Location: `.claude/skills/jinko-hotel/SKILL.md`
-   - Progressive disclosure: Load tools on demand (search, details, booking)
-
-2. **airbnb** - Vacation rental and apartment search
+1. **airbnb** - Vacation rental and apartment search
    - Usage: `/airbnb search` or `/airbnb details`
    - Best for: Extended stays, families, groups, kitchen needed
    - Location: `.claude/skills/airbnb/SKILL.md`
 
-**When to use each**:
-- Use `/jinko-hotel` for: 1-3 night stays, solo/couple travel, business trips
-- Use `/airbnb` for: 5+ night stays, 4+ guests, family travel, kitchen needed
-- Use **both** to compare: When trip is 4-6 nights or 3-4 guests (compare value)
-
-3. **google-maps** - Place search for hotels and location verification
+2. **google-maps** - Place search for hotels and location verification
    - Usage: `/google-maps places`
    - Best for: Finding hotels by location, verifying addresses, checking proximity to attractions
    - Location: `.claude/skills/google-maps/SKILL.md`
@@ -154,12 +135,12 @@ This agent has access to specialized accommodation search skills:
 - Verify hotel location and distance to attractions
 - Find hotels in specific neighborhoods
 - Check nearby amenities (restaurants, transit, stores)
-- Complement hotel search with location data
+- Complement accommodation search with location data
 
-4. **openweathermap** - Weather forecasts and alerts (auxiliary service)
-   - Usage: `/openweathermap forecast` or `/openweathermap alerts`
+3. **weather** - Weather forecasts and alerts (auxiliary service)
+   - Usage: `/weather forecast` or `/weather alerts`
    - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
-   - Location: `.claude/skills/openweathermap/SKILL.md`
+   - Location: `.claude/skills/weather/SKILL.md`
 
 **Weather Integration**:
 - Check weather alerts before recommending accommodations in affected areas
@@ -167,33 +148,6 @@ This agent has access to specialized accommodation search skills:
 - For hot weather: Prioritize air-conditioned properties, pools
 - For cold weather: Prioritize heated properties, fireplaces
 - Include weather considerations in accommodation notes
-
-## Skill Integration: jinko-hotel
-
-**When to use**: User needs hotels for 1-3 night stays, standardized services, business travel, solo/couple travelers.
-
-**Workflow**:
-1. Invoke `/jinko-hotel search` to load search tools
-2. Call `mcp__context7_jinko-hotel__search_hotels` with location, dates, budget, rating criteria
-3. Call `mcp__context7_jinko-hotel__filter_by_facilities` for required amenities (WiFi, breakfast, etc.)
-4. Select top 2-3 hotels by rating from filtered results
-5. Invoke `/jinko-hotel details` to load detail tools (if needed for deep comparison)
-6. Call `mcp__context7_jinko-hotel__get_hotel_details` and `get_reviews` for shortlist
-7. Invoke `/jinko-hotel booking` to load booking tools
-8. Call `mcp__context7_jinko-hotel__check_availability` to verify real-time availability
-9. Call `mcp__context7_jinko-hotel__generate_booking_link` for final booking link
-10. Parse results to accommodation.json format
-
-**No WebSearch fallback** - report errors if scripts fail.
-
-**Quality checks**:
-- Rating >= 4 stars
-- Price within budget (no hidden fees)
-- Required amenities present (WiFi, breakfast, etc.)
-- Availability confirmed for dates
-- Check-in/check-out times reasonable
-- Recent reviews validate quality
-- Cancellation policy acceptable
 
 ## Skill Integration: airbnb
 
