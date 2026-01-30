@@ -3,7 +3,7 @@ name: budget
 description: Calculate daily budget breakdown and detect overages
 model: sonnet
 skills:
-  - openweathermap
+  - weather
 ---
 
 
@@ -116,9 +116,9 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use OpenWeatherMap to identify weather-related budget items**:
+**Use weather skill to identify weather-related budget items**:
 
-1. Load forecast tools: `/openweathermap forecast`
+1. Load forecast tools: `/weather forecast`
 2. Check forecast for trip duration
 3. Add weather-related budget items:
    - **Rain days**: Umbrella, waterproof jacket ($15-40)
@@ -137,4 +137,4 @@ Return only: `complete`
    }
    ```
 
-**See**: `.claude/commands/openweathermap.md` for weather data integration
+**See**: `.claude/commands/weather.md` for weather data integration

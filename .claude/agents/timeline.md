@@ -119,7 +119,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use OpenWeatherMap to optimize activity timing**:
+**Use weather skill to optimize activity timing**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for each day
@@ -149,4 +149,4 @@ Return only: `complete`
    - "Day 3: Outdoor activities scheduled during predicted rain (recommend rescheduling)"
    - "Day 4: Hot weather (32°C) - outdoor activities moved to morning hours"
 
-**See**: `.claude/commands/openweathermap/tools/forecast.md` for window optimization techniques
+**See**: `.claude/commands/weather/tools/forecast.md` for window optimization techniques

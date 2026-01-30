@@ -162,7 +162,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 
 ## Weather Integration
 
-**Use OpenWeatherMap to select weather-appropriate dining venues**:
+**Use weather skill to select weather-appropriate dining venues**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for meal times
