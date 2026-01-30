@@ -29,50 +29,39 @@ Yelp Fusion AI MCP server must be configured with valid API key.
 
 **Security**: API key configured in MCP server config (never hardcoded in files).
 
-## Tool Categories
+## Script Execution
 
-This skill uses progressive disclosure. Load only what you need:
+This skill provides Python scripts that communicate with Yelp MCP server via JSON-RPC 2.0 over stdio.
 
-1. **search** - Restaurant search and discovery
-   - Search restaurants by natural language or filters
-   - Get detailed business information
+### Available Scripts
+
+1. **search.py** - Restaurant search and discovery
+   - Search restaurants by natural language query
+   - Filter by location, category, price, rating
+   - Get business details by ID
    - Search by cuisine category
-   - Filter by rating, price, dietary needs, location
 
-## Loading Tools
+2. **details.py** - Get complete business information
+   - Operating hours schedule
+   - Photos and contact details
+   - Transaction options (delivery, pickup, reservation)
 
-Load search tools on demand using Read tool:
+### Script Location
 
-```
-# Load restaurant search tools
-Read /root/travel-planner/.claude/skills/yelp/tools/search.md
-```
+All scripts are in `/root/travel-planner/.claude/skills/yelp/scripts/`
 
-**Pattern**: After loading, invoke MCP tools following the tool definitions.
+### Prerequisites
 
-## MCP Server Setup
-
-Configure in MCP settings file:
-
-```json
-{
-  "mcpServers": {
-    "yelp": {
-      "command": "npx",
-      "args": ["-y", "@yelp/yelp-mcp-server"],
-      "env": {
-        "YELP_API_KEY": "${YELP_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-**Get API Key**:
+**API Key Setup**:
 1. Register at https://www.yelp.com/developers
 2. Create app in Yelp Fusion portal
 3. Copy API Key
-4. Store in environment variable (never hardcode)
+4. Set environment variable: `export YELP_API_KEY=your_api_key`
+
+**Requirements**:
+- Python 3.7+
+- npx (Node.js package runner)
+- Internet connection
 
 **Rate Limits**: Free tier provides 5,000 API calls/day
 
@@ -85,18 +74,60 @@ Configure in MCP settings file:
 - Manual: `/yelp search`
 - Automatic: Meals agent invokes when researching restaurants
 
+## Usage Examples
+
+### Search Restaurants
+
+**Natural language search**:
+```bash
+cd /root/travel-planner/.claude/skills/yelp/scripts
+python3 search.py search "best italian restaurants" "San Francisco, CA" --price=2,3 --limit=10
+```
+
+**Geographic search with coordinates**:
+```bash
+python3 search.py search "breakfast cafes" --lat=37.7749 --lon=-122.4194 --radius=1000 --open-now
+```
+
+**Search by category**:
+```bash
+python3 search.py category vegetarian "New York, NY" --price=1,2 --limit=10
+```
+
+### Get Business Details
+
+**Full business information**:
+```bash
+python3 details.py gary-danko-san-francisco
+```
+
+### Common Search Patterns
+
+**Breakfast near accommodation**:
+```bash
+python3 search.py search "breakfast" --lat=37.7749 --lon=-122.4194 --radius=500 --categories=breakfast_brunch,cafes --price=1,2
+```
+
+**Lunch near attraction**:
+```bash
+python3 search.py search "lunch restaurants" --lat=37.7749 --lon=-122.4194 --radius=1000 --price=2,3
+```
+
+**Dinner by cuisine**:
+```bash
+python3 search.py category italian "San Francisco, CA" --price=2,3,4 --limit=15
+```
+
 ## Error Handling
 
-**Retry Logic**: 3 attempts with exponential backoff (1s, 2s, 4s)
-
-**Fallback Strategy**: If Yelp unavailable, use WebSearch
+**Retry Logic**: Scripts implement 3 attempts with exponential backoff (1s, 2s, 4s)
 
 **Error Types**:
-- 401 Unauthorized: Check API key configuration
+- 401 Unauthorized: Check YELP_API_KEY environment variable
 - 429 Rate limit: Wait and retry with backoff
 - 400 Bad request: Validate search parameters
 - 404 Not found: Business ID invalid or removed
-- 5xx Server error: Retry with backoff
+- 5xx Server error: Automatic retry with backoff
 
 ## Response Structure
 
@@ -124,11 +155,11 @@ Yelp tools return structured JSON with:
 - Booking and reservation information
 - Worldwide coverage
 
-**When to use WebSearch instead**:
-- Yelp MCP unavailable or returning errors
-- Need very recent information (within 24 hours)
-- Searching for very new restaurants (opened <1 week)
-- Need official restaurant website or menu details
+**Data coverage**:
+- Worldwide restaurant coverage
+- Real-time operating hours and status
+- Verified ratings from millions of reviews
+- Updated daily with new listings and changes
 
 ## Best Practices
 

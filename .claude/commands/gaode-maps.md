@@ -11,47 +11,61 @@ Access Gaode Maps (高德地图) API via MCP server for accurate route planning,
 
 ## Quick Start
 
-**Prerequisites**: Gaode Maps MCP server must be configured (see Setup section below).
+**No MCP server configuration required**. This skill uses Python scripts that communicate with Gaode Maps MCP server via npx.
 
 **Usage**:
+```bash
+# Geocoding
+python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区" "北京"
+python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "116.481488,39.990464"
+
+# Routing
+python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上海市"
+python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
+
+# POI Search
+python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
+python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500
+
+# Utilities
+python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
+python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
 ```
-/gaode-maps [category]    # Load specific tool category
-/gaode-maps help          # Show available categories
-```
 
-## Tool Categories
+## Script Categories
 
-This skill uses progressive disclosure. Load only what you need:
+This skill provides Python scripts for direct execution:
 
-1. **routing** - Inter-city and intra-city routes
-   - Driving routes with traffic
-   - Walking routes
-   - Cycling routes
-   - Public transit routes
+1. **geocoding.py** - Location conversion
+   - `geocode` - Address to coordinates
+   - `regeocode` - Coordinates to address
+   - `ip_location` - IP-based location
 
-2. **poi-search** - Find points of interest
-   - Keyword search
-   - Nearby search
-   - POI details
+2. **routing.py** - Inter-city and intra-city routes
+   - `driving` - Driving routes with traffic
+   - `transit` - Public transit routes
+   - `walking` - Walking routes
+   - `cycling` - Cycling routes
 
-3. **geocoding** - Location conversion
-   - Address to coordinates
-   - Coordinates to address
-   - IP-based location
+3. **poi_search.py** - Find points of interest
+   - `keyword` - Keyword search
+   - `nearby` - Nearby search
+   - `detail` - POI details
 
-4. **utilities** - Additional services
-   - Weather information
-   - Distance measurement
+4. **utilities.py** - Additional services
+   - `weather` - Weather information
+   - `distance` - Distance measurement
 
-## Loading Tool Categories
+## Script Execution
 
-Load categories on demand to optimize token usage:
+All scripts are located in `.claude/commands/gaode-maps/scripts/` and can be executed directly:
 
-```markdown
-To plan a driving route, load: /root/travel-planner/.claude/commands/gaode-maps/tools/routing.md
-To search for hotels, load: /root/travel-planner/.claude/commands/gaode-maps/tools/poi-search.md
-To convert addresses, load: /root/travel-planner/.claude/commands/gaode-maps/tools/geocoding.md
-To check weather, load: /root/travel-planner/.claude/commands/gaode-maps/tools/utilities.md
+```bash
+# Full path execution
+python3 /root/travel-planner/.claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+
+# Relative path execution (from project root)
+python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京" "上海"
 ```
 
 ## Coordinate System
@@ -63,19 +77,22 @@ To check weather, load: /root/travel-planner/.claude/commands/gaode-maps/tools/u
 
 ## Error Handling
 
-**Transient errors** (retry with backoff):
+Scripts implement automatic retry logic with exponential backoff.
+
+**Transient errors** (automatically retried up to 3 times):
 - Network timeouts
 - Rate limits (429)
 - Server errors (5xx)
 
-**Permanent errors** (don't retry):
+**Permanent errors** (fail immediately, no retry):
 - Invalid credentials (401)
 - Forbidden (403)
 - Invalid parameters (400)
 - Not found (404)
 
-**Graceful degradation**:
-If MCP server unavailable, fall back to WebSearch for route information.
+**Exit codes**:
+- `0` - Success
+- `1` - Error (check stderr for details)
 
 ## Language Support
 
