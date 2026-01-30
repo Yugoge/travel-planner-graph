@@ -1,0 +1,107 @@
+{
+  "request_id": "dev-qa-fix-20260130",
+  "timestamp": "2026-01-30T17:00:00Z",
+  "priority": "CRITICAL",
+  "objective": "Fix DRY principle violations in meals.md and transportation.md agent files",
+
+  "qa_report": {
+    "status": "fail",
+    "critical_issues": 6,
+    "blocking_issues": 6,
+    "files_with_violations": ["meals.md", "transportation.md"]
+  },
+
+  "requirement": {
+    "what": "Remove ALL script execution code from agent files",
+    "why": "Violates DRY principle and Single Source of Truth - SKILL.md should be only place with usage instructions",
+    "scope": {
+      "files_to_fix": [
+        ".claude/agents/meals.md",
+        ".claude/agents/transportation.md"
+      ],
+      "patterns_to_remove": [
+        "All bash code blocks containing 'python3 .../scripts/*.py'",
+        "All 'Execute ... script:' instruction lines",
+        "All script execution examples in workflow sections"
+      ]
+    },
+    "success_criteria": [
+      "Zero instances of 'python3 .../scripts/*.py' in agent files",
+      "Zero instances of 'Execute ... script' patterns",
+      "Agents only have 'skills: [...]' declarations in frontmatter",
+      "Usage instructions reference SKILL.md, not duplicate them"
+    ]
+  },
+
+  "critical_violations": [
+    {
+      "file": ".claude/agents/meals.md",
+      "line": "37-38",
+      "code": "python3 .claude/skills/yelp/scripts/search.py search \"CUISINE restaurants\" \"LOCATION\" --price=LEVEL --limit=10",
+      "action": "DELETE entire bash code block"
+    },
+    {
+      "file": ".claude/agents/meals.md",
+      "line": "40-42",
+      "code": "python3 .claude/skills/gaode-maps/scripts/poi_search.py keyword \"餐厅\" \"北京市\" CATEGORY",
+      "action": "DELETE entire bash code block"
+    },
+    {
+      "file": ".claude/agents/meals.md",
+      "line": "35-36",
+      "code": "Execute Yelp search script and Execute Google Maps places script patterns",
+      "action": "DELETE these instruction lines"
+    },
+    {
+      "file": ".claude/agents/transportation.md",
+      "line": "41-42",
+      "code": "python3 .../scripts/search.py multi_city_search and python3 .../scripts/pricing.py price_analysis",
+      "action": "DELETE these script examples"
+    },
+    {
+      "file": ".claude/agents/transportation.md",
+      "line": "48-49",
+      "code": "python3 .../scripts/routing.py driving ORIGIN DESTINATION",
+      "action": "DELETE these script examples"
+    },
+    {
+      "file": ".claude/agents/transportation.md",
+      "line": "140",
+      "code": "python3 .claude/skills/gaode-maps/scripts/routing.py driving ORIGIN DESTINATION",
+      "action": "DELETE this script execution line"
+    }
+  ],
+
+  "replacement_pattern": {
+    "instead_of": "```bash\npython3 .../scripts/search.py ...\n```",
+    "use": "See: `.claude/skills/{skill-name}/SKILL.md` for usage instructions"
+  },
+
+  "development_approach": {
+    "strategy": "Surgical removal of script execution code, replace with SKILL.md references",
+    "steps": [
+      "1. Read meals.md and transportation.md completely",
+      "2. Identify all bash code blocks with python3 commands",
+      "3. Identify all 'Execute ... script' patterns",
+      "4. Remove these sections completely",
+      "5. Replace with SKILL.md reference pattern where appropriate",
+      "6. Verify no orphaned text or broken formatting",
+      "7. Verify agents still have skills declarations in frontmatter",
+      "8. Run QA verification again"
+    ]
+  },
+
+  "validation": {
+    "commands": [
+      "grep -r 'python3.*scripts/' .claude/agents/",
+      "grep -r 'Execute.*script' .claude/agents/",
+      "grep -A5 '^skills:' .claude/agents/meals.md",
+      "grep -A5 '^skills:' .claude/agents/transportation.md"
+    ],
+    "expected_results": {
+      "script_execution_grep": "No matches found",
+      "execute_pattern_grep": "No matches found",
+      "skills_frontmatter": "Both files have skills: [...] arrays"
+    }
+  }
+}

@@ -45,18 +45,35 @@ Available script categories:
 
 All scripts return JSON output to stdout.
 
-## Tool Categories
+## Quick Examples
 
-This skill uses progressive disclosure to optimize token usage. Load only the categories you need:
+**Routing** (Beijing to Shanghai by transit):
+```bash
+python3 scripts/routing.py transit "116.407387,39.904179" "121.473701,31.230416" "北京市" 0
+```
 
-### 1. **routing** - Route planning and navigation
-   - `driving_route` - Car/taxi routes with traffic data
-   - `walking_route` - Pedestrian routes and sidewalks
-   - `cycling_route` - Bike routes and bike lanes
-   - `transit_route` - Public transportation (bus, subway, train)
+**POI Search** (Find restaurants in Beijing):
+```bash
+python3 scripts/poi_search.py keyword "餐厅" "北京市" "餐饮服务"
+```
 
-### 2. **poi-search** - Point of interest search
-   - `poi_search_keyword` - Search by name or category
+**Geocoding** (Address to coordinates):
+```bash
+python3 scripts/geocoding.py geocode "北京市朝阳区"
+```
+
+## Available Functions
+
+### 1. **routing** - Route planning
+   - `driving` - Car routes with traffic
+   - `transit` - Public transportation
+   - `walking` - Pedestrian routes
+   - `cycling` - Bike routes
+
+### 2. **poi-search** - Find places
+   - `keyword` - Search by name/category
+   - `nearby` - Find nearby POIs
+   - `detail` - Get POI details
    - `poi_search_nearby` - Find nearby POIs by coordinates
    - `poi_detail` - Get detailed information about a POI
 
