@@ -38,34 +38,19 @@ For each location change day:
 2. **Research transportation options**:
 
    **For International Routes** (crossing borders or >1000km):
-   - Execute Amadeus Flight search script:
-     ```bash
-     python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/search.py \
-       search_flights ORIGIN DESTINATION DEPARTURE_DATE RETURN_DATE ADULTS NONSTOP
-     ```
-   - For multi-city: `python3 .../scripts/search.py multi_city_search ...`
+      - For multi-city: `python3 .../scripts/search.py multi_city_search ...`
    - For price analysis: `python3 .../scripts/pricing.py price_analysis ORIGIN DESTINATION DATE`
    - Parse JSON output for pricing, schedules, airline details
    - Check baggage policies and total journey time
    - Supports IATA airport codes (e.g., PEK, CDG, LHR)
 
    **For Domestic China Routes** (preferred for accuracy):
-   - Execute Gaode Maps routing script:
-     ```bash
-     python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/routing.py \
-       transit ORIGIN DESTINATION CITY STRATEGY
-     ```
-   - For driving: `python3 .../scripts/routing.py driving ORIGIN DESTINATION ...`
+      - For driving: `python3 .../scripts/routing.py driving ORIGIN DESTINATION ...`
    - Parse JSON output: distance, duration, cost, schedules
    - Supports both English and Chinese location names
 
    **For International Routes Outside China**:
-   - Execute Google Maps routing script:
-     ```bash
-     python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
-       ORIGIN DESTINATION TRAVEL_MODE
-     ```
-   - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
+      - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
    - Parse JSON output for route details
 
    **Compare options**: prices, duration, comfort, convenience
@@ -122,10 +107,7 @@ Return only: `complete`
 - When real-time flight pricing needed
 - For multi-city itineraries with flight segments
 
-**Workflow with Amadeus Flight**:
-1. Execute search script: `python3 .claude/skills/amadeus-flight/scripts/search.py search_flights ORIGIN DEST DATE null ADULTS false`
 2. Parse JSON output for price, duration, airline, stops
-3. Execute price analysis: `python3 .claude/skills/amadeus-flight/scripts/pricing.py price_analysis ORIGIN DEST DATE`
 4. Extract baggage allowance and cabin class from results
 5. Calculate total journey time (including airport transfers)
 6. Save structured data to transportation.json
@@ -147,8 +129,6 @@ Return only: `complete`
 - When accurate travel times required
 - For multi-modal route comparisons
 
-**Workflow with Gaode Maps**:
-1. Execute transit script: `python3 .claude/skills/gaode-maps/scripts/routing.py transit ORIGIN DESTINATION CITY STRATEGY`
 2. Parse JSON output for segments (train, bus, walk)
 3. Extract: departure/arrival times, cost, duration, station names
 4. Optionally compare with driving: `python3 .claude/skills/gaode-maps/scripts/routing.py driving ORIGIN DESTINATION`
@@ -172,16 +152,12 @@ Return only: `complete`
 - For walking routes between nearby attractions
 - For public transit in non-China cities
 
-**Workflow with Google Maps**:
-1. Execute routing script: `python3 .claude/skills/google-maps/scripts/routing.py ORIGIN DESTINATION TRAVEL_MODE`
 2. Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
 3. Parse JSON output for distance, duration, route details
 4. For TRANSIT: Extract subway/bus line information from response
 5. For DRIVE: Script uses current time for traffic-aware routing
 6. Save structured data to transportation.json
 
-**Workflow with Google Maps Places**:
-1. Execute places script: `python3 .claude/skills/google-maps/scripts/places.py QUERY MAX_RESULTS`
 2. Search for airports, train stations, bus terminals
 3. Parse JSON output for location coordinates and contact information
 
@@ -217,14 +193,12 @@ Return only: `complete`
 
 **Use OpenWeatherMap to select weather-appropriate transportation**:
 
-1. Execute alerts script: `python3 .claude/skills/openweathermap/scripts/alerts.py LOCATION`
 2. Check weather alerts for travel day and route
 3. Adjust transportation mode based on weather:
    - **Severe thunderstorms/wind**: Prefer train over flight
    - **Heavy snow/ice**: Avoid driving, prefer train
    - **Flooding**: Avoid ground transport in affected areas, check alternative routes
    - **Extreme heat/cold**: Prioritize climate-controlled transport
-4. Execute forecast script: `python3 .claude/skills/openweathermap/scripts/forecast.py LOCATION --days 3`
 5. Check forecast for departure and arrival times:
    - Heavy rain: Factor in potential delays
    - Poor visibility: Add buffer time for driving routes

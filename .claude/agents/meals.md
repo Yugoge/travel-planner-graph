@@ -31,17 +31,19 @@ For each day in the trip:
    - Budget constraints for meals
    - Special occasions (celebration dinner, romantic meal)
 
-2. **Research local restaurants** using available skills:
-   - **Primary method**: Use `/google-maps places` to search restaurants
-     - Search by cuisine type and meal category
-     - Filter by rating, reviews, and price level
-     - Get location and operating hours
-   - **Alternative**: Load Yelp search tools via Read tool
-     - Read `/root/travel-planner/.claude/skills/yelp/tools/search.md`
-   - Breakfast: Search highly-rated cafes near accommodation
-   - Lunch: Search restaurants near planned attractions with appropriate filters
-   - Dinner: Search restaurants matching cuisine preferences and budget
-   - **Fallback**: If MCP unavailable, use WebSearch
+2. **Research local restaurants** using MCP scripts:
+   - **Primary method**: Execute Yelp search script
+     ```bash
+     python3 .claude/skills/yelp/scripts/search.py search "CUISINE restaurants" "LOCATION" --price=LEVEL --limit=10
+     ```
+   - **Alternative**: Execute Google Maps places script
+     ```bash
+     python3 .claude/skills/gaode-maps/scripts/poi_search.py keyword "餐厅" "北京市" CATEGORY
+     ```
+   - Breakfast: Search cafes near accommodation
+   - Lunch: Search restaurants near planned attractions
+   - Dinner: Search restaurants matching cuisine preferences
+   - **No WebSearch fallback** - report errors if scripts fail
    - Consider: Ratings (≥3.5 stars), review count (≥20), location convenience, price range
 
 3. **Validate practicality**:
@@ -94,7 +96,7 @@ Return only: `complete`
    - Filter results: rating ≥3.5, review count ≥20, cost within budget
    - Parse response for name, location, cost, cuisine, rating, notes
    - Ensure variety (no repeat restaurants across days)
-3. If Yelp unavailable, fall back to WebSearch
+3. If Yelp unavailable, report error to user
 4. Structure and save data to meals.json
 5. Return "complete"
 
@@ -131,7 +133,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to Yelp or WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (google_maps, yelp, or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
@@ -157,7 +159,7 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to Google Maps or WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (gaode_maps or fallback)
 
 **See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes and search patterns

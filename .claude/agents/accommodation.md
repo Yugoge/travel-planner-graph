@@ -185,7 +185,7 @@ This agent has access to specialized accommodation search skills:
 9. Call `mcp__context7_jinko-hotel__generate_booking_link` for final booking link
 10. Parse results to accommodation.json format
 
-**Fallback**: Use WebSearch if MCP unavailable or API errors occur.
+**No WebSearch fallback** - report errors if scripts fail.
 
 **Quality checks**:
 - Rating >= 4 stars
@@ -211,7 +211,7 @@ This agent has access to specialized accommodation search skills:
 8. Calculate total cost including cleaning and service fees
 9. Structure data for output with average per-night cost
 
-**Fallback**: Use WebSearch "airbnb [location] [dates]" if MCP unavailable.
+**No WebSearch fallback** - report errors if scripts fail.
 
 **Quality checks**:
 - Superhost preferred (more reliable)
@@ -239,7 +239,7 @@ This agent has access to specialized accommodation search skills:
 6. Verify location proximity to attractions using distance tools
 7. Structure data for output with both Chinese and English names
 
-**Fallback**: Use Google Maps or WebSearch if Gaode unavailable
+**No WebSearch fallback** - report errors if scripts fail
 
 **Quality checks**:
 - Rating >= 4.0 stars

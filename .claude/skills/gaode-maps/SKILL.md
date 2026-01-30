@@ -27,14 +27,23 @@ Gaode Maps (高德地图/AMap) provides comprehensive mapping and location servi
 - Locations in Hong Kong, Macau, Taiwan
 - Global routing spanning multiple countries
 
-## Prerequisites
+## How to Use
 
-**MCP Server Configuration Required**:
-- Package: `@amap/amap-maps-mcp-server`
-- API Key: Register at https://console.amap.com/dev/key/app
-- Configuration: Add to `~/.config/Claude/claude_desktop_config.json`
+**This skill provides executable Python scripts that communicate directly with Gaode Maps MCP server.**
 
-See Setup section below for details.
+Execute scripts from the skill directory:
+```bash
+cd /root/travel-planner/.claude/skills/gaode-maps
+python3 scripts/<category>.py <function> <arguments>
+```
+
+Available script categories:
+- `scripts/routing.py` - Route planning (driving, transit, walking, cycling)
+- `scripts/poi_search.py` - POI search (keyword, nearby, details)
+- `scripts/geocoding.py` - Address/coordinate conversion
+- `scripts/utilities.py` - Weather and distance utilities
+
+All scripts return JSON output to stdout.
 
 ## Tool Categories
 

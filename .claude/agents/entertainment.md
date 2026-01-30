@@ -45,7 +45,7 @@ For each day in the trip:
    - Get verified user reviews and traveler recommendations
    - Supports worldwide locations
 
-   **Fallback Method: WebSearch** (if TripAdvisor unavailable)
+   **No WebSearch fallback** - report errors if TripAdvisor scripts fail
    - Check local event calendars for travel dates
    - Research venues and show times
    - Look for special performances or seasonal events
@@ -105,7 +105,7 @@ Return only: `complete`
 - Check cancellation policies for ticketed events
 - Provide alternatives if primary option is sold out
 - Prioritize TripAdvisor data for verified ratings and availability
-- Document data source: indicate if from TripAdvisor or WebSearch
+- Document data source: indicate data source: tripadvisor
 
 ## TripAdvisor Integration
 
@@ -127,7 +127,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
+- On permanent failure: report error to user
 - Provide alternatives for sold-out shows
 - Always include data source in output (tripadvisor or web_search)
 
@@ -153,7 +153,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to TripAdvisor or WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (google_maps, tripadvisor, or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
@@ -206,7 +206,7 @@ Evening forecast: Rain 60%, 12°C
 
 **Error Handling**:
 - Retry logic: 3 attempts
-- Fallback: Use Google Maps or WebSearch
+- No WebSearch fallback - report errors if scripts fail
 - Include data source in output
 
 **See**: `.claude/skills/gaode-maps/tools/poi-search.md` for entertainment category codes

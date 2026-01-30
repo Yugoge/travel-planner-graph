@@ -44,7 +44,7 @@ For each day in the trip:
    - Get verified user reviews and traveler tips
    - Supports worldwide locations
 
-   **Fallback Method: WebSearch** (if TripAdvisor unavailable)
+   **No WebSearch fallback** - report errors if TripAdvisor scripts fail
    - Top-rated attractions in the day's location
    - Opening hours and best visiting times
    - Ticket prices and booking requirements
@@ -103,7 +103,7 @@ Return only: `complete`
 - Consider weather and seasonal factors
 - Include backup indoor options for outdoor activities
 - Prioritize TripAdvisor data for verified ratings and reviews
-- Document data source: indicate if from TripAdvisor or WebSearch
+- Document data source: indicate data source: tripadvisor
 
 ## TripAdvisor Integration
 
@@ -125,7 +125,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (tripadvisor or web_search)
 
 **See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for complete example
@@ -157,7 +157,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to TripAdvisor or WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (google_maps, tripadvisor, or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
@@ -214,7 +214,7 @@ Day 4 forecast: Clear, 22°C, AQI 2
 
 **Error Handling**:
 - Retry logic: 3 attempts with exponential backoff
-- Fallback: Use Google Maps or WebSearch if Gaode unavailable
+- No WebSearch fallback - report errors if scripts fail
 - Include data source in output
 
 **See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes

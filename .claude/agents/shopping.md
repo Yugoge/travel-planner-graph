@@ -38,7 +38,7 @@ For each day in the trip:
      - Search by type: "shopping_mall", "store", "market"
      - Filter by rating and reviews
      - Verify location and opening hours
-   - **Fallback**: Use WebSearch for detailed information
+   - **No WebSearch fallback** - report errors if scripts fail
    - Best shopping districts in each location
    - Local markets and their specialties
    - Opening hours (markets often close early)
@@ -117,7 +117,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
+- On permanent failure: report error to user
 - Always include data source in output (google_maps or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
@@ -170,7 +170,7 @@ Return only: `complete`
 
 **Error Handling**:
 - Retry logic: 3 attempts
-- Fallback: Use Google Maps or WebSearch
+- No WebSearch fallback - report errors if scripts fail
 - Include data source in output
 
 **See**: `.claude/skills/gaode-maps/tools/poi-search.md` for shopping category codes
