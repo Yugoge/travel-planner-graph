@@ -5,6 +5,8 @@ model: sonnet
 skills:
   - google-maps
   - openweathermap
+  - jinko-hotel
+  - airbnb
 ---
 
 
