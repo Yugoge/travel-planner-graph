@@ -18,27 +18,34 @@ Search and analyze flights using Amadeus Global Distribution System (GDS) data. 
 
 MCP server `amadeus-flight` must be configured with API credentials. See Setup section.
 
-## Tool Categories
+## Functionality
 
-This skill uses progressive disclosure. Load only what you need:
+Scripts provide the following capabilities:
 
-1. **search** - Flight search and pricing
-   - search_flights - Search flights by origin/destination
-   - multi_city_search - Search multi-city itineraries
-   - price_analysis - Get price trends and predictions
+1. **Flight Search** (search.py)
+   - Search one-way and round-trip flights
+   - Multi-city itinerary search
+   - Filter by nonstop, number of passengers
 
-2. **details** - Flight and airline information
-   - flight_details - Get detailed flight information
-   - seat_availability - Check seat and cabin availability
+2. **Pricing** (pricing.py)
+   - Price analysis and trends
+   - Detailed pricing breakdown with fees and taxes
+   - Price predictions and optimal booking windows
 
-## Loading Tools
+3. **Flight Details** (details.py)
+   - Detailed flight information (schedule, aircraft)
+   - Seat and cabin availability
+   - Airline information
 
-Load categories on demand:
+## Script Categories
 
-```
-/amadeus-flight search   # Loads tools/search.md
-/amadeus-flight details  # Loads tools/details.md
-```
+Scripts are organized by functionality:
+
+1. **search.py** - Flight search and multi-city searches
+2. **pricing.py** - Price analysis and detailed pricing
+3. **details.py** - Flight details, seat availability, airline info
+
+Execute scripts directly without loading tool documentation.
 
 ## When to Use
 
@@ -53,7 +60,7 @@ Load categories on demand:
 **Do NOT use when:**
 - Domestic China routes (use gaode-maps skill instead)
 - Ground transportation preferred
-- MCP server unavailable (fall back to WebSearch)
+- API credentials not configured
 
 ## Workflow
 
@@ -65,21 +72,19 @@ Load categories on demand:
 
 ## MCP Server Setup
 
-Configure in MCP settings file:
+**Environment Variables:**
 
-```json
-{
-  "mcpServers": {
-    "amadeus-flight": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-amadeus"],
-      "env": {
-        "AMADEUS_API_KEY": "${AMADEUS_API_KEY}",
-        "AMADEUS_API_SECRET": "${AMADEUS_API_SECRET}"
-      }
-    }
-  }
-}
+Scripts automatically launch MCP server via npx. Set these environment variables:
+
+```bash
+export AMADEUS_API_KEY="your_api_key_here"
+export AMADEUS_API_SECRET="your_api_secret_here"
+```
+
+Or add to `.env` file in project root:
+```
+AMADEUS_API_KEY=your_api_key_here
+AMADEUS_API_SECRET=your_api_secret_here
 ```
 
 **Get API Credentials:**
@@ -103,9 +108,9 @@ Configure in MCP settings file:
 - Return structured error if all attempts fail
 
 **Fallback Strategy:**
-- On permanent failure: switch to WebSearch
-- Document data source in output (amadeus vs web_search)
-- Maintain data structure consistency
+- On permanent failure: Report error to user with actionable message
+- Check API credentials are properly configured
+- Verify MCP server package is accessible via npx
 
 **Common Errors:**
 - Invalid IATA code: Validate airport codes before search
@@ -118,11 +123,8 @@ Configure in MCP settings file:
 **Configured for agents:**
 - transportation
 
-**Usage:**
-```
-/amadeus-flight search
-/amadeus-flight details
-```
+**Script Execution:**
+Execute scripts directly via Bash tool. See "Script Execution" section for complete examples.
 
 ## Best Practices
 
@@ -131,7 +133,91 @@ Configure in MCP settings file:
 3. **Multi-City**: Specify each leg with origin, destination, date
 4. **Price Analysis**: Use to recommend optimal booking window
 5. **Total Journey**: Include airport transfer time (2-3 hours)
-6. **Data Source**: Always document whether data from Amadeus or fallback
+
+## Script Execution
+
+Execute Python scripts directly via Bash tool to call Amadeus MCP server:
+
+### Search Flights
+
+```bash
+# One-way flight (Beijing to Paris, March 15, 1 adult, allow connections)
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/search.py \
+  search_flights PEK CDG 2026-03-15 null 1 false
+
+# Round-trip flight (Beijing to Paris, March 15-25, 2 adults, nonstop only)
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/search.py \
+  search_flights PEK CDG 2026-03-15 2026-03-25 2 true
+
+# Multi-city (Beijing -> Paris -> London)
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/search.py \
+  multi_city PEK CDG 2026-03-15 CDG LHR 2026-03-20
+```
+
+### Price Analysis
+
+```bash
+# Get price analysis for route
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/pricing.py \
+  price_analysis PEK CDG 2026-03-15
+
+# Get detailed pricing for specific offer
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/pricing.py \
+  get_price ABC123XYZ
+```
+
+### Flight Details
+
+```bash
+# Get flight details
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/details.py \
+  flight_details AF123 2026-03-15
+
+# Check seat availability
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/details.py \
+  seat_availability ABC123XYZ
+
+# Get airline information
+python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/details.py \
+  airline_info AF
+```
+
+### Output Format
+
+Scripts return JSON output to stdout. Parse the JSON to extract flight data:
+
+```json
+{
+  "data": [
+    {
+      "id": "flight-offer-123",
+      "price": {
+        "total": "850.00",
+        "currency": "USD"
+      },
+      "itineraries": [
+        {
+          "duration": "PT11H30M",
+          "segments": [
+            {
+              "departure": {
+                "iataCode": "PEK",
+                "at": "2026-03-15T10:00:00"
+              },
+              "arrival": {
+                "iataCode": "CDG",
+                "at": "2026-03-15T15:30:00"
+              },
+              "carrierCode": "AF",
+              "number": "123"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Examples
 

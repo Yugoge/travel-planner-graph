@@ -38,26 +38,35 @@ For each location change day:
 2. **Research transportation options**:
 
    **For International Routes** (crossing borders or >1000km):
-   - Invoke `/amadeus-flight search` to load flight search tools
-   - Use `search_flights` for point-to-point international flights
-   - Use `multi_city_search` for complex multi-destination trips
-   - Parse real-time pricing, schedules, airline details
-   - Use `price_analysis` to recommend optimal booking window
+   - Execute Amadeus Flight search script:
+     ```bash
+     python3 /root/travel-planner/.claude/skills/amadeus-flight/scripts/search.py \
+       search_flights ORIGIN DESTINATION DEPARTURE_DATE RETURN_DATE ADULTS NONSTOP
+     ```
+   - For multi-city: `python3 .../scripts/search.py multi_city_search ...`
+   - For price analysis: `python3 .../scripts/pricing.py price_analysis ORIGIN DESTINATION DATE`
+   - Parse JSON output for pricing, schedules, airline details
    - Check baggage policies and total journey time
    - Supports IATA airport codes (e.g., PEK, CDG, LHR)
 
    **For Domestic China Routes** (preferred for accuracy):
-   - Invoke `/gaode-maps routing` to load routing tools
-   - Use `transit_route` for public transportation (trains, buses, subway)
-   - Use `driving_route` for private car options
-   - Parse real-time data: distance, duration, cost, schedules
+   - Execute Gaode Maps routing script:
+     ```bash
+     python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/routing.py \
+       transit ORIGIN DESTINATION CITY STRATEGY
+     ```
+   - For driving: `python3 .../scripts/routing.py driving ORIGIN DESTINATION ...`
+   - Parse JSON output: distance, duration, cost, schedules
    - Supports both English and Chinese location names
 
-   **Fallback Method: WebSearch** (if APIs unavailable)
-   - Search for flights (long distances or time constraints)
-   - Search for trains (comfort, scenic routes, frequency)
-   - Search for buses (budget option, direct routes)
-   - Search for private car/taxi (convenience, groups)
+   **For International Routes Outside China**:
+   - Execute Google Maps routing script:
+     ```bash
+     python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+       ORIGIN DESTINATION TRAVEL_MODE
+     ```
+   - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
+   - Parse JSON output for route details
 
    **Compare options**: prices, duration, comfort, convenience
 
@@ -114,18 +123,17 @@ Return only: `complete`
 - For multi-city itineraries with flight segments
 
 **Workflow with Amadeus Flight**:
-1. Load search tools: `/amadeus-flight search`
-2. Call `search_flights` with IATA airport codes
-3. Parse response for price, duration, airline, stops
-4. Use `price_analysis` to check if current price is good
-5. Extract baggage allowance and cabin class
-6. Calculate total journey time (including airport transfers)
-7. Save structured data to transportation.json
+1. Execute search script: `python3 .claude/skills/amadeus-flight/scripts/search.py search_flights ORIGIN DEST DATE null ADULTS false`
+2. Parse JSON output for price, duration, airline, stops
+3. Execute price analysis: `python3 .claude/skills/amadeus-flight/scripts/pricing.py price_analysis ORIGIN DEST DATE`
+4. Extract baggage allowance and cabin class from results
+5. Calculate total journey time (including airport transfers)
+6. Save structured data to transportation.json
 
 **Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
-- Always include data source in output (amadeus or web_search)
+- Scripts implement automatic retry logic (3 attempts with exponential backoff)
+- On failure: Report error to user, no fallback
+- Always include data source in output: "amadeus_flight"
 
 **See**: `.claude/skills/amadeus-flight/examples/flight-search.md` for complete example
 
@@ -140,18 +148,17 @@ Return only: `complete`
 - For multi-modal route comparisons
 
 **Workflow with Gaode Maps**:
-1. Load routing tools: `/gaode-maps routing`
-2. Call `transit_route` for origin and destination cities
-3. Parse response for segments (train, bus, walk)
-4. Extract: departure/arrival times, cost, duration, station names
-5. Optionally compare with `driving_route` for private car
-6. Select best option based on user preferences
-7. Save structured data to transportation.json
+1. Execute transit script: `python3 .claude/skills/gaode-maps/scripts/routing.py transit ORIGIN DESTINATION CITY STRATEGY`
+2. Parse JSON output for segments (train, bus, walk)
+3. Extract: departure/arrival times, cost, duration, station names
+4. Optionally compare with driving: `python3 .claude/skills/gaode-maps/scripts/routing.py driving ORIGIN DESTINATION`
+5. Select best option based on user preferences
+6. Save structured data to transportation.json
 
 **Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
-- Always include data source in output (gaode_maps or web_search)
+- Scripts implement automatic retry logic (3 attempts with exponential backoff)
+- On failure: Report error to user, no fallback
+- Always include data source in output: "gaode_maps"
 
 **See**: `.claude/skills/gaode-maps/examples/inter-city-route.md` for complete example
 
@@ -166,24 +173,22 @@ Return only: `complete`
 - For public transit in non-China cities
 
 **Workflow with Google Maps**:
-1. Load routing tools: `/google-maps routing`
-2. Call `compute_routes` with origin and destination
-3. Specify travel_mode: DRIVE, TRANSIT, WALK, or BICYCLE
-4. Parse response for distance, duration, route details
-5. For TRANSIT: Extract subway/bus line information from steps
-6. For DRIVE: Use departure_time for traffic-aware routing
-7. Save structured data to transportation.json
+1. Execute routing script: `python3 .claude/skills/google-maps/scripts/routing.py ORIGIN DESTINATION TRAVEL_MODE`
+2. Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
+3. Parse JSON output for distance, duration, route details
+4. For TRANSIT: Extract subway/bus line information from response
+5. For DRIVE: Script uses current time for traffic-aware routing
+6. Save structured data to transportation.json
 
 **Workflow with Google Maps Places**:
-1. Load places tools: `/google-maps places`
-2. Use `search_places` to find transportation hubs
-3. Search for airports, train stations, bus terminals
-4. Get location coordinates and contact information
+1. Execute places script: `python3 .claude/skills/google-maps/scripts/places.py QUERY MAX_RESULTS`
+2. Search for airports, train stations, bus terminals
+3. Parse JSON output for location coordinates and contact information
 
 **Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: fall back to WebSearch
-- Always include data source in output (google_maps or web_search)
+- Scripts implement automatic retry logic (3 attempts with exponential backoff)
+- On failure: Report error to user, no fallback
+- Always include data source in output: "google_maps"
 
 **See**: `.claude/skills/google-maps/examples/route-planning.md` for complete example
 
@@ -191,10 +196,10 @@ Return only: `complete`
 
 - Only process days with location_change object (skip days in same city)
 - **Route selection logic**:
-  - Use Amadeus Flight for international routes or >1000km
-  - Use Gaode Maps for domestic China routes
-  - Use Google Maps for international routes outside China
-  - Fall back to WebSearch if APIs unavailable
+  - Use Amadeus Flight scripts for international routes or >1000km
+  - Use Gaode Maps scripts for domestic China routes
+  - Use Google Maps scripts for international routes outside China
+  - No WebSearch fallback - report errors if scripts fail
 - All transportation options must be real and currently operating
 - Cost should be per person in USD (convert from CNY if using Gaode Maps)
 - Times should be realistic (include buffer for delays)
@@ -206,20 +211,20 @@ Return only: `complete`
 - Note if advance booking required or recommended
 - Consider luggage handling (stairs, transfers)
 - Include transportation to/from airports/stations if needed
-- Document data source: indicate if from Amadeus, Gaode Maps, Google Maps, or WebSearch
+- Document data source: indicate if from amadeus_flight, gaode_maps, or google_maps
 
 ## Weather Integration
 
 **Use OpenWeatherMap to select weather-appropriate transportation**:
 
-1. Load alerts tools: `/openweathermap alerts`
+1. Execute alerts script: `python3 .claude/skills/openweathermap/scripts/alerts.py LOCATION`
 2. Check weather alerts for travel day and route
 3. Adjust transportation mode based on weather:
    - **Severe thunderstorms/wind**: Prefer train over flight
    - **Heavy snow/ice**: Avoid driving, prefer train
    - **Flooding**: Avoid ground transport in affected areas, check alternative routes
    - **Extreme heat/cold**: Prioritize climate-controlled transport
-4. Load forecast tools: `/openweathermap forecast`
+4. Execute forecast script: `python3 .claude/skills/openweathermap/scripts/forecast.py LOCATION --days 3`
 5. Check forecast for departure and arrival times:
    - Heavy rain: Factor in potential delays
    - Poor visibility: Add buffer time for driving routes
@@ -237,4 +242,4 @@ Return only: `complete`
    - "Depart early to avoid afternoon thunderstorms"
    - "Check real-time updates before departure"
 
-**See**: `.claude/skills/openweathermap/tools/alerts.md` for severe weather handling
+**See**: `.claude/skills/openweathermap/examples/alerts-example.md` for severe weather handling
