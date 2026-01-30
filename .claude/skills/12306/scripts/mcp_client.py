@@ -72,7 +72,7 @@ class MCPClient:
         """Launch MCP server via npx and initialize connection."""
         try:
             self.process = subprocess.Popen(
-                ["npx", self.server_path],
+                ["node", self.server_path],
                 env=os.environ.copy(),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,

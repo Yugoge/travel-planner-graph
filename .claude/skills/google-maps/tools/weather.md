@@ -97,18 +97,18 @@ lookup_weather({
 6. **Data Freshness**:
    - Check `timestamp` field
    - Current weather is point-in-time
-   - For forecasts, use dedicated weather API (OpenWeatherMap skill)
+   - For forecasts, use dedicated weather API (weather skill)
 
 ## Limitations
 
 **What This Tool Does NOT Provide**:
-- Multi-day forecasts (use `/openweathermap forecast`)
-- Hourly forecasts (use `/openweathermap forecast`)
-- Weather alerts (use `/openweathermap alerts`)
-- Air quality data (use `/openweathermap air-quality`)
+- Multi-day forecasts (use `/weather forecast`)
+- Hourly forecasts (use `/weather forecast`)
+- Weather alerts (use `/weather alerts`)
+- Air quality data (use `/weather air-quality`)
 - Historical weather data
 
-**When to Use OpenWeatherMap Instead**:
+**When to Use Weather Skill Instead**:
 - Need 5-day forecast
 - Need hourly forecast
 - Need severe weather alerts
@@ -120,14 +120,14 @@ lookup_weather({
 **Common Errors**:
 - Invalid coordinates: Validate lat/lng ranges
 - Address not found: Use more specific address or coordinates
-- Service unavailable: Fall back to OpenWeatherMap
+- Service unavailable: Fall back to weather skill
 - No data available: Location may be too remote
 
 **Retry Pattern**:
 ```
 Attempt 1: Direct MCP call
 Attempt 2: Retry with coordinates if address failed
-Attempt 3: Use OpenWeatherMap as alternative
+Attempt 3: Use weather skill as alternative
 Fallback: Use WebSearch for basic weather info
 ```
 
@@ -237,15 +237,15 @@ if (weather.uv_index > 6) {
 }
 ```
 
-## Comparison with OpenWeatherMap
+## Comparison with Weather Skill
 
-| Feature | Google Maps Weather | OpenWeatherMap Skill |
+| Feature | Google Maps Weather | Weather Skill |
 |---------|-------------------|---------------------|
 | Current weather | ✅ Yes | ✅ Yes |
 | 5-day forecast | ❌ No | ✅ Yes |
 | Hourly forecast | ❌ No | ✅ Yes |
 | Weather alerts | ❌ No | ✅ Yes |
 | Air quality | ❌ No | ✅ Yes |
-| Historical data | ❌ No | ❌ No |
+| Historical data | ❌ No | ✅ Yes |
 
-**Recommendation**: Use Google Maps weather for quick current checks. Use OpenWeatherMap for comprehensive weather planning.
+**Recommendation**: Use Google Maps weather for quick current checks. Use weather skill for comprehensive weather planning.

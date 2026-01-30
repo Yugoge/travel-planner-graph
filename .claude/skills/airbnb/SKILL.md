@@ -18,6 +18,26 @@ Search vacation rentals with Airbnb data.
 1. **airbnb_search** - Search for Airbnb listings with filters and pagination
 2. **airbnb_listing_details** - Get detailed information about a specific listing
 
+## Configuration Required
+
+⚠️ **Airbnb blocks requests via robots.txt**. You must configure the MCP server to bypass this restriction.
+
+Add to your `~/.config/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "airbnb": {
+      "command": "npx",
+      "args": ["-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Legal Notice**: Web scraping may violate Airbnb's Terms of Service. Use for personal research/testing only.
+
 ## How to Use
 
 ```bash
