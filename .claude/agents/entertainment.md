@@ -5,6 +5,7 @@ model: sonnet
 skills:
   - google-maps
   - tripadvisor
+  - openweathermap
 ---
 
 
@@ -130,3 +131,31 @@ Return only: `complete`
 - Always include data source in output (tripadvisor or web_search)
 
 **See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for workflow patterns (applicable to tours)
+
+## Weather Integration
+
+**Use OpenWeatherMap to select weather-appropriate entertainment**:
+
+1. Load forecast tools: `/openweathermap forecast`
+2. Get hourly forecast for evening hours
+3. Adjust entertainment recommendations based on weather:
+   - **Clear evening**: Rooftop bars, outdoor concerts, night markets
+   - **Rain evening**: Indoor theaters, clubs, concert halls
+   - **Hot evening**: Air-conditioned venues, waterfront with breeze
+   - **Cold evening**: Indoor venues with heating
+4. Check current weather for same-day decisions:
+   - Use `/openweathermap current` for real-time conditions
+5. Include weather notes in entertainment recommendations
+
+**Example workflow**:
+```
+Evening forecast: Clear, 18°C
+→ Recommend: Rooftop bar, outdoor night market, river cruise
+→ Note: "Clear weather ideal for outdoor evening activities"
+
+Evening forecast: Rain 60%, 12°C
+→ Recommend: Indoor theater, jazz club, covered venue
+→ Note: "Indoor entertainment recommended due to rain"
+```
+
+**See**: `.claude/commands/openweathermap/tools/forecast.md` for hourly forecast usage

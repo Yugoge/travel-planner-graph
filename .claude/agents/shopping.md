@@ -4,6 +4,7 @@ description: Research shopping destinations and retail experiences
 model: sonnet
 skills:
   - google-maps
+  - openweathermap
 ---
 
 
@@ -89,3 +90,31 @@ Return only: `complete`
 - Consider location convenience - integrate with other activities
 - It's okay to have empty shopping arrays for some days
 - Flag items that may have customs restrictions
+
+## Weather Integration
+
+**Use OpenWeatherMap to add weather-appropriate items to shopping list**:
+
+1. Load forecast tools: `/openweathermap forecast`
+2. Get 5-day forecast for trip
+3. Add weather-appropriate items to shopping recommendations:
+   - **Rain forecast** (>50% probability): Umbrella, waterproof jacket, waterproof shoes
+   - **Cold weather** (<10°C): Warm jacket, gloves, scarf, thermal layers
+   - **Hot weather** (>30°C): Sun hat, sunscreen, light breathable clothing
+   - **High UV**: Sunglasses, UV protection clothing
+4. Load air quality tools: `/openweathermap air-quality`
+5. Check AQI for destination:
+   - **AQI 3+**: Add N95/KN95 masks to shopping list
+   - **AQI 4+**: Add portable air purifier (optional)
+6. Structure weather items:
+   ```json
+   {
+     "name": "Weather essentials",
+     "location": "Purchase on arrival or pack from home",
+     "cost": 50,
+     "type": "Weather gear",
+     "notes": "Umbrella $15, Rain jacket $30, Waterproof shoes $50 - due to rain forecast Days 2-3"
+   }
+   ```
+
+**See**: `.claude/commands/openweathermap/examples/weather-check.md` for packing list examples

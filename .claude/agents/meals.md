@@ -4,6 +4,7 @@ description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
 skills:
   - google-maps
+  - openweathermap
 ---
 
 You are a specialized restaurant and dining research agent for travel planning.
@@ -101,3 +102,29 @@ Return only: `complete`
 ## Example Yelp Usage
 
 See: `/root/travel-planner/.claude/commands/yelp/examples/restaurant-search.md`
+
+## Weather Integration
+
+**Use OpenWeatherMap to select weather-appropriate dining venues**:
+
+1. Load forecast tools: `/openweathermap forecast`
+2. Get hourly forecast for meal times
+3. Adjust restaurant recommendations based on weather:
+   - **Clear weather**: Outdoor cafes, terrace dining, garden restaurants
+   - **Rain**: Indoor restaurants, covered venues
+   - **Hot weather**: Air-conditioned restaurants, shaded outdoor areas
+   - **Cold weather**: Indoor heated venues, hot meal options
+4. Include weather notes in meal recommendations
+
+**Example workflow**:
+```
+Lunch time forecast: Clear, 22°C
+→ Recommend: Outdoor cafe with terrace
+→ Note: "Pleasant weather for outdoor dining"
+
+Dinner time forecast: Rain 70%, 15°C
+→ Recommend: Indoor restaurant, enclosed space
+→ Note: "Indoor dining recommended due to rain"
+```
+
+**See**: `.claude/commands/openweathermap/tools/forecast.md` for hourly forecast details
