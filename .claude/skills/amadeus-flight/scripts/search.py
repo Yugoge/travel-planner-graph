@@ -3,21 +3,21 @@
 Flight Search Script for Amadeus Flight MCP
 
 Provides flight search functionality via MCP server.
-Supports one-way, round-trip, and multi-city searches.
+Supports one-way and round-trip searches.
 
 Usage:
-    python3 search.py search_flights <origin> <destination> <departure_date> [return_date] [adults] [nonstop]
-    python3 search.py multi_city <leg1_origin> <leg1_dest> <leg1_date> <leg2_origin> <leg2_dest> <leg2_date> ...
+    python3 search.py <origin> <destination> <departure_date> [return_date] [adults]
 
 Examples:
     # One-way flight
-    python3 search.py search_flights PEK CDG 2026-03-15 1 false
+    python3 search.py PEK CDG 2026-03-15
 
     # Round-trip flight
-    python3 search.py search_flights PEK CDG 2026-03-15 2026-03-25 2 false
+    python3 search.py PEK CDG 2026-03-15 2026-03-25 2
 
-    # Multi-city (Beijing -> Paris -> London)
-    python3 search.py multi_city PEK CDG 2026-03-15 CDG LHR 2026-03-20
+Note: Tool name verified from amadeus-mcp-server@1.0.0 source code (build/index.js)
+      Actual tool: get_flights (NOT search_flights)
+      No multi-city support in this MCP version.
 """
 
 import json
@@ -87,59 +87,6 @@ def search_flights(
         client.close()
 
 
-def multi_city_search(*legs) -> dict:
-    """
-    Search for multi-city flights
-
-    Args:
-        *legs: Variable number of leg tuples (origin, destination, date)
-              Each leg is 3 arguments: origin_code, dest_code, departure_date
-
-    Returns:
-        Multi-city flight search results
-
-    Example:
-        multi_city_search('PEK', 'CDG', '2026-03-15', 'CDG', 'LHR', '2026-03-20')
-    """
-    if len(legs) % 3 != 0:
-        raise ValueError(
-            "Invalid number of arguments. Each leg requires 3 values: "
-            "origin, destination, date"
-        )
-
-    # Parse legs
-    flight_legs = []
-    for i in range(0, len(legs), 3):
-        flight_legs.append({
-            "originLocationCode": legs[i].upper(),
-            "destinationLocationCode": legs[i + 1].upper(),
-            "departureDate": legs[i + 2]
-        })
-
-    client = MCPClient()
-
-    try:
-        # Initialize client
-        def init():
-            client.initialize()
-
-        retry_with_backoff(init)
-
-        # Search multi-city
-        def search():
-            return client.call_tool("multi_city_search", {
-                "itineraries": flight_legs,
-                "adults": 1
-            })
-
-        result = retry_with_backoff(search)
-
-        return result
-
-    finally:
-        client.close()
-
-
 def format_flight_results(results: dict) -> str:
     """
     Format flight search results for human-readable output
@@ -200,57 +147,29 @@ def format_flight_results(results: dict) -> str:
 
 def main():
     """Main CLI entry point"""
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 4:
         print(__doc__)
         sys.exit(1)
 
-    command = sys.argv[1]
-
     try:
-        if command == "search_flights":
-            # Parse arguments
-            if len(sys.argv) < 5:
-                print("Usage: search.py search_flights <origin> <destination> <departure_date> [return_date] [adults] [nonstop]")
-                sys.exit(1)
+        # Parse arguments (simplified - no subcommand needed)
+        origin = sys.argv[1]
+        destination = sys.argv[2]
+        departure_date = sys.argv[3]
+        return_date = sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] != 'null' else None
+        adults = int(sys.argv[5]) if len(sys.argv) > 5 else 1
 
-            origin = sys.argv[2]
-            destination = sys.argv[3]
-            departure_date = sys.argv[4]
-            return_date = sys.argv[5] if len(sys.argv) > 5 and sys.argv[5] != 'null' else None
-            adults = int(sys.argv[6]) if len(sys.argv) > 6 else 1
-            nonstop = sys.argv[7].lower() == 'true' if len(sys.argv) > 7 else False
+        # Search flights
+        results = search_flights(
+            origin=origin,
+            destination=destination,
+            departure_date=departure_date,
+            return_date=return_date,
+            adults=adults
+        )
 
-            # Search flights
-            results = search_flights(
-                origin=origin,
-                destination=destination,
-                departure_date=departure_date,
-                return_date=return_date,
-                adults=adults,
-                nonstop=nonstop
-            )
-
-            # Output results
-            print(json.dumps(results, indent=2))
-
-        elif command == "multi_city":
-            if len(sys.argv) < 5:
-                print("Usage: search.py multi_city <origin1> <dest1> <date1> <origin2> <dest2> <date2> ...")
-                sys.exit(1)
-
-            # Get all leg arguments
-            legs = sys.argv[2:]
-
-            # Search multi-city
-            results = multi_city_search(*legs)
-
-            # Output results
-            print(json.dumps(results, indent=2))
-
-        else:
-            print(f"Unknown command: {command}")
-            print(__doc__)
-            sys.exit(1)
+        # Output results
+        print(json.dumps(results, indent=2))
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

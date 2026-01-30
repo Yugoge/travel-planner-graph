@@ -10,6 +10,14 @@ user-invocable: true
 
 Search vacation rentals with Airbnb data.
 
+**MCP Server**: `@openbnb/mcp-server-airbnb` (v0.1.3)
+**API Coverage**: 2/2 tools (100%)
+
+## Available Tools
+
+1. **airbnb_search** - Search for Airbnb listings with filters and pagination
+2. **airbnb_listing_details** - Get detailed information about a specific listing
+
 ## How to Use
 
 ```bash
