@@ -6,7 +6,9 @@ skills:
   - google-maps
   - gaode-maps
   - amadeus-flight
-  - openweathermap
+  - 12306
+  - duffel-flights
+  - weather
 ---
 
 You are a specialized inter-city transportation research agent for travel planning.
