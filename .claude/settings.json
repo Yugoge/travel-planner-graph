@@ -1,0 +1,192 @@
+{
+  "description": "Travel Planner Project - Claude Code Settings",
+  "version": "1.0.0",
+  "mcp_servers": {
+    "note": "MCP servers must be configured by user. This file documents expected configuration.",
+    "gaode_maps": {
+      "description": "Gaode Maps (高德地图) API for route planning, POI search, and geocoding in China",
+      "package": "@amap/amap-maps-mcp-server",
+      "required_for": [
+        "gaode-maps skill",
+        "transportation agent (enhanced routing)",
+        "meals/accommodation/attractions agents (POI search)",
+        "timeline agent (distance calculation)"
+      ],
+      "configuration_methods": [
+        {
+          "method": "streamable_http",
+          "recommended": true,
+          "config_location": "~/.config/Claude/claude_desktop_config.json",
+          "config_example": {
+            "mcpServers": {
+              "amap-maps": {
+                "url": "https://mcp.amap.com/mcp?key=YOUR_AMAP_API_KEY"
+              }
+            }
+          },
+          "notes": "Fastest and most reliable connection method"
+        },
+        {
+          "method": "nodejs_io",
+          "recommended": false,
+          "config_location": "~/.config/Claude/claude_desktop_config.json",
+          "config_example": {
+            "mcpServers": {
+              "amap-maps": {
+                "command": "npx",
+                "args": ["-y", "@amap/amap-maps-mcp-server"],
+                "env": {
+                  "AMAP_MAPS_API_KEY": "YOUR_AMAP_API_KEY"
+                }
+              }
+            }
+          },
+          "notes": "Requires Node.js runtime"
+        }
+      ],
+      "setup_instructions": {
+        "step_1": "Get API key from https://console.amap.com/dev/key/app",
+        "step_2": "Add MCP server config to claude_desktop_config.json",
+        "step_3": "Replace YOUR_AMAP_API_KEY with actual key",
+        "step_4": "Restart Claude Desktop"
+      },
+      "rate_limits": {
+        "free_tier": "2,000-3,000 calls/day",
+        "basic_tier": "300,000 calls/day",
+        "monitor_usage": "https://console.amap.com/"
+      },
+      "security": {
+        "never_commit_keys": true,
+        "use_environment_variables": true,
+        "config_file_location": "User's home directory (not in git repo)"
+      },
+      "available_tools": [
+        "driving_route",
+        "walking_route",
+        "cycling_route",
+        "transit_route",
+        "poi_search_keyword",
+        "poi_search_nearby",
+        "poi_detail",
+        "geocode",
+        "reverse_geocode",
+        "ip_location",
+        "weather_info",
+        "distance_measure"
+      ],
+      "coordinate_system": "GCJ-02 (China-specific)",
+      "response_language": "Chinese (native API responses)"
+    }
+  },
+  "permissions": {
+    "note": "Claude Code permissions for tool usage",
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash",
+      "WebSearch",
+      "Skill",
+      "Task",
+      "TodoWrite",
+      "Glob",
+      "Grep"
+    ],
+    "skill_invocations": {
+      "gaode-maps": {
+        "description": "Invoke Gaode Maps skill for route planning and POI search",
+        "usage": "/gaode-maps [category]",
+        "categories": ["routing", "poi-search", "geocoding", "utilities"],
+        "allowed_agents": ["transportation", "meals", "accommodation", "attractions", "shopping", "timeline"]
+      },
+      "plan": {
+        "description": "Multi-agent travel planning orchestrator",
+        "usage": "/plan [destination]",
+        "invokes_agents": ["meals", "accommodation", "attractions", "entertainment", "shopping", "transportation", "timeline", "budget"]
+      }
+    }
+  },
+  "project_structure": {
+    ".claude/commands/": "Slash commands (skills)",
+    ".claude/agents/": "Subagent definitions",
+    ".claude/hooks/": "Lifecycle hooks (if any)",
+    "scripts/": "Bash scripts for validation and HTML generation",
+    "scripts/todo/": "Python scripts for workflow management",
+    "data/": "Trip-specific data (one subdirectory per trip)"
+  },
+  "data_flow": {
+    "pattern": "equity-research (file-based communication)",
+    "input": "data/{destination-slug}/requirements-skeleton.json",
+    "agent_outputs": [
+      "data/{destination-slug}/meals.json",
+      "data/{destination-slug}/accommodation.json",
+      "data/{destination-slug}/attractions.json",
+      "data/{destination-slug}/entertainment.json",
+      "data/{destination-slug}/shopping.json",
+      "data/{destination-slug}/transportation.json",
+      "data/{destination-slug}/timeline.json",
+      "data/{destination-slug}/budget.json"
+    ],
+    "final_output": "travel-plan-{destination-slug}.html"
+  },
+  "skills": {
+    "gaode-maps": {
+      "pattern": "progressive_disclosure",
+      "main_file": ".claude/commands/gaode-maps.md",
+      "token_count": "~200 tokens (main file only)",
+      "category_files": [
+        ".claude/commands/gaode-maps/tools/routing.md",
+        ".claude/commands/gaode-maps/tools/poi-search.md",
+        ".claude/commands/gaode-maps/tools/geocoding.md",
+        ".claude/commands/gaode-maps/tools/utilities.md"
+      ],
+      "examples": [
+        ".claude/commands/gaode-maps/examples/inter-city-route.md"
+      ],
+      "load_strategy": "Load main file initially, load categories on demand",
+      "token_savings": "85-98% compared to loading all tools upfront"
+    },
+    "plan": {
+      "type": "orchestrator",
+      "main_file": ".claude/commands/plan.md",
+      "workflow_phases": [
+        "BA requirement collection",
+        "Skeleton initialization",
+        "Parallel agent execution (6 agents)",
+        "Serial agent execution (timeline, budget)",
+        "Validation and conflict review",
+        "HTML generation",
+        "Refinement loop"
+      ]
+    }
+  },
+  "dependencies": {
+    "runtime": "Linux, Claude Code Agent SDK",
+    "external_services": {
+      "gaode_maps_mcp": {
+        "package": "@amap/amap-maps-mcp-server",
+        "installation": "User must configure (see mcp_servers section)",
+        "required": false,
+        "fallback": "WebSearch tool"
+      }
+    }
+  },
+  "best_practices": {
+    "credential_management": "Never hardcode API keys in skill files or code",
+    "progressive_disclosure": "Load only necessary tool definitions to optimize tokens",
+    "error_handling": "Implement retry logic with exponential backoff for transient errors",
+    "graceful_degradation": "Fall back to WebSearch if MCP unavailable",
+    "language_support": "Accept both English and Chinese inputs for Chinese destinations",
+    "file_based_communication": "Agents communicate via JSON files, not direct invocation",
+    "validation_scripts": "Run validation after each agent phase",
+    "git_workflow": "Use checkpoints for auto-save, commit manually after milestones"
+  },
+  "notes": [
+    "This is a documentation file for project configuration",
+    "MCP servers must be configured by the user in their Claude Desktop config",
+    "API keys should never be committed to the repository",
+    "The gaode-maps skill provides enhanced routing for Chinese destinations",
+    "Transportation agent will automatically use Gaode Maps if available",
+    "All agents fall back to WebSearch if MCP tools are unavailable"
+  ]
+}
