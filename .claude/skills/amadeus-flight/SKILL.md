@@ -57,12 +57,11 @@ Load categories on demand:
 
 ## Workflow
 
-1. Load tool category: `/amadeus-flight search`
-2. Read tool documentation from loaded file
-3. Invoke MCP tools using documented parameters
-4. Parse response and structure data
-5. Handle errors with retry logic (3 attempts)
-6. Fall back to WebSearch if MCP unavailable
+1. Execute Python scripts directly via Bash tool
+2. Scripts communicate with MCP server via npx and JSON-RPC 2.0
+3. Parse JSON response from script output
+4. Structure data for agent use
+5. Handle errors with automatic retry logic (3 attempts with exponential backoff)
 
 ## MCP Server Setup
 
