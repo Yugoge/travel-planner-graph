@@ -50,7 +50,7 @@ def poi_search_keyword(keywords: str, city: Optional[str] = None,
         if types:
             arguments["types"] = types
 
-        response = client.call_tool("poi_search_keyword", arguments)
+        response = client.call_tool("maps_text_search", arguments)
         result = parse_json_response(response)
 
         return result
@@ -94,7 +94,7 @@ def poi_search_nearby(location: str, keywords: Optional[str] = None,
         if types:
             arguments["types"] = types
 
-        response = client.call_tool("poi_search_nearby", arguments)
+        response = client.call_tool("maps_around_search", arguments)
         result = parse_json_response(response)
 
         return result
@@ -125,7 +125,7 @@ def poi_detail(poi_id: str) -> dict:
             "id": poi_id
         }
 
-        response = client.call_tool("poi_detail", arguments)
+        response = client.call_tool("maps_search_detail", arguments)
         result = parse_json_response(response)
 
         return result

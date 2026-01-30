@@ -41,7 +41,7 @@ def weather_info(city: str, extensions: str = "base") -> dict:
             "extensions": extensions
         }
 
-        response = client.call_tool("weather_info", arguments)
+        response = client.call_tool("maps_weather", arguments)
         result = parse_json_response(response)
 
         return result
@@ -76,7 +76,7 @@ def distance_measure(origins: str, destination: str, distance_type: int = 1) -> 
             "type": str(distance_type)
         }
 
-        response = client.call_tool("distance_measure", arguments)
+        response = client.call_tool("maps_distance", arguments)
         result = parse_json_response(response)
 
         return result

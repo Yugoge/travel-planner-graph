@@ -43,7 +43,7 @@ def geocode(address: str, city: Optional[str] = None) -> dict:
         if city:
             arguments["city"] = city
 
-        response = client.call_tool("geocode", arguments)
+        response = client.call_tool("maps_geo", arguments)
         result = parse_json_response(response)
 
         return result
@@ -78,7 +78,7 @@ def regeocode(location: str, radius: int = 1000) -> dict:
             "radius": str(radius)
         }
 
-        response = client.call_tool("reverse_geocode", arguments)
+        response = client.call_tool("maps_regeocode", arguments)
         result = parse_json_response(response)
 
         return result
@@ -111,7 +111,7 @@ def ip_location(ip: Optional[str] = None) -> dict:
         if ip:
             arguments["ip"] = ip
 
-        response = client.call_tool("ip_location", arguments)
+        response = client.call_tool("maps_ip_location", arguments)
         result = parse_json_response(response)
 
         return result

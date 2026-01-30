@@ -1,0 +1,218 @@
+{
+  "request_id": "dev-gaode-remaining-scripts-fix-20260130",
+  "timestamp": "2026-01-30T18:30:00Z",
+  "priority": "HIGH",
+  "objective": "Fix tool name mismatches in remaining gaode-maps scripts (POI search, geocoding, utilities)",
+
+  "background": {
+    "previous_fix": "routing.py tool names fixed successfully (BUG-002)",
+    "discovery": "POI search script also has tool name mismatches - same root cause as routing bug",
+    "actual_mcp_tools": "Listed all 12 available tools from MCP server via list_tools.py"
+  },
+
+  "actual_mcp_tool_names": {
+    "routing": {
+      "maps_direction_driving": "✅ Already fixed",
+      "maps_direction_transit_integrated": "✅ Already fixed",
+      "maps_direction_walking": "✅ Already fixed",
+      "maps_bicycling": "✅ Already fixed"
+    },
+    "poi_search": {
+      "maps_text_search": "关键词搜索 (keyword search)",
+      "maps_around_search": "周边搜索 (nearby search)",
+      "maps_search_detail": "POI详情 (POI details)"
+    },
+    "geocoding": {
+      "maps_geo": "地理编码 (geocode address to coordinates)",
+      "maps_regeocode": "逆地理编码 (reverse geocode coordinates to address)",
+      "maps_ip_location": "IP定位 (IP address to location)"
+    },
+    "utilities": {
+      "maps_distance": "距离测量 (distance calculation)",
+      "maps_weather": "天气查询 (weather lookup)"
+    }
+  },
+
+  "files_to_fix": [
+    {
+      "file": ".claude/skills/gaode-maps/scripts/poi_search.py",
+      "current_bugs": [
+        {
+          "line": 53,
+          "function": "poi_search_keyword()",
+          "wrong_tool": "poi_search_keyword",
+          "correct_tool": "maps_text_search",
+          "parameters": {
+            "keywords": "required",
+            "city": "optional",
+            "types": "optional"
+          }
+        },
+        {
+          "line": 97,
+          "function": "poi_search_nearby()",
+          "wrong_tool": "poi_search_nearby",
+          "correct_tool": "maps_around_search",
+          "parameters": {
+            "location": "required",
+            "keywords": "optional",
+            "radius": "optional (default 1000m)"
+          }
+        },
+        {
+          "line": 128,
+          "function": "poi_detail()",
+          "wrong_tool": "poi_detail",
+          "correct_tool": "maps_search_detail",
+          "parameters": {
+            "id": "required (POI ID from search results)"
+          }
+        }
+      ]
+    },
+    {
+      "file": ".claude/skills/gaode-maps/scripts/geocoding.py",
+      "estimated_bugs": [
+        {
+          "function": "geocode()",
+          "likely_wrong_tool": "geocode",
+          "correct_tool": "maps_geo",
+          "parameters": {
+            "address": "required",
+            "city": "optional"
+          }
+        },
+        {
+          "function": "reverse_geocode()",
+          "likely_wrong_tool": "reverse_geocode",
+          "correct_tool": "maps_regeocode",
+          "parameters": {
+            "location": "required (format: longitude,latitude)"
+          }
+        },
+        {
+          "function": "ip_location()",
+          "likely_wrong_tool": "ip_location",
+          "correct_tool": "maps_ip_location",
+          "parameters": {
+            "ip": "required"
+          }
+        }
+      ]
+    },
+    {
+      "file": ".claude/skills/gaode-maps/scripts/utilities.py",
+      "estimated_bugs": [
+        {
+          "function": "distance_measure()",
+          "likely_wrong_tool": "distance_measure",
+          "correct_tool": "maps_distance",
+          "parameters": {
+            "origins": "required (can be multiple, separated by |)",
+            "destination": "required",
+            "type": "optional (1=driving, 0=straight line, 3=walking)"
+          }
+        },
+        {
+          "function": "weather_info()",
+          "likely_wrong_tool": "weather_info",
+          "correct_tool": "maps_weather",
+          "parameters": {
+            "city": "required (city name or adcode)"
+          }
+        }
+      ]
+    }
+  ],
+
+  "implementation_strategy": {
+    "step_1": "Read all 3 files to identify exact tool call lines",
+    "step_2": "Replace tool names with correct MCP server names",
+    "step_3": "Verify parameter mappings match MCP server expectations",
+    "step_4": "Test each script with real queries",
+    "step_5": "Generate implementation report"
+  },
+
+  "test_cases": {
+    "poi_search": {
+      "keyword_search": {
+        "command": "python3 scripts/poi_search.py keyword '火锅' '北京' '' 10",
+        "expected": "List of hotpot restaurants in Beijing with names, addresses, coordinates"
+      },
+      "nearby_search": {
+        "command": "python3 scripts/poi_search.py nearby '116.407387,39.904179' '餐厅' '' 1000 10",
+        "expected": "List of restaurants within 1km of Tiananmen with distances"
+      }
+    },
+    "geocoding": {
+      "address_to_coords": {
+        "command": "python3 scripts/geocoding.py geocode '北京市朝阳区建国路'",
+        "expected": "Coordinates for the address"
+      },
+      "coords_to_address": {
+        "command": "python3 scripts/geocoding.py reverse_geocode '116.407387,39.904179'",
+        "expected": "Address for Tiananmen Square"
+      }
+    },
+    "utilities": {
+      "distance": {
+        "command": "python3 scripts/utilities.py distance '116.407387,39.904179' '116.397128,39.916527' 0",
+        "expected": "Straight-line distance between two points"
+      },
+      "weather": {
+        "command": "python3 scripts/utilities.py weather '北京'",
+        "expected": "Current weather information for Beijing"
+      }
+    }
+  },
+
+  "success_criteria": [
+    "All tool names updated to match actual MCP server",
+    "poi_search.py: 3 tool names fixed",
+    "geocoding.py: 3 tool names fixed",
+    "utilities.py: 2 tool names fixed",
+    "All test cases execute without 'Unknown tool' errors",
+    "Valid JSON output returned for all test cases",
+    "No regression in routing.py (already fixed)"
+  ],
+
+  "validation_commands": [
+    {
+      "description": "Verify no old tool names remain in POI search",
+      "command": "grep -n 'poi_search_keyword\\|poi_search_nearby\\|poi_detail' .claude/skills/gaode-maps/scripts/poi_search.py | grep call_tool",
+      "expected": "No matches (all replaced)"
+    },
+    {
+      "description": "Verify new tool names in POI search",
+      "command": "grep -n 'maps_text_search\\|maps_around_search\\|maps_search_detail' .claude/skills/gaode-maps/scripts/poi_search.py",
+      "expected": "3 matches (lines with tool calls)"
+    },
+    {
+      "description": "Test POI keyword search",
+      "command": "cd .claude/skills/gaode-maps && python3 scripts/poi_search.py keyword '火锅' '北京' '' 5",
+      "expected": "Valid JSON with restaurant data"
+    }
+  ],
+
+  "scope": {
+    "in_scope": [
+      "Fix poi_search.py tool names (3 fixes)",
+      "Fix geocoding.py tool names (3 fixes)",
+      "Fix utilities.py tool names (2 fixes)",
+      "Test all fixed scripts with real queries",
+      "Ensure routing.py fixes remain intact"
+    ],
+    "out_of_scope": [
+      "Other skills (google-maps, yelp, etc.)",
+      "SKILL.md updates (documentation already references scripts)",
+      "Agent file changes (already correct)"
+    ]
+  },
+
+  "related_context": {
+    "previous_bug_fix": "docs/dev/skill-bug-fix-context-20260130.json",
+    "routing_fix_success": "All 4 routing modes tested successfully",
+    "mcp_tools_list": "12 tools total from MCP server",
+    "root_cause": "Scripts written with assumed tool names without verifying MCP server"
+  }
+}
