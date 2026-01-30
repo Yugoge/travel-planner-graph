@@ -3,6 +3,7 @@ name: transportation
 description: Research inter-city transportation options for days with location changes
 model: sonnet
 skills:
+  - google-maps
   - gaode-maps
   - amadeus-flight
 ---

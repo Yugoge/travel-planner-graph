@@ -3,7 +3,9 @@ name: attractions
 description: Research sightseeing and activities based on user requirements
 model: sonnet
 skills:
+  - google-maps
   - tripadvisor
+  - openweathermap
 ---
 
 
@@ -126,3 +128,35 @@ Return only: `complete`
 - Always include data source in output (tripadvisor or web_search)
 
 **See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for complete example
+
+## Weather Integration
+
+**Use OpenWeatherMap to optimize attraction selection**:
+
+1. Load forecast tools: `/openweathermap forecast`
+2. Get 5-day forecast for destination
+3. Adjust attraction recommendations based on weather:
+   - **Clear weather**: Outdoor parks, viewpoints, scenic areas
+   - **Rain**: Museums, indoor attractions, covered markets
+   - **Hot weather** (>30°C): Morning outdoor activities, afternoon indoor attractions
+   - **Cold weather** (<10°C): Indoor attractions, shorter outdoor visits
+4. Check air quality (AQI) for outdoor attractions:
+   - AQI >3: Prioritize indoor attractions
+   - AQI 1-2: All outdoor activities safe
+5. Check weather alerts for severe conditions:
+   - Extreme alerts: Avoid all outdoor attractions
+   - Severe alerts: Indoor alternatives only
+6. Include weather notes in attraction recommendations
+
+**Example workflow**:
+```
+Day 2 forecast: Rain 75%, 15°C
+→ Recommend: Museums, shopping malls, indoor cultural venues
+→ Note: "Indoor attractions recommended due to high rain probability"
+
+Day 4 forecast: Clear, 22°C, AQI 2
+→ Recommend: Parks, viewpoints, outdoor monuments
+→ Note: "Excellent weather for outdoor sightseeing"
+```
+
+**See**: `.claude/commands/openweathermap/examples/weather-check.md` for integration examples

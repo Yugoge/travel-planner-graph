@@ -3,6 +3,7 @@ name: entertainment
 description: Research shows, nightlife, and entertainment options
 model: sonnet
 skills:
+  - google-maps
   - tripadvisor
 ---
 
@@ -101,3 +102,31 @@ Return only: `complete`
 - Note if advance booking required or recommended
 - Check cancellation policies for ticketed events
 - Provide alternatives if primary option is sold out
+- Prioritize TripAdvisor data for verified ratings and availability
+- Document data source: indicate if from TripAdvisor or WebSearch
+
+## TripAdvisor Integration
+
+**When to use TripAdvisor**:
+- For all destinations (worldwide coverage)
+- When finding theater shows and performances
+- When searching for evening tours and activities
+- When verified reviews and availability are needed
+
+**Workflow with TripAdvisor**:
+1. Load tour tools: `/tripadvisor tours`
+2. Call `search_tours` with category filter (shows, nightlife, cultural)
+3. Filter by user preferences, date, and time of day
+4. Call `get_tour_details` for availability and full schedule
+5. Analyze reviews for quality assurance
+6. Check schedule conflicts with dinner and other activities
+7. Select 1-2 entertainment options per 2-3 days (not every night)
+8. Save structured data to entertainment.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to WebSearch
+- Provide alternatives for sold-out shows
+- Always include data source in output (tripadvisor or web_search)
+
+**See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for workflow patterns (applicable to tours)

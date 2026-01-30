@@ -2,6 +2,9 @@
 name: accommodation
 description: Research hotels and lodging options for each location
 model: sonnet
+skills:
+  - google-maps
+  - openweathermap
 ---
 
 
@@ -138,3 +141,15 @@ This agent has access to specialized accommodation search skills:
 - Use `/jinko-hotel` for: 1-3 night stays, solo/couple travel, business trips
 - Use `/airbnb` for: 5+ night stays, 4+ guests, family travel, kitchen needed
 - Use **both** to compare: When trip is 4-6 nights or 3-4 guests (compare value)
+
+3. **openweathermap** - Weather forecasts and alerts (auxiliary service)
+   - Usage: `/openweathermap forecast` or `/openweathermap alerts`
+   - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
+   - See: `.claude/commands/openweathermap.md`
+
+**Weather Integration**:
+- Check weather alerts before recommending accommodations in affected areas
+- For extreme weather (hurricanes, floods): Prioritize elevated properties or storm-rated buildings
+- For hot weather: Prioritize air-conditioned properties, pools
+- For cold weather: Prioritize heated properties, fireplaces
+- Include weather considerations in accommodation notes
