@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search for train tickets on 12306."""
+"""Get interline (transfer) tickets for routes requiring train changes."""
 
 import sys
 import os
@@ -12,8 +12,8 @@ from mcp_client import MCPClient, format_json_output
 
 
 def main():
-    """Search for train tickets."""
-    parser = argparse.ArgumentParser(description="Search for 12306 train tickets")
+    """Get interline tickets."""
+    parser = argparse.ArgumentParser(description="Get interline tickets (transfers)")
     parser.add_argument("from_station", help="Departure station name or code")
     parser.add_argument("to_station", help="Arrival station name or code")
     parser.add_argument("date", help="Travel date (YYYY-MM-DD)")
@@ -23,7 +23,6 @@ def main():
     parser.add_argument("--sort", choices=["lishi", "start-time"], help="Sort method")
     parser.add_argument("--reverse", action="store_true", help="Reverse sort order")
     parser.add_argument("--limit", type=int, help="Limit number of results")
-    parser.add_argument("--format", choices=["json", "csv"], default="json", help="Output format")
 
     args = parser.parse_args()
 
@@ -47,16 +46,11 @@ def main():
         arguments["sort_reverse"] = True
     if args.limit:
         arguments["limit"] = args.limit
-    if args.format:
-        arguments["format"] = args.format
 
     try:
         with MCPClient(server_path) as client:
-            result = client.call_tool("get-tickets", arguments)
-            if args.format == "json":
-                print(format_json_output(result))
-            else:
-                print(result if isinstance(result, str) else format_json_output(result))
+            result = client.call_tool("get-interline-tickets", arguments)
+            print(format_json_output(result))
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
