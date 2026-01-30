@@ -1,0 +1,287 @@
+{
+  "task_id": "dev-mcp-script-conversion-20260130",
+  "timestamp": "2026-01-30T16:00:00Z",
+  "priority": "CRITICAL",
+  "objective": "Convert all 8 MCPs from documentation-only to executable Python script-based implementation, completely removing WebSearch fallback",
+
+  "problem_statement": {
+    "current_state": "All 8 skills (.claude/skills/*) contain only documentation. Agents see the skills but choose WebSearch because no executable code is provided. MCP tools are not exposed to Claude in this environment.",
+    "issues": [
+      "Skills are documentation-only, no executable implementation",
+      "Agents default to WebSearch fallback instead of using MCP",
+      "MCP tools (mcp__plugin_*) are not available in Claude's tool list",
+      "Context pollution if MCPs configured in Claude Code's MCP integration",
+      "No direct way for agents to call MCP servers"
+    ],
+    "root_cause": "Skills were created as documentation following MCP tool naming conventions, but without actual code to execute MCP calls"
+  },
+
+  "solution_approach": {
+    "strategy": "Python script-based MCP integration within skills",
+    "key_principles": [
+      "Each skill contains Python scripts that communicate with MCP servers via npx",
+      "Scripts use JSON-RPC 2.0 protocol over stdio",
+      "No dependency on Claude Code's MCP integration",
+      "Scripts are executed by agents via Bash tool",
+      "Completely remove all WebSearch fallback",
+      "Progressive disclosure maintained (scripts loaded on demand)"
+    ],
+    "advantages": [
+      "No context pollution (MCP tools not in Claude's tool list)",
+      "Agents can directly execute scripts via Bash",
+      "Works without MCP server configuration in Claude Code",
+      "Portable across environments",
+      "Clear separation: documentation in SKILL.md, implementation in scripts/"
+    ]
+  },
+
+  "technical_implementation": {
+    "directory_structure": {
+      "pattern": ".claude/skills/<skill-name>/",
+      "files": [
+        "SKILL.md - Main skill file with YAML frontmatter and usage documentation",
+        "scripts/ - Directory containing Python MCP client scripts",
+        "scripts/mcp_client.py - Base MCP client class (JSON-RPC over stdio)",
+        "scripts/<tool-category>.py - Tool category implementations",
+        "tools/ - Tool documentation (unchanged, for reference)",
+        "examples/ - Usage examples (unchanged)"
+      ]
+    },
+
+    "python_mcp_client": {
+      "description": "Base class for communicating with MCP servers via JSON-RPC 2.0 over stdio",
+      "protocol": "JSON-RPC 2.0",
+      "transport": "stdio (stdin/stdout)",
+      "execution": "npx -y @package/mcp-server with environment variables",
+      "features": [
+        "Initialize connection",
+        "List available tools",
+        "Call tools with parameters",
+        "Parse and return results",
+        "Error handling with retries"
+      ]
+    },
+
+    "script_execution_pattern": {
+      "agent_invokes": "Bash tool to execute Python script",
+      "script_calls": "npx to launch MCP server",
+      "communication": "JSON-RPC messages via stdin/stdout",
+      "result": "Parsed JSON returned to agent"
+    }
+  },
+
+  "example_implementation": {
+    "skill": "gaode-maps",
+    "description": "Complete working example provided by user",
+    "files": {
+      "SKILL.md": "Documents how to execute scripts with clear examples",
+      "scripts/mcp_client.py": "Base MCP client class",
+      "scripts/geocoding.py": "Implements geocode() and regeocode() functions",
+      "examples/geocode-example.md": "Shows actual script execution"
+    },
+    "usage_pattern": "python3 .claude/skills/gaode-maps/scripts/geocoding.py geocode '北京市朝阳区'",
+    "key_features": [
+      "Standalone executable scripts",
+      "Environment variables for API keys",
+      "JSON-RPC communication",
+      "Parsed, human-readable output",
+      "Error handling with retries"
+    ]
+  },
+
+  "mcps_to_convert": [
+    {
+      "name": "gaode-maps",
+      "package": "@amap/amap-maps-mcp-server",
+      "env_vars": {"AMAP_MAPS_API_KEY": "99e97af6fd426ce3cfc45d22d26e78e3"},
+      "url_alternative": "https://mcp.amap.com/mcp?key=99e97af6fd426ce3cfc45d22d26e78e3",
+      "tool_categories": ["routing", "poi-search", "geocoding", "utilities"],
+      "agents": ["transportation", "meals", "accommodation", "attractions", "shopping", "entertainment"],
+      "priority": "HIGH - user provided complete example"
+    },
+    {
+      "name": "google-maps",
+      "package": "@modelcontextprotocol/server-google-maps",
+      "env_vars": {"GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"},
+      "tool_categories": ["places", "routing", "weather"],
+      "agents": ["transportation", "meals", "accommodation", "attractions", "shopping", "entertainment"],
+      "priority": "HIGH - international travel"
+    },
+    {
+      "name": "yelp",
+      "package": "@yelp/yelp-mcp-server",
+      "env_vars": {"YELP_API_KEY": "${YELP_API_KEY}"},
+      "tool_categories": ["search", "details"],
+      "agents": ["meals"],
+      "priority": "HIGH - restaurant search"
+    },
+    {
+      "name": "tripadvisor",
+      "package": "@tripadvisor/tripadvisor-mcp-server",
+      "env_vars": {"TRIPADVISOR_API_KEY": "${TRIPADVISOR_API_KEY}"},
+      "tool_categories": ["attractions", "reviews", "bookings"],
+      "agents": ["attractions", "entertainment"],
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "jinko-hotel",
+      "package": "@jinko/hotel-booking-mcp-server",
+      "env_vars": {"JINKO_API_KEY": "${JINKO_API_KEY}"},
+      "tool_categories": ["search", "details", "booking"],
+      "agents": ["accommodation"],
+      "priority": "HIGH - hotel booking"
+    },
+    {
+      "name": "airbnb",
+      "package": "@openbnb/mcp-server-airbnb",
+      "env_vars": {},
+      "tool_categories": ["search", "details"],
+      "agents": ["accommodation"],
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "amadeus-flight",
+      "package": "@amadeus/flight-search-mcp-server",
+      "env_vars": {"AMADEUS_API_KEY": "${AMADEUS_API_KEY}", "AMADEUS_API_SECRET": "${AMADEUS_API_SECRET}"},
+      "tool_categories": ["search", "pricing", "details"],
+      "agents": ["transportation"],
+      "priority": "HIGH - international flights"
+    },
+    {
+      "name": "openweathermap",
+      "package": "@openweathermap/openweathermap-mcp-server",
+      "env_vars": {"OPENWEATHER_API_KEY": "${OPENWEATHER_API_KEY}"},
+      "tool_categories": ["current", "forecast", "alerts"],
+      "agents": ["transportation", "meals", "accommodation", "attractions", "shopping", "entertainment", "timeline", "budget"],
+      "priority": "HIGH - all agents use weather"
+    }
+  ],
+
+  "requirements": {
+    "mandatory": [
+      "Completely remove all WebSearch fallback from skills and agents",
+      "Implement Python MCP client scripts for all 8 MCPs",
+      "Follow exact pattern from user's gaode-maps example",
+      "Scripts must be executable via Bash tool",
+      "Scripts must communicate via JSON-RPC 2.0 over stdio",
+      "Use npx to launch MCP servers on-demand",
+      "Environment variables for API keys (never hardcode)",
+      "Update SKILL.md with clear script execution examples",
+      "Update agent prompts to execute scripts instead of WebSearch",
+      "Progressive disclosure maintained (scripts in subdirectories)",
+      "Error handling with retry logic",
+      "Remove MCP configuration from ~/.config/Claude/claude_desktop_config.json"
+    ],
+    "forbidden": [
+      "No WebSearch fallback anywhere",
+      "No hardcoded API keys in any file",
+      "No mcp__ tool references in agent prompts",
+      "No MCP server configuration in Claude Code config",
+      "No assumptions about MCP tool availability"
+    ]
+  },
+
+  "implementation_steps": [
+    {
+      "step": 1,
+      "task": "Remove all WebSearch references",
+      "files": [
+        ".claude/skills/*/SKILL.md - Remove fallback strategy sections",
+        ".claude/agents/*.md - Remove WebSearch from allowed-tools and prompts"
+      ]
+    },
+    {
+      "step": 2,
+      "task": "Create base MCP client",
+      "action": "Create scripts/mcp_client.py in each skill directory",
+      "template": "Use user's provided example as reference"
+    },
+    {
+      "step": 3,
+      "task": "Implement tool category scripts",
+      "action": "For each tool category, create scripts/<category>.py with functions",
+      "example": "scripts/geocoding.py with geocode() and regeocode() functions"
+    },
+    {
+      "step": 4,
+      "task": "Update SKILL.md files",
+      "action": "Add 'Script Execution' section showing how to run scripts",
+      "example": "python3 .claude/skills/gaode-maps/scripts/geocoding.py geocode '北京市'"
+    },
+    {
+      "step": 5,
+      "task": "Update agent prompts",
+      "action": "Replace WebSearch instructions with script execution instructions",
+      "pattern": "Execute: python3 .claude/skills/<skill>/scripts/<category>.py <function> <args>"
+    },
+    {
+      "step": 6,
+      "task": "Create usage examples",
+      "action": "Add examples/ showing real script execution and output"
+    },
+    {
+      "step": 7,
+      "task": "Remove MCP config",
+      "action": "Remove mcpServers from ~/.config/Claude/claude_desktop_config.json"
+    }
+  ],
+
+  "success_criteria": {
+    "functional": [
+      "Agent executes Python script via Bash tool",
+      "Script launches MCP server via npx",
+      "JSON-RPC communication succeeds",
+      "Parsed results returned to agent",
+      "Agent uses results to answer user query",
+      "No WebSearch fallback triggered"
+    ],
+    "quality": [
+      "All 8 skills have complete script implementation",
+      "Scripts are standalone and executable",
+      "Error handling implemented with retries",
+      "Clear documentation in SKILL.md",
+      "Environment variables properly configured",
+      "No security issues (no hardcoded keys)",
+      "Progressive disclosure maintained"
+    ],
+    "verification": [
+      "Test gaode-maps: Beijing to Shanghai route",
+      "Test google-maps: Restaurant search in San Francisco",
+      "Test yelp: Top-rated restaurants in New York",
+      "Test each MCP with real API call",
+      "Verify no WebSearch usage in any test",
+      "Check token usage (should be low, scripts not in context)"
+    ]
+  },
+
+  "user_provided_example": {
+    "file": "gaode-maps/scripts/geocoding.py",
+    "shows": [
+      "MCPClient class with JSON-RPC communication",
+      "geocode() and regeocode() functions",
+      "npx execution with environment variables",
+      "stdin/stdout communication",
+      "Error handling",
+      "Parsed JSON output"
+    ],
+    "key_code_patterns": {
+      "mcp_launch": "subprocess.Popen(['npx', '-y', '@amap/amap-maps-mcp-server'], env=env, stdin=PIPE, stdout=PIPE, stderr=PIPE)",
+      "jsonrpc_call": "{'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'geocode', 'arguments': {'address': address}}}",
+      "result_parse": "response.get('result', {}).get('content', [])[0].get('text', '')"
+    }
+  },
+
+  "notes": {
+    "context_pollution": "Previous approach would load 30+ MCP tools into Claude's tool list, consuming massive tokens. This approach keeps tools in external scripts.",
+    "portability": "Scripts work on any system with Python 3 and npx, no Claude Code MCP integration needed",
+    "user_frustration": "User was extremely frustrated with previous documentation-only approach and WebSearch fallback. This must work with actual MCP calls.",
+    "testing": "User will test by invoking skills and verifying MCP is called, not WebSearch"
+  },
+
+  "parallel_execution": {
+    "strategy": "Launch 8 dev subagents in parallel, one per MCP",
+    "coordination": "Each subagent implements one MCP independently",
+    "shared_context": "This JSON file provides complete context to all subagents",
+    "expected_time": "~30 minutes with parallel execution"
+  }
+}
