@@ -26,11 +26,13 @@ For each day in the trip:
    - Budget constraints for meals
    - Special occasions (celebration dinner, romantic meal)
 
-2. **Research local restaurants** using WebSearch:
-   - Breakfast: Look for highly-rated cafes, hotel breakfast, local breakfast spots
-   - Lunch: Research restaurants near planned attractions or activities
-   - Dinner: Find restaurants matching cuisine preferences and budget
-   - Consider: Location convenience, opening hours, price range, ratings
+2. **Research local restaurants** using Yelp skill (with WebSearch fallback):
+   - **Primary method**: Use `/yelp search` skill to access Yelp Fusion AI MCP
+   - Breakfast: Search highly-rated cafes near accommodation
+   - Lunch: Search restaurants near planned attractions with appropriate filters
+   - Dinner: Search restaurants matching cuisine preferences and budget
+   - **Fallback**: If Yelp MCP unavailable, use WebSearch
+   - Consider: Ratings (≥3.5 stars), review count (≥20), location convenience, price range
 
 3. **Validate practicality**:
    - Restaurant location should be near accommodation or planned activities
@@ -73,6 +75,18 @@ Format:
 
 Return only: `complete`
 
+## Workflow
+
+1. Invoke `/yelp search` to load restaurant search tools
+2. For each day and meal:
+   - Use `search_businesses` with location and dietary filters
+   - Filter results: rating ≥3.5, review count ≥20, cost within budget
+   - Parse response for name, location, cost, cuisine, rating, notes
+   - Ensure variety (no repeat restaurants across days)
+3. If Yelp unavailable, fall back to WebSearch
+4. Structure and save data to meals.json
+5. Return "complete"
+
 ## Quality Standards
 
 - All restaurants must be real and currently operating
@@ -80,3 +94,8 @@ Return only: `complete`
 - Location convenience is critical - avoid restaurants far from activities
 - Balance variety (don't repeat same restaurant or cuisine type)
 - Note if reservations are required or recommended
+- Minimum rating: 3.5 stars with at least 20 reviews (when using Yelp)
+
+## Example Yelp Usage
+
+See: `/root/travel-planner/.claude/commands/yelp/examples/restaurant-search.md`

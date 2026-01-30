@@ -27,30 +27,60 @@ For each day in the trip:
    - Location preferences (city center, near attractions, quiet area)
    - Room type (single, double, suite, family room)
    - Special needs (accessible rooms, pet-friendly)
+   - Party size and duration (determines hotel vs rental)
 
-2. **Research accommodations** using WebSearch:
-   - Hotels, hostels, guesthouses, or vacation rentals
+2. **Determine accommodation type**:
+   - **Hotels** (use /jinko-hotel skill):
+     - Short stays (1-3 nights)
+     - Business travel
+     - Single/couple travelers
+     - Need daily housekeeping and services
+   - **Vacation Rentals** (use /airbnb skill):
+     - Extended stays (5+ nights)
+     - Family/group travel (4+ guests)
+     - Need kitchen and laundry
+     - Prefer local neighborhood experience
+
+3. **Research accommodations**:
+   - **For hotels**: Invoke `/jinko-hotel search` skill
+   - **For rentals**: Invoke `/airbnb search` skill
+   - **Hybrid approach**: Compare both options for best value
    - Location should be central to planned activities
    - Check ratings, reviews, and recent feedback
    - Verify amenities and services
    - Confirm pricing for specified dates
 
-3. **Validate selection**:
+4. **Validate selection**:
    - Location is convenient for daily activities
-   - Price aligns with budget
-   - High ratings (4+ stars preferred)
+   - Price aligns with budget (include all fees for rentals)
+   - High ratings (4+ stars for hotels, 4.5+ for rentals)
    - Available for travel dates
    - Check-in/check-out times are reasonable
+   - For rentals: Check recent reviews (within 6 months)
+   - For rentals: Verify Superhost status preferred
 
-4. **Structure data**:
+5. **Structure data**:
    ```json
    {
-     "name": "Hotel Name",
+     "name": "Accommodation Name",
      "location": "Full address or area",
      "cost": 120,
-     "type": "Hotel",
+     "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
      "amenities": ["WiFi", "Breakfast included", "Pool"],
      "notes": "Near subway station, check-in after 3pm"
+   }
+   ```
+
+   For vacation rentals, include total cost breakdown:
+   ```json
+   {
+     "name": "Apartment Name",
+     "location": "Neighborhood, City",
+     "cost": 180,
+     "total_cost": 1250,
+     "type": "Vacation Rental (Airbnb)",
+     "amenities": ["Full kitchen", "Washer", "WiFi", "Workspace"],
+     "notes": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm"
    }
    ```
 
@@ -81,7 +111,30 @@ Return only: `complete`
 
 - All accommodations must be real and bookable
 - Cost should be per night for the room (not per person) in USD
+- For vacation rentals, calculate average per night including all fees
 - Location convenience is critical - check distance to attractions
 - Consider location changes - stay near next day's departure point if changing cities
 - Include booking platforms or direct contact if relevant
 - Note cancellation policies if restrictive
+- For rentals: Prefer Superhosts with 4.5+ rating and 10+ reviews
+- For rentals: Check reviews within past 6 months
+- Compare hotel and rental options when guests >= 4 or nights >= 5
+
+## Skills Available
+
+This agent has access to specialized accommodation search skills:
+
+1. **jinko-hotel** - Hotel and traditional lodging search
+   - Usage: `/jinko-hotel search`
+   - Best for: Short stays, business travel, standardized services
+   - See: `.claude/commands/jinko-hotel.md`
+
+2. **airbnb** - Vacation rental and apartment search
+   - Usage: `/airbnb search`
+   - Best for: Extended stays, families, groups, kitchen needed
+   - See: `.claude/commands/airbnb.md`
+
+**When to use each**:
+- Use `/jinko-hotel` for: 1-3 night stays, solo/couple travel, business trips
+- Use `/airbnb` for: 5+ night stays, 4+ guests, family travel, kitchen needed
+- Use **both** to compare: When trip is 4-6 nights or 3-4 guests (compare value)

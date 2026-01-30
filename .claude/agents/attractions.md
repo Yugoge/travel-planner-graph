@@ -2,6 +2,8 @@
 name: attractions
 description: Research sightseeing and activities based on user requirements
 model: sonnet
+skills:
+  - tripadvisor
 ---
 
 
