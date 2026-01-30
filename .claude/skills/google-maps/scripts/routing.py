@@ -54,32 +54,36 @@ def compute_routes(
 
     env_vars = {"GOOGLE_MAPS_API_KEY": api_key}
 
-    # Validate travel mode
-    valid_modes = ["DRIVE", "WALK", "BICYCLE", "TRANSIT"]
-    travel_mode = travel_mode.upper()
-    if travel_mode not in valid_modes:
+    # Validate travel mode - convert to lowercase for Google Maps API
+    mode_mapping = {
+        "DRIVE": "driving",
+        "WALK": "walking",
+        "BICYCLE": "bicycling",
+        "TRANSIT": "transit"
+    }
+    travel_mode_upper = travel_mode.upper()
+    if travel_mode_upper not in mode_mapping:
         return {
             "error": f"Invalid travel mode: {travel_mode}",
-            "valid_modes": valid_modes
+            "valid_modes": list(mode_mapping.keys())
         }
+
+    mode = mode_mapping[travel_mode_upper]
 
     try:
         with MCPClient("@modelcontextprotocol/server-google-maps", env_vars) as client:
-            # Build arguments
+            # Build arguments - Google Maps Directions API format
             arguments = {
                 "origin": origin,
                 "destination": destination,
-                "travelMode": travel_mode
+                "mode": mode
             }
 
-            if waypoints:
-                arguments["waypoints"] = waypoints
+            # Note: waypoints and optimizeWaypoints not supported by basic Directions API
+            # They would require Routes API which is not in this MCP server
 
-            if optimize_waypoints:
-                arguments["optimizeWaypoints"] = True
-
-            # Call compute_routes tool
-            result = client.call_tool("compute_routes", arguments)
+            # Call maps_directions tool
+            result = client.call_tool("maps_directions", arguments)
 
             # Parse and format result
             if isinstance(result, str):

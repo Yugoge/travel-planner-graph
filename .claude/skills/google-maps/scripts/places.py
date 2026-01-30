@@ -57,8 +57,8 @@ def search_places(
             if location_bias:
                 arguments["locationBias"] = location_bias
 
-            # Call search_places tool
-            result = client.call_tool("search_places", arguments)
+            # Call maps_search_places tool
+            result = client.call_tool("maps_search_places", arguments)
 
             # Parse and format result
             if isinstance(result, str):
