@@ -220,3 +220,31 @@ This agent has access to specialized accommodation search skills:
 - Complete amenities list matches requirements
 - Reasonable house rules (no deal-breakers)
 - Flexible or moderate cancellation policy preferred
+
+---
+
+## Skill Integration: gaode-maps
+
+**When to use**: Chinese domestic destinations, need accurate Chinese addresses, POI search with Chinese names.
+
+**Workflow**:
+1. Load poi-search tools: `/gaode-maps poi-search`
+2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
+   - keywords: "酒店" (hotel) or specific hotel name
+   - city: Chinese city name (e.g., "北京", "上海")
+   - types: "080000" (accommodation category)
+3. Filter results by rating (≥4.0) and cost within budget
+4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for top 3-5 candidates
+5. Parse: name, address, rating, cost, amenities, photos
+6. Verify location proximity to attractions using distance tools
+7. Structure data for output with both Chinese and English names
+
+**Fallback**: Use Google Maps or WebSearch if Gaode unavailable
+
+**Quality checks**:
+- Rating >= 4.0 stars
+- Cost within budget (CNY)
+- Complete address in Chinese characters
+- Nearby amenities (subway, restaurants)
+- Recent reviews preferred
+- Parking availability if needed

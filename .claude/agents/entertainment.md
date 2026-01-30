@@ -185,3 +185,28 @@ Evening forecast: Rain 60%, 12°C
 ```
 
 **See**: `.claude/skills/openweathermap/tools/forecast.md` for hourly forecast usage
+
+---
+
+## Gaode Maps Integration
+
+**When to use**: Chinese domestic destinations, search entertainment venues with Chinese names, accurate venue locations.
+
+**Workflow with Gaode Maps**:
+1. Load poi-search tools: `/gaode-maps poi-search`
+2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
+   - keywords: Entertainment keywords (e.g., "电影院", "KTV", "酒吧", "剧院")
+   - city: Chinese city name
+   - types: "140000" (entertainment category)
+3. Filter by rating and user reviews
+4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for show times and pricing
+5. Parse: name, address, hours, specialties, phone number
+6. Calculate travel time from accommodation or dinner location
+7. Structure data with both Chinese and English names
+
+**Error Handling**:
+- Retry logic: 3 attempts
+- Fallback: Use Google Maps or WebSearch
+- Include data source in output
+
+**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for entertainment category codes

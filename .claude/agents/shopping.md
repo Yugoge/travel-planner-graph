@@ -149,3 +149,28 @@ Return only: `complete`
    ```
 
 **See**: `.claude/commands/openweathermap/examples/weather-check.md` for packing list examples
+
+---
+
+## Gaode Maps Integration
+
+**When to use**: Chinese domestic destinations, search shopping areas with Chinese names, accurate mall/market locations.
+
+**Workflow with Gaode Maps**:
+1. Load poi-search tools: `/gaode-maps poi-search`
+2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
+   - keywords: Shopping keywords (e.g., "购物中心", "市场", "商场")
+   - city: Chinese city name
+   - types: "060000" (shopping category)
+3. Filter by rating and specialties
+4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for opening hours and descriptions
+5. Parse: name, address, specialties, opening hours
+6. Calculate distance from accommodation using distance tools
+7. Structure data with both Chinese and English names
+
+**Error Handling**:
+- Retry logic: 3 attempts
+- Fallback: Use Google Maps or WebSearch
+- Include data source in output
+
+**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for shopping category codes

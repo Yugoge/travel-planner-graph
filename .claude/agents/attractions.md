@@ -193,3 +193,28 @@ Day 4 forecast: Clear, 22°C, AQI 2
 ```
 
 **See**: `.claude/skills/openweathermap/examples/weather-check.md` for integration examples
+
+---
+
+## Gaode Maps Integration
+
+**When to use**: Chinese domestic destinations, search attractions with Chinese names, accurate location data in China.
+
+**Workflow with Gaode Maps**:
+1. Load poi-search tools: `/gaode-maps poi-search`
+2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
+   - keywords: Attraction name or type (e.g., "博物馆", "公园", "寺庙")
+   - city: Chinese city name
+   - types: "110000" (tourist attractions category)
+3. Filter by rating (≥4.0) and popularity
+4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for detailed information
+5. Parse: name, address, opening hours, ticket price, user ratings
+6. Use distance tools to calculate travel time from accommodation
+7. Structure data with both Chinese and English names
+
+**Error Handling**:
+- Retry logic: 3 attempts with exponential backoff
+- Fallback: Use Google Maps or WebSearch if Gaode unavailable
+- Include data source in output
+
+**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes
