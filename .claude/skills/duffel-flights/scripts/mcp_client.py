@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MCP client for Yelp Python-based MCP server.
+MCP client for Duffel Flights Python-based MCP server.
 
 This client launches the Python MCP server and communicates
 using JSON-RPC 2.0 over stdio.
@@ -15,14 +15,14 @@ from typing import Any, Dict, List, Optional
 
 
 class MCPClient:
-    """Client for Yelp MCP server (Python based)."""
+    """Client for Duffel Flights MCP server (Python based)."""
 
     def __init__(self, command: str):
         """
         Initialize MCP client for Python server.
 
         Args:
-            command: Command to launch server (e.g., "mcp-yelp-agent")
+            command: Command to launch server (e.g., "flights-mcp")
         """
         self.command = command
         self.process = None
