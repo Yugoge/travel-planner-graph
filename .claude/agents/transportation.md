@@ -127,7 +127,7 @@ Return only: `complete`
 - On permanent failure: fall back to WebSearch
 - Always include data source in output (amadeus or web_search)
 
-**See**: `.claude/commands/amadeus-flight/examples/flight-search.md` for complete example
+**See**: `.claude/skills/amadeus-flight/examples/flight-search.md` for complete example
 
 ---
 
