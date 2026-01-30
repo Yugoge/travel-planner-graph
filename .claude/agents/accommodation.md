@@ -4,6 +4,7 @@ description: Research hotels and lodging options for each location
 model: sonnet
 skills:
   - google-maps
+  - gaode-maps
   - openweathermap
   - jinko-hotel
   - airbnb
@@ -132,12 +133,13 @@ This agent has access to specialized accommodation search skills:
 1. **jinko-hotel** - Hotel and traditional lodging search
    - Usage: `/jinko-hotel search`
    - Best for: Short stays, business travel, standardized services
-   - See: `.claude/commands/jinko-hotel.md`
+   - Location: `.claude/skills/jinko-hotel/SKILL.md`
+   - Progressive disclosure: Load tools on demand (search, details, booking)
 
 2. **airbnb** - Vacation rental and apartment search
    - Usage: `/airbnb search` or `/airbnb details`
    - Best for: Extended stays, families, groups, kitchen needed
-   - See: `.claude/skills/airbnb/SKILL.md`
+   - Location: `.claude/skills/airbnb/SKILL.md`
 
 **When to use each**:
 - Use `/jinko-hotel` for: 1-3 night stays, solo/couple travel, business trips
@@ -147,7 +149,7 @@ This agent has access to specialized accommodation search skills:
 3. **google-maps** - Place search for hotels and location verification
    - Usage: `/google-maps places`
    - Best for: Finding hotels by location, verifying addresses, checking proximity to attractions
-   - See: `.claude/skills/google-maps/SKILL.md`
+   - Location: `.claude/skills/google-maps/SKILL.md`
 
 **When to use Google Maps**:
 - Verify hotel location and distance to attractions
@@ -158,7 +160,7 @@ This agent has access to specialized accommodation search skills:
 4. **openweathermap** - Weather forecasts and alerts (auxiliary service)
    - Usage: `/openweathermap forecast` or `/openweathermap alerts`
    - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
-   - See: `.claude/commands/openweathermap.md`
+   - Location: `.claude/skills/openweathermap/SKILL.md`
 
 **Weather Integration**:
 - Check weather alerts before recommending accommodations in affected areas
@@ -166,6 +168,33 @@ This agent has access to specialized accommodation search skills:
 - For hot weather: Prioritize air-conditioned properties, pools
 - For cold weather: Prioritize heated properties, fireplaces
 - Include weather considerations in accommodation notes
+
+## Skill Integration: jinko-hotel
+
+**When to use**: User needs hotels for 1-3 night stays, standardized services, business travel, solo/couple travelers.
+
+**Workflow**:
+1. Invoke `/jinko-hotel search` to load search tools
+2. Call `mcp__context7_jinko-hotel__search_hotels` with location, dates, budget, rating criteria
+3. Call `mcp__context7_jinko-hotel__filter_by_facilities` for required amenities (WiFi, breakfast, etc.)
+4. Select top 2-3 hotels by rating from filtered results
+5. Invoke `/jinko-hotel details` to load detail tools (if needed for deep comparison)
+6. Call `mcp__context7_jinko-hotel__get_hotel_details` and `get_reviews` for shortlist
+7. Invoke `/jinko-hotel booking` to load booking tools
+8. Call `mcp__context7_jinko-hotel__check_availability` to verify real-time availability
+9. Call `mcp__context7_jinko-hotel__generate_booking_link` for final booking link
+10. Parse results to accommodation.json format
+
+**Fallback**: Use WebSearch if MCP unavailable or API errors occur.
+
+**Quality checks**:
+- Rating >= 4 stars
+- Price within budget (no hidden fees)
+- Required amenities present (WiFi, breakfast, etc.)
+- Availability confirmed for dates
+- Check-in/check-out times reasonable
+- Recent reviews validate quality
+- Cancellation policy acceptable
 
 ## Skill Integration: airbnb
 

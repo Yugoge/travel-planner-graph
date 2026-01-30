@@ -4,6 +4,7 @@ description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
 skills:
   - google-maps
+  - gaode-maps
   - openweathermap
   - yelp
 ---
@@ -134,6 +135,34 @@ See: `/root/travel-planner/.claude/skills/yelp/examples/restaurant-search.md`
 - Always include data source in output (google_maps, yelp, or web_search)
 
 **See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
+
+---
+
+## Gaode Maps Integration
+
+**When to use Gaode Maps**:
+- For all Chinese domestic destinations (优先使用高德地图)
+- When searching for restaurants with Chinese cuisine
+- When accurate Chinese addresses needed
+- When POI details in Chinese required
+
+**Workflow with Gaode Maps**:
+1. Load poi-search tools: `/gaode-maps poi-search`
+2. Call `poi_search_keyword` with Chinese keywords and city
+3. Use category code: "050000" (food & dining)
+4. Filter by rating (≥4.0), cost within budget
+5. Call `poi_detail` for top results to get hours and specialties
+6. Parse response for name, address, rating, cost, recommendations
+7. Structure data for meals.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to Google Maps or WebSearch
+- Always include data source in output (gaode_maps or fallback)
+
+**See**: `.claude/skills/gaode-maps/tools/poi-search.md` for category codes and search patterns
+
+---
 
 ## Weather Integration
 

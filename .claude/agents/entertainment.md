@@ -4,6 +4,7 @@ description: Research shows, nightlife, and entertainment options
 model: sonnet
 skills:
   - google-maps
+  - gaode-maps
   - tripadvisor
   - openweathermap
 ---

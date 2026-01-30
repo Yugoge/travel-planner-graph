@@ -4,6 +4,7 @@ description: Research sightseeing and activities based on user requirements
 model: sonnet
 skills:
   - google-maps
+  - gaode-maps
   - tripadvisor
   - openweathermap
 ---
