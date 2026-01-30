@@ -1,0 +1,205 @@
+{
+  "request_id": "dev-python-mcp-integration-20260130",
+  "timestamp": "2026-01-30T18:30:00Z",
+  "priority": "HIGH",
+  "objective": "Complete Python MCP scripts (12306, Duffel, Yelp) and integrate all 7 MCPs into subagents",
+
+  "requirement": {
+    "original": "继续开发脚本并集成到subagents",
+    "clarified": "Create Python wrapper scripts for 3 GitHub MCPs, delete broken skills, integrate all working skills into relevant agents",
+    "what": "Complete MCP integration - scripts + agent updates",
+    "why": "Make all MCPs production-ready and usable by agents",
+    "where": [
+      ".claude/skills/12306/ (CREATE scripts)",
+      ".claude/skills/duffel-flights/ (CREATE scripts)",
+      ".claude/skills/yelp/ (CREATE scripts - replace existing)",
+      ".claude/agents/*.md (UPDATE integrations)",
+      ".claude/skills/tripadvisor/ (DELETE)",
+      ".claude/skills/jinko-hotel/ (DELETE)"
+    ],
+    "scope": {
+      "included": [
+        "Create Python wrapper scripts for 12306 (8 tools)",
+        "Create Python wrapper scripts for Duffel Flights (3 tools)",
+        "Create Python wrapper scripts for Yelp (1 tool)",
+        "Create SKILL.md for all 3 GitHub MCPs",
+        "Delete tripadvisor and jinko-hotel skills",
+        "Update agents to use new skills (weather, eventbrite, etc.)",
+        "Remove references to deleted skills",
+        "Verify all agent skill declarations"
+      ],
+      "excluded": [
+        "API key testing (user provides keys)",
+        "Agent workflow redesign",
+        "New agent creation"
+      ]
+    },
+    "success_criteria": [
+      "All 7 MCPs have working Python scripts",
+      "SKILL.md complete for all 7",
+      "tripadvisor and jinko-hotel deleted",
+      "Agents updated with new skills",
+      "No references to deleted skills",
+      "All skill declarations consistent",
+      "100% tool coverage maintained (31 tools)"
+    ],
+    "constraints": [
+      "Python MCPs use different pattern (not npx)",
+      "GitHub projects already cloned and built",
+      "Must handle both Node.js and Python MCP servers",
+      "Environment variables for all API keys",
+      "DRY principle - SKILL.md as single source"
+    ]
+  },
+
+  "python_mcps_to_develop": {
+    "12306": {
+      "type": "nodejs",
+      "repo": "https://github.com/Joooook/12306-mcp.git",
+      "local_path": "/tmp/12306-mcp",
+      "build_output": "build/index.js",
+      "tools": 8,
+      "tool_names": [
+        "get-current-date",
+        "get-interline-tickets",
+        "get-station-by-telecode",
+        "get-station-code-by-names",
+        "get-station-code-of-citys",
+        "get-stations-code-in-city",
+        "get-tickets",
+        "get-train-route-stations"
+      ],
+      "execution_pattern": "npx (like other Node MCPs)",
+      "integration_agent": "transportation"
+    },
+    "duffel_flights": {
+      "type": "python",
+      "repo": "https://github.com/ravinahp/flights-mcp",
+      "local_path": "/tmp/flights-mcp",
+      "source_location": "src/flights/",
+      "tools": 3,
+      "tool_names": [
+        "search_flights",
+        "get_offer_details",
+        "search_multi_city"
+      ],
+      "execution_pattern": "flights-mcp (Python entry point)",
+      "api_required": "DUFFEL_API_KEY",
+      "integration_agent": "transportation"
+    },
+    "yelp": {
+      "type": "python",
+      "repo": "https://github.com/Yelp/yelp-mcp",
+      "local_path": "/tmp/yelp-mcp",
+      "source_location": "src/yelp_agent/",
+      "tools": 1,
+      "tool_names": [
+        "yelp_agent"
+      ],
+      "execution_pattern": "mcp-yelp-agent (Python entry point)",
+      "api_required": "YELP_API_KEY",
+      "integration_agent": "meals",
+      "replaces": "existing_broken_yelp",
+      "note": "Single intelligent agent with conversational capabilities"
+    }
+  },
+
+  "agent_integration_plan": {
+    "transportation": {
+      "current_skills": ["gaode-maps", "google-maps", "amadeus-flight"],
+      "add_skills": ["12306", "duffel-flights"],
+      "remove_skills": [],
+      "update_reason": "Add Chinese railway (12306) and flight search (Duffel)"
+    },
+    "meals": {
+      "current_skills": ["gaode-maps", "google-maps", "yelp"],
+      "add_skills": [],
+      "remove_skills": [],
+      "update_reason": "Replace broken yelp with working GitHub version",
+      "action": "Verify yelp skill works after replacement"
+    },
+    "accommodation": {
+      "current_skills": ["gaode-maps", "google-maps", "airbnb"],
+      "add_skills": [],
+      "remove_skills": ["jinko-hotel"],
+      "update_reason": "Remove jinko-hotel (doesn't exist)"
+    },
+    "attractions": {
+      "current_skills": ["gaode-maps", "google-maps", "tripadvisor"],
+      "add_skills": [],
+      "remove_skills": ["tripadvisor"],
+      "update_reason": "Remove tripadvisor (doesn't exist)"
+    },
+    "shopping": {
+      "current_skills": ["gaode-maps", "google-maps"],
+      "add_skills": [],
+      "remove_skills": [],
+      "update_reason": "No changes needed"
+    },
+    "entertainment": {
+      "current_skills": ["gaode-maps", "google-maps"],
+      "add_skills": ["eventbrite"],
+      "remove_skills": [],
+      "update_reason": "Add eventbrite for event search"
+    },
+    "timeline": {
+      "current_skills": ["openweathermap"],
+      "add_skills": ["weather"],
+      "remove_skills": ["openweathermap"],
+      "update_reason": "Replace openweathermap with weather"
+    }
+  },
+
+  "development_approach": {
+    "phase_1_python_scripts": {
+      "12306": "Create 8 Python scripts wrapping Node.js MCP (npx pattern)",
+      "duffel": "Create 3 Python scripts wrapping Python MCP (direct Python)",
+      "yelp": "Create 1 Python script wrapping Python MCP (direct Python)"
+    },
+    "phase_2_skill_docs": {
+      "create_skill_md": "For 12306, duffel-flights, yelp",
+      "pattern": "Follow weather/eventbrite SKILL.md structure"
+    },
+    "phase_3_cleanup": {
+      "delete": ["tripadvisor", "jinko-hotel"],
+      "verify_no_references": "Grep agents for deleted skill names"
+    },
+    "phase_4_agent_updates": {
+      "update_frontmatter": "Add/remove skills in agent YAML",
+      "update_documentation": "Refer to new SKILL.md files",
+      "verify_consistency": "All agents have correct skill declarations"
+    }
+  },
+
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_environment_variables": true,
+    "skill_md_single_source": true,
+    "python_scripts_via_bash": true,
+    "100_percent_coverage": true,
+    "handle_both_nodejs_and_python_mcps": true,
+    "agent_skill_declarations_consistent": true
+  },
+
+  "deliverables": {
+    "scripts": [
+      "12 Python scripts for 12306 (8 tools + mcp_client + SKILL.md + examples)",
+      "4 Python scripts for duffel-flights (3 tools + mcp_client)",
+      "2 Python scripts for yelp (1 tool + mcp_client)",
+      "Total: 18 new scripts"
+    ],
+    "deletions": [
+      ".claude/skills/tripadvisor/",
+      ".claude/skills/jinko-hotel/"
+    ],
+    "agent_updates": [
+      "Update 7 agents with new skill integrations",
+      "Remove all references to deleted skills"
+    ],
+    "reports": [
+      "Integration verification report",
+      "Agent skill matrix",
+      "Completion report"
+    ]
+  }
+}

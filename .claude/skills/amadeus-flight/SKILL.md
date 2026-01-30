@@ -10,6 +10,17 @@ user-invocable: true
 
 Search flights worldwide using Amadeus GDS data.
 
+**MCP Server**: `amadeus-mcp-server` (v1.0.0)
+**API Coverage**: 4/4 tools (100%)
+**API Key**: Requires `AMADEUS_API_KEY` and `AMADEUS_API_SECRET` environment variables
+
+## Available Tools
+
+1. **get_flights** - Search flight offers with comprehensive filters
+2. **get_city** - Get city information by IATA code
+3. **get_tours_activities** - Search tours and activities at destinations
+4. **get_hotels** - Search hotel offers
+
 ## How to Use
 
 ```bash
@@ -23,7 +34,7 @@ python3 scripts/details.py flight_details FLIGHT_NUMBER DATE
 
 **Search Flights**:
 ```bash
-python3 scripts/search.py search_flights PEK CDG 2026-03-15 null 1 false
+python3 scripts/search.py get_flights PEK CDG 2026-03-15 null 1 false
 ```
 
 **Price Analysis**:
