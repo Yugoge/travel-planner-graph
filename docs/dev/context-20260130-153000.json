@@ -1,0 +1,211 @@
+{
+  "request_id": "dev-20260130-153000",
+  "timestamp": "2026-01-30T15:30:00Z",
+  "requirement": {
+    "original": "联网搜索高德地图的mcp并搜索将mcp转化为claude skill的最佳实践,然后将这个mcp转化为该仓库下的一个skill,并且给负责路线规划的agent配置这个skill",
+    "clarified": "Create a Claude skill that wraps the official Gaode Maps MCP server (@amap/amap-maps-mcp-server) and configure it for the transportation agent in the travel planning system. The skill should prioritize Gaode Maps for route planning but not replace existing web search capabilities.",
+    "what": "Create a Gaode Maps skill using progressive disclosure pattern and integrate with transportation agent",
+    "why": "Enable real-time route planning with accurate travel times, distances, and transportation options for Chinese destinations using official Gaode Maps API",
+    "where": [
+      ".claude/commands/ (new skill file)",
+      ".claude/agents/transportation.md (skill configuration)",
+      ".claude/settings.json (create if needed for permissions)"
+    ],
+    "scope": {
+      "included": [
+        "Create gaode-maps skill file with progressive disclosure pattern",
+        "Implement tool categorization (routing, POI search, geocoding)",
+        "Configure skill for transportation agent",
+        "Create supporting tool definition files",
+        "Set up secure credential management pattern",
+        "Add comprehensive error handling",
+        "Create usage examples"
+      ],
+      "excluded": [
+        "Replace existing transportation agent logic",
+        "Modify other agents (meals, accommodation, etc.)",
+        "Implement actual MCP server (use official @amap/amap-maps-mcp-server)",
+        "Handle MCP server installation (user will do this)",
+        "Create MCP client code"
+      ]
+    },
+    "success_criteria": [
+      "Gaode Maps skill file exists in .claude/commands/",
+      "Transportation agent configured to use gaode-maps skill",
+      "Skill follows progressive disclosure pattern (metadata + tool categories)",
+      "Credential management follows security best practices",
+      "Error handling with retry logic implemented",
+      "Tool definitions organized by category",
+      "Usage examples provided",
+      "Documentation includes MCP setup instructions"
+    ],
+    "constraints": [
+      "Must not hardcode API keys",
+      "Must follow progressive disclosure pattern (token optimization)",
+      "Must integrate with existing transportation agent without breaking current functionality",
+      "Must handle cases where MCP server is not configured",
+      "Must follow project file structure conventions",
+      "Skill must be invocable via Skill tool",
+      "Must support both English and Chinese language inputs"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Transportation agent relies solely on web search for route planning",
+    "root_cause": "No integration with map/navigation APIs for accurate route data, travel times, and real-time traffic information",
+    "root_cause_commit": "N/A (new feature, not a bug fix)",
+    "why_introduced": "Initial implementation focused on research-based approach using web search",
+    "why_problematic": "Web search results lack structured data, may be outdated, and don't provide real-time traffic or accurate travel times for Chinese destinations",
+    "timeline": "From project inception",
+    "affected_files": [
+      ".claude/agents/transportation.md",
+      ".claude/commands/plan.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory: /root/travel-planner, Git branch: master, 9 uncommitted files",
+    "recent_commits": [
+      "3a993c6 checkpoint: Auto-save at 2026-01-29 20:38:17",
+      "d428279 checkpoint: Auto-save at 2026-01-29 20:34:45"
+    ],
+    "file_contents": {
+      ".claude/agents/transportation.md": "Transportation agent that researches inter-city transportation for days with location changes. Uses WebSearch to find flights, trains, buses, and other options. Outputs to data/{destination-slug}/transportation.json",
+      ".claude/commands/plan.md": "Multi-agent travel planning orchestrator. Invokes 8 specialist agents including transportation agent. Follows equity-research pattern with file-based communication."
+    },
+    "dependencies": {
+      "runtime": "Linux, Claude Code Agent SDK",
+      "packages": "Official @amap/amap-maps-mcp-server (user will install)",
+      "mcp_tools": [
+        "driving_route - Plan driving routes",
+        "walking_route - Plan walking routes",
+        "cycling_route - Plan cycling routes",
+        "transit_route - Plan public transit routes",
+        "poi_search_keyword - Search POIs by keyword",
+        "poi_search_nearby - Search nearby POIs",
+        "poi_detail - Get POI details",
+        "geocode - Convert address to coordinates",
+        "reverse_geocode - Convert coordinates to address",
+        "ip_location - Get location from IP",
+        "weather_info - Get weather information",
+        "distance_measure - Calculate distance between points"
+      ]
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "config_files": [
+        "/root/.claude/CLAUDE.md (global instructions)",
+        ".claude/commands/plan.md",
+        ".claude/agents/*.md"
+      ]
+    }
+  },
+  "research_findings": {
+    "gaode_maps_mcp": {
+      "official_package": "@amap/amap-maps-mcp-server",
+      "connection_methods": [
+        "Streamable HTTP (recommended): https://mcp.amap.com/mcp?key=YOUR_KEY",
+        "SSE: https://mcp.amap.com/sse?key=YOUR_KEY",
+        "Node.js I/O: npx -y @amap/amap-maps-mcp-server"
+      ],
+      "authentication": "AMAP_MAPS_API_KEY environment variable",
+      "rate_limits": "Free tier: 2000-3000 calls/day, Basic: 300,000 calls/day",
+      "coordinate_system": "GCJ-02 (China-specific)",
+      "response_language": "Chinese characters",
+      "core_features": {
+        "routing": ["driving_route", "walking_route", "cycling_route", "transit_route"],
+        "poi_search": ["poi_search_keyword", "poi_search_nearby", "poi_detail"],
+        "geocoding": ["geocode", "reverse_geocode", "ip_location"],
+        "utilities": ["weather_info", "distance_measure"]
+      }
+    },
+    "skill_conversion_best_practices": {
+      "progressive_disclosure": {
+        "pattern": "Load only metadata initially, load full tool definitions on demand",
+        "benefit": "85-98% token reduction compared to loading all tools upfront",
+        "implementation": "Main skill file (200 tokens) + category files loaded on demand"
+      },
+      "credential_management": {
+        "best_practice": "Environment variables in MCP server config",
+        "never": "Hardcode credentials in skill files",
+        "pattern": "Assume MCP server handles authentication, skill never sees credentials"
+      },
+      "error_handling": {
+        "transient_errors": "Retry with exponential backoff (network, rate limits, 5xx)",
+        "permanent_errors": "Don't retry (401, 403, 400, 404)",
+        "graceful_degradation": "Fall back to web search if MCP unavailable"
+      },
+      "subagent_integration": {
+        "method": "Add skill to agent's 'skills' array in YAML frontmatter",
+        "inheritance": "Subagents inherit main agent skills by default",
+        "invocation": "Use Skill tool to invoke skill from agent"
+      },
+      "anti_patterns": {
+        "avoid": [
+          "Loading all 12 tools upfront (context overload)",
+          "Treating MCP as REST API wrapper",
+          "Over-enabling multiple MCP servers",
+          "Hardcoding credentials",
+          "Skipping error handling"
+        ]
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Create skill using progressive disclosure pattern with categorized tool definitions. Configure transportation agent to invoke skill. Implement graceful fallback to web search if MCP unavailable.",
+    "files_to_create": [
+      ".claude/commands/gaode-maps.md - Main skill file with metadata and category overview",
+      ".claude/commands/gaode-maps/tools/routing.md - Routing tool definitions",
+      ".claude/commands/gaode-maps/tools/poi-search.md - POI search tool definitions",
+      ".claude/commands/gaode-maps/tools/geocoding.md - Geocoding tool definitions",
+      ".claude/commands/gaode-maps/tools/utilities.md - Utility tool definitions",
+      ".claude/commands/gaode-maps/examples/inter-city-route.md - Example usage for inter-city routing",
+      ".claude/settings.json - Permissions and MCP server config (if needed)"
+    ],
+    "files_to_modify": [
+      ".claude/agents/transportation.md - Add gaode-maps skill to agent configuration"
+    ],
+    "validation_approach": "QA will verify skill can be invoked, tool definitions are correct, transportation agent can use skill, and graceful fallback works when MCP unavailable"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": false,
+    "progressive_disclosure": true,
+    "secure_credentials": true,
+    "error_handling": true,
+    "graceful_degradation": true,
+    "token_optimization": true
+  },
+  "mcp_setup_instructions": {
+    "user_actions_required": [
+      "Get Gaode Maps API key from https://console.amap.com/dev/key/app",
+      "Add MCP server to ~/.config/Claude/claude_desktop_config.json or project config",
+      "Restart Claude Desktop after configuration"
+    ],
+    "recommended_connection": {
+      "method": "Streamable HTTP",
+      "config": {
+        "mcpServers": {
+          "amap-maps-streamableHTTP": {
+            "url": "https://mcp.amap.com/mcp?key=YOUR_AMAP_API_KEY"
+          }
+        }
+      }
+    },
+    "alternative_connection": {
+      "method": "Node.js I/O",
+      "config": {
+        "mcpServers": {
+          "amap-maps": {
+            "command": "npx",
+            "args": ["-y", "@amap/amap-maps-mcp-server"],
+            "env": {
+              "AMAP_MAPS_API_KEY": "YOUR_AMAP_API_KEY"
+            }
+          }
+        }
+      }
+    }
+  }
+}
