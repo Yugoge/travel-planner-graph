@@ -38,16 +38,17 @@ For each location change day:
 2. **Research transportation options**:
 
    **For International Routes** (crossing borders or >1000km):
-      - For multi-city: `python3 .../scripts/search.py multi_city_search ...`
-   - For price analysis: `python3 .../scripts/pricing.py price_analysis ORIGIN DESTINATION DATE`
+   - Use Amadeus Flight search for multi-city and price analysis
    - Parse JSON output for pricing, schedules, airline details
+   - See `.claude/skills/amadeus-flight/SKILL.md` for usage
    - Check baggage policies and total journey time
    - Supports IATA airport codes (e.g., PEK, CDG, LHR)
 
    **For Domestic China Routes** (preferred for accuracy):
-      - For driving: `python3 .../scripts/routing.py driving ORIGIN DESTINATION ...`
+   - Use Gaode Maps routing for driving and transit routes
    - Parse JSON output: distance, duration, cost, schedules
    - Supports both English and Chinese location names
+   - See `.claude/skills/gaode-maps/SKILL.md` for usage
 
    **For International Routes Outside China**:
       - Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
@@ -131,7 +132,7 @@ Return only: `complete`
 
 2. Parse JSON output for segments (train, bus, walk)
 3. Extract: departure/arrival times, cost, duration, station names
-4. Optionally compare with driving: `python3 .claude/skills/gaode-maps/scripts/routing.py driving ORIGIN DESTINATION`
+4. Optionally compare with driving route (see `.claude/skills/gaode-maps/SKILL.md` for routing usage)
 5. Select best option based on user preferences
 6. Save structured data to transportation.json
 

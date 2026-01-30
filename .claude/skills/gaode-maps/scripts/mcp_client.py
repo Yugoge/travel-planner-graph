@@ -134,8 +134,7 @@ class MCPClient:
             }
         })
 
-        # Send initialized notification
-        self._send_request("notifications/initialized", {})
+        # notifications/initialized not required by MCP protocol - removed
 
         return response.get("result", {})
 

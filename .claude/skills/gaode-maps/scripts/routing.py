@@ -45,7 +45,7 @@ def driving_route(origin: str, destination: str, strategy: int = 0) -> dict:
             "strategy": str(strategy)
         }
 
-        response = client.call_tool("driving_route", arguments)
+        response = client.call_tool("maps_direction_driving", arguments)
         result = parse_json_response(response)
 
         return result
@@ -88,7 +88,7 @@ def transit_route(origin: str, destination: str, city: Optional[str] = None,
         if cityd:
             arguments["cityd"] = cityd
 
-        response = client.call_tool("transit_route", arguments)
+        response = client.call_tool("maps_direction_transit_integrated", arguments)
         result = parse_json_response(response)
 
         return result
@@ -121,7 +121,7 @@ def walking_route(origin: str, destination: str) -> dict:
             "destination": destination
         }
 
-        response = client.call_tool("walking_route", arguments)
+        response = client.call_tool("maps_direction_walking", arguments)
         result = parse_json_response(response)
 
         return result
@@ -154,7 +154,7 @@ def cycling_route(origin: str, destination: str) -> dict:
             "destination": destination
         }
 
-        response = client.call_tool("cycling_route", arguments)
+        response = client.call_tool("maps_bicycling", arguments)
         result = parse_json_response(response)
 
         return result

@@ -1,0 +1,187 @@
+{
+  "request_id": "dev-skill-bug-fix-20260130",
+  "timestamp": "2026-01-30T18:00:00Z",
+  "priority": "CRITICAL",
+  "objective": "Fix MCP client protocol bugs and tool name mismatches in gaode-maps scripts",
+
+  "test_report_summary": {
+    "architecture_status": "✅ CORRECT - SKILL.md works as single source of truth",
+    "script_execution_status": "❌ FAILING - Two critical bugs prevent scripts from working",
+    "mcp_connection_status": "✅ WORKING - Direct JSON-RPC calls succeed",
+    "test_case": "Beijing to Shanghai route query",
+    "expected_result": "Route data with distance and duration",
+    "actual_result": "Bugs prevent script execution, but direct MCP call works (1,468km, 5.75 hours)"
+  },
+
+  "critical_bugs": [
+    {
+      "bug_id": "BUG-001",
+      "severity": "CRITICAL",
+      "file": ".claude/skills/gaode-maps/scripts/mcp_client.py",
+      "location": "Line 138 in initialize() method",
+      "issue": "Sends notifications/initialized after initialize response",
+      "error_message": "Method not found: notifications/initialized",
+      "code_snippet": "initialized = {\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"notifications/initialized\"\n}\nself._send_request(initialized)",
+      "root_cause": "MCP server does not support notifications/initialized method",
+      "impact": "All script executions fail immediately after initialization",
+      "fix_strategy": "Remove the notifications/initialized call entirely - it's not required by MCP protocol"
+    },
+    {
+      "bug_id": "BUG-002",
+      "severity": "CRITICAL",
+      "file": ".claude/skills/gaode-maps/scripts/routing.py",
+      "location": "Lines 47, 90, 133, 176 (all route functions)",
+      "issue": "Tool names don't match actual MCP server implementation",
+      "expected_tools": [
+        "transit_route",
+        "driving_route",
+        "walking_route",
+        "cycling_route"
+      ],
+      "actual_tools": [
+        "maps_direction_transit_integrated",
+        "maps_direction_driving",
+        "maps_direction_walking",
+        "maps_bicycling"
+      ],
+      "root_cause": "Scripts written with assumed tool names without verifying actual MCP server",
+      "impact": "All routing functions call non-existent tools",
+      "fix_strategy": "Update all tool names to match actual MCP server implementation"
+    }
+  ],
+
+  "validation_evidence": {
+    "mcp_connection_works": {
+      "test": "Direct JSON-RPC call to maps_direction_transit_integrated",
+      "origin": "116.407387,39.904179",
+      "destination": "121.473701,31.230416",
+      "city": "北京市",
+      "result": {
+        "distance": "1468000 meters (1,468 km)",
+        "duration": "20700 seconds (5.75 hours)",
+        "route_type": "High-speed rail",
+        "status": "✅ SUCCESS"
+      },
+      "conclusion": "MCP server works perfectly - only wrapper scripts have bugs"
+    }
+  },
+
+  "files_to_fix": [
+    {
+      "file": ".claude/skills/gaode-maps/scripts/mcp_client.py",
+      "changes_required": [
+        {
+          "action": "DELETE",
+          "location": "Lines 138-143 (approximately)",
+          "description": "Remove entire notifications/initialized block",
+          "before": "initialized = {\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"notifications/initialized\"\n}\nself._send_request(initialized)",
+          "after": "# notifications/initialized not required by MCP protocol - removed"
+        }
+      ]
+    },
+    {
+      "file": ".claude/skills/gaode-maps/scripts/routing.py",
+      "changes_required": [
+        {
+          "action": "REPLACE",
+          "location": "Line 47",
+          "description": "Fix transit_route tool name",
+          "old_value": "client.call_tool(\"transit_route\", {",
+          "new_value": "client.call_tool(\"maps_direction_transit_integrated\", {"
+        },
+        {
+          "action": "REPLACE",
+          "location": "Line 90",
+          "description": "Fix driving_route tool name",
+          "old_value": "client.call_tool(\"driving_route\", {",
+          "new_value": "client.call_tool(\"maps_direction_driving\", {"
+        },
+        {
+          "action": "REPLACE",
+          "location": "Line 133",
+          "description": "Fix walking_route tool name",
+          "old_value": "client.call_tool(\"walking_route\", {",
+          "new_value": "client.call_tool(\"maps_direction_walking\", {"
+        },
+        {
+          "action": "REPLACE",
+          "location": "Line 176",
+          "description": "Fix cycling_route tool name",
+          "old_value": "client.call_tool(\"cycling_route\", {",
+          "new_value": "client.call_tool(\"maps_bicycling\", {"
+        }
+      ]
+    }
+  ],
+
+  "success_criteria": [
+    "mcp_client.py no longer sends notifications/initialized",
+    "routing.py uses correct tool names matching actual MCP server",
+    "Beijing to Shanghai transit route query succeeds via routing.py script",
+    "Script returns valid JSON with distance and duration",
+    "No 'Method not found' errors during execution"
+  ],
+
+  "validation_commands": [
+    {
+      "description": "Verify mcp_client.py fix",
+      "command": "grep -n 'notifications/initialized' /root/travel-planner/.claude/skills/gaode-maps/scripts/mcp_client.py",
+      "expected_result": "No matches (or only in comments)"
+    },
+    {
+      "description": "Verify routing.py tool names",
+      "command": "grep -n 'transit_route\\|driving_route\\|walking_route\\|cycling_route' /root/travel-planner/.claude/skills/gaode-maps/scripts/routing.py | grep -v '#'",
+      "expected_result": "No matches (all replaced with maps_direction_* variants)"
+    },
+    {
+      "description": "Test Beijing to Shanghai route via script",
+      "command": "cd /root/travel-planner/.claude/skills/gaode-maps && python3 scripts/routing.py transit \"116.407387,39.904179\" \"121.473701,31.230416\" \"北京市\" 0",
+      "expected_result": "Valid JSON output with distance ~1468000 and duration ~20700"
+    }
+  ],
+
+  "implementation_approach": {
+    "strategy": "Surgical fixes - minimal changes to make scripts work",
+    "steps": [
+      "1. Read mcp_client.py completely to understand initialization flow",
+      "2. Remove notifications/initialized call (BUG-001)",
+      "3. Read routing.py completely to understand tool calling pattern",
+      "4. Replace all 4 tool names with correct MCP server names (BUG-002)",
+      "5. Verify no other files have similar issues",
+      "6. Test with Beijing→Shanghai route query",
+      "7. Generate implementation report"
+    ]
+  },
+
+  "scope_boundaries": {
+    "in_scope": [
+      "Fix mcp_client.py notifications/initialized bug",
+      "Fix routing.py tool name mismatches",
+      "Verify fixes with test query",
+      "Update any documentation if needed"
+    ],
+    "out_of_scope": [
+      "Other skills (google-maps, yelp, etc.) - will be fixed separately if needed",
+      "Other gaode-maps scripts (poi_search.py, geocoding.py) - not tested yet",
+      "SKILL.md changes - documentation is already correct",
+      "Agent file changes - agents reference SKILL.md correctly"
+    ]
+  },
+
+  "additional_context": {
+    "skill_architecture": "✅ CORRECT - Agents declare skills, SKILL.md is single source of truth",
+    "dry_compliance": "✅ COMPLIANT - No duplication across agents",
+    "qa_status": "✅ PASSED - 0 violations in agent files",
+    "mcp_server": "npx @amap/amap-maps-mcp-server (or similar)",
+    "test_evidence": "Direct MCP calls work, proving server is functional"
+  },
+
+  "related_files": [
+    ".claude/skills/gaode-maps/SKILL.md",
+    ".claude/skills/gaode-maps/scripts/mcp_client.py",
+    ".claude/skills/gaode-maps/scripts/routing.py",
+    ".claude/agents/transportation.md",
+    "docs/dev/skill-cleanup-completion-20260130.md",
+    "docs/dev/skill-test-report-20260130.md"
+  ]
+}

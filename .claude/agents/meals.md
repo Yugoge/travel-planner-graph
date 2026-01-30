@@ -31,15 +31,9 @@ For each day in the trip:
    - Budget constraints for meals
    - Special occasions (celebration dinner, romantic meal)
 
-2. **Research local restaurants** using MCP scripts:
-   - **Primary method**: Execute Yelp search script
-     ```bash
-     python3 .claude/skills/yelp/scripts/search.py search "CUISINE restaurants" "LOCATION" --price=LEVEL --limit=10
-     ```
-   - **Alternative**: Execute Google Maps places script
-     ```bash
-     python3 .claude/skills/gaode-maps/scripts/poi_search.py keyword "餐厅" "北京市" CATEGORY
-     ```
+2. **Research local restaurants** using available skills:
+   - **Primary method**: Use Yelp search (see `.claude/skills/yelp/SKILL.md` for usage)
+   - **Alternative**: Use Google Maps places or Gaode Maps POI search (see respective SKILL.md files)
    - Breakfast: Search cafes near accommodation
    - Lunch: Search restaurants near planned attractions
    - Dinner: Search restaurants matching cuisine preferences
