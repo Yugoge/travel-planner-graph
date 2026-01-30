@@ -205,6 +205,43 @@ echo "DUFFEL_API_KEY=your_api_key_here" >> .env
 
 Get API key from: https://duffel.com/
 
+### Test API Key (Provided)
+
+**API Key**: `duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt`
+
+**Test Status**: ❌ **MCP Server Installation Issues**
+
+**Test Date**: 2026-01-30
+
+**Issue**: The `flights-mcp` Python package installs successfully but fails to execute due to Python import errors:
+```python
+Traceback (most recent call last):
+  File "/usr/local/bin/flights-mcp", line 5, in <module>
+    from flights import main
+  File "/usr/local/lib/python3.12/dist-packages/flights/__init__.py", line 3, in <module>
+    from . import server
+```
+
+**Workaround Options**:
+1. **Recommended**: Configure MCP directly in Claude Desktop (bypass Python wrapper)
+   - Add to `~/.config/Claude/claude_desktop_config.json`:
+   ```json
+   {
+     "mcpServers": {
+       "duffel-flights": {
+         "command": "flights-mcp",
+         "env": {
+           "DUFFEL_API_KEY": "duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt"
+         }
+       }
+     }
+   }
+   ```
+2. **Alternative**: Use Google Maps + WebSearch for flight research instead
+3. **Advanced**: Debug package dependencies with maintainer
+
+**See Also**: `/root/travel-planner/API-KEY-MCP-TEST-RESULTS.md` for detailed test report
+
 ## Use Cases
 
 ### Compare Flight Options

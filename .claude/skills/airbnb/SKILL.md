@@ -38,6 +38,8 @@ Add to your `~/.config/Claude/claude_desktop_config.json`:
 
 **Legal Notice**: Web scraping may violate Airbnb's Terms of Service. Use for personal research/testing only.
 
+**See Also**: `/root/travel-planner/AIRBNB-CONFIGURATION-GUIDE.md` for detailed setup instructions, troubleshooting, and legal considerations.
+
 ## How to Use
 
 ```bash
