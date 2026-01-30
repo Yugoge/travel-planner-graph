@@ -103,10 +103,36 @@ Format:
 
 Return only: `complete`
 
+## Amadeus Flight Integration
+
+**When to use Amadeus Flight**:
+- For all international routes (crossing borders)
+- For long-distance routes (>1000km or >10 hours by train)
+- When real-time flight pricing needed
+- For multi-city itineraries with flight segments
+
+**Workflow with Amadeus Flight**:
+1. Load search tools: `/amadeus-flight search`
+2. Call `search_flights` with IATA airport codes
+3. Parse response for price, duration, airline, stops
+4. Use `price_analysis` to check if current price is good
+5. Extract baggage allowance and cabin class
+6. Calculate total journey time (including airport transfers)
+7. Save structured data to transportation.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to WebSearch
+- Always include data source in output (amadeus or web_search)
+
+**See**: `.claude/commands/amadeus-flight/examples/flight-search.md` for complete example
+
+---
+
 ## Gaode Maps Integration
 
 **When to use Gaode Maps**:
-- For all Chinese destinations (优先使用高德地图)
+- For all Chinese domestic destinations (优先使用高德地图)
 - When real-time traffic data needed
 - When accurate travel times required
 - For multi-modal route comparisons
@@ -130,13 +156,19 @@ Return only: `complete`
 ## Quality Standards
 
 - Only process days with location_change object (skip days in same city)
-- Prioritize Gaode Maps for Chinese destinations (more accurate)
+- **Route selection logic**:
+  - Use Amadeus Flight for international routes or >1000km
+  - Use Gaode Maps for domestic China routes
+  - Fall back to WebSearch if APIs unavailable
 - All transportation options must be real and currently operating
 - Cost should be per person in USD (convert from CNY if using Gaode Maps)
 - Times should be realistic (include buffer for delays)
-- Departure time must allow for hotel checkout and arrival at station
+- Departure time must allow for hotel checkout and arrival at station/airport
 - Arrival time must allow for hotel check-in and day's first activity
+- **For flights**: Include airport transfer time (2-3 hours) in total journey
+- **For flights**: Note baggage allowance and cabin class
+- **For flights**: Use price analysis to recommend booking window
 - Note if advance booking required or recommended
 - Consider luggage handling (stairs, transfers)
 - Include transportation to/from airports/stations if needed
-- Document data source: indicate if from Gaode Maps or WebSearch
+- Document data source: indicate if from Amadeus, Gaode Maps, or WebSearch

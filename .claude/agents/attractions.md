@@ -31,11 +31,21 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Activity level (walking tours, physical activities)
 
-2. **Research attractions** using WebSearch:
+2. **Research attractions**:
+
+   **Primary Method: TripAdvisor API** (preferred for accuracy)
+   - Invoke `/tripadvisor attractions` to load attraction search tools
+   - Use `search_attractions` to find attractions by location and interests
+   - Use `get_attraction_details` for detailed information
+   - Parse real-time data: ratings, reviews, prices, hours
+   - Get verified user reviews and traveler tips
+   - Supports worldwide locations
+
+   **Fallback Method: WebSearch** (if TripAdvisor unavailable)
    - Top-rated attractions in the day's location
    - Opening hours and best visiting times
    - Ticket prices and booking requirements
-   - Time needed for each attraction (2 hours, half-day, full-day)
+   - Time needed for each attraction
    - Seasonal considerations and weather impact
 
 3. **Optimize selection**:
@@ -89,3 +99,30 @@ Return only: `complete`
 - Note if attraction requires advance booking or timed entry
 - Consider weather and seasonal factors
 - Include backup indoor options for outdoor activities
+- Prioritize TripAdvisor data for verified ratings and reviews
+- Document data source: indicate if from TripAdvisor or WebSearch
+
+## TripAdvisor Integration
+
+**When to use TripAdvisor**:
+- For all destinations (worldwide coverage)
+- When verified user reviews are important
+- When accurate pricing and hours are needed
+- When traveler tips would be valuable
+
+**Workflow with TripAdvisor**:
+1. Load attraction tools: `/tripadvisor attractions`
+2. Call `search_attractions` for location and user interests
+3. Filter by rating (minimum 4.0 recommended) and budget
+4. Call `get_attraction_details` for top candidates
+5. Cluster attractions by geographic proximity
+6. Select 2-4 attractions per day based on available time
+7. Parse response for ratings, reviews, hours, prices, tips
+8. Save structured data to attractions.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to WebSearch
+- Always include data source in output (tripadvisor or web_search)
+
+**See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for complete example

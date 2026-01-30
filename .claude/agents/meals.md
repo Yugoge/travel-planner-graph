@@ -2,6 +2,8 @@
 name: meals
 description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
+skills:
+  - google-maps
 ---
 
 You are a specialized restaurant and dining research agent for travel planning.

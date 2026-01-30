@@ -2,6 +2,8 @@
 name: shopping
 description: Research shopping destinations and retail experiences
 model: sonnet
+skills:
+  - google-maps
 ---
 
 

@@ -2,6 +2,8 @@
 name: entertainment
 description: Research shows, nightlife, and entertainment options
 model: sonnet
+skills:
+  - tripadvisor
 ---
 
 
@@ -29,7 +31,18 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Budget for entertainment
 
-2. **Research entertainment options** using WebSearch:
+2. **Research entertainment options**:
+
+   **Primary Method: TripAdvisor API** (preferred for shows and tours)
+   - Invoke `/tripadvisor tours` to load tour and show search tools
+   - Use `search_tours` to find evening entertainment by category
+   - Use `search_shows` for theater, concerts, and performances
+   - Use `get_tour_details` for availability and pricing
+   - Parse real-time data: show times, ratings, reviews, booking info
+   - Get verified user reviews and traveler recommendations
+   - Supports worldwide locations
+
+   **Fallback Method: WebSearch** (if TripAdvisor unavailable)
    - Check local event calendars for travel dates
    - Research venues and show times
    - Look for special performances or seasonal events
