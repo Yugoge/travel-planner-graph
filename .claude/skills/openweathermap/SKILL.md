@@ -114,14 +114,16 @@ OPENWEATHER_API_KEY=your-api-key-here
 
 ## Security
 
-- Never hardcode API keys in files
-- Use environment variables for credentials
-- Configure API key in MCP server configuration only
-- Keep credentials out of version control
+**CRITICAL - Never commit credentials**:
+- Store API keys in environment variables only
+- Never hardcode keys in skill files or scripts
+- Add `.env` to `.gitignore`
+- Use project-specific `.env` files for development
+- Rotate API keys regularly
 
-## Integration
+## Integration with Agents
 
-Configured for agents:
+**Configured for agents**:
 - transportation (weather-based route planning)
 - meals (outdoor dining conditions)
 - accommodation (weather at destination)
@@ -131,26 +133,44 @@ Configured for agents:
 - timeline (activity scheduling based on weather)
 - budget (weather-related expense adjustments)
 
-## Usage Pattern
-
+**Agent Usage Pattern**:
 ```markdown
-1. Load relevant tool category: `/openweathermap forecast`
-2. Invoke MCP tool with location parameters
-3. Parse weather data from response
-4. Apply to planning decisions
+1. Determine weather information needed (current, forecast, or alerts)
+2. Execute appropriate script via Bash tool
+3. Parse output (human-readable text or JSON)
+4. Apply weather data to planning decisions
 5. Provide weather-aware recommendations
 ```
 
 ## Error Handling
 
-- If MCP unavailable: Fall back to WebSearch for weather information
-- If API key invalid: Return error message with setup instructions
-- If location not found: Try alternative location formats or geocoding
+**Script handles**:
+- Transient errors: Retry up to 3 times with exponential backoff
+- Rate limit errors: Automatic retry with backoff
+- Network timeouts: Retry mechanism built-in
+- Invalid location: Clear error message returned
+
+**If script fails**:
+- Check OPENWEATHER_API_KEY is set
+- Verify API key is valid at https://home.openweathermap.org/api_keys
+- Ensure location format is correct (e.g., "City, CountryCode")
+- Check rate limits: Free tier allows 60 calls/minute, 1,000,000 calls/month
+
+**No WebSearch fallback** - Scripts provide direct MCP access.
+
+## Rate Limits
+
+| Tier | Calls/Min | Calls/Month |
+|------|-----------|-------------|
+| Free | 60 | 1,000,000 |
+| Startup | 600 | 3,000,000 |
+
+Monitor usage at: https://home.openweathermap.org/statistics
 
 ## Examples
 
 See `examples/` directory for detailed usage scenarios:
-- Basic weather check for destination
-- Multi-day forecast analysis
-- Activity recommendations based on conditions
-- Transportation planning with weather considerations
+- Current weather check before travel
+- Multi-day forecast for activity planning
+- Weather alerts for safety decisions
+- Script output parsing examples

@@ -222,10 +222,34 @@ const shanghai = await search_hotels({ location: "Shanghai", ... });
 ### Selective Details Loading
 Get details only for top candidates (2-3 hotels), not all results.
 
-## Examples
+## Complete Example
 
-See `/root/travel-planner/.claude/skills/jinko-hotel/examples/hotel-search.md` for complete multi-city workflow example.
+Full workflow for finding hotels in Beijing:
+
+```bash
+# Step 1: Search hotels (Feb 15-17, 2026, budget 200-500 CNY, min 4-star)
+cd /root/travel-planner/.claude/skills/jinko-hotel/scripts
+export JINKO_API_KEY="your-api-key"
+
+python3 search.py search 'Beijing' '2026-02-15' '2026-02-17' 2 1 200 500 4.0 > results.json
+
+# Step 2: Extract top hotel ID from results
+HOTEL_ID=$(cat results.json | python3 -c "import json,sys; print(json.load(sys.stdin)['hotels'][0]['id'])")
+
+# Step 3: Get hotel details
+python3 details.py details "$HOTEL_ID" > hotel_details.json
+
+# Step 4: Get room types with pricing
+python3 details.py rooms "$HOTEL_ID" '2026-02-15' '2026-02-17' > rooms.json
+
+# Step 5: Check availability
+python3 booking.py availability "$HOTEL_ID" '2026-02-15' '2026-02-17' 2 1 > availability.json
+
+# Step 6: Generate booking link
+ROOM_ID=$(cat rooms.json | python3 -c "import json,sys; print(json.load(sys.stdin)['rooms'][0]['id'])")
+python3 booking.py link "$HOTEL_ID" "$ROOM_ID" '2026-02-15' '2026-02-17' 2 1
+```
 
 ---
 
-**Quick Start**: Invoke `/jinko-hotel search` to begin hotel search workflow.
+**Quick Start**: Execute scripts via Bash tool with JINKO_API_KEY environment variable set.
