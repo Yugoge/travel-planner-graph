@@ -35,8 +35,8 @@ For each day in the trip:
 
 2. **Research attractions**:
 
-   **Primary Method: TripAdvisor API** (preferred for accuracy)
-   - Invoke `/tripadvisor attractions` to load attraction search tools
+   **Primary Method: TripAdvisor Skill** (preferred for accuracy)
+   - Load attraction tools: Read `.claude/skills/tripadvisor/tools/attractions.md`
    - Use `search_attractions` to find attractions by location and interests
    - Use `get_attraction_details` for detailed information
    - Parse real-time data: ratings, reviews, prices, hours
@@ -113,10 +113,10 @@ Return only: `complete`
 - When traveler tips would be valuable
 
 **Workflow with TripAdvisor**:
-1. Load attraction tools: `/tripadvisor attractions`
-2. Call `search_attractions` for location and user interests
+1. Load attraction tools: Read `.claude/skills/tripadvisor/tools/attractions.md`
+2. Call `mcp__plugin_tripadvisor_tripadvisor__search_attractions` for location and user interests
 3. Filter by rating (minimum 4.0 recommended) and budget
-4. Call `get_attraction_details` for top candidates
+4. Call `mcp__plugin_tripadvisor_tripadvisor__get_attraction_details` for top candidates
 5. Cluster attractions by geographic proximity
 6. Select 2-4 attractions per day based on available time
 7. Parse response for ratings, reviews, hours, prices, tips
@@ -127,13 +127,13 @@ Return only: `complete`
 - On permanent failure: fall back to WebSearch
 - Always include data source in output (tripadvisor or web_search)
 
-**See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for complete example
+**See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for complete example
 
 ## Weather Integration
 
 **Use OpenWeatherMap to optimize attraction selection**:
 
-1. Load forecast tools: `/openweathermap forecast`
+1. Load forecast tools: Read `.claude/skills/openweathermap/tools/forecast.md`
 2. Get 5-day forecast for destination
 3. Adjust attraction recommendations based on weather:
    - **Clear weather**: Outdoor parks, viewpoints, scenic areas
@@ -159,4 +159,4 @@ Day 4 forecast: Clear, 22°C, AQI 2
 → Note: "Excellent weather for outdoor sightseeing"
 ```
 
-**See**: `.claude/commands/openweathermap/examples/weather-check.md` for integration examples
+**See**: `.claude/skills/openweathermap/examples/weather-check.md` for integration examples

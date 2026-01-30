@@ -153,7 +153,39 @@ Return only: `complete`
 - On permanent failure: fall back to WebSearch
 - Always include data source in output (gaode_maps or web_search)
 
-**See**: `.claude/commands/gaode-maps/examples/inter-city-route.md` for complete example
+**See**: `.claude/skills/gaode-maps/examples/inter-city-route.md` for complete example
+
+---
+
+## Google Maps Integration
+
+**When to use Google Maps**:
+- For all international routes outside China (worldwide coverage)
+- When Gaode Maps unavailable or inappropriate
+- For walking routes between nearby attractions
+- For public transit in non-China cities
+
+**Workflow with Google Maps**:
+1. Load routing tools: `/google-maps routing`
+2. Call `compute_routes` with origin and destination
+3. Specify travel_mode: DRIVE, TRANSIT, WALK, or BICYCLE
+4. Parse response for distance, duration, route details
+5. For TRANSIT: Extract subway/bus line information from steps
+6. For DRIVE: Use departure_time for traffic-aware routing
+7. Save structured data to transportation.json
+
+**Workflow with Google Maps Places**:
+1. Load places tools: `/google-maps places`
+2. Use `search_places` to find transportation hubs
+3. Search for airports, train stations, bus terminals
+4. Get location coordinates and contact information
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to WebSearch
+- Always include data source in output (google_maps or web_search)
+
+**See**: `.claude/skills/google-maps/examples/route-planning.md` for complete example
 
 ## Quality Standards
 
@@ -161,6 +193,7 @@ Return only: `complete`
 - **Route selection logic**:
   - Use Amadeus Flight for international routes or >1000km
   - Use Gaode Maps for domestic China routes
+  - Use Google Maps for international routes outside China
   - Fall back to WebSearch if APIs unavailable
 - All transportation options must be real and currently operating
 - Cost should be per person in USD (convert from CNY if using Gaode Maps)
@@ -173,7 +206,7 @@ Return only: `complete`
 - Note if advance booking required or recommended
 - Consider luggage handling (stairs, transfers)
 - Include transportation to/from airports/stations if needed
-- Document data source: indicate if from Amadeus, Gaode Maps, or WebSearch
+- Document data source: indicate if from Amadeus, Gaode Maps, Google Maps, or WebSearch
 
 ## Weather Integration
 
@@ -204,4 +237,4 @@ Return only: `complete`
    - "Depart early to avoid afternoon thunderstorms"
    - "Check real-time updates before departure"
 
-**See**: `.claude/commands/openweathermap/tools/alerts.md` for severe weather handling
+**See**: `.claude/skills/openweathermap/tools/alerts.md` for severe weather handling

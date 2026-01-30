@@ -135,9 +135,9 @@ This agent has access to specialized accommodation search skills:
    - See: `.claude/commands/jinko-hotel.md`
 
 2. **airbnb** - Vacation rental and apartment search
-   - Usage: `/airbnb search`
+   - Usage: `/airbnb search` or `/airbnb details`
    - Best for: Extended stays, families, groups, kitchen needed
-   - See: `.claude/commands/airbnb.md`
+   - See: `.claude/skills/airbnb/SKILL.md`
 
 **When to use each**:
 - Use `/jinko-hotel` for: 1-3 night stays, solo/couple travel, business trips
@@ -155,3 +155,28 @@ This agent has access to specialized accommodation search skills:
 - For hot weather: Prioritize air-conditioned properties, pools
 - For cold weather: Prioritize heated properties, fireplaces
 - Include weather considerations in accommodation notes
+
+## Skill Integration: airbnb
+
+**When to use**: Extended stays (5+ nights), family/group travel (4+ guests), need kitchen/laundry, prefer local neighborhood experience.
+
+**Workflow**:
+1. Invoke `/airbnb search` to load search tools
+2. Use `mcp__plugin_airbnb_airbnb__airbnb_search` with location, dates, guests, price filters
+3. Filter results by rating (4.5+), Superhost status, review count (10+)
+4. Invoke `/airbnb details` to load detail tools
+5. Use `mcp__plugin_airbnb_airbnb__airbnb_listing_details` for top 3-5 candidates
+6. Verify amenities (kitchen, washer, WiFi, parking)
+7. Check house rules (pets, smoking, parties, quiet hours)
+8. Calculate total cost including cleaning and service fees
+9. Structure data for output with average per-night cost
+
+**Fallback**: Use WebSearch "airbnb [location] [dates]" if MCP unavailable.
+
+**Quality checks**:
+- Superhost preferred (more reliable)
+- Rating >= 4.5 stars
+- Recent reviews (within 6 months)
+- Complete amenities list matches requirements
+- Reasonable house rules (no deal-breakers)
+- Flexible or moderate cancellation policy preferred
