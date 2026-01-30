@@ -144,7 +144,18 @@ This agent has access to specialized accommodation search skills:
 - Use `/airbnb` for: 5+ night stays, 4+ guests, family travel, kitchen needed
 - Use **both** to compare: When trip is 4-6 nights or 3-4 guests (compare value)
 
-3. **openweathermap** - Weather forecasts and alerts (auxiliary service)
+3. **google-maps** - Place search for hotels and location verification
+   - Usage: `/google-maps places`
+   - Best for: Finding hotels by location, verifying addresses, checking proximity to attractions
+   - See: `.claude/skills/google-maps/SKILL.md`
+
+**When to use Google Maps**:
+- Verify hotel location and distance to attractions
+- Find hotels in specific neighborhoods
+- Check nearby amenities (restaurants, transit, stores)
+- Complement hotel search with location data
+
+4. **openweathermap** - Weather forecasts and alerts (auxiliary service)
    - Usage: `/openweathermap forecast` or `/openweathermap alerts`
    - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
    - See: `.claude/commands/openweathermap.md`

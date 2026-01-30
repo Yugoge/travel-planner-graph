@@ -129,6 +129,38 @@ Return only: `complete`
 
 **See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for complete example
 
+---
+
+## Google Maps Integration
+
+**When to use Google Maps**:
+- For all destinations (worldwide coverage)
+- When searching for attractions by type or category
+- When verifying location and operating hours
+- When calculating distance between attractions
+
+**Workflow with Google Maps**:
+1. Load places tools: `/google-maps places`
+2. Call `search_places` with query and location
+3. Specify type: "museum", "park", "tourist_attraction", etc.
+4. Filter results by rating (≥4.0) and reviews
+5. Parse response for name, address, rating, hours, price
+6. Structure data for attractions.json
+
+**Workflow with Google Maps Routing**:
+1. Load routing tools: `/google-maps routing`
+2. Calculate walking time between attractions
+3. Use WALK mode for nearby attractions
+4. Optimize daily itinerary based on geographic clustering
+5. Ensure total walking time is reasonable (<3 hours per day)
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to TripAdvisor or WebSearch
+- Always include data source in output (google_maps, tripadvisor, or web_search)
+
+**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
+
 ## Weather Integration
 
 **Use OpenWeatherMap to optimize attraction selection**:

@@ -35,8 +35,8 @@ For each day in the trip:
 
 2. **Research entertainment options**:
 
-   **Primary Method: TripAdvisor API** (preferred for shows and tours)
-   - Invoke `/tripadvisor tours` to load tour and show search tools
+   **Primary Method: TripAdvisor Skill** (preferred for shows and tours)
+   - Load tour tools: Read `.claude/skills/tripadvisor/tools/tours.md`
    - Use `search_tours` to find evening entertainment by category
    - Use `search_shows` for theater, concerts, and performances
    - Use `get_tour_details` for availability and pricing
@@ -115,10 +115,10 @@ Return only: `complete`
 - When verified reviews and availability are needed
 
 **Workflow with TripAdvisor**:
-1. Load tour tools: `/tripadvisor tours`
-2. Call `search_tours` with category filter (shows, nightlife, cultural)
+1. Load tour tools: Read `.claude/skills/tripadvisor/tools/tours.md`
+2. Call `mcp__plugin_tripadvisor_tripadvisor__search_tours` with category filter (shows, nightlife, cultural)
 3. Filter by user preferences, date, and time of day
-4. Call `get_tour_details` for availability and full schedule
+4. Call `mcp__plugin_tripadvisor_tripadvisor__get_tour_details` for availability and full schedule
 5. Analyze reviews for quality assurance
 6. Check schedule conflicts with dinner and other activities
 7. Select 1-2 entertainment options per 2-3 days (not every night)
@@ -130,13 +130,38 @@ Return only: `complete`
 - Provide alternatives for sold-out shows
 - Always include data source in output (tripadvisor or web_search)
 
-**See**: `.claude/commands/tripadvisor/examples/attraction-search.md` for workflow patterns (applicable to tours)
+**See**: `.claude/skills/tripadvisor/examples/attraction-search.md` for workflow patterns (applicable to tours)
+
+---
+
+## Google Maps Integration
+
+**When to use Google Maps**:
+- For all destinations (worldwide coverage)
+- When searching for entertainment venues (theaters, clubs, bars)
+- When verifying venue location and operating hours
+- When finding nightlife districts
+
+**Workflow with Google Maps**:
+1. Load places tools: `/google-maps places`
+2. Call `search_places` with query and location
+3. Specify type: "night_club", "bar", "movie_theater", "casino"
+4. Filter results by rating (≥3.5) and business_status
+5. Parse response for name, address, hours, type
+6. Structure data for entertainment.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to TripAdvisor or WebSearch
+- Always include data source in output (google_maps, tripadvisor, or web_search)
+
+**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
 
 ## Weather Integration
 
 **Use OpenWeatherMap to select weather-appropriate entertainment**:
 
-1. Load forecast tools: `/openweathermap forecast`
+1. Load forecast tools: Read `.claude/skills/openweathermap/tools/forecast.md`
 2. Get hourly forecast for evening hours
 3. Adjust entertainment recommendations based on weather:
    - **Clear evening**: Rooftop bars, outdoor concerts, night markets
@@ -144,7 +169,7 @@ Return only: `complete`
    - **Hot evening**: Air-conditioned venues, waterfront with breeze
    - **Cold evening**: Indoor venues with heating
 4. Check current weather for same-day decisions:
-   - Use `/openweathermap current` for real-time conditions
+   - Load current weather tools: Read `.claude/skills/openweathermap/tools/current.md`
 5. Include weather notes in entertainment recommendations
 
 **Example workflow**:
@@ -158,4 +183,4 @@ Evening forecast: Rain 60%, 12°C
 → Note: "Indoor entertainment recommended due to rain"
 ```
 
-**See**: `.claude/commands/openweathermap/tools/forecast.md` for hourly forecast usage
+**See**: `.claude/skills/openweathermap/tools/forecast.md` for hourly forecast usage

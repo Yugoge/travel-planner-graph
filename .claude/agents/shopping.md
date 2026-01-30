@@ -32,7 +32,12 @@ For each day in the trip:
    - Mall shopping vs boutique stores
    - Budget allocation for shopping
 
-2. **Research shopping locations** using WebSearch:
+2. **Research shopping locations**:
+   - **Primary method**: Use `/google-maps places` to search shopping venues
+     - Search by type: "shopping_mall", "store", "market"
+     - Filter by rating and reviews
+     - Verify location and opening hours
+   - **Fallback**: Use WebSearch for detailed information
    - Best shopping districts in each location
    - Local markets and their specialties
    - Opening hours (markets often close early)
@@ -90,6 +95,31 @@ Return only: `complete`
 - Consider location convenience - integrate with other activities
 - It's okay to have empty shopping arrays for some days
 - Flag items that may have customs restrictions
+
+---
+
+## Google Maps Integration
+
+**When to use Google Maps**:
+- For all destinations (worldwide coverage)
+- When searching for shopping malls, markets, or stores
+- When verifying location and operating hours
+- When finding shopping districts
+
+**Workflow with Google Maps**:
+1. Load places tools: `/google-maps places`
+2. Call `search_places` with query and location
+3. Specify type: "shopping_mall", "store", "market", "clothing_store"
+4. Filter results by rating (≥3.5) and business_status
+5. Parse response for name, address, hours, type
+6. Structure data for shopping.json
+
+**Error Handling**:
+- Implement retry logic (3 attempts with exponential backoff)
+- On permanent failure: fall back to WebSearch
+- Always include data source in output (google_maps or web_search)
+
+**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
 
 ## Weather Integration
 
