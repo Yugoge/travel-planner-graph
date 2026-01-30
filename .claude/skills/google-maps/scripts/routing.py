@@ -54,18 +54,21 @@ def compute_routes(
 
     env_vars = {"GOOGLE_MAPS_API_KEY": api_key}
 
-    # Validate travel mode - convert to lowercase for Google Maps API
+    # Validate travel mode - accept both uppercase and lowercase
     mode_mapping = {
         "DRIVE": "driving",
+        "DRIVING": "driving",
         "WALK": "walking",
+        "WALKING": "walking",
         "BICYCLE": "bicycling",
+        "BICYCLING": "bicycling",
         "TRANSIT": "transit"
     }
     travel_mode_upper = travel_mode.upper()
     if travel_mode_upper not in mode_mapping:
         return {
             "error": f"Invalid travel mode: {travel_mode}",
-            "valid_modes": list(mode_mapping.keys())
+            "valid_modes": ["driving", "walking", "bicycling", "transit"]
         }
 
     mode = mode_mapping[travel_mode_upper]

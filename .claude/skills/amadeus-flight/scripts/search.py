@@ -61,21 +61,23 @@ def search_flights(
 
         retry_with_backoff(init)
 
-        # Prepare search arguments
+        # Prepare search arguments (verified from amadeus-mcp-server source code)
         arguments = {
-            "originLocationCode": origin.upper(),
-            "destinationLocationCode": destination.upper(),
+            "origin": origin.upper(),
+            "destination": destination.upper(),
             "departureDate": departure_date,
-            "adults": adults,
-            "nonStop": nonstop
+            "adults": adults
         }
 
         if return_date:
             arguments["returnDate"] = return_date
 
-        # Search flights
+        if nonstop:
+            arguments["travelClass"] = "ECONOMY"  # Note: Amadeus API doesn't have direct nonstop filter
+
+        # Search flights using verified tool name from MCP source
         def search():
-            return client.call_tool("search_flights", arguments)
+            return client.call_tool("get_flights", arguments)
 
         result = retry_with_backoff(search)
 
