@@ -6,6 +6,9 @@ import json
 import argparse
 import requests
 
+# API configuration
+DUFFEL_API_BASE = os.environ.get("DUFFEL_API_BASE_URL", "https://api.duffel.com")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Search for airports")
     parser.add_argument("query", help="Search query (e.g., 'London', 'JFK')")

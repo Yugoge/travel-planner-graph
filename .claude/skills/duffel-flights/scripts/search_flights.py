@@ -6,6 +6,9 @@ import json
 import argparse
 import requests
 
+# API configuration
+DUFFEL_API_BASE = os.environ.get("DUFFEL_API_BASE_URL", "https://api.duffel.com")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Search for flights using Duffel API")
     parser.add_argument("origin", help="Origin airport IATA code (e.g., JFK)")
@@ -145,7 +148,7 @@ def main():
         }
 
         response = requests.post(
-            "https://api.duffel.com/air/offer_requests",
+            f"{DUFFEL_API_BASE}/air/offer_requests",
             json=payload,
             headers=headers,
             params={"return_offers": "true"},
