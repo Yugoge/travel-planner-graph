@@ -173,13 +173,42 @@ mcp__rednote__get_note_comments({
 **Important Notes**:
 - ⚠️ **Always use complete URLs from search_notes results**
 - URLs without xsec_token will return 404 errors
-- Comments may be paginated (initial load returns first batch)
+- ⚠️ **Known Issue**: This tool has ~50% success rate due to Playwright selector timeouts
+  - The MCP waits for selector `[role="dialog"] [role="list"]` which may not exist
+  - Comments section may require user interaction to load
+  - Timeout occurs after 30 seconds
+- 💡 **Recommended Alternative**: Use `get_note_content` instead
+  - Engagement metrics (likes, comments count) already in search results
+  - Detailed content includes most relevant information
+  - More reliable than comment extraction
 
-**Use cases**:
+**Current Limitations**:
+- Selector: `[role="dialog"] [role="list"]` may not match actual DOM
+- Requires: User interaction to trigger comment dialog (not automated)
+- Timeout: 30 seconds (insufficient for slow page loads)
+- Success Rate: ~50% in testing
+
+**Use cases** (when working):
 - Read user feedback and Q&A
 - Verify restaurant/attraction quality from comments
 - Find additional tips from community
 - Check recent visitor experiences
+
+**Recommended Workflow** (more reliable):
+```javascript
+// Instead of get_note_comments, use engagement metrics from search_notes
+const notes = mcp__rednote__search_notes({ keywords: "成都美食", limit: 20 });
+
+// Filter by high engagement (indicates quality)
+const popularNotes = notes.filter(note => {
+  return note.likes > 5000 && note.comments > 100;
+});
+
+// Get detailed content (includes author credibility, tags)
+const content = mcp__rednote__get_note_content({ url: popularNotes[0].url });
+
+// Use likes/comments counts as quality signals instead of reading individual comments
+```
 
 ### 4. Login (Manual Authentication)
 
