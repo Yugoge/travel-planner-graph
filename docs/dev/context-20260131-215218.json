@@ -1,0 +1,180 @@
+{
+  "request_id": "dev-20260131-215218",
+  "timestamp": "2026-01-31T21:52:18Z",
+  "requirement": {
+    "original": "彻底失败，为什么全都用websearch而不是我设计的好的skills",
+    "clarified": "The /plan command's specialist agents (attractions, meals, accommodation, etc.) are using WebSearch instead of the designed MCP skills (gaode-maps, rednote, google-maps). Expected behavior: Agents must ONLY use MCP skills, NEVER WebSearch.",
+    "what": "Fix specialist agents to enforce MCP skill usage and prohibit WebSearch",
+    "why": "User designed specific MCP skills for China travel (gaode-maps for POI/routing, rednote for authentic content). WebSearch produces inferior, unvalidated results. Skills provide structured, verified data.",
+    "where": [
+      ".claude/agents/attractions.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/commands/plan.md"
+    ],
+    "scope": {
+      "included": [
+        "All 6 specialist travel agents (attractions, meals, accommodation, entertainment, shopping, transportation)",
+        "Agent definition files (.claude/agents/*.md)",
+        "Plan command orchestrator (.claude/commands/plan.md)"
+      ],
+      "excluded": [
+        "Timeline agent (no external research needed)",
+        "Budget agent (no external research needed)",
+        "HTML generation scripts",
+        "Other non-travel commands"
+      ]
+    },
+    "success_criteria": [
+      "Agent definitions explicitly FORBID WebSearch usage",
+      "Agent definitions provide MANDATORY skill usage workflows",
+      "Plan command enforces skill-only mode in agent prompts",
+      "All agents document which skills to use for each research task",
+      "Clear error handling when skills fail (NO WebSearch fallback)",
+      "Test execution shows 0 WebSearch calls, 100% skill calls"
+    ],
+    "constraints": [
+      "Must maintain existing agent JSON output structure",
+      "Must preserve parallel agent execution pattern",
+      "Cannot change MCP skill APIs (read-only)",
+      "Must work with existing skills: gaode-maps, rednote, google-maps, weather, airbnb, duffel-flights"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "attractions.json line 4 shows 'data_sources': ['web_search', 'official_websites'] - no MCP skills used",
+    "root_cause": "Agent definitions have skill integration documentation BUT lack ENFORCEMENT. attractions.md lines 98-230 document HOW to use skills, but don't PROHIBIT WebSearch or make skills MANDATORY.",
+    "evidence": {
+      "attractions_md_line_5_to_9": "skills: [google-maps, gaode-maps, weather, rednote] - Skills declared but not enforced",
+      "attractions_md_line_98_to_230": "Optional documentation sections: 'Google Maps Integration', 'Gaode Maps Integration', 'RedNote Integration' - All presented as GUIDELINES, not REQUIREMENTS",
+      "attractions_md_missing": "No explicit 'NEVER use WebSearch' prohibition",
+      "attractions_md_missing_2": "No 'Quality Standards' section enforcing skill usage",
+      "plan_md_line_208": "Comment says 'using available MCP skills' but doesn't enforce it in prompt",
+      "actual_output": "attractions.json line 4 proves WebSearch was used exclusively"
+    },
+    "why_introduced": "Agent definitions focused on 'what to research' (attractions, meals) rather than 'how to research' (mandatory skills)",
+    "why_problematic": "Without enforcement, LLM defaults to WebSearch (faster, no tool use overhead). Skills remain unused despite being superior for China travel. User's careful skill design wasted.",
+    "timeline": "Present in initial agent design - never enforced skill-only mode",
+    "affected_files": [
+      ".claude/agents/attractions.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "Git status shows 1 uncommitted file (likely attractions.json from failed run)",
+    "agent_architecture": {
+      "orchestrator": ".claude/commands/plan.md - Invokes 6 parallel agents + 2 serial agents",
+      "specialist_agents": "Each agent has .md definition in .claude/agents/ with YAML frontmatter declaring skills",
+      "current_skills_declared": {
+        "attractions": ["google-maps", "gaode-maps", "weather", "rednote"],
+        "meals": ["google-maps", "gaode-maps", "rednote"],
+        "accommodation": ["google-maps", "gaode-maps", "airbnb"],
+        "transportation": ["google-maps", "gaode-maps", "duffel-flights"],
+        "entertainment": ["google-maps", "rednote"],
+        "shopping": ["google-maps", "gaode-maps", "rednote"]
+      }
+    },
+    "file_contents": {
+      "attractions_md_structure": "YAML frontmatter (skills list) + Role + Input + Tasks + Output + Quality Standards + Optional skill integration docs",
+      "attractions_md_quality_standards_lines_86_95": "Focus on data accuracy, cost format, duration - NO mention of skill enforcement",
+      "plan_md_agent_invocation_lines_188_212": "Generic prompt, only mentions skills in comment (line 208), doesn't enforce"
+    },
+    "environment": {
+      "working_directory": "/root/travel-planner",
+      "agent_definitions": ".claude/agents/*.md",
+      "command_definitions": ".claude/commands/plan.md",
+      "test_data": "data/china-multi-city-feb-mar-2026/attractions.json (failed run with WebSearch)"
+    }
+  },
+  "development_approach": {
+    "strategy": "Three-layer enforcement to guarantee skill-only usage",
+    "layers": [
+      {
+        "layer": 1,
+        "component": "Agent definitions (.claude/agents/*.md)",
+        "changes": [
+          "Add 'CRITICAL ENFORCEMENT' section at top (before Role)",
+          "Explicit 'NEVER use WebSearch' prohibition with all-caps emphasis",
+          "Mandatory workflow: 'You MUST use these skills for ALL research'",
+          "Convert optional integration docs to MANDATORY step-by-step procedures",
+          "Add Quality Standards item: 'Verify data_sources field shows ONLY skill names (never web_search)'"
+        ]
+      },
+      {
+        "layer": 2,
+        "component": "Plan orchestrator (.claude/commands/plan.md)",
+        "changes": [
+          "Step 7 agent invocation: Add CRITICAL instruction in prompt",
+          "Prompt must include: 'CRITICAL: Use ONLY MCP skills listed in your frontmatter. WebSearch is PROHIBITED.'",
+          "Add skill enforcement validation in Step 8 (Verify Agent Outputs)",
+          "Validation: Check JSON data_sources field - must NOT contain 'web_search'"
+        ]
+      },
+      {
+        "layer": 3,
+        "component": "Post-execution validation",
+        "changes": [
+          "Create script: scripts/validate-skill-usage.sh",
+          "Reads all agent output JSONs",
+          "Checks data_sources field",
+          "Exit code 1 if ANY web_search found",
+          "Plan command calls this in Step 8 before proceeding"
+        ]
+      }
+    ],
+    "scripts_to_create": [
+      {
+        "name": "scripts/validate-skill-usage.sh",
+        "purpose": "Validate all agent outputs use skills only (no WebSearch)",
+        "parameters": ["destination-slug"],
+        "validation_logic": "For each agent JSON: jq '.data_sources[]' | grep -q 'web_search' → exit 1 if found",
+        "usage": "bash scripts/validate-skill-usage.sh china-multi-city-feb-mar-2026"
+      }
+    ],
+    "files_to_modify": [
+      {
+        "file": ".claude/agents/attractions.md",
+        "changes": "Add CRITICAL ENFORCEMENT section, convert integration docs to mandatory workflows, update Quality Standards"
+      },
+      {
+        "file": ".claude/agents/meals.md",
+        "changes": "Same pattern as attractions.md"
+      },
+      {
+        "file": ".claude/agents/accommodation.md",
+        "changes": "Same pattern as attractions.md"
+      },
+      {
+        "file": ".claude/agents/entertainment.md",
+        "changes": "Same pattern as attractions.md"
+      },
+      {
+        "file": ".claude/agents/shopping.md",
+        "changes": "Same pattern as attractions.md"
+      },
+      {
+        "file": ".claude/agents/transportation.md",
+        "changes": "Same pattern as attractions.md"
+      },
+      {
+        "file": ".claude/commands/plan.md",
+        "changes": "Update Step 7 prompt with CRITICAL skill enforcement instruction, add validation call in Step 8"
+      }
+    ],
+    "validation_approach": "QA agent will re-run /plan command on test data (china-multi-city-feb-mar-2026) and verify 100% skill usage (0 web_search in any JSON)"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "skill_only_mode": true
+  }
+}
