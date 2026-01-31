@@ -161,11 +161,19 @@ Retrieve comments from a RedNote post.
 
 **Example usage**:
 ```javascript
-// Get comments from popular post
+// IMPORTANT: Use the full URL from search_notes (includes xsec_token)
+const notes = mcp__rednote__search_notes({ keywords: "成都景点", limit: 10 })
+const fullUrl = notes[0].url  // Complete URL with xsec_token
+
 mcp__rednote__get_note_comments({
-  url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
+  url: fullUrl  // Must include xsec_token parameter
 })
 ```
+
+**Important Notes**:
+- ⚠️ **Always use complete URLs from search_notes results**
+- URLs without xsec_token will return 404 errors
+- Comments may be paginated (initial load returns first batch)
 
 **Use cases**:
 - Read user feedback and Q&A
