@@ -244,97 +244,14 @@ mcp__plugin_amap-maps_amap-maps__transit_route({
 
 ---
 
-## Best Practices
+## Quick Tips
 
-### 1. Input Format
-- **Coordinates**: Use "longitude,latitude" format (GCJ-02)
-- **Addresses**: Use Chinese characters for best results
-- **City names**: Use official Chinese names (北京 not Beijing)
+Input: Use GCJ-02 coordinates or Chinese addresses. City names in Chinese (北京 not Beijing).
+Strategy: 0=fast, 1=shortest, 2=avoid highways, 3=avoid tolls. Inter-city needs date/time.
+Conversion: distance/1000=km, duration/60=min, duration/3600=hr.
 
-### 2. Strategy Selection
-- **Driving**: Use strategy 0 (fast) for time-sensitive trips
-- **Transit**: Use strategy 0 (fast) for commuting, strategy 1 (fewer transfers) for luggage
-- **Inter-city**: Always provide date/time for accurate schedules
-
-### 3. Response Parsing
-- Convert distance meters to km: `distance / 1000`
-- Convert duration seconds to minutes: `duration / 60`
-- Convert duration seconds to hours: `duration / 3600`
-- Toll and cost are in CNY
-
-### 4. Error Handling
-- Status "1" = Success, "0" = Failure
-- Check `info` field for error messages
-- Common errors:
-  - "INVALID_PARAMS" - Check coordinate format
-  - "NO_RESULT" - Try alternative addresses
-  - "DAILY_QUERY_OVER_LIMIT" - Rate limit exceeded
-
-### 5. Multi-city Routes
-- For inter-city: Use city names, not coordinates
-- Always specify `cityd` for destination city
-- Provide date/time for train schedules
-- Results include high-speed rail, regular trains, buses
-
-## Integration Patterns
-
-### Pattern 1: Compare Transportation Modes
-```markdown
-1. Load `/gaode-maps routing`
-2. Call `transit_route` for public option
-3. Call `driving_route` for private option
-4. Compare: duration, cost, convenience
-5. Recommend based on user preferences
-```
-
-### Pattern 2: Multi-stop Itinerary
-```markdown
-1. Load `/gaode-maps routing`
-2. Call `driving_route` with waypoints parameter
-3. Get total distance and duration
-4. Calculate fuel cost (distance * 0.7 CNY/km)
-5. Add toll fees from response
-```
-
-### Pattern 3: Accessibility Check
-```markdown
-1. Load `/gaode-maps routing`
-2. Call `transit_route` with strategy 2 (minimize walking)
-3. Check `walking_distance` in response
-4. If > 500m, suggest alternative or taxi
-```
-
-## Error Handling
-
-**Retry Logic**:
-```python
-max_retries = 3
-for attempt in range(max_retries):
-    response = call_mcp_tool(params)
-    if response.status == "1":
-        return response
-    if "OVER_LIMIT" in response.info:
-        sleep(60)  # Wait 1 minute
-    else:
-        break  # Don't retry other errors
-```
-
-**Fallback Strategy**:
-```markdown
-1. Try Gaode Maps MCP tool
-2. If error or no MCP: Use Google Maps skill
-3. If no Google Maps: Use WebSearch
-4. Parse web results and structure data
-```
-
-## Performance Tips
-
-- Cache frequently used routes
-- Batch multiple route requests when possible
-- Use coordinates instead of addresses (faster)
-- Pre-geocode addresses for repeat queries
-- Monitor API quota usage daily
+Common errors: INVALID_PARAMS (check coordinates), NO_RESULT (try alternative), OVER_LIMIT (rate limited).
 
 ---
 
-**Token Count**: ~2000 tokens (loaded on demand only)
+**Complete patterns and examples**: See commands/gaode-maps/tools/routing.md

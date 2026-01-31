@@ -19,22 +19,11 @@ RedNote (小红书/Xiaohongshu) is China's premier lifestyle and social commerce
 **Content Language**: Primarily Chinese with some English
 **Coverage**: Focused on Chinese destinations and Chinese travelers' global experiences
 
-## When to Use This Skill
+## When to Use
 
-**Use RedNote for:**
-- Chinese domestic travel (authentic local perspectives)
-- Restaurant and food recommendations in China
-- Hidden gems and insider tips from Chinese travelers
-- Shopping and product recommendations
-- Visual travel guides and photo inspiration
-- Cultural insights and local customs
-- Budget travel tips from locals
+Use for: Chinese domestic travel, restaurant/food recommendations, hidden gems, shopping, visual guides, cultural insights, budget tips.
 
-**Complementary to:**
-- Google Maps (for international locations and navigation)
-- Gaode Maps (for Chinese mapping and POI details)
-- Duffel Flights (for flight booking)
-- Airbnb (for accommodation booking)
+Complements: Google Maps (international), Gaode Maps (China POI), Duffel (flights), Airbnb (lodging).
 
 ## Available MCP Tools
 
@@ -88,12 +77,7 @@ mcp__rednote__search_notes({
 })
 ```
 
-**Best practices**:
-- Use Chinese keywords for better results (e.g., "北京" not "Beijing")
-- Add modifiers like "推荐" (recommend), "攻略" (guide), "必去" (must-visit)
-- Set `limit` to 20-50 for comprehensive coverage
-- Start with limit=10 for quick exploration
-- Use multiple keyword variations for thorough research
+Use Chinese keywords (e.g., "北京"), add modifiers ("推荐", "攻略"), set limit 20-50 for coverage.
 
 ### 2. Get Note Content by URL
 
@@ -137,11 +121,6 @@ mcp__rednote__get_note_content({
 - The MCP server handles URL redirection automatically
 - Typical timeout: 30 seconds (may fail for very slow network)
 
-**Use cases**:
-- Extract detailed recommendations from popular posts
-- Get full photo galleries for visual reference
-- Read complete travel guides and itineraries
-- Verify restaurant/attraction details from multiple sources
 
 ### 3. Get Comments by URL
 
@@ -188,27 +167,7 @@ mcp__rednote__get_note_comments({
 - Timeout: 30 seconds (insufficient for slow page loads)
 - Success Rate: ~50% in testing
 
-**Use cases** (when working):
-- Read user feedback and Q&A
-- Verify restaurant/attraction quality from comments
-- Find additional tips from community
-- Check recent visitor experiences
-
-**Recommended Workflow** (more reliable):
-```javascript
-// Instead of get_note_comments, use engagement metrics from search_notes
-const notes = mcp__rednote__search_notes({ keywords: "成都美食", limit: 20 });
-
-// Filter by high engagement (indicates quality)
-const popularNotes = notes.filter(note => {
-  return note.likes > 5000 && note.comments > 100;
-});
-
-// Get detailed content (includes author credibility, tags)
-const content = mcp__rednote__get_note_content({ url: popularNotes[0].url });
-
-// Use likes/comments counts as quality signals instead of reading individual comments
-```
+Recommended: Use engagement metrics from search_notes instead of reading comments.
 
 ### 4. Login (Manual Authentication)
 
@@ -368,57 +327,18 @@ mcp__rednote__search_notes({
 })
 ```
 
-## Effective Search Keywords
+## Search Keywords
 
-### Attraction Keywords
-- "城市名 + 必去景点" (must-visit attractions)
-- "城市名 + 小众景点" (hidden gems)
-- "城市名 + 拍照圣地" (photo spots)
-- "城市名 + 一日游" (day trip)
-- "城市名 + 旅游攻略" (travel guide)
+Attractions: "城市名必去景点", "小众景点", "拍照圣地"
+Restaurants: "美食推荐", "本地人推荐", "特色小吃"
+Shopping: "购物", "特产", "市场"
+Entertainment: "酒吧", "夜生活", "演出"
 
-### Restaurant Keywords
-- "城市名 + 美食推荐" (food recommendations)
-- "城市名 + 本地人推荐" (local recommendations)
-- "城市名 + 网红餐厅" (popular restaurants)
-- "城市名 + 特色小吃" (local snacks)
-- "菜系名 + 城市名" (cuisine + city)
+## Quality
 
-### Shopping Keywords
-- "城市名 + 购物" (shopping)
-- "城市名 + 特产" (local specialties)
-- "城市名 + 市场" (markets)
-- "城市名 + 商场推荐" (mall recommendations)
-
-### Entertainment Keywords
-- "城市名 + 酒吧" (bars)
-- "城市名 + 夜生活" (nightlife)
-- "城市名 + 演出" (performances)
-- "城市名 + KTV推荐" (karaoke)
-
-## Data Quality Considerations
-
-### Strengths
-- **Authentic perspectives**: Real user experiences from Chinese travelers
-- **Visual content**: Rich photo and video guides
-- **Current information**: Recent posts reflect latest conditions
-- **Local insights**: Chinese locals share insider tips
-- **Budget options**: Many posts focus on affordable travel
-
-### Limitations
-- **Language barrier**: Primarily Chinese content (translation may be needed)
-- **Subjectivity**: User-generated content varies in quality
-- **No official data**: Not a source for business hours or official pricing
-- **Trends over facts**: Popular content may prioritize aesthetics over practicality
-- **Verification needed**: Always cross-reference with official sources
-
-### Best Practices
-1. **Use multiple sources**: Compare 3-5 posts for consensus
-2. **Check post dates**: Prefer content from last 6 months
-3. **Verify with maps**: Confirm locations using Gaode Maps or Google Maps
-4. **Cross-reference**: Match with official website or contact info
-5. **Consider engagement**: Higher likes/comments often indicate reliability
-6. **Look for details**: Posts with specific prices, hours, and addresses are more reliable
+Strengths: Authentic UGC, visual content, current info, local insights.
+Limitations: Chinese only, subjective, no official data, needs verification.
+Best practice: Compare 3-5 posts, check dates, verify with maps, prefer high engagement.
 
 ## Security
 

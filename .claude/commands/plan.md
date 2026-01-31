@@ -11,27 +11,6 @@ model: inherit
 
 Multi-agent travel planning system using specialized domain agents for comprehensive itinerary creation with validation and HTML generation.
 
-## Architecture Overview
-
-This command follows the **equity-research orchestration pattern** with:
-
-1. **BA + Orchestrator (You)**: Requirements collection and agent coordination
-2. **8 Specialist Agents**: Domain experts for travel components
-   - meals-agent: Restaurant and dining research
-   - accommodation-agent: Hotel and lodging research
-   - attractions-agent: Sightseeing and activities
-   - entertainment-agent: Shows and nightlife
-   - shopping-agent: Markets and retail
-   - transportation-agent: Inter-city travel (location changes only)
-   - timeline-agent: Schedule coordination and conflict detection (serial)
-   - budget-agent: Cost calculation and validation (serial)
-3. **Validation Scripts**: Data consistency checks
-4. **HTML Generation**: Script-based interactive HTML creation
-
-**Data Flow**: File-based communication via `data/{destination-slug}/{agent-name}.json`
-
----
-
 ## Usage
 
 ```
@@ -56,8 +35,6 @@ Use output to create TodoWrite with all workflow steps.
 
 ### Phase 1: BA Requirement Collection
 
-**Your Role**: Business Analyst conducting structured travel requirements interview.
-
 #### Step 1: Parse Destination Hint
 
 Extract from `$ARGUMENTS`:
@@ -66,30 +43,9 @@ Extract from `$ARGUMENTS`:
 
 #### Step 2: Conduct Requirements Interview
 
-**Interview naturally, collecting**:
+Collect: destination(s), dates, duration, travelers, budget, daily plans (user's raw input in any language), preferences (accommodation type, dietary restrictions, activity pace, special needs).
 
-1. **Destination(s)**: City, region, multi-city route
-2. **Dates**: Start date, duration (number of days)
-3. **Travelers**: Solo, couple, family (ages if children)
-4. **Budget**: Total amount, per person, currency
-5. **Daily Plans**: For EACH day, ask: "What would you like to do on Day X in {location}?"
-   - Collect user's raw input (any language)
-   - Don't interpret or research yet
-   - Store in array per day
-6. **Preferences**:
-   - Accommodation type (budget/mid-range/luxury)
-   - Dietary restrictions
-   - Activity pace (relaxed/moderate/intensive)
-   - Special needs
-
-**Critical**: For multi-city trips, confirm location per day:
-```
-Day 1-2: Chongqing
-Day 3: Bazhong
-Day 4-5: Chengdu
-Day 6-7: Shanghai
-Day 8-9: Beijing
-```
+For multi-city: confirm location per day.
 
 #### Step 3: Generate Requirements Skeleton
 
@@ -152,28 +108,14 @@ bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
 
 #### Step 5: Initialize Plan Skeleton
 
-**Tasks**:
-1. Read `requirements-skeleton.json`
-2. Detect location changes between consecutive days
-3. Create plan skeleton with all fields initialized
-4. Save to: `data/{destination-slug}/plan-skeleton.json`
+Read `requirements-skeleton.json`, detect location changes, create plan skeleton with all fields initialized, save to `data/{destination-slug}/plan-skeleton.json`.
 
-**Location Change Detection**:
-
-Use the `detect-location-changes.py` script to automatically detect and add location change objects:
-
+Run location change detection:
 ```bash
-/root/travel-planner/scripts/detect-location-changes.py \
-  /root/travel-planner/data/{destination-slug}/plan-skeleton.json
+/root/travel-planner/scripts/detect-location-changes.py /root/travel-planner/data/{destination-slug}/plan-skeleton.json
 ```
 
-This script:
-- Compares consecutive days' locations
-- Adds `location_change` objects where location differs
-- Sets transportation fields to null (filled by transportation-agent)
-- Overwrites plan-skeleton.json with updated data
-
-**Plan Skeleton Structure**:
+Plan skeleton structure:
 ```json
 {
   "days": [
@@ -530,78 +472,3 @@ Action:
 **Versioning**: `-v2`, `-v3`, etc.
 **Max iterations**: 3 major revisions
 
----
-
-## File Structure
-
-```
-/root/travel-planner/
-├── data/
-│   └── {destination-slug}/
-│       ├── requirements-skeleton.json   (BA output)
-│       ├── plan-skeleton.json          (Orchestrator output)
-│       ├── meals.json                  (Agent output)
-│       ├── accommodation.json          (Agent output)
-│       ├── attractions.json            (Agent output)
-│       ├── entertainment.json          (Agent output)
-│       ├── shopping.json               (Agent output)
-│       ├── transportation.json         (Agent output)
-│       ├── timeline.json               (Agent output - serial)
-│       └── budget.json                 (Agent output - serial)
-├── scripts/
-│   ├── check-day-completion.sh
-│   ├── check-location-continuity.sh
-│   ├── validate-timeline-consistency.sh
-│   └── generate-travel-html.sh
-└── travel-plan-{destination-slug}.html  (Final output)
-```
-
-## Quality Standards
-
-**Timeline Dictionary Format**:
-```json
-{
-  "timeline": {
-    "Hongyadong Night View": {
-      "start_time": "18:00",
-      "end_time": "20:00",
-      "duration_minutes": 120
-    },
-    "Dinner at Hotpot Restaurant": {
-      "start_time": "20:30",
-      "end_time": "22:00",
-      "duration_minutes": 90
-    }
-  }
-}
-```
-
-**Key must EXACTLY match activity name from source JSON**.
-
-**Location Change Handling**:
-- Only days with different location from previous day get location_change object
-- transportation-agent ONLY processes these days
-- Validation ensures no location changes are missed
-
-**Budget Validation**:
-- Per-day breakdown by category
-- Trip total vs user budget
-- Specific recommendations for overages
-
-**Conflict Resolution**:
-- BA presents conflicts to user
-- User chooses resolution
-- Specific agents re-invoked (not all 8)
-- Maintain data integrity across re-invocations
-
-## Notes
-
-- Follow equity-research pattern: orchestrator never implements, only coordinates
-- File-based communication: agents save JSON and return 'complete'
-- Validation scripts catch errors before HTML generation
-- Timeline uses dictionary (not array) with activity names as keys
-- Transportation agent is optional (only for location changes)
-- Timeline and budget agents run serially after parallel agents
-- HTML generation is script-based (no HTML subagent)
-- Support multi-language user_plans (preserve original language)
-- Graceful degradation: deployment optional, local file always works
