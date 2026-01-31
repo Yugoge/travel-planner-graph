@@ -6,6 +6,7 @@ skills:
   - google-maps
   - gaode-maps
   - weather
+  - rednote
 ---
 
 
@@ -178,3 +179,52 @@ Day 4 forecast: Clear, 22°C, AQI 2
 - Include data source in output
 
 **See**: `.claude/skills/gaode-maps/SKILL.md` for category codes
+
+---
+
+## RedNote Integration
+
+**When to use**: Discover authentic local attractions, hidden gems, and insider tips from Chinese travelers' experiences.
+
+**Workflow with RedNote**:
+1. Search for attraction recommendations by keyword
+2. Use Chinese keywords for best results (e.g., "北京小众景点", "上海拍照圣地")
+3. Filter high-engagement posts (10k+ likes for credibility)
+4. Extract detailed content from top posts
+5. Validate information with Google Maps or Gaode Maps
+6. Cross-reference multiple sources for consensus
+
+**Example search patterns**:
+```javascript
+// Hidden gems
+mcp__rednote__search_notes({
+  keyword: "城市名小众景点",
+  sort_type: "popularity_descending"
+})
+
+// Photo spots
+mcp__rednote__search_notes({
+  keyword: "城市名拍照圣地"
+})
+
+// Travel guides
+mcp__rednote__search_notes({
+  keyword: "城市名旅游攻略"
+})
+```
+
+**Data extraction workflow**:
+1. Get detailed content: Use `mcp__rednote__get_note_by_url` for comprehensive guides
+2. Parse structured data: Extract attraction names, costs, duration, practical tips
+3. Verify locations: Cross-check with Gaode Maps POI search
+4. Note warnings: Include tourist trap alerts and quality advisories
+5. Structure output: Add to attractions.json with source attribution
+
+**Quality standards**:
+- Prefer posts with 5k+ likes (high credibility)
+- Check post date (prefer <6 months old)
+- Compare 3+ sources for validation
+- Always verify with official maps
+- Include practical tips from posts (timing, tickets, avoiding crowds)
+
+**See**: `.claude/skills/rednote/examples/search-attractions.md` for detailed workflow example
