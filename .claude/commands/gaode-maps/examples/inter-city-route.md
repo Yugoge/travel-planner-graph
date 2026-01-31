@@ -19,30 +19,10 @@ This loads the `transit_route` and `driving_route` tools.
 ### Step 2: Plan Transit Route
 
 ```javascript
-// Use transit_route for public transportation options
 const transitResult = await transit_route({
-  origin: "重庆",
-  destination: "成都",
-  cityd: "成都",
-  strategy: 0  // Fastest route
+  origin: "重庆", destination: "成都", cityd: "成都", strategy: 0
 });
-
-// Response structure:
-{
-  route: {
-    transits: [{
-      segments: [{
-        transit_type: "railway",
-        departure: {name: "重庆西站", time: "08:30"},
-        arrival: {name: "成都东站", time: "10:15"},
-        duration: 6300,
-        cost: 154
-      }],
-      duration: 6300,
-      cost: 154
-    }]
-  }
-}
+// Returns: route.transits[].{segments[], duration, cost}
 ```
 
 ### Step 3: Parse Response
@@ -77,32 +57,11 @@ echo "$transitResult" > transit-response.json
 ### Step 4: Compare with Driving Option (Optional)
 
 ```javascript
-// For comparison, also check driving route
 const drivingResult = await driving_route({
-  origin: "重庆",
-  destination: "成都",
-  strategy: 0  // Fastest
+  origin: "重庆", destination: "成都", strategy: 0
 });
-
-// Response structure:
-{
-  route: {
-    distance: 308000,
-    duration: 12600,
-    tolls: 120
-  }
-}
-
-// Parsed:
-{
-  from: "Chongqing",
-  to: "Chengdu",
-  transportation: "Private car",
-  duration_minutes: 210,  // 3.5 hours
-  cost: 120,  // Tolls only (excluding fuel)
-  distance_km: 308,
-  notes: "Tolls: ¥120, estimated fuel: ¥180 (total ~¥300)"
-}
+// Returns: route.{distance, duration, tolls}
+// Parse to: {transportation: "Private car", duration_minutes, cost, distance_km, notes}
 ```
 
 ### Step 5: Make Recommendation
@@ -137,31 +96,12 @@ EOF
 ### Step 6: Save to Transportation JSON
 
 ```javascript
-const recommendation = recommendTransportation(transitOption, drivingOption, {
-  luggage: 'light',
-  travelers: 2
-});
-
 const transportationData = {
-  agent: "transportation",
-  status: "complete",
-  data: {
-    days: [
-      {
-        day: 3,
-        location_change: {
-          from: "Chongqing",
-          to: "Chengdu",
-          ...recommendation
-        }
-      }
-    ]
-  },
-  notes: "High-speed train recommended for time and cost efficiency. Book 1-2 weeks in advance for best prices."
+  agent: "transportation", status: "complete",
+  data: { days: [{ day: 3, location_change: {...recommendation} }] },
+  notes: "Recommendation rationale"
 };
-
 // Save to: data/{destination-slug}/transportation.json
-writeJSON(`data/${destinationSlug}/transportation.json`, transportationData);
 ```
 
 ---
@@ -190,118 +130,36 @@ The `fetch-route-with-retry.py` script handles transient errors automatically:
 
 ---
 
-## Retry Logic Details
-
-The retry logic is built into `fetch-route-with-retry.py`:
-
-**Retryable errors:**
-- HTTP 429 (rate limiting)
-- HTTP 5xx (server errors)
-- Network timeouts
-- Temporary connection failures
-
-**Non-retryable errors:**
-- HTTP 4xx (client errors, except 429)
-- Invalid parameters
-- Authentication failures
-
-**Backoff strategy:**
-```
-Attempt 1: Immediate
-Attempt 2: Wait 1s
-Attempt 3: Wait 2s
-Attempt 4: Wait 4s
-```
-
-See script for implementation details.
-
----
-
 ## Multi-City Trip Example
 
-### Scenario: Beijing → Bazhong → Chengdu → Shanghai
-
-Use the `plan-multi-city.py` script:
-
 ```bash
-/root/travel-planner/scripts/gaode-maps/plan-multi-city.py \
-  Beijing Bazhong Chengdu Shanghai \
-  -s 2 \
-  -r 0.2 \
-  -o multi-city-plan.json
+/root/travel-planner/scripts/gaode-maps/plan-multi-city.py Beijing Bazhong Chengdu Shanghai -s 2 -r 0.2 -o multi-city-plan.json
 ```
 
-**Features:**
-- Automatic rate limiting (200ms between requests)
-- Graceful error handling with manual research placeholders
-- Sequential day numbering
-- Complete transportation agent output format
-
-**Output format:**
-```json
-{
-  "agent": "transportation",
-  "status": "complete",
-  "data": {
-    "days": [
-      {"day": 2, "location_change": {...}},
-      {"day": 3, "location_change": {...}},
-      {"day": 4, "location_change": {...}}
-    ]
-  },
-  "notes": "Transportation options researched using Gaode Maps API"
-}
-```
+**Features**: Automatic rate limiting, error handling, sequential day numbering
+**Output**: Complete transportation agent JSON format
 
 ---
 
 ## Complete Transportation Agent Workflow
 
-Use the `transportation-workflow.py` script for the complete agent workflow:
-
 ```bash
-/root/travel-planner/scripts/gaode-maps/transportation-workflow.py \
-  chongqing-chengdu-2026 \
-  -v
+/root/travel-planner/scripts/gaode-maps/transportation-workflow.py chongqing-chengdu-2026 -v
 ```
 
-**Workflow steps:**
-1. Read requirements-skeleton.json and plan-skeleton.json
-2. Identify days with location changes
-3. Research routes with retry and recommendation logic
-4. Save to transportation.json
-
-**Required input files:**
-- `/root/travel-planner/data/{destination-slug}/requirements-skeleton.json`
-- `/root/travel-planner/data/{destination-slug}/plan-skeleton.json`
-
-**Output file:**
-- `/root/travel-planner/data/{destination-slug}/transportation.json`
-
-**Returns:** `complete` status when finished
-
-**Script details:** `/root/travel-planner/scripts/gaode-maps/README.md`
+**Input**: requirements-skeleton.json, plan-skeleton.json
+**Output**: transportation.json
+**Details**: See `/root/travel-planner/scripts/gaode-maps/README.md`
 
 ---
 
-## Tips for Transportation Agent
+## Tips
 
-1. **Always try Gaode Maps first**: More accurate and real-time than web search
-
-2. **Implement retry logic**: Network issues are common, exponential backoff helps
-
-3. **Graceful degradation**: If MCP fails, fall back to WebSearch
-
-4. **Compare options**: Transit vs driving (when applicable)
-
-5. **Consider user preferences**: Luggage, group size, budget, time constraints
-
-6. **Rate limiting**: Add small delays between requests to avoid hitting limits
-
-7. **Structured data**: Always output consistent JSON format for downstream agents
-
-8. **Error reporting**: Include clear error messages and fallback instructions
-
-9. **Real-time data**: Gaode Maps provides current schedules and traffic
-
-10. **Chinese locations**: Works best with Chinese city names (e.g., "重庆" vs "Chongqing")
+1. Try Gaode Maps first (accurate, real-time)
+2. Implement retry logic with exponential backoff
+3. Fall back to WebSearch if MCP fails
+4. Compare transit vs driving options
+5. Consider user preferences (luggage, group size, budget)
+6. Add delays to avoid rate limits
+7. Output consistent JSON for downstream agents
+8. Use Chinese city names for best results

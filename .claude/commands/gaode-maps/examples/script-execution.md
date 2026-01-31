@@ -108,39 +108,21 @@ source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/sc
 
 ## 3. POI Search Examples
 
-### Keyword Search (Hotpot Restaurants in Chongqing)
+### Keyword Search
 
 ```bash
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
-**Expected Output**:
-```json
-{
-  "count": "352",
-  "pois": [
-    {"name": "德庄火锅", "address": "解放碑步行街", "rating": "4.6"}
-    // ... (352 total POIs)
-  ]
-}
-```
+**Returns**: `count`, `pois[]` with name/address/rating (352 results)
 
-### Nearby Search (Restaurants within 500m)
+### Nearby Search
 
 ```bash
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500 10
 ```
 
-**Expected Output**:
-```json
-{
-  "count": "47",
-  "pois": [
-    {"name": "蜀大侠火锅", "address": "红星路三段1号IFS", "distance": "85", "rating": "4.5"}
-    // ... (47 total POIs)
-  ]
-}
-```
+**Returns**: `count`, `pois[]` with name/address/distance/rating (47 results)
 
 ### POI Detail Lookup
 
@@ -148,38 +130,19 @@ source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/sc
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py detail "B000A7BD6C"
 ```
 
-**Expected Output**:
-```json
-{
-  "name": "德庄火锅(解放碑店)",
-  "address": "重庆市渝中区解放碑步行街88号",
-  "tel": "023-63845678",
-  "business_hours": "10:00-22:00",
-  "rating": "4.6"
-}
-```
+**Returns**: name, address, tel, business_hours, rating
 
 ---
 
 ## 4. Utilities Examples
 
-### Weather Forecast (Chengdu 4-day Forecast)
+### Weather Forecast
 
 ```bash
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
 ```
 
-**Expected Output**:
-```json
-{
-  "city": "成都市",
-  "casts": [
-    {"date": "2026-01-30", "dayweather": "多云", "daytemp": "12", "nighttemp": "6"},
-    {"date": "2026-01-31", "dayweather": "小雨", "daytemp": "10", "nighttemp": "7"}
-    // ... (4 total days)
-  ]
-}
-```
+**Returns**: city, casts[] (4 days with date/weather/temps)
 
 ### Current Weather
 
@@ -187,44 +150,19 @@ source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/sc
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "base"
 ```
 
-**Expected Output**:
-```json
-{
-  "city": "成都市",
-  "weather": "多云",
-  "temperature": "11",
-  "humidity": "68"
-}
-```
+**Returns**: city, weather, temperature, humidity
 
-### Distance Measurement (Beijing to Shanghai Driving)
+### Distance Measurement
 
 ```bash
+# Driving distance
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
-```
 
-**Expected Output**:
-```json
-{
-  "distance": "1213420",
-  "duration": "43685",
-  "formatted": {"distance": "1213.4 km", "duration": "12h 8m"}
-}
-```
-
-### Straight-Line Distance
-
-```bash
+# Straight-line distance
 source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 0
 ```
 
-**Expected Output**:
-```json
-{
-  "distance": "1067890",
-  "formatted": {"distance": "1067.9 km"}
-}
-```
+**Returns**: distance, duration (if driving), formatted values
 
 ---
 
@@ -270,49 +208,10 @@ Error: Invalid coordinates: out of China service area
 
 ---
 
-## Integration with Bash Tool
+## Integration Notes
 
-Agents should execute scripts via Bash tool:
+**Bash Tool**: Execute scripts and parse JSON stdout
 
-```javascript
-// In agent code
-const result = await bash({
-  command: 'python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"',
-  description: 'Get transit route from Chongqing to Chengdu'
-});
+**Script Help**: Run without arguments for usage information
 
-const data = JSON.parse(result.stdout);
-console.log(`Duration: ${data.route.transits[0].duration}s`);
-console.log(`Cost: ${data.route.transits[0].cost} CNY`);
-```
-
----
-
-## Script Help
-
-All scripts provide usage information when called without arguments:
-
-```bash
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py
-```
-
-**Output**:
-```
-Usage:
-  geocoding.py geocode <address> [city]
-  geocoding.py regeocode <longitude,latitude> [radius]
-  geocoding.py ip_location [ip_address]
-```
-
----
-
-## Environment Variable Override
-
-Use your own API key:
-
-```bash
-export AMAP_MAPS_API_KEY="your_key_here"
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
-```
-
-If `AMAP_MAPS_API_KEY` is not set, scripts default to project key: `99e97af6fd426ce3cfc45d22d26e78e3`
+**API Key Override**: Set `AMAP_MAPS_API_KEY` environment variable (defaults to project key)
