@@ -49,25 +49,13 @@ mcp__plugin_amap-maps_amap-maps__driving_route({
 {
   "status": "1",
   "route": {
-    "origin": "116.397428,39.90923",
-    "destination": "121.473701,31.230416",
     "distance": "1213450",
     "duration": "43200",
     "tolls": "385",
-    "taxi_cost": "3640",
-    "paths": [
-      {
-        "distance": "1213450",
-        "duration": "43200",
-        "steps": [
-          {
-            "instruction": "沿北京东路向东行驶",
-            "distance": "1500",
-            "duration": "180"
-          }
-        ]
-      }
-    ]
+    "paths": [{
+      "steps": [{"instruction": "沿北京东路向东行驶", "distance": "1500"}]
+      // ... (multiple turn-by-turn steps)
+    }]
   }
 }
 ```
@@ -112,13 +100,7 @@ mcp__plugin_amap-maps_amap-maps__walking_route({
   "route": {
     "distance": "850",
     "duration": "708",
-    "steps": [
-      {
-        "instruction": "向北步行",
-        "distance": "200",
-        "duration": "167"
-      }
-    ]
+    "steps": [{"instruction": "向北步行", "distance": "200"}]
   }
 }
 ```
@@ -163,13 +145,7 @@ mcp__plugin_amap-maps_amap-maps__cycling_route({
   "route": {
     "distance": "3200",
     "duration": "640",
-    "steps": [
-      {
-        "instruction": "沿湖滨路骑行",
-        "distance": "500",
-        "duration": "100"
-      }
-    ]
+    "steps": [{"instruction": "沿湖滨路骑行", "distance": "500"}]
   }
 }
 ```
@@ -232,26 +208,19 @@ mcp__plugin_amap-maps_amap-maps__transit_route({
 {
   "status": "1",
   "route": {
-    "distance": "1318000",
-    "duration": "16200",
-    "transits": [
-      {
-        "cost": "553",
-        "duration": "16200",
-        "segments": [
-          {
-            "railway": {
-              "name": "G3",
-              "departure_stop": "北京南站",
-              "arrival_stop": "上海虹桥站",
-              "departure_time": "08:00",
-              "arrival_time": "12:30",
-              "type": "高铁"
-            }
-          }
-        ]
-      }
-    ]
+    "transits": [{
+      "cost": "553",
+      "duration": "16200",
+      "segments": [{
+        "railway": {
+          "name": "G3",
+          "departure_stop": "北京南站",
+          "arrival_stop": "上海虹桥站",
+          "departure_time": "08:00",
+          "arrival_time": "12:30"
+        }
+      }]
+    }]
   }
 }
 ```

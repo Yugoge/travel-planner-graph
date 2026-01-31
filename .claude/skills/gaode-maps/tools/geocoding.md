@@ -57,20 +57,11 @@ mcp__plugin_amap-maps_amap-maps__geocode({
 ```json
 {
   "status": "1",
-  "count": "1",
-  "geocodes": [
-    {
-      "formatted_address": "北京市东城区天安门广场",
-      "province": "北京市",
-      "city": "北京市",
-      "district": "东城区",
-      "township": "东华门街道",
-      "street": [],
-      "number": [],
-      "location": "116.397428,39.90923",
-      "level": "POI"
-    }
-  ]
+  "geocodes": [{
+    "formatted_address": "北京市东城区天安门广场",
+    "location": "116.397428,39.90923",
+    "level": "POI"
+  }]
 }
 ```
 
@@ -86,19 +77,11 @@ mcp__plugin_amap-maps_amap-maps__geocode({
 ```json
 {
   "status": "1",
-  "geocodes": [
-    {
-      "formatted_address": "北京市朝阳区望京街10号",
-      "province": "北京市",
-      "city": "北京市",
-      "district": "朝阳区",
-      "township": "望京街道",
-      "street": "望京街",
-      "number": "10号",
-      "location": "116.480881,39.996567",
-      "level": "门牌号"
-    }
-  ]
+  "geocodes": [{
+    "formatted_address": "北京市朝阳区望京街10号",
+    "location": "116.480881,39.996567",
+    "level": "门牌号"
+  }]
 }
 ```
 
@@ -173,15 +156,7 @@ mcp__plugin_amap-maps_amap-maps__reverse_geocode({
   "status": "1",
   "regeocode": {
     "formatted_address": "北京市东城区东华门街道天安门广场",
-    "addressComponent": {
-      "province": "北京市",
-      "city": "北京市",
-      "district": "东城区",
-      "township": "东华门街道",
-      "street": "天安门广场",
-      "streetNumber": "",
-      "adcode": "110101"
-    }
+    "addressComponent": {"district": "东城区", "street": "天安门广场"}
   }
 }
 ```
@@ -201,40 +176,13 @@ mcp__plugin_amap-maps_amap-maps__reverse_geocode({
   "status": "1",
   "regeocode": {
     "formatted_address": "北京市朝阳区望京街道望京街10号",
-    "addressComponent": {
-      "province": "北京市",
-      "city": "北京市",
-      "district": "朝阳区",
-      "township": "望京街道",
-      "street": "望京街",
-      "streetNumber": "10号",
-      "building": "望京SOHO",
-      "adcode": "110105"
-    },
+    "addressComponent": {"building": "望京SOHO"},
     "pois": [
-      {
-        "name": "望京SOHO",
-        "type": "商务住宅;楼宇;商务写字楼",
-        "distance": "18.5",
-        "direction": "东北",
-        "location": "116.480923,39.996612"
-      },
-      {
-        "name": "望京地铁站",
-        "type": "交通设施服务;地铁站;地铁站",
-        "distance": "245.7",
-        "direction": "西",
-        "location": "116.478345,39.996234"
-      }
+      {"name": "望京SOHO", "distance": "18.5"},
+      {"name": "望京地铁站", "distance": "245.7"}
+      // ... (nearby POIs)
     ],
-    "roads": [
-      {
-        "name": "望京街",
-        "distance": "12.3",
-        "direction": "南",
-        "location": "116.480881,39.996445"
-      }
-    ]
+    "roads": [{"name": "望京街", "distance": "12.3"}]
   }
 }
 ```
@@ -277,11 +225,8 @@ mcp__plugin_amap-maps_amap-maps__ip_location({
 ```json
 {
   "status": "1",
-  "info": "OK",
-  "province": "北京市",
   "city": "北京市",
-  "adcode": "110000",
-  "rectangle": "116.023805,39.529491;116.793744,40.372442"
+  "adcode": "110000"
 }
 ```
 

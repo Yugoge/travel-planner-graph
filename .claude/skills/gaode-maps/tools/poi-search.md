@@ -132,16 +132,11 @@ mcp__plugin_amap-maps_amap-maps__poi_search_nearby({
   "count": "23",
   "pois": [
     {
-      "id": "B0FFGJXJ6P",
       "name": "北京首都机场希尔顿酒店",
-      "type": "住宿服务;宾馆酒店;星级酒店",
       "address": "首都机场T3航站楼C出口",
-      "location": "116.596234,40.071582",
       "distance": "156",
-      "biz_ext": {
-        "rating": "4.7",
-        "cost": "850"
-      }
+      "biz_ext": {"rating": "4.7", "cost": "850"}
+      // ... (23 total hotels)
     }
   ]
 }
@@ -193,34 +188,19 @@ mcp__plugin_amap-maps_amap-maps__poi_detail({
 ```json
 {
   "status": "1",
-  "pois": [
-    {
-      "id": "B001B0FKW6",
-      "name": "陈麻婆豆腐",
-      "type": "餐饮服务;中餐厅;川菜馆",
-      "address": "青羊区西玉龙街197号",
-      "location": "104.052825,30.660381",
-      "tel": "028-86754512",
-      "biz_ext": {
-        "rating": "4.5",
-        "cost": "80",
-        "open_time": "10:00-22:00",
-        "recommend": "麻婆豆腐,回锅肉,宫保鸡丁"
-      },
-      "photos": [
-        {
-          "title": "店面",
-          "url": "https://store.is.autonavi.com/..."
-        },
-        {
-          "title": "麻婆豆腐",
-          "url": "https://store.is.autonavi.com/..."
-        }
-      ],
-      "parking_type": "路边停车",
-      "business_area": "宽窄巷子"
-    }
-  ]
+  "pois": [{
+    "name": "陈麻婆豆腐",
+    "address": "青羊区西玉龙街197号",
+    "tel": "028-86754512",
+    "biz_ext": {
+      "rating": "4.5",
+      "cost": "80",
+      "open_time": "10:00-22:00",
+      "recommend": "麻婆豆腐,回锅肉,宫保鸡丁"
+    },
+    "photos": [{"title": "店面", "url": "..."}],
+    "business_area": "宽窄巷子"
+  }]
 }
 ```
 

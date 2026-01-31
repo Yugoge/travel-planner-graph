@@ -47,40 +47,32 @@ const transitResult = await transit_route({
 
 ### Step 3: Parse Response
 
-```javascript
-function parseTransitRoute(result) {
-  const mainSegment = result.route.transits[0].segments.find(
-    s => s.transit_type === 'railway' || s.transit_type === 'bus'
-  );
+Use the `parse-transit-routes.py` script to extract structured data:
 
-  return {
-    from: "Chongqing",
-    to: "Chengdu",
-    transportation: mainSegment.transit_type === 'railway'
-      ? 'High-speed train'
-      : 'Bus',
-    departure_time: mainSegment.departure.time,
-    arrival_time: mainSegment.arrival.time,
-    duration_minutes: Math.round(mainSegment.duration / 60),
-    cost: mainSegment.cost,
-    distance_km: Math.round(mainSegment.distance / 1000),
-    notes: `Depart from ${mainSegment.departure.name}, arrive at ${mainSegment.arrival.name}`
-  };
-}
+```bash
+# Save API response to file
+echo "$transitResult" > transit-response.json
 
-// Parsed result:
+# Parse with Python script
+/root/travel-planner/scripts/gaode-maps/parse-transit-routes.py transit-response.json -o parsed-route.json
+```
+
+**Parsed result:**
+```json
 {
-  from: "Chongqing",
-  to: "Chengdu",
-  transportation: "High-speed train",
-  departure_time: "08:30",
-  arrival_time: "10:15",
-  duration_minutes: 105,
-  cost: 154,
-  distance_km: 308,
-  notes: "Depart from 重庆西站, arrive at 成都东站"
+  "from": "Chongqing",
+  "to": "Chengdu",
+  "transportation": "High-speed train",
+  "departure_time": "08:30",
+  "arrival_time": "10:15",
+  "duration_minutes": 105,
+  "cost": 154,
+  "distance_km": 308,
+  "notes": "Depart from 重庆西站, arrive at 成都东站"
 }
 ```
+
+**Script details:** `/root/travel-planner/scripts/gaode-maps/README.md`
 
 ### Step 4: Compare with Driving Option (Optional)
 
@@ -115,45 +107,32 @@ const drivingResult = await driving_route({
 
 ### Step 5: Make Recommendation
 
-```javascript
-function recommendTransportation(transitOption, drivingOption, userPreferences) {
-  const considerations = [];
+Use the `recommend-transportation.py` script to compare options:
 
-  // Time comparison
-  if (transitOption.duration_minutes < drivingOption.duration_minutes) {
-    considerations.push({
-      factor: 'time',
-      winner: 'transit',
-      detail: `Train is ${drivingOption.duration_minutes - transitOption.duration_minutes} minutes faster`
-    });
-  }
-
-  // Cost comparison (including estimated fuel for driving)
-  const drivingTotalCost = drivingOption.cost + 180;  // Tolls + fuel estimate
-  if (transitOption.cost < drivingTotalCost) {
-    considerations.push({
-      factor: 'cost',
-      winner: 'transit',
-      detail: `Train is ¥${drivingTotalCost - transitOption.cost} cheaper`
-    });
-  }
-
-  // Convenience
-  if (userPreferences.luggage === 'heavy' || userPreferences.travelers > 3) {
-    considerations.push({
-      factor: 'convenience',
-      winner: 'driving',
-      detail: 'Private car better for heavy luggage or large groups'
-    });
-  }
-
-  // Recommendation logic
-  const transitScore = considerations.filter(c => c.winner === 'transit').length;
-  const drivingScore = considerations.filter(c => c.winner === 'driving').length;
-
-  return transitScore >= drivingScore ? transitOption : drivingOption;
+```bash
+# Create user preferences file
+cat > preferences.json <<EOF
+{
+  "luggage": "light",
+  "travelers": 2,
+  "fuel_estimate_per_km": 0.6
 }
+EOF
+
+# Generate recommendation
+/root/travel-planner/scripts/gaode-maps/recommend-transportation.py \
+  parsed-transit.json \
+  parsed-driving.json \
+  -p preferences.json \
+  -o recommendation.json
 ```
+
+**Output includes:**
+- Recommended transportation option
+- Score comparison (transit vs driving)
+- Detailed reasoning for each factor (time, cost, convenience)
+
+**Script details:** `/root/travel-planner/scripts/gaode-maps/README.md`
 
 ### Step 6: Save to Transportation JSON
 
@@ -189,74 +168,52 @@ writeJSON(`data/${destinationSlug}/transportation.json`, transportationData);
 
 ## Error Handling Example
 
-### Scenario: MCP Server Unavailable
+### Scenario: API Errors with Retry
 
-```javascript
-async function getRouteWithFallback(origin, destination) {
-  try {
-    // Try Gaode Maps first
-    const route = await transit_route({
-      origin: origin,
-      destination: destination,
-      cityd: destination
-    });
+The `fetch-route-with-retry.py` script handles transient errors automatically:
 
-    return {
-      source: 'gaode_maps',
-      data: parseTransitRoute(route)
-    };
-  } catch (error) {
-    console.warn('Gaode Maps unavailable, falling back to WebSearch');
-
-    // Fallback to WebSearch
-    const searchQuery = `${origin} to ${destination} train schedule 2026`;
-    const searchResults = await WebSearch({ query: searchQuery });
-
-    return {
-      source: 'web_search',
-      data: parseWebSearchResults(searchResults),
-      warning: 'Data from web search, may not be real-time'
-    };
-  }
-}
+```bash
+# Fetch with retry logic (max 3 attempts, exponential backoff)
+/root/travel-planner/scripts/gaode-maps/fetch-route-with-retry.py \
+  "重庆" "成都" \
+  -t transit \
+  -r 3 \
+  -d 1.0 \
+  -o route.json
 ```
+
+**Retry behavior:**
+- Retries on 429 (rate limit) and 5xx (server errors)
+- Exponential backoff: 1s, 2s, 4s delays
+- Fails immediately on 4xx client errors
+- Logs all retry attempts for debugging
 
 ---
 
-## Retry Logic Example
+## Retry Logic Details
 
-### Scenario: Transient Network Error
+The retry logic is built into `fetch-route-with-retry.py`:
 
-```javascript
-async function getRouteWithRetry(origin, destination, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await transit_route({
-        origin: origin,
-        destination: destination,
-        cityd: destination
-      });
-    } catch (error) {
-      // Retry on transient errors
-      if (error.status === 429 || error.status >= 500) {
-        const delay = 1000 * Math.pow(2, i);  // Exponential backoff
-        console.warn(`Retry ${i + 1}/${maxRetries} after ${delay}ms`);
-        await sleep(delay);
-        continue;
-      }
+**Retryable errors:**
+- HTTP 429 (rate limiting)
+- HTTP 5xx (server errors)
+- Network timeouts
+- Temporary connection failures
 
-      // Don't retry on permanent errors
-      throw error;
-    }
-  }
+**Non-retryable errors:**
+- HTTP 4xx (client errors, except 429)
+- Invalid parameters
+- Authentication failures
 
-  throw new Error('Max retries exceeded');
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+**Backoff strategy:**
 ```
+Attempt 1: Immediate
+Attempt 2: Wait 1s
+Attempt 3: Wait 2s
+Attempt 4: Wait 4s
+```
+
+See script for implementation details.
 
 ---
 
@@ -264,48 +221,35 @@ function sleep(ms) {
 
 ### Scenario: Beijing → Bazhong → Chengdu → Shanghai
 
-```javascript
-async function planMultiCityTransportation(cities) {
-  const routes = [];
+Use the `plan-multi-city.py` script:
 
-  for (let i = 0; i < cities.length - 1; i++) {
-    const origin = cities[i];
-    const destination = cities[i + 1];
+```bash
+/root/travel-planner/scripts/gaode-maps/plan-multi-city.py \
+  Beijing Bazhong Chengdu Shanghai \
+  -s 2 \
+  -r 0.2 \
+  -o multi-city-plan.json
+```
 
-    try {
-      // Get transit route
-      const route = await getRouteWithRetry(origin, destination);
-      const parsed = parseTransitRoute(route);
+**Features:**
+- Automatic rate limiting (200ms between requests)
+- Graceful error handling with manual research placeholders
+- Sequential day numbering
+- Complete transportation agent output format
 
-      routes.push({
-        day: i + 2,  // Assuming day 1 is arrival
-        location_change: parsed
-      });
-
-      // Rate limiting: small delay between requests
-      await sleep(200);
-    } catch (error) {
-      console.error(`Failed to get route: ${origin} → ${destination}`, error);
-
-      // Add placeholder for manual research
-      routes.push({
-        day: i + 2,
-        location_change: {
-          from: origin,
-          to: destination,
-          status: 'manual_research_required',
-          error: error.message
-        }
-      });
-    }
-  }
-
-  return {
-    agent: "transportation",
-    status: "complete",
-    data: { days: routes },
-    notes: "Transportation options researched using Gaode Maps API"
-  };
+**Output format:**
+```json
+{
+  "agent": "transportation",
+  "status": "complete",
+  "data": {
+    "days": [
+      {"day": 2, "location_change": {...}},
+      {"day": 3, "location_change": {...}},
+      {"day": 4, "location_change": {...}}
+    ]
+  },
+  "notes": "Transportation options researched using Gaode Maps API"
 }
 ```
 
@@ -313,81 +257,30 @@ async function planMultiCityTransportation(cities) {
 
 ## Complete Transportation Agent Workflow
 
-```javascript
-async function transportationAgentWorkflow(destinationSlug) {
-  // Step 1: Read requirements and plan skeleton
-  const requirements = readJSON(`data/${destinationSlug}/requirements-skeleton.json`);
-  const planSkeleton = readJSON(`data/${destinationSlug}/plan-skeleton.json`);
+Use the `transportation-workflow.py` script for the complete agent workflow:
 
-  // Step 2: Identify days with location changes
-  const locationChangeDays = planSkeleton.days.filter(day => day.location_change);
-
-  if (locationChangeDays.length === 0) {
-    return {
-      agent: "transportation",
-      status: "complete",
-      data: { days: [] },
-      notes: "No inter-city transportation needed (single-city trip)"
-    };
-  }
-
-  // Step 3: Research routes for each location change
-  const routes = [];
-
-  for (const day of locationChangeDays) {
-    const { from, to } = day.location_change;
-
-    try {
-      // Use Gaode Maps with retry and fallback
-      const transitRoute = await getRouteWithRetry(from, to);
-      const drivingRoute = await getRouteWithRetry(from, to, 2);  // Fewer retries for comparison
-
-      const transitParsed = parseTransitRoute(transitRoute);
-      const drivingParsed = parseDrivingRoute(drivingRoute);
-
-      // Make recommendation
-      const recommendation = recommendTransportation(
-        transitParsed,
-        drivingParsed,
-        requirements.trip_summary.preferences
-      );
-
-      routes.push({
-        day: day.day,
-        location_change: recommendation
-      });
-    } catch (error) {
-      console.error(`Route research failed for day ${day.day}`, error);
-
-      routes.push({
-        day: day.day,
-        location_change: {
-          from: from,
-          to: to,
-          status: 'research_failed',
-          error: error.message,
-          fallback: 'Manual research required'
-        }
-      });
-    }
-
-    // Rate limiting
-    await sleep(200);
-  }
-
-  // Step 4: Save results
-  const transportationData = {
-    agent: "transportation",
-    status: "complete",
-    data: { days: routes },
-    notes: "Routes researched using Gaode Maps. Book transportation 1-2 weeks in advance."
-  };
-
-  writeJSON(`data/${destinationSlug}/transportation.json`, transportationData);
-
-  return "complete";
-}
+```bash
+/root/travel-planner/scripts/gaode-maps/transportation-workflow.py \
+  chongqing-chengdu-2026 \
+  -v
 ```
+
+**Workflow steps:**
+1. Read requirements-skeleton.json and plan-skeleton.json
+2. Identify days with location changes
+3. Research routes with retry and recommendation logic
+4. Save to transportation.json
+
+**Required input files:**
+- `/root/travel-planner/data/{destination-slug}/requirements-skeleton.json`
+- `/root/travel-planner/data/{destination-slug}/plan-skeleton.json`
+
+**Output file:**
+- `/root/travel-planner/data/{destination-slug}/transportation.json`
+
+**Returns:** `complete` status when finished
+
+**Script details:** `/root/travel-planner/scripts/gaode-maps/README.md`
 
 ---
 

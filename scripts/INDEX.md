@@ -8,8 +8,8 @@ Helper scripts for travel plan validation, HTML generation, and deployment workf
 
 ## Structure
 
-Total files: 6 shell scripts (.sh)
-Total subdirectories: 1 (todo/)
+Total files: 6 shell scripts (.sh), 6 Python scripts (.py)
+Total subdirectories: 2 (todo/, gaode-maps/)
 
 ## Files
 
@@ -18,19 +18,28 @@ Total subdirectories: 1 (todo/)
 - `check-day-completion.sh` - Verify timeline has plans for all days in trip
 - `check-location-continuity.sh` - Validate location transitions between days
 - `deploy-travel-plans.sh` - Deploy generated travel plans to web/execution
+- `detect-location-changes.py` - Detect location changes between consecutive days
 - `generate-travel-html.sh` - Generate interactive HTML views of travel plans
 - `validate-timeline-consistency.sh` - Validate timeline JSON structure and completeness
 
 ### todo/
 
 - `todo/plan.py` - Todo checklist for travel planning workflow
-- `todo/__pycache__/plan.cpython-312.pyc` - Python bytecode (should be .gitignored)
+
+### gaode-maps/
+
+- `gaode-maps/parse-transit-routes.py` - Parse Gaode Maps transit route API responses
+- `gaode-maps/recommend-transportation.py` - Compare and recommend best transportation option
+- `gaode-maps/fetch-route-with-retry.py` - Fetch routes with exponential backoff retry logic
+- `gaode-maps/plan-multi-city.py` - Plan transportation for multi-city trips
+- `gaode-maps/transportation-workflow.py` - Complete transportation agent workflow
+- `gaode-maps/README.md` - Documentation for Gaode Maps utility scripts
 
 ## File Types
 
 - `.sh`: 5 files - Shell scripts for validation and generation
-- `.py`: 1 file - Python todo workflow script
-- `.pyc`: 1 file - Python bytecode (auto-generated)
+- `.py`: 6 files - Python scripts for data processing and workflows
+- `.md`: 1 file - Documentation for script subdirectories
 
 ## Organization
 
@@ -53,6 +62,18 @@ Total subdirectories: 1 (todo/)
 4. **Workflow scripts** (1 script):
    - `todo/plan.py`
    - Purpose: TodoWrite integration for planning workflow
+
+5. **Gaode Maps utilities** (5 Python scripts):
+   - `gaode-maps/parse-transit-routes.py`
+   - `gaode-maps/recommend-transportation.py`
+   - `gaode-maps/fetch-route-with-retry.py`
+   - `gaode-maps/plan-multi-city.py`
+   - `gaode-maps/transportation-workflow.py`
+   - Purpose: Process Gaode Maps API data for transportation planning
+
+6. **Location detection** (1 Python script):
+   - `detect-location-changes.py`
+   - Purpose: Detect location changes in travel plans
 
 **Naming pattern**:
 - Validation: `check-*.sh`, `validate-*.sh`

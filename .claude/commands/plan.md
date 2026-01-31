@@ -159,20 +159,19 @@ bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
 4. Save to: `data/{destination-slug}/plan-skeleton.json`
 
 **Location Change Detection**:
-```javascript
-for (i = 1; i < days.length; i++) {
-  if (days[i].location !== days[i-1].location) {
-    days[i].location_change = {
-      from: days[i-1].location,
-      to: days[i].location,
-      transportation: null,  // filled by transportation-agent
-      departure_time: null,
-      arrival_time: null,
-      cost: null
-    }
-  }
-}
+
+Use the `detect-location-changes.py` script to automatically detect and add location change objects:
+
+```bash
+/root/travel-planner/scripts/detect-location-changes.py \
+  /root/travel-planner/data/{destination-slug}/plan-skeleton.json
 ```
+
+This script:
+- Compares consecutive days' locations
+- Adds `location_change` objects where location differs
+- Sets transportation fields to null (filled by transportation-agent)
+- Overwrites plan-skeleton.json with updated data
 
 **Plan Skeleton Structure**:
 ```json

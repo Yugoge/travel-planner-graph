@@ -75,6 +75,46 @@ Purpose: TodoWrite integration and planning workflows
   - Used by: Planning agents via TodoWrite tool
   - Format: Python script returning todo list structure
 
+**5. Gaode Maps Utilities**
+
+Purpose: Process Gaode Maps API responses for transportation planning
+
+- `gaode-maps/parse-transit-routes.py` - Parse transit route responses
+  - Input: Gaode Maps API JSON response
+  - Output: Structured route data with parsed fields
+  - Exit code: 0 if success, 1 if parse error
+
+- `gaode-maps/recommend-transportation.py` - Recommend best transportation
+  - Input: Transit and driving options, user preferences
+  - Output: Recommended option with scoring
+  - Exit code: 0 if success, 1 if file error
+
+- `gaode-maps/fetch-route-with-retry.py` - Fetch routes with retry logic
+  - Input: Origin, destination, route type
+  - Output: API response with exponential backoff retry
+  - Exit code: 0 if success, 1 if failed
+
+- `gaode-maps/plan-multi-city.py` - Plan multi-city transportation
+  - Input: List of cities in travel order
+  - Output: Complete transportation plan JSON
+  - Exit code: 0 if success, 2 if partial failure
+
+- `gaode-maps/transportation-workflow.py` - Complete workflow
+  - Input: Destination slug (reads from data/)
+  - Output: transportation.json in data directory
+  - Exit code: 0 if success, 1 if failed
+
+- `gaode-maps/README.md` - Documentation for utilities
+
+**6. Location Detection**
+
+Purpose: Detect location changes in travel plans
+
+- `detect-location-changes.py` - Detect location changes
+  - Input: plan-skeleton.json file path
+  - Output: Updated plan with location_change objects
+  - Exit code: 0 if success, 1 if file error
+
 ## File Creation Patterns
 
 Based on Git history:

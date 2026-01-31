@@ -42,17 +42,8 @@ mcp__plugin_amap-maps_amap-maps__distance_measure({
 ```json
 {
   "status": "1",
-  "info": "OK",
   "count": "1",
-  "results": [
-    {
-      "origin_id": "1",
-      "dest_id": "1",
-      "distance": "850",
-      "duration": "0",
-      "info": "OK"
-    }
-  ]
+  "results": [{"distance": "850", "duration": "0"}]
 }
 ```
 
@@ -69,30 +60,11 @@ mcp__plugin_amap-maps_amap-maps__distance_measure({
 ```json
 {
   "status": "1",
-  "info": "OK",
   "count": "3",
   "results": [
-    {
-      "origin_id": "1",
-      "dest_id": "1",
-      "distance": "1250",
-      "duration": "420",
-      "info": "OK"
-    },
-    {
-      "origin_id": "2",
-      "dest_id": "1",
-      "distance": "15300",
-      "duration": "1860",
-      "info": "OK"
-    },
-    {
-      "origin_id": "3",
-      "dest_id": "1",
-      "distance": "12800",
-      "duration": "1620",
-      "info": "OK"
-    }
+    {"origin_id": "1", "distance": "1250", "duration": "420"},
+    {"origin_id": "2", "distance": "15300", "duration": "1860"},
+    {"origin_id": "3", "distance": "12800", "duration": "1620"}
   ]
 }
 ```
@@ -165,21 +137,12 @@ mcp__plugin_amap-maps_amap-maps__weather_info({
 ```json
 {
   "status": "1",
-  "info": "OK",
-  "count": "1",
-  "lives": [
-    {
-      "province": "北京",
-      "city": "北京市",
-      "adcode": "110000",
-      "weather": "晴",
-      "temperature": "15",
-      "winddirection": "西北",
-      "windpower": "3",
-      "humidity": "45",
-      "reporttime": "2026-01-30 14:00:00"
-    }
-  ]
+  "lives": [{
+    "city": "北京市",
+    "weather": "晴",
+    "temperature": "15",
+    "humidity": "45"
+  }]
 }
 ```
 
@@ -195,42 +158,14 @@ mcp__plugin_amap-maps_amap-maps__weather_info({
 ```json
 {
   "status": "1",
-  "info": "OK",
-  "count": "1",
-  "forecasts": [
-    {
-      "province": "四川",
-      "city": "成都市",
-      "adcode": "510100",
-      "reporttime": "2026-01-30 12:00:00",
-      "casts": [
-        {
-          "date": "2026-01-30",
-          "week": "5",
-          "dayweather": "多云",
-          "nightweather": "阴",
-          "daytemp": "18",
-          "nighttemp": "10",
-          "daywind": "无风向",
-          "nightwind": "无风向",
-          "daypower": "≤3",
-          "nightpower": "≤3"
-        },
-        {
-          "date": "2026-01-31",
-          "week": "6",
-          "dayweather": "小雨",
-          "nightweather": "小雨",
-          "daytemp": "16",
-          "nighttemp": "11",
-          "daywind": "无风向",
-          "nightwind": "无风向",
-          "daypower": "≤3",
-          "nightpower": "≤3"
-        }
-      ]
-    }
-  ]
+  "forecasts": [{
+    "city": "成都市",
+    "casts": [
+      {"date": "2026-01-30", "dayweather": "多云", "daytemp": "18", "nighttemp": "10"},
+      {"date": "2026-01-31", "dayweather": "小雨", "daytemp": "16", "nighttemp": "11"}
+      // ... (4 total days)
+    ]
+  }]
 }
 ```
 
