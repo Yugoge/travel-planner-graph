@@ -25,8 +25,9 @@ Travel planning application with MCP skill integrations for accommodations, flig
 
 ### docs/
 - **Purpose**: Project documentation
-- **Subdirectories**: clean/, dev/
-- **Files**: Workflow JSONs and reports
+- **Subdirectories**: clean/, dev/, reference/
+- **Files**: Workflow JSONs, reports, and reference guides
+- **Reference**: External reference files (POI categories, API specs)
 
 ### scripts/
 - **Purpose**: Validation, generation, and deployment scripts

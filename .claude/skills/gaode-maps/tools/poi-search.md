@@ -71,20 +71,11 @@ mcp__plugin_amap-maps_amap-maps__poi_search_keyword({
   "count": "152",
   "pois": [
     {
-      "id": "B001B0FKW6",
       "name": "陈麻婆豆腐",
-      "type": "餐饮服务;中餐厅;川菜馆",
-      "typecode": "050102",
       "address": "青羊区西玉龙街197号",
       "location": "104.052825,30.660381",
-      "tel": "028-86754512",
-      "biz_ext": {
-        "rating": "4.5",
-        "cost": "80"
-      },
-      "photos": [
-        {"url": "https://store.is.autonavi.com/..."}
-      ]
+      "biz_ext": {"rating": "4.5", "cost": "80"}
+      // ... (152 total POIs with full details)
     }
   ]
 }

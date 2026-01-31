@@ -30,28 +30,17 @@ const transitResult = await transit_route({
 // Response structure:
 {
   route: {
-    transits: [
-      {
-        segments: [
-          {
-            transit_type: "railway",  // High-speed train
-            departure: {
-              name: "重庆西站",
-              time: "08:30"
-            },
-            arrival: {
-              name: "成都东站",
-              time: "10:15"
-            },
-            duration: 6300,  // seconds (105 minutes)
-            cost: 154,  // CNY
-            distance: 308000  // meters (308 km)
-          }
-        ],
+    transits: [{
+      segments: [{
+        transit_type: "railway",
+        departure: {name: "重庆西站", time: "08:30"},
+        arrival: {name: "成都东站", time: "10:15"},
         duration: 6300,
         cost: 154
-      }
-    ]
+      }],
+      duration: 6300,
+      cost: 154
+    }]
   }
 }
 ```
@@ -106,10 +95,9 @@ const drivingResult = await driving_route({
 // Response structure:
 {
   route: {
-    distance: 308000,  // meters
-    duration: 12600,   // seconds (3.5 hours)
-    tolls: 120,        // CNY
-    traffic_lights: 45
+    distance: 308000,
+    duration: 12600,
+    tolls: 120
   }
 }
 
