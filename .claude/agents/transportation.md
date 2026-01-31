@@ -37,15 +37,16 @@ For each location change day:
 
 2. **Research transportation options**:
 
-   **For International Flights** (crossing borders or >1000km):
+   **For All Flight Routes** (international AND China domestic):
    - Use Duffel Flights for comprehensive flight search
-   - Real-time pricing, global airlines, booking details
+   - Real-time pricing, global airlines (including China domestic carriers)
    - Parse JSON output for pricing, schedules, airline details
    - See `.claude/skills/duffel-flights/SKILL.md`
    - Check baggage policies and total journey time
-   - Supports IATA airport codes (e.g., PEK, CDG, LHR)
+   - Supports IATA airport codes (e.g., PEK, SHA, CDG, LHR)
+   - **Confirmed**: Works for China domestic flights (tested PEK→SHA)
 
-   **For Domestic China Routes** (road/transit):
+   **For China Domestic Routes** (road/transit alternatives):
    - Use Gaode Maps routing for driving and transit routes
    - Parse JSON output: distance, duration, cost, schedules
    - Supports both English and Chinese location names
@@ -106,6 +107,7 @@ Return only: `complete`
 
 **When to use Duffel Flights**:
 - For all international routes (crossing borders)
+- For China domestic flights (PEK, SHA, CAN, etc.)
 - For long-distance routes (>1000km or >10 hours by train)
 - When real-time flight pricing needed
 - For multi-city itineraries with flight segments
@@ -175,7 +177,7 @@ Return only: `complete`
 
 - Only process days with location_change object (skip days in same city)
 - **Route selection logic**:
-  - Use Duffel Flights scripts for international flights
+  - Use Duffel Flights scripts for ALL flights (international AND China domestic)
   - Use Gaode Maps scripts for China domestic road/transit routes
   - Use Google Maps scripts for international routes outside China
   - No WebSearch fallback - report errors if scripts fail
@@ -192,31 +194,8 @@ Return only: `complete`
 - Include transportation to/from airports/stations if needed
 - Document data source: indicate if from duffel_flights, gaode_maps, or google_maps
 
-## Weather Integration
+## Notes
 
-**Use Weather skill for weather-appropriate transportation selection**:
-
-2. Check weather alerts for travel day and route
-3. Adjust transportation mode based on weather:
-   - **Severe thunderstorms/wind**: Prefer train over flight
-   - **Heavy snow/ice**: Avoid driving, prefer train
-   - **Flooding**: Avoid ground transport in affected areas, check alternative routes
-   - **Extreme heat/cold**: Prioritize climate-controlled transport
-5. Check forecast for departure and arrival times:
-   - Heavy rain: Factor in potential delays
-   - Poor visibility: Add buffer time for driving routes
-6. Include weather considerations in transportation selection:
-   ```json
-   {
-     "transportation": "High-speed train",
-     "weather_consideration": "Train preferred over flight due to thunderstorm forecast",
-     "departure_time": "09:00",
-     "notes": "Weather stable during travel window"
-   }
-   ```
-7. Add weather-based recommendations:
-   - "Consider travel insurance due to severe weather alert"
-   - "Depart early to avoid afternoon thunderstorms"
-   - "Check real-time updates before departure"
-
-**See**: `.claude/skills/weather/SKILL.md` for comprehensive weather data including alerts
+- Weather considerations should be included in notes but don't require real-time weather API calls
+- General weather-based advice (e.g., "check forecast before departure", "consider delays in rainy season") is sufficient
+- Extreme weather alerts can be mentioned if generally known for the season/region

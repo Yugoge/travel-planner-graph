@@ -2,7 +2,7 @@
 
 **更新日期**: 2026-01-30
 **状态**: 生产就绪
-**总计**: 6 个用户可用技能 + 1 个内部测试技能
+**总计**: 5 个用户可用技能 + 1 个内部测试技能
 
 ---
 
@@ -14,8 +14,7 @@
 | 2 | **google-maps** | 地图 | ❌ 不需要 | ✅ 立即可用 | 7 | 国际地图、POI、路线 |
 | 3 | **gaode-maps** | 地图 | ✅ 需要 | ✅ 已配置 | 14 | 中国地图、POI、路线 |
 | 4 | **duffel-flights** | 航班 | ✅ 需要 | ⏳ 待配置 | 3 | 国际航班搜索（只读）|
-| 5 | **eventbrite** | 活动 | ✅ 需要 | ⏳ 待配置 | 4 | 活动搜索、门票 |
-| 6 | **airbnb** | 住宿 | ❌ 不需要 | ⚠️  需配置 | 2 | 度假租赁搜索 |
+| 5 | **airbnb** | 住宿 | ❌ 不需要 | ⚠️  需配置 | 2 | 度假租赁搜索 |
 | 7 | test-mcp | 测试 | - | 内部使用 | - | MCP 协议测试 |
 
 ---
@@ -214,56 +213,9 @@ python3 scripts/search_multi_city.py "NYC" "PAR" "LON" "2026-03-01" "2026-03-08"
 
 ---
 
-### 5. Eventbrite - 活动搜索
-
-**包名**: `@mseep/eventbrite-mcp@1.0.1`
-**API Key**: ✅ 需要 `EVENTBRITE_API_KEY`
-**状态**: ⏳ **待配置 API Key**
-**费用**: 免费（1,000 次/小时，48,000 次/天）
-
-#### 4 个可用工具
-
-| 工具 | 功能 |
-|------|------|
-| `search_events` | 活动搜索 |
-| `get_event` | 活动详情 |
-| `get_categories` | 活动分类 |
-| `get_venue` | 场馆信息 |
-
-#### 注册步骤
-1. 访问 https://www.eventbrite.com/platform/
-2. 创建 Eventbrite 账号
-3. 进入 Account Settings > Developer Links > API Keys
-4. 点击 "Create API key"
-5. 填写应用信息，等待邮件批准
-
-#### 设置环境变量
-```bash
-export EVENTBRITE_API_KEY="your_key_here"
-```
-
-#### 使用示例
-```bash
-cd /root/travel-planner/.claude/skills/eventbrite
-
-# 搜索活动
-python3 scripts/search.py "concerts" "New York"
-
-# 活动详情
-python3 scripts/details.py 123456789
-
-# 分类列表
-python3 scripts/categories.py
-```
-
-#### 集成的 Agents
-- ✅ entertainment (活动搜索)
-
----
-
 ## ⚠️  需要特殊配置
 
-### 6. Airbnb - 度假租赁搜索
+### 5. Airbnb - 度假租赁搜索
 
 **包名**: `@openbnb/mcp-server-airbnb@0.1.3`
 **API Key**: ❌ 不需要
@@ -336,21 +288,20 @@ python3 scripts/details.py 12345678 --checkin 2026-03-01 --checkout 2026-03-05
 | **天气** | weather | 1 |
 | **交通** | duffel-flights | 1 |
 | **住宿** | airbnb | 1 |
-| **活动** | eventbrite | 1 |
 
 ### 按 API Key 需求分类
 
 | 需求 | 技能 | 数量 |
 |------|------|------|
 | **无需 API Key** | weather, google-maps, airbnb | 3 |
-| **需要 API Key** | gaode-maps, duffel-flights, eventbrite | 3 |
+| **需要 API Key** | gaode-maps, duffel-flights | 2 |
 
 ### 按状态分类
 
 | 状态 | 技能 | 数量 |
 |------|------|------|
 | **立即可用** | weather, google-maps, gaode-maps | 3 |
-| **待配置** | duffel-flights, eventbrite | 2 |
+| **待配置** | duffel-flights | 1 |
 | **需特殊配置** | airbnb | 1 |
 
 ### 工具总数
@@ -360,10 +311,9 @@ python3 scripts/details.py 12345678 --checkin 2026-03-01 --checkout 2026-03-05
 | gaode-maps | 14 |
 | weather | 12 |
 | google-maps | 7 |
-| eventbrite | 4 |
 | duffel-flights | 3 |
 | airbnb | 2 |
-| **总计** | **42** |
+| **总计** | **38** |
 
 ---
 
@@ -399,9 +349,8 @@ python3 scripts/details.py 12345678 --checkin 2026-03-01 --checkout 2026-03-05
 - ✅ 天气影响活动选择 (Weather)
 
 ### Entertainment Agent
-**技能**: google-maps, gaode-maps, eventbrite, weather
+**技能**: google-maps, gaode-maps, weather
 **能力**:
-- ✅ 活动搜索 (Eventbrite)
 - ✅ 娱乐场所搜索 (Google/Gaode Maps)
 - ✅ 天气影响活动类型 (Weather)
 
@@ -434,7 +383,7 @@ python3 /root/travel-planner/.claude/skills/weather/scripts/forecast.py 40.7128 
 python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "restaurants in Paris" 10
 ```
 
-### 需要 API Key（15-20 分钟）
+### 需要 API Key（10-15 分钟）
 
 **优先级排序**:
 
@@ -442,11 +391,7 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "resta
    - 注册: https://app.duffel.com/
    - 免费沙盒
 
-2. **Eventbrite** (10 分钟) - 活动搜索
-   - 注册: https://www.eventbrite.com/platform/
-   - 免费 48K 次/天
-
-3. **Airbnb** (10 分钟) - 配置 robots.txt 绕过
+2. **Airbnb** (10 分钟) - 配置 robots.txt 绕过
    - 编辑 `~/.config/Claude/claude_desktop_config.json`
    - 添加 `--ignore-robots-txt` 参数
 
@@ -486,6 +431,11 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "resta
 **替代方案**: Weather (12 个工具 vs 有限功能)
 **删除日期**: 2026-01-30 (之前)
 
+### ❌ Eventbrite
+**原因**: API 兼容性问题 - 所有 API 调用返回 400 错误
+**替代方案**: Google Maps POI search (活动场馆)，Web search (活动日历)
+**删除日期**: 2026-01-30
+
 ---
 
 ## 📞 支持和文档
@@ -505,7 +455,7 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "resta
 ---
 
 **清单生成日期**: 2026-01-30
-**最后更新**: 删除 12306, Yelp, Amadeus; 配置 Airbnb robots.txt
+**最后更新**: 删除 Eventbrite (API 兼容性问题)
 **状态**: 生产就绪
-**总工具数**: 42
-**可用技能**: 6 (+ 1 内部测试)
+**总工具数**: 38
+**可用技能**: 5 (+ 1 内部测试)

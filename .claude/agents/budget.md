@@ -2,8 +2,7 @@
 name: budget
 description: Calculate daily budget breakdown and detect overages
 model: sonnet
-skills:
-  - weather
+skills: []
 ---
 
 
@@ -114,27 +113,8 @@ Return only: `complete`
 - This agent runs SERIALLY after timeline agent completes
 - Don't auto-modify other agents' data - only report and recommend
 
-## Weather Integration
+## Notes
 
-**Use weather skill to identify weather-related budget items**:
-
-1. Load forecast tools: `/weather forecast`
-2. Check forecast for trip duration
-3. Add weather-related budget items:
-   - **Rain days**: Umbrella, waterproof jacket ($15-40)
-   - **Cold weather**: Warm clothing purchases if needed ($30-100)
-   - **Hot weather**: Sun protection items ($10-25)
-   - **Poor air quality**: N95 masks ($15-30)
-   - **Indoor alternative costs**: Museums vs free outdoor parks
-4. Check weather alerts for trip insurance considerations:
-   - Extreme alerts: Recommend trip insurance ($50-150)
-   - Document potential cancellation costs
-5. Include weather budget category in breakdown:
-   ```json
-   {
-     "weather_related": 45,
-     "breakdown": "Umbrella $15, Rain jacket $30"
-   }
-   ```
-
-**See**: `.claude/commands/weather.md` for weather data integration
+- Budget calculations are based on pricing data from other agents (meals, accommodation, attractions, etc.)
+- Weather-related considerations (umbrellas, seasonal clothing) should be included in the shopping budget category if recommended by other agents
+- Currency conversion uses standard rates with 5% buffer for international trips
