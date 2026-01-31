@@ -7,7 +7,7 @@ Real-world examples of executing Gaode Maps Python scripts.
 ### Convert Address to Coordinates
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区国贸"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区国贸"
 ```
 
 **Expected Output**:
@@ -28,7 +28,7 @@ python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝�
 ### Reverse Geocoding (Coordinates to Address)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "104.065735,30.659462"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "104.065735,30.659462"
 ```
 
 **Expected Output**:
@@ -46,7 +46,7 @@ python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "104.065735,3
 ### IP Location Lookup
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py ip_location
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py ip_location
 ```
 
 **Expected Output**:
@@ -66,7 +66,7 @@ python3 .claude/commands/gaode-maps/scripts/geocoding.py ip_location
 ### Driving Route (Beijing to Shanghai)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上海市" 0
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上海市" 0
 ```
 
 **Expected Output**:
@@ -92,7 +92,7 @@ python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上�
 ### Transit Route (Chongqing to Chengdu)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都" 0
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都" 0
 ```
 
 **Expected Output**:
@@ -122,7 +122,7 @@ python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成�
 ### Walking Route (Short Distance)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/routing.py walking "重庆市渝中区解放碑" "重庆市渝中区洪崖洞"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py walking "重庆市渝中区解放碑" "重庆市渝中区洪崖洞"
 ```
 
 **Expected Output**:
@@ -149,7 +149,7 @@ python3 .claude/commands/gaode-maps/scripts/routing.py walking "重庆市渝中�
 ### Keyword Search (Hotpot Restaurants in Chongqing)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
 **Expected Output**:
@@ -177,7 +177,7 @@ python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重�
 ### Nearby Search (Restaurants within 500m)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500 10
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500 10
 ```
 
 **Expected Output**:
@@ -205,7 +205,7 @@ python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.
 ### POI Detail Lookup
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py detail "B000A7BD6C"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py detail "B000A7BD6C"
 ```
 
 **Expected Output**:
@@ -234,7 +234,7 @@ python3 .claude/commands/gaode-maps/scripts/poi_search.py detail "B000A7BD6C"
 ### Weather Forecast (Chengdu 4-day Forecast)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
 ```
 
 **Expected Output**:
@@ -269,7 +269,7 @@ python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
 ### Current Weather
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "base"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "base"
 ```
 
 **Expected Output**:
@@ -288,7 +288,7 @@ python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "base"
 ### Distance Measurement (Beijing to Shanghai Driving)
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
 ```
 
 **Expected Output**:
@@ -308,7 +308,7 @@ python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39
 ### Straight-Line Distance
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 0
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 0
 ```
 
 **Expected Output**:
@@ -330,7 +330,7 @@ python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39
 ### Invalid Address
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "xyzabc123notreal"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "xyzabc123notreal"
 ```
 
 **Output**:
@@ -355,7 +355,7 @@ Attempt 3 succeeded
 ### Invalid Coordinates
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "999,999"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "999,999"
 ```
 
 **Output**:
@@ -390,7 +390,7 @@ console.log(`Cost: ${data.route.transits[0].cost} CNY`);
 All scripts provide usage information when called without arguments:
 
 ```bash
-python3 .claude/commands/gaode-maps/scripts/geocoding.py
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py
 ```
 
 **Output**:
@@ -409,7 +409,7 @@ Use your own API key:
 
 ```bash
 export AMAP_MAPS_API_KEY="your_key_here"
-python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 ```
 
 If `AMAP_MAPS_API_KEY` is not set, scripts default to project key: `99e97af6fd426ce3cfc45d22d26e78e3`

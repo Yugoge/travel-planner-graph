@@ -15,7 +15,7 @@ Family of 4 (2 adults, 2 children) planning a week-long vacation in Austin, TX.
 ## Step 1: Search Listings
 
 ```bash
-python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Austin, TX" \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Austin, TX" \
   --checkin 2026-06-15 \
   --checkout 2026-06-22 \
   --adults 2 \
@@ -83,7 +83,7 @@ Based on search results, filter for top candidates:
 Get details for listing #1 (ID: 12345678):
 
 ```bash
-python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 12345678 \
   --checkin 2026-06-15 \
   --checkout 2026-06-22 \
   --adults 2 \
@@ -182,7 +182,7 @@ Recent Reviews (3):
 Get details for listing #2 to compare:
 
 ```bash
-python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 23456789 \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/airbnb/scripts/details.py 23456789 \
   --checkin 2026-06-15 \
   --checkout 2026-06-22 \
   --adults 2 \

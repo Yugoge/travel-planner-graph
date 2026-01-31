@@ -56,21 +56,21 @@ Agent → Bash Tool → Python Script → npx → MCP Server → Google Maps API
 #### Search Places
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in San Francisco" 10
 ```
 
 #### Compute Routes
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" TRANSIT
 ```
 
 #### Lookup Weather
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
   "Tokyo, Japan"
 ```
 
@@ -89,7 +89,7 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
 
 **Usage**:
 ```bash
-python3 mcp_client.py @modelcontextprotocol/server-google-maps \
+source /root/.claude/venv/bin/activate && python3 mcp_client.py @modelcontextprotocol/server-google-maps \
   GOOGLE_MAPS_API_KEY=your-key
 ```
 
@@ -107,7 +107,7 @@ python3 mcp_client.py @modelcontextprotocol/server-google-maps \
 
 **Usage**:
 ```bash
-python3 places.py "coffee shops in Paris" 10 "48.8566,2.3522"
+source /root/.claude/venv/bin/activate && python3 places.py "coffee shops in Paris" 10 "48.8566,2.3522"
 ```
 
 ### 3. routing.py (Route Computation)
@@ -125,7 +125,7 @@ python3 places.py "coffee shops in Paris" 10 "48.8566,2.3522"
 
 **Usage**:
 ```bash
-python3 routing.py "Paris" "Berlin" DRIVE "Brussels,Amsterdam"
+source /root/.claude/venv/bin/activate && python3 routing.py "Paris" "Berlin" DRIVE "Brussels,Amsterdam"
 ```
 
 ### 4. weather.py (Weather Lookup)
@@ -140,7 +140,7 @@ python3 routing.py "Paris" "Berlin" DRIVE "Brussels,Amsterdam"
 
 **Usage**:
 ```bash
-python3 weather.py "London, UK"
+source /root/.claude/venv/bin/activate && python3 weather.py "London, UK"
 ```
 
 ## Output Format
@@ -188,7 +188,7 @@ User: "Find restaurants in Paris"
 
 Agent executes:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in Paris" 5
 ```
 
@@ -223,25 +223,25 @@ Agent parses JSON output and formats response for user.
 
 ```bash
 export GOOGLE_MAPS_API_KEY="your-key"
-python3 scripts/mcp_client.py @modelcontextprotocol/server-google-maps
+source /root/.claude/venv/bin/activate && python3 scripts/mcp_client.py @modelcontextprotocol/server-google-maps
 ```
 
 ### Test Place Search
 
 ```bash
-python3 scripts/places.py "restaurants in San Francisco" 3
+source /root/.claude/venv/bin/activate && python3 scripts/places.py "restaurants in San Francisco" 3
 ```
 
 ### Test Routing
 
 ```bash
-python3 scripts/routing.py "New York" "Boston" TRANSIT
+source /root/.claude/venv/bin/activate && python3 scripts/routing.py "New York" "Boston" TRANSIT
 ```
 
 ### Test Weather
 
 ```bash
-python3 scripts/weather.py "Paris, France"
+source /root/.claude/venv/bin/activate && python3 scripts/weather.py "Paris, France"
 ```
 
 ## Troubleshooting

@@ -28,7 +28,7 @@ International mapping and location services using Google Maps API via MCP server
 Execute scripts from skill directory:
 ```bash
 cd /root/travel-planner/.claude/skills/google-maps
-python3 scripts/<script_name>.py <arguments>
+source /root/.claude/venv/bin/activate && python3 scripts/<script_name>.py <arguments>
 ```
 
 **Requires**: `GOOGLE_MAPS_API_KEY` environment variable
@@ -41,10 +41,10 @@ Search for places using text queries.
 
 ```bash
 # Basic search
-python3 scripts/places.py "restaurants in Paris" 5
+source /root/.claude/venv/bin/activate && python3 scripts/places.py "restaurants in Paris" 5
 
 # With location bias
-python3 scripts/places.py "coffee shops" 10 "48.8566,2.3522"
+source /root/.claude/venv/bin/activate && python3 scripts/places.py "coffee shops" 10 "48.8566,2.3522"
 ```
 
 ### 2. Directions (routing.py)
@@ -53,13 +53,13 @@ Get directions between two points.
 
 ```bash
 # Driving (default)
-python3 scripts/routing.py "New York, NY" "Boston, MA"
+source /root/.claude/venv/bin/activate && python3 scripts/routing.py "New York, NY" "Boston, MA"
 
 # Transit
-python3 scripts/routing.py "San Francisco" "Los Angeles" transit
+source /root/.claude/venv/bin/activate && python3 scripts/routing.py "San Francisco" "Los Angeles" transit
 
 # Walking
-python3 scripts/routing.py "Times Square" "Central Park" walking
+source /root/.claude/venv/bin/activate && python3 scripts/routing.py "Times Square" "Central Park" walking
 ```
 
 **Modes**: `driving` (default), `walking`, `bicycling`, `transit`
@@ -70,10 +70,10 @@ Convert addresses to coordinates or vice versa.
 
 ```bash
 # Address to coordinates
-python3 scripts/geocoding.py geocode "Eiffel Tower, Paris"
+source /root/.claude/venv/bin/activate && python3 scripts/geocoding.py geocode "Eiffel Tower, Paris"
 
 # Coordinates to address
-python3 scripts/geocoding.py reverse 48.8584 2.2945
+source /root/.claude/venv/bin/activate && python3 scripts/geocoding.py reverse 48.8584 2.2945
 ```
 
 ### 4. Place Details (place_details.py)
@@ -81,7 +81,7 @@ python3 scripts/geocoding.py reverse 48.8584 2.2945
 Get detailed information about a place using place_id.
 
 ```bash
-python3 scripts/place_details.py ChIJN1t_tDeuEmsRUsoyG83frY4
+source /root/.claude/venv/bin/activate && python3 scripts/place_details.py ChIJN1t_tDeuEmsRUsoyG83frY4
 ```
 
 Returns: name, address, phone, website, rating, reviews, opening hours
@@ -92,10 +92,10 @@ Calculate travel distances/times between multiple origins and destinations.
 
 ```bash
 # Single origin/destination
-python3 scripts/distance_matrix.py "San Francisco" "Seattle"
+source /root/.claude/venv/bin/activate && python3 scripts/distance_matrix.py "San Francisco" "Seattle"
 
 # Multiple origins and destinations
-python3 scripts/distance_matrix.py "SF,LA" "Seattle,Portland" transit
+source /root/.claude/venv/bin/activate && python3 scripts/distance_matrix.py "SF,LA" "Seattle,Portland" transit
 ```
 
 ### 6. Elevation (elevation.py)
@@ -104,10 +104,10 @@ Get elevation data for coordinates.
 
 ```bash
 # Single location
-python3 scripts/elevation.py 39.7391536,-104.9847034
+source /root/.claude/venv/bin/activate && python3 scripts/elevation.py 39.7391536,-104.9847034
 
 # Multiple locations
-python3 scripts/elevation.py 39.7391536,-104.9847034 36.1699,-115.1398
+source /root/.claude/venv/bin/activate && python3 scripts/elevation.py 39.7391536,-104.9847034 36.1699,-115.1398
 ```
 
 ## Output Format

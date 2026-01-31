@@ -26,7 +26,7 @@ Search for flights worldwide with real-time pricing, availability, and booking i
 Execute scripts from skill directory:
 ```bash
 cd /root/travel-planner/.claude/skills/duffel-flights
-python3 scripts/<script_name>.py <arguments>
+source /root/.claude/venv/bin/activate && python3 scripts/<script_name>.py <arguments>
 ```
 
 **Requires**: `DUFFEL_API_KEY` environment variable must be set.
@@ -39,15 +39,15 @@ Search for one-way or round-trip flights.
 
 ```bash
 # One-way flight
-python3 scripts/search_flights.py JFK LAX 2026-03-15
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py JFK LAX 2026-03-15
 
 # Round-trip flight
-python3 scripts/search_flights.py JFK LAX 2026-03-15 \
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py JFK LAX 2026-03-15 \
   --type round_trip \
   --return-date 2026-03-22
 
 # Business class for 2 passengers
-python3 scripts/search_flights.py LHR CDG 2026-04-01 \
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py LHR CDG 2026-04-01 \
   --cabin-class business \
   --adults 2 \
   --max-connections 0
@@ -80,7 +80,7 @@ python3 scripts/search_flights.py LHR CDG 2026-04-01 \
 Get comprehensive details about a specific flight offer.
 
 ```bash
-python3 scripts/get_offer_details.py off_12345abcdef
+source /root/.claude/venv/bin/activate && python3 scripts/get_offer_details.py off_12345abcdef
 ```
 
 **Parameters**:
@@ -101,7 +101,7 @@ Search for complex multi-city itineraries.
 
 ```bash
 # 3-city trip
-python3 scripts/search_multi_city.py \
+source /root/.claude/venv/bin/activate && python3 scripts/search_multi_city.py \
   --segment JFK LAX 2026-03-01 \
   --segment LAX SFO 2026-03-05 \
   --segment SFO JFK 2026-03-10 \
@@ -109,7 +109,7 @@ python3 scripts/search_multi_city.py \
   --cabin-class economy
 
 # Business trip with multiple stops
-python3 scripts/search_multi_city.py \
+source /root/.claude/venv/bin/activate && python3 scripts/search_multi_city.py \
   --segment LHR CDG 2026-04-15 \
   --segment CDG FRA 2026-04-18 \
   --segment FRA AMS 2026-04-22 \
@@ -248,21 +248,21 @@ Traceback (most recent call last):
 
 ```bash
 # Search and compare prices
-python3 scripts/search_flights.py SFO NYC 2026-05-01 --type round_trip --return-date 2026-05-08
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py SFO NYC 2026-05-01 --type round_trip --return-date 2026-05-08
 ```
 
 ### Book Direct Flights Only
 
 ```bash
 # No connections
-python3 scripts/search_flights.py LAX HNL 2026-06-15 --max-connections 0
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py LAX HNL 2026-06-15 --max-connections 0
 ```
 
 ### Plan Multi-City Tour
 
 ```bash
 # European tour
-python3 scripts/search_multi_city.py \
+source /root/.claude/venv/bin/activate && python3 scripts/search_multi_city.py \
   --segment LHR CDG 2026-07-01 \
   --segment CDG ROM 2026-07-05 \
   --segment ROM BCN 2026-07-10 \
@@ -273,7 +273,7 @@ python3 scripts/search_multi_city.py \
 
 ```bash
 # After search, get full offer details for booking
-python3 scripts/get_offer_details.py off_12345
+source /root/.claude/venv/bin/activate && python3 scripts/get_offer_details.py off_12345
 ```
 
 ## Technical Notes

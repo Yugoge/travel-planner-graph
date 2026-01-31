@@ -34,7 +34,7 @@ Gaode Maps (高德地图/AMap) provides comprehensive mapping and location servi
 Execute scripts from the skill directory:
 ```bash
 cd /root/travel-planner/.claude/skills/gaode-maps
-python3 scripts/<category>.py <function> <arguments>
+source /root/.claude/venv/bin/activate && python3 scripts/<category>.py <function> <arguments>
 ```
 
 Available script categories:
@@ -49,17 +49,17 @@ All scripts return JSON output to stdout.
 
 **Routing** (Beijing to Shanghai by transit):
 ```bash
-python3 scripts/routing.py transit "116.407387,39.904179" "121.473701,31.230416" "北京市" 0
+source /root/.claude/venv/bin/activate && python3 scripts/routing.py transit "116.407387,39.904179" "121.473701,31.230416" "北京市" 0
 ```
 
 **POI Search** (Find restaurants in Beijing):
 ```bash
-python3 scripts/poi_search.py keyword "餐厅" "北京市" "餐饮服务"
+source /root/.claude/venv/bin/activate && python3 scripts/poi_search.py keyword "餐厅" "北京市" "餐饮服务"
 ```
 
 **Geocoding** (Address to coordinates):
 ```bash
-python3 scripts/geocoding.py geocode "北京市朝阳区"
+source /root/.claude/venv/bin/activate && python3 scripts/geocoding.py geocode "北京市朝阳区"
 ```
 
 ## Available Functions

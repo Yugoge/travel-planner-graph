@@ -16,20 +16,20 @@ Access Gaode Maps (高德地图) API via MCP server for accurate route planning,
 **Usage**:
 ```bash
 # Geocoding
-python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区" "北京"
-python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "116.481488,39.990464"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区" "北京"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py regeocode "116.481488,39.990464"
 
 # Routing
-python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上海市"
-python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京市" "上海市"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
 
 # POI Search
-python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
-python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500
 
 # Utilities
-python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
-python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py weather "成都" "all"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
 ```
 
 ## Script Categories
@@ -62,10 +62,10 @@ All scripts are located in `.claude/commands/gaode-maps/scripts/` and can be exe
 
 ```bash
 # Full path execution
-python3 /root/travel-planner/.claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 
 # Relative path execution (from project root)
-python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京" "上海"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京" "上海"
 ```
 
 ## Coordinate System
@@ -109,7 +109,7 @@ Scripts use environment variable `AMAP_MAPS_API_KEY` (defaults to project key if
 **To use your own key**:
 ```bash
 export AMAP_MAPS_API_KEY="your_key_here"
-python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 ```
 
 **Get your own API key**: https://console.amap.com/dev/key/app
@@ -162,15 +162,15 @@ See `.claude/agents/transportation.md` for integration details.
 
 **Meals Agent**: Use `poi_search.py` to find restaurants
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
 **Accommodation Agent**: Use `poi_search.py` for hotel search, `geocoding.py` for address validation
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
 ```
 
 **Attractions Agent**: Use `poi_search.py` to discover attractions, `utilities.py` for distances
 ```bash
-python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
+source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
 ```

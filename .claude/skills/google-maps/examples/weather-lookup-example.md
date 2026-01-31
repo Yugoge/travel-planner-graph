@@ -17,7 +17,7 @@ export GOOGLE_MAPS_API_KEY="your-api-key-here"
 ### Step 2: Execute Weather Lookup Script
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
   "San Francisco, CA"
 ```
 
@@ -37,7 +37,7 @@ Visibility: 10000 m
 ### Step 3: Parse JSON Output
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
   "San Francisco, CA" 2>/tmp/weather.json
 
 cat /tmp/weather.json | jq '.weather'
@@ -98,7 +98,7 @@ Conditions: Overcast
 
 ```bash
 # Get just temperature
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
   "London, UK" 2>&1 >/dev/null | jq -r '.weather.temperature.current'
 
 # Output: 10
@@ -141,21 +141,21 @@ Agent checks weather at both locations:
 
 Step 1: Check departure weather
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "New York, NY"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "New York, NY"
 ```
 
 Result: 8°C, Light snow
 
 Step 2: Check destination weather
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Boston, MA"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Boston, MA"
 ```
 
 Result: 5°C, Heavy snow
 
 Step 3: Compute route
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" TRANSIT
 ```
 
@@ -173,7 +173,7 @@ User asks: "What should I do in San Francisco today?"
 
 Agent checks weather:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "San Francisco, CA"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "San Francisco, CA"
 ```
 
 Result: 16°C, Partly cloudy
@@ -199,7 +199,7 @@ User asks: "Where should I eat dinner in Paris?"
 
 Agent checks weather:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Paris, France"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Paris, France"
 ```
 
 Result: 12°C, Light rain
@@ -223,7 +223,7 @@ Recommended restaurants:
 **Command**:
 ```bash
 unset GOOGLE_MAPS_API_KEY
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Paris"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "Paris"
 ```
 
 **Output**:
@@ -235,7 +235,7 @@ Error: GOOGLE_MAPS_API_KEY environment variable not set
 
 **Command**:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "InvalidCity123"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py "InvalidCity123"
 ```
 
 **Output**:
@@ -325,7 +325,7 @@ else
   mode="DRIVE"
 fi
 
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" $mode
 ```
 

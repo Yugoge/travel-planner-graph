@@ -17,7 +17,7 @@ export GOOGLE_MAPS_API_KEY="your-api-key-here"
 ### Step 2: Execute Place Search Script
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in San Francisco downtown" \
   10
 ```
@@ -88,7 +88,7 @@ User asks: "Find good restaurants in San Francisco"
 
 Agent executes via Bash tool:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in San Francisco" 5
 ```
 
@@ -106,7 +106,7 @@ Agent receives parsed results and formats response:
 
 ```bash
 # Bias results toward specific coordinates (San Francisco city center)
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "coffee shops" \
   10 \
   "37.7749,-122.4194"
@@ -116,24 +116,24 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
 
 ```bash
 # Hotels
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "hotels in Paris" 20
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "hotels in Paris" 20
 
 # Museums
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "museums in London" 15
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "museums in London" 15
 
 # Shopping
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "shopping malls in Tokyo" 10
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "shopping malls in Tokyo" 10
 ```
 
 ### Capture JSON for Programmatic Use
 
 ```bash
 # Save JSON output to file
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in Paris" 2>/tmp/places.json
 
 # Parse JSON with jq
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in Paris" 2>&1 >/dev/null | jq '.results[] | {name, rating, address}'
 ```
 
@@ -144,7 +144,7 @@ python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
 **Command**:
 ```bash
 unset GOOGLE_MAPS_API_KEY
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "restaurants"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "restaurants"
 ```
 
 **Output**:
@@ -158,7 +158,7 @@ Error: GOOGLE_MAPS_API_KEY environment variable not set
 
 **Command**:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py ""
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py ""
 ```
 
 **Output**:

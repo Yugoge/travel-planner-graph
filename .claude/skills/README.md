@@ -155,7 +155,7 @@ Agents use skills via Bash tool:
 
 ```bash
 # Example: Google Maps place search
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
   "restaurants in Paris" 5
 ```
 

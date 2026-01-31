@@ -35,7 +35,7 @@ Uses NOAA for US locations (more detailed) and Open-Meteo for international loca
 Execute scripts from skill directory:
 ```bash
 cd /root/travel-planner/.claude/skills/weather
-python3 scripts/<script_name>.py <arguments>
+source /root/.claude/venv/bin/activate && python3 scripts/<script_name>.py <arguments>
 ```
 
 ## Scripts
@@ -46,13 +46,13 @@ Get future weather forecast with flexible granularity.
 
 ```bash
 # Basic 7-day forecast
-python3 scripts/forecast.py 39.9042 116.4074
+source /root/.claude/venv/bin/activate && python3 scripts/forecast.py 39.9042 116.4074
 
 # Hourly forecast for next 3 days
-python3 scripts/forecast.py 40.7128 -74.0060 --days 3 --granularity hourly
+source /root/.claude/venv/bin/activate && python3 scripts/forecast.py 40.7128 -74.0060 --days 3 --granularity hourly
 
 # With climate normals comparison
-python3 scripts/forecast.py 51.5074 -0.1278 --include-normals
+source /root/.claude/venv/bin/activate && python3 scripts/forecast.py 51.5074 -0.1278 --include-normals
 ```
 
 **Parameters**:
@@ -69,10 +69,10 @@ Get most recent weather observation (US only).
 
 ```bash
 # Current conditions
-python3 scripts/current.py 40.7128 -74.0060
+source /root/.claude/venv/bin/activate && python3 scripts/current.py 40.7128 -74.0060
 
 # With fire weather indices
-python3 scripts/current.py 34.0522 -118.2437 --include-fire-weather
+source /root/.claude/venv/bin/activate && python3 scripts/current.py 34.0522 -118.2437 --include-fire-weather
 ```
 
 **Parameters**:
@@ -86,10 +86,10 @@ Get active weather warnings and watches (US only).
 
 ```bash
 # Active alerts only
-python3 scripts/alerts.py 40.7128 -74.0060
+source /root/.claude/venv/bin/activate && python3 scripts/alerts.py 40.7128 -74.0060
 
 # All alerts (including inactive)
-python3 scripts/alerts.py 25.7617 -80.1918 --all
+source /root/.claude/venv/bin/activate && python3 scripts/alerts.py 25.7617 -80.1918 --all
 ```
 
 **Returns**: Severity, urgency, certainty, effective/expiration times
@@ -100,10 +100,10 @@ Get weather data for specific past dates (global coverage).
 
 ```bash
 # Single day
-python3 scripts/historical.py 40.7128 -74.0060 2024-01-15
+source /root/.claude/venv/bin/activate && python3 scripts/historical.py 40.7128 -74.0060 2024-01-15
 
 # Date range
-python3 scripts/historical.py 51.5074 -0.1278 2024-01-01 2024-01-07
+source /root/.claude/venv/bin/activate && python3 scripts/historical.py 51.5074 -0.1278 2024-01-01 2024-01-07
 ```
 
 **Data Sources**:
@@ -115,7 +115,7 @@ python3 scripts/historical.py 51.5074 -0.1278 2024-01-01 2024-01-07
 Check if weather services are operational.
 
 ```bash
-python3 scripts/status.py
+source /root/.claude/venv/bin/activate && python3 scripts/status.py
 ```
 
 **Returns**: NOAA and Open-Meteo service health status
@@ -125,8 +125,8 @@ python3 scripts/status.py
 Search for location coordinates by name.
 
 ```bash
-python3 scripts/location.py "Beijing, China"
-python3 scripts/location.py "New York" --limit 5
+source /root/.claude/venv/bin/activate && python3 scripts/location.py "Beijing, China"
+source /root/.claude/venv/bin/activate && python3 scripts/location.py "New York" --limit 5
 ```
 
 **Returns**: Coordinates, country, timezone for matching locations
@@ -136,7 +136,7 @@ python3 scripts/location.py "New York" --limit 5
 Get air quality index and pollutant concentrations.
 
 ```bash
-python3 scripts/air_quality.py 39.9042 116.4074
+source /root/.claude/venv/bin/activate && python3 scripts/air_quality.py 39.9042 116.4074
 ```
 
 **Returns**: AQI, PM2.5, PM10, CO, NO2, O3, SO2 levels
@@ -146,7 +146,7 @@ python3 scripts/air_quality.py 39.9042 116.4074
 Get marine weather for coastal and ocean areas.
 
 ```bash
-python3 scripts/marine.py 25.7617 -80.1918
+source /root/.claude/venv/bin/activate && python3 scripts/marine.py 25.7617 -80.1918
 ```
 
 **Returns**: Wave height, period, direction, water temperature
@@ -156,7 +156,7 @@ python3 scripts/marine.py 25.7617 -80.1918
 Get radar and satellite imagery links.
 
 ```bash
-python3 scripts/imagery.py 40.7128 -74.0060 --type radar
+source /root/.claude/venv/bin/activate && python3 scripts/imagery.py 40.7128 -74.0060 --type radar
 ```
 
 **Types**: radar, satellite
@@ -166,7 +166,7 @@ python3 scripts/imagery.py 40.7128 -74.0060 --type radar
 Get real-time lightning strike data.
 
 ```bash
-python3 scripts/lightning.py 40.7128 -74.0060 --radius 50
+source /root/.claude/venv/bin/activate && python3 scripts/lightning.py 40.7128 -74.0060 --radius 50
 ```
 
 **Parameters**:
@@ -177,7 +177,7 @@ python3 scripts/lightning.py 40.7128 -74.0060 --radius 50
 Get river gauge data and flood warnings.
 
 ```bash
-python3 scripts/river.py 40.7128 -74.0060
+source /root/.claude/venv/bin/activate && python3 scripts/river.py 40.7128 -74.0060
 ```
 
 **Returns**: Water level, flow rate, flood stage status
@@ -187,7 +187,7 @@ python3 scripts/river.py 40.7128 -74.0060
 Get active wildfire information.
 
 ```bash
-python3 scripts/wildfire.py 34.0522 -118.2437 --radius 100
+source /root/.claude/venv/bin/activate && python3 scripts/wildfire.py 34.0522 -118.2437 --radius 100
 ```
 
 **Returns**: Fire name, location, size, containment, start date

@@ -19,7 +19,7 @@ export GOOGLE_MAPS_API_KEY="your-api-key-here"
 #### Driving Route
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" \
   "Boston, MA" \
   DRIVE
@@ -46,7 +46,7 @@ Route Steps (5 steps):
 #### Transit Route
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" \
   "Boston, MA" \
   TRANSIT
@@ -70,7 +70,7 @@ Route Steps (3 steps):
 #### Walking Route (for short distances)
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "Times Square" \
   "Central Park" \
   WALK
@@ -96,7 +96,7 @@ Route Steps (5 steps):
 ### Step 3: Parse JSON Output
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York" "Boston" DRIVE 2>/tmp/route.json
 
 cat /tmp/route.json | jq '{
@@ -124,7 +124,7 @@ cat /tmp/route.json | jq '{
 ### Route with Waypoints
 
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "Paris, France" \
   "Berlin, Germany" \
   DRIVE \
@@ -177,13 +177,13 @@ Agent executes multiple route computations:
 
 Step 1: Check driving option
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" DRIVE
 ```
 
 Step 2: Check transit option
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" TRANSIT
 ```
 
@@ -212,7 +212,7 @@ User has visited Eiffel Tower and wants to walk to Arc de Triomphe.
 
 Agent executes:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "Eiffel Tower, Paris" \
   "Arc de Triomphe, Paris" \
   WALK
@@ -227,7 +227,7 @@ Result: 2.4 km, 30 minutes walking along Champs-Élysées
 
 **Command**:
 ```bash
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York" "Boston" FLY
 ```
 
@@ -249,7 +249,7 @@ Error: Invalid travel mode: FLY
 **Command**:
 ```bash
 unset GOOGLE_MAPS_API_KEY
-python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
   "New York" "Boston"
 ```
 
