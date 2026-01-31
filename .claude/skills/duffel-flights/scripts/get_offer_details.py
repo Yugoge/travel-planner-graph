@@ -149,7 +149,7 @@ def main():
         }
 
         response = requests.get(
-            f"https://api.duffel.com/air/offers/{args.offer_id}",
+            f"{DUFFEL_API_BASE}/air/offers/{args.offer_id}",
             headers=headers,
             timeout=30
         )

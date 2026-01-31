@@ -166,7 +166,7 @@ def main():
         }
 
         response = requests.post(
-            "https://api.duffel.com/air/offer_requests",
+            f"{DUFFEL_API_BASE}/air/offer_requests",
             json=payload,
             headers=headers,
             params={"return_offers": "true"},

@@ -38,7 +38,7 @@ def main():
         }
 
         response = requests.get(
-            "https://api.duffel.com/places/suggestions",
+            f"{DUFFEL_API_BASE}/places/suggestions",
             headers=headers,
             params=params,
             timeout=30

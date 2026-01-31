@@ -40,7 +40,7 @@ def main():
             params["name"] = args.name
 
         response = requests.get(
-            "https://api.duffel.com/air/airlines",
+            f"{DUFFEL_API_BASE}/air/airlines",
             headers=headers,
             params=params,
             timeout=30
