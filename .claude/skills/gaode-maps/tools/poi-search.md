@@ -244,57 +244,27 @@ mcp__plugin_amap-maps_amap-maps__poi_detail({
 
 ## POI Category Reference
 
-### Detailed Category Codes
-
-**Food & Dining (050000)**:
-- `050100` - Chinese Restaurant
-  - `050101` - Beijing Cuisine
+**Quick Reference** (Most Common):
+- `050000` - Food & Dining (all restaurants)
+  - `050100` - Chinese Restaurant
   - `050102` - Sichuan Cuisine
-  - `050103` - Cantonese Cuisine
   - `050104` - Hot Pot
-- `050200` - Foreign Restaurant
-  - `050201` - Western Food
-  - `050202` - Japanese Food
-  - `050203` - Korean Food
-- `050300` - Fast Food
-- `050500` - Cafe
-- `050600` - Tea House
-- `050700` - Bakery
-- `050800` - Dessert Shop
+- `080000` - Accommodation (all hotels)
+  - `080100` - Star Hotel
+  - `080200` - Budget Hotel
+- `110000` - Tourist Attractions (all attractions)
+  - `110100` - Scenic Spot
+  - `110300` - Museum
+- `060000` - Shopping (all shopping venues)
+- `140000` - Entertainment (theaters, KTV, bars)
 
-**Shopping (060000)**:
-- `060100` - Shopping Mall
-- `060200` - Convenience Store
-- `060300` - Supermarket
-- `060400` - Market
-- `060500` - Specialty Store
+**📚 Complete Category Codes**: For comprehensive listing including:
+- All subcategories (150+ codes)
+- Category hierarchy and combinations
+- Search strategy recommendations
+- Chinese/English terminology
 
-**Accommodation (080000)**:
-- `080100` - Star Hotel
-  - `080101` - 5-star
-  - `080102` - 4-star
-  - `080103` - 3-star
-- `080200` - Budget Hotel
-- `080300` - Hostel
-- `080400` - Guesthouse
-
-**Tourist Attractions (110000)**:
-- `110100` - Scenic Spot
-- `110200` - Park & Plaza
-- `110300` - Museum
-- `110400` - Temple
-- `110500` - Church
-- `110600` - Art Gallery
-- `110700` - Zoo
-- `110800` - Botanical Garden
-
-**Entertainment (140000)**:
-- `140100` - Cinema
-- `140200` - Theater
-- `140300` - KTV
-- `140400` - Bar
-- `140500` - Club
-- `140600` - Game Center
+**See**: [Gaode POI Categories Reference](../../../docs/reference/gaode-poi-categories.md)
 
 ## Best Practices
 
