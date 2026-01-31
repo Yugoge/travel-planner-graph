@@ -21,7 +21,7 @@ This example demonstrates using RedNote to discover authentic local attractions 
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "成都必去景点",
+  keywords: "成都必去景点",
   page: 1,
   sort_type: "popularity_descending"
 })
@@ -68,7 +68,7 @@ mcp__rednote__search_notes({
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "成都小众景点",
+  keywords: "成都小众景点",
   sort_type: "popularity_descending"
 })
 ```
@@ -94,8 +94,8 @@ mcp__rednote__search_notes({
 **Retrieve full content from most promising post**:
 
 ```javascript
-mcp__rednote__get_note_by_url({
-  note_url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
+mcp__rednote__get_note_content({
+  url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
 })
 ```
 
@@ -196,7 +196,7 @@ mcp__rednote__get_note_by_url({
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "成都熊猫基地攻略",
+  keywords: "成都熊猫基地攻略",
   sort_type: "time_descending"
 })
 ```
@@ -205,7 +205,7 @@ mcp__rednote__search_notes({
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "成都拍照圣地",
+  keywords: "成都拍照圣地",
   sort_type: "popularity_descending"
 })
 ```
@@ -282,7 +282,7 @@ mcp__plugin_amap-maps_amap-maps__poi_search_keyword({
 2. Search hidden gems: "城市名 + 小众景点"
 3. Identify high-engagement posts (5k+ likes)
 4. Extract URLs from top 3-5 results
-5. Use get_note_by_url for detailed content
+5. Use get_note_content for detailed content
 6. Parse structured data from note content
 7. Cross-reference with Gaode Maps for verification
 8. Cross-search for specific attractions/activities
@@ -306,5 +306,5 @@ mcp__plugin_amap-maps_amap-maps__poi_search_keyword({
 ---
 
 **Pattern demonstrated**: Multi-source UGC travel content aggregation and verification
-**Tools used**: `search_notes`, `get_note_by_url`, Gaode Maps verification
+**Tools used**: `search_notes`, `get_note_content`, Gaode Maps verification
 **Output**: Structured attraction recommendations with authenticity and practicality balance

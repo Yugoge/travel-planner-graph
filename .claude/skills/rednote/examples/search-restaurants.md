@@ -21,7 +21,7 @@ This example demonstrates using RedNote to find local restaurants beyond tourist
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "上海本地人推荐美食",
+  keywords: "上海本地人推荐美食",
   sort_type: "popularity_descending"
 })
 ```
@@ -64,21 +64,21 @@ mcp__rednote__search_notes({
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "上海生煎包推荐",
+  keywords: "上海生煎包推荐",
   sort_type: "popularity_descending"
 })
 ```
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "上海本帮菜哪家好",
+  keywords: "上海本帮菜哪家好",
   sort_type: "popularity_descending"
 })
 ```
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "上海小笼包必吃",
+  keywords: "上海小笼包必吃",
   sort_type: "popularity_descending"
 })
 ```
@@ -93,8 +93,8 @@ mcp__rednote__search_notes({
 **Retrieve comprehensive guide**:
 
 ```javascript
-mcp__rednote__get_note_by_url({
-  note_url: "https://www.xiaohongshu.com/explore/66a1b2c3d4e5f6789"
+mcp__rednote__get_note_content({
+  url: "https://www.xiaohongshu.com/explore/66a1b2c3d4e5f6789"
 })
 ```
 
@@ -225,7 +225,7 @@ mcp__plugin_amap-maps_amap-maps__poi_search_keyword({
 
 ```javascript
 mcp__rednote__search_notes({
-  keyword: "大壶春生煎 2026",
+  keywords: "大壶春生煎 2026",
   sort_type: "time_descending"
 })
 ```
@@ -324,7 +324,7 @@ mcp__rednote__search_notes({
 2. Search specific: "城市名 + 菜品名 + 推荐"
 3. Identify high-engagement guides (20k+ likes)
 4. Extract top 5-10 restaurant recommendations
-5. Get detailed content via get_note_by_url
+5. Get detailed content via get_note_content
 6. Parse structured data (name, address, cost, specialties)
 7. Verify with Gaode Maps (location, hours, status)
 8. Search recent updates for each restaurant
@@ -335,5 +335,5 @@ mcp__rednote__search_notes({
 ---
 
 **Pattern demonstrated**: Authentic local restaurant discovery through UGC aggregation
-**Tools used**: `search_notes`, `get_note_by_url`, Gaode Maps verification
+**Tools used**: `search_notes`, `get_note_content`, Gaode Maps verification
 **Output**: Structured meal plan with authentic local restaurants and practical details

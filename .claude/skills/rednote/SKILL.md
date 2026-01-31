@@ -38,11 +38,12 @@ RedNote (小红书/Xiaohongshu) is China's premier lifestyle and social commerce
 
 ## Available MCP Tools
 
-RedNote MCP provides 3 tools for searching and accessing content:
+RedNote MCP provides 4 tools for searching and accessing content:
 
 1. **mcp__rednote__search_notes** - Search notes by keyword
-2. **mcp__rednote__get_note_by_url** - Get note content via URL
-3. **mcp__rednote__get_comments_by_url** - Get comments from note URL (incomplete feature)
+2. **mcp__rednote__get_note_content** - Get note content via URL
+3. **mcp__rednote__get_note_comments** - Get comments from note URL
+4. **mcp__rednote__login** - Manual authentication (prefer CLI `rednote-mcp init`)
 
 All tools are invoked directly as MCP tools (no Python scripts needed).
 
@@ -55,9 +56,8 @@ All tools are invoked directly as MCP tools (no Python scripts needed).
 Search RedNote content by keyword for travel-related information.
 
 **Parameters**:
-- `keyword` (required): Search keyword (Chinese or English)
-- `page` (optional): Page number for pagination (default: 1)
-- `sort_type` (optional): Sort order - "general" (default), "time_descending", "popularity_descending"
+- `keywords` (required): 搜索关键词 (Search keyword, Chinese recommended)
+- `limit` (optional): 返回结果数量限制 (Result limit, default: 10)
 
 **Returns**:
 - List of notes with:
@@ -70,40 +70,39 @@ Search RedNote content by keyword for travel-related information.
 
 **Example usage**:
 ```javascript
-// Search for Beijing attractions
+// Search for Beijing attractions (top 20 results)
 mcp__rednote__search_notes({
-  keyword: "北京必去景点",
-  page: 1,
-  sort_type: "popularity_descending"
+  keywords: "北京必去景点",
+  limit: 20
 })
 
-// Search for Shanghai restaurants
+// Search for Shanghai restaurants (default 10 results)
 mcp__rednote__search_notes({
-  keyword: "上海美食推荐",
-  sort_type: "general"
+  keywords: "上海美食推荐"
 })
 
-// Search for Hangzhou travel guide
+// Search for Hangzhou travel guide (top 5 results)
 mcp__rednote__search_notes({
-  keyword: "杭州旅游攻略"
+  keywords: "杭州旅游攻略",
+  limit: 5
 })
 ```
 
 **Best practices**:
 - Use Chinese keywords for better results (e.g., "北京" not "Beijing")
 - Add modifiers like "推荐" (recommend), "攻略" (guide), "必去" (must-visit)
-- Use "popularity_descending" for most popular content
-- Use "time_descending" for latest updates
-- Paginate through results for comprehensive coverage
+- Set `limit` to 20-50 for comprehensive coverage
+- Start with limit=10 for quick exploration
+- Use multiple keyword variations for thorough research
 
 ### 2. Get Note Content by URL
 
-**Tool**: `mcp__rednote__get_note_by_url`
+**Tool**: `mcp__rednote__get_note_content`
 
 Retrieve detailed content from a specific RedNote post.
 
 **Parameters**:
-- `note_url` (required): RedNote note URL (xhslink.com or xiaohongshu.com)
+- `url` (required): 笔记 URL (RedNote note URL - xhslink.com or xiaohongshu.com)
 
 **Returns**:
 - Complete note details:
@@ -117,13 +116,13 @@ Retrieve detailed content from a specific RedNote post.
 **Example usage**:
 ```javascript
 // Get detailed content from search result
-mcp__rednote__get_note_by_url({
-  note_url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
+mcp__rednote__get_note_content({
+  url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
 })
 
 // Get content from short link
-mcp__rednote__get_note_by_url({
-  note_url: "https://xhslink.com/abc123"
+mcp__rednote__get_note_content({
+  url: "https://xhslink.com/abc123"
 })
 ```
 
@@ -135,17 +134,55 @@ mcp__rednote__get_note_by_url({
 
 ### 3. Get Comments by URL
 
-**Tool**: `mcp__rednote__get_comments_by_url`
+**Tool**: `mcp__rednote__get_note_comments`
 
-Retrieve comments from a RedNote post (feature currently incomplete in MCP server).
+Retrieve comments from a RedNote post.
 
 **Parameters**:
-- `note_url` (required): RedNote note URL
+- `url` (required): 笔记 URL (RedNote note URL)
 
 **Returns**:
-- Comment data (functionality limited in current version)
+- List of comments with:
+  - Author name
+  - Comment content
+  - Like count
+  - Timestamp
 
-**Note**: This tool is under development. Use `get_note_by_url` for primary content retrieval.
+**Example usage**:
+```javascript
+// Get comments from popular post
+mcp__rednote__get_note_comments({
+  url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
+})
+```
+
+**Use cases**:
+- Read user feedback and Q&A
+- Verify restaurant/attraction quality from comments
+- Find additional tips from community
+- Check recent visitor experiences
+
+### 4. Login (Manual Authentication)
+
+**Tool**: `mcp__rednote__login`
+
+Programmatic authentication with RedNote account.
+
+**Parameters**: None
+
+**Returns**: Login success status
+
+**Example usage**:
+```javascript
+// Trigger interactive login (browser will open)
+mcp__rednote__login()
+```
+
+**Important**:
+- **Prefer CLI**: Use `rednote-mcp init` command for initial setup
+- This tool is for programmatic re-authentication scenarios
+- Opens browser for interactive login
+- Cookies saved to `~/.mcp/rednote/cookies.json`
 
 ## MCP Server Setup
 

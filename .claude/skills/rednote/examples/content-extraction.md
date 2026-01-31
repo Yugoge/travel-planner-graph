@@ -24,8 +24,8 @@ This example demonstrates extracting comprehensive travel information from a det
 ## Step 1: Retrieve Full Content
 
 ```javascript
-mcp__rednote__get_note_by_url({
-  note_url: "https://www.xiaohongshu.com/explore/67c3d4e5f67890ab1"
+mcp__rednote__get_note_content({
+  url: "https://www.xiaohongshu.com/explore/67c3d4e5f67890ab1"
 })
 ```
 
@@ -471,7 +471,7 @@ mcp__rednote__get_note_by_url({
 
 ```markdown
 1. Identify high-engagement comprehensive guides (30k+ likes)
-2. Use get_note_by_url to retrieve full content
+2. Use get_note_content to retrieve full content
 3. Parse content sections:
    - Budget breakdown
    - Day-by-day itinerary
@@ -504,5 +504,5 @@ mcp__rednote__get_note_by_url({
 ---
 
 **Pattern demonstrated**: Comprehensive travel guide content extraction and structuring
-**Tools used**: `get_note_by_url`
+**Tools used**: `get_note_content`
 **Output**: Fully structured multi-day itinerary with budget, tips, and warnings
