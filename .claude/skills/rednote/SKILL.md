@@ -115,16 +115,27 @@ Retrieve detailed content from a specific RedNote post.
 
 **Example usage**:
 ```javascript
-// Get detailed content from search result
+// IMPORTANT: Use the full URL from search_notes results (includes xsec_token)
+// Get from search_notes result:
+const notes = mcp__rednote__search_notes({ keywords: "成都美食", limit: 10 })
+const fullUrl = notes[0].url  // Contains xsec_token parameter
+
+// Then use the complete URL:
 mcp__rednote__get_note_content({
-  url: "https://www.xiaohongshu.com/explore/65a1b2c3d4e5f6789"
+  url: fullUrl  // e.g., "https://www.xiaohongshu.com/explore/65a1b2c3?xsec_token=..."
 })
 
-// Get content from short link
+// Also supports short links (will auto-redirect):
 mcp__rednote__get_note_content({
   url: "https://xhslink.com/abc123"
 })
 ```
+
+**Important Notes**:
+- ⚠️ **Always use the complete URL from search_notes results** (includes xsec_token for authentication)
+- URLs without xsec_token may timeout or return 404 errors
+- The MCP server handles URL redirection automatically
+- Typical timeout: 30 seconds (may fail for very slow network)
 
 **Use cases**:
 - Extract detailed recommendations from popular posts
