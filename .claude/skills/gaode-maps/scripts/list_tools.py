@@ -12,7 +12,7 @@ def list_tools():
     """List all available MCP tools."""
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
     )
 
     try:

@@ -30,7 +30,7 @@ def weather_info(city: str, extensions: str = "base") -> dict:
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
     )
 
     try:
@@ -64,7 +64,7 @@ def distance_measure(origins: str, destination: str, distance_type: int = 1) -> 
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
     )
 
     try:

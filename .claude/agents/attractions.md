@@ -34,7 +34,22 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Activity level (walking tours, physical activities)
 
-2. **Research attractions**:
+2. **Research attractions using skills** (MANDATORY - NO WebSearch):
+
+   **For China destinations**:
+   - Use Skill tool with `gaode-maps`
+   - Load POI search tools, then search for attractions by keyword and city
+
+   **For global destinations**:
+   - Use Skill tool with `google-maps`
+   - Search for places by name and location
+
+   **If skill fails**:
+   - Report error in output JSON with status: "error"
+   - Include error message explaining what failed
+   - DO NOT fall back to WebSearch under any circumstances
+
+   **Extract from skill results**:
    - Top-rated attractions in the day's location
    - Opening hours and best visiting times
    - Ticket prices and booking requirements
@@ -92,6 +107,8 @@ Return only: `complete`
 - Note if attraction requires advance booking or timed entry
 - Consider weather and seasonal factors
 - Include backup indoor options for outdoor activities
+- **CRITICAL**: NEVER use WebSearch - if skills fail, report error and stop
+- **CRITICAL**: data_sources array must contain skill names only (never "web_search")
 
 ---
 
