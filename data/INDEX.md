@@ -8,64 +8,58 @@ Travel plan data storage in structured JSON format. Contains trip requirements, 
 
 ## Structure
 
-Total subdirectories: 7 (3 active trips, 4 test directories)
-Total files: 75 JSON + MD files
+Total subdirectories: 1 active, 8 archived
+Total files: 2 (INDEX.md, README.md)
 
-## Trips
+## Active Trips
 
-### Active Trip Plans
+**Status**: No active trips (data/ directory ready for new planning)
 
-#### china-multi-city-feb-mar-2026/
-**10 JSON files** - Complete travel plan for multi-city China trip
+## Archived Trips
 
-**Trip details**:
+### archive/2026-01/ (2 trips)
+
+#### china-multi-city-feb15-mar7-2026/ (232 KB)
+**8 JSON files** - Completed multi-city China trip
 - Duration: Feb 15 - Mar 7, 2026 (21 days)
 - Destination: Multiple cities in China
-- Status: Active planning
-- Files: All standard planning files (requirements, plan, timeline, 7 categories)
+- Status: Archived (completed)
 
-#### beijing-3day-budget/
-**11 JSON files** - Beijing 3-day budget trip
+#### test-trip/ (24 KB)
+**5 JSON files** - Template and test fixtures
+- Purpose: Development templates and validation test cases
 
-**Trip details**:
+### archive/2026-02/ (6 trips)
+
+#### beijing-3day-budget/ (52 KB)
+**11 JSON files** - Budget agent test
 - Duration: 3 days
 - Destination: Beijing
-- Status: Budget testing
-- Files: Includes BUDGET_SUMMARY.txt for budget analysis
+- Purpose: Budget agent testing
 
-#### china-multi-city-feb15-mar7-2026/
-**8 JSON files** - Alternate China multi-city plan (testing)
+#### beijing-simple-test/ (44 KB)
+**7 JSON files** - Simple agent test
+- Purpose: Basic timeline agent testing
 
-### Test Directories
-
-#### skill-test/
-**20+ JSON + MD files** - Skill integration testing data
-
-**Purpose**: Testing agent-skill integration
-- MCP skills testing
-- Agent capability verification
-- Complete skills status reports
-- Budget agent testing
-
-#### beijing-simple-test/
-**7 JSON files** - Simple Beijing test case
-
-**Purpose**: Basic timeline agent testing
-
-#### beijing-timeline-test/
+#### beijing-timeline-test/ (40 KB)
 **3 JSON + MD files** - Timeline workflow testing
+- Purpose: Timeline agent validation
 
-**Purpose**: Timeline agent validation
+#### china-multi-city-feb-mar-2026/ (204 KB)
+**10 JSON files** - Multi-city trip planning test
+- Duration: Feb 15 - Mar 7, 2026
+- Destination: Multiple cities in China
+- Purpose: Agent integration testing
 
-#### shanghai-test/
+#### shanghai-test/ (32 KB)
 **3 JSON + MD files** - Shanghai entertainment testing
+- Purpose: Entertainment skills testing
 
-**Purpose**: Entertainment skills testing
+#### skill-test/ (184 KB)
+**20+ JSON + MD files** - Skill integration testing
+- Purpose: MCP skills testing, agent capability verification
 
-#### test-trip/
-**5 JSON files** - Template and validation test data
-
-**Purpose**: Template files and test cases for validation scripts
+**Total archived**: 8 trips | 812 KB
 
 ## File Types
 
