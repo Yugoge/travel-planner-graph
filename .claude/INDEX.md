@@ -1,6 +1,6 @@
 # .claude/ Index
 
-Auto-generated folder inventory. Last updated: 2026-01-31
+Auto-generated folder inventory. Last updated: 2026-02-01
 
 ## Purpose
 
@@ -47,18 +47,17 @@ Commands:
 **Purpose**: User-facing entry points for workflows
 
 ### skills/
-**7 MCP skill integrations** - External API access
+**7 skill integrations** - External API access
 
 Skills:
-- `airbnb/` - Airbnb property search
-- `duffel-flights/` - Flight search
-- `gaode-maps/` - 高德地图 (China maps)
-- `google-maps/` - Google Maps
-- `rednote/` - 小红书 (RedNote)
-- `weather/` - Weather data
-- `test-mcp/` - MCP testing
+- `airbnb/` - Airbnb property search (MCP via Python)
+- `duffel-flights/` - Flight search (API via Python)
+- `gaode-maps/` - 高德地图 (China maps, API via Python)
+- `google-maps/` - Google Maps (API via Python)
+- `openmeteo-weather/` - Open-Meteo weather (API via Python)
+- `rednote/` - 小红书 RedNote social search (MCP via Python)
 
-**Purpose**: Script-based MCP server integrations
+**Purpose**: Script-based skill integrations (replaced deprecated MCP servers with Python scripts)
 
 ## File Types
 

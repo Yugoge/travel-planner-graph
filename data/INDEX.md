@@ -1,6 +1,6 @@
 # data/ Index
 
-Auto-generated folder inventory. Last updated: 2026-01-31
+Auto-generated folder inventory. Last updated: 2026-02-01
 
 ## Purpose
 
@@ -8,40 +8,62 @@ Travel plan data storage in structured JSON format. Contains trip requirements, 
 
 ## Structure
 
-Total subdirectories: 2
-Total files: 15 JSON files
+Total subdirectories: 7 (3 active trips, 4 test directories)
+Total files: 75 JSON + MD files
 
 ## Trips
 
-### china-multi-city-feb15-mar7-2026/
-**10 JSON files** - Complete travel plan for multi-city China trip
+### Active Trip Plans
 
-**Planning data**:
-- `requirements-skeleton.json` - Trip requirements and constraints
-- `plan-skeleton.json` - Overall trip structure
-- `timeline.json` - Day-by-day itinerary
-- `transportation.json` - Travel between cities
-- `accommodation.json` - Hotel/lodging bookings
-- `attractions.json` - Tourist sites and activities
-- `meals.json` - Restaurant and dining plans
-- `entertainment.json` - Shows, events, nightlife
-- `shopping.json` - Shopping locations and items
-- `budget.json` - Cost estimates and tracking
+#### china-multi-city-feb-mar-2026/
+**10 JSON files** - Complete travel plan for multi-city China trip
 
 **Trip details**:
 - Duration: Feb 15 - Mar 7, 2026 (21 days)
 - Destination: Multiple cities in China
 - Status: Active planning
+- Files: All standard planning files (requirements, plan, timeline, 7 categories)
 
-### test-trip/
-**5 JSON files** - Test data and skeleton templates
+#### beijing-3day-budget/
+**11 JSON files** - Beijing 3-day budget trip
 
-**Test files**:
-- `requirements-skeleton.json` - Template requirements
-- `requirements-incomplete.json` - Incomplete requirements (validation testing)
-- `plan-skeleton.json` - Valid plan template
-- `plan-skeleton-broken.json` - Invalid plan (error testing)
-- `plan-skeleton-with-timeline.json` - Plan with timeline integration
+**Trip details**:
+- Duration: 3 days
+- Destination: Beijing
+- Status: Budget testing
+- Files: Includes BUDGET_SUMMARY.txt for budget analysis
+
+#### china-multi-city-feb15-mar7-2026/
+**8 JSON files** - Alternate China multi-city plan (testing)
+
+### Test Directories
+
+#### skill-test/
+**20+ JSON + MD files** - Skill integration testing data
+
+**Purpose**: Testing agent-skill integration
+- MCP skills testing
+- Agent capability verification
+- Complete skills status reports
+- Budget agent testing
+
+#### beijing-simple-test/
+**7 JSON files** - Simple Beijing test case
+
+**Purpose**: Basic timeline agent testing
+
+#### beijing-timeline-test/
+**3 JSON + MD files** - Timeline workflow testing
+
+**Purpose**: Timeline agent validation
+
+#### shanghai-test/
+**3 JSON + MD files** - Shanghai entertainment testing
+
+**Purpose**: Entertainment skills testing
+
+#### test-trip/
+**5 JSON files** - Template and validation test data
 
 **Purpose**: Template files and test cases for validation scripts
 

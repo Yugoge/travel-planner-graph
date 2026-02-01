@@ -1,6 +1,6 @@
 # scripts/ Index
 
-Auto-generated folder inventory. Last updated: 2026-01-31
+Auto-generated folder inventory. Last updated: 2026-02-01
 
 ## Purpose
 
@@ -17,9 +17,14 @@ Total subdirectories: 2 (todo/, gaode-maps/)
 
 - `check-day-completion.sh` - Verify timeline has plans for all days in trip
 - `check-location-continuity.sh` - Validate location transitions between days
+- `debug-agent-skills.sh` - Debug agent-skill integration issues
 - `deploy-travel-plans.sh` - Deploy generated travel plans to web/execution
 - `detect-location-changes.py` - Detect location changes between consecutive days
 - `generate-travel-html.sh` - Generate interactive HTML views of travel plans
+- `migrate-to-venv.py` - Migrate Python scripts to use project venv
+- `test-agent-skill-enforcement.sh` - Test agent-skill enforcement rules
+- `test-no-api-key-mcps.py` - Test MCP servers without API keys
+- `timeline_agent.py` - Timeline agent implementation
 - `validate-timeline-consistency.sh` - Validate timeline JSON structure and completeness
 
 ### todo/
