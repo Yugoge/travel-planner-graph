@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-def extract_urgent_items(warnings: List[str]) -> List[Dict[str, str]]:
+def extract_urgent_items(warnings: List) -> List[Dict[str, str]]:
     """Extract URGENT booking items (trains, sold-out tickets)."""
     urgent = []
 
@@ -28,18 +28,31 @@ def extract_urgent_items(warnings: List[str]) -> List[Dict[str, str]]:
     ]
 
     for warning in warnings:
-        warning_lower = warning.lower()
+        # Handle both string and dict warnings
+        if isinstance(warning, dict):
+            warning_text = warning.get('description', '') + ' ' + warning.get('recommendation', '')
+            warning_lower = warning_text.lower()
+        else:
+            warning_lower = str(warning).lower()
         if any(keyword in warning_lower for keyword in keywords_urgent):
             # Try to extract day number
             day_num = None
-            if 'day ' in warning_lower:
+            if isinstance(warning, dict) and 'day' in warning:
+                day_num = str(warning['day'])
+            elif 'day ' in warning_lower:
                 try:
                     day_num = warning_lower.split('day ')[1].split()[0].strip(':,')
                 except:
                     pass
 
+            # Get item text
+            if isinstance(warning, dict):
+                item_text = warning.get('description', str(warning))
+            else:
+                item_text = str(warning)
+
             urgent.append({
-                'item': warning,
+                'item': item_text,
                 'day': day_num,
                 'category': 'transportation' if 'train' in warning_lower or 'railway' in warning_lower else 'activity'
             })
@@ -47,7 +60,7 @@ def extract_urgent_items(warnings: List[str]) -> List[Dict[str, str]]:
     return urgent
 
 
-def extract_advance_items(warnings: List[str]) -> List[Dict[str, str]]:
+def extract_advance_items(warnings: List) -> List[Dict[str, str]]:
     """Extract ADVANCE booking items (restaurants, popular attractions)."""
     advance = []
 
@@ -58,7 +71,12 @@ def extract_advance_items(warnings: List[str]) -> List[Dict[str, str]]:
     ]
 
     for warning in warnings:
-        warning_lower = warning.lower()
+        # Handle both string and dict warnings
+        if isinstance(warning, dict):
+            warning_text = warning.get('description', '') + ' ' + warning.get('recommendation', '')
+            warning_lower = warning_text.lower()
+        else:
+            warning_lower = str(warning).lower()
         # Skip if already categorized as urgent
         if any(keyword in warning_lower for keyword in ['train', 'sold out', 'must book']):
             continue
@@ -66,14 +84,22 @@ def extract_advance_items(warnings: List[str]) -> List[Dict[str, str]]:
         if any(keyword in warning_lower for keyword in keywords_advance):
             # Try to extract day number
             day_num = None
-            if 'day ' in warning_lower:
+            if isinstance(warning, dict) and 'day' in warning:
+                day_num = str(warning['day'])
+            elif 'day ' in warning_lower:
                 try:
                     day_num = warning_lower.split('day ')[1].split()[0].strip(':,')
                 except:
                     pass
 
+            # Get item text
+            if isinstance(warning, dict):
+                item_text = warning.get('description', str(warning))
+            else:
+                item_text = str(warning)
+
             advance.append({
-                'item': warning,
+                'item': item_text,
                 'day': day_num,
                 'category': 'restaurant' if 'restaurant' in warning_lower or 'dinner' in warning_lower else 'activity'
             })
@@ -81,7 +107,7 @@ def extract_advance_items(warnings: List[str]) -> List[Dict[str, str]]:
     return advance
 
 
-def extract_regular_items(warnings: List[str]) -> List[Dict[str, str]]:
+def extract_regular_items(warnings: List) -> List[Dict[str, str]]:
     """Extract regular booking items (not urgent or advance)."""
     regular = []
 
@@ -89,7 +115,12 @@ def extract_regular_items(warnings: List[str]) -> List[Dict[str, str]]:
     advance_keywords = ['reservation', 'advance', 'popular', 'recommend booking']
 
     for warning in warnings:
-        warning_lower = warning.lower()
+        # Handle both string and dict warnings
+        if isinstance(warning, dict):
+            warning_text = warning.get('description', '') + ' ' + warning.get('recommendation', '')
+            warning_lower = warning_text.lower()
+        else:
+            warning_lower = str(warning).lower()
 
         # Skip if already categorized
         if any(keyword in warning_lower for keyword in urgent_keywords + advance_keywords):
@@ -99,14 +130,22 @@ def extract_regular_items(warnings: List[str]) -> List[Dict[str, str]]:
         booking_keywords = ['booking', 'reserve', 'ticket', 'admission', 'entry']
         if any(keyword in warning_lower for keyword in booking_keywords):
             day_num = None
-            if 'day ' in warning_lower:
+            if isinstance(warning, dict) and 'day' in warning:
+                day_num = str(warning['day'])
+            elif 'day ' in warning_lower:
                 try:
                     day_num = warning_lower.split('day ')[1].split()[0].strip(':,')
                 except:
                     pass
 
+            # Get item text
+            if isinstance(warning, dict):
+                item_text = warning.get('description', str(warning))
+            else:
+                item_text = str(warning)
+
             regular.append({
-                'item': warning,
+                'item': item_text,
                 'day': day_num,
                 'category': 'general'
             })
