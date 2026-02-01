@@ -62,7 +62,9 @@ wassima==2.0.4
 
 ---
 
-## 2. Skills测试结果（8个Skills）
+## 2. Skills测试结果（6个Skills）
+
+**已删除废弃skills**: weather (旧版), test-mcp
 
 ### 测试方法
 ```bash
@@ -79,9 +81,9 @@ python3 .claude/skills/<skill-name>/scripts/<script>.py <args>
 | 3 | **duffel-flights** | Python | ✅ PASS | ❌ 否 | 只需.env API key |
 | 4 | **google-maps** | Python | ✅ PASS | ❌ 否 | 只需.env API key |
 | 5 | **airbnb** | Python | ✅ PASS | ❌ 否 | 需要--ignore-robots |
-| 6 | **rednote** | MCP | ✅ PASS | ❌ 否 | MCP-based，cookies已初始化 |
-| 7 | **weather** (旧版) | MCP | ⚠️ DEPRECATED | ❌ 否 | 使用openmeteo-weather代替 |
-| 8 | **test-mcp** | MCP | ⚠️ TEST ONLY | ❌ 否 | 测试用skill |
+| 6 | **rednote** | MCP | ✅ PASS | ❌ 否 | Cookies有效至2026-08-27 |
+
+**已删除**: weather (旧版), test-mcp
 
 ### 详细测试输出
 
@@ -166,7 +168,7 @@ python3 .claude/skills/<skill-name>/scripts/<script>.py <args>
 | 4 | **transportation** | ✅ PASS | duffel-flights, gaode-maps, google-maps | 北京到上海交通方案 |
 | 5 | **shopping** | ✅ PASS | gaode-maps | 找到北京购物区 |
 | 6 | **entertainment** | ✅ PASS | gaode-maps | 找到北京娱乐场所 |
-| 7 | **timeline** | ✅ PASS | 无（独立运行） | 生成1天时间表 |
+| 7 | **timeline** | ✅ PASS | openmeteo-weather | 生成1天时间表+天气检查 |
 | 8 | **budget** | ✅ PASS | 无（独立运行） | 计算500CNY预算 |
 
 ### 详细测试结果
