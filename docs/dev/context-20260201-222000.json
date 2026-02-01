@@ -1,0 +1,97 @@
+{
+  "request_id": "dev-20260201-222000",
+  "timestamp": "2026-02-01T22:20:00Z",
+  "requirement": {
+    "original": "为什么小红书有问题？",
+    "clarified": "修复rednote skill文档误导问题：SKILL.md声称'no Python scripts needed'导致直接调用MCP工具而不是使用设计好的Python脚本",
+    "what": "修正rednote/SKILL.md文档，明确说明要通过Python脚本调用MCP，而不是直接调用MCP工具",
+    "why": "当前文档误导Claude直接调用不存在的MCP工具，导致skill无法正常使用",
+    "where": [
+      ".claude/skills/rednote/SKILL.md"
+    ],
+    "scope": {
+      "included": [
+        "修正rednote/SKILL.md第37行及相关文档",
+        "按照gaode-maps skill的正确模式重写使用说明",
+        "添加明确的Python脚本调用示例",
+        "检查其他类似的MCP-based skills是否有同样问题（airbnb, duffel-flights, google-maps）"
+      ],
+      "excluded": [
+        "修改实际的Python脚本（scripts/目录下的文件）",
+        "修改MCP server配置",
+        "改变skill的核心功能"
+      ]
+    },
+    "success_criteria": [
+      "SKILL.md明确说明通过Python脚本调用（不说'no Python scripts needed'）",
+      "提供清晰的bash命令示例（参考gaode-maps模式）",
+      "文档与实际scripts/目录结构一致",
+      "检查报告显示其他MCP-based skills文档是否正确"
+    ],
+    "constraints": [
+      "不改变skill的实际功能",
+      "保持与gaode-maps skill文档风格一致",
+      "不破坏现有的Python脚本"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "调用Skill(skill='rednote')后，Claude尝试直接调用mcp__rednote__search_notes导致'No such tool available'错误",
+    "root_cause": "commit 1a9414b创建rednote skill时，SKILL.md第37行写了'All tools are invoked directly as MCP tools (no Python scripts needed)'，与实际设计（有scripts/search.py）不符",
+    "root_cause_commit": "1a9414b - feat: Implement RedNote skill using MCP protocol",
+    "why_introduced": "最初设计时可能参考了其他MCP工具的文档模板，但忘记更新为Python脚本调用模式",
+    "why_problematic": "文档声称'no Python scripts needed'，但实际上skill设计是通过Python脚本封装MCP调用，导致Claude跳过脚本直接调用不存在的MCP工具",
+    "timeline": "2026-01-31创建rednote skill时引入",
+    "affected_files": [
+      ".claude/skills/rednote/SKILL.md"
+    ],
+    "pattern_analysis": {
+      "correct_pattern": "gaode-maps skill正确文档模式：明确说明'Execute scripts from skill directory'并提供bash命令示例",
+      "incorrect_pattern": "rednote skill错误文档模式：声称'no Python scripts needed'但实际有scripts/目录",
+      "other_skills_to_check": [
+        "airbnb (有scripts/)",
+        "duffel-flights (有scripts/)",
+        "google-maps (有scripts/)"
+      ]
+    }
+  },
+  "context": {
+    "codebase_state": "clean working directory, on master branch",
+    "recent_commits": [
+      "c9084ac - fix: Enable airbnb and rednote skills in agents using standard Skill tool pattern",
+      "1a9414b - feat: Implement RedNote skill using MCP protocol (ROOT CAUSE)"
+    ],
+    "file_contents": {
+      ".claude/skills/rednote/SKILL.md": "当前版本（第37行有误导文档）",
+      ".claude/skills/rednote/scripts/search.py": "实际存在的Python脚本（封装MCP调用）",
+      ".claude/skills/gaode-maps/SKILL.md": "正确文档参考（明确说明用Python脚本）"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11, Node.js (for rednote-mcp)",
+      "mcp_server": "rednote-mcp (npm global package)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "skills_path": "/root/travel-planner/.claude/skills/"
+    }
+  },
+  "development_approach": {
+    "strategy": "按照gaode-maps skill的正确模式重写rednote SKILL.md的'How to Use'部分，移除误导性的'no Python scripts needed'声明",
+    "files_to_modify": [
+      ".claude/skills/rednote/SKILL.md"
+    ],
+    "validation_approach": "QA验证文档与scripts/目录一致性，并检查其他MCP-based skills文档",
+    "specific_changes": [
+      "删除或修正第37行'All tools are invoked directly as MCP tools (no Python scripts needed)'",
+      "添加'How to Use'章节，明确说明通过Python脚本调用",
+      "添加bash命令示例：cd skill_dir && source venv && python3 scripts/search.py",
+      "检查airbnb/duffel-flights/google-maps skills的SKILL.md是否有同样问题"
+    ]
+  },
+  "standards_to_enforce": {
+    "documentation_consistency": true,
+    "match_actual_implementation": true,
+    "follow_gaode_maps_pattern": true,
+    "no_misleading_statements": true,
+    "git_root_cause_reference": true
+  }
+}

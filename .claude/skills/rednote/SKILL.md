@@ -34,7 +34,29 @@ RedNote MCP provides 4 tools for searching and accessing content:
 3. **mcp__rednote__get_note_comments** - Get comments from note URL
 4. **mcp__rednote__login** - Manual authentication (prefer CLI `rednote-mcp init`)
 
-All tools are invoked directly as MCP tools (no Python scripts needed).
+All tools are accessed via Python scripts in the `scripts/` directory that communicate with the RedNote MCP server.
+
+## How to Use
+
+**This skill provides executable Python scripts that communicate directly with RedNote MCP server.**
+
+Execute scripts from the skill directory:
+```bash
+cd /root/travel-planner/.claude/skills/rednote
+source /root/.claude/venv/bin/activate && python3 scripts/search.py <keyword> [--limit LIMIT]
+```
+
+Available scripts:
+- `scripts/search.py` - Search RedNote notes by keyword
+
+All scripts return JSON output to stdout.
+
+### Quick Example
+
+**Search for Beijing attractions**:
+```bash
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "北京必去景点" --limit 20
+```
 
 ## Tool Details
 
@@ -255,30 +277,24 @@ Edit `~/.config/Claude/claude_desktop_config.json`:
 - **Try**: Different sort types
 - **Check**: Account has access (new accounts may have restrictions)
 
-## How to Use
-
-### Workflow Pattern
+## Workflow Pattern
 
 **Step 1: Search for relevant content**
-```javascript
-mcp__rednote__search_notes({
-  keyword: "西安旅游三天",
-  sort_type: "popularity_descending"
-})
+```bash
+cd /root/travel-planner/.claude/skills/rednote
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "西安旅游三天" --limit 20
 ```
 
 **Step 2: Parse search results**
-- Review titles and descriptions
+- Review titles and descriptions in JSON output
 - Check engagement metrics (likes, comments)
 - Identify most relevant posts
-- Extract note URLs
+- Extract note URLs for detailed reading
 
-**Step 3: Get detailed content**
-```javascript
-mcp__rednote__get_note_by_url({
-  note_url: "https://www.xiaohongshu.com/explore/..."
-})
-```
+**Step 3: Get detailed content** (if needed)
+- Use the RedNote MCP tools via Python scripts
+- Navigate to full URLs from search results
+- Extract complete note content and images
 
 **Step 4: Extract actionable information**
 - Restaurant names and locations
@@ -300,31 +316,23 @@ mcp__rednote__get_note_by_url({
 - entertainment (nightlife and activity suggestions)
 
 **Usage in agents**:
-```markdown
+```bash
 # In attractions agent
 # Search RedNote for hidden gems
-mcp__rednote__search_notes({
-  keyword: "北京小众景点",
-  sort_type: "popularity_descending"
-})
+cd /root/travel-planner/.claude/skills/rednote
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "北京小众景点" --limit 20
 
 # In meals agent
 # Find authentic local restaurants
-mcp__rednote__search_notes({
-  keyword: "成都本地人推荐美食"
-})
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "成都本地人推荐美食" --limit 15
 
 # In shopping agent
 # Discover local markets
-mcp__rednote__search_notes({
-  keyword: "上海购物必去"
-})
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "上海购物必去" --limit 10
 
 # In entertainment agent
 # Find nightlife recommendations
-mcp__rednote__search_notes({
-  keyword: "深圳酒吧推荐"
-})
+source /root/.claude/venv/bin/activate && python3 scripts/search.py "深圳酒吧推荐" --limit 10
 ```
 
 ## Search Keywords
