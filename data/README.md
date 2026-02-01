@@ -135,13 +135,31 @@ Based on Git history:
 - Suffix templates with `-skeleton`
 - Suffix test fixtures with `-broken` or `-incomplete`
 
+## Directory Structure
+
+**Active Trips**: Currently planning trips are stored in root-level directories.
+
+**Archived Trips**: Completed and test trips are stored in `archive/YYYY-MM/`.
+
+### Archive
+
+**archive/2026-01/** (Jan 2026 trips):
+- china-multi-city-feb15-mar7-2026/ (232 KB) - Completed multi-city trip
+- test-trip/ (24 KB) - Template and test fixtures
+
+**archive/2026-02/** (Feb 2026 tests):
+- beijing-3day-budget/ (52 KB) - Budget agent test
+- beijing-simple-test/ (44 KB) - Simple agent test
+- beijing-timeline-test/ (40 KB) - Timeline agent test
+- china-multi-city-feb-mar-2026/ (204 KB) - Multi-city trip planning
+- shanghai-test/ (32 KB) - Shanghai test data
+- skill-test/ (184 KB) - Skill integration tests
+
+**Total archived**: 8 trips | 812 KB
+
 ## Active Trips
 
-**china-multi-city-feb15-mar7-2026**:
-- Status: Active planning
-- Duration: 21 days (Feb 15 - Mar 7, 2026)
-- Destination: Multiple cities in China
-- Files: 10 JSON files (complete structure)
+**Status**: No active trips (data/ directory ready for new planning)
 
 ## Integration with Scripts
 
