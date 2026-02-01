@@ -112,72 +112,10 @@ Return only: `complete`
 
 ---
 
-## Google Maps Integration
-
-**When to use Google Maps**:
-- For all destinations (worldwide coverage)
-- When searching for attractions by type or category
-- When verifying location and operating hours
-- When calculating distance between attractions
-
-**Workflow with Google Maps**:
-1. Load places tools: `/google-maps places`
-2. Call `search_places` with query and location
-3. Specify type: "museum", "park", "tourist_attraction", etc.
-4. Filter results by rating (≥4.0) and reviews
-5. Parse response for name, address, rating, hours, price
-6. Structure data for attractions.json
-
-**Workflow with Google Maps Routing**:
-1. Load routing tools: `/google-maps routing`
-2. Calculate walking time between attractions
-3. Use WALK mode for nearby attractions
-4. Optimize daily itinerary based on geographic clustering
-5. Ensure total walking time is reasonable (<3 hours per day)
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (google_maps or web_search)
-
-**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
-
-## Weather Integration
-
-Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
-- Clear → outdoor activities, Rain → indoor attractions
-- Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
-
-
-## Gaode Maps Integration
-
-**When to use**: Chinese domestic destinations, search attractions with Chinese names, accurate location data in China.
-
-**Workflow with Gaode Maps**:
-1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
-2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: Attraction name or type (e.g., "museum", "公园", "寺庙")
-   - city: Chinese city name
-   - types: "110000" (tourist attractions category)
-3. Filter by rating (≥4.0) and popularity
-4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for detailed information
-5. Parse: name, address, opening hours, ticket price, user ratings
-6. Use distance tools to calculate travel time from accommodation
-7. Structure data with both Chinese and English names
-
-**Error Handling**:
-- Retry logic: 3 attempts with exponential backoff
-- No WebSearch fallback - report errors if scripts fail
-- Include data source in output
-
-**See**: `.claude/skills/gaode-maps/SKILL.md` for category codes
-
----
-
-## RedNote Integration
-
-Use rednote skill for Chinese UGC content:
-- Search notes by keyword and city
-- Extract recommendations from real travelers
-- Find hidden gems and local favorites
+**Skill Integration Notes**:
+- For global destinations: Use Skill tool to invoke google-maps skill
+- For China destinations: Use Skill tool to invoke gaode-maps skill for POI search
+- For Chinese recommendations: Use Skill tool to invoke rednote skill
+- For weather forecasts: Use Skill tool to invoke openmeteo-weather skill
+- See individual SKILL.md files for detailed usage patterns
 

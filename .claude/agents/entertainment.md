@@ -98,65 +98,10 @@ Return only: `complete`
 
 ---
 
-## Google Maps Integration
-
-**When to use Google Maps**:
-- For all destinations (worldwide coverage)
-- When searching for entertainment venues (theaters, clubs, bars)
-- When verifying venue location and operating hours
-- When finding nightlife districts
-
-**Workflow with Google Maps**:
-1. Load places tools: `/google-maps places`
-2. Call `search_places` with query and location
-3. Specify type: "night_club", "bar", "movie_theater", "casino"
-4. Filter results by rating (≥3.5) and business_status
-5. Parse response for name, address, hours, type
-6. Structure data for entertainment.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (google_maps or web_search)
-
-**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
-
-## Weather Integration
-
-Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
-- Clear → outdoor activities, Rain → indoor attractions
-- Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
-
-
-## Gaode Maps Integration
-
-**When to use**: Chinese domestic destinations, search entertainment venues with Chinese names, accurate venue locations.
-
-**Workflow with Gaode Maps**:
-1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
-2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: Entertainment keywords (e.g., "电影院", "KTV", "酒吧", "剧院")
-   - city: Chinese city name
-   - types: "140000" (entertainment category)
-3. Filter by rating and user reviews
-4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for show times and pricing
-5. Parse: name, address, hours, specialties, phone number
-6. Calculate travel time from accommodation or dinner location
-7. Structure data with both Chinese and English names
-
-**Error Handling**:
-- Retry logic: 3 attempts
-- No WebSearch fallback - report errors if scripts fail
-- Include data source in output
-
-**See**: `.claude/skills/gaode-maps/SKILL.md` for entertainment category codes
-
----
-
-## RedNote Integration
-
-Use rednote skill for Chinese UGC content:
-- Search notes by keyword and city
-- Extract recommendations from real travelers
-- Find hidden gems and local favorites
+**Skill Integration Notes**:
+- For global destinations: Use Skill tool to invoke google-maps skill
+- For China destinations: Use Skill tool to invoke gaode-maps skill for POI search
+- For Chinese entertainment insights: Use Skill tool to invoke rednote skill
+- For weather forecasts: Use Skill tool to invoke openmeteo-weather skill
+- See individual SKILL.md files for detailed usage patterns
 

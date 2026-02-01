@@ -149,55 +149,8 @@ This agent has access to specialized accommodation search skills:
 - For cold weather: Prioritize heated properties, fireplaces
 - Include weather considerations in accommodation notes
 
-## Skill Integration: airbnb
-
-**When to use**: Extended stays (5+ nights), family/group travel (4+ guests), need kitchen/laundry, prefer local neighborhood experience.
-
-**Workflow**:
-1. Invoke `/airbnb search` to load search tools
-2. Use `mcp__plugin_airbnb_airbnb__airbnb_search` with location, dates, guests, price filters
-3. Filter results by rating (4.5+), Superhost status, review count (10+)
-4. Invoke `/airbnb details` to load detail tools
-5. Use `mcp__plugin_airbnb_airbnb__airbnb_listing_details` for top 3-5 candidates
-6. Verify amenities (kitchen, washer, WiFi, parking)
-7. Check house rules (pets, smoking, parties, quiet hours)
-8. Calculate total cost including cleaning and service fees
-9. Structure data for output with average per-night cost
-
-**No WebSearch fallback** - report errors if scripts fail.
-
-**Quality checks**:
-- Superhost preferred (more reliable)
-- Rating >= 4.5 stars
-- Recent reviews (within 6 months)
-- Complete amenities list matches requirements
-- Reasonable house rules (no deal-breakers)
-- Flexible or moderate cancellation policy preferred
-
----
-
-## Skill Integration: gaode-maps
-
-**When to use**: Chinese domestic destinations, need accurate Chinese addresses, POI search with Chinese names.
-
-**Workflow**:
-1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
-2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: "hotel" (hotel) or specific hotel name
-   - city: Chinese city name (e.g., "北京", "上海")
-   - types: "080000" (accommodation category)
-3. Filter results by rating (≥4.0) and cost within budget
-4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for top 3-5 candidates
-5. Parse: name, address, rating, cost, amenities, photos
-6. Verify location proximity to attractions using distance tools
-7. Structure data for output with both Chinese and English names
-
-**No WebSearch fallback** - report errors if scripts fail
-
-**Quality checks**:
-- Rating >= 4.0 stars
-- Cost within budget (CNY)
-- Complete address in Chinese characters
-- Nearby amenities (subway, restaurants)
-- Recent reviews preferred
-- Parking availability if needed
+**Skill Integration Notes**:
+- For Airbnb rentals: Use Skill tool to invoke airbnb skill, then use provided tools
+- For China locations: Use Skill tool to invoke gaode-maps skill for POI search
+- For weather considerations: Use Skill tool to invoke openmeteo-weather skill
+- See individual SKILL.md files for detailed usage patterns

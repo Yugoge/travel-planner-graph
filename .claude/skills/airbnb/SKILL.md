@@ -45,7 +45,7 @@ Add to your `~/.config/Claude/claude_desktop_config.json`:
 **IMPORTANT**: In Claude Code CLI, use Bash tool to call Python scripts directly:
 
 ```bash
-python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Beijing" --checkin "2026-02-10" --checkout "2026-02-12" --ignore-robots
+source /root/.claude/venv/bin/activate && python /root/travel-planner/.claude/skills/airbnb/scripts/search.py "Beijing" --checkin "2026-02-10" --checkout "2026-02-12" --ignore-robots
 ```
 
 **Required**: Add `--ignore-robots` flag to bypass robots.txt restrictions.

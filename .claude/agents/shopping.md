@@ -101,65 +101,10 @@ Return only: `complete`
 
 ---
 
-## Google Maps Integration
-
-**When to use Google Maps**:
-- For all destinations (worldwide coverage)
-- When searching for shopping malls, markets, or stores
-- When verifying location and operating hours
-- When finding shopping districts
-
-**Workflow with Google Maps**:
-1. Load places tools: `/google-maps places`
-2. Call `search_places` with query and location
-3. Specify type: "shopping_mall", "store", "market", "clothing_store"
-4. Filter results by rating (≥3.5) and business_status
-5. Parse response for name, address, hours, type
-6. Structure data for shopping.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (google_maps or web_search)
-
-**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
-
-## Weather Integration
-
-Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
-- Clear → outdoor activities, Rain → indoor attractions
-- Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
-
-
-## Gaode Maps Integration
-
-**When to use**: Chinese domestic destinations, search shopping areas with Chinese names, accurate mall/market locations.
-
-**Workflow with Gaode Maps**:
-1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
-2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: Shopping keywords (e.g., "shopping center", "market", "mall")
-   - city: Chinese city name
-   - types: "060000" (shopping category)
-3. Filter by rating and specialties
-4. Call `mcp__plugin_amap-maps_amap-maps__poi_detail` for opening hours and descriptions
-5. Parse: name, address, specialties, opening hours
-6. Calculate distance from accommodation using distance tools
-7. Structure data with both Chinese and English names
-
-**Error Handling**:
-- Retry logic: 3 attempts
-- No WebSearch fallback - report errors if scripts fail
-- Include data source in output
-
-**See**: `.claude/skills/gaode-maps/SKILL.md` for shopping category codes
-
----
-
-## RedNote Integration
-
-Use rednote skill for Chinese UGC content:
-- Search notes by keyword and city
-- Extract recommendations from real travelers
-- Find hidden gems and local favorites
+**Skill Integration Notes**:
+- For global destinations: Use Skill tool to invoke google-maps skill
+- For China destinations: Use Skill tool to invoke gaode-maps skill for POI search
+- For Chinese shopping insights: Use Skill tool to invoke rednote skill
+- For weather forecasts: Use Skill tool to invoke openmeteo-weather skill
+- See individual SKILL.md files for detailed usage patterns
 
