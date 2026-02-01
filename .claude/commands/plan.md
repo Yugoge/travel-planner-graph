@@ -222,6 +222,19 @@ Expected: 6 files (or 5 if no location changes → transportation.json may be em
 
 If any missing: Debug and re-invoke failed agent.
 
+**Deep Content Validation**:
+
+Run validation script:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-agent-outputs.py /root/travel-planner/data/{destination-slug}
+```
+
+**Exit code 0**: All valid → Proceed
+**Exit code 1**: Critical issues → Re-invoke failed agents with specific feedback from validation errors
+**Exit code 2**: Warnings only → Log warnings and continue
+
+If critical issues found, extract specific errors and re-invoke relevant agents with fix instructions.
+
 #### Step 9: Invoke Timeline Agent (Serial)
 
 **IMPORTANT**: Timeline agent runs AFTER all parallel agents complete.
@@ -299,6 +312,21 @@ Use Task tool with:
 
 Wait for "complete".
 
+#### Step 11.5: Budget Gate Check
+
+**CRITICAL**: Check if budget overage exceeds thresholds requiring mandatory review.
+
+Run budget gate script:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/check-budget-overage.py /root/travel-planner/data/{destination-slug}/budget.json 200 20
+```
+
+**Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 12
+**Exit code 1**: Review required → Set `force_review=true`, proceed to Step 12 (user CANNOT skip)
+**Exit code 2**: Error → Debug budget.json and retry
+
+**Root Cause Reference**: Budget gate added to address commit 77dca06 issue where €963 overage (96%) was not caught, requiring mandatory day-by-day review when overage exceeds thresholds.
+
 ---
 
 ### Phase 4: Validation and Conflict Review
@@ -309,9 +337,13 @@ Read warnings from:
 - `data/{destination-slug}/timeline.json` → Check `warnings` array
 - `data/{destination-slug}/budget.json` → Check `warnings` and `recommendations` arrays
 
-**If no warnings**: Proceed to Phase 5
+**Check force_review flag** (set in Step 11.5 by budget gate)
 
-**If warnings exist**: Iterate through days with conflicts
+**If no warnings AND force_review=false**: Proceed to Phase 5
+
+**If warnings exist OR force_review=true**: Iterate through days with conflicts
+- When `force_review=true`, user CANNOT skip review (budget gate enforcement)
+- Present clear explanation: "Budget exceeds thresholds (see Step 11.5), day-by-day review is required"
 
 **Day Iteration Pattern**:
 1. Group warnings by day number
@@ -452,6 +484,15 @@ fi
 
 #### Step 17: Present Final Plan
 
+**Generate Booking Checklist**:
+
+Run checklist generator:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-booking-checklist.py /root/travel-planner/data/{destination-slug}/timeline.json /root/travel-planner/data/{destination-slug}/budget.json
+```
+
+Capture output and include in presentation below.
+
 **With deployment**:
 ```
 Your personalized travel plan is ready!
@@ -476,6 +517,14 @@ Your personalized travel plan is ready!
 ✓ Mobile-responsive design
 ✓ Budget tracking per day
 
+---
+
+**Booking Checklist** (from timeline/budget warnings):
+
+{Insert booking checklist output here}
+
+---
+
 Open the HTML file locally or view online. Would you like any adjustments?
 ```
 
@@ -486,6 +535,14 @@ Your personalized travel plan is ready!
 📄 Saved to: `travel-plan-{destination-slug}.html`
 
 [Same summary and features as above]
+
+---
+
+**Booking Checklist** (from timeline/budget warnings):
+
+{Insert booking checklist output here}
+
+---
 
 Open the HTML file in any browser to view your complete travel plan.
 ```

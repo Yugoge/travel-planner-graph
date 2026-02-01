@@ -40,12 +40,19 @@ For each day in the trip:
    - **No WebSearch fallback** - report errors if skills fail
    - Consider: Ratings (≥4.0 stars), review count (≥20), location convenience, price range
 
-3. **Validate practicality**:
+3. **REQUIRED: RedNote Verification (Chinese Destinations)**:
+   - For Chinese destinations, you MUST use rednote skill to verify all restaurant recommendations
+   - Search for each recommended restaurant in rednote and confirm real user reviews exist
+   - Do NOT include recommendations without rednote verification
+   - If rednote search fails or returns no results, find alternative restaurants with verified reviews
+   - Include verification status in output notes (e.g., "Verified via RedNote user reviews")
+
+4. **Validate practicality**:
    - Restaurant location should be near accommodation or planned activities
    - Opening hours match likely meal times
    - Price aligns with daily budget expectations
 
-4. **Structure data** for each meal:
+5. **Structure data** for each meal:
    ```json
    {
      "name": "Restaurant Name",

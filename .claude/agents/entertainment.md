@@ -43,6 +43,11 @@ For each day in the trip:
    - Check dress codes and age restrictions
    - Verify ticket availability and pricing
 
+   **RECOMMENDED: RedNote Verification (Chinese Destinations)**:
+   - For Chinese destinations with entertainment options, use rednote skill to verify recommendations
+   - Search for venues and performances in rednote to confirm real user experiences
+   - Include verification status in output notes if applicable
+
 3. **Validate selections**:
    - Show times don't conflict with dinner or other plans
    - Venue location is accessible from accommodation

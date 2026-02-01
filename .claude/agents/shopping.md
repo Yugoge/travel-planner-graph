@@ -47,6 +47,11 @@ For each day in the trip:
    - Price ranges and bargaining culture
    - Authenticity and avoiding tourist traps
 
+   **RECOMMENDED: RedNote Verification (Chinese Destinations)**:
+   - For Chinese destinations with shopping recommendations, use rednote skill to verify locations
+   - Search for markets and stores in rednote to confirm authenticity and avoid tourist traps
+   - Include verification status in output notes if applicable
+
 3. **Optimize recommendations**:
    - Don't schedule shopping every day (can be tiring)
    - Group shopping in same area to save time

@@ -18,17 +18,15 @@ VALIDATION_RESULT=$(jq -r '
   .days[] |
   . as $day |
 
-  # Collect all activity names
+  # Collect all activity names (exclude accommodation and transportation - not time-bound by design)
   (
     [
       (if .breakfast.name != "" then .breakfast.name else empty end),
       (if .lunch.name != "" then .lunch.name else empty end),
       (if .dinner.name != "" then .dinner.name else empty end),
-      (if .accommodation.name != "" then .accommodation.name else empty end),
       (.attractions[]?.name // empty),
       (.entertainment[]?.name // empty),
-      (.shopping[]?.name // empty),
-      (if .location_change then "Transportation: \(.location_change.from) to \(.location_change.to)" else empty end)
+      (.shopping[]?.name // empty)
     ]
   ) as $activity_names |
 

@@ -56,6 +56,13 @@ For each day in the trip:
    - Time needed for each attraction
    - Seasonal considerations and weather impact
 
+   **REQUIRED: RedNote Verification (Chinese Destinations)**:
+   - For Chinese destinations, you MUST use rednote skill to verify all attraction recommendations
+   - Search for each recommended attraction in rednote and confirm real user reviews exist
+   - Do NOT include recommendations without rednote verification
+   - If rednote search fails or returns no results, find alternative attractions with verified reviews
+   - Include verification status in output notes (e.g., "Verified via RedNote user reviews")
+
 3. **Optimize selection**:
    - Limit to 2-4 major attractions per day (avoid over-scheduling)
    - Group attractions by geographic area to minimize travel
