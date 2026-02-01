@@ -34,7 +34,7 @@ def geocode(address: str, city: Optional[str] = None) -> dict:
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:
@@ -68,7 +68,7 @@ def regeocode(location: str, radius: int = 1000) -> dict:
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:
@@ -102,7 +102,7 @@ def ip_location(ip: Optional[str] = None) -> dict:
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:

@@ -37,7 +37,7 @@ def poi_search_keyword(keywords: str, city: Optional[str] = None,
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:
@@ -80,7 +80,7 @@ def poi_search_nearby(location: str, keywords: Optional[str] = None,
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:
@@ -118,7 +118,7 @@ def poi_detail(poi_id: str) -> dict:
     """
     client = MCPClient(
         package="@amap/amap-maps-mcp-server",
-        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")}
+        env={"AMAP_MAPS_API_KEY": os.environ.get("AMAP_MAPS_API_KEY")}
     )
 
     try:
