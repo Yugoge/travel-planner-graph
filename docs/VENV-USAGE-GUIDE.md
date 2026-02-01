@@ -27,14 +27,19 @@
 
 ### 已安装的依赖
 
+**核心依赖（4个主要包）**:
 ```
 openmeteo-requests==1.7.5
 openmeteo-sdk==1.25.0
-requests-cache
-retry-requests
-numpy
-pandas
+requests-cache==1.2.1
+retry-requests==2.0.0
 ```
+
+**传递依赖（自动安装）**: 16个包（attrs, cattrs, certifi, charset-normalizer, flatbuffers, h11, idna, jh2, niquests, platformdirs, qh3, requests, typing_extensions, url-normalize, urllib3, urllib3-future, wassima）
+
+**总计**: 20个包（见`requirements.txt`）
+
+**注意**: ❌ 不包含numpy和pandas（不需要）
 
 ---
 
@@ -173,17 +178,21 @@ self.use_tool('Skill', {
 
 ## 📋 所有Skills的venv要求
 
-| Skill | 需要venv | 依赖 |
-|-------|---------|------|
-| **openmeteo-weather** | ✅ 是 | openmeteo_requests |
-| **gaode-maps** | ❌ 否 | 只需.env (API key) |
-| **google-maps** | ❌ 否 | 只需.env (API key) |
-| **duffel-flights** | ❌ 否 | 只需.env (API key) |
-| **airbnb** | ❌ 否 | 只需requests (系统已有) |
-| **rednote** | ❌ 否 | MCP-based (不是Python) |
-| **weather** (旧) | ⚠️ 已废弃 | 不使用 |
+| Skill | 需要venv | 依赖 | 测试状态 |
+|-------|---------|------|---------|
+| **openmeteo-weather** | ✅ 是 | openmeteo_requests | ✅ PASS |
+| **gaode-maps** | ❌ 否 | 只需.env (API key) | ✅ PASS |
+| **google-maps** | ❌ 否 | 只需.env (API key) | ✅ PASS |
+| **duffel-flights** | ❌ 否 | 只需.env (API key) | ✅ PASS |
+| **airbnb** | ❌ 否 | 只需requests (系统已有) | ✅ PASS |
+| **rednote** | ❌ 否 | MCP-based (不是Python) | ✅ 已初始化 |
+| **weather** (旧) | ⚠️ 已废弃 | 不使用 | ⚠️ DEPRECATED |
+| **test-mcp** | ❌ 否 | MCP测试工具 | ⚠️ TEST ONLY |
 
-**总结**: 只有**openmeteo-weather**严格需要项目venv
+**总结**:
+- 只有**openmeteo-weather**严格需要项目venv
+- 其他skills也应使用venv以保持一致性
+- 所有8个skills已完整测试（2026-02-01）
 
 ---
 
@@ -332,8 +341,9 @@ bash /root/travel-planner/scripts/debug-agent-skills.sh
 ## 📚 相关文档
 
 - `docs/AGENT-SKILLS-SOLUTION.md` - Agent-skills integration root cause analysis
+- `docs/COMPLETE-TEST-REPORT.md` - 完整测试报告（8 skills + 8 agents）
 - `scripts/debug-agent-skills.sh` - Environment diagnostic tool
-- `data/skill-test/FINAL-TEST-REPORT.md` - Comprehensive test results
+- `requirements.txt` - 完整依赖清单（20个包）
 
 ---
 
