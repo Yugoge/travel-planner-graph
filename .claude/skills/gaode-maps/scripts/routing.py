@@ -16,6 +16,9 @@ from typing import Optional
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Load environment variables from project .env file
+import load_env  # noqa: F401
+
 from mcp_client import MCPClient, parse_json_response, format_output
 
 

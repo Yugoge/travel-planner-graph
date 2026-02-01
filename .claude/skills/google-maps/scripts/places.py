@@ -12,6 +12,9 @@ from typing import Any, Dict, Optional
 
 # Add parent directory to path for mcp_client import
 sys.path.insert(0, os.path.dirname(__file__))
+
+# Load environment variables from project .env file
+import load_env  # noqa: F401
 from mcp_client import MCPClient
 
 

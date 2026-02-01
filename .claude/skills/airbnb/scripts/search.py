@@ -21,6 +21,9 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Load environment variables from project .env file
+import load_env  # noqa: F401
+
 from mcp_client import MCPClient, format_json_output
 
 
