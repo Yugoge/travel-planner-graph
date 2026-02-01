@@ -5,7 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - weather
   - rednote
 ---
 
@@ -159,7 +158,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use weather skill to select weather-appropriate dining venues**:
+**Use openmeteo-weather to select weather-appropriate dining venues**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for meal times
@@ -181,7 +180,7 @@ Dinner time forecast: Rain 70%, 15°C
 → Note: "Indoor dining recommended due to rain"
 ```
 
-**See**: `.claude/skills/weather/tools/forecast.md` for hourly forecast details
+**See**: `.claude/skills/gaode-maps/scripts/utilities.py` for weather function
 
 ---
 

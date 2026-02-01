@@ -5,7 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - weather
   - rednote
 ---
 
@@ -144,10 +143,10 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use weather skill to optimize attraction selection**:
+**Use openmeteo-weather to optimize attraction selection**:
 
-1. Load forecast tools: `/weather forecast`
-2. Get 5-day forecast for destination
+1. Use openmeteo-weather forecast script
+2. Get 7-day forecast for any destination worldwide
 3. Adjust attraction recommendations based on weather:
    - **Clear weather**: Outdoor parks, viewpoints, scenic areas
    - **Rain**: Museums, indoor attractions, covered markets

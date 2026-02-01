@@ -5,7 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - weather
   - rednote
 ---
 
@@ -125,7 +124,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use weather skill to add weather-appropriate items to shopping list**:
+**Use openmeteo-weather to add weather-appropriate items to shopping list**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get 5-day forecast for trip

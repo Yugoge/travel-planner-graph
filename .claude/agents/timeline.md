@@ -3,7 +3,6 @@ name: timeline
 description: Create timeline dictionary and detect scheduling conflicts
 model: sonnet
 skills:
-  - weather
 ---
 
 
@@ -119,7 +118,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use weather skill to optimize activity timing**:
+**Use openmeteo-weather to optimize activity timing**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for each day

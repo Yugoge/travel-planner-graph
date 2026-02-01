@@ -5,7 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - weather
   - rednote
 ---
 
@@ -121,7 +120,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use weather skill to select weather-appropriate entertainment**:
+**Use openmeteo-weather to select weather-appropriate entertainment**:
 
 1. Load forecast tools: `/weather forecast`
 2. Get hourly forecast for evening hours

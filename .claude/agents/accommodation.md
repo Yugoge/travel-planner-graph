@@ -5,7 +5,6 @@ model: sonnet
 skills:
   - google-maps
   - gaode-maps
-  - weather
   - airbnb
 ---
 
@@ -140,7 +139,7 @@ This agent has access to specialized accommodation search skills:
 3. **weather** - Weather forecasts and alerts (auxiliary service)
    - Usage: `/weather forecast` or `/weather alerts`
    - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
-   - Location: `.claude/skills/weather/SKILL.md`
+   - Location: `.claude/skills/openmeteo-weather/scripts/forecast.py`
 
 **Weather Integration**:
 - Check weather alerts before recommending accommodations in affected areas

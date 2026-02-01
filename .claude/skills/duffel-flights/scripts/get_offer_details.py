@@ -5,6 +5,7 @@ import os
 import json
 import argparse
 import requests
+import load_env  # noqa: F401
 
 # API configuration
 DUFFEL_API_BASE = os.environ.get("DUFFEL_API_BASE_URL", "https://api.duffel.com")
