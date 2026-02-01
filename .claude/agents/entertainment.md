@@ -34,6 +34,9 @@ For each day in the trip:
    - Budget for entertainment
 
 2. **Research entertainment options**:
+   - **For global destinations**: Use Skill tool with `google-maps`
+   - **For China destinations**: Use Skill tool with `gaode-maps`
+   - **For local entertainment recommendations (China)**: Use Skill tool with `rednote`
    - Check local event calendars for travel dates
    - Research venues and show times
    - Look for special performances or seasonal events

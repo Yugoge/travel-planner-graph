@@ -41,7 +41,8 @@ For each day in the trip:
      - Prefer local neighborhood experience
 
 3. **Research accommodations**:
-   - **For rentals**: Invoke `/airbnb search` skill
+   - **For rentals**: Use Skill tool with `airbnb`
+   - Search for vacation rentals by location and dates
    - Location should be central to planned activities
    - Check ratings, reviews, and recent feedback
    - Verify amenities and services

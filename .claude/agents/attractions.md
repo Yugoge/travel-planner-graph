@@ -38,6 +38,7 @@ For each day in the trip:
    **For China destinations**:
    - Use Skill tool with `gaode-maps`
    - Load POI search tools, then search for attractions by keyword and city
+   - Use Skill tool with `rednote` for authentic local recommendations and hidden gems
 
    **For global destinations**:
    - Use Skill tool with `google-maps`

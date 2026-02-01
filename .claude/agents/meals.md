@@ -31,12 +31,13 @@ For each day in the trip:
    - Special occasions (celebration dinner, romantic meal)
 
 2. **Research local restaurants** using available skills:
-   - **Primary method**: Use Google Maps places search (see `.claude/skills/google-maps/SKILL.md`)
-   - **For China**: Use Gaode Maps POI search (see `.claude/skills/gaode-maps/SKILL.md`)
+   - **For global destinations**: Use Skill tool with `google-maps`
+   - **For China destinations**: Use Skill tool with `gaode-maps`
+   - **For authentic local recommendations (China)**: Use Skill tool with `rednote`
    - Breakfast: Search cafes near accommodation
    - Lunch: Search restaurants near planned attractions
    - Dinner: Search restaurants matching cuisine preferences
-   - **No WebSearch fallback** - report errors if scripts fail
+   - **No WebSearch fallback** - report errors if skills fail
    - Consider: Ratings (≥4.0 stars), review count (≥20), location convenience, price range
 
 3. **Validate practicality**:

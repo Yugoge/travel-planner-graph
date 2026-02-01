@@ -34,11 +34,13 @@ For each day in the trip:
    - Budget allocation for shopping
 
 2. **Research shopping locations**:
-   - **Primary method**: Use `/google-maps places` to search shopping venues
+   - **For global destinations**: Use Skill tool with `google-maps`
+   - **For China destinations**: Use Skill tool with `gaode-maps`
+   - **For local shopping insights (China)**: Use Skill tool with `rednote`
      - Search by type: "shopping_mall", "store", "market"
      - Filter by rating and reviews
      - Verify location and opening hours
-   - **No WebSearch fallback** - report errors if scripts fail
+   - **No WebSearch fallback** - report errors if skills fail
    - Best shopping districts in each location
    - Local markets and their specialties
    - Opening hours (markets often close early)
