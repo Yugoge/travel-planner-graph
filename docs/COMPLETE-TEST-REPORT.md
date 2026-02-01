@@ -77,13 +77,41 @@ python3 .claude/skills/<skill-name>/scripts/<script>.py <args>
 | # | Skill | 类型 | 测试状态 | 需要Venv | 备注 |
 |---|-------|------|---------|----------|------|
 | 1 | **openmeteo-weather** | Python | ✅ PASS | ✅ 是 | 需要openmeteo_requests |
-| 2 | **gaode-maps** | Python | ✅ PASS | ❌ 否 | 只需.env API key |
+| 2 | **gaode-maps** | MCP | ✅ PASS | ❌ 否 | 只需.env API key |
 | 3 | **duffel-flights** | Python | ✅ PASS | ❌ 否 | 只需.env API key |
-| 4 | **google-maps** | Python | ✅ PASS | ❌ 否 | 只需.env API key |
-| 5 | **airbnb** | Python | ✅ PASS | ❌ 否 | 需要--ignore-robots |
-| 6 | **rednote** | MCP | ✅ PASS | ❌ 否 | Cookies有效至2026-08-27 |
+| 4 | **google-maps** | MCP | ✅ PASS | ❌ 否 | 只需.env API key |
+| 5 | **airbnb** | MCP | ✅ PASS | ❌ 否 | 需要--ignore-robots |
+| 6 | **rednote** | MCP | ✅ PASS | ❌ 否 | 需要xvfb，Cookies至2026-08-27 |
 
 **已删除**: weather (旧版), test-mcp
+
+### RedNote MCP集成详情
+
+**实现方式**: 使用MCP协议通过rednote-mcp服务器
+```bash
+DISPLAY=:99 xvfb-run -a python3 .claude/skills/rednote/scripts/search.py "北京" --limit 1
+```
+
+**关键发现**: RedNote是唯一需要`--stdio`参数的MCP服务器
+- airbnb: `npx @openbnb/mcp-server-airbnb` (无特殊参数)
+- gaode-maps: `npx @gchhyu/gaode-map-mcp` (无特殊参数)
+- google-maps: `npx @modelcontextprotocol/server-google-maps` (无特殊参数)
+- **rednote: `npx rednote-mcp --stdio`** ⚠️ 需要--stdio
+
+**依赖**:
+- rednote-mcp@0.2.3 (已安装)
+- Playwright chromium-1208 (已安装)
+- xvfb (已安装)
+
+**测试输出示例**:
+```
+标题: 北京三日游路线｜不费腿版保姆级逛吃攻略‼️
+作者: 一块美味的培根s
+内容: day1:天安门广场-故宫博物院-景山公园...
+点赞: 2576
+评论: 71
+链接: https://www.xiaohongshu.com/explore/...
+```
 
 ### 详细测试输出
 
