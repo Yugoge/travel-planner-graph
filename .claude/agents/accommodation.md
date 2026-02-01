@@ -182,7 +182,7 @@ This agent has access to specialized accommodation search skills:
 **Workflow**:
 1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: "酒店" (hotel) or specific hotel name
+   - keywords: "hotel" (hotel) or specific hotel name
    - city: Chinese city name (e.g., "北京", "上海")
    - types: "080000" (accommodation category)
 3. Filter results by rating (≥4.0) and cost within budget

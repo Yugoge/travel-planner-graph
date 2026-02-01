@@ -118,34 +118,7 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use openmeteo-weather to optimize activity timing**:
+Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
+- Clear → outdoor activities, Rain → indoor attractions
+- Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
 
-1. Load forecast tools: `/weather forecast`
-2. Get hourly forecast for each day
-3. Optimize timeline based on weather:
-   - **Rain periods**: Schedule indoor activities during high rain probability hours
-   - **Clear periods**: Schedule outdoor activities during best weather windows
-   - **Hot periods** (>30°C): Schedule outdoor activities early morning or late afternoon
-   - **Best weather windows**: Use `findBestWeatherWindow()` to identify optimal 4-6 hour blocks
-4. Adjust activity order to maximize weather-appropriate timing:
-   ```
-   Original: Outdoor park (14:00-16:00), Museum (16:30-18:30)
-   Rain forecast 14:00-16:00:
-   Optimized: Museum (14:00-16:00), Outdoor park (16:30-18:30)
-   ```
-5. Add weather notes to timeline:
-   ```json
-   {
-     "The Louvre Museum": {
-       "start_time": "14:00",
-       "end_time": "17:00",
-       "duration_minutes": 180,
-       "weather_note": "Scheduled during rain period (75% probability)"
-     }
-   }
-   ```
-6. Include weather-based warnings:
-   - "Day 3: Outdoor activities scheduled during predicted rain (recommend rescheduling)"
-   - "Day 4: Hot weather (32°C) - outdoor activities moved to morning hours"
-
-**See**: `.claude/commands/weather/tools/forecast.md` for window optimization techniques

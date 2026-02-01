@@ -143,35 +143,10 @@ Return only: `complete`
 
 ## Weather Integration
 
-**Use openmeteo-weather to optimize attraction selection**:
+Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
+- Clear → outdoor activities, Rain → indoor attractions
+- Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
 
-1. Use openmeteo-weather forecast script
-2. Get 7-day forecast for any destination worldwide
-3. Adjust attraction recommendations based on weather:
-   - **Clear weather**: Outdoor parks, viewpoints, scenic areas
-   - **Rain**: Museums, indoor attractions, covered markets
-   - **Hot weather** (>30°C): Morning outdoor activities, afternoon indoor attractions
-   - **Cold weather** (<10°C): Indoor attractions, shorter outdoor visits
-4. Check air quality (AQI) for outdoor attractions:
-   - AQI >3: Prioritize indoor attractions
-   - AQI 1-2: All outdoor activities safe
-5. Check weather alerts for severe conditions:
-   - Extreme alerts: Avoid all outdoor attractions
-   - Severe alerts: Indoor alternatives only
-6. Include weather notes in attraction recommendations
-
-**Example workflow**:
-```
-Day 2 forecast: Rain 75%, 15°C
-→ Recommend: Museums, shopping malls, indoor cultural venues
-→ Note: "Indoor attractions recommended due to high rain probability"
-
-Day 4 forecast: Clear, 22°C, AQI 2
-→ Recommend: Parks, viewpoints, outdoor monuments
-→ Note: "Excellent weather for outdoor sightseeing"
-```
-
----
 
 ## Gaode Maps Integration
 
@@ -180,7 +155,7 @@ Day 4 forecast: Clear, 22°C, AQI 2
 **Workflow with Gaode Maps**:
 1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
 2. Call `mcp__plugin_amap-maps_amap-maps__poi_search_keyword` with:
-   - keywords: Attraction name or type (e.g., "博物馆", "公园", "寺庙")
+   - keywords: Attraction name or type (e.g., "museum", "公园", "寺庙")
    - city: Chinese city name
    - types: "110000" (tourist attractions category)
 3. Filter by rating (≥4.0) and popularity
@@ -200,47 +175,8 @@ Day 4 forecast: Clear, 22°C, AQI 2
 
 ## RedNote Integration
 
-**When to use**: Discover authentic local attractions, hidden gems, and insider tips from Chinese travelers' experiences.
+Use rednote skill for Chinese UGC content:
+- Search notes by keyword and city
+- Extract recommendations from real travelers
+- Find hidden gems and local favorites
 
-**Workflow with RedNote**:
-1. Search for attraction recommendations by keyword
-2. Use Chinese keywords for best results (e.g., "北京小众景点", "上海拍照圣地")
-3. Filter high-engagement posts (10k+ likes for credibility)
-4. Extract detailed content from top posts
-5. Validate information with Google Maps or Gaode Maps
-6. Cross-reference multiple sources for consensus
-
-**Example search patterns**:
-```javascript
-// Hidden gems
-mcp__rednote__search_notes({
-  keyword: "城市名小众景点",
-  sort_type: "popularity_descending"
-})
-
-// Photo spots
-mcp__rednote__search_notes({
-  keyword: "城市名拍照圣地"
-})
-
-// Travel guides
-mcp__rednote__search_notes({
-  keyword: "城市名旅游攻略"
-})
-```
-
-**Data extraction workflow**:
-1. Get detailed content: Use `mcp__rednote__get_note_by_url` for comprehensive guides
-2. Parse structured data: Extract attraction names, costs, duration, practical tips
-3. Verify locations: Cross-check with Gaode Maps POI search
-4. Note warnings: Include tourist trap alerts and quality advisories
-5. Structure output: Add to attractions.json with source attribution
-
-**Quality standards**:
-- Prefer posts with 5k+ likes (high credibility)
-- Check post date (prefer <6 months old)
-- Compare 3+ sources for validation
-- Always verify with official maps
-- Include practical tips from posts (timing, tickets, avoiding crowds)
-
-**See**: `.claude/skills/rednote/examples/search-attractions.md` for detailed workflow example
