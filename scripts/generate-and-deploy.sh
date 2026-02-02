@@ -301,12 +301,12 @@ html_content = f'''<!DOCTYPE html>
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
         const firstDay = PLAN_DATA.days[0];
         const lastDay = PLAN_DATA.days[PLAN_DATA.days.length - 1];
-        document.getElementById('trip-title').textContent = `${{firstDay.location}} Travel Plan`;
+        document.getElementById('trip-title').textContent = \`\${firstDay.location} Travel Plan\`;
         document.getElementById('trip-meta').textContent =
-          `${{firstDay.date}} to ${{lastDay.date}} • ${{PLAN_DATA.days.length}} days`;
+          \`\${firstDay.date} to \${lastDay.date} • \${PLAN_DATA.days.length} days\`;
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         document.getElementById('trip-title').textContent = PLAN_DATA.title || "Travel Bucket List";
-        document.getElementById('trip-meta').textContent = `${{PLAN_DATA.cities.length}} cities to explore`;
+        document.getElementById('trip-meta').textContent = \`\${PLAN_DATA.cities.length} cities to explore\`;
       }}
     }}
 
@@ -317,7 +317,7 @@ html_content = f'''<!DOCTYPE html>
         const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions?.length || 0), 0);
         stats = [
           {{ label: 'Days', value: PLAN_DATA.days.length }},
-          {{ label: 'Total Budget', value: `$${{totalBudget}}` }},
+          {{ label: 'Total Budget', value: \`$\${totalBudget}\` }},
           {{ label: 'Attractions', value: totalAttractions }},
           {{ label: 'Cities', value: new Set(PLAN_DATA.days.map(d => d.location)).size }}
         ];
@@ -331,12 +331,12 @@ html_content = f'''<!DOCTYPE html>
         ];
       }}
 
-      document.getElementById('stats-container').innerHTML = stats.map(s => `
+      document.getElementById('stats-container').innerHTML = stats.map(s => \`
         <div class="stat-card">
-          <div class="value">${{s.value}}</div>
-          <div class="label">${{s.label}}</div>
+          <div class="value">\${s.value}</div>
+          <div class="label">\${s.label}</div>
         </div>
-      `).join('');
+      \`).join('');
     }}
 
     function renderContent() {{
@@ -349,33 +349,33 @@ html_content = f'''<!DOCTYPE html>
 
     function renderItinerary() {{
       const container = document.getElementById('content-container');
-      container.innerHTML = PLAN_DATA.days.map(day => `
+      container.innerHTML = PLAN_DATA.days.map(day => \`
         <div class="day-card">
-          <div class="day-header" onclick="toggleDay(${{day.day}})">
+          <div class="day-header" onclick="toggleDay(\${day.day})">
             <div>
-              <strong>Day ${{day.day}}</strong> - ${{day.date}} - ${{day.location}}
+              <strong>Day \${day.day}</strong> - \${day.date} - \${day.location}
             </div>
-            <div>Budget: $${{day.budget?.total || 0}}</div>
+            <div>Budget: $\${day.budget?.total || 0}</div>
           </div>
-          <div class="day-content" id="day-${{day.day}}">
-            ${{renderDayContent(day)}}
+          <div class="day-content" id="day-\${day.day}">
+            \${renderDayContent(day)}
           </div>
         </div>
-      `).join('');
+      \`).join('');
     }}
 
     function renderBucketList() {{
       const container = document.getElementById('content-container');
-      container.innerHTML = PLAN_DATA.cities.map((city, idx) => `
+      container.innerHTML = PLAN_DATA.cities.map((city, idx) => \`
         <div class="day-card">
-          <div class="day-header" onclick="toggleDay(${{idx}})">
-            <div><strong>${{city.city}}</strong> - ${{city.province || city.region || ''}}</div>
+          <div class="day-header" onclick="toggleDay(\${idx})">
+            <div><strong>\${city.city}</strong> - \${city.province || city.region || ''}</div>
           </div>
-          <div class="day-content" id="day-${{idx}}">
-            ${{renderCityContent(city)}}
+          <div class="day-content" id="day-\${idx}">
+            \${renderCityContent(city)}
           </div>
         </div>
-      `).join('');
+      \`).join('');
     }}
 
     function renderDayContent(day) {{
@@ -384,10 +384,10 @@ html_content = f'''<!DOCTYPE html>
       if (day.timeline && Object.keys(day.timeline).length > 0) {{
         html += '<div class="section"><h3>📅 Timeline</h3>';
         Object.entries(day.timeline).forEach(([activity, time]) => {{
-          html += `<div class="timeline-item">
-            <div class="timeline-time">${{time.start_time}} - ${{time.end_time}}</div>
-            <div class="timeline-activity">${{activity}}</div>
-          </div>`;
+          html += \`<div class="timeline-item">
+            <div class="timeline-time">\${time.start_time} - \${time.end_time}</div>
+            <div class="timeline-activity">\${activity}</div>
+          </div>\`;
         }});
         html += '</div>';
       }}
@@ -396,12 +396,12 @@ html_content = f'''<!DOCTYPE html>
         html += '<div class="section"><h3>🍽️ Meals</h3><div class="activity-grid">';
         ['breakfast', 'lunch', 'dinner'].forEach(meal => {{
           if (day[meal]?.name) {{
-            html += `<div class="activity-card">
-              <h4>${{meal.charAt(0).toUpperCase() + meal.slice(1)}}</h4>
-              <p>${{day[meal].name}}</p>
-              <p>${{day[meal].location}}</p>
-              <p class="cost">$${{day[meal].cost}}</p>
-            </div>`;
+            html += \`<div class="activity-card">
+              <h4>\${meal.charAt(0).toUpperCase() + meal.slice(1)}</h4>
+              <p>\${day[meal].name}</p>
+              <p>\${day[meal].location}</p>
+              <p class="cost">$\${day[meal].cost}</p>
+            </div>\`;
           }}
         }});
         html += '</div></div>';
@@ -410,11 +410,11 @@ html_content = f'''<!DOCTYPE html>
       if (day.attractions?.length > 0) {{
         html += '<div class="section"><h3>🎯 Attractions</h3><div class="activity-grid">';
         day.attractions.forEach(attr => {{
-          html += `<div class="activity-card">
-            <h4>${{attr.name}}</h4>
-            <p>${{attr.location}}</p>
-            <p class="cost">$${{attr.cost}}</p>
-          </div>`;
+          html += \`<div class="activity-card">
+            <h4>\${attr.name}</h4>
+            <p>\${attr.location}</p>
+            <p class="cost">$\${attr.cost}</p>
+          </div>\`;
         }});
         html += '</div></div>';
       }}
@@ -428,11 +428,11 @@ html_content = f'''<!DOCTYPE html>
       if (city.attractions?.length > 0) {{
         html += '<div class="section"><h3>🎯 Attractions</h3><div class="activity-grid">';
         city.attractions.forEach(attr => {{
-          html += `<div class="activity-card">
-            <h4>${{attr.name}}</h4>
-            <p>${{attr.address || attr.location || ''}}</p>
-            <p>${{attr.description || ''}}</p>
-          </div>`;
+          html += \`<div class="activity-card">
+            <h4>\${attr.name}</h4>
+            <p>\${attr.address || attr.location || ''}</p>
+            <p>\${attr.description || ''}</p>
+          </div>\`;
         }});
         html += '</div></div>';
       }}
@@ -440,11 +440,11 @@ html_content = f'''<!DOCTYPE html>
       if (city.hotels?.length > 0) {{
         html += '<div class="section"><h3>🏨 Hotels</h3><div class="activity-grid">';
         city.hotels.forEach(hotel => {{
-          html += `<div class="activity-card">
-            <h4>${{hotel.name}}</h4>
-            <p>${{hotel.address || hotel.location || ''}}</p>
-            <p class="cost">$${{hotel.price_range || ''}}</p>
-          </div>`;
+          html += \`<div class="activity-card">
+            <h4>\${hotel.name}</h4>
+            <p>\${hotel.address || hotel.location || ''}</p>
+            <p class="cost">$\${hotel.price_range || ''}</p>
+          </div>\`;
         }});
         html += '</div></div>';
       }}
@@ -452,11 +452,11 @@ html_content = f'''<!DOCTYPE html>
       if (city.restaurants?.length > 0) {{
         html += '<div class="section"><h3>🍽️ Restaurants</h3><div class="activity-grid">';
         city.restaurants.forEach(rest => {{
-          html += `<div class="activity-card">
-            <h4>${{rest.name}}</h4>
-            <p>${{rest.cuisine || ''}}</p>
-            <p>${{rest.address || rest.location || ''}}</p>
-          </div>`;
+          html += \`<div class="activity-card">
+            <h4>\${rest.name}</h4>
+            <p>\${rest.cuisine || ''}</p>
+            <p>\${rest.address || rest.location || ''}</p>
+          </div>\`;
         }});
         html += '</div></div>';
       }}
@@ -465,7 +465,7 @@ html_content = f'''<!DOCTYPE html>
     }}
 
     function toggleDay(dayNum) {{
-      const content = document.getElementById(`day-${{dayNum}}`);
+      const content = document.getElementById(\`day-\${dayNum}\`);
       content.classList.toggle('active');
     }}
 

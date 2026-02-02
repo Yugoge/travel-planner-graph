@@ -1,0 +1,105 @@
+{
+  "request_id": "dev-20260202-063500",
+  "timestamp": "2026-02-02T06:35:00Z",
+  "requirement": {
+    "original": "修复上面遇到的全部脚本问题，包括脚本故障脚本错误脚本缺失。同时添加skeleton自动initialize（很明显你创建了两次、实际上第二次只需要一个脚本转换就行。然后我们再继续审核",
+    "clarified": "Fix all script issues: 1) Fix generate-and-deploy.sh bash errors, 2) Create skeleton initialization scripts (init-requirements-skeleton.sh and init-plan-skeleton.sh), 3) Fix budget overage detection by updating check-budget-overage.py to read from .data object",
+    "what": "Fix 3 script issues and add 2 automation scripts",
+    "why": "Eliminate manual JSON creation, fix broken generation pipeline, enable automated skeleton initialization",
+    "where": [
+      "scripts/generate-and-deploy.sh",
+      "scripts/check-budget-overage.py",
+      "scripts/init-requirements-skeleton.sh (new)",
+      "scripts/init-plan-skeleton.sh (new)"
+    ],
+    "scope": {
+      "included": [
+        "Fix bash substitution errors in generate-and-deploy.sh line 61",
+        "Update check-budget-overage.py to read overage from .data.overage and .data.overage_percentage",
+        "Create init-requirements-skeleton.sh to generate requirements-skeleton.json from user interview",
+        "Create init-plan-skeleton.sh to convert requirements-skeleton.json to plan-skeleton.json with location detection"
+      ],
+      "excluded": [
+        "Changing budget agent output format",
+        "Modifying /plan command workflow (skeleton scripts are standalone utilities)",
+        "HTML generation Python module (use bash approach)"
+      ]
+    },
+    "success_criteria": [
+      "generate-and-deploy.sh runs without bash substitution errors",
+      "check-budget-overage.py correctly detects overage from existing budget.json",
+      "init-requirements-skeleton.sh creates valid requirements-skeleton.json",
+      "init-plan-skeleton.sh converts requirements to plan skeleton with location_change objects",
+      "All scripts have parameters (no hardcoded values)"
+    ],
+    "constraints": [
+      "Use source venv for Python (not python3)",
+      "Integer step numbering only",
+      "Reference git root cause in fixes",
+      "Budget JSON format must not change (read from .data object)"
+    ]
+  },
+  "root_cause_analysis": {
+    "issue_1_generate_deploy": {
+      "symptom": "Bash substitution error at line 61: ${{firstDay.location}}, ${{firstDay.date}}, etc",
+      "root_cause": "Double brace {{ }} syntax in Python heredoc treated as bash variable substitution",
+      "root_cause_commit": "Unknown - script likely copied from template without proper escaping",
+      "why_introduced": "Python f-string or template syntax used inside bash heredoc without escaping",
+      "why_problematic": "Bash interprets {{ as invalid substitution syntax, causing parse errors",
+      "fix_approach": "Escape braces or use Python script directly instead of heredoc"
+    },
+    "issue_2_budget_overage": {
+      "symptom": "check-budget-overage.py fails with 'Missing overage_eur or overage_percentage'",
+      "root_cause": "Script looks for fields at root level, but budget agent outputs them in .data object",
+      "root_cause_commit": "Script created without checking actual budget agent output structure",
+      "why_introduced": "Assumed budget.json structure without verifying agent output format",
+      "why_problematic": "Script can't find overage fields in .data.overage and .data.overage_percentage",
+      "fix_approach": "Add .data object path to field lookup logic (lines 53-62)"
+    },
+    "issue_3_manual_skeleton": {
+      "symptom": "Manually created requirements-skeleton.json and plan-skeleton.json twice",
+      "root_cause": "No automation scripts exist for skeleton initialization",
+      "root_cause_commit": "N/A - missing functionality",
+      "why_introduced": "Skeleton initialization not implemented yet",
+      "why_problematic": "Manual JSON creation is error-prone, time-consuming, and not reusable",
+      "fix_approach": "Create parameterized scripts: init-requirements-skeleton.sh (from interview) and init-plan-skeleton.sh (requirements → plan with location detection)"
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working directory, data/china-feb-15-mar-7-2026-20260202-055902/ contains valid JSON files",
+    "recent_commits": "Multiple checkpoint auto-saves, no relevant feature commits",
+    "file_contents": {
+      "scripts/generate-and-deploy.sh": "Has Python heredoc with {{ }} syntax causing bash errors",
+      "scripts/check-budget-overage.py": "Checks root level and .summary for overage fields, missing .data check",
+      "data/*/budget.json": "Structure: {agent, status, data: {overage, overage_percentage, days, ...}}"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x, Bash",
+      "packages": "json, pathlib (stdlib)",
+      "scripts": "detect-location-changes.py exists for location detection logic"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "config_files": [".claude/commands/plan.md"]
+    }
+  },
+  "development_approach": {
+    "strategy": "Fix 3 root causes: 1) Fix bash heredoc escaping or switch to Python, 2) Add .data path to overage lookup, 3) Create 2 skeleton init scripts",
+    "scripts_to_create": [
+      "scripts/init-requirements-skeleton.sh - Parameters: destination, dates, travelers, budget, preferences",
+      "scripts/init-plan-skeleton.sh - Parameters: requirements_json_path, output_path"
+    ],
+    "files_to_modify": [
+      "scripts/check-budget-overage.py - Add .data.overage and .data.overage_percentage lookup",
+      "scripts/generate-and-deploy.sh - Fix bash substitution errors (escape or rewrite)"
+    ],
+    "validation_approach": "QA will test: 1) generate-and-deploy.sh runs successfully, 2) check-budget-overage.py detects overage from existing budget.json, 3) skeleton scripts generate valid JSON matching expected structure"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

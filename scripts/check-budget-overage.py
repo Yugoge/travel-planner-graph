@@ -54,12 +54,16 @@ def check_budget_overage(budget_path: str, threshold_eur: float = 200.0, thresho
         overage_eur = data['overage_eur']
     elif 'summary' in data and 'overage_eur' in data['summary']:
         overage_eur = data['summary']['overage_eur']
+    elif 'data' in data and 'overage' in data['data']:
+        overage_eur = data['data']['overage']
 
     # Check for overage_percentage
     if 'overage_percentage' in data:
         overage_pct = data['overage_percentage']
     elif 'summary' in data and 'overage_percentage' in data['summary']:
         overage_pct = data['summary']['overage_percentage']
+    elif 'data' in data and 'overage_percentage' in data['data']:
+        overage_pct = data['data']['overage_percentage']
 
     if overage_eur is None or overage_pct is None:
         print(f"Error: Missing overage_eur or overage_percentage in {budget_path}", file=sys.stderr)
