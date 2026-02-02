@@ -181,6 +181,15 @@ TEST_DATA_DIR="${PROJECT_ROOT}/data/${TEST_SLUG}"
 
 mkdir -p "${TEST_DATA_DIR}"
 
+# Create minimal requirements skeleton
+cat > "${TEST_DATA_DIR}/requirements-skeleton.json" <<'JSON'
+{
+  "trip_summary": {
+    "title": "Test Bucket List"
+  }
+}
+JSON
+
 # Create minimal plan skeleton for bucket list
 cat > "${TEST_DATA_DIR}/plan-skeleton.json" <<'JSON'
 {

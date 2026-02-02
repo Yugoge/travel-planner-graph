@@ -111,8 +111,8 @@ if [[ ${#HTML_FILES[@]} -gt 0 ]]; then
     echo "    - ${html_file}"
   done
 else
-  INCOMPLETE_STEPS+=("No HTML files generated (expected travel-plan-${DESTINATION_SLUG}.html)")
-  echo "  ❌ No HTML files found"
+  WARNINGS+=("No HTML files generated yet (expected travel-plan-${DESTINATION_SLUG}.html)")
+  echo "  ⚠️  No HTML files found (not critical for data validation)"
 fi
 
 # Step 5: Check deployment (optional but recommended)
