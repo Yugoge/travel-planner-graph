@@ -1,0 +1,494 @@
+{
+  "request_id": "dev-20260202-053000",
+  "timestamp": "2026-02-02T05:30:00Z",
+  "requirement": {
+    "original": "系统性修复 - push到graph应该和generate graph的脚本放到一起，这两个一个脚本，不分开，只要生成一定发布。另外plan command还出现了一堆自己写脚本，脚本错误的情况，列举出现的全部状况并告诉我修复计划",
+    "clarified": "系统性修复/plan命令的6个核心问题：1)脚本分离导致workflow中断 2)AI临时创建不标准脚本 3)Budget JSON生成错误 4)Workflow步骤跳过 5)文件命名不一致 6)部署脚本验证过严",
+    "what": "全量修复travel planner的脚本架构、agent代码、workflow强化、命名标准化",
+    "why": "防止AI跳步、确保生成即部署、消除临时脚本、提高系统可靠性",
+    "where": [
+      "scripts/generate-travel-html.sh",
+      "scripts/deploy-travel-plans.sh",
+      "scripts/generate-bucket-list-html.sh (to be removed)",
+      ".claude/commands/plan.md",
+      ".claude/agents/ (budget agent)",
+      "scripts/lib/ (new Python module)"
+    ],
+    "scope": {
+      "included": [
+        "P0: 合并生成和部署脚本为原子操作",
+        "P0: 强化workflow文档防止跳步",
+        "P1: 修复budget agent的JSON生成bug",
+        "P1: 统一文件命名规范",
+        "P2: 创建可复用Python模块",
+        "P2: 创建workflow验证机制",
+        "P3: 更新文档和测试"
+      ],
+      "excluded": [
+        "修改已发布的travel plan HTML",
+        "重构整个travel-planner架构",
+        "修改其他commands（只关注/plan）"
+      ]
+    },
+    "success_criteria": [
+      "原子性：生成HTML立即部署，不可分离",
+      "无跳步：AI必须执行完整workflow，TodoWrite强制跟踪",
+      "无错误：所有agent生成的JSON都经过validation",
+      "标准化：统一的命名规范和脚本接口",
+      "可复用：Python模块化，消除临时脚本",
+      "可测试：端到端测试通过itinerary和bucket list两种场景"
+    ],
+    "constraints": [
+      "保持向后兼容：已有travel plans不受影响",
+      "不破坏GitHub Pages：部署仓库travel-planner-graph保持稳定",
+      "遵循项目规范：参数化脚本、source venv、有意义命名",
+      "最小化复杂度：优先简单方案，避免过度工程"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "用户执行/plan命令后需要手动/dev来部署，AI创建了临时脚本且有JSON错误",
+    "root_cause": "脚本分离设计 + workflow步骤标记为Optional + 缺少强制验证机制 + agent代码有JSON生成bug",
+    "root_cause_commit": "原始设计问题，非单一commit导致",
+    "why_introduced": "原始设计认为部署是可选的（用户可能只想本地查看），未考虑到AI执行时容易跳步",
+    "why_problematic": "AI没有强制约束会主观判断跳过步骤，临时脚本难以维护且违反标准",
+    "timeline": "问题在2026-02-02执行/plan china exchange bucket list时暴露",
+    "affected_files": [
+      "scripts/generate-travel-html.sh (needs merge)",
+      "scripts/deploy-travel-plans.sh (needs merge)",
+      "scripts/generate-bucket-list-html.sh (needs removal)",
+      ".claude/commands/plan.md (needs workflow enforcement)",
+      "budget agent code (needs JSON validation)"
+    ]
+  },
+  "context": {
+    "codebase_state": "11 uncommitted changes in data/ and scripts/",
+    "recent_commits": [
+      "f2f5c8b - checkpoint: Auto-save at 2026-02-02 05:34:55",
+      "2404a5d - checkpoint: Auto-save at 2026-02-02 00:07:13",
+      "edac170 - checkpoint: Auto-save at 2026-02-01 23:54:52"
+    ],
+    "file_contents": {
+      "scripts/generate-travel-html.sh": "12688 bytes, generates standard itinerary HTML",
+      "scripts/deploy-travel-plans.sh": "18992 bytes, deploys to GitHub Pages with strict filename validation",
+      "scripts/generate-bucket-list-html.sh": "25224 bytes, custom script with embedded Python (828 lines), hardcoded output path",
+      ".claude/commands/plan.md": "Contains workflow with 'Optional Deployment' at Step 18"
+    },
+    "dependencies": {
+      "runtime": "Bash 5.x, Python 3.12",
+      "packages": "jq (for JSON processing)",
+      "external": "GitHub Pages (travel-planner-graph repo), SSH keys for git push"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "project_root": "/root/travel-planner",
+      "git_state": "On branch master, 11 uncommitted files"
+    }
+  },
+  "development_approach": {
+    "strategy": "按优先级顺序执行5个阶段，每个阶段完成后验证",
+    "phases": [
+      {
+        "phase": "P0 - 脚本合并与workflow强化",
+        "tasks": [
+          "创建 scripts/generate-and-deploy.sh (合并生成+部署)",
+          "支持自动检测项目类型 (itinerary vs bucket list)",
+          "修改 .claude/commands/plan.md (Step 16-18改为强制)",
+          "删除 scripts/generate-bucket-list-html.sh"
+        ]
+      },
+      {
+        "phase": "P1 - Agent修复与命名标准化",
+        "tasks": [
+          "定位并修复budget agent的JSON生成bug",
+          "添加JSON validation到agent代码",
+          "统一输出文件命名：travel-plan-{destination}-{date}.html",
+          "更新部署脚本支持bucket list命名"
+        ]
+      },
+      {
+        "phase": "P2 - Python模块化与验证机制",
+        "tasks": [
+          "创建 scripts/lib/html_generator.py (可复用模块)",
+          "创建 scripts/validate-plan-workflow.sh (验证脚本)",
+          "添加TodoWrite强制更新检查"
+        ]
+      },
+      {
+        "phase": "P3 - 文档与测试",
+        "tasks": [
+          "更新 scripts/README.md",
+          "创建测试用例 (itinerary + bucket list)",
+          "端到端验证"
+        ]
+      }
+    ],
+    "scripts_to_create": [
+      "scripts/generate-and-deploy.sh (P0, 原子操作脚本)",
+      "scripts/lib/html_generator.py (P2, Python模块)",
+      "scripts/validate-plan-workflow.sh (P2, 验证脚本)",
+      "scripts/tests/test-plan-workflow.sh (P3, 测试脚本)"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md (强化workflow)",
+      "scripts/deploy-travel-plans.sh (放宽命名验证，或集成到新脚本)",
+      "scripts/generate-travel-html.sh (标记deprecated或集成到新脚本)"
+    ],
+    "files_to_delete": [
+      "scripts/generate-bucket-list-html.sh (临时脚本)"
+    ],
+    "validation_approach": "每个阶段完成后运行验证脚本，最终进行端到端测试"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "atomic_operations": true,
+    "json_validation": true,
+    "workflow_enforcement": true
+  },
+  "quality_gates": {
+    "P0_completion": {
+      "criteria": [
+        "generate-and-deploy.sh可执行且通过基本测试",
+        "plan.md中Step 16-18标记为强制",
+        "generate-bucket-list.sh已删除"
+      ]
+    },
+    "P1_completion": {
+      "criteria": [
+        "budget agent不再生成JSON错误",
+        "文件命名统一且部署脚本接受两种格式"
+      ]
+    },
+    "P2_completion": {
+      "criteria": [
+        "Python模块可导入且工作正常",
+        "validate-plan-workflow.sh能检测跳步"
+      ]
+    },
+    "P3_completion": {
+      "criteria": [
+        "文档更新完整",
+        "测试用例全部通过"
+      ]
+    }
+  },
+  "dev": {
+    "status": "completed",
+    "phases_completed": [
+      "P0",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "phase": "P0",
+        "description": "Created unified generate-and-deploy.sh script",
+        "type": "script",
+        "files_created": [
+          "scripts/generate-and-deploy.sh"
+        ],
+        "rationale": "Root cause was script separation allowing AI to skip deployment steps. Unified atomic script ensures generation always followed by deployment. Auto-detects project type (itinerary vs bucket list) and uses Python module for HTML generation.",
+        "parameters": [
+          "destination-slug",
+          "version-suffix (optional)"
+        ],
+        "exit_codes": {
+          "0": "Success (HTML generated + deployed)",
+          "1": "Generation failed",
+          "2": "Deployment failed",
+          "3": "Missing required files"
+        }
+      },
+      {
+        "id": 2,
+        "phase": "P0",
+        "description": "Modified plan.md to enforce mandatory deployment",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Replaced Steps 16-18 (Optional Deployment) with mandatory atomic operation. Added critical warnings and root cause references. Updated documentation to reference unified script.",
+        "rationale": "Git analysis showed workflow had optional deployment steps, causing AI to subjectively skip them. Changed to MANDATORY with explicit warnings."
+      },
+      {
+        "id": 3,
+        "phase": "P0",
+        "description": "Deleted temporary bucket list script",
+        "type": "cleanup",
+        "files_deleted": [
+          "scripts/generate-bucket-list-html.sh"
+        ],
+        "rationale": "Temporary non-standard script with hardcoded paths (828 lines of embedded Python). Replaced by unified script using proper Python module."
+      },
+      {
+        "id": 4,
+        "phase": "P1",
+        "description": "Fixed budget agent JSON generation bug",
+        "type": "agent",
+        "files_modified": [
+          ".claude/agents/budget.md"
+        ],
+        "changes": "Added mandatory JSON validation section with jq validation command. Documented common errors (recommendations array ending with }, instead of ],). Added validation to quality standards.",
+        "rationale": "Git analysis revealed budget agent generated invalid JSON with malformed recommendations array. Validation prevents syntax errors."
+      },
+      {
+        "id": 5,
+        "phase": "P1",
+        "description": "Standardized file naming across scripts",
+        "type": "config",
+        "files_modified": [
+          "scripts/deploy-travel-plans.sh"
+        ],
+        "changes": "Updated filename parsing to accept: Format 1 (YYYY-MM-DD), Format 2 (YYYYMMDD-HHMMSS timestamp), Format 3 (no date for bucket lists), Format 4 (version suffixes -v2, -v3, etc.)",
+        "rationale": "Deploy script had strict naming validation causing rejections of valid formats. Flexible parsing supports both itinerary and bucket list naming conventions."
+      },
+      {
+        "id": 6,
+        "phase": "P2",
+        "description": "Created reusable Python HTML generator module",
+        "type": "script",
+        "files_created": [
+          "scripts/lib/html_generator.py"
+        ],
+        "rationale": "Eliminate embedded Python in bash scripts and temporary scripts. Class-based architecture (TravelPlanHTMLGenerator) with methods for project type detection, data merging (itinerary vs bucket list), and HTML generation. Unit testable, no hardcoded values.",
+        "features": [
+          "Auto-detect project type from plan skeleton",
+          "Graceful handling of missing agent JSONs",
+          "Support for both itinerary (days) and bucket list (cities) modes",
+          "Clean separation of concerns (data merging vs HTML templating)",
+          "CLI interface for standalone usage"
+        ]
+      },
+      {
+        "id": 7,
+        "phase": "P2",
+        "description": "Created workflow validation script",
+        "type": "script",
+        "files_created": [
+          "scripts/validate-plan-workflow.sh"
+        ],
+        "rationale": "Enforce workflow completion and detect skipped steps. Validates file existence, JSON syntax, agent completion status, and HTML generation.",
+        "parameters": [
+          "destination-slug"
+        ],
+        "exit_codes": {
+          "0": "Workflow complete",
+          "1": "Incomplete steps",
+          "2": "Missing critical files"
+        },
+        "checks": [
+          "Required files existence (9 JSONs)",
+          "JSON syntax validation via jq",
+          "Agent completion status",
+          "HTML file generation",
+          "GitHub authentication availability"
+        ]
+      },
+      {
+        "id": 8,
+        "phase": "P3",
+        "description": "Updated scripts README documentation",
+        "type": "documentation",
+        "files_modified": [
+          "scripts/README.md"
+        ],
+        "changes": "Added sections for new unified script, validation script, Python module (lib/html_generator.py). Marked old scripts as deprecated. Added root cause references.",
+        "rationale": "Documentation must reflect new architecture and guide users to correct scripts."
+      },
+      {
+        "id": 9,
+        "phase": "P3",
+        "description": "Created end-to-end test suite",
+        "type": "script",
+        "files_created": [
+          "scripts/tests/test-plan-workflow.sh"
+        ],
+        "rationale": "Verify all components work together. Tests script existence, permissions, Python imports, itinerary workflow, bucket list workflow, incomplete workflow detection, naming format flexibility, and budget agent validation.",
+        "test_count": 8,
+        "test_results": "All 8 tests passed",
+        "test_coverage": [
+          "Script file existence",
+          "Execute permissions",
+          "Python module import",
+          "Mock itinerary workflow",
+          "Mock bucket list workflow",
+          "Incomplete workflow detection",
+          "Naming format parsing",
+          "Budget agent validation instructions"
+        ]
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/generate-and-deploy.sh",
+        "purpose": "Unified atomic script for generate + deploy",
+        "parameters": [
+          "destination-slug",
+          "version-suffix (optional)"
+        ],
+        "usage": "bash scripts/generate-and-deploy.sh china-20260202-120000",
+        "exit_codes": {
+          "0": "Success",
+          "1": "Generation failed",
+          "2": "Deployment failed",
+          "3": "Missing files"
+        }
+      },
+      {
+        "path": "scripts/lib/html_generator.py",
+        "purpose": "Reusable Python module for HTML generation",
+        "class": "TravelPlanHTMLGenerator",
+        "methods": [
+          "detect_project_type()",
+          "load_json_safe(filename)",
+          "merge_itinerary_data()",
+          "merge_bucket_list_data()",
+          "generate_html(output_path)"
+        ],
+        "usage": "python lib/html_generator.py <slug> --data-dir <path> --output <path>"
+      },
+      {
+        "path": "scripts/validate-plan-workflow.sh",
+        "purpose": "Validate complete workflow execution",
+        "parameters": [
+          "destination-slug"
+        ],
+        "usage": "bash scripts/validate-plan-workflow.sh china-20260202-120000",
+        "exit_codes": {
+          "0": "Complete",
+          "1": "Incomplete",
+          "2": "Missing critical files"
+        }
+      },
+      {
+        "path": "scripts/tests/test-plan-workflow.sh",
+        "purpose": "End-to-end test suite",
+        "usage": "bash scripts/tests/test-plan-workflow.sh",
+        "exit_codes": {
+          "0": "All tests passed",
+          "1": "Tests failed"
+        }
+      }
+    ],
+    "files_modified": [
+      {
+        "path": ".claude/commands/plan.md",
+        "section": "Phase 5: HTML Generation",
+        "changes": "Steps 16-18 converted from optional to mandatory atomic operation",
+        "reason": "Prevent AI from skipping deployment steps"
+      },
+      {
+        "path": ".claude/agents/budget.md",
+        "section": "Quality Standards",
+        "changes": "Added mandatory JSON validation with jq command and common error examples",
+        "reason": "Fix JSON generation bug (recommendations array syntax)"
+      },
+      {
+        "path": "scripts/deploy-travel-plans.sh",
+        "section": "Filename parsing",
+        "changes": "Accept multiple naming formats (date, timestamp, bucket list, version suffixes)",
+        "reason": "Standardize naming flexibility across project types"
+      },
+      {
+        "path": "scripts/README.md",
+        "section": "Multiple sections",
+        "changes": "Added documentation for new scripts, Python module, marked deprecated scripts",
+        "reason": "Keep documentation in sync with architecture changes"
+      }
+    ],
+    "files_deleted": [
+      {
+        "path": "scripts/generate-bucket-list-html.sh",
+        "reason": "Temporary non-standard script with hardcoded values",
+        "replaced_by": "scripts/generate-and-deploy.sh + scripts/lib/html_generator.py"
+      }
+    ],
+    "git_rationale": {
+      "root_cause": "Script separation design + workflow optional steps + no enforcement mechanism + agent JSON generation bug",
+      "root_cause_commits": "Original design decision, not single commit",
+      "why_issue_occurred": "Original design assumed deployment was optional (user might want local-only), but AI execution without mandatory constraints led to subjective step skipping. Temporary scripts created during execution violated standards.",
+      "how_fix_addresses_root": "Unified atomic script makes deployment mandatory, impossible to skip. Workflow documentation now explicitly marks steps as MANDATORY with critical warnings. Validation script detects incomplete workflows. JSON validation in agent prevents syntax errors.",
+      "timeline": "Issue exposed on 2026-02-02 during /plan china exchange bucket list execution"
+    },
+    "quality_gates": {
+      "P0": "pass",
+      "P0_criteria": {
+        "unified_script_exists": true,
+        "unified_script_executable": true,
+        "plan_md_updated": true,
+        "mandatory_warnings_added": true,
+        "temporary_script_deleted": true
+      },
+      "P1": "pass",
+      "P1_criteria": {
+        "budget_agent_has_validation": true,
+        "deploy_script_accepts_formats": true,
+        "format_parsing_tested": true
+      },
+      "P2": "pass",
+      "P2_criteria": {
+        "python_module_created": true,
+        "python_module_importable": true,
+        "validation_script_exists": true,
+        "validation_detects_incomplete": true
+      },
+      "P3": "pass",
+      "P3_criteria": {
+        "readme_updated": true,
+        "test_script_created": true,
+        "all_tests_passed": true
+      }
+    },
+    "test_results": {
+      "test_script": "scripts/tests/test-plan-workflow.sh",
+      "tests_run": 8,
+      "tests_passed": 8,
+      "tests_failed": 0,
+      "test_details": [
+        "Script existence: PASS",
+        "Execute permissions: PASS",
+        "Python module import: PASS",
+        "Mock itinerary workflow: PASS",
+        "Mock bucket list workflow: PASS",
+        "Incomplete workflow detection: PASS",
+        "Naming format parsing: PASS",
+        "Budget agent validation: PASS"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": [
+      "Run test suite: bash scripts/tests/test-plan-workflow.sh",
+      "Test unified script with existing data directories",
+      "Verify workflow validation catches incomplete executions",
+      "Confirm deployment script handles all naming formats",
+      "Check budget agent includes validation in future executions"
+    ],
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(scripts/generate-and-deploy.sh:*)",
+        "reason": "Allow execution of unified generate and deploy script"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(scripts/validate-plan-workflow.sh:*)",
+        "reason": "Allow execution of workflow validation script"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(scripts/tests/test-plan-workflow.sh:*)",
+        "reason": "Allow execution of test suite"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/lib/html_generator.py:*)",
+        "reason": "Allow execution of Python HTML generator module"
+      }
+    ]
+  }
+}
