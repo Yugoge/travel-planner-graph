@@ -1,0 +1,114 @@
+{
+  "request_id": "dev-20260202-053225",
+  "timestamp": "2026-02-02T05:32:25Z",
+  "requirement": {
+    "original": "为什么你不使用subagent调查，修复 -> 不，修复为什么我提出新的需求你不重新询问subagent而是自己尝试",
+    "clarified": "When user provides refinement during /plan Phase 4 review (e.g., 'spa呢？哪一家？'), orchestrator should re-invoke specialist agent instead of manually researching via WebSearch/Gaode Maps",
+    "what": "Fix /plan command Phase 6 refinement loop to properly delegate to specialist agents",
+    "why": "Current behavior: Orchestrator bypasses specialist agents and does manual research. This violates orchestration principle and loses specialist agent's deep research capability",
+    "where": [
+      ".claude/commands/plan.md (Step 20 refinement logic)",
+      "scripts/todo/plan.py (todo checklist - needs more granular refinement steps)"
+    ],
+    "scope": {
+      "included": [
+        "Expand Step 20 'Handle User Refinements' into multi-step workflow",
+        "Add detailed sub-steps similar to /ask command's Step 6 multi-turn dialogue loop",
+        "Update scripts/todo/plan.py to include granular refinement sub-steps",
+        "Ensure orchestrator always delegates to specialist agents for research",
+        "Add detection logic for refinement type (Type 1/2/3)"
+      ],
+      "excluded": [
+        "Specialist agent internal logic (already working correctly)",
+        "Other command refinement loops (focus on /plan only for now)"
+      ]
+    },
+    "success_criteria": [
+      "When user asks 'spa呢？哪一家？' during Phase 4, orchestrator identifies this as Type 1 refinement",
+      "Orchestrator re-invokes entertainment-agent with day-scoped refinement context",
+      "Agent performs research using MCP tools and returns updated entertainment.json",
+      "Orchestrator does NOT manually use WebSearch/Gaode Maps",
+      "Todo checklist shows granular progress through refinement sub-steps"
+    ],
+    "constraints": [
+      "Must maintain backward compatibility with existing /plan workflows",
+      "Must follow /ask command's pattern for multi-step granularity",
+      "Todo steps must be detailed enough that AI cannot skip them"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Orchestrator manually researches spa options via WebSearch instead of re-invoking entertainment-agent",
+    "root_cause": "Step 20 'Handle User Refinements' in plan.md is too brief (11 lines) compared to /ask command's Step 6 multi-turn dialogue (50+ lines with detailed sub-steps)",
+    "why_introduced": "Phase 6 refinement loop was added but not decomposed into granular steps like other phases",
+    "why_problematic": "AI interprets brief steps as 'optional' or 'unimportant', leading to shortcuts like manual research instead of proper agent delegation",
+    "timeline": "Likely introduced when Phase 6 was added without following established todo granularity patterns",
+    "affected_files": [
+      ".claude/commands/plan.md:589-640 (Step 20)",
+      "scripts/todo/plan.py (missing refinement sub-steps)"
+    ],
+    "comparison_reference": "/root/knowledge-system/.claude/commands/ask.md (Step 6 multi-turn dialogue loop - good example of granularity)"
+  },
+  "context": {
+    "codebase_state": "Working /plan command, but refinement loop underspecified",
+    "current_step_20_brevity": {
+      "total_lines": "51 lines",
+      "actual_instructions": "11 lines for Type 1 refinement",
+      "todo_steps": "0 (refinement not in todo checklist)"
+    },
+    "comparison_ask_step_6": {
+      "total_lines": "~80 lines",
+      "detailed_sub_steps": "6 sub-phases with explicit actions",
+      "todo_steps": "1 explicit step in checklist"
+    },
+    "file_contents": {
+      "plan.md_step_20": "See lines 589-640",
+      "todo/plan.py": "Missing refinement-related steps",
+      "ask.md_step_6_reference": "Lines ~250-330 (multi-turn dialogue loop)"
+    },
+    "specialist_agents_available": [
+      "meals-agent",
+      "accommodation-agent",
+      "attractions-agent",
+      "entertainment-agent",
+      "shopping-agent",
+      "transportation-agent",
+      "timeline-agent",
+      "budget-agent"
+    ]
+  },
+  "development_approach": {
+    "strategy": "Learn from /ask command's Step 6 granularity and apply to /plan Step 20",
+    "steps": [
+      "1. Read /ask command's Step 6 multi-turn dialogue loop as template",
+      "2. Expand /plan Step 20 into detailed sub-steps:",
+      "   - Step 20.1: Parse user refinement request",
+      "   - Step 20.2: Classify refinement type (Type 1/2/3)",
+      "   - Step 20.3: Identify affected agent(s) and day scope",
+      "   - Step 20.4: Build refinement context JSON",
+      "   - Step 20.5: Re-invoke specialist agent(s)",
+      "   - Step 20.6: Validate agent outputs",
+      "   - Step 20.7: Re-invoke dependent agents (timeline, budget)",
+      "   - Step 20.8: Regenerate HTML with version suffix",
+      "   - Step 20.9: Present updated plan to user",
+      "3. Update scripts/todo/plan.py to add refinement sub-steps",
+      "4. Add explicit 'DO NOT manually research' warnings in Step 20.5",
+      "5. Add examples showing correct agent delegation pattern"
+    ],
+    "scripts_to_modify": [
+      "scripts/todo/plan.py (add refinement sub-steps)"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md (expand Step 20)"
+    ],
+    "validation_approach": "QA agent will verify: 1) Step 20 has >=40 lines of detailed instructions, 2) todo/plan.py includes refinement sub-steps, 3) Explicit delegation instructions present"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "step_granularity": "Each step must be detailed enough (20+ lines) that AI cannot skip it",
+    "todo_completeness": "All major workflow phases must appear in todo checklist"
+  }
+}

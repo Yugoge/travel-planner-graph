@@ -590,51 +590,350 @@ Open the HTML file in any browser to view your complete travel plan.
 
 #### Step 20: Handle User Refinements
 
-**User satisfied**: End gracefully
+**CRITICAL**: This multi-turn refinement phase follows the same pattern as /ask command's Step 6 dialogue loop. Each refinement request must be parsed, classified, and delegated to specialist agents.
 
-**User requests changes**: Determine scope
+**Root Cause Reference**: Step 20 was too brief (11 lines), causing AI to skip proper agent delegation and manually research via WebSearch/Gaode Maps. This violates orchestration architecture where specialist agents handle all domain research.
 
-**Type 1 - Specific agent changes (including new research)**:
+---
+
+**Step 20.1: Wait for User Response**
+
+After presenting the final plan (Step 19), wait for explicit user feedback.
+
+**User satisfied signals**:
+- "Perfect", "Great", "Thank you", "Looks good"
+- No response needed after these → End gracefully with: "Enjoy your trip to {destination}!"
+
+**User refinement signals**:
+- Questions about specifics ("spa呢？哪一家？", "What about nightlife?")
+- Change requests ("Change Day 3 dinner", "Add museum")
+- Major restructure ("Change destination from X to Y")
+
+**Only proceed to Step 20.2 if user provides refinement request**.
+
+---
+
+**Step 20.2: Parse Refinement Request**
+
+Extract structured information from user's refinement:
+
+**Parse these elements**:
+1. **Day scope**: Which day(s) are affected?
+   - Example: "Day 3" → `day_scope = [3]`
+   - Example: "All days" → `day_scope = [1, 2, 3, ..., N]`
+   - Example: No day specified → Ask user: "Which day would you like to adjust?"
+
+2. **Domain affected**: Which specialist agent's domain?
+   - Keywords mapping:
+     - "restaurant", "meal", "breakfast", "lunch", "dinner", "food" → meals-agent
+     - "hotel", "accommodation", "lodging", "stay" → accommodation-agent
+     - "attraction", "景点", "museum", "temple", "park" → attractions-agent
+     - "nightlife", "spa", "entertainment", "娱乐", "bar", "club" → entertainment-agent
+     - "shopping", "mall", "store", "购物" → shopping-agent
+     - "train", "flight", "transportation", "transfer" → transportation-agent
+   - Multiple domains possible (re-invoke multiple agents)
+
+3. **Refinement nature**: New research needed or adjustment only?
+   - **New research keywords**: "add", "include", "find", "research", "recommend", "呢", "哪一家"
+   - **Adjustment keywords**: "change", "replace", "cheaper", "expensive", "remove"
+
+**Output of this step**: `refinement_context` object
+```json
+{
+  "user_request": "spa呢？哪一家？",
+  "day_scope": [3],
+  "domains": ["entertainment"],
+  "nature": "new_research",
+  "requires_agent_delegation": true
+}
 ```
-Supports:
-- Adjusting existing recommendations ("Change Day {N} dinner to cheaper option")
-- Adding NEW requirements that need research ("Add museum for Day {N}", "Research nightlife for Day {N}")
-- Any change within a single domain (meals, attractions, entertainment, shopping, accommodation, transportation)
 
-Example: "Add more {category} {items} for Day {N}"
-Action:
-1. Re-invoke relevant specialist agent with refinement context
-   - Agent can perform NEW research for added requirements
-   - All 8 specialist agents available: meals, accommodation, attractions, entertainment, shopping, transportation, timeline, budget
-2. Re-invoke timeline-agent (depends on modified agent)
-3. Re-invoke budget-agent (depends on timeline)
-4. Re-run validations
-5. Regenerate HTML with -v2 suffix
-6. Present updated plan
+**If parsing is ambiguous, ask clarifying question before proceeding**.
 
-Note: Specialist agents research using MCP skills (google-maps, gaode-maps, rednote, etc.), not orchestrator
+---
+
+**Step 20.3: Classify Refinement Type**
+
+Based on parsed `refinement_context`, classify into one of three types:
+
+**Type 1 - Single Domain Refinement** (most common):
+- **Criteria**: Affects 1-2 domains, day scope <= 3 days, requires research OR adjustment
+- **Examples**:
+  - "spa呢？哪一家？" → entertainment-agent for Day 3
+  - "Change Day 2 lunch to vegetarian" → meals-agent for Day 2
+  - "Add museum for Day 5" → attractions-agent for Day 5
+
+**Type 2 - Major Restructure**:
+- **Criteria**: Changes fundamental structure (location change, date change, traveler count change)
+- **Examples**:
+  - "Change Day 3 location from Beijing to Shanghai"
+  - "Add 2 more days to the trip"
+  - "Budget reduced from $3000 to $2000"
+
+**Type 3 - Informational Query**:
+- **Criteria**: No changes needed, user asking about existing data
+- **Examples**:
+  - "Is this restaurant vegetarian-friendly?"
+  - "What time does the museum close?"
+  - "How far is the hotel from the attraction?"
+
+**Set refinement_type variable**: `Type1`, `Type2`, or `Type3`
+
+---
+
+**Step 20.4: Handle Type 3 (Informational Query)**
+
+**If refinement_type == Type3**:
+1. Read relevant data from existing JSONs in `data/{destination-slug}/`
+2. Answer user's question directly using available information
+3. Do NOT re-invoke any agents
+4. Return to Step 20.1 (wait for next user response)
+
+**Example**:
+```
+User: "Is this restaurant vegetarian-friendly?"
+You: [Read meals.json] "Yes, {restaurant_name} on Day {N} offers vegetarian options including {dishes}."
 ```
 
-**Type 2 - Major restructure**:
-```
-Example: "Change Day {N} location from {City A} to {City B}"
-Action:
-1. Update requirements-skeleton.json
-2. Re-init plan-skeleton.json (Step 6)
-3. Re-invoke ALL 8 agents
-4. Run all validations
-5. Generate new HTML with -v2 suffix
-6. Present updated plan
+**Then immediately return to Step 20.1**.
+
+---
+
+**Step 20.5: Build Refinement Context for Agent Delegation (Type 1)**
+
+**⚠️ CRITICAL - DO NOT MANUALLY RESEARCH**:
+- **NEVER** use WebSearch, WebFetch, or gaode-maps MCP tools yourself
+- **NEVER** attempt to research specific venues, restaurants, or attractions
+- **YOUR ROLE**: Parse user intent and delegate to specialist agents
+- **SPECIALIST AGENT ROLE**: Perform all domain research using MCP tools
+
+**If refinement_type == Type1**, build detailed context JSON for agent re-invocation:
+
+**Context JSON structure**:
+```json
+{
+  "refinement_request": {
+    "original_user_text": "spa呢？哪一家？",
+    "day_scope": [3],
+    "date": "2026-03-17",
+    "location": "Chongqing",
+    "instruction": "Research spa options for Day 3 in Chongqing. User specifically asking for spa recommendations."
+  },
+  "existing_data": {
+    "current_entertainment": [
+      "Extract current entertainment items for Day 3 from entertainment.json"
+    ],
+    "budget_remaining": "Extract from budget.json Day 3 entertainment budget"
+  },
+  "constraints": {
+    "budget_limit": 500,
+    "user_preferences": "Extract from requirements-skeleton.json"
+  }
+}
 ```
 
-**Type 3 - Questions only**:
+**Save this context** to memory for use in Step 20.6.
+
+---
+
+**Step 20.6: Re-invoke Specialist Agent(s) with Day-Scoped Context (Type 1)**
+
+**⚠️ CRITICAL - MANDATORY AGENT DELEGATION**:
+This is THE MOST IMPORTANT step. Orchestrator MUST delegate research to specialist agents.
+
+**For each domain in refinement_context.domains**:
+
+**Re-invocation pattern**:
 ```
-Example: "Is this restaurant good for vegetarians?"
-Action:
-- Answer from existing data
-- No agent re-invocation needed
+Use Task tool with:
+- subagent_type: "{domain}-agent"  # e.g., "entertainment-agent"
+- description: "Refinement: {user_request} for Day {N}"
+- model: "sonnet"
+- prompt: "
+  **REFINEMENT REQUEST** (Day-scoped):
+
+  User refinement: {user's original text, e.g., 'spa呢？哪一家？'}
+
+  Focus ONLY on: Day {N}, Date {date}, Location {location}
+
+  Read existing data from:
+  - data/{destination-slug}/requirements-skeleton.json
+  - data/{destination-slug}/plan-skeleton.json
+  - data/{destination-slug}/{domain}.json (your previous output)
+  - data/{destination-slug}/budget.json (for budget constraints)
+
+  **YOUR TASK**:
+  1. Research NEW options to address user's refinement
+     - Use MCP tools: google-maps, gaode-maps, rednote, etc.
+     - DO NOT use placeholder data
+  2. Update {domain}.json for Day {N} only
+     - APPEND new items OR REPLACE existing items as appropriate
+     - Preserve data for other days
+  3. Return ONLY: complete
+
+  **SPECIFIC INSTRUCTION**: {instruction from refinement_context}
+
+  Budget constraint for Day {N}: {budget_limit}
+  User preferences: {preferences from requirements-skeleton.json}
+  "
 ```
 
-**Versioning**: `-v2`, `-v3`, etc.
-**Max iterations**: 3 major revisions
+**Wait for agent to return "complete"**.
+
+**Example agent delegation**:
+```
+User: "spa呢？哪一家？"
+Your action:
+→ Task tool (entertainment-agent)
+   - "Research spa options for Day 3 in Chongqing"
+   - Agent uses gaode-maps, rednote to find spas
+   - Agent updates entertainment.json with spa recommendations
+   - Agent returns "complete"
+```
+
+**⚠️ VERIFICATION CHECKPOINT**:
+- [ ] Did you invoke Task tool with appropriate specialist agent?
+- [ ] Did you include day-scoped context (Day N, date, location)?
+- [ ] Did you specify the domain-specific instruction?
+- [ ] Did you wait for agent to return "complete"?
+
+**If ANY checkbox unchecked → You violated orchestration architecture. Stop and re-invoke agent correctly.**
+
+---
+
+**Step 20.7: Re-invoke Dependent Agents (timeline, budget)**
+
+After specialist agent(s) complete refinement, **ALWAYS re-invoke dependent agents**:
+
+**Re-invoke timeline-agent**:
+```
+Use Task tool with:
+- subagent_type: "timeline-agent"
+- description: "Recalculate timeline after refinement"
+- model: "sonnet"
+- prompt: "
+  Re-read ALL agent outputs:
+  - data/{destination-slug}/meals.json
+  - data/{destination-slug}/entertainment.json (UPDATED)
+  - [all other domain JSONs]
+
+  Recalculate timeline for Day {N} only (or all days if multiple domains affected).
+  Update data/{destination-slug}/timeline.json
+
+  Return ONLY: complete
+  "
+```
+
+**Re-invoke budget-agent**:
+```
+Use Task tool with:
+- subagent_type: "budget-agent"
+- description: "Recalculate budget after refinement"
+- model: "sonnet"
+- prompt: "
+  Re-read ALL agent outputs including updated timeline.
+  Recalculate budget for Day {N}.
+  Update data/{destination-slug}/budget.json
+
+  Return ONLY: complete
+  "
+```
+
+**Wait for both agents to return "complete"**.
+
+---
+
+**Step 20.8: Regenerate HTML with Version Suffix**
+
+Increment version counter (track internally: v2, v3, etc.)
+
+Run generation script:
+```bash
+bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug} -v{version}
+```
+
+**Example**: Second refinement → `travel-plan-{destination-slug}-v2.html`
+
+Verify file exists:
+```bash
+test -f /root/travel-planner/travel-plan-{destination-slug}-v{version}.html && echo "verified" || echo "missing"
+```
+
+**If missing**: Debug and retry.
+
+---
+
+**Step 20.9: Present Updated Plan to User**
+
+Show what changed:
+```
+Updated your travel plan based on your refinement!
+
+**Changes Made** (Day {N}):
+- {Domain}: {Specific changes, e.g., "Added 3 spa options"}
+- Timeline: {Updated timeline for affected activities}
+- Budget: {Updated budget impact, e.g., "+$50 for spa activities"}
+
+📄 New version saved: `travel-plan-{destination-slug}-v{version}.html`
+
+**Updated Day {N} Summary**:
+{Show relevant excerpts from updated JSONs for this day}
+
+---
+
+Would you like any further adjustments?
+```
+
+**After presenting**, return to Step 20.1 (wait for next user response).
+
+**Iteration limit**: Max 3 major refinements. After 3rd refinement, suggest accepting current state.
+
+---
+
+**Step 20.10: Handle Type 2 (Major Restructure)**
+
+**If refinement_type == Type2**:
+
+Major restructures require re-running entire Phase 2-5 workflow.
+
+**Action sequence**:
+1. Update `data/{destination-slug}/requirements-skeleton.json` with new constraints
+2. Return to Step 6 (Initialize Plan Skeleton) with updated requirements
+3. Re-invoke ALL 8 agents (parallel 6, then serial timeline + budget)
+4. Run all validation scripts
+5. Generate HTML with version suffix
+6. Present complete updated plan
+
+**Example**:
+```
+User: "Change Day 3 location from Beijing to Shanghai"
+
+Your action:
+1. Edit requirements-skeleton.json → Day 3 location = "Shanghai"
+2. Re-run Step 6 (plan skeleton initialization with location detection)
+3. Re-run Step 8 (invoke all 6 parallel agents + timeline + budget)
+4. Re-run Steps 9-13 (validations)
+5. Generate HTML v2
+6. Present full updated plan
+```
+
+**After completion**, return to Step 20.1.
+
+---
+
+**Step 20.11: Dialogue Length Protection**
+
+Track refinement iterations internally (no user-facing counter).
+
+**Turn 3 refinement**: Gentle reminder
+```
+We've made several refinements. Current version: v3.
+
+I recommend reviewing the updated plan before additional changes to ensure everything aligns with your vision. Would you like to:
+1. Review the current plan as final
+2. Make one more refinement
+3. Start over with new requirements
+```
+
+**Hard limit**: After 3 refinements, strongly suggest accepting current state or starting fresh.
 

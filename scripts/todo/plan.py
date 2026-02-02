@@ -52,6 +52,51 @@ def get_todos():
             "content": "Step 9: Present Plan and Offer Refinement",
             "activeForm": "Step 9: Presenting Plan",
             "status": "pending"
+        },
+        {
+            "content": "Step 10: Wait for User Refinement Request",
+            "activeForm": "Step 10: Waiting for User Response",
+            "status": "pending"
+        },
+        {
+            "content": "Step 11: Parse Refinement Request (day scope, domain, nature)",
+            "activeForm": "Step 11: Parsing Refinement Request",
+            "status": "pending"
+        },
+        {
+            "content": "Step 12: Classify Refinement Type (Type 1/2/3)",
+            "activeForm": "Step 12: Classifying Refinement Type",
+            "status": "pending"
+        },
+        {
+            "content": "Step 13: Handle Type 3 Informational Query (if applicable)",
+            "activeForm": "Step 13: Handling Informational Query",
+            "status": "pending"
+        },
+        {
+            "content": "Step 14: Build Refinement Context for Agent Delegation",
+            "activeForm": "Step 14: Building Refinement Context",
+            "status": "pending"
+        },
+        {
+            "content": "Step 15: Re-invoke Specialist Agent(s) with Day Scope",
+            "activeForm": "Step 15: Re-invoking Specialist Agents",
+            "status": "pending"
+        },
+        {
+            "content": "Step 16: Re-invoke Dependent Agents (timeline + budget)",
+            "activeForm": "Step 16: Re-invoking Dependent Agents",
+            "status": "pending"
+        },
+        {
+            "content": "Step 17: Regenerate HTML with Version Suffix",
+            "activeForm": "Step 17: Regenerating HTML",
+            "status": "pending"
+        },
+        {
+            "content": "Step 18: Present Updated Plan to User",
+            "activeForm": "Step 18: Presenting Updated Plan",
+            "status": "pending"
         }
     ]
 
