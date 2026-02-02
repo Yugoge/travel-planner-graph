@@ -66,9 +66,29 @@ For each day in the trip:
      "location": "Full address or area",
      "cost": 100,
      "type": "Local Market",
-     "notes": "Open 9am-5pm, bargaining expected, famous for textiles"
+     "notes": "Open 9am-5pm, bargaining expected, famous for textiles",
+     "search_results": [
+       {
+         "skill": "google-maps",
+         "type": "place_detail",
+         "url": "https://maps.google.com/?cid=12345",
+         "display_text": "Google Maps"
+       },
+       {
+         "skill": "rednote",
+         "type": "note",
+         "url": "https://www.xiaohongshu.com/explore/abc123",
+         "display_text": "小红书"
+       }
+     ]
    }
    ```
+
+   **search_results field**:
+   - REQUIRED: Include all skill URLs used to find this shopping location
+   - Each entry must have: skill name, result type, full URL, display text
+   - Deduplicate URLs (same URL should appear only once)
+   - Common skills: google-maps, gaode-maps, rednote
 
 ## Output
 

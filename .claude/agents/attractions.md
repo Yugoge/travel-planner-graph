@@ -78,9 +78,29 @@ For each day in the trip:
      "cost": 15,
      "duration_minutes": 120,
      "type": "Museum",
-     "notes": "Book tickets online, skip-the-line available"
+     "notes": "Book tickets online, skip-the-line available",
+     "search_results": [
+       {
+         "skill": "google-maps",
+         "type": "place_detail",
+         "url": "https://maps.google.com/?cid=12345",
+         "display_text": "Google Maps"
+       },
+       {
+         "skill": "rednote",
+         "type": "note",
+         "url": "https://www.xiaohongshu.com/explore/abc123",
+         "display_text": "小红书"
+       }
+     ]
    }
    ```
+
+   **search_results field**:
+   - REQUIRED: Include all skill URLs used to find this attraction
+   - Each entry must have: skill name, result type, full URL, display text
+   - Deduplicate URLs (same URL should appear only once)
+   - Common skills: google-maps, gaode-maps, rednote
 
 ## Output
 

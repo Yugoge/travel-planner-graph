@@ -65,7 +65,21 @@ For each day in the trip:
      "cost": 120,
      "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
      "amenities": ["WiFi", "Breakfast included", "Pool"],
-     "notes": "Near subway station, check-in after 3pm"
+     "notes": "Near subway station, check-in after 3pm",
+     "search_results": [
+       {
+         "skill": "google-maps",
+         "type": "place_detail",
+         "url": "https://maps.google.com/?cid=12345",
+         "display_text": "Google Maps"
+       },
+       {
+         "skill": "airbnb",
+         "type": "listing",
+         "url": "https://www.airbnb.com/rooms/12345",
+         "display_text": "Airbnb"
+       }
+     ]
    }
    ```
 
@@ -78,9 +92,23 @@ For each day in the trip:
      "total_cost": 1250,
      "type": "Vacation Rental (Airbnb)",
      "amenities": ["Full kitchen", "Washer", "WiFi", "Workspace"],
-     "notes": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm"
+     "notes": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm",
+     "search_results": [
+       {
+         "skill": "airbnb",
+         "type": "listing",
+         "url": "https://www.airbnb.com/rooms/12345",
+         "display_text": "Airbnb"
+       }
+     ]
    }
    ```
+
+   **search_results field**:
+   - REQUIRED: Include all skill URLs used to find this accommodation
+   - Each entry must have: skill name, result type, full URL, display text
+   - Deduplicate URLs (same URL should appear only once)
+   - Common skills: google-maps, gaode-maps, airbnb
 
 ## Output
 
