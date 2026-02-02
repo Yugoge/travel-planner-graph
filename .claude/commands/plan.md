@@ -97,7 +97,42 @@ Format:
 }
 ```
 
-#### Step 4: Validate Day Completion
+#### Step 4: Generate Plan Slug
+
+**CRITICAL: This step addresses root cause from commit 77dca06.**
+
+Generate unique directory slug to prevent multiple /plan executions from mixing files.
+
+Run slug generation script:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-plan-slug.py "{destination}"
+```
+
+Capture output and set `{destination-slug}` variable for ALL subsequent steps.
+
+**Slug Format Specification**:
+- Pattern: `{destination-sanitized}-{YYYYMMDD-HHMMSS}`
+- Sanitization rules:
+  - Lowercase conversion
+  - Spaces/underscores → hyphens
+  - Remove non-alphanumeric (handles Chinese characters safely)
+  - Collapse multiple hyphens
+  - Fallback to "destination" if empty after sanitization
+- Timestamp: Current execution time in format YYYYMMDD-HHMMSS
+- Examples:
+  - "China" → `china-20260201-211600`
+  - "New York City" → `new-york-city-20260201-235500`
+  - "中国" → `destination-20260201-235500` (Chinese chars removed)
+
+**Verification**:
+```bash
+echo "{destination-slug}" | grep -E '^[a-z0-9\-]+-[0-9]{8}-[0-9]{6}$' && echo "valid" || echo "invalid"
+```
+
+**Why This Fixes the Issue**:
+Commit 77dca06 introduced {destination-slug} placeholder used 40+ times throughout plan.md, but never defined generation logic. Without explicit timestamp-based slugs, multiple /plan executions with same destination/dates reused identical directories, causing file conflicts and data混淆.
+
+#### Step 5: Validate Day Completion
 
 Run validation script:
 ```bash
@@ -114,7 +149,7 @@ bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
 
 ### Phase 2: Orchestrator Skeleton Initialization
 
-#### Step 5: Initialize Plan Skeleton
+#### Step 6: Initialize Plan Skeleton
 
 Read `requirements-skeleton.json`, detect location changes, create plan skeleton with all fields initialized, save to `data/{destination-slug}/plan-skeleton.json`.
 
@@ -160,7 +195,7 @@ Plan skeleton structure:
 }
 ```
 
-#### Step 6: Validate Location Continuity
+#### Step 7: Validate Location Continuity
 
 Run validation script:
 ```bash
@@ -174,7 +209,7 @@ bash /root/travel-planner/scripts/check-location-continuity.sh {destination-slug
 
 ### Phase 3: Specialist Agent Execution
 
-#### Step 7: Invoke Parallel Agents (6 agents simultaneously)
+#### Step 8: Invoke Parallel Agents (6 agents simultaneously)
 
 **Invoke these agents in parallel using Task tool**:
 
@@ -211,7 +246,7 @@ Use Task tool with:
 
 **Wait for all 6 agents to return "complete"**.
 
-#### Step 8: Verify Agent Outputs
+#### Step 9: Verify Agent Outputs
 
 Check all files exist:
 ```bash
@@ -235,7 +270,7 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/va
 
 If critical issues found, extract specific errors and re-invoke relevant agents with fix instructions.
 
-#### Step 9: Invoke Timeline Agent (Serial)
+#### Step 10: Invoke Timeline Agent (Serial)
 
 **IMPORTANT**: Timeline agent runs AFTER all parallel agents complete.
 
@@ -268,7 +303,7 @@ Use Task tool with:
 
 Wait for "complete".
 
-#### Step 10: Validate Timeline Consistency
+#### Step 11: Validate Timeline Consistency
 
 Run validation script:
 ```bash
@@ -278,7 +313,7 @@ bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-
 **Exit code 0**: Timeline valid → Proceed
 **Exit code 1**: Validation errors (mismatched keys, conflicts) → Review timeline.json warnings
 
-#### Step 11: Invoke Budget Agent (Serial)
+#### Step 12: Invoke Budget Agent (Serial)
 
 **IMPORTANT**: Budget agent runs AFTER timeline agent completes.
 
@@ -312,7 +347,7 @@ Use Task tool with:
 
 Wait for "complete".
 
-#### Step 11.5: Budget Gate Check
+#### Step 13: Budget Gate Check
 
 **CRITICAL**: Check if budget overage exceeds thresholds requiring mandatory review.
 
@@ -321,29 +356,31 @@ Run budget gate script:
 source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/check-budget-overage.py /root/travel-planner/data/{destination-slug}/budget.json 200 20
 ```
 
-**Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 12
-**Exit code 1**: Review required → Set `force_review=true`, proceed to Step 12 (user CANNOT skip)
+**Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 14
+**Exit code 1**: Review required → Set `force_review=true`, proceed to Step 14 (user CANNOT skip)
 **Exit code 2**: Error → Debug budget.json and retry
 
 **Root Cause Reference**: Budget gate added to address commit 77dca06 issue where €963 overage (96%) was not caught, requiring mandatory day-by-day review when overage exceeds thresholds.
+
+**Note on Step 13**: Previously Step 11.5, renumbered to enforce integer-only step numbering (no decimal steps per dev agent standards).
 
 ---
 
 ### Phase 4: Validation and Conflict Review
 
-#### Step 12: Day-by-Day Refinement Loop
+#### Step 14: Day-by-Day Refinement Loop
 
 Read warnings from:
 - `data/{destination-slug}/timeline.json` → Check `warnings` array
 - `data/{destination-slug}/budget.json` → Check `warnings` and `recommendations` arrays
 
-**Check force_review flag** (set in Step 11.5 by budget gate)
+**Check force_review flag** (set in Step 13 by budget gate)
 
 **If no warnings AND force_review=false**: Proceed to Phase 5
 
 **If warnings exist OR force_review=true**: Iterate through days with conflicts
 - When `force_review=true`, user CANNOT skip review (budget gate enforcement)
-- Present clear explanation: "Budget exceeds thresholds (see Step 11.5), day-by-day review is required"
+- Present clear explanation: "Budget exceeds thresholds (see Step 13), day-by-day review is required"
 
 **Day Iteration Pattern**:
 1. Group warnings by day number
@@ -352,7 +389,7 @@ Read warnings from:
    - Extract warnings for current day only
    - Present ONLY current day's warnings to user
    - Offer options: Auto-fix | Manual adjustment | Skip day | Accept all remaining
-   - Process user choice (see Step 13)
+   - Process user choice (see Step 15)
    - If not "Accept all": mark day reviewed, continue to next day
    - If "Accept all": exit loop, proceed to Phase 5
 4. When all days reviewed or accepted: proceed to Phase 5
@@ -394,9 +431,9 @@ Options:
 
 **Continue until all days reviewed or user accepts remaining**.
 
-#### Step 13: Handle Day-Scoped Refinement
+#### Step 15: Handle Day-Scoped Refinement
 
-**For each day being refined** (one at a time from Step 12):
+**For each day being refined** (one at a time from Step 14):
 
 Parse user choice:
 
@@ -427,7 +464,7 @@ Use Task tool with day filter:
 - Agent modifies only that day's data in their JSON file
 - Agent returns "complete"
 - Re-run validation scripts for that day only
-- Return to Step 12 day iteration loop
+- Return to Step 14 day iteration loop
 ```
 
 **Tracking State**:
@@ -445,7 +482,7 @@ Use Task tool with day filter:
 
 ### Phase 5: HTML Generation
 
-#### Step 14: Generate Interactive HTML
+#### Step 16: Generate Interactive HTML
 
 Run generation script:
 ```bash
@@ -461,7 +498,7 @@ bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug} -v2
 
 Output: `travel-plan-{destination-slug}-v2.html`
 
-#### Step 15: Verify HTML Generated
+#### Step 17: Verify HTML Generated
 
 Check file exists:
 ```bash
@@ -470,7 +507,7 @@ test -f /root/travel-planner/travel-plan-{destination-slug}.html && echo "verifi
 
 **If missing**: Debug script, check agent JSON completeness
 
-#### Step 16: Optional Deployment
+#### Step 18: Optional Deployment
 
 Attempt GitHub Pages deployment:
 ```bash
@@ -482,7 +519,7 @@ fi
 **If succeeds**: Capture live URL
 **If fails**: Silent graceful degradation (local file only)
 
-#### Step 17: Present Final Plan
+#### Step 19: Present Final Plan
 
 **Generate Booking Checklist**:
 
@@ -551,7 +588,7 @@ Open the HTML file in any browser to view your complete travel plan.
 
 ### Phase 6: Refinement Loop
 
-#### Step 18: Handle User Refinements
+#### Step 20: Handle User Refinements
 
 **User satisfied**: End gracefully
 
@@ -583,7 +620,7 @@ Note: Specialist agents research using MCP skills (google-maps, gaode-maps, redn
 Example: "Change Day {N} location from {City A} to {City B}"
 Action:
 1. Update requirements-skeleton.json
-2. Re-init plan-skeleton.json (Step 5)
+2. Re-init plan-skeleton.json (Step 6)
 3. Re-invoke ALL 8 agents
 4. Run all validations
 5. Generate new HTML with -v2 suffix

@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-20260201-235500",
+  "timestamp": "2026-02-01T23:55:00Z",
+  "requirement": {
+    "original": "为什么两次plan在同一个文件夹！系统性失误修复",
+    "clarified": "Add timestamp-based directory naming to /plan command to prevent multiple plan executions from mixing files in the same directory",
+    "what": "Implement automatic timestamp-based directory structure for /plan command data storage",
+    "why": "Two separate /plan executions (21:16 and 23:33) with same destination/dates used identical directory 'data/china-feb15-mar7-2026/', causing file conflicts and data混淆",
+    "where": [
+      ".claude/commands/plan.md"
+    ],
+    "scope": {
+      "included": [
+        "Add {destination-slug} generation logic with timestamp",
+        "Define slug format specification",
+        "Update plan.md to document slug generation",
+        "Ensure backward compatibility with existing data/ structure"
+      ],
+      "excluded": [
+        "Migrating existing data directories",
+        "Changing archive/ directory structure",
+        "Modifying HTML generation beyond slug usage"
+      ]
+    },
+    "success_criteria": [
+      "Running /plan twice with same destination creates two separate directories with timestamps",
+      "Directory naming follows consistent format: data/{destination}-{YYYYMMDD-HHMMSS}/",
+      "All 40+ references to {destination-slug} in plan.md work correctly",
+      "Existing scripts (check-day-completion.sh, validate-timeline-consistency.sh, etc.) work with new slug format"
+    ],
+    "constraints": [
+      "Must not break existing archived plans",
+      "Slug generation must be deterministic and documented",
+      "Must handle special characters in destination names (spaces, Chinese characters)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Two /plan executions stored files in same directory data/china-feb15-mar7-2026/, causing file混乱",
+    "root_cause": "{destination-slug} variable used 40+ times in plan.md but NEVER defined or generated",
+    "root_cause_commit": "77dca06 - fix: Remove hardcoding and clarify /plan refinement workflow",
+    "why_introduced": "Commit 77dca06 removed hardcoded values and introduced {destination-slug} placeholder, but forgot to add slug generation logic",
+    "why_problematic": "Without explicit slug generation rules, AI arbitrarily creates slugs each execution, potentially reusing same slug for identical destinations/dates",
+    "timeline": "Introduced in commit 77dca06, manifested on 2026-02-01 with two plan executions at 21:16 and 23:33",
+    "affected_files": [
+      ".claude/commands/plan.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory /root/travel-planner, git branch master, 3 uncommitted files",
+    "recent_commits": "77dca06 fix: Remove hardcoding and clarify /plan refinement workflow",
+    "file_contents": {
+      ".claude/commands/plan.md": "Contains 40+ references to {destination-slug} with no generation logic"
+    },
+    "dependencies": {
+      "runtime": "Bash scripts, Python 3.x with venv",
+      "packages": "slugify library may be needed for Chinese character handling"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "config_files": [".claude/settings.json"]
+    }
+  },
+  "development_approach": {
+    "strategy": "Add explicit slug generation step in plan.md Phase 1 with timestamp inclusion",
+    "scripts_to_create": [
+      "scripts/generate-plan-slug.py - Parameterized script to generate slug from destination + timestamp"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md - Add Step 3.5 for slug generation with format specification"
+    ],
+    "validation_approach": "QA will run script twice with same inputs, verify different timestamps produce different slugs"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
