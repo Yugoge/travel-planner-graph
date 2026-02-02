@@ -480,44 +480,62 @@ Use Task tool with day filter:
 
 ---
 
-### Phase 5: HTML Generation
+### Phase 5: HTML Generation and Deployment
 
-#### Step 16: Generate Interactive HTML
+**⚠️ CRITICAL: Steps 16-18 are MANDATORY and ATOMIC. NEVER skip these steps.**
 
-Run generation script:
+Root cause reference: Script separation caused workflow interruption where AI subjectively skipped deployment steps, violating the principle that generated plans must be immediately published.
+
+#### Step 16: Generate and Deploy (Atomic Operation)
+
+**IMPORTANT**: Generation and deployment are now a SINGLE atomic operation. Once HTML is generated, it MUST be deployed. There is NO option to skip deployment.
+
+Run unified script:
 ```bash
-bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug}
+bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug}
 ```
-
-Script merges all agent JSONs and generates: `travel-plan-{destination-slug}.html`
 
 **If warnings prompted refinement**: Use version suffix
 ```bash
-bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug} -v2
+bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug} -v2
 ```
 
-Output: `travel-plan-{destination-slug}-v2.html`
+Script performs:
+1. Auto-detects project type (itinerary vs bucket list)
+2. Generates HTML using Python module
+3. Immediately deploys to GitHub Pages
+4. Returns live URL
 
-#### Step 17: Verify HTML Generated
+**Exit codes**:
+- 0: Success (HTML generated + deployed)
+- 1: Generation failed
+- 2: Deployment failed
+- 3: Missing required files
 
-Check file exists:
+**If authentication unavailable** (no GITHUB_TOKEN or SSH keys):
+- Script will generate HTML locally only
+- Warn user about missing authentication
+- Provide instructions to enable deployment
+
+#### Step 17: Verify Generation and Deployment
+
+Check file exists locally:
 ```bash
 test -f /root/travel-planner/travel-plan-{destination-slug}.html && echo "verified" || echo "missing"
 ```
 
-**If missing**: Debug script, check agent JSON completeness
+**If missing**: Debug unified script, check agent JSON completeness
 
-#### Step 18: Optional Deployment
+Verify deployment URL from script output (script will display live URL)
 
-Attempt GitHub Pages deployment:
-```bash
-if [ -n "$GITHUB_TOKEN" ] || [ -f ~/.ssh/id_ed25519 ]; then
-  bash /root/travel-planner/scripts/deploy-travel-plans.sh /root/travel-planner/travel-plan-{destination-slug}.html
-fi
+#### Step 18: Capture Live URL
+
+Extract and save the live URL from deploy script output:
+```
+https://{username}.github.io/travel-planner-graph/{destination-slug}/{date}/
 ```
 
-**If succeeds**: Capture live URL
-**If fails**: Silent graceful degradation (local file only)
+**This URL will be presented to user in Step 19.**
 
 #### Step 19: Present Final Plan
 

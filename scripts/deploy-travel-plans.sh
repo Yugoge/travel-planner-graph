@@ -28,16 +28,35 @@ fi
 FILENAME=$(basename "$INPUT_FILE")
 
 # Parse destination and date from filename
-# Expected format: travel-plan-{destination-slug}-{YYYY-MM-DD}.html
-if [[ ! "$FILENAME" =~ ^travel-plan-([a-z0-9-]+)-([0-9]{4}-[0-9]{2}-[0-9]{2})\.html$ ]]; then
-    echo "Error: Invalid filename format"
-    echo "Expected: travel-plan-{destination}-{YYYY-MM-DD}.html"
-    echo "Got: $FILENAME"
-    exit 1
-fi
+# Format 1: travel-plan-{destination-slug}-{YYYY-MM-DD}.html (itinerary)
+# Format 2: travel-plan-{destination-slug}-{YYYYMMDD-HHMMSS}.html (timestamped)
+# Format 3: travel-plan-{destination-slug}.html (bucket list, no specific date)
+# Format 4: Any format with version suffix: travel-plan-{...}-v2.html
 
-DESTINATION_SLUG="${BASH_REMATCH[1]}"
-PLAN_DATE="${BASH_REMATCH[2]}"
+# Remove version suffix if present
+BASE_FILENAME="${FILENAME%%-v[0-9]*.html}.html"
+BASE_FILENAME="${BASE_FILENAME##travel-plan-}"
+BASE_FILENAME="${BASE_FILENAME%.html}"
+
+# Try to extract date in various formats
+if [[ "$BASE_FILENAME" =~ -([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
+    # Format 1: Standard date format (YYYY-MM-DD)
+    PLAN_DATE="${BASH_REMATCH[1]}"
+    DESTINATION_SLUG="${BASE_FILENAME%-*}"
+elif [[ "$BASE_FILENAME" =~ -([0-9]{8}-[0-9]{6})$ ]]; then
+    # Format 2: Timestamp format (YYYYMMDD-HHMMSS)
+    TIMESTAMP="${BASH_REMATCH[1]}"
+    # Convert timestamp to date (YYYY-MM-DD)
+    YEAR="${TIMESTAMP:0:4}"
+    MONTH="${TIMESTAMP:4:2}"
+    DAY="${TIMESTAMP:6:2}"
+    PLAN_DATE="${YEAR}-${MONTH}-${DAY}"
+    DESTINATION_SLUG="${BASE_FILENAME%-*}"
+else
+    # Format 3: No date (bucket list)
+    PLAN_DATE=$(date +%Y-%m-%d)
+    DESTINATION_SLUG="${BASE_FILENAME}"
+fi
 
 echo "=================================================="
 echo "🚀 Deploying Travel Plan to GitHub Pages"

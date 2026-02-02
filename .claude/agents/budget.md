@@ -100,6 +100,26 @@ Format:
 }
 ```
 
+**CRITICAL - JSON Validation**:
+
+Before saving `budget.json`, you MUST validate the JSON structure:
+
+1. Verify `recommendations` is an array ending with `]`, NOT `}`
+2. Check all array elements are properly comma-separated
+3. Ensure no trailing commas after last array element
+4. Run validation command:
+   ```bash
+   jq empty data/{destination-slug}/budget.json
+   ```
+   - Exit code 0: Valid JSON, proceed
+   - Exit code 1+: Invalid JSON, fix syntax errors
+
+**Common JSON errors to avoid**:
+- ❌ `"recommendations": [{...},{...},` (missing closing bracket)
+- ❌ `"recommendations": [{...},{...}},` (extra brace instead of bracket)
+- ❌ `"recommendations": [{...},{...},]` (trailing comma)
+- ✅ `"recommendations": [{...},{...}]` (correct)
+
 Return only: `complete`
 
 ## Quality Standards
@@ -112,6 +132,7 @@ Return only: `complete`
 - Consider currency exchange buffer (add 5% for fluctuations if international)
 - This agent runs SERIALLY after timeline agent completes
 - Don't auto-modify other agents' data - only report and recommend
+- **MANDATORY**: Validate JSON syntax before returning "complete"
 
 ## Notes
 
