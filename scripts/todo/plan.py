@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Preloaded TodoList for /plan workflow."""
+"""Preloaded TodoList for /plan workflow.
+
+Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
+to support iterative day refinement until user confirms perfect.
+
+Updated to reflect current plan.md step numbering (Steps 0-20).
+"""
 
 def get_todos():
     return [
@@ -14,88 +20,98 @@ def get_todos():
             "status": "pending"
         },
         {
-            "content": "Step 2: BA Requirement Interview",
+            "content": "Step 2: Conduct Requirements Interview",
             "activeForm": "Step 2: Conducting Interview",
             "status": "pending"
         },
         {
-            "content": "Step 3: Validate Day Completion",
-            "activeForm": "Step 3: Validating Day Completion",
+            "content": "Step 3: Generate Requirements Skeleton",
+            "activeForm": "Step 3: Generating Requirements Skeleton",
             "status": "pending"
         },
         {
-            "content": "Step 4: Init Requirements Skeleton",
-            "activeForm": "Step 4: Initializing Requirements Skeleton",
+            "content": "Step 4: Generate Plan Slug",
+            "activeForm": "Step 4: Generating Plan Slug",
             "status": "pending"
         },
         {
-            "content": "Step 5: Init Plan Skeleton with Location Detection",
-            "activeForm": "Step 5: Initializing Plan Skeleton",
+            "content": "Step 5: Validate Day Completion",
+            "activeForm": "Step 5: Validating Day Completion",
             "status": "pending"
         },
         {
-            "content": "Step 6: Orchestrate Parallel Agents (6 agents)",
-            "activeForm": "Step 6: Orchestrating Parallel Agents",
+            "content": "Step 6: Initialize Plan Skeleton",
+            "activeForm": "Step 6: Initializing Plan Skeleton",
             "status": "pending"
         },
         {
-            "content": "Step 7: Orchestrate Serial Agents (timeline + budget)",
-            "activeForm": "Step 7: Orchestrating Serial Agents",
+            "content": "Step 7: Validate Location Continuity",
+            "activeForm": "Step 7: Validating Location Continuity",
             "status": "pending"
         },
         {
-            "content": "Step 8: Validate and Generate HTML",
-            "activeForm": "Step 8: Validating and Generating HTML",
+            "content": "Step 8: Invoke Parallel Agents (6 agents)",
+            "activeForm": "Step 8: Invoking Parallel Agents",
             "status": "pending"
         },
         {
-            "content": "Step 9: Present Plan and Offer Refinement",
-            "activeForm": "Step 9: Presenting Plan",
+            "content": "Step 9: Verify Agent Outputs",
+            "activeForm": "Step 9: Verifying Agent Outputs",
             "status": "pending"
         },
         {
-            "content": "Step 10: Wait for User Refinement Request",
-            "activeForm": "Step 10: Waiting for User Response",
+            "content": "Step 10: Invoke Timeline Agent (Serial)",
+            "activeForm": "Step 10: Invoking Timeline Agent",
             "status": "pending"
         },
         {
-            "content": "Step 11: Parse Refinement Request (day scope, domain, nature)",
-            "activeForm": "Step 11: Parsing Refinement Request",
+            "content": "Step 11: Validate Timeline Consistency",
+            "activeForm": "Step 11: Validating Timeline Consistency",
             "status": "pending"
         },
         {
-            "content": "Step 12: Classify Refinement Type (Type 1/2/3)",
-            "activeForm": "Step 12: Classifying Refinement Type",
+            "content": "Step 12: Invoke Budget Agent (Serial)",
+            "activeForm": "Step 12: Invoking Budget Agent",
             "status": "pending"
         },
         {
-            "content": "Step 13: Handle Type 3 Informational Query (if applicable)",
-            "activeForm": "Step 13: Handling Informational Query",
+            "content": "Step 13: Budget Gate Check",
+            "activeForm": "Step 13: Checking Budget Gate",
             "status": "pending"
         },
         {
-            "content": "Step 14: Build Refinement Context for Agent Delegation",
-            "activeForm": "Step 14: Building Refinement Context",
+            "content": "Step 14: Day-by-Day Refinement Loop (Nested Loop)",
+            "activeForm": "Step 14: Executing Day-by-Day Refinement",
             "status": "pending"
         },
         {
-            "content": "Step 15: Re-invoke Specialist Agent(s) with Day Scope",
-            "activeForm": "Step 15: Re-invoking Specialist Agents",
+            "content": "Step 15: Handle Day-Scoped Refinement",
+            "activeForm": "Step 15: Handling Day-Scoped Refinement",
             "status": "pending"
         },
         {
-            "content": "Step 16: Re-invoke Dependent Agents (timeline + budget)",
-            "activeForm": "Step 16: Re-invoking Dependent Agents",
+            "content": "Step 16: Generate and Deploy (Atomic)",
+            "activeForm": "Step 16: Generating and Deploying HTML",
             "status": "pending"
         },
         {
-            "content": "Step 17: Regenerate HTML with Version Suffix",
-            "activeForm": "Step 17: Regenerating HTML",
+            "content": "Step 17: Verify Generation and Deployment",
+            "activeForm": "Step 17: Verifying Generation and Deployment",
             "status": "pending"
         },
         {
-            "content": "Step 18: Present Updated Plan to User",
-            "activeForm": "Step 18: Presenting Updated Plan",
+            "content": "Step 18: Capture Live URL",
+            "activeForm": "Step 18: Capturing Live URL",
+            "status": "pending"
+        },
+        {
+            "content": "Step 19: Present Final Plan",
+            "activeForm": "Step 19: Presenting Final Plan",
+            "status": "pending"
+        },
+        {
+            "content": "Step 20: Handle User Refinements (Multi-turn Loop)",
+            "activeForm": "Step 20: Handling User Refinements",
             "status": "pending"
         }
     ]

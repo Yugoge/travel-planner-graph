@@ -368,7 +368,9 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/ch
 
 ### Phase 4: Validation and Conflict Review
 
-#### Step 14: Day-by-Day Refinement Loop
+#### Step 14: Day-by-Day Refinement Loop (Nested Loop Pattern)
+
+**Root Cause Reference**: Commit 77dca06 inherited linear day iteration without per-day cycling support. This step implements nested loop: OUTER loop for sequential day progression (1→2→3...→N), INNER loop for current day refinement until user confirms perfect.
 
 Read warnings from:
 - `data/{destination-slug}/timeline.json` → Check `warnings` array
@@ -378,105 +380,379 @@ Read warnings from:
 
 **If no warnings AND force_review=false**: Proceed to Phase 5
 
-**If warnings exist OR force_review=true**: Iterate through days with conflicts
+**If warnings exist OR force_review=true**: Execute nested loop refinement
 - When `force_review=true`, user CANNOT skip review (budget gate enforcement)
 - Present clear explanation: "Budget exceeds thresholds (see Step 13), day-by-day review is required"
 
-**Day Iteration Pattern**:
-1. Group warnings by day number
-2. Initialize tracking: `days_reviewed = []`, `days_pending = [list of days with warnings]`
-3. For each day in `days_pending` (sequential, NOT all at once):
-   - Extract warnings for current day only
-   - Present ONLY current day's warnings to user
-   - Offer options: Auto-fix | Manual adjustment | Skip day | Accept all remaining
-   - Process user choice (see Step 15)
-   - If not "Accept all": mark day reviewed, continue to next day
-   - If "Accept all": exit loop, proceed to Phase 5
-4. When all days reviewed or accepted: proceed to Phase 5
+---
 
-**Example Day Presentation** (present ONE day at a time):
+**NESTED LOOP PATTERN**:
+
+**OUTER LOOP - Sequential Day Progression**:
 ```
-**Day {N} Review** ({X} conflicts found):
+current_day_index = 1
+total_days = count of days with warnings (or all days if force_review=true)
 
-Timeline:
-- {Activity A} ({start_time}-{end_time}) overlaps {Activity B} ({start_time}-{end_time})
+while current_day_index <= total_days:
+    Execute INNER LOOP for current_day_index
+    If user confirms "Day is perfect": current_day_index += 1
+    If user chooses "Accept all remaining": break, proceed to Phase 5
+```
 
-Budget:
-- {Item} exceeds daily budget by {currency}{amount}
+**INNER LOOP - Current Day Refinement Cycle**:
+```
+day_confirmed_perfect = false
 
-Recommendation: {Specific recommendation based on conflicts}
+while not day_confirmed_perfect:
+    1. Extract current day data from all agent JSONs
+    2. Present COMPLETE day plan (MANDATORY format below)
+    3. Offer user options (see below)
+    4. Process user choice:
+       - "This day is perfect" → Set day_confirmed_perfect = true, exit INNER loop
+       - "Make changes to Day N" → Re-invoke agents (Step 15), stay in INNER loop
+       - "Accept all remaining" → Exit both loops, proceed to Phase 5
+    5. If changes made: Re-present Day N (loop continues)
+```
+
+---
+
+**MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
+
+**CRITICAL**: ALWAYS present complete day details regardless of budget status. Never omit content due to budget overage.
+
+```
+═══════════════════════════════════════════════
+**DAY {N} - {date}** ({location})
+═══════════════════════════════════════════════
+
+**📅 TIMELINE**:
+{hour_by_hour_timeline_dict}
+Example:
+- 08:00-09:00: Breakfast at {restaurant_name}, {address}
+- 09:30-11:30: Visit {attraction_name}, {location}
+- 12:00-13:00: Lunch at {restaurant_name}, {address}
+[... complete timeline with start/end times for all activities]
+
+**🍽️ MEALS**:
+- Breakfast: {name}, {address}, {cost} CNY
+- Lunch: {name}, {address}, {cost} CNY
+- Dinner: {name}, {address}, {cost} CNY
+
+**🎯 ATTRACTIONS**:
+- {attraction_name}: {location}, {duration} hours, {admission_fee} CNY
+- {attraction_name}: {location}, {duration} hours, {admission_fee} CNY
+[... all attractions with specific details]
+
+**🎭 ENTERTAINMENT**:
+- {activity_name}: {location}, {time}, {cost} CNY
+[... all entertainment activities with specifics]
+
+**💰 BUDGET BREAKDOWN**:
+- Meals: {amount} CNY
+- Accommodation: {amount} CNY
+- Activities: {amount} CNY
+- Transportation: {amount} CNY
+- Shopping: {amount} CNY
+- **Daily Total**: {total} CNY
+
+⚠️ **WARNINGS** (if any):
+- Timeline conflict: {specific_conflict_description}
+- Budget overage: {specific_overage_description}
+
+💡 **RECOMMENDATIONS** (if any):
+- {specific_recommendation_based_on_warnings}
+
+═══════════════════════════════════════════════
+**YOUR OPTIONS FOR DAY {N}**:
+
+1. ✅ This day is perfect, continue to Day {N+1}
+2. ✏️ Make changes to Day {N} (describe your adjustments)
+3. 🚀 Accept all remaining days as-is
+
+Please choose an option or describe specific changes you'd like.
+```
+
+---
+
+**STATE TRACKING**:
+- `current_day_index`: Which day in sequence (1 to total_days)
+- `day_confirmed_perfect`: Boolean flag for INNER loop exit
+- `iteration_count_per_day`: Limit 5 iterations per day before suggesting acceptance
+- `days_with_warnings`: Initial list of days requiring review
+
+**USER CHOICE PROCESSING**:
+
+**Option 1 - "This day is perfect"**:
+- Set `day_confirmed_perfect = true`
+- Exit INNER loop
+- OUTER loop increments `current_day_index += 1`
+- Present next day (if exists)
+
+**Option 2 - "Make changes to Day N"**:
+- Parse user's change request
+- Stay in INNER loop (do NOT increment day index)
+- Re-invoke agents (Step 15)
+- After agent completion, re-present Day N with INNER loop
+
+**Option 3 - "Accept all remaining"**:
+- Exit both OUTER and INNER loops
+- Proceed to Phase 5 immediately
+
+**REMOVED OPTION**: "Skip day" (user confirmed sequential-until-perfect pattern only)
+
+---
+
+**ITERATION SAFETY**:
+
+After 5 iterations on same day:
+```
+I notice we've refined Day {N} multiple times ({iteration_count} iterations).
+
+Current Day {N} state: [Show brief summary]
 
 Options:
-1. Auto-fix based on recommendation
-2. Tell me your preferred adjustment
-3. Skip Day {N} (review later)
-4. Accept all remaining days as-is
+1. Accept Day {N} as-is and continue to Day {N+1}
+2. Make one final adjustment to Day {N}
+3. Accept all remaining days
+
+Recommend: Review current state before additional changes.
 ```
 
-**After resolving Day {N}, present Day {N+1}** (if it has warnings):
+---
+
+**EXAMPLE EXECUTION FLOW**:
+
 ```
-**Day {N+1} Review** ({X} conflicts found):
+OUTER LOOP starts: current_day_index = 1
 
-Timeline:
-- {Conflict description}
+  INNER LOOP starts for Day 1:
+    → Present complete Day 1 plan
+    → User: "Make changes - add spa"
+    → Re-invoke entertainment-agent (Step 15)
+    → Re-present Day 1 with spa included
+    → User: "Make changes - change lunch to vegetarian"
+    → Re-invoke meals-agent (Step 15)
+    → Re-present Day 1 with new lunch
+    → User: "This day is perfect"
+    → day_confirmed_perfect = true
+  INNER LOOP exits
 
-Recommendation: {Specific recommendation}
+  current_day_index += 1 (now = 2)
 
-Options:
-1. Auto-fix based on recommendation
-2. Tell me your preferred adjustment
-3. Skip Day {N+1} (review later)
-4. Accept all remaining days as-is
-```
+  INNER LOOP starts for Day 2:
+    → Present complete Day 2 plan
+    → User: "This day is perfect"
+    → day_confirmed_perfect = true
+  INNER LOOP exits
 
-**Continue until all days reviewed or user accepts remaining**.
+  current_day_index += 1 (now = 3)
 
-#### Step 15: Handle Day-Scoped Refinement
-
-**For each day being refined** (one at a time from Step 14):
-
-Parse user choice:
-
-**Option 1 - Auto-fix**:
-- Extract day-specific recommendations from timeline.json and budget.json
-- Re-invoke relevant agents with day filter and specific instructions
-- Example prompt addition: "Focus ONLY on Day {N} (date {date}). Apply recommendation: {specific_recommendation}"
-
-**Option 2 - Manual adjustment**:
-- Parse user's specific adjustment request
-- Re-invoke agents with user's instructions scoped to current day
-- Example: "Change Day {N} {meal} to {dietary_preference} restaurant under {budget_limit}"
-
-**Option 3 - Skip day**:
-- Mark current day as skipped in tracking: `days_skipped.append(current_day)`
-- Continue to next day in `days_pending`
-- User can review skipped days later
-
-**Option 4 - Accept all remaining**:
-- Exit refinement loop immediately
-- Proceed to Phase 5 with current state
-
-**Re-invocation Pattern with Day Scope**:
-```
-Use Task tool with day filter:
-- subagent_type: relevant agent (meals-agent, timeline-agent, etc.)
-- prompt includes: "Focus ONLY on Day {N}, date {date}. {specific_instruction}"
-- Agent modifies only that day's data in their JSON file
-- Agent returns "complete"
-- Re-run validation scripts for that day only
-- Return to Step 14 day iteration loop
+[Continue until all days confirmed or user accepts all remaining]
 ```
 
-**Tracking State**:
-- `days_reviewed`: Successfully processed days
-- `days_pending`: Days with warnings not yet reviewed
-- `days_skipped`: Days user chose to skip
-- `iteration_count`: Limit to 3 major refinement iterations per day
+---
 
-**Exit Conditions**:
-- All days in `days_pending` reviewed or skipped
+**EXIT CONDITIONS**:
+- All days confirmed perfect (current_day_index > total_days)
 - User selects "Accept all remaining"
-- `iteration_count` exceeds 3 for current day (warn user, suggest accepting)
+- Then proceed to Phase 5
+
+#### Step 15: Handle Day-Scoped Refinement (Re-invoke Agents)
+
+**CRITICAL**: This step handles "Make changes to Day N" option from Step 14 INNER loop. After agent re-invocation and validation, **RETURN TO STEP 14 INNER LOOP** to re-present the current day. Do NOT auto-advance to next day.
+
+**Root Cause Reference**: Commit 77dca06's linear design advanced to next day after changes. Nested loop requires returning to INNER loop for same day until user confirms perfect.
+
+---
+
+**When user selects "Make changes to Day N"** from Step 14:
+
+Parse user's change request to extract:
+- **Domain affected**: Which agent? (meals, attractions, entertainment, shopping, transportation)
+- **Specific instruction**: What exactly to change/add/remove?
+- **Constraints**: Budget limits, time constraints, preferences
+
+---
+
+**RE-INVOCATION PATTERN (Day-Scoped)**:
+
+**Step 15.1: Identify Affected Agent(s)**
+
+Map user request to domain agent(s):
+- "add spa", "nightlife", "娱乐" → entertainment-agent
+- "restaurant", "meal", "breakfast", "lunch", "dinner" → meals-agent
+- "attraction", "景点", "museum", "temple" → attractions-agent
+- "shopping", "mall", "购物" → shopping-agent
+- "hotel", "accommodation" → accommodation-agent
+- "train", "flight", "transportation" → transportation-agent
+
+**Step 15.2: Re-invoke Specialist Agent with Day Filter**
+
+```
+Use Task tool with:
+- subagent_type: "{domain}-agent"
+- description: "Day {N} refinement: {user_request}"
+- model: "sonnet"
+- prompt: "
+  **DAY-SCOPED REFINEMENT REQUEST**
+
+  Focus ONLY on: Day {N}, Date {date}, Location {location}
+
+  User's change request: {user's original text}
+
+  Read existing data from:
+  - data/{destination-slug}/requirements-skeleton.json
+  - data/{destination-slug}/plan-skeleton.json
+  - data/{destination-slug}/{domain}.json (your previous output)
+  - data/{destination-slug}/budget.json (for Day {N} budget constraints)
+  - data/{destination-slug}/timeline.json (for Day {N} schedule)
+
+  YOUR TASK:
+  1. Research NEW options OR adjust existing items for Day {N} only
+     - Use MCP tools: google-maps, gaode-maps, rednote, etc.
+     - DO NOT use placeholder data
+  2. Update {domain}.json for Day {N} ONLY
+     - MODIFY/ADD/REMOVE items for Day {N} as requested
+     - PRESERVE data for all other days unchanged
+  3. Return ONLY: complete
+
+  SPECIFIC INSTRUCTION: {parsed_user_instruction}
+
+  Budget constraint for Day {N}: {remaining_budget} CNY
+  Timeline constraint: {available_time_slots}
+  User preferences: {preferences_from_requirements}
+  "
+```
+
+Wait for agent to return "complete".
+
+**Step 15.3: Re-invoke Dependent Agents (Timeline + Budget)**
+
+After specialist agent completes, **ALWAYS** re-invoke timeline and budget agents:
+
+**Timeline Agent**:
+```
+Use Task tool with:
+- subagent_type: "timeline-agent"
+- description: "Recalculate timeline for Day {N}"
+- model: "sonnet"
+- prompt: "
+  Re-read ALL agent outputs for Day {N}:
+  - data/{destination-slug}/meals.json (Day {N})
+  - data/{destination-slug}/attractions.json (Day {N})
+  - data/{destination-slug}/entertainment.json (Day {N}) [UPDATED]
+  - data/{destination-slug}/shopping.json (Day {N})
+  - data/{destination-slug}/transportation.json (Day {N})
+
+  Recalculate timeline ONLY for Day {N}.
+  Update data/{destination-slug}/timeline.json (Day {N} section only).
+  Detect any new conflicts.
+
+  Return ONLY: complete
+  "
+```
+
+**Budget Agent**:
+```
+Use Task tool with:
+- subagent_type: "budget-agent"
+- description: "Recalculate budget for Day {N}"
+- model: "sonnet"
+- prompt: "
+  Re-read ALL agent outputs for Day {N} including updated timeline.
+  Recalculate budget ONLY for Day {N}.
+  Update data/{destination-slug}/budget.json (Day {N} section only).
+  Check for new overages or warnings.
+
+  Return ONLY: complete
+  "
+```
+
+Wait for both agents to return "complete".
+
+---
+
+**Step 15.4: Validation (Day-Scoped)**
+
+Run day-scoped validation:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-day-changes.py /root/travel-planner/data/{destination-slug} {day_number}
+```
+
+**Exit code 0**: Changes valid → Proceed to Step 15.5
+**Exit code 1**: Validation errors → Review and fix before proceeding
+
+---
+
+**Step 15.5: Return to Step 14 INNER LOOP**
+
+**CRITICAL**: Do NOT advance to next day. Return to Step 14 INNER loop to re-present the SAME day (Day N) with updated data.
+
+```
+Increment iteration_count_per_day
+Return to Step 14 INNER LOOP:
+  → Extract updated Day {N} data from all JSONs
+  → Present complete Day {N} plan (with changes applied)
+  → Offer same options:
+    1. This day is perfect, continue to Day {N+1}
+    2. Make changes to Day {N} (stays in INNER loop)
+    3. Accept all remaining days
+```
+
+**User must explicitly choose "This day is perfect" to exit INNER loop and advance to Day N+1.**
+
+---
+
+**TRACKING STATE**:
+- `iteration_count_per_day`: Increments after each re-invocation for same day
+- `current_day_index`: Does NOT change during INNER loop iterations
+- `agents_invoked_for_day`: Track which agents modified this day
+
+**ITERATION LIMIT**:
+After 5 iterations on same day, present safety warning (see Step 14).
+
+---
+
+**EXAMPLE EXECUTION FLOW**:
+
+```
+Step 14 INNER LOOP - Day 3:
+  → Present complete Day 3 plan
+  → User: "Make changes - add spa"
+
+Step 15 (this step):
+  → Parse: domain=entertainment, instruction="add spa"
+  → Re-invoke entertainment-agent for Day 3
+  → Re-invoke timeline-agent for Day 3
+  → Re-invoke budget-agent for Day 3
+  → Validate Day 3 changes
+  → Return to Step 14 INNER LOOP
+
+Step 14 INNER LOOP - Day 3 (re-presentation):
+  → Present complete Day 3 plan WITH spa included
+  → User: "Make changes - change lunch to vegetarian"
+
+Step 15 (this step again):
+  → Parse: domain=meals, instruction="change lunch to vegetarian"
+  → Re-invoke meals-agent for Day 3
+  → Re-invoke timeline-agent for Day 3
+  → Re-invoke budget-agent for Day 3
+  → Validate Day 3 changes
+  → Return to Step 14 INNER LOOP
+
+Step 14 INNER LOOP - Day 3 (re-presentation):
+  → Present complete Day 3 plan WITH spa AND vegetarian lunch
+  → User: "This day is perfect"
+  → day_confirmed_perfect = true
+  → Exit INNER loop, increment current_day_index to 4
+
+Step 14 OUTER LOOP:
+  → Move to Day 4, start new INNER loop
+```
+
+---
+
+**KEY PRINCIPLE**: Step 15 is a subroutine of Step 14 INNER loop. After completing agent re-invocations and validations, **ALWAYS return to Step 14 INNER loop for same day**, never auto-advance.
 
 ---
 

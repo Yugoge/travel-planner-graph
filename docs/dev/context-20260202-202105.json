@@ -1,0 +1,114 @@
+{
+  "request_id": "dev-20260202-202105",
+  "timestamp": "2026-02-02T20:21:05Z",
+  "requirement": {
+    "original": "出现了系统性故障，我的原始需求是将todo得step最后refine的时候设计成一天一天地循环审阅，不应该是线性的，应该是循环的。告诉我你的修复方案。同时我要审核每一天不要因为预算问题就省略一整天的内容",
+    "clarified": "Fix /plan command Step 14 refinement workflow to support iterative day-by-day review where each day can be reviewed multiple times until perfect, and always show complete day details (timeline, meals, attractions, entertainment, budget) regardless of budget status",
+    "what": "Transform Step 14 from linear 'review all days once' to cyclic 'review each day until perfect, then proceed to next day'",
+    "why": "User expects to be able to refine Day 1 multiple times before moving to Day 2, but current implementation only allows one pass through all days. Also, initial Day 1 presentation omitted complete details and only showed budget summary.",
+    "where": [
+      ".claude/commands/plan.md - Step 14 (Day-by-Day Refinement Loop)",
+      ".claude/commands/plan.md - Step 15 (Handle Day-Scoped Refinement)"
+    ],
+    "scope": {
+      "included": [
+        "Redesign Step 14 day iteration pattern to support per-day cycling",
+        "Add 'Review current day again' option to allow iterative refinement",
+        "Mandate complete day presentation format (timeline + meals + attractions + entertainment + budget)",
+        "Ensure budget warnings don't skip complete content display",
+        "Add state tracking for current_day_index to support sequential progression with per-day loops"
+      ],
+      "excluded": [
+        "Random day jumping (Day 10 → Day 3) - user confirmed sequential only",
+        "Changes to Phase 1-3 (requirement collection, skeleton init, agent orchestration)",
+        "Changes to Step 20 (post-HTML refinement) - that's separate from Step 14",
+        "Budget calculation logic itself"
+      ]
+    },
+    "success_criteria": [
+      "User can review Day 1 → make changes → review Day 1 again → repeat until satisfied → then proceed to Day 2",
+      "Each day presentation includes: timeline dict, specific meal names/addresses, attraction details, entertainment specifics, budget breakdown",
+      "User explicitly confirms 'Day N is perfect' before moving to Day N+1",
+      "No day content is omitted due to budget overage",
+      "Sequential progression maintained (Day 1 → Day 2 → Day 3...), no random jumping",
+      "User can decide 'this day is perfect, continue to next day' at any point"
+    ],
+    "constraints": [
+      "Must preserve existing agent delegation architecture (no manual research by orchestrator)",
+      "Must maintain backward compatibility with budget gate (Step 13) forcing review when overage exceeds thresholds",
+      "Must track state across turns (current day index, days completed)",
+      "Sequential only - no jumping back to previous days after moving forward"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User said '一天一天审核' expecting to refine Day 1 until perfect before Day 2, but system showed Day 1 budget summary and asked 'continue to Day 2?'",
+    "root_cause": "Step 14 (lines 371-432 in plan.md) designed as single-pass linear iteration: 'for each day with warnings, present once, then move to next'. No support for cycling back to same day after changes.",
+    "root_cause_commit": "77dca06 - fix: Remove hardcoding and clarify /plan refinement workflow",
+    "why_introduced": "Commit 77dca06 fixed orchestrator boundaries and hardcoding issues, but inherited linear day iteration from previous design. Step 14 lines 388-395 show 'For each day in days_pending (sequential, NOT all at once)' but no mechanism for repeating current day.",
+    "why_problematic": "Linear pattern assumptions: (1) User reviews day once and moves on, (2) After agent re-invocation, immediately proceed to next day, (3) No 'review current day again' option, (4) Presentation format not mandated - orchestrator showed budget-only on Day 1 instead of complete details",
+    "timeline": "Issue existed since Step 14 introduction. User discovered when using /plan for 21-day China trip and wanted to refine Day 1 multiple times.",
+    "affected_files": [
+      ".claude/commands/plan.md (Step 14 lines 371-432, Step 15 lines 434-478)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory clean, previous session generated china-feb-15-mar-7-2026-20260202-195429 plan",
+    "recent_commits": [
+      "f961ff2 checkpoint: Auto-save at 2026-02-02 05:43:29",
+      "77dca06 fix: Remove hardcoding and clarify /plan refinement workflow"
+    ],
+    "file_contents": {
+      "plan.md_step14": "Step 14 shows linear iteration: 'For each day in days_pending (sequential, NOT all at once): Extract warnings → Present day → Process choice → If not Accept all: mark reviewed, continue to next day'. No loop back to current day after agent invocation.",
+      "plan.md_step15": "Step 15 handles user choice per day: Auto-fix | Manual | Skip | Accept all. After agent re-invocation, 'Return to Step 14 day iteration loop' - which moves to NEXT day, not re-present current day."
+    },
+    "current_issue_context": {
+      "user_action": "User requested day-by-day review, orchestrator presented Day 1 with budget summary only, user said '保持原计划，但是为什么你不给我第一天一整天的计划', then orchestrator showed complete Day 1, user confirmed '按照顺序，但是每一天都可以重复审阅，直到那一天完美'",
+      "what_went_wrong": "Orchestrator interpreted Step 14 as 'present day warnings' not 'present complete day plan'. Then offered linear progression to Day 2 instead of cycling on Day 1."
+    }
+  },
+  "development_approach": {
+    "strategy": "Redesign Step 14 as nested loop: OUTER loop (days 1-21 sequential), INNER loop (current day refinement until user confirms perfect). Mandate complete day presentation format. Add explicit 'Review this day again' option after agent changes. Update todo script to reflect new step numbering.",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/commands/plan.md - Step 14 (replace linear iteration with nested loop pattern)",
+      ".claude/commands/plan.md - Step 15 (add return-to-current-day path after agent invocation)",
+      "scripts/todo/plan.py - Update todo steps to match new refinement workflow"
+    ],
+    "changes_required": {
+      "step_14_changes": [
+        "Replace 'For each day in days_pending' with 'current_day_index = 1; while current_day_index <= total_days'",
+        "Add INNER LOOP: 'while not day_confirmed_perfect'",
+        "Mandate complete day presentation: timeline (with times), meals (with names/addresses), attractions (with details), entertainment (with specifics), budget breakdown",
+        "Add 'This day is perfect, continue to Day N+1' option",
+        "Add 'Make changes to Day N' option which stays in inner loop",
+        "Only increment current_day_index when user confirms day is perfect",
+        "Remove 'Skip day' option (user wants sequential until perfect)",
+        "Keep 'Accept all remaining' option for bulk approval"
+      ],
+      "step_15_changes": [
+        "After agent re-invocation and validation, return to Step 14 INNER LOOP (re-present current day)",
+        "Do NOT auto-advance to next day after changes",
+        "User must explicitly confirm 'day is perfect' to exit inner loop"
+      ],
+      "presentation_format": [
+        "ALWAYS include: Hour-by-hour timeline, Specific meal names with addresses and costs, Attraction names with locations/durations/fees, Entertainment activities with details, Budget breakdown",
+        "Show warnings/recommendations separately AFTER complete content",
+        "Never skip content due to budget overage"
+      ]
+    },
+    "validation_approach": "QA will verify: (1) Step 14 has nested loop structure, (2) Complete day format mandated in documentation, (3) 'Review again' path exists after agent changes, (4) Sequential progression with per-day cycling supported, (5) No content omission due to budget"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "additional_standards": [
+      "Preserve orchestrator boundaries (no manual research)",
+      "Maintain agent delegation pattern",
+      "Document nested loop clearly with examples",
+      "Use placeholders like {N}, {date}, {destination-slug} not hardcoded values"
+    ]
+  }
+}

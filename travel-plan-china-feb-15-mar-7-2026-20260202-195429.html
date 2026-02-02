@@ -316,6 +316,49 @@
       text-decoration: underline;
     }
 
+    .skill-icons {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: 8px;
+      align-items: center;
+    }
+
+    .skill-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      border: 1px solid var(--color-neutral);
+      color: white;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-size: 0.7rem;
+    }
+
+    .skill-icon-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .skill-icon-btn.google-maps {
+      background: #4285F4;
+    }
+
+    .skill-icon-btn.gaode-maps {
+      background: #00A862;
+    }
+
+    .skill-icon-btn.rednote {
+      background: #FF2442;
+    }
+
+    .skill-icon-btn.airbnb {
+      background: #FF5A5F;
+    }
+
     footer {
       text-align: center;
       padding: var(--space-xl) 0;
@@ -470,7 +513,7 @@
     </div>
 
     <footer>
-      <p>Generated on 2026-02-02 20:09 | Travel Planner Dashboard</p>
+      <p>Generated on 2026-02-02 20:28 | Travel Planner Dashboard</p>
     </footer>
   </div>
 
@@ -493,6 +536,41 @@
       '#D4AF37', '#8B7355', '#D4A574', '#B5695F', '#8FAF7A',
       '#C9A86A', '#A67B5B', '#E8C5A5', '#9B7357', '#B8956A'
     ];
+
+    const SKILL_ICON_MAPPING = {
+      'google-maps': { icon: 'fa-map-marked-alt', class: 'google-maps' },
+      'gaode-maps': { icon: 'fa-map-pin', class: 'gaode-maps' },
+      'rednote': { icon: 'fa-book-open', class: 'rednote' },
+      'airbnb': { icon: 'fa-home', class: 'airbnb' }
+    };
+
+    function renderSkillIcons(searchResults) {
+      if (!searchResults || !Array.isArray(searchResults) || searchResults.length === 0) {
+        return '';
+      }
+
+      const uniqueUrls = new Map();
+      searchResults.forEach(result => {
+        if (result.url && !uniqueUrls.has(result.url)) {
+          uniqueUrls.set(result.url, result);
+        }
+      });
+
+      if (uniqueUrls.size === 0) return '';
+
+      let html = '<span class="skill-icons">';
+      uniqueUrls.forEach(result => {
+        const mapping = SKILL_ICON_MAPPING[result.skill];
+        if (mapping) {
+          html += `<a href="${result.url}" target="_blank" class="skill-icon-btn ${mapping.class}" title="${result.display_text || result.skill}">`;
+          html += `<i class="fas ${mapping.icon}"></i>`;
+          html += '</a>';
+        }
+      });
+      html += '</span>';
+
+      return html;
+    }
 
     const CATEGORY_MAPPINGS = {
       attraction_types: {
@@ -858,7 +936,8 @@
                   city.attractions.forEach(attr => {
                     if (attr.type === typeCode) {
                       const formattedAddress = attr.location || attr.address || attr.how_to_get_there;
-                      content += '<div class="activity-card"><h4>' + attr.name + '</h4>';
+                      const skillIcons = renderSkillIcons(attr.search_results);
+                      content += '<div class="activity-card"><h4>' + attr.name + skillIcons + '</h4>';
                       content += '<p style="color: var(--color-secondary);"><i class="fas fa-city"></i> ' + city.city + '</p>';
                       if (formattedAddress) content += '<p><i class="fas fa-map-marker-alt"></i> ' + formattedAddress + '</p>';
                       if (attr.description) content += '<p>' + attr.description + '</p>';
@@ -941,8 +1020,9 @@
         day.attractions.forEach(attr => {
           const formattedAddress = formatAddress(attr.location || attr.address);
           const formattedType = formatCategoryLabel(attr.type, 'attraction');
+          const skillIcons = renderSkillIcons(attr.search_results);
           html += `<div class="activity-card">
-            <h4>${attr.name}</h4>
+            <h4>${attr.name}${skillIcons}</h4>
             <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
             <p class="cost"><i class="fas fa-euro-sign"></i> €${attr.cost_eur || attr.cost || 0}</p>
             ${formattedType ? `<span class="type-badge">${formattedType}</span>` : ''}
@@ -957,8 +1037,9 @@
         if (day.accommodation && day.accommodation.name) {
           const formattedAddress = formatAddress(day.accommodation.location || day.accommodation.address);
           const formattedCategory = formatCategoryLabel(day.accommodation.category, 'hotel');
+          const skillIcons = renderSkillIcons(day.accommodation.search_results);
           html += `<div class="activity-card">
-            <h4>${day.accommodation.name}</h4>
+            <h4>${day.accommodation.name}${skillIcons}</h4>
             <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
             ${formattedCategory ? `<p><i class="fas fa-star"></i> ${formattedCategory}</p>` : ''}
             <p class="cost"><i class="fas fa-euro-sign"></i> €${day.accommodation.cost_eur || 0}</p>
@@ -974,8 +1055,9 @@
           if (day[meal] && day[meal].name) {
             const formattedAddress = formatAddress(day[meal].location || day[meal].address);
             const formattedCategory = formatCategoryLabel(day[meal].category || day[meal].type, 'restaurant');
+            const skillIcons = renderSkillIcons(day[meal].search_results);
             html += `<div class="activity-card">
-              <h4>${meal.charAt(0).toUpperCase() + meal.slice(1)}: ${day[meal].name}</h4>
+              <h4>${meal.charAt(0).toUpperCase() + meal.slice(1)}: ${day[meal].name}${skillIcons}</h4>
               <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
               ${formattedCategory ? `<p><i class="fas fa-tag"></i> ${formattedCategory}</p>` : ''}
               <p class="cost"><i class="fas fa-euro-sign"></i> €${day[meal].cost_eur || day[meal].cost || 0}</p>
@@ -991,11 +1073,28 @@
         day.entertainment.forEach(ent => {
           const formattedAddress = formatAddress(ent.location || ent.address);
           const formattedType = formatCategoryLabel(ent.type, 'entertainment');
+          const skillIcons = renderSkillIcons(ent.search_results);
           html += `<div class="activity-card">
-            <h4>${ent.name}</h4>
+            <h4>${ent.name}${skillIcons}</h4>
             <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
             ${ent.description ? `<p>${ent.description}</p>` : ''}
             ${formattedType ? `<span class="type-badge">${formattedType}</span>` : ''}
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      if (day.shopping && day.shopping.length > 0) {
+        html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-shopping-bag"></i> Shopping</h4>';
+        html += '<div class="activity-grid">';
+        day.shopping.forEach(shop => {
+          const formattedAddress = formatAddress(shop.location || shop.address);
+          const skillIcons = renderSkillIcons(shop.search_results);
+          html += `<div class="activity-card">
+            <h4>${shop.name}${skillIcons}</h4>
+            <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
+            ${shop.description ? `<p>${shop.description}</p>` : ''}
+            ${shop.type ? `<span class="type-badge">${shop.type}</span>` : ''}
           </div>`;
         });
         html += '</div>';
@@ -1013,8 +1112,9 @@
         city.attractions.forEach(attr => {
           const formattedAddress = attr.location || attr.address || attr.how_to_get_there;
           const formattedType = formatCategoryLabel(attr.type, 'attraction');
+          const skillIcons = renderSkillIcons(attr.search_results);
           html += `<div class="activity-card">
-            <h4>${attr.name}</h4>
+            <h4>${attr.name}${skillIcons}</h4>
             ${formattedAddress ? `<p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>` : ''}
             ${attr.description ? `<p>${attr.description}</p>` : ''}
             ${attr.ticket_price_eur ? `<p class="cost"><i class="fas fa-ticket-alt"></i> €${attr.ticket_price_eur}</p>` : ''}
@@ -1030,8 +1130,9 @@
         city.hotels.forEach(hotel => {
           const formattedAddress = hotel.location || hotel.address;
           const formattedCategory = formatCategoryLabel(hotel.category, 'hotel');
+          const skillIcons = renderSkillIcons(hotel.search_results);
           html += '<div class="activity-card">';
-          html += '<h4>' + hotel.name + '</h4>';
+          html += '<h4>' + hotel.name + skillIcons + '</h4>';
           if (formattedAddress) html += '<p><i class="fas fa-map-marker-alt"></i> ' + formattedAddress + '</p>';
           if (formattedCategory) html += '<p><i class="fas fa-star"></i> ' + formattedCategory + '</p>';
           if (hotel.price_per_night_eur) html += '<p class="cost"><i class="fas fa-euro-sign"></i> €' + hotel.price_per_night_eur + '/night</p>';
@@ -1054,8 +1155,9 @@
         city.restaurants.forEach(rest => {
           const formattedAddress = rest.location || rest.address;
           const formattedCategory = formatCategoryLabel(rest.category || rest.type, 'restaurant');
+          const skillIcons = renderSkillIcons(rest.search_results);
           html += `<div class="activity-card">
-            <h4>${rest.name}</h4>
+            <h4>${rest.name}${skillIcons}</h4>
             ${rest.cuisine ? `<p><i class="fas fa-bowl-food"></i> ${rest.cuisine}</p>` : ''}
             ${formattedCategory ? `<p><i class="fas fa-tag"></i> ${formattedCategory}</p>` : ''}
             <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
@@ -1070,11 +1172,28 @@
         city.entertainment.forEach(ent => {
           const formattedAddress = formatAddress(ent.address || ent.location);
           const formattedType = formatCategoryLabel(ent.type, 'entertainment');
+          const skillIcons = renderSkillIcons(ent.search_results);
           html += `<div class="activity-card">
-            <h4>${ent.name}</h4>
+            <h4>${ent.name}${skillIcons}</h4>
             <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
             ${ent.description ? `<p>${ent.description}</p>` : ''}
             ${formattedType ? `<span class="type-badge">${formattedType}</span>` : ''}
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      if (city.shopping && city.shopping.length > 0) {
+        html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-shopping-bag"></i> Shopping</h4>';
+        html += '<div class="activity-grid">';
+        city.shopping.forEach(shop => {
+          const formattedAddress = formatAddress(shop.address || shop.location);
+          const skillIcons = renderSkillIcons(shop.search_results);
+          html += `<div class="activity-card">
+            <h4>${shop.name}${skillIcons}</h4>
+            <p><i class="fas fa-map-marker-alt"></i> ${formattedAddress}</p>
+            ${shop.description ? `<p>${shop.description}</p>` : ''}
+            ${shop.type ? `<span class="type-badge">${shop.type}</span>` : ''}
           </div>`;
         });
         html += '</div>';
