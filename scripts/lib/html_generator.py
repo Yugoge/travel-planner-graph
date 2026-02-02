@@ -571,6 +571,81 @@ class TravelPlanHTMLGenerator:
       '#C9A86A', '#A67B5B', '#E8C5A5', '#9B7357', '#B8956A'
     ];
 
+    const CATEGORY_MAPPINGS = {{
+      attraction_types: {{
+        'historical_site': 'Historical Site / 历史遗址',
+        'museum': 'Museum / 博物馆',
+        'temple': 'Temple / 寺庙',
+        'natural_scenery': 'Natural Scenery / 自然景观',
+        'park': 'Park / 公园',
+        'cultural_experience': 'Cultural Experience / 文化体验',
+        'ancient_architecture': 'Ancient Architecture / 古建筑',
+        'modern_landmark': 'Modern Landmark / 现代地标',
+        'unesco_heritage': 'UNESCO Heritage / 世界遗产',
+        'scenic_spot': 'Scenic Spot / 风景名胜',
+        'night_view': 'Night View / 夜景',
+        'street_food': 'Street Food Area / 美食街',
+        'shopping_district': 'Shopping District / 购物区'
+      }},
+      hotel_categories: {{
+        'budget': 'Budget Hotel / 经济型酒店',
+        'mid-range': 'Mid-Range Hotel / 中档酒店',
+        'high-end': 'High-End Hotel / 高档酒店',
+        'luxury': 'Luxury Hotel / 豪华酒店',
+        'boutique': 'Boutique Hotel / 精品酒店',
+        'hostel': 'Hostel / 青年旅社',
+        'guesthouse': 'Guesthouse / 民宿'
+      }},
+      restaurant_categories: {{
+        'local': 'Local Cuisine / 本地菜',
+        'street_food': 'Street Food / 街头小吃',
+        'fine_dining': 'Fine Dining / 高级餐厅',
+        'casual': 'Casual Dining / 休闲餐厅',
+        'fast_food': 'Fast Food / 快餐',
+        'vegetarian': 'Vegetarian / 素食',
+        'halal': 'Halal / 清真',
+        'international': 'International / 国际美食',
+        'cafe': 'Café / 咖啡馆',
+        'teahouse': 'Teahouse / 茶馆'
+      }},
+      entertainment_types: {{
+        'show': 'Show / 演出',
+        'nightlife': 'Nightlife / 夜生活',
+        'bar': 'Bar / 酒吧',
+        'club': 'Club / 夜店',
+        'karaoke': 'Karaoke / KTV',
+        'theater': 'Theater / 剧院',
+        'cinema': 'Cinema / 电影院',
+        'live_music': 'Live Music / 现场音乐'
+      }}
+    }};
+
+    function formatCategoryLabel(code, type) {{
+      if (!code) return '';
+
+      let mapping;
+      if (type === 'attraction') {{
+        mapping = CATEGORY_MAPPINGS.attraction_types;
+      }} else if (type === 'hotel') {{
+        mapping = CATEGORY_MAPPINGS.hotel_categories;
+      }} else if (type === 'restaurant') {{
+        mapping = CATEGORY_MAPPINGS.restaurant_categories;
+      }} else if (type === 'entertainment') {{
+        mapping = CATEGORY_MAPPINGS.entertainment_types;
+      }} else {{
+        return code;
+      }}
+
+      return mapping[code] || code;
+    }}
+
+    function formatAddress(address) {{
+      if (!address || address === null || address === 'null' || address.trim() === '') {{
+        return 'Address not available / 地址未提供';
+      }}
+      return address;
+    }}
+
     function init() {{
       renderHeader();
       renderTabs();
@@ -623,8 +698,8 @@ class TravelPlanHTMLGenerator:
     function renderStats() {{
       let stats = [];
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
-        const totalBudget = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget?.total || 0), 0);
-        const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions?.length || 0), 0);
+        const totalBudget = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget && day.budget.total || 0), 0);
+        const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions && day.attractions.length || 0), 0);
         const uniqueCities = new Set(PLAN_DATA.days.map(d => d.location)).size;
         stats = [
           {{ icon: 'fa-calendar-days', label: 'Days', value: PLAN_DATA.days.length }},
@@ -633,12 +708,12 @@ class TravelPlanHTMLGenerator:
           {{ icon: 'fa-city', label: 'Cities', value: uniqueCities }}
         ];
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
-        const totalAttractions = PLAN_DATA.cities.reduce((sum, city) => sum + (city.attractions?.length || 0), 0);
+        const totalAttractions = PLAN_DATA.cities.reduce((sum, city) => sum + (city.attractions && city.attractions.length || 0), 0);
         stats = [
           {{ icon: 'fa-city', label: 'Cities', value: PLAN_DATA.cities.length }},
           {{ icon: 'fa-landmark', label: 'Attractions', value: totalAttractions }},
-          {{ icon: 'fa-hotel', label: 'Hotels', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.hotels?.length || 0), 0) }},
-          {{ icon: 'fa-utensils', label: 'Restaurants', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.restaurants?.length || 0), 0) }}
+          {{ icon: 'fa-hotel', label: 'Hotels', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.hotels && c.hotels.length || 0), 0) }},
+          {{ icon: 'fa-utensils', label: 'Restaurants', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.restaurants && c.restaurants.length || 0), 0) }}
         ];
       }}
 
@@ -665,7 +740,7 @@ class TravelPlanHTMLGenerator:
 
       PLAN_DATA.days.forEach(day => {{
         const city = day.location;
-        budgetByCity[city] = (budgetByCity[city] || 0) + (day.budget?.total || 0);
+        budgetByCity[city] = (budgetByCity[city] || 0) + (day.budget && day.budget.total || 0);
 
         if (day.attractions) {{
           day.attractions.forEach(attr => {{
@@ -749,7 +824,7 @@ class TravelPlanHTMLGenerator:
       const attractionTypes = {{}};
 
       PLAN_DATA.cities.forEach(city => {{
-        attractionsByCity[city.city] = city.attractions?.length || 0;
+        attractionsByCity[city.city] = city.attractions && city.attractions.length || 0;
 
         if (city.attractions) {{
           city.attractions.forEach(attr => {{
@@ -879,44 +954,68 @@ class TravelPlanHTMLGenerator:
     function renderDayContent(day) {{
       let html = '';
 
-      if (day.attractions?.length > 0) {{
+      if (day.attractions && day.attractions.length > 0) {{
         html += '<h4 style="color: var(--color-accent); margin-bottom: 1rem;"><i class="fas fa-landmark"></i> Attractions</h4>';
         html += '<div class="activity-grid">';
         day.attractions.forEach(attr => {{
+          const formattedAddress = formatAddress(attr.location || attr.address);
+          const formattedType = formatCategoryLabel(attr.type, 'attraction');
           html += `<div class="activity-card">
             <h4>${{attr.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{attr.location || 'N/A'}}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
             <p class="cost"><i class="fas fa-euro-sign"></i> €${{attr.cost_eur || attr.cost || 0}}</p>
-            <span class="type-badge">${{attr.type || 'general'}}</span>
+            ${{formattedType ? `<span class="type-badge">${{formattedType}}</span>` : ''}}
           </div>`;
         }});
         html += '</div>';
       }}
 
-      if (day.hotels?.length > 0 || day.accommodation?.name) {{
+      if (day.hotels && day.hotels.length > 0 || day.accommodation && day.accommodation.name) {{
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-hotel"></i> Accommodation</h4>';
         html += '<div class="activity-grid">';
-        if (day.accommodation?.name) {{
+        if (day.accommodation && day.accommodation.name) {{
+          const formattedAddress = formatAddress(day.accommodation.location || day.accommodation.address);
+          const formattedCategory = formatCategoryLabel(day.accommodation.category, 'hotel');
           html += `<div class="activity-card">
             <h4>${{day.accommodation.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{day.accommodation.location || 'N/A'}}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{formattedCategory ? `<p><i class="fas fa-star"></i> ${{formattedCategory}}</p>` : ''}}
             <p class="cost"><i class="fas fa-euro-sign"></i> €${{day.accommodation.cost_eur || 0}}</p>
           </div>`;
         }}
         html += '</div>';
       }}
 
-      if (day.restaurants?.length > 0 || day.breakfast?.name || day.lunch?.name || day.dinner?.name) {{
+      if (day.restaurants && day.restaurants.length > 0 || day.breakfast && day.breakfast.name || day.lunch && day.lunch.name || day.dinner && day.dinner.name) {{
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-utensils"></i> Dining</h4>';
         html += '<div class="activity-grid">';
         ['breakfast', 'lunch', 'dinner'].forEach(meal => {{
-          if (day[meal]?.name) {{
+          if (day[meal] && day[meal].name) {{
+            const formattedAddress = formatAddress(day[meal].location || day[meal].address);
+            const formattedCategory = formatCategoryLabel(day[meal].category || day[meal].type, 'restaurant');
             html += `<div class="activity-card">
               <h4>${{meal.charAt(0).toUpperCase() + meal.slice(1)}}: ${{day[meal].name}}</h4>
-              <p><i class="fas fa-map-marker-alt"></i> ${{day[meal].location || 'N/A'}}</p>
+              <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+              ${{formattedCategory ? `<p><i class="fas fa-tag"></i> ${{formattedCategory}}</p>` : ''}}
               <p class="cost"><i class="fas fa-euro-sign"></i> €${{day[meal].cost_eur || day[meal].cost || 0}}</p>
             </div>`;
           }}
+        }});
+        html += '</div>';
+      }}
+
+      if (day.entertainment && day.entertainment.length > 0) {{
+        html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-masks-theater"></i> Entertainment</h4>';
+        html += '<div class="activity-grid">';
+        day.entertainment.forEach(ent => {{
+          const formattedAddress = formatAddress(ent.location || ent.address);
+          const formattedType = formatCategoryLabel(ent.type, 'entertainment');
+          html += `<div class="activity-card">
+            <h4>${{ent.name}}</h4>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{ent.description ? `<p>${{ent.description}}</p>` : ''}}
+            ${{formattedType ? `<span class="type-badge">${{formattedType}}</span>` : ''}}
+          </div>`;
         }});
         html += '</div>';
       }}
@@ -927,42 +1026,66 @@ class TravelPlanHTMLGenerator:
     function renderCityContent(city) {{
       let html = '';
 
-      if (city.attractions?.length > 0) {{
+      if (city.attractions && city.attractions.length > 0) {{
         html += '<h4 style="color: var(--color-accent); margin-bottom: 1rem;"><i class="fas fa-landmark"></i> Attractions</h4>';
         html += '<div class="activity-grid">';
         city.attractions.forEach(attr => {{
+          const formattedAddress = formatAddress(attr.address || attr.location);
+          const formattedType = formatCategoryLabel(attr.type, 'attraction');
           html += `<div class="activity-card">
             <h4>${{attr.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{attr.address || attr.location || 'N/A'}}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
             ${{attr.description ? `<p>${{attr.description}}</p>` : ''}}
             ${{attr.cost_eur ? `<p class="cost"><i class="fas fa-euro-sign"></i> €${{attr.cost_eur}}</p>` : ''}}
-            ${{attr.type ? `<span class="type-badge">${{attr.type}}</span>` : ''}}
+            ${{formattedType ? `<span class="type-badge">${{formattedType}}</span>` : ''}}
           </div>`;
         }});
         html += '</div>';
       }}
 
-      if (city.hotels?.length > 0) {{
+      if (city.hotels && city.hotels.length > 0) {{
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-hotel"></i> Hotels</h4>';
         html += '<div class="activity-grid">';
         city.hotels.forEach(hotel => {{
+          const formattedAddress = formatAddress(hotel.address || hotel.location);
+          const formattedCategory = formatCategoryLabel(hotel.category, 'hotel');
           html += `<div class="activity-card">
             <h4>${{hotel.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{hotel.address || hotel.location || 'N/A'}}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{formattedCategory ? `<p><i class="fas fa-star"></i> ${{formattedCategory}}</p>` : ''}}
             ${{hotel.price_range ? `<p class="cost">${{hotel.price_range}}</p>` : ''}}
           </div>`;
         }});
         html += '</div>';
       }}
 
-      if (city.restaurants?.length > 0) {{
+      if (city.restaurants && city.restaurants.length > 0) {{
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-utensils"></i> Restaurants</h4>';
         html += '<div class="activity-grid">';
         city.restaurants.forEach(rest => {{
+          const formattedAddress = formatAddress(rest.address || rest.location);
+          const formattedCategory = formatCategoryLabel(rest.category || rest.type, 'restaurant');
           html += `<div class="activity-card">
             <h4>${{rest.name}}</h4>
             ${{rest.cuisine ? `<p><i class="fas fa-bowl-food"></i> ${{rest.cuisine}}</p>` : ''}}
-            <p><i class="fas fa-map-marker-alt"></i> ${{rest.address || rest.location || 'N/A'}}</p>
+            ${{formattedCategory ? `<p><i class="fas fa-tag"></i> ${{formattedCategory}}</p>` : ''}}
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+          </div>`;
+        }});
+        html += '</div>';
+      }}
+
+      if (city.entertainment && city.entertainment.length > 0) {{
+        html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-masks-theater"></i> Entertainment</h4>';
+        html += '<div class="activity-grid">';
+        city.entertainment.forEach(ent => {{
+          const formattedAddress = formatAddress(ent.address || ent.location);
+          const formattedType = formatCategoryLabel(ent.type, 'entertainment');
+          html += `<div class="activity-card">
+            <h4>${{ent.name}}</h4>
+            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{ent.description ? `<p>${{ent.description}}</p>` : ''}}
+            ${{formattedType ? `<span class="type-badge">${{formattedType}}</span>` : ''}}
           </div>`;
         }});
         html += '</div>';
@@ -1075,10 +1198,10 @@ class TravelPlanHTMLGenerator:
         timelineHtml = '<div class="accordion">' + PLAN_DATA.days.map((day, idx) => {{
           let dayEvents = [];
 
-          if (day.breakfast?.name) dayEvents.push({{ time: '08:00', icon: 'fa-coffee', label: `Breakfast: ${{day.breakfast.name}}` }});
-          if (day.lunch?.name) dayEvents.push({{ time: '12:00', icon: 'fa-utensils', label: `Lunch: ${{day.lunch.name}}` }});
-          if (day.dinner?.name) dayEvents.push({{ time: '19:00', icon: 'fa-utensils', label: `Dinner: ${{day.dinner.name}}` }});
-          if (day.attractions?.length > 0) {{
+          if (day.breakfast && day.breakfast.name) dayEvents.push({{ time: '08:00', icon: 'fa-coffee', label: `Breakfast: ${{day.breakfast.name}}` }});
+          if (day.lunch && day.lunch.name) dayEvents.push({{ time: '12:00', icon: 'fa-utensils', label: `Lunch: ${{day.lunch.name}}` }});
+          if (day.dinner && day.dinner.name) dayEvents.push({{ time: '19:00', icon: 'fa-utensils', label: `Dinner: ${{day.dinner.name}}` }});
+          if (day.attractions && day.attractions.length > 0) {{
             day.attractions.forEach(attr => {{
               dayEvents.push({{ time: '10:00', icon: 'fa-landmark', label: attr.name }});
             }});

@@ -1,0 +1,180 @@
+{
+  "request_id": "dev-20260202-142500",
+  "timestamp": "2026-02-02T14:25:00Z",
+  "requirement": {
+    "original": "进一步改进，现在地址全都是未知，同时分类全都是代码而不是英文自然语言",
+    "clarified": "Fix HTML display issues: (1) Handle null/missing addresses gracefully instead of showing empty or 'Unknown', (2) Convert category codes (historical_site, mid-range, etc.) to human-readable natural language labels in both English and Chinese",
+    "what": "Improve HTML display formatting for addresses and category labels",
+    "why": "Current HTML shows technical codes instead of user-friendly labels, and doesn't handle missing data gracefully",
+    "where": [
+      "scripts/lib/html_generator.py (HTML template generation)"
+    ],
+    "scope": {
+      "included": [
+        "Add JavaScript function to convert category codes to natural language",
+        "Add mapping for attraction types (historical_site → Historical Site / 历史遗址)",
+        "Add mapping for hotel categories (mid-range → Mid-Range Hotel / 中档酒店)",
+        "Add mapping for restaurant categories",
+        "Handle null/missing addresses with 'Address not available' fallback",
+        "Display both English and Chinese labels where applicable",
+        "Apply formatting consistently across all sections (attractions, hotels, restaurants)"
+      ],
+      "excluded": [
+        "Modifying agent data generation (data structure stays the same)",
+        "Fetching actual addresses from external APIs",
+        "Changing JSON schema",
+        "Backend modifications"
+      ]
+    },
+    "success_criteria": [
+      "Zero raw category codes visible in HTML (no 'historical_site', 'mid-range', etc.)",
+      "All categories display as natural language (e.g., 'Historical Site', 'Mid-Range Hotel')",
+      "Null addresses show 'Address not available' instead of empty/null",
+      "Non-null addresses display correctly",
+      "Bilingual labels (English + Chinese) for better UX",
+      "Consistent formatting across all card types"
+    ],
+    "constraints": [
+      "Must work with existing JSON data structure",
+      "Pure frontend fix (JavaScript only)",
+      "No changes to agent outputs",
+      "Maintain premium design aesthetic"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "HTML displays raw category codes (historical_site, mid-range) and empty/null addresses",
+    "root_cause": "HTML generator template in scripts/lib/html_generator.py directly renders JSON data without formatting. No JavaScript function to map category codes to human-readable labels. No null-checking for addresses before display.",
+    "root_cause_commit": "17b33d2 - checkpoint: Auto-save at 2026-02-02 05:47:20 (initial html_generator.py creation)",
+    "why_introduced": "Initial implementation focused on data rendering without considering user-facing label formatting. JSON data from agents uses technical codes for consistency, but HTML never translated these to natural language.",
+    "why_problematic": "Users see technical jargon instead of friendly labels. Empty addresses create visual gaps. Poor UX for non-technical users.",
+    "timeline": "Issue existed since html_generator.py creation (2026-02-02)",
+    "affected_files": [
+      "scripts/lib/html_generator.py (HTML template section needs JavaScript formatter functions)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Clean state after HTML redesign completion",
+    "recent_commits": [
+      "e0ea4a1 - checkpoint: Auto-save at 2026-02-02 06:34:16",
+      "17b33d2 - checkpoint: Auto-save at 2026-02-02 05:47:20"
+    ],
+    "file_contents": {
+      "scripts/lib/html_generator.py": "Python class-based HTML generator with premium warm-color design, Chart.js visualizations, FontAwesome icons. Template generates JavaScript that renders JSON data directly without label formatting.",
+      "data_sample": {
+        "attraction": {
+          "name": "Terracotta Army Museum",
+          "type": "historical_site",
+          "category": null,
+          "address": null
+        },
+        "hotel": {
+          "name": "Mercure Xi'an",
+          "category": "mid-range",
+          "location": "No. 30 Lianhu Rd"
+        }
+      }
+    },
+    "dependencies": {
+      "runtime": "Python 3.12, Bash",
+      "frontend_libraries": "Chart.js 4.4.0, FontAwesome 6.4.0, vanilla JavaScript",
+      "packages": "json, pathlib (Python standard library)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "project_root": "/root/travel-planner",
+      "data_structure": "JSON files with category codes and nullable address fields"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add JavaScript helper functions to HTML template for category code translation and null-safe address rendering",
+    "implementation_steps": [
+      {
+        "step": 1,
+        "action": "Create formatCategoryLabel() JavaScript function",
+        "details": "Maps category codes to bilingual labels (e.g., historical_site → 'Historical Site / 历史遗址')"
+      },
+      {
+        "step": 2,
+        "action": "Create formatAddress() JavaScript function",
+        "details": "Returns address if available, otherwise 'Address not available / 地址未提供'"
+      },
+      {
+        "step": 3,
+        "action": "Update renderCityContent() function",
+        "details": "Apply formatCategoryLabel() to all category fields, formatAddress() to all address fields"
+      },
+      {
+        "step": 4,
+        "action": "Add category mappings object",
+        "details": "Comprehensive mapping for attraction types, hotel categories, restaurant types, entertainment types"
+      },
+      {
+        "step": 5,
+        "action": "Test with actual data",
+        "details": "Verify all category codes converted, null addresses handled gracefully"
+      }
+    ],
+    "files_to_modify": [
+      "scripts/lib/html_generator.py (add JavaScript formatter functions to HTML template)"
+    ],
+    "validation_approach": "Visual inspection of generated HTML, grep for raw category codes, check address null handling"
+  },
+  "category_mappings": {
+    "attraction_types": {
+      "historical_site": "Historical Site / 历史遗址",
+      "museum": "Museum / 博物馆",
+      "temple": "Temple / 寺庙",
+      "natural_scenery": "Natural Scenery / 自然景观",
+      "park": "Park / 公园",
+      "cultural_experience": "Cultural Experience / 文化体验",
+      "ancient_architecture": "Ancient Architecture / 古建筑",
+      "modern_landmark": "Modern Landmark / 现代地标",
+      "unesco_heritage": "UNESCO Heritage / 世界遗产",
+      "scenic_spot": "Scenic Spot / 风景名胜",
+      "night_view": "Night View / 夜景",
+      "street_food": "Street Food Area / 美食街",
+      "shopping_district": "Shopping District / 购物区"
+    },
+    "hotel_categories": {
+      "budget": "Budget Hotel / 经济型酒店",
+      "mid-range": "Mid-Range Hotel / 中档酒店",
+      "high-end": "High-End Hotel / 高档酒店",
+      "luxury": "Luxury Hotel / 豪华酒店",
+      "boutique": "Boutique Hotel / 精品酒店",
+      "hostel": "Hostel / 青年旅社",
+      "guesthouse": "Guesthouse / 民宿"
+    },
+    "restaurant_categories": {
+      "local": "Local Cuisine / 本地菜",
+      "street_food": "Street Food / 街头小吃",
+      "fine_dining": "Fine Dining / 高级餐厅",
+      "casual": "Casual Dining / 休闲餐厅",
+      "fast_food": "Fast Food / 快餐",
+      "vegetarian": "Vegetarian / 素食",
+      "halal": "Halal / 清真",
+      "international": "International / 国际美食",
+      "cafe": "Café / 咖啡馆",
+      "teahouse": "Teahouse / 茶馆"
+    },
+    "entertainment_types": {
+      "show": "Show / 演出",
+      "nightlife": "Nightlife / 夜生活",
+      "bar": "Bar / 酒吧",
+      "club": "Club / 夜店",
+      "karaoke": "Karaoke / KTV",
+      "theater": "Theater / 剧院",
+      "cinema": "Cinema / 电影院",
+      "live_music": "Live Music / 现场音乐"
+    }
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "preserve_premium_design": true,
+    "maintain_warm_color_palette": true,
+    "bilingual_labels": true
+  }
+}

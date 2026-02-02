@@ -59,8 +59,69 @@ fi
 
 # Use Python module to generate HTML
 python - <<PYTHON_SCRIPT
-import json
 import sys
+from pathlib import Path
+
+# Add scripts directory to Python path
+project_root = Path("${PROJECT_ROOT}")
+sys.path.insert(0, str(project_root))
+
+# Import the HTML generator module
+from scripts.lib.html_generator import TravelPlanHTMLGenerator
+
+# Configuration
+destination_slug = "${DESTINATION_SLUG}"
+version_suffix = "${VERSION_SUFFIX}"
+project_type = "${PROJECT_TYPE}"
+data_dir = Path("${DATA_DIR}")
+output_file = Path("${OUTPUT_FILE}")
+
+# Generate HTML using the module
+try:
+    generator = TravelPlanHTMLGenerator(
+        destination_slug=destination_slug,
+        data_dir=data_dir
+    )
+    generator.generate_html(output_file)
+    print(f"✓ HTML generated: {output_file}")
+except Exception as e:
+    print(f"❌ Error: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
+PYTHON_SCRIPT
+
+if [[ $? -ne 0 ]]; then
+  echo "❌ Error: HTML generation failed"
+  exit 1
+fi
+
+echo "✓ HTML generated successfully"
+
+# Step 3: Deploy to GitHub Pages (atomic - cannot be skipped)
+echo ""
+echo "📋 Step 3: Deploying to GitHub Pages..."
+
+# Check if deployment is possible
+if [[ -z "${GITHUB_TOKEN:-}" ]] && [[ ! -f ~/.ssh/id_ed25519 ]] && [[ ! -f ~/.ssh/id_rsa ]]; then
+  echo "⚠️  Warning: No GitHub authentication found"
+  echo "   Skipping deployment (local file only)"
+  echo "   To enable deployment, set GITHUB_TOKEN or configure SSH keys"
+  echo ""
+  echo "✓ Generation complete (local only): ${OUTPUT_FILE}"
+  exit 0
+fi
+
+# Deploy using existing script
+bash "${SCRIPT_DIR}/deploy-travel-plans.sh" "${OUTPUT_FILE}"
+
+if [[ $? -ne 0 ]]; then
+  echo "❌ Error: Deployment failed"
+  exit 2
+fi
+
+echo "✓ Deployment successful"
+exit 0
 from pathlib import Path
 from datetime import datetime
 
