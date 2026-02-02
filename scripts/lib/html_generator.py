@@ -566,6 +566,84 @@ class TravelPlanHTMLGenerator:
         font-size: 1.5rem;
       }}
     }}
+
+    .detail-overlay {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(74, 63, 53, 0.4);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 999;
+    }}
+
+    .detail-overlay.open {{
+      opacity: 1;
+      visibility: visible;
+    }}
+
+    .detail-panel {{
+      position: fixed;
+      top: 0;
+      right: -500px;
+      width: 500px;
+      height: 100vh;
+      background: var(--color-light);
+      box-shadow: -4px 0 20px rgba(74, 63, 53, 0.2);
+      transition: right 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+    }}
+
+    .detail-panel.open {{
+      right: 0;
+    }}
+
+    .detail-panel-header {{
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 100%);
+      color: white;
+      padding: var(--space-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-medium);
+    }}
+
+    .detail-panel-title {{
+      font-size: 1.2rem;
+      font-weight: 500;
+    }}
+
+    .detail-panel-close {{
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }}
+
+    .detail-panel-close:hover {{
+      background: rgba(255, 255, 255, 0.3);
+    }}
+
+    .detail-panel-content {{
+      padding: var(--space-md);
+    }}
+
+    @media (max-width: 768px) {{
+      .detail-panel {{
+        width: 100vw;
+        right: -100vw;
+      }}
+    }}
   </style>
 </head>
 <body>
@@ -597,6 +675,17 @@ class TravelPlanHTMLGenerator:
     <footer>
       <p>Generated on {datetime.now().strftime("%Y-%m-%d %H:%M")} | Travel Planner Dashboard</p>
     </footer>
+  </div>
+
+  <div class="detail-overlay" id="detail-overlay" onclick="closeDetailPanel()"></div>
+
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-panel-header">
+      <div class="detail-panel-title" id="detail-panel-title">Details</div>
+      <button class="detail-panel-close" onclick="closeDetailPanel()">&times;</button>
+    </div>
+    <div class="detail-panel-content" id="detail-panel-content">
+    </div>
   </div>
 
   <script>
@@ -681,6 +770,28 @@ class TravelPlanHTMLGenerator:
         return 'Address not available';
       }}
       return address;
+    }}
+
+    function showDetailPanel(title, content) {{
+      document.getElementById('detail-panel-title').textContent = title;
+      document.getElementById('detail-panel-content').innerHTML = content;
+      document.getElementById('detail-panel').classList.add('open');
+      document.getElementById('detail-overlay').classList.add('open');
+    }}
+
+    function closeDetailPanel() {{
+      document.getElementById('detail-panel').classList.remove('open');
+      document.getElementById('detail-overlay').classList.remove('open');
+    }}
+
+    function showCityDetailPanel(cityIndex) {{
+      if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
+        const city = PLAN_DATA.cities[cityIndex];
+        if (city) {{
+          const content = renderCityContent(city);
+          showDetailPanel(city.city, content);
+        }}
+      }}
     }}
 
     function init() {{
@@ -906,6 +1017,17 @@ class TravelPlanHTMLGenerator:
           responsive: true,
           maintainAspectRatio: false,
           indexAxis: 'y',
+          onClick: (event, elements) => {{
+            if (elements.length > 0) {{
+              const index = elements[0].index;
+              const cityName = Object.keys(attractionsByCity)[index];
+              const city = PLAN_DATA.cities.find(c => c.city === cityName);
+              if (city) {{
+                const content = renderCityContent(city);
+                showDetailPanel(cityName, content);
+              }}
+            }}
+          }},
           plugins: {{
             legend: {{ display: false }}
           }},
@@ -928,6 +1050,31 @@ class TravelPlanHTMLGenerator:
         options: {{
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (event, elements) => {{
+            if (elements.length > 0) {{
+              const index = elements[0].index;
+              const typeCode = Object.keys(attractionTypes)[index];
+              const typeLabel = formatCategoryLabel(typeCode, 'attraction');
+              let content = '<div class="activity-grid">';
+              PLAN_DATA.cities.forEach(city => {{
+                if (city.attractions) {{
+                  city.attractions.forEach(attr => {{
+                    if (attr.type === typeCode) {{
+                      const formattedAddress = attr.location || attr.address || attr.how_to_get_there;
+                      content += '<div class="activity-card"><h4>' + attr.name + '</h4>';
+                      content += '<p style="color: var(--color-secondary);"><i class="fas fa-city"></i> ' + city.city + '</p>';
+                      if (formattedAddress) content += '<p><i class="fas fa-map-marker-alt"></i> ' + formattedAddress + '</p>';
+                      if (attr.description) content += '<p>' + attr.description + '</p>';
+                      if (attr.ticket_price_eur) content += '<p class="cost"><i class="fas fa-ticket-alt"></i> €' + attr.ticket_price_eur + '</p>';
+                      content += '</div>';
+                    }}
+                  }});
+                }}
+              }});
+              content += '</div>';
+              showDetailPanel(typeLabel + ' Attractions', content);
+            }}
+          }},
           plugins: {{
             legend: {{
               position: 'right',
@@ -964,8 +1111,8 @@ class TravelPlanHTMLGenerator:
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         citiesHtml = PLAN_DATA.cities.map((city, idx) => `
           <div class="accordion-item" id="city-${{idx}}">
-            <div class="accordion-header" onclick="toggleAccordion(${{idx}})">
-              <h3>
+            <div class="accordion-header" onclick="toggleAccordion(${{idx}}); event.stopPropagation();">
+              <h3 onclick="event.stopPropagation(); showCityDetailPanel(${{idx}});" style="cursor: pointer;">
                 <i class="fas fa-city"></i>
                 ${{city.city}}${{city.province ? ', ' + city.province : ''}}
               </h3>
@@ -1086,20 +1233,20 @@ class TravelPlanHTMLGenerator:
         city.hotels.forEach(hotel => {{
           const formattedAddress = hotel.location || hotel.address;
           const formattedCategory = formatCategoryLabel(hotel.category, 'hotel');
-          html += `<div class="activity-card">
-            <h4>${{hotel.name}}</h4>
-            ${{formattedAddress ? `<p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>` : ''}}
-            ${{formattedCategory ? `<p><i class="fas fa-star"></i> ${{formattedCategory}}</p>` : ''}}
-            ${{hotel.price_per_night_eur ? `<p class="cost"><i class="fas fa-euro-sign"></i> €${{hotel.price_per_night_eur}}/night</p>` : ''}}
-          </div>`;
+          html += '<div class="activity-card">';
+          html += '<h4>' + hotel.name + '</h4>';
+          if (formattedAddress) html += '<p><i class="fas fa-map-marker-alt"></i> ' + formattedAddress + '</p>';
+          if (formattedCategory) html += '<p><i class="fas fa-star"></i> ' + formattedCategory + '</p>';
+          if (hotel.price_per_night_eur) html += '<p class="cost"><i class="fas fa-euro-sign"></i> €' + hotel.price_per_night_eur + '/night</p>';
           if (hotel.booking_platforms && hotel.booking_platforms.length > 0) {{
-            html += '<p class="booking-links" style="margin-top: -1rem; padding: 0 1rem 1rem;"><i class="fas fa-external-link-alt"></i> ';
+            html += '<p class="booking-links"><i class="fas fa-external-link-alt"></i> ';
             hotel.booking_platforms.forEach((platform, idx) => {{
               if (idx > 0) html += ' • ';
               html += '<a href="https://www.google.com/search?q=' + encodeURIComponent(hotel.name + ' ' + platform) + '" target="_blank" class="booking-link">' + platform + '</a>';
             }});
             html += '</p>';
           }}
+          html += '</div>';
         }});
         html += '</div>';
       }}
@@ -1275,6 +1422,16 @@ class TravelPlanHTMLGenerator:
           options: {{
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (event, elements) => {{
+              if (elements.length > 0) {{
+                const index = elements[0].index;
+                const city = PLAN_DATA.cities[index];
+                if (city) {{
+                  const content = renderCityContent(city);
+                  showDetailPanel(city.city + ' - Budget Details', content);
+                }}
+              }}
+            }},
             plugins: {{
               legend: {{ display: false }},
               tooltip: {{
