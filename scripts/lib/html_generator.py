@@ -421,6 +421,28 @@ class TravelPlanHTMLGenerator:
       transition: transform 0.3s;
     }}
 
+    .timeline-list {{
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }}
+
+    .timeline-city-card {{
+      background: var(--color-light);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-subtle);
+    }}
+
+    .timeline-city-card h3 {{
+      margin-bottom: var(--space-sm);
+    }}
+
+    .timeline-city-card p {{
+      margin-bottom: var(--space-xs);
+      color: var(--color-secondary);
+    }}
+
     .accordion-item.active .accordion-icon {{
       transform: rotate(180deg);
     }}
@@ -480,6 +502,21 @@ class TravelPlanHTMLGenerator:
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
       margin-top: var(--space-xs);
+    }}
+
+    .booking-links {{
+      font-size: 0.85rem;
+      margin-top: var(--space-sm);
+    }}
+
+    .booking-link {{
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 500;
+    }}
+
+    .booking-link:hover {{
+      text-decoration: underline;
     }}
 
     footer {{
@@ -573,50 +610,50 @@ class TravelPlanHTMLGenerator:
 
     const CATEGORY_MAPPINGS = {{
       attraction_types: {{
-        'historical_site': 'Historical Site / 历史遗址',
-        'museum': 'Museum / 博物馆',
-        'temple': 'Temple / 寺庙',
-        'natural_scenery': 'Natural Scenery / 自然景观',
-        'park': 'Park / 公园',
-        'cultural_experience': 'Cultural Experience / 文化体验',
-        'ancient_architecture': 'Ancient Architecture / 古建筑',
-        'modern_landmark': 'Modern Landmark / 现代地标',
-        'unesco_heritage': 'UNESCO Heritage / 世界遗产',
-        'scenic_spot': 'Scenic Spot / 风景名胜',
-        'night_view': 'Night View / 夜景',
-        'street_food': 'Street Food Area / 美食街',
-        'shopping_district': 'Shopping District / 购物区'
+        'historical_site': 'Historical Site',
+        'museum': 'Museum',
+        'temple': 'Temple',
+        'natural_scenery': 'Natural Scenery',
+        'park': 'Park',
+        'cultural_experience': 'Cultural Experience',
+        'ancient_architecture': 'Ancient Architecture',
+        'modern_landmark': 'Modern Landmark',
+        'unesco_heritage': 'UNESCO Heritage',
+        'scenic_spot': 'Scenic Spot',
+        'night_view': 'Night View',
+        'street_food': 'Street Food Area',
+        'shopping_district': 'Shopping District'
       }},
       hotel_categories: {{
-        'budget': 'Budget Hotel / 经济型酒店',
-        'mid-range': 'Mid-Range Hotel / 中档酒店',
-        'high-end': 'High-End Hotel / 高档酒店',
-        'luxury': 'Luxury Hotel / 豪华酒店',
-        'boutique': 'Boutique Hotel / 精品酒店',
-        'hostel': 'Hostel / 青年旅社',
-        'guesthouse': 'Guesthouse / 民宿'
+        'budget': 'Budget Hotel',
+        'mid-range': 'Mid-Range Hotel',
+        'high-end': 'High-End Hotel',
+        'luxury': 'Luxury Hotel',
+        'boutique': 'Boutique Hotel',
+        'hostel': 'Hostel',
+        'guesthouse': 'Guesthouse'
       }},
       restaurant_categories: {{
-        'local': 'Local Cuisine / 本地菜',
-        'street_food': 'Street Food / 街头小吃',
-        'fine_dining': 'Fine Dining / 高级餐厅',
-        'casual': 'Casual Dining / 休闲餐厅',
-        'fast_food': 'Fast Food / 快餐',
-        'vegetarian': 'Vegetarian / 素食',
-        'halal': 'Halal / 清真',
-        'international': 'International / 国际美食',
-        'cafe': 'Café / 咖啡馆',
-        'teahouse': 'Teahouse / 茶馆'
+        'local': 'Local Cuisine',
+        'street_food': 'Street Food',
+        'fine_dining': 'Fine Dining',
+        'casual': 'Casual Dining',
+        'fast_food': 'Fast Food',
+        'vegetarian': 'Vegetarian',
+        'halal': 'Halal',
+        'international': 'International',
+        'cafe': 'Café',
+        'teahouse': 'Teahouse'
       }},
       entertainment_types: {{
-        'show': 'Show / 演出',
-        'nightlife': 'Nightlife / 夜生活',
-        'bar': 'Bar / 酒吧',
-        'club': 'Club / 夜店',
-        'karaoke': 'Karaoke / KTV',
-        'theater': 'Theater / 剧院',
-        'cinema': 'Cinema / 电影院',
-        'live_music': 'Live Music / 现场音乐'
+        'show': 'Show',
+        'nightlife': 'Nightlife',
+        'bar': 'Bar',
+        'club': 'Club',
+        'karaoke': 'Karaoke',
+        'theater': 'Theater',
+        'cinema': 'Cinema',
+        'live_music': 'Live Music'
       }}
     }};
 
@@ -641,7 +678,7 @@ class TravelPlanHTMLGenerator:
 
     function formatAddress(address) {{
       if (!address || address === null || address === 'null' || address.trim() === '') {{
-        return 'Address not available / 地址未提供';
+        return 'Address not available';
       }}
       return address;
     }}
@@ -796,7 +833,7 @@ class TravelPlanHTMLGenerator:
       new Chart(document.getElementById('attractionTypesChart'), {{
         type: 'doughnut',
         data: {{
-          labels: Object.keys(attractionTypes),
+          labels: Object.keys(attractionTypes).map(type => formatCategoryLabel(type, 'attraction')),
           datasets: [{{
             data: Object.values(attractionTypes),
             backgroundColor: WARM_COLORS,
@@ -881,7 +918,7 @@ class TravelPlanHTMLGenerator:
       new Chart(document.getElementById('attractionTypesChart'), {{
         type: 'doughnut',
         data: {{
-          labels: Object.keys(attractionTypes),
+          labels: Object.keys(attractionTypes).map(type => formatCategoryLabel(type, 'attraction')),
           datasets: [{{
             data: Object.values(attractionTypes),
             backgroundColor: WARM_COLORS,
@@ -1030,13 +1067,13 @@ class TravelPlanHTMLGenerator:
         html += '<h4 style="color: var(--color-accent); margin-bottom: 1rem;"><i class="fas fa-landmark"></i> Attractions</h4>';
         html += '<div class="activity-grid">';
         city.attractions.forEach(attr => {{
-          const formattedAddress = formatAddress(attr.address || attr.location);
+          const formattedAddress = attr.location || attr.address || attr.how_to_get_there;
           const formattedType = formatCategoryLabel(attr.type, 'attraction');
           html += `<div class="activity-card">
             <h4>${{attr.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{formattedAddress ? `<p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>` : ''}}
             ${{attr.description ? `<p>${{attr.description}}</p>` : ''}}
-            ${{attr.cost_eur ? `<p class="cost"><i class="fas fa-euro-sign"></i> €${{attr.cost_eur}}</p>` : ''}}
+            ${{attr.ticket_price_eur ? `<p class="cost"><i class="fas fa-ticket-alt"></i> €${{attr.ticket_price_eur}}</p>` : ''}}
             ${{formattedType ? `<span class="type-badge">${{formattedType}}</span>` : ''}}
           </div>`;
         }});
@@ -1047,14 +1084,22 @@ class TravelPlanHTMLGenerator:
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-hotel"></i> Hotels</h4>';
         html += '<div class="activity-grid">';
         city.hotels.forEach(hotel => {{
-          const formattedAddress = formatAddress(hotel.address || hotel.location);
+          const formattedAddress = hotel.location || hotel.address;
           const formattedCategory = formatCategoryLabel(hotel.category, 'hotel');
           html += `<div class="activity-card">
             <h4>${{hotel.name}}</h4>
-            <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
+            ${{formattedAddress ? `<p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>` : ''}}
             ${{formattedCategory ? `<p><i class="fas fa-star"></i> ${{formattedCategory}}</p>` : ''}}
-            ${{hotel.price_range ? `<p class="cost">${{hotel.price_range}}</p>` : ''}}
+            ${{hotel.price_per_night_eur ? `<p class="cost"><i class="fas fa-euro-sign"></i> €${{hotel.price_per_night_eur}}/night</p>` : ''}}
           </div>`;
+          if (hotel.booking_platforms && hotel.booking_platforms.length > 0) {{
+            html += '<p class="booking-links" style="margin-top: -1rem; padding: 0 1rem 1rem;"><i class="fas fa-external-link-alt"></i> ';
+            hotel.booking_platforms.forEach((platform, idx) => {{
+              if (idx > 0) html += ' • ';
+              html += '<a href="https://www.google.com/search?q=' + encodeURIComponent(hotel.name + ' ' + platform) + '" target="_blank" class="booking-link">' + platform + '</a>';
+            }});
+            html += '</p>';
+          }}
         }});
         html += '</div>';
       }}
@@ -1063,7 +1108,7 @@ class TravelPlanHTMLGenerator:
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-utensils"></i> Restaurants</h4>';
         html += '<div class="activity-grid">';
         city.restaurants.forEach(rest => {{
-          const formattedAddress = formatAddress(rest.address || rest.location);
+          const formattedAddress = rest.location || rest.address;
           const formattedCategory = formatCategoryLabel(rest.category || rest.type, 'restaurant');
           html += `<div class="activity-card">
             <h4>${{rest.name}}</h4>
@@ -1188,6 +1233,63 @@ class TravelPlanHTMLGenerator:
             }}
           }}
         }});
+      }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
+        // Bucket list budget: aggregate estimated budget by city
+        const budgetHtml = `
+          <div class="chart-card">
+            <div class="chart-title">
+              <i class="fas fa-chart-bar"></i> Estimated Budget by City
+            </div>
+            <div class="chart-container">
+              <canvas id="cityBudgetChart"></canvas>
+            </div>
+          </div>
+          <div class="budget-summary">
+            <h3 style="color: var(--color-accent); margin-bottom: 1rem;">Budget Overview</h3>
+            <div class="activity-grid">
+              ${{PLAN_DATA.cities.map(city => `
+                <div class="activity-card">
+                  <h4>${{city.city}}</h4>
+                  <p><i class="fas fa-calendar"></i> ${{city.recommended_duration}}</p>
+                  <p class="cost"><i class="fas fa-euro-sign"></i> €${{city.estimated_budget_eur}} estimated</p>
+                </div>
+              `).join('')}}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('budget-charts').innerHTML = budgetHtml;
+
+        // Create city budget chart
+        new Chart(document.getElementById('cityBudgetChart'), {{
+          type: 'bar',
+          data: {{
+            labels: PLAN_DATA.cities.map(c => c.city),
+            datasets: [{{
+              label: 'Budget (EUR)',
+              data: PLAN_DATA.cities.map(c => c.estimated_budget_eur || 0),
+              backgroundColor: WARM_COLORS[0],
+              borderWidth: 0
+            }}]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {{
+              legend: {{ display: false }},
+              tooltip: {{
+                callbacks: {{
+                  label: function(context) {{
+                    return 'Budget: €' + context.raw;
+                  }}
+                }}
+              }}
+            }},
+            scales: {{
+              y: {{ beginAtZero: true }}
+            }}
+          }}
+        }});
       }}
     }}
 
@@ -1233,8 +1335,17 @@ class TravelPlanHTMLGenerator:
             </div>
           `;
         }}).join('') + '</div>';
+      }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
+        timelineHtml = '<div class="timeline-list">' + PLAN_DATA.cities.map((city, idx) => `
+          <div class="timeline-city-card">
+            <h3 style="color: var(--color-accent);"><i class="fas fa-city"></i> ${{city.city}}</h3>
+            <p><i class="fas fa-calendar"></i> <strong>Recommended Duration:</strong> ${{city.recommended_duration}}</p>
+            <p><i class="fas fa-sun"></i> <strong>Best Months:</strong> ${{city.best_months.join(', ')}}</p>
+            ${{city.estimated_budget_eur ? `<p><i class="fas fa-euro-sign"></i> <strong>Budget:</strong> €${{city.estimated_budget_eur}}</p>` : ''}}
+          </div>
+        `).join('') + '</div>';
       }} else {{
-        timelineHtml = '<p style="text-align: center; color: var(--color-secondary); padding: 2rem;">Timeline not available for bucket list projects</p>';
+        timelineHtml = '<p style="text-align: center; color: var(--color-secondary); padding: 2rem;">Timeline not available</p>';
       }}
 
       document.getElementById('timeline-container').innerHTML = timelineHtml;
