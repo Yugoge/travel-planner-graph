@@ -25,6 +25,18 @@ This folder contains reusable shell scripts that validate, generate, and deploy 
 - **Python scripts**: snake_case (PEP 8)
 - **Subdirectories**: kebab-case or descriptive names
 
+## Python Modules
+
+**lib/ directory**: Reusable Python modules for complex logic
+
+- `lib/html_generator.py` - **[NEW]** Class-based HTML generator module
+  - Class: `TravelPlanHTMLGenerator`
+  - Methods: `detect_project_type()`, `merge_itinerary_data()`, `merge_bucket_list_data()`, `generate_html()`
+  - Supports: Both itinerary and bucket list project types
+  - Unit testable, no hardcoded values
+  - Used by: `generate-and-deploy.sh` script
+  - CLI usage: `python lib/html_generator.py <destination-slug> --data-dir <path> --output <path>`
+
 ## Organization Rules
 
 ### Script Categories
@@ -48,11 +60,29 @@ Purpose: Verify data quality and consistency
   - Output: Schema validation errors
   - Exit code: 0 if valid, 1 if invalid
 
+- `validate-plan-workflow.sh` - **[NEW]** Validate complete plan workflow execution
+  - Input: `<destination-slug>`
+  - Output: Comprehensive workflow status report
+  - Checks: Required files, JSON syntax, agent completion, HTML generation
+  - Exit codes: 0=complete, 1=incomplete, 2=missing critical files
+  - Use to verify all workflow steps executed correctly
+
 **2. Generation Scripts**
 
 Purpose: Convert JSON data to output formats
 
-- `generate-travel-html.sh` - Generate interactive HTML views
+- `generate-and-deploy.sh` - **[NEW]** Unified atomic script for generate + deploy
+  - Input: `<destination-slug>` [version-suffix]
+  - Output: HTML file + live GitHub Pages URL
+  - Auto-detects project type (itinerary vs bucket list)
+  - Atomic operation: Generation ALWAYS followed by deployment
+  - Exit codes: 0=success, 1=generation failed, 2=deployment failed, 3=missing files
+  - Replaces: Separate generate + deploy workflow
+  - Root cause reference: Fixes script separation that caused workflow interruption
+
+- `generate-travel-html.sh` - **[DEPRECATED]** Legacy HTML generator for itinerary only
+  - Use `generate-and-deploy.sh` instead
+  - Kept for backward compatibility only
   - Input: Trip directory path
   - Output: HTML file with embedded map/timeline
   - Dependencies: Timeline, accommodation, attractions JSON files
@@ -61,10 +91,13 @@ Purpose: Convert JSON data to output formats
 
 Purpose: Deploy plans to execution
 
-- `deploy-travel-plans.sh` - Deploy plans to web or app
-  - Input: Trip directory path
+- `deploy-travel-plans.sh` - Deploy HTML to GitHub Pages
+  - Input: HTML file path (supports multiple naming formats)
   - Output: Deployed plan URL or status
-  - Note: Large script (18KB) - likely handles multiple deployment targets
+  - Now accepts: itinerary format, timestamp format, bucket list format, version suffixes
+  - Auto-detects GitHub username and authentication method
+  - Creates repository if needed, enables GitHub Pages
+  - Note: Large script (18KB) - handles authentication, repo creation, index generation
 
 **4. Workflow Scripts**
 
