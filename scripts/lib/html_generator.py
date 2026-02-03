@@ -759,6 +759,17 @@ class TravelPlanHTMLGenerator:
       return { mapLink, rednote: rednoteLink, isMainland };
     }
 
+    // XSS Protection: HTML escaping function (root cause fix: commit 34e112a)
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return str;
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // Toggle functions for expandable sections
     function toggleStatBash(idx) {
       const details = document.getElementById(`stat-details-bash-${idx}`);
@@ -845,14 +856,14 @@ class TravelPlanHTMLGenerator:
           <div class="stat-card-expandable" onclick="toggleStatBash(${idx})">
             <div class="stat-header-expandable">
               <span class="stat-expand-icon">▼</span>
-              <div class="value">${s.value}</div>
-              <div class="label">${s.label}</div>
+              <div class="value">${escapeHtml(s.value)}</div>
+              <div class="label">${escapeHtml(s.label)}</div>
             </div>
             <div class="stat-details" id="stat-details-bash-${idx}">
               ${s.details.map(d => `
                 <div class="stat-detail-item">
-                  <span>${d.label}</span>
-                  <span>${d.value}</span>
+                  <span>${escapeHtml(d.label)}</span>
+                  <span>${escapeHtml(d.value)}</span>
                 </div>
               `).join('')}
             </div>
@@ -876,17 +887,17 @@ class TravelPlanHTMLGenerator:
         container.innerHTML = Object.entries(cityGroups).map(([city, days]) => {
           const totalBudget = days.reduce((sum, d) => sum + (d.budget?.total || 0), 0);
           return `
-            <div class="route-city" onclick="scrollToCityBash('${city}')">
-              <div class="route-city-header">${city}</div>
+            <div class="route-city" onclick="scrollToCityBash('${escapeHtml(city)}')">
+              <div class="route-city-header">${escapeHtml(city)}</div>
               <div class="route-city-days">
                 ${days.map(d => `
                   <div class="route-day-item">
-                    <div class="route-day-date">Day ${d.day} - ${d.date}</div>
-                    <div class="route-day-budget">${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(d.budget?.total || 0)}</div>
+                    <div class="route-day-date">Day ${escapeHtml(d.day)} - ${escapeHtml(d.date)}</div>
+                    <div class="route-day-budget">${escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}${toEURBash(d.budget?.total || 0)}</div>
                   </div>
                 `).join('')}
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-neutral); font-weight: bold; color: var(--color-danger);">
-                  Total: ${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(totalBudget)}
+                  Total: ${escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}${toEURBash(totalBudget)}
                 </div>
               </div>
             </div>
@@ -924,17 +935,17 @@ class TravelPlanHTMLGenerator:
         container.innerHTML = Object.entries(cityBudgets).map(([city, data], idx) => `
           <div class="budget-city-card">
             <div class="budget-city-header" onclick="toggleBudgetCityBash(${idx})">
-              <div class="budget-city-name">${city}</div>
+              <div class="budget-city-name">${escapeHtml(city)}</div>
               <div>
-                <span class="budget-city-total">${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(data.total)}</span>
+                <span class="budget-city-total">${escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}${toEURBash(data.total)}</span>
                 <span class="budget-city-expand">▼</span>
               </div>
             </div>
             <div class="budget-city-details" id="budget-city-bash-${idx}">
               ${Object.entries(data.breakdown).map(([category, amount]) => `
                 <div class="budget-breakdown-item">
-                  <span>${category.replace(/_/g, ' ')}</span>
-                  <span>${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(amount)}</span>
+                  <span>${escapeHtml(category.replace(/_/g, ' '))}</span>
+                  <span>${escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}${toEURBash(amount)}</span>
                 </div>
               `).join('')}
             </div>
@@ -961,7 +972,7 @@ class TravelPlanHTMLGenerator:
           .sort((a, b) => b[1] - a[1])
           .map(([type, count]) => `
             <div class="attraction-type-card">
-              <div class="attraction-type-name">${formatCategoryLabel(type, 'attraction')}</div>
+              <div class="attraction-type-name">${escapeHtml(formatCategoryLabel(type, 'attraction'))}</div>
               <div class="attraction-type-count">${count} attraction${count > 1 ? 's' : ''}</div>
             </div>
           `).join('');

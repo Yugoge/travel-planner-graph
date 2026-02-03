@@ -1,0 +1,163 @@
+{
+  "request_id": "dev-20260203-233121",
+  "timestamp": "2026-02-03T23:31:21Z",
+  "requirement": {
+    "original": "修复以上全部问题 (Fix all issues found by 5 judges)",
+    "clarified": "Fix all 5 critical/major issues found by ultra-picky judge review: (1) Currency API with cache fallback, (2) Redeploy correct HTML to GitHub Pages, (3) XSS protection, (4) Currency code validation, (5) Gaode color correction",
+    "what": "Implement 5 fixes across security, functionality, and branding",
+    "why": "Judge review found critical security vulnerabilities, broken currency API, wrong deployment, and brand inconsistencies that block production deployment",
+    "where": [
+      "scripts/utils/fetch-exchange-rate.sh",
+      "scripts/lib/html_generator.py",
+      "GitHub Pages deployment"
+    ],
+    "scope": {
+      "included": [
+        "Currency API cache fallback mechanism",
+        "HTML escaping function for XSS protection",
+        "Currency code validation whitelist",
+        "Gaode color correction to #52C41A",
+        "Redeploy v11 HTML to GitHub Pages"
+      ],
+      "excluded": [
+        "Performance optimizations (155KB JSON data)",
+        "Code refactoring (duplicate renderDayContent/renderCityContent)",
+        "Long function splitting"
+      ]
+    },
+    "success_criteria": [
+      "SC1: Currency shows cached/API rate, not hardcoded 7.8",
+      "SC2: GitHub Pages file size is 225KB (not 421KB)",
+      "SC3: All innerHTML uses escapeHtml() function",
+      "SC4: Currency codes validated before subprocess call",
+      "SC5: Gaode links use #52C41A color"
+    ],
+    "constraints": [
+      "Maintain beige color theme (#F5F1E8, #8B7355, #D4AF37)",
+      "Keep all 7 migrated bash features working",
+      "No breaking changes to existing API",
+      "Network restrictions may prevent API calls"
+    ]
+  },
+  "root_cause_analysis": {
+    "issue_1_currency": {
+      "symptom": "Exchange rate hardcoded to 7.8 in HTML",
+      "root_cause": "fetch-exchange-rate.sh fails due to network restrictions (curl cannot reach exchangerate-api.com), Python code falls back to default 7.8 without caching",
+      "root_cause_commit": "3d5971b - Added fetch-exchange-rate.sh with direct API call, no cache mechanism",
+      "why_introduced": "Migrated from hardcoded 7.8 to dynamic API without considering network failure scenarios",
+      "why_problematic": "No fallback strategy beyond returning to hardcoded value, defeats purpose of migration",
+      "timeline": "Introduced 2026-02-03 12:49, discovered by Judge 2 on 2026-02-03 20:00",
+      "affected_files": [
+        "scripts/utils/fetch-exchange-rate.sh",
+        "scripts/lib/html_generator.py (lines 104-176)"
+      ]
+    },
+    "issue_2_deployment": {
+      "symptom": "GitHub Pages shows 421KB Chart.js template instead of 225KB Python-generated HTML",
+      "root_cause": "Deployment script was fixed locally but GitHub Pages still has old version",
+      "root_cause_commit": "34e112a - Fixed deployment script but did not redeploy to GitHub Pages",
+      "why_introduced": "Focus on local fixes without verifying deployment",
+      "why_problematic": "All local improvements invisible to users",
+      "timeline": "Local fix 2026-02-03 19:12, deployment issue discovered by Judge 5 on 2026-02-03 20:26",
+      "affected_files": [
+        "GitHub Pages (remote)",
+        "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html (local)"
+      ]
+    },
+    "issue_3_xss": {
+      "symptom": "14 innerHTML assignments without HTML escaping",
+      "root_cause": "Direct interpolation of JSON data (attraction names, descriptions) into HTML strings",
+      "root_cause_commit": "34e112a - Migration added innerHTML assignments without security consideration",
+      "why_introduced": "Focus on functionality migration, security not prioritized",
+      "why_problematic": "Malicious JSON data could inject JavaScript, leading to XSS attacks",
+      "timeline": "Introduced 2026-02-03 19:12, discovered by Judge 3 on 2026-02-03 20:23",
+      "affected_files": [
+        "scripts/lib/html_generator.py (lines 844, 876, 924, 960, 986, 1705, 1763, 1796, 1847, 1931, 2059, 2293, 2377, 2477)"
+      ]
+    },
+    "issue_4_validation": {
+      "symptom": "No currency code validation before subprocess call",
+      "root_cause": "subprocess.run() calls fetch-exchange-rate.sh without validating parameters from config file",
+      "root_cause_commit": "3d5971b - Added subprocess call without input validation",
+      "why_introduced": "Assumed config file always contains valid data",
+      "why_problematic": "Compromised config could pass malicious commands via currency codes",
+      "timeline": "Introduced 2026-02-03 12:49, discovered by Judge 3 on 2026-02-03 20:23",
+      "affected_files": [
+        "scripts/lib/html_generator.py (line 126)"
+      ]
+    },
+    "issue_5_color": {
+      "symptom": "Gaode links use Bootstrap green #28a745 instead of official Ant Design green #52C41A",
+      "root_cause": "Wrong brand color chosen during implementation",
+      "root_cause_commit": "34e112a - Used Bootstrap color palette instead of Gaode official brand",
+      "why_introduced": "Developer familiarity with Bootstrap, didn't verify official brand color",
+      "why_problematic": "Brand inconsistency, both green but not official",
+      "timeline": "Introduced 2026-02-03 19:12, discovered by Judge 2 on 2026-02-03 20:00",
+      "affected_files": [
+        "scripts/lib/html_generator.py (CSS line ~650)"
+      ]
+    }
+  },
+  "context": {
+    "codebase_state": "master branch, 4 uncommitted files",
+    "recent_commits": [
+      "217f175 - checkpoint: Auto-save at 2026-02-03 20:26:37",
+      "c16c792 - checkpoint: Auto-save at 2026-02-03 19:59:00",
+      "8f2bddd - checkpoint: Auto-save at 2026-02-03 19:44:26",
+      "34e112a - feat: Migrate all features from bash to Python HTML generator with beige color scheme"
+    ],
+    "file_contents": {
+      "scripts/utils/fetch-exchange-rate.sh": "API-based currency fetching, fails on network restrictions",
+      "scripts/lib/html_generator.py": "2606 lines, Python HTML generator with 7 bash features, beige theme",
+      "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html": "225KB local HTML (correct version)"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x, Bash",
+      "packages": "jq (for JSON processing)",
+      "apis": "exchangerate-api.com (free tier, 1500 req/month)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv or project venv",
+      "config_files": [
+        "config/currency-config.json"
+      ],
+      "network_restrictions": "Cannot reach exchangerate-api.com via curl"
+    }
+  },
+  "development_approach": {
+    "strategy": "Fix all 5 issues in priority order: (1) Currency cache fallback, (2) XSS protection, (3) Input validation, (4) Color correction, (5) GitHub Pages redeploy",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      {
+        "file": "scripts/utils/fetch-exchange-rate.sh",
+        "changes": "Add cache mechanism: (1) Try API, (2) If fails, check cache, (3) If cache <24h old, use it, (4) Only fallback to 7.8 if no cache and no network",
+        "cache_location": "/tmp/exchange-rate-cache.json or ~/.cache/travel-planner/exchange-rates.json"
+      },
+      {
+        "file": "scripts/lib/html_generator.py",
+        "changes": [
+          "Add escapeHtml() JavaScript function in template (lines ~1900)",
+          "Apply escapeHtml() to all 14 innerHTML assignments",
+          "Add currency code validation before subprocess.run() (line 126)",
+          "Change Gaode color from #28a745 to #52C41A (line ~650)",
+          "Update _fetch_exchange_rate() to handle cached rates (lines 104-176)"
+        ]
+      }
+    ],
+    "validation_approach": "Generate v12 HTML, verify currency not 7.8, test XSS escaping, check Gaode color, deploy to GitHub Pages, run Playwright"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "judge_reports": {
+    "judge_1_color": "PASS (100% confidence) - Color theme perfect",
+    "judge_2_features": "FAIL - Currency API not working (6/7 features pass)",
+    "judge_3_security": "PASS WITH WARNINGS - XSS critical, command injection medium",
+    "judge_4_filesize": "PASS - Local file sizes correct",
+    "judge_5_deployment": "FAIL - Wrong version deployed (421KB vs 225KB)"
+  }
+}

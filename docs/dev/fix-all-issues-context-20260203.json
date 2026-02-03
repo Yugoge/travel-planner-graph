@@ -1,0 +1,155 @@
+{
+  "request_id": "fix-all-issues-20260203",
+  "timestamp": "2026-02-03T20:30:00Z",
+  "requirement": {
+    "original": "修复以上全部问题 (Fix all issues found by 5 judges)",
+    "clarified": "Fix all critical, major, and minor issues found by the 5 ultra-picky judges",
+    "priority_order": [
+      "Priority 1 (Critical - Blocks Deployment)",
+      "Priority 2 (Major - Strongly Recommended)",
+      "Priority 3 (Minor - Quality Improvements)"
+    ]
+  },
+  "issues_to_fix": {
+    "priority_1_critical": [
+      {
+        "id": "ISSUE-1",
+        "severity": "critical",
+        "source": "Judge 2 + Judge 5",
+        "title": "Dynamic currency conversion not working (hardcoded 7.8)",
+        "description": "Exchange rate is hardcoded to 7.8 in deployed HTML instead of using dynamic API fetch. fetch-exchange-rate.sh fails due to network restrictions in environment.",
+        "root_cause": "curl cannot reach exchangerate-api.com from this environment (network proxy/firewall issue)",
+        "impact": "Currency conversion feature defeats migration purpose - still using hardcoded rates",
+        "fix_approach": "Implement fallback cache mechanism: (1) Try API fetch, (2) If fails, use cached rate from previous successful fetch, (3) Cache to file with timestamp, (4) If cache exists and <24h old, use it, (5) Only fall back to 7.8 if no cache and no network",
+        "files_to_modify": [
+          "scripts/utils/fetch-exchange-rate.sh",
+          "scripts/lib/html_generator.py"
+        ],
+        "success_criteria": "HTML shows cached/API exchange rate (not hardcoded 7.8), unless truly no data available"
+      },
+      {
+        "id": "ISSUE-2",
+        "severity": "critical",
+        "source": "Judge 5",
+        "title": "GitHub Pages deployed wrong HTML version (421KB vs 225KB)",
+        "description": "Deployed HTML is Chart.js template (421KB) instead of Python-generated v11 with 7 bash features (225KB)",
+        "root_cause": "Old HTML version still on GitHub Pages, needs redeployment",
+        "impact": "All local fixes perfect but wrong version online",
+        "fix_approach": "Redeploy correct v11 HTML file (225KB) to GitHub Pages",
+        "files_to_modify": [],
+        "success_criteria": "GitHub Pages shows 225KB HTML with all 7 bash features"
+      }
+    ],
+    "priority_2_major": [
+      {
+        "id": "ISSUE-3",
+        "severity": "critical",
+        "source": "Judge 3",
+        "title": "XSS vulnerabilities (14 innerHTML without escaping)",
+        "description": "14 instances of innerHTML assignments using user-controlled data without HTML entity escaping",
+        "root_cause": "Direct interpolation of JSON data (attraction names, descriptions) into HTML strings",
+        "impact": "Security risk - malicious JavaScript could be injected via JSON",
+        "fix_approach": "Implement HTML escape function in JavaScript template, apply to all user data before DOM insertion",
+        "files_to_modify": [
+          "scripts/lib/html_generator.py"
+        ],
+        "success_criteria": "All user data escaped before innerHTML assignment"
+      },
+      {
+        "id": "ISSUE-4",
+        "severity": "medium",
+        "source": "Judge 3",
+        "title": "Command injection risk (currency code validation missing)",
+        "description": "subprocess.run() calls fetch-exchange-rate.sh with currency parameters from config file without validation",
+        "root_cause": "No input validation before subprocess call",
+        "impact": "If config compromised, malicious currency codes could be passed",
+        "fix_approach": "Add currency code validation in Python before subprocess call - whitelist CNY/USD/EUR/GBP, regex ^[A-Z]{3}$",
+        "files_to_modify": [
+          "scripts/lib/html_generator.py"
+        ],
+        "success_criteria": "Python validates currency codes before calling subprocess"
+      }
+    ],
+    "priority_3_minor": [
+      {
+        "id": "ISSUE-5",
+        "severity": "minor",
+        "source": "Judge 2",
+        "title": "Gaode Maps color incorrect (#28a745 vs #52C41A)",
+        "description": "Gaode button uses Bootstrap green #28a745 instead of official Ant Design green #52C41A",
+        "root_cause": "Wrong color chosen during implementation",
+        "impact": "Brand inconsistency - both green but not official",
+        "fix_approach": "Change .attraction-link.gaode background from #28a745 to #52C41A",
+        "files_to_modify": [
+          "scripts/lib/html_generator.py"
+        ],
+        "success_criteria": "Gaode links use #52C41A color"
+      }
+    ]
+  },
+  "fix_plan": {
+    "phase_1_local_fixes": {
+      "step_1": "Fix currency API with cache fallback mechanism",
+      "step_2": "Add HTML escaping function to prevent XSS",
+      "step_3": "Add currency code validation before subprocess",
+      "step_4": "Fix Gaode color to official brand color",
+      "step_5": "Generate new HTML with all fixes (v12)"
+    },
+    "phase_2_deployment": {
+      "step_1": "Deploy fixed v12 HTML to GitHub Pages",
+      "step_2": "Verify deployment file size ~225KB",
+      "step_3": "Run Playwright to confirm fixes"
+    },
+    "phase_3_verification": {
+      "step_1": "Verify currency shows cached/API rate (not 7.8)",
+      "step_2": "Verify file size 225KB on GitHub Pages",
+      "step_3": "Verify all 7 features present",
+      "step_4": "Verify XSS protection works",
+      "step_5": "Verify Gaode color correct"
+    }
+  },
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "issue": "ISSUE-1",
+      "description": "Currency API works with cache fallback",
+      "verification": "HTML shows non-7.8 exchange rate OR cached rate with timestamp"
+    },
+    {
+      "id": "SC2",
+      "issue": "ISSUE-2",
+      "description": "Correct HTML deployed to GitHub Pages",
+      "verification": "curl -I shows ~230000 bytes, Playwright confirms 225KB"
+    },
+    {
+      "id": "SC3",
+      "issue": "ISSUE-3",
+      "description": "XSS protection implemented",
+      "verification": "All innerHTML uses escapeHtml() function"
+    },
+    {
+      "id": "SC4",
+      "issue": "ISSUE-4",
+      "description": "Currency code validation added",
+      "verification": "Python validates codes before subprocess call"
+    },
+    {
+      "id": "SC5",
+      "issue": "ISSUE-5",
+      "description": "Gaode color fixed",
+      "verification": "CSS shows #52C41A for .attraction-link.gaode"
+    }
+  ],
+  "constraints": [
+    "Fix all issues found by judges",
+    "Maintain beige color theme",
+    "Keep all 7 bash features working",
+    "No breaking changes to API",
+    "Test everything before deployment"
+  ],
+  "permissions_needed": [
+    "Bash(scripts/utils/fetch-exchange-rate.sh:*)",
+    "Bash(scripts/lib/html_generator.py:*)",
+    "Bash(scripts/generate-and-deploy.sh:*)"
+  ]
+}
