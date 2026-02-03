@@ -71,9 +71,15 @@ For each day in the trip:
    - Check if advance booking required
 
 4. **Structure data** for each attraction:
+
+   **CRITICAL - Bilingual Annotation Format**:
+   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+
+   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+
    ```json
    {
-     "name": "Attraction Name",
+     "name": "Attraction Name (Original Script)",
      "location": "Full address or area",
      "cost": 15,
      "duration_minutes": 120,
@@ -95,6 +101,12 @@ For each day in the trip:
      ]
    }
    ```
+
+   **Examples**:
+   - Chinese: `"name": "Hongya Cave (洪崖洞)"`
+   - Japanese: `"name": "Fushimi Inari Shrine (伏見稲荷大社)"`
+   - Korean: `"name": "Gyeongbokgung Palace (경복궁)"`
+   - Arabic: `"name": "Al-Masjid an-Nabawi (المسجد النبوي)"`
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this attraction

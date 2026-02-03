@@ -56,9 +56,15 @@ For each day in the trip:
    - Consider energy levels (not every night needs entertainment)
 
 4. **Structure data** for each entertainment option:
+
+   **CRITICAL - Bilingual Annotation Format**:
+   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+
+   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+
    ```json
    {
-     "name": "Show/Venue Name",
+     "name": "Show/Venue Name (Original Script)",
      "location": "Full address or area",
      "cost": 50,
      "time": "20:00",
@@ -80,6 +86,12 @@ For each day in the trip:
      ]
    }
    ```
+
+   **Examples**:
+   - Chinese: `"name": "Nanshan Night View (南山夜景)"`
+   - Japanese: `"name": "Kabuki-za Theatre (歌舞伎座)"`
+   - Korean: `"name": "Nanta Show (난타)"`
+   - French: `"name": "Moulin Rouge (Moulin Rouge)"`
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this entertainment option

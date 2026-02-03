@@ -17,6 +17,62 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 /plan [destination]
 ```
 
+## Bilingual Annotation Requirement
+
+**CRITICAL ARCHITECTURE PRINCIPLE**: All location-based subagents (meals, attractions, entertainment, shopping) MUST output proper nouns with bilingual annotations to prevent information loss.
+
+### Why This Is Required
+
+**Root Cause**: Chinese restaurant names get corrupted when subagents translate them to romanized English for JSON output. For example, '夜景' (Night View) was incorrectly written as '野青' (Wild Youth) because romanization loses tonal and character information.
+
+**Data Flow Path Where Loss Occurs**:
+```
+User requirement (中文)
+  → Orchestrator prompt (English)
+  → Subagent searches Gaode Maps (中文输入/输出)
+  → Subagent outputs JSON with romanized name ONLY
+  → Information loss occurs here (homophones indistinguishable)
+```
+
+**Problem**: Chinese proper nouns lose semantic information when romanized. Homophones (同音字) cannot be distinguished without character annotations:
+- '夜景' (yèjǐng) = "night view"
+- '野青' (yěqīng) = "wild youth"
+Both romanize to similar "Yeqing" but mean completely different things.
+
+**Solution**: Require format: `"Romanized Name (原文字)"` or `"English Translation (Foreign Language)"`
+
+This preserves original information alongside romanization, preventing homophone confusion and character loss during orchestrator-subagent communication.
+
+### Annotation Format Specification
+
+**Format**: `"Romanized/Translated Name (Original Script)"`
+
+**Examples by Language**:
+- Chinese: `"Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"`
+- Japanese: `"Fushimi Inari Shrine (伏見稲荷大社)"`
+- Korean: `"Gyeongbokgung Palace (경복궁)"`
+- Arabic: `"Khan el-Khalili (خان الخليلي)"`
+- Thai: `"Som Tam Nua (ส้มตำนัว)"`
+- Russian: `"Red Square (Красная площадь)"`
+
+**When to Apply**:
+- Restaurant names
+- Attraction names
+- Entertainment venue names
+- Shopping location names
+- Street/area names (if not standard romanization)
+
+**What NOT to annotate**:
+- Common nouns (e.g., "hotpot", "museum", "market")
+- Already-standardized place names (e.g., "Beijing", "Tokyo")
+- English brand names (e.g., "Starbucks", "McDonald's")
+
+### Enforcement in Orchestrator Prompts
+
+All subagent invocation prompts in this file explicitly require bilingual annotation format. If a subagent returns JSON without proper annotations, the orchestrator MUST flag this as a validation error and re-invoke the agent with specific feedback.
+
+---
+
 ## Implementation
 
 ### Step 0: Initialize Workflow
@@ -233,11 +289,19 @@ Use Task tool with:
 
   Research and recommend breakfast, lunch, dinner for each day.
 
+  **IMPORTANT - Bilingual Annotation Required**:
+  To prevent information loss through romanization (e.g., homophone confusion where 夜景 yèjǐng becomes 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+
+  Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+  Examples:
+  - "Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"
+  - "Night View Hotpot Park (夜景火锅公园)"
+
   **IMPORTANT - GPS Coordinates Required**:
   For each meal location, use gaode-maps (China) or google-maps (international) to obtain GPS coordinates.
   Output format for each meal:
   {
-    name: string,
+    name: string (with bilingual annotation),
     location: string (address),
     cost: number,
     cuisine: string,
@@ -254,6 +318,10 @@ Use Task tool with:
 **Each agent**:
 - Reads requirements and plan skeleton
 - Performs domain-specific research using available MCP skills (google-maps, gaode-maps, rednote, etc.)
+- **Bilingual Annotation Requirements** (meals, attractions, entertainment, shopping agents):
+  - ALL proper nouns MUST include original script annotations
+  - Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+  - This prevents information loss through homophone confusion (see Bilingual Annotation Requirement section)
 - **GPS Coordinate Requirements** (meals, attractions, entertainment, shopping agents):
   - Use gaode-maps (for China locations) or google-maps (international) to obtain GPS coordinates
   - Add `coordinates: {latitude: float, longitude: float}` field to each location entry

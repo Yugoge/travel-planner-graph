@@ -53,9 +53,15 @@ For each day in the trip:
    - Price aligns with daily budget expectations
 
 5. **Structure data** for each meal:
+
+   **CRITICAL - Bilingual Annotation Format**:
+   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+
+   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+
    ```json
    {
-     "name": "Restaurant Name",
+     "name": "Restaurant Name (Original Script)",
      "location": "Full address or area",
      "cost": 25,
      "cuisine": "Italian",
@@ -76,6 +82,12 @@ For each day in the trip:
      ]
    }
    ```
+
+   **Examples**:
+   - Chinese: `"name": "Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"`
+   - Japanese: `"name": "Sushi Saito (鮨 さいとう)"`
+   - Korean: `"name": "Gwangjang Market (광장시장)"`
+   - Thai: `"name": "Som Tam Nua (ส้มตำนัว)"`
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this restaurant

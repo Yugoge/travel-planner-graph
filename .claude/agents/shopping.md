@@ -60,9 +60,15 @@ For each day in the trip:
    - Check customs regulations for certain items
 
 4. **Structure data** for each shopping location:
+
+   **CRITICAL - Bilingual Annotation Format**:
+   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+
+   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+
    ```json
    {
-     "name": "Market/Store Name",
+     "name": "Market/Store Name (Original Script)",
      "location": "Full address or area",
      "cost": 100,
      "type": "Local Market",
@@ -83,6 +89,12 @@ For each day in the trip:
      ]
    }
    ```
+
+   **Examples**:
+   - Chinese: `"name": "Ciqikou Ancient Town (磁器口古镇)"`
+   - Japanese: `"name": "Takeshita Street (竹下通り)"`
+   - Korean: `"name": "Myeongdong Shopping District (명동)"`
+   - Arabic: `"name": "Khan el-Khalili (خان الخليلي)"`
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this shopping location
