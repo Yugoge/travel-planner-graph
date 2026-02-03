@@ -1,0 +1,269 @@
+{
+  "request_id": "dev-20260203-193744",
+  "timestamp": "2026-02-03T19:37:44Z",
+  "requirement": {
+    "original": "为什么名字出现拼写错误？是否是因为中文搜索英文subagent沟通又转发给主agent，主agent再翻译成中文出现的？请你修复",
+    "clarified": "Fix the architectural communication issue where Chinese restaurant names get corrupted when subagents translate them to romanized English for JSON output. Specifically, '夜景' (Night View) was incorrectly written as '野青' (Wild Youth). The solution is to ensure all translated content includes foreign language annotations in parentheses to preserve the original information.",
+    "what": "Prevent information loss in Chinese-to-English translation between subagents and orchestrator",
+    "why": "Chinese restaurant names are being corrupted during subagent communication because romanization loses tonal and character information (e.g., '夜景' yèjǐng vs '野青' yěqīng sound similar but mean different things)",
+    "where": [
+      ".claude/commands/plan.md (orchestrator prompts to subagents)",
+      ".claude/agents/meals.md (output format specification)",
+      ".claude/agents/attractions.md (output format specification)",
+      ".claude/agents/entertainment.md (output format specification)",
+      ".claude/agents/shopping.md (output format specification)"
+    ],
+    "scope": {
+      "included": [
+        "Add foreign language annotation requirement to all agent output specifications",
+        "Update orchestrator prompts in plan.md to require bilingual output",
+        "Update agent documentation to specify annotation format: 'Name (原名)' or 'Pinyin (中文)'",
+        "Apply to all location-based agents: meals, attractions, entertainment, shopping"
+      ],
+      "excluded": [
+        "Modifying MCP server communication (not the issue - MCPs work correctly)",
+        "Changing JSON schema structure (keep existing fields)",
+        "Retroactively fixing existing data files (only prevent future errors)",
+        "Modifying transportation or accommodation agents (less critical for names)"
+      ]
+    },
+    "success_criteria": [
+      "Agent output specifications require foreign language annotations for all proper nouns",
+      "Orchestrator prompts explicitly request bilingual format: 'Restaurant Name (中文名)'",
+      "Example output in documentation shows proper annotation format",
+      "All location-based agent docs (meals, attractions, entertainment, shopping) updated consistently"
+    ],
+    "constraints": [
+      "Do not break existing JSON schema",
+      "Keep agent prompts concise (avoid over-engineering)",
+      "Use existing 'name' field with annotation format, not new fields",
+      "Maintain backward compatibility with scripts reading JSON"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Restaurant name '去南山夜景火锅公园' was incorrectly stored as '去南山野青火锅公园' in meals.json",
+    "root_cause": "Architectural communication gap: Subagents receive English prompts from orchestrator, search Chinese MCPs, then output romanized names WITHOUT Chinese annotations. Romanization loses tonal information, causing homophone confusion (夜景 yèjǐng → '野青' yěqīng).",
+    "data_flow_path": "User requirement (中文) → Orchestrator prompt (English) → Subagent searches Gaode Maps (中文输入/输出) → Subagent outputs JSON with romanized name only → Information loss occurs here",
+    "root_cause_evidence": {
+      "plan_md_line_234": "Research and recommend breakfast, lunch, dinner for each day.",
+      "plan_md_line_239": "Output format: { name: string, location: string (address), ... }",
+      "current_output_example": "{ \"name\": \"Qu Nanshan Yeqing Huoguo Gongyuan\" }",
+      "problem": "No requirement for Chinese annotation in 'name' field"
+    },
+    "why_introduced": "Original agent design prioritized English-readable JSON output for international compatibility, assumed romanization would be sufficient",
+    "why_problematic": "Chinese proper nouns lose semantic information when romanized. Homophones (同音字) cannot be distinguished without character annotations. '夜景' (night view) and '野青' (wild youth) both romanize to similar 'Yeqing' but mean completely different things.",
+    "timeline": "Issue existed since initial /plan command design (meals-agent specification). Discovered on 2026-02-03 when user couldn't find the restaurant using corrupted name.",
+    "affected_files": [
+      ".claude/commands/plan.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working on master branch with 3 uncommitted files",
+    "recent_commits": [
+      "34e112a - feat: Migrate all features from bash to Python HTML generator with beige color scheme",
+      "7fbe50d - checkpoint: Auto-save at 2026-02-03 17:58:55"
+    ],
+    "file_contents": {
+      "plan_md_meals_prompt": "Research and recommend breakfast, lunch, dinner for each day.\n\nOutput format for each meal:\n{\n  name: string,\n  location: string (address),\n  cost: number,\n  cuisine: string,\n  notes: string,\n  coordinates: {latitude: float, longitude: float}\n}",
+      "meals_md_output_spec": "5. **Structure data** for each meal:\n   ```json\n   {\n     \"name\": \"Restaurant Name\",\n     \"location\": \"Full address or area\",\n     \"cost\": 25,\n     \"cuisine\": \"Italian\",\n     \"notes\": \"Famous for pasta, reservations recommended\"\n   }\n   ```",
+      "actual_output_example": "{\n  \"name\": \"Qu Nanshan Yeqing Huoguo Gongyuan\",\n  \"location\": \"Nanshan Street, Zhenwu Mountain 88, Nanshan\",\n  \"cost\": 50,\n  \"cuisine\": \"Chongqing Hotpot\",\n  \"notes\": \"HILLSIDE HOTPOT WITH NIGHT VIEW (南山半山腰)\"\n}"
+    },
+    "dependencies": {
+      "runtime": "Claude Code CLI with Task tool for subagent orchestration",
+      "mcps": "gaode-maps, google-maps, rednote (working correctly - not the source of error)"
+    },
+    "environment": {
+      "working_directory": "/root/travel-planner",
+      "agent_definitions": ".claude/agents/*.md",
+      "command_definitions": ".claude/commands/*.md"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add explicit bilingual annotation requirement to agent communication protocol. Update both orchestrator prompts (plan.md) and agent specifications (agents/*.md) to require format: 'Romanized Name (原文)' for all proper nouns. This preserves original information while maintaining English-readable JSON.",
+    "implementation_steps": [
+      "1. Update plan.md Step 5 orchestrator prompts for meals-agent to require: 'name: string (format: Pinyin (中文) for Chinese names)'",
+      "2. Update meals.md output specification to show example: '\"name\": \"Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)\"'",
+      "3. Update attractions.md output specification with same bilingual format requirement",
+      "4. Update entertainment.md output specification with same bilingual format requirement",
+      "5. Update shopping.md output specification with same bilingual format requirement",
+      "6. Add note in plan.md about why bilingual format is required (prevent homophone confusion)",
+      "7. Document best practice: When orchestrator communicates with subagents about foreign language content, always request annotations"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md (lines 234-250: meals-agent prompt)",
+      ".claude/agents/meals.md (lines 56-78: output format spec)",
+      ".claude/agents/attractions.md (output format spec)",
+      ".claude/agents/entertainment.md (output format spec)",
+      ".claude/agents/shopping.md (output format spec)"
+    ],
+    "validation_approach": "QA will verify: (1) All agent docs show bilingual format examples, (2) Orchestrator prompts explicitly request annotations, (3) Format is consistent across all affected agents, (4) Documentation explains WHY this is needed (prevent information loss)"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": "N/A (documentation change only)",
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "bilingual_annotation_format": "Romanized Name (原文) or English Translation (Foreign Language)",
+    "consistent_across_agents": "All location-based agents must use identical annotation format"
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added bilingual annotation documentation section to plan.md",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added comprehensive 'Bilingual Annotation Requirement' section explaining root cause, data flow path, problem statement, solution, format specification, and enforcement rules",
+        "rationale": "Orchestrator needs clear architectural principle explaining WHY bilingual annotations prevent information loss during subagent communication"
+      },
+      {
+        "id": 2,
+        "description": "Updated meals-agent orchestrator prompt in plan.md to require bilingual annotations",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added bilingual annotation requirement to meals-agent invocation prompt with format specification and examples",
+        "rationale": "Orchestrator prompt must explicitly request bilingual format to prevent romanization-only output from subagents"
+      },
+      {
+        "id": 3,
+        "description": "Updated parallel agent requirements section in plan.md",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'Bilingual Annotation Requirements' bullet to Step 8 agent requirements, applying to meals, attractions, entertainment, shopping agents",
+        "rationale": "Ensure all location-based agents receive bilingual annotation requirement uniformly across orchestrator workflow"
+      },
+      {
+        "id": 4,
+        "description": "Updated meals.md agent specification with bilingual format requirement",
+        "type": "specification",
+        "files_modified": [
+          ".claude/agents/meals.md"
+        ],
+        "changes": "Added 'CRITICAL - Bilingual Annotation Format' section with format specification and multi-language examples (Chinese, Japanese, Korean, Thai)",
+        "rationale": "Subagent specification must define output format with concrete examples to guide implementation"
+      },
+      {
+        "id": 5,
+        "description": "Updated attractions.md agent specification with bilingual format requirement",
+        "type": "specification",
+        "files_modified": [
+          ".claude/agents/attractions.md"
+        ],
+        "changes": "Added 'CRITICAL - Bilingual Annotation Format' section with format specification and multi-language examples (Chinese, Japanese, Korean, Arabic)",
+        "rationale": "Ensure consistent annotation format across all location-based agents"
+      },
+      {
+        "id": 6,
+        "description": "Updated entertainment.md agent specification with bilingual format requirement",
+        "type": "specification",
+        "files_modified": [
+          ".claude/agents/entertainment.md"
+        ],
+        "changes": "Added 'CRITICAL - Bilingual Annotation Format' section with format specification and multi-language examples (Chinese, Japanese, Korean, French)",
+        "rationale": "Entertainment venues require bilingual annotations to prevent name corruption through romanization"
+      },
+      {
+        "id": 7,
+        "description": "Updated shopping.md agent specification with bilingual format requirement",
+        "type": "specification",
+        "files_modified": [
+          ".claude/agents/shopping.md"
+        ],
+        "changes": "Added 'CRITICAL - Bilingual Annotation Format' section with format specification and multi-language examples (Chinese, Japanese, Korean, Arabic)",
+        "rationale": "Shopping location names must preserve original characters to prevent homophone confusion"
+      }
+    ],
+    "files_modified": [
+      {
+        "path": "/root/travel-planner/.claude/commands/plan.md",
+        "sections_modified": [
+          "Added new 'Bilingual Annotation Requirement' section before Implementation (lines 11-67)",
+          "Updated meals-agent invocation prompt in Step 8 to require bilingual annotations (lines 288-315)",
+          "Updated parallel agent requirements in Step 8 to include bilingual annotation requirement (lines 318-329)"
+        ],
+        "lines_added": 73,
+        "purpose": "Orchestrator command definition with architectural principle and subagent prompts"
+      },
+      {
+        "path": "/root/travel-planner/.claude/agents/meals.md",
+        "sections_modified": [
+          "Updated output format specification in task 5 (lines 55-90)"
+        ],
+        "lines_added": 17,
+        "purpose": "Meals subagent specification with bilingual format requirement and examples"
+      },
+      {
+        "path": "/root/travel-planner/.claude/agents/attractions.md",
+        "sections_modified": [
+          "Updated output format specification in task 4 (lines 73-107)"
+        ],
+        "lines_added": 17,
+        "purpose": "Attractions subagent specification with bilingual format requirement and examples"
+      },
+      {
+        "path": "/root/travel-planner/.claude/agents/entertainment.md",
+        "sections_modified": [
+          "Updated output format specification in task 4 (lines 58-92)"
+        ],
+        "lines_added": 17,
+        "purpose": "Entertainment subagent specification with bilingual format requirement and examples"
+      },
+      {
+        "path": "/root/travel-planner/.claude/agents/shopping.md",
+        "sections_modified": [
+          "Updated output format specification in task 4 (lines 62-96)"
+        ],
+        "lines_added": 17,
+        "purpose": "Shopping subagent specification with bilingual format requirement and examples"
+      }
+    ],
+    "git_rationale": {
+      "root_cause": "Orchestrator-subagent communication loses Chinese character information through romanization",
+      "root_cause_commit": "Original architecture design (initial /plan command implementation)",
+      "why_issue_occurred": "Original agent design prioritized English-readable JSON output for international compatibility, assumed romanization would be sufficient. Did not account for homophone ambiguity in Chinese proper nouns (e.g., 夜景 yèjǐng vs 野青 yěqīng).",
+      "how_fix_addresses_root": "Requiring bilingual annotations preserves original characters alongside romanization in the 'name' field. Format 'Romanized Name (原文)' ensures no information loss during JSON serialization while maintaining English readability. Orchestrator prompts explicitly request this format, and subagent specifications provide concrete examples to guide implementation."
+    },
+    "annotation_format_consistency": {
+      "standard_format": "Romanized Name (Original Script) OR English Translation (Foreign Language)",
+      "applied_to": [
+        "Restaurant names (meals.md)",
+        "Attraction names (attractions.md)",
+        "Entertainment venue names (entertainment.md)",
+        "Shopping location names (shopping.md)"
+      ],
+      "example_languages": [
+        "Chinese: 'Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)'",
+        "Japanese: 'Fushimi Inari Shrine (伏見稲荷大社)'",
+        "Korean: 'Gyeongbokgung Palace (경복궁)'",
+        "Arabic: 'Khan el-Khalili (خان الخليلي)'",
+        "Thai: 'Som Tam Nua (ส้มตำนัว)'"
+      ],
+      "validation_approach": "QA will verify all agent JSONs contain proper bilingual annotations by checking 'name' fields include parenthetical original script"
+    },
+    "architecture_documentation": {
+      "added_sections": [
+        {
+          "file": ".claude/commands/plan.md",
+          "section": "Bilingual Annotation Requirement",
+          "content": "Comprehensive explanation of root cause, data flow path, problem statement (homophone confusion), solution (bilingual format), format specification with multi-language examples, and enforcement rules"
+        }
+      ],
+      "why_explanation_included": "Documentation explicitly explains HOW information loss occurs (romanization strips tonal/character information) and WHY bilingual annotations solve this (preserves original script alongside romanization). Includes concrete example: 夜景 yèjǐng (night view) vs 野青 yěqīng (wild youth) - same romanization, completely different meanings.",
+      "enforcement_mechanism": "Orchestrator validation scripts can now check for parentheses in 'name' fields. If missing, re-invoke agent with specific feedback: 'Missing bilingual annotation for {name}. Format required: Romanized Name (原文)'"
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify: (1) All 4 agent specifications (meals, attractions, entertainment, shopping) show bilingual format examples, (2) Orchestrator plan.md contains comprehensive bilingual annotation section explaining root cause, (3) Format is consistent: 'Romanized/Translated Name (Original Script)' across all agents, (4) Documentation explains WHY this prevents homophone confusion with concrete Chinese example"
+  }
+}

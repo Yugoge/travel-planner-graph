@@ -1,0 +1,73 @@
+{
+  "request_id": "dev-20260203-194500",
+  "timestamp": "2026-02-03T19:45:00Z",
+  "requirement": {
+    "original": "/dev 卧槽检查出这么多问题啊？你还自以为是自我感觉良好，赶快修复",
+    "clarified": "Fix deployment script duplicate code with wrong purple colors"
+  },
+  "dev_report_path": "/root/travel-planner/docs/dev/dev-report-20260203-194500.json",
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "Remove inline Python code (lines 125-541) from generate-and-deploy.sh",
+      "verification_method": "grep -c 'purple\\|#667eea\\|#764ba2' scripts/generate-and-deploy.sh",
+      "expected_result": "0 purple color references"
+    },
+    {
+      "id": "SC2",
+      "description": "Deployment script only calls Python module TravelPlanHTMLGenerator",
+      "verification_method": "Inspect scripts/generate-and-deploy.sh for single Python module call",
+      "expected_result": "Only one HTML generation block using TravelPlanHTMLGenerator"
+    },
+    {
+      "id": "SC3",
+      "description": "Generated HTML has beige colors (not purple)",
+      "verification_method": "grep -o '#F5F1E8\\|#8B7355\\|#D4AF37\\|#667eea\\|#764ba2' travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html | sort -u",
+      "expected_result": "4 beige colors (#F5F1E8, #8B7355, #D4AF37), 0 purple colors (#667eea, #764ba2)"
+    },
+    {
+      "id": "SC4",
+      "description": "Generated HTML file size is ~200-230KB (not 432KB)",
+      "verification_method": "ls -lh travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "expected_result": "File size ~200-230KB"
+    },
+    {
+      "id": "SC5",
+      "description": "Deployed HTML matches local generated HTML (GitHub Pages verification)",
+      "verification_method": "Use Playwright to verify GitHub Pages URL shows beige colors and correct file size",
+      "expected_result": "GitHub Pages HTML has beige colors, file size ~200-230KB (not 432KB)",
+      "url": "https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202/2026-02-02/",
+      "playwright_checks": [
+        "Verify page background color is beige (#F5F1E8 or rgb(245, 241, 232))",
+        "Verify NO purple gradient colors (#667eea, #764ba2)",
+        "Verify Chart.js is loaded (not D3.js - user's actual design uses Chart.js)",
+        "Verify page size is reasonable (~200-300KB, not 432KB)"
+      ]
+    }
+  ],
+  "test_files": [
+    {
+      "path": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "purpose": "Test file generated with fixed deployment script",
+      "size": "225KB",
+      "deployed_url": "https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202/2026-02-02/"
+    }
+  ],
+  "root_cause": {
+    "problem": "Duplicate HTML generation code in deployment script",
+    "location": "scripts/generate-and-deploy.sh lines 125-541",
+    "issue": "Inline Python code with purple colors overwriting correct beige-colored output from Python module",
+    "fix": "Removed duplicate inline code, keeping only Python module call"
+  },
+  "constraints": [
+    "Do NOT modify scripts/lib/html_generator.py (already correct)",
+    "Use Playwright for GitHub Pages verification (SC5)",
+    "Compare deployed version with previous Playwright reports to verify fixes"
+  ],
+  "previous_playwright_reports": [
+    "/tmp/playwright-diagnosis-1/DIAGNOSIS-REPORT.md (found wrong 432KB Chart.js version)",
+    "/tmp/playwright-diagnosis-2/COLOR-DISCREPANCY-REPORT.md (confirmed beige colors in old deployment)",
+    "/tmp/playwright-diagnosis-3/SUMMARY.txt (found 70% features working)"
+  ],
+  "qa_instructions": "Run all success criteria verifications, including Playwright check of GitHub Pages URL to confirm deployment shows correct beige colors and file size. Compare with previous Playwright reports to verify fixes."
+}
