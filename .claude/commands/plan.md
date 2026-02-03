@@ -647,7 +647,7 @@ Parse user's change request to extract:
 
 **RE-INVOCATION PATTERN (Day-Scoped)**:
 
-**Step 16.1: Identify Affected Agent(s)**
+**Substep: Identify Affected Agent(s)**
 
 Map user request to domain agent(s):
 - "add spa", "nightlife", "娱乐" → entertainment-agent

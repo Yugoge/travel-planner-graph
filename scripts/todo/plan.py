@@ -60,58 +60,63 @@ def get_todos():
             "status": "pending"
         },
         {
-            "content": "Step 10: Invoke Timeline Agent (Serial)",
-            "activeForm": "Step 10: Invoking Timeline Agent",
+            "content": "Step 10: Optimize Route Order (Route Optimization)",
+            "activeForm": "Step 10: Optimizing Route Order",
             "status": "pending"
         },
         {
-            "content": "Step 11: Validate Timeline Consistency",
-            "activeForm": "Step 11: Validating Timeline Consistency",
+            "content": "Step 11: Invoke Timeline Agent (Serial)",
+            "activeForm": "Step 11: Invoking Timeline Agent",
             "status": "pending"
         },
         {
-            "content": "Step 12: Invoke Budget Agent (Serial)",
-            "activeForm": "Step 12: Invoking Budget Agent",
+            "content": "Step 12: Validate Timeline Consistency",
+            "activeForm": "Step 12: Validating Timeline Consistency",
             "status": "pending"
         },
         {
-            "content": "Step 13: Budget Gate Check",
-            "activeForm": "Step 13: Checking Budget Gate",
+            "content": "Step 13: Invoke Budget Agent (Serial)",
+            "activeForm": "Step 13: Invoking Budget Agent",
             "status": "pending"
         },
         {
-            "content": "Step 14: Day-by-Day Refinement Loop (Nested Loop)",
-            "activeForm": "Step 14: Executing Day-by-Day Refinement",
+            "content": "Step 14: Budget Gate Check",
+            "activeForm": "Step 14: Checking Budget Gate",
             "status": "pending"
         },
         {
-            "content": "Step 15: Handle Day-Scoped Refinement",
-            "activeForm": "Step 15: Handling Day-Scoped Refinement",
+            "content": "Step 15: Day-by-Day Refinement Loop (Nested Loop)",
+            "activeForm": "Step 15: Executing Day-by-Day Refinement",
             "status": "pending"
         },
         {
-            "content": "Step 16: Generate and Deploy (Atomic)",
-            "activeForm": "Step 16: Generating and Deploying HTML",
+            "content": "Step 16: Handle Day-Scoped Refinement",
+            "activeForm": "Step 16: Handling Day-Scoped Refinement",
             "status": "pending"
         },
         {
-            "content": "Step 17: Verify Generation and Deployment",
-            "activeForm": "Step 17: Verifying Generation and Deployment",
+            "content": "Step 17: Generate and Deploy (Atomic)",
+            "activeForm": "Step 17: Generating and Deploying HTML",
             "status": "pending"
         },
         {
-            "content": "Step 18: Capture Live URL",
-            "activeForm": "Step 18: Capturing Live URL",
+            "content": "Step 18: Verify Generation and Deployment",
+            "activeForm": "Step 18: Verifying Generation and Deployment",
             "status": "pending"
         },
         {
-            "content": "Step 19: Present Final Plan",
-            "activeForm": "Step 19: Presenting Final Plan",
+            "content": "Step 19: Capture Live URL",
+            "activeForm": "Step 19: Capturing Live URL",
             "status": "pending"
         },
         {
-            "content": "Step 20: Handle User Refinements (Multi-turn Loop)",
-            "activeForm": "Step 20: Handling User Refinements",
+            "content": "Step 20: Present Final Plan",
+            "activeForm": "Step 20: Presenting Final Plan",
+            "status": "pending"
+        },
+        {
+            "content": "Step 21: Handle User Refinements (Multi-turn Loop)",
+            "activeForm": "Step 21: Handling User Refinements",
             "status": "pending"
         }
     ]

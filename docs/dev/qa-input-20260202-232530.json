@@ -1,0 +1,283 @@
+{
+  "request_id": "dev-20260202-232530",
+  "timestamp": "2026-02-02T23:25:30Z",
+  "requirement": {
+    "original": "新增一个地理位置审核的agent，使用高德地图或者谷歌地图审核每一个行程是否连贯，避免去了A又去B最后又回到A的情况，这需要地理聚类分析，也就是分析每一个地理位置的坐标，然后脚本计算全部当天行程每一个目的地和其他所有目的地之间的距离，对比分析寻找在不破坏原有计划下路程更短的方案",
+    "clarified": "Add route optimization capability to /plan command Phase 3: (1) Modify existing 4 agents (meals, attractions, entertainment, shopping) to output GPS coordinates when they research locations, (2) Create Python script to read these coordinates, calculate distance matrix, detect inefficient routes (A→B→A patterns), and optimize activity order to minimize total distance, (3) Insert as new step between parallel agents and timeline agent",
+    "what": "Route optimization system with GPS coordinate collection and distance-based order optimization",
+    "why": "Current /plan workflow may generate inefficient routes where travelers visit location A, then B, then back to A, wasting time and distance. Need to detect and optimize these patterns.",
+    "where": [
+      ".claude/commands/plan.md - Step 8 (parallel agents prompt modification to include GPS output)",
+      ".claude/commands/plan.md - New Step 9 (route optimization between parallel agents and timeline)",
+      ".claude/commands/plan.md - Step 10+ (renumber timeline and budget to Step 10-11)",
+      "scripts/optimize-route.py - New Python script for distance calculation and route optimization",
+      "scripts/todo/plan.py - Update step numbers to match new workflow"
+    ],
+    "scope": {
+      "included": [
+        "Modify meals-agent prompt to output GPS coordinates (latitude, longitude) for each restaurant",
+        "Modify attractions-agent prompt to output GPS coordinates for each attraction",
+        "Modify entertainment-agent prompt to output GPS coordinates for each entertainment venue",
+        "Modify shopping-agent prompt to output GPS coordinates for each shopping location",
+        "Create scripts/optimize-route.py to read all agent JSONs, extract coordinates per day, calculate distance matrix, detect A→B→A patterns, optimize order using TSP approximation (greedy or 2-opt)",
+        "Script outputs route-optimization.json with optimized order and warnings about distance savings",
+        "Insert route optimization as Step 9 in plan.md between parallel agents (Step 8) and timeline agent (new Step 10)",
+        "Renumber subsequent steps: timeline becomes Step 10, budget becomes Step 11, validation becomes Step 12, etc.",
+        "Update scripts/todo/plan.py to reflect new step numbering"
+      ],
+      "excluded": [
+        "Creating a separate route-optimizer-agent subagent (reuse existing agents with coordinate output)",
+        "Real-time traffic data or transportation mode optimization (distance-only optimization)",
+        "User preference constraints (all activity orders can be changed for optimization)",
+        "Global optimal solution (use fast heuristic TSP approximation)",
+        "Modifying transportation-agent (only handles inter-city, not intra-city routing)"
+      ]
+    },
+    "success_criteria": [
+      "4 agents (meals, attractions, entertainment, shopping) output GPS coordinates in their JSON files",
+      "scripts/optimize-route.py successfully reads coordinates from all 4 agent JSONs",
+      "Script calculates distance matrix for all locations in a day",
+      "Script detects A→B→A inefficient patterns",
+      "Script generates optimized order that reduces total distance",
+      "Script outputs route-optimization.json with same structure as timeline.json",
+      "route-optimization.json includes warnings field showing distance comparison (original vs optimized)",
+      "Step numbering in plan.md updated: route optimization is Step 9, timeline is Step 10, budget is Step 11",
+      "scripts/todo/plan.py matches new step numbers",
+      "Script uses haversine formula for distance calculation (accurate for GPS coordinates)",
+      "Script is parameterized (no hardcoded values), takes destination-slug as parameter"
+    ],
+    "constraints": [
+      "Must use haversine formula for GPS distance calculation (not Euclidean)",
+      "Agents already use gaode-maps (China) and google-maps (international) MCPs - continue using same pattern",
+      "Coordinate format: {\"latitude\": float, \"longitude\": float} in each location object",
+      "TSP optimization should be fast (<5 seconds per day even for 20 locations)",
+      "Maintain backward compatibility with existing JSON structures (add coordinates field, don't change existing fields)",
+      "Use source venv for Python script execution",
+      "No new agent creation (modify existing agents only)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User observed inefficient routes in travel plan where locations are visited in suboptimal order (A→B→A pattern wasting distance)",
+    "root_cause": "Current /plan Phase 3 workflow has 6 parallel agents (meals, accommodation, attractions, entertainment, shopping, transportation) that independently research and recommend locations without considering geographic proximity or route efficiency. Timeline agent (Step 10) arranges activities chronologically but doesn't optimize spatial order. No mechanism exists to detect or fix inefficient routing patterns.",
+    "root_cause_commit": "No specific commit introduced this - it's an original design limitation. Commit ccd5318 'refactor: Use dedicated subagents instead of general-purpose' established current parallel agent architecture but didn't include route optimization.",
+    "why_introduced": "Initial /plan design prioritized content completeness (finding best restaurants, attractions) over route efficiency. Agents focus on quality of recommendations, not geographic optimization.",
+    "why_problematic": "For multi-location days (Day 1 Chongqing with 5+ locations), current workflow may generate: Raffles (A) → Huguang Guild Hall (B) → Xiayao Li (C) → back to city center (near A) → Nanshan (D). This wastes travel time and distance. User wants system to detect and suggest: Raffles (A) → city center activities → Nanshan (D) → Xiayao Li (C) for shorter total distance.",
+    "timeline": "Issue existed since /plan command creation. User discovered when reviewing Day 1 detailed plan with multiple locations.",
+    "affected_files": [
+      ".claude/commands/plan.md (Step 8 parallel agents, Step 10 timeline agent)",
+      "meals-agent, attractions-agent, entertainment-agent, shopping-agent (no GPS output currently)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory has uncommitted changes from previous /dev session (nested loop implementation)",
+    "recent_commits": [
+      "58c8f57 checkpoint: Auto-save at 2026-02-02 23:24:47",
+      "135f185 checkpoint: Auto-save at 2026-02-02 20:18:20",
+      "ccd5318 refactor: Use dedicated subagents instead of general-purpose"
+    ],
+    "file_contents": {
+      "plan.md_step8": "Step 8: Invoke Parallel Agents (6 agents simultaneously) - meals, accommodation, attractions, entertainment, shopping, transportation. Each agent researches and saves to data/{destination-slug}/{agent}.json. No GPS coordinates currently included in prompts.",
+      "plan.md_step10": "Step 10: Invoke Timeline Agent (Serial) - reads all agent outputs, creates timeline dict with start/end times, detects conflicts. Does not consider geographic optimization.",
+      "meals.json_sample": "Day 1 breakfast: {name, location (address string), cost, cuisine, notes}. No GPS coordinates.",
+      "attractions.json_sample": "Day 1 Raffles observation deck: {name, location (address string), cost, duration_minutes, type, notes}. No GPS coordinates."
+    },
+    "dependencies": {
+      "runtime": "Python 3.11 (venv at /root/.claude/venv)",
+      "packages": "gaode-maps MCP, google-maps MCP (via Skill tool)",
+      "mcp_tools": "gaode-maps for China locations (POI search returns lat/lon), google-maps for international"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "project_path": "/root/travel-planner",
+      "config_files": [
+        ".claude/commands/plan.md",
+        "scripts/todo/plan.py"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Three-part implementation: (1) Modify 4 agent prompts in plan.md Step 8 to request GPS coordinates from gaode/google-maps MCPs, (2) Create scripts/optimize-route.py to read coordinates, calculate haversine distances, detect inefficiencies, optimize using greedy TSP, output route-optimization.json, (3) Insert route optimization as Step 9, renumber timeline (Step 10) and budget (Step 11)",
+    "scripts_to_create": [
+      "scripts/optimize-route.py - Parameterized route optimization script",
+      "Parameters: destination-slug (required)",
+      "Reads: data/{slug}/meals.json, attractions.json, entertainment.json, shopping.json",
+      "Outputs: data/{slug}/route-optimization.json",
+      "Algorithm: Greedy nearest-neighbor TSP approximation",
+      "Distance: Haversine formula for GPS coordinates"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md - Step 8 prompts (add GPS coordinate requirements for 4 agents)",
+      ".claude/commands/plan.md - New Step 9 (route optimization invocation)",
+      ".claude/commands/plan.md - Renumber Steps 10-20 (timeline, budget, validation, HTML, refinement)",
+      "scripts/todo/plan.py - Update step numbering to match new workflow"
+    ],
+    "changes_required": {
+      "step_8_prompt_changes": [
+        "meals-agent: Add instruction 'For each meal location, use gaode-maps/google-maps to obtain GPS coordinates. Output format: {name, location, cost, cuisine, notes, coordinates: {latitude: float, longitude: float}}'",
+        "attractions-agent: Add instruction 'For each attraction, use gaode-maps/google-maps to obtain GPS coordinates. Output format: {name, location, cost, duration_minutes, type, notes, coordinates: {latitude: float, longitude: float}}'",
+        "entertainment-agent: Add instruction 'For each entertainment venue, use gaode-maps/google-maps to obtain GPS coordinates. Output format: {name, location, cost, time, type, notes, coordinates: {latitude: float, longitude: float}}'",
+        "shopping-agent: Add instruction 'For each shopping location, use gaode-maps/google-maps to obtain GPS coordinates. Output format: {name, location, cost, type, notes, coordinates: {latitude: float, longitude: float}}'",
+        "Note: gaode-maps POI search already returns lat/lon, agents just need to include it in JSON output"
+      ],
+      "new_step_9": [
+        "Title: 'Step 9: Optimize Route Order (Route Optimization)'",
+        "Read all agent outputs with coordinates",
+        "Execute: scripts/optimize-route.py {destination-slug}",
+        "Script calculates distance matrix, detects A→B→A patterns, optimizes order",
+        "Output: data/{destination-slug}/route-optimization.json",
+        "Validation: Check if total distance reduced, warnings generated",
+        "If optimization fails (missing coordinates), log warning and proceed with original order"
+      ],
+      "step_renumbering": [
+        "Current Step 9 'Verify Agent Outputs' → becomes Step 9.5 (keep as substep of Step 9 route optimization)",
+        "Current Step 10 'Invoke Timeline Agent' → becomes Step 10 (unchanged function, new number)",
+        "Current Step 11 'Validate Timeline' → becomes Step 11 (or merge into Step 10 validation)",
+        "Current Step 12 'Invoke Budget Agent' → becomes Step 12 (if Step 11 merged) or Step 13",
+        "Current Step 13 'Budget Gate Check' → renumber accordingly",
+        "Current Steps 14-20 (refinement workflow) → renumber by +1 or +2 depending on substep consolidation"
+      ],
+      "script_implementation": [
+        "Use haversine formula: distance = 2 * R * arcsin(sqrt(sin²((lat2-lat1)/2) + cos(lat1)*cos(lat2)*sin²((lon2-lon1)/2))), R = 6371 km",
+        "Build distance matrix: NxN array where N = number of locations in a day",
+        "Greedy TSP: Start at first location (usually hotel/accommodation), repeatedly visit nearest unvisited location",
+        "Detect A→B→A: Check if any location is visited, then left for 2+ locations, then revisited (within 1km radius)",
+        "Output JSON structure: {days: [{day, date, location, optimized_order: [location_names], distance_comparison: {original_km, optimized_km, savings_km, savings_percent}, warnings: []}]}",
+        "Parameterization: All paths use {destination-slug} variable, no hardcoded trip names"
+      ]
+    },
+    "validation_approach": "QA will verify: (1) 4 agents output coordinates in JSON, (2) scripts/optimize-route.py runs without errors, (3) route-optimization.json generated with valid structure, (4) Distance savings calculated correctly, (5) Step numbering consistent across plan.md and todo script, (6) No hardcoded values in script, (7) Haversine formula correctly implemented"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": false,
+    "additional_standards": [
+      "Maintain backward compatibility - add coordinates field, don't change existing JSON structure",
+      "Handle missing coordinates gracefully - if agent fails to provide GPS, skip that location in optimization",
+      "Fast execution - optimize-route.py should complete in <5 seconds per day",
+      "Clear warnings - route-optimization.json warnings should show specific inefficiencies detected",
+      "Use placeholders: {destination-slug}, {day}, {location}, not hardcoded trip names"
+    ]
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Modified plan.md Step 8 parallel agents to output GPS coordinates",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added GPS coordinate requirements to meals-agent, attractions-agent, entertainment-agent, and shopping-agent prompts. Format: coordinates: {latitude: float, longitude: float}",
+        "rationale": "Root cause: Agents independently research locations without considering geographic proximity. Fix: Require agents to capture GPS coordinates using gaode-maps/google-maps MCPs for route optimization"
+      },
+      {
+        "id": 2,
+        "description": "Inserted new Step 10 for route optimization in plan.md",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added Step 10: Optimize Route Order (Route Optimization) between agent verification (Step 9) and timeline agent (Step 11). Executes scripts/optimize-route.py to analyze GPS coordinates, detect A→B→A patterns, and optimize order using greedy TSP",
+        "rationale": "Insert route optimization layer between parallel agents and timeline agent to minimize travel distance before timeline scheduling"
+      },
+      {
+        "id": 3,
+        "description": "Renumbered Steps 10-20 to Steps 11-21 in plan.md",
+        "type": "config",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Timeline Agent: Step 10→11, Validate Timeline: Step 11→12, Budget Agent: Step 12→13, Budget Gate: Step 13→14, Day-by-Day Refinement: Step 14→15, Handle Day-Scoped Refinement: Step 15→16, Generate and Deploy: Step 16→17, Verify Generation: Step 17→18, Capture Live URL: Step 18→19, Present Final Plan: Step 19→20, Handle User Refinements: Step 20→21",
+        "rationale": "Maintain sequential integer step numbering after inserting Step 10. Updated all cross-references throughout plan.md"
+      },
+      {
+        "id": 4,
+        "description": "Created scripts/optimize-route.py",
+        "type": "script",
+        "files_created": [
+          "scripts/optimize-route.py"
+        ],
+        "rationale": "Implements route optimization algorithm: reads GPS coordinates from agent JSONs, calculates haversine distance matrix, detects A→B→A inefficiency patterns, optimizes order using greedy nearest-neighbor TSP approximation"
+      },
+      {
+        "id": 5,
+        "description": "Updated scripts/todo/plan.py with new step numbers",
+        "type": "config",
+        "files_modified": [
+          "scripts/todo/plan.py"
+        ],
+        "changes": "Added Step 10: Optimize Route Order, renumbered Steps 10-20 to Steps 11-21 to match plan.md workflow",
+        "rationale": "Keep todo script synchronized with plan.md step numbering for workflow tracking"
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/optimize-route.py",
+        "purpose": "Optimize daily activity order based on GPS coordinates to minimize travel distance",
+        "parameters": [
+          "destination-slug (required)"
+        ],
+        "usage": "source /root/.claude/venv/bin/activate && python scripts/optimize-route.py {destination-slug}",
+        "algorithm": "Greedy nearest-neighbor TSP approximation",
+        "distance_calculation": "Haversine formula for GPS coordinates (Earth radius 6371km)",
+        "inputs": [
+          "data/{slug}/meals.json",
+          "data/{slug}/attractions.json",
+          "data/{slug}/entertainment.json",
+          "data/{slug}/shopping.json",
+          "data/{slug}/plan-skeleton.json"
+        ],
+        "outputs": [
+          "data/{slug}/route-optimization.json"
+        ],
+        "output_structure": {
+          "days": [
+            {
+              "day": "int",
+              "date": "string",
+              "location": "string",
+              "optimized_order": [
+                "activity names in optimized sequence"
+              ],
+              "distance_comparison": {
+                "original_km": "float",
+                "optimized_km": "float",
+                "savings_km": "float",
+                "savings_percent": "float"
+              },
+              "warnings": [
+                "A→B→A pattern descriptions or optimization notes"
+              ]
+            }
+          ]
+        },
+        "exit_codes": {
+          "0": "Optimization successful",
+          "1": "Missing coordinates (non-blocking, script continues with available data)",
+          "2": "File read errors (blocking)"
+        },
+        "performance": "Fast execution (<5 seconds per day even with 20+ locations)",
+        "handles_missing_coords": true,
+        "graceful_degradation": "Skips locations without GPS coordinates, logs warnings, continues optimization with available data"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "ccd5318 - refactor: Use dedicated subagents instead of general-purpose",
+      "why_issue_occurred": "Parallel agent architecture (commit ccd5318) established 6 specialist agents that independently research locations without considering geographic proximity. Each agent optimizes for domain quality (best restaurants, best attractions) but doesn't coordinate on spatial efficiency. Timeline agent arranges activities chronologically but doesn't optimize spatial order, leading to potential A→B→A routing inefficiencies where travelers visit location A, then distant B, then return near A.",
+      "how_fix_addresses_root": "Add GPS coordinate capture requirement to 4 location-based agents (meals, attractions, entertainment, shopping) via gaode-maps/google-maps MCPs that already exist. Insert route optimization script as Step 10 between parallel agents (Step 8) and timeline agent (Step 11) to detect A→B→A patterns and reorder activities using greedy TSP before timeline scheduling. Timeline agent can then use optimized order for more efficient schedules."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify: (1) Run optimize-route.py on existing test data to confirm script executes without errors, (2) Check route-optimization.json output structure matches specification, (3) Validate haversine distance calculations are accurate (spot-check against known distances), (4) Confirm script handles missing coordinates gracefully (exit code 1 with warnings, not exit code 2), (5) Verify step numbering consistency across plan.md and todo/plan.py, (6) Test script performance (<5s per day)",
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/optimize-route.py:*)",
+        "reason": "Allow execution of route optimization script created by /dev for GPS-based activity order optimization"
+      }
+    ]
+  }
+}
