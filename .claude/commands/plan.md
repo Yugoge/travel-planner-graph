@@ -287,86 +287,77 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/va
 
 If critical issues found, extract specific errors and re-invoke relevant agents with fix instructions.
 
-#### Step 10: Optimize Route Order (Route Optimization)
+#### Step 10: Invoke Timeline Agent with Route Optimization (Serial)
 
-**Purpose**: Analyze GPS coordinates from all agent outputs to detect inefficient routing patterns (A→B→A) and optimize activity order to minimize total travel distance per day.
-
-Run route optimization script:
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/optimize-route.py {destination-slug}
-```
-
-**What it does**:
-- Reads GPS coordinates from meals.json, attractions.json, entertainment.json, shopping.json
-- Calculates haversine distance matrix for all locations per day
-- Detects inefficient patterns where travelers visit location A, then B, then return to A
-- Optimizes order using greedy nearest-neighbor TSP approximation
-- Outputs route-optimization.json with optimized order and distance savings
-
-**Output**: `data/{destination-slug}/route-optimization.json`
-
-**Format**:
-```json
-{
-  "days": [
-    {
-      "day": 1,
-      "date": "2026-03-15",
-      "location": "Chongqing",
-      "optimized_order": ["Accommodation", "Breakfast Restaurant", "Attraction 1", "Lunch Restaurant", "Attraction 2", "Dinner Restaurant"],
-      "distance_comparison": {
-        "original_km": 25.4,
-        "optimized_km": 18.2,
-        "savings_km": 7.2,
-        "savings_percent": 28.3
-      },
-      "warnings": ["Original route had A→B→A pattern with 7.2km inefficiency"]
-    }
-  ]
-}
-```
-
-**Exit codes**:
-- 0: Optimization successful
-- 1: Missing coordinates (script will skip locations without GPS and continue)
-- 2: File read errors
-
-**Handling missing coordinates**: If agents failed to provide GPS coordinates for some locations, script will log warnings and optimize only locations with valid coordinates. This is non-blocking - proceed to Step 11 even with warnings.
-
-**Validation**:
-```bash
-test -f /root/travel-planner/data/{destination-slug}/route-optimization.json && echo "verified" || echo "missing"
-```
-
-#### Step 11: Invoke Timeline Agent (Serial)
-
-**IMPORTANT**: Timeline agent runs AFTER route optimization completes.
+**Architecture Note - Root Cause Reference (commit 795bea0)**: This step delegates route optimization and timeline creation to timeline-agent as a unified workflow. Orchestrator must NOT execute scripts directly - all implementation details are handled by the subagent.
 
 ```
 Use Task tool with:
 - subagent_type: "timeline-agent"
-- description: "Create timeline dictionary and detect conflicts"
+- description: "Optimize route and create timeline with conflict detection"
 - model: "sonnet"
 - prompt: "
-  Read ALL agent outputs:
-  - data/{destination-slug}/plan-skeleton.json
-  - data/{destination-slug}/meals.json
-  - data/{destination-slug}/accommodation.json
-  - data/{destination-slug}/attractions.json
-  - data/{destination-slug}/entertainment.json
-  - data/{destination-slug}/shopping.json
-  - data/{destination-slug}/transportation.json
-  - data/{destination-slug}/route-optimization.json (optional - use optimized order if available)
+  **UNIFIED WORKFLOW: Route Optimization + Timeline Creation**
 
-  Create timeline as DICTIONARY:
-  - Keys: EXACT activity names from source JSONs
-  - Values: {start_time: 'HH:MM', end_time: 'HH:MM', duration_minutes: N}
+  Your task has two phases:
 
-  If route-optimization.json exists, consider optimized_order when scheduling activities.
+  **Phase 1 - Route Optimization**:
+  1. Read GPS coordinates from all location-based agent outputs:
+     - data/{destination-slug}/meals.json (breakfast/lunch/dinner coordinates)
+     - data/{destination-slug}/attractions.json (attraction coordinates)
+     - data/{destination-slug}/entertainment.json (entertainment coordinates)
+     - data/{destination-slug}/shopping.json (shopping coordinates)
 
-  Detect conflicts: overlapping times, unrealistic travel, tight schedules.
+  2. For each day, analyze activity locations:
+     - Calculate haversine distances between all locations
+     - Detect inefficient routing patterns (A→B→A patterns)
+     - Optimize activity order using nearest-neighbor approach to minimize travel
+     - Generate optimized activity sequence per day
 
-  Save to: data/{destination-slug}/timeline.json
+  3. Save optimization results to: data/{destination-slug}/route-optimization.json
+     Format:
+     {
+       days: [
+         {
+           day: N,
+           date: 'YYYY-MM-DD',
+           location: 'City',
+           optimized_order: ['Activity 1', 'Activity 2', ...],
+           distance_comparison: {
+             original_km: float,
+             optimized_km: float,
+             savings_km: float,
+             savings_percent: float
+           },
+           warnings: ['efficiency notes']
+         }
+       ]
+     }
+
+  **Phase 2 - Timeline Creation**:
+  1. Read ALL agent outputs:
+     - data/{destination-slug}/plan-skeleton.json
+     - data/{destination-slug}/meals.json
+     - data/{destination-slug}/accommodation.json
+     - data/{destination-slug}/attractions.json
+     - data/{destination-slug}/entertainment.json
+     - data/{destination-slug}/shopping.json
+     - data/{destination-slug}/transportation.json
+     - data/{destination-slug}/route-optimization.json (from Phase 1)
+
+  2. Create timeline as DICTIONARY using optimized activity order:
+     - Keys: EXACT activity names from source JSONs
+     - Values: {start_time: 'HH:MM', end_time: 'HH:MM', duration_minutes: N}
+     - Schedule activities following route-optimization.json order for efficiency
+
+  3. Detect conflicts: overlapping times, unrealistic travel, tight schedules
+
+  4. Save to: data/{destination-slug}/timeline.json
+
+  **IMPORTANT**:
+  - If any locations lack GPS coordinates, optimize only locations with valid coordinates
+  - Log warnings for missing coordinates but continue with optimization
+  - Both route-optimization.json AND timeline.json must be created
 
   Return ONLY: complete
   "
@@ -374,7 +365,13 @@ Use Task tool with:
 
 Wait for "complete".
 
-#### Step 12: Validate Timeline Consistency
+**Verification**: Confirm both files exist:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/route-optimization.json && echo "route-optimization.json verified" || echo "missing"
+test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "missing"
+```
+
+#### Step 11: Validate Timeline Consistency
 
 Run validation script:
 ```bash
@@ -384,7 +381,7 @@ bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-
 **Exit code 0**: Timeline valid → Proceed
 **Exit code 1**: Validation errors (mismatched keys, conflicts) → Review timeline.json warnings
 
-#### Step 13: Invoke Budget Agent (Serial)
+#### Step 12: Invoke Budget Agent (Serial)
 
 **IMPORTANT**: Budget agent runs AFTER timeline agent completes.
 
@@ -418,7 +415,7 @@ Use Task tool with:
 
 Wait for "complete".
 
-#### Step 14: Budget Gate Check
+#### Step 13: Budget Gate Check
 
 **CRITICAL**: Check if budget overage exceeds thresholds requiring mandatory review.
 
@@ -427,19 +424,17 @@ Run budget gate script:
 source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/check-budget-overage.py /root/travel-planner/data/{destination-slug}/budget.json 200 20
 ```
 
-**Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 15
-**Exit code 1**: Review required → Set `force_review=true`, proceed to Step 15 (user CANNOT skip)
+**Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 14
+**Exit code 1**: Review required → Set `force_review=true`, proceed to Step 14 (user CANNOT skip)
 **Exit code 2**: Error → Debug budget.json and retry
 
 **Root Cause Reference**: Budget gate added to address commit 77dca06 issue where €963 overage (96%) was not caught, requiring mandatory day-by-day review when overage exceeds thresholds.
-
-**Note on Step 14**: Previously Step 11.5, renumbered to enforce integer-only step numbering (no decimal steps per dev agent standards).
 
 ---
 
 ### Phase 4: Validation and Conflict Review
 
-#### Step 15: Day-by-Day Refinement Loop (Nested Loop Pattern)
+#### Step 14: Day-by-Day Refinement Loop (Nested Loop Pattern)
 
 **Root Cause Reference**: Commit 77dca06 inherited linear day iteration without per-day cycling support. This step implements nested loop: OUTER loop for sequential day progression (1→2→3...→N), INNER loop for current day refinement until user confirms perfect.
 
@@ -628,15 +623,15 @@ OUTER LOOP starts: current_day_index = 1
 - User selects "Accept all remaining"
 - Then proceed to Phase 5
 
-#### Step 16: Handle Day-Scoped Refinement (Re-invoke Agents)
+#### Step 15: Handle Day-Scoped Refinement (Re-invoke Agents)
 
-**CRITICAL**: This step handles "Make changes to Day N" option from Step 15 INNER loop. After agent re-invocation and validation, **RETURN TO STEP 15 INNER LOOP** to re-present the current day. Do NOT auto-advance to next day.
+**CRITICAL**: This step handles "Make changes to Day N" option from Step 14 INNER loop. After agent re-invocation and validation, **RETURN TO STEP 14 INNER LOOP** to re-present the current day. Do NOT auto-advance to next day.
 
 **Root Cause Reference**: Commit 77dca06's linear design advanced to next day after changes. Nested loop requires returning to INNER loop for same day until user confirms perfect.
 
 ---
 
-**When user selects "Make changes to Day N"** from Step 15:
+**When user selects "Make changes to Day N"** from Step 14:
 
 Parse user's change request to extract:
 - **Domain affected**: Which agent? (meals, attractions, entertainment, shopping, transportation)
@@ -755,13 +750,13 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/va
 
 ---
 
-**Substep: Return to Step 15 INNER LOOP**
+**Substep: Return to Step 14 INNER LOOP**
 
-**CRITICAL**: Do NOT advance to next day. Return to Step 15 INNER loop to re-present the SAME day (Day N) with updated data.
+**CRITICAL**: Do NOT advance to next day. Return to Step 14 INNER loop to re-present the SAME day (Day N) with updated data.
 
 ```
 Increment iteration_count_per_day
-Return to Step 15 INNER LOOP:
+Return to Step 14 INNER LOOP:
   → Extract updated Day {N} data from all JSONs
   → Present complete Day {N} plan (with changes applied)
   → Offer same options:
@@ -787,53 +782,53 @@ After 5 iterations on same day, present safety warning (see Step 14).
 **EXAMPLE EXECUTION FLOW**:
 
 ```
-Step 15 INNER LOOP - Day 3:
+Step 14 INNER LOOP - Day 3:
   → Present complete Day 3 plan
   → User: "Make changes - add spa"
 
-Step 16 (this step):
+Step 15 (this step):
   → Parse: domain=entertainment, instruction="add spa"
   → Re-invoke entertainment-agent for Day 3
   → Re-invoke timeline-agent for Day 3
   → Re-invoke budget-agent for Day 3
   → Validate Day 3 changes
-  → Return to Step 15 INNER LOOP
+  → Return to Step 14 INNER LOOP
 
-Step 15 INNER LOOP - Day 3 (re-presentation):
+Step 14 INNER LOOP - Day 3 (re-presentation):
   → Present complete Day 3 plan WITH spa included
   → User: "Make changes - change lunch to vegetarian"
 
-Step 16 (this step again):
+Step 15 (this step again):
   → Parse: domain=meals, instruction="change lunch to vegetarian"
   → Re-invoke meals-agent for Day 3
   → Re-invoke timeline-agent for Day 3
   → Re-invoke budget-agent for Day 3
   → Validate Day 3 changes
-  → Return to Step 15 INNER LOOP
+  → Return to Step 14 INNER LOOP
 
-Step 15 INNER LOOP - Day 3 (re-presentation):
+Step 14 INNER LOOP - Day 3 (re-presentation):
   → Present complete Day 3 plan WITH spa AND vegetarian lunch
   → User: "This day is perfect"
   → day_confirmed_perfect = true
   → Exit INNER loop, increment current_day_index to 4
 
-Step 15 OUTER LOOP:
+Step 14 OUTER LOOP:
   → Move to Day 4, start new INNER loop
 ```
 
 ---
 
-**KEY PRINCIPLE**: Step 16 is a subroutine of Step 15 INNER loop. After completing agent re-invocations and validations, **ALWAYS return to Step 15 INNER loop for same day**, never auto-advance.
+**KEY PRINCIPLE**: Step 15 is a subroutine of Step 14 INNER loop. After completing agent re-invocations and validations, **ALWAYS return to Step 14 INNER loop for same day**, never auto-advance.
 
 ---
 
 ### Phase 5: HTML Generation and Deployment
 
-**⚠️ CRITICAL: Steps 17-19 are MANDATORY and ATOMIC. NEVER skip these steps.**
+**⚠️ CRITICAL: Steps 16-18 are MANDATORY and ATOMIC. NEVER skip these steps.**
 
 Root cause reference: Script separation caused workflow interruption where AI subjectively skipped deployment steps, violating the principle that generated plans must be immediately published.
 
-#### Step 17: Generate and Deploy (Atomic Operation)
+#### Step 16: Generate and Deploy (Atomic Operation)
 
 **IMPORTANT**: Generation and deployment are now a SINGLE atomic operation. Once HTML is generated, it MUST be deployed. There is NO option to skip deployment.
 
@@ -864,7 +859,7 @@ Script performs:
 - Warn user about missing authentication
 - Provide instructions to enable deployment
 
-#### Step 18: Verify Generation and Deployment
+#### Step 17: Verify Generation and Deployment
 
 Check file exists locally:
 ```bash
@@ -875,16 +870,16 @@ test -f /root/travel-planner/travel-plan-{destination-slug}.html && echo "verifi
 
 Verify deployment URL from script output (script will display live URL)
 
-#### Step 19: Capture Live URL
+#### Step 18: Capture Live URL
 
 Extract and save the live URL from deploy script output:
 ```
 https://{username}.github.io/travel-planner-graph/{destination-slug}/{date}/
 ```
 
-**This URL will be presented to user in Step 20.**
+**This URL will be presented to user in Step 19.**
 
-#### Step 20: Present Final Plan
+#### Step 19: Present Final Plan
 
 **Generate Booking Checklist**:
 
@@ -953,11 +948,11 @@ Open the HTML file in any browser to view your complete travel plan.
 
 ### Phase 6: Refinement Loop
 
-#### Step 21: Handle User Refinements
+#### Step 20: Handle User Refinements
 
 **CRITICAL**: This multi-turn refinement phase follows the same pattern as /ask command's Step 6 dialogue loop. Each refinement request must be parsed, classified, and delegated to specialist agents.
 
-**Root Cause Reference**: Step 21 was too brief (11 lines), causing AI to skip proper agent delegation and manually research via WebSearch/Gaode Maps. This violates orchestration architecture where specialist agents handle all domain research.
+**Root Cause Reference**: Step 20 was too brief (11 lines), causing AI to skip proper agent delegation and manually research via WebSearch/Gaode Maps. This violates orchestration architecture where specialist agents handle all domain research.
 
 ---
 
@@ -1052,7 +1047,7 @@ Based on parsed `refinement_context`, classify into one of three types:
 1. Read relevant data from existing JSONs in `data/{destination-slug}/`
 2. Answer user's question directly using available information
 3. Do NOT re-invoke any agents
-4. Return to Step 21.1 (wait for next user response)
+4. Return to Step 20 first substep (wait for next user response)
 
 **Example**:
 ```

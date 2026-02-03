@@ -1,0 +1,306 @@
+{
+  "request_id": "dev-20260203-124227",
+  "timestamp": "2026-02-03T12:58:45Z",
+  "dev_status": "completed",
+  "implementation_summary": {
+    "requirement": "Implement dynamic currency conversion system to replace hardcoded EUR conversion",
+    "root_cause_commit": "95a42d33ff3dc0cdf6326fe0fa2ac136db749db3",
+    "files_created": [
+      "scripts/utils/fetch-exchange-rate.sh",
+      "config/currency-config.json",
+      "docs/dev/agent-schema-currency-update-20260203.md"
+    ],
+    "files_modified": [
+      "scripts/generate-travel-html.sh"
+    ],
+    "key_changes": [
+      "Removed hardcoded CNY_TO_EUR = 7.8 constant",
+      "Added real-time exchange rate fetching from exchangerate-api.com",
+      "Created configurable currency system with global config file",
+      "Updated JavaScript to use dynamic CURRENCY_CONFIG from PLAN_DATA",
+      "Replaced 11 hardcoded € symbols with dynamic currency_symbol",
+      "Maintained backward compatibility with old trip data"
+    ]
+  },
+  "qa_test_plan": {
+    "functional_tests": [
+      {
+        "test_id": "QA-F1",
+        "description": "Verify exchange rate script works with multiple currency pairs",
+        "commands": [
+          "./scripts/utils/fetch-exchange-rate.sh CNY EUR",
+          "./scripts/utils/fetch-exchange-rate.sh USD GBP",
+          "./scripts/utils/fetch-exchange-rate.sh JPY USD",
+          "./scripts/utils/fetch-exchange-rate.sh EUR CNY",
+          "./scripts/utils/fetch-exchange-rate.sh GBP USD"
+        ],
+        "expected": "All commands return numeric exchange rates (not error codes)",
+        "success_criteria": "SC2, SC5"
+      },
+      {
+        "test_id": "QA-F2",
+        "description": "Verify HTML generation uses real-time rates",
+        "commands": [
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429"
+        ],
+        "validation": [
+          "Check console output shows 'Fetching exchange rate: CNY → EUR...'",
+          "Check console shows exchange rate (not 7.8)",
+          "Grep generated HTML for 'currency_config' object",
+          "Verify exchange_rate field is numeric and not 7.8"
+        ],
+        "expected": "HTML generated with real-time exchange rate injected",
+        "success_criteria": "SC4, SC7"
+      },
+      {
+        "test_id": "QA-F3",
+        "description": "Verify hardcoded constant completely removed",
+        "commands": [
+          "grep -n 'CNY_TO_EUR' scripts/generate-travel-html.sh",
+          "grep -n 'const.*7.8' scripts/generate-travel-html.sh"
+        ],
+        "expected": "Both commands return no matches",
+        "success_criteria": "SC1"
+      },
+      {
+        "test_id": "QA-F4",
+        "description": "Verify currency config file exists and is valid",
+        "commands": [
+          "cat config/currency-config.json | jq '.default_display_currency'",
+          "cat config/currency-config.json | jq '.default_source_currency'",
+          "cat config/currency-config.json | jq '.currency_symbol_map.EUR'"
+        ],
+        "expected": "Returns EUR, CNY, and € respectively",
+        "success_criteria": "SC3"
+      },
+      {
+        "test_id": "QA-F5",
+        "description": "Verify HTML displays with correct currency symbol",
+        "commands": [
+          "grep -o 'CURRENCY_CONFIG.currency_symbol' travel-plan-china-feb-15-mar-7-2026-20260202-195429.html | wc -l"
+        ],
+        "expected": "Returns 11 (all € symbols replaced with dynamic symbol)",
+        "success_criteria": "SC6"
+      },
+      {
+        "test_id": "QA-F6",
+        "description": "Verify backward compatibility with old trip data",
+        "commands": [
+          "./scripts/generate-travel-html.sh china-exchange-bucket-list-2026"
+        ],
+        "expected": "HTML generates successfully even if data lacks currency fields",
+        "success_criteria": "SC10"
+      }
+    ],
+    "error_handling_tests": [
+      {
+        "test_id": "QA-E1",
+        "description": "Test invalid currency code handling",
+        "commands": [
+          "./scripts/utils/fetch-exchange-rate.sh INVALID EUR 2>&1",
+          "./scripts/utils/fetch-exchange-rate.sh CNY FAKE 2>&1"
+        ],
+        "expected": "Both exit with code 2 and display clear error messages",
+        "success_criteria": "SC9"
+      },
+      {
+        "test_id": "QA-E2",
+        "description": "Test network failure handling",
+        "setup": "Temporarily disconnect network or use firewall to block API",
+        "commands": [
+          "./scripts/utils/fetch-exchange-rate.sh CNY EUR 2>&1"
+        ],
+        "expected": "Exits with code 1 and error message about network/API failure",
+        "success_criteria": "SC9"
+      },
+      {
+        "test_id": "QA-E3",
+        "description": "Test malformed config file handling",
+        "setup": "Temporarily rename config/currency-config.json",
+        "commands": [
+          "mv config/currency-config.json config/currency-config.json.bak",
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429 2>&1",
+          "mv config/currency-config.json.bak config/currency-config.json"
+        ],
+        "expected": "Shows warning about missing config, uses EUR default, generation succeeds",
+        "success_criteria": "SC9"
+      },
+      {
+        "test_id": "QA-E4",
+        "description": "Test API timeout handling",
+        "note": "Difficult to simulate without network manipulation",
+        "manual_test": "Review fetch-exchange-rate.sh code for 5-second timeout (-m 5 flag)",
+        "expected": "Code includes timeout mechanism",
+        "success_criteria": "SC9"
+      }
+    ],
+    "integration_tests": [
+      {
+        "test_id": "QA-I1",
+        "description": "Test changing display currency to USD",
+        "commands": [
+          "jq '.default_display_currency = \"USD\" | .currency_symbol_map.USD = \"$\"' config/currency-config.json > /tmp/config-test.json",
+          "cp config/currency-config.json config/currency-config.json.backup",
+          "mv /tmp/config-test.json config/currency-config.json",
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429 -usd-test",
+          "grep 'display_currency.*USD' travel-plan-china-feb-15-mar-7-2026-20260202-195429-usd-test.html",
+          "mv config/currency-config.json.backup config/currency-config.json",
+          "rm travel-plan-china-feb-15-mar-7-2026-20260202-195429-usd-test.html"
+        ],
+        "expected": "HTML generated with USD as display currency and $ symbol",
+        "success_criteria": "SC5, SC6"
+      },
+      {
+        "test_id": "QA-I2",
+        "description": "Test changing display currency to GBP",
+        "commands": [
+          "jq '.default_display_currency = \"GBP\" | .currency_symbol_map.GBP = \"£\"' config/currency-config.json > /tmp/config-test.json",
+          "cp config/currency-config.json config/currency-config.json.backup",
+          "mv /tmp/config-test.json config/currency-config.json",
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429 -gbp-test",
+          "grep 'display_currency.*GBP' travel-plan-china-feb-15-mar-7-2026-20260202-195429-gbp-test.html",
+          "mv config/currency-config.json.backup config/currency-config.json",
+          "rm travel-plan-china-feb-15-mar-7-2026-20260202-195429-gbp-test.html"
+        ],
+        "expected": "HTML generated with GBP as display currency and £ symbol",
+        "success_criteria": "SC5, SC6"
+      },
+      {
+        "test_id": "QA-I3",
+        "description": "Test no-caching behavior (fresh rate every time)",
+        "commands": [
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429 -test1 2>&1 | grep 'Fetching exchange rate'",
+          "./scripts/generate-travel-html.sh china-feb-15-mar-7-2026-20260202-195429 -test2 2>&1 | grep 'Fetching exchange rate'",
+          "rm travel-plan-china-feb-15-mar-7-2026-20260202-195429-test*.html"
+        ],
+        "expected": "Both generations show 'Fetching exchange rate' message (no cache used)",
+        "success_criteria": "SC7"
+      }
+    ],
+    "ui_verification": [
+      {
+        "test_id": "QA-U1",
+        "description": "Manual browser test - verify budget displays correctly",
+        "manual_steps": [
+          "Open travel-plan-china-feb-15-mar-7-2026-20260202-195429.html in browser",
+          "Check header stats section for currency symbol",
+          "Expand route visualization and check budget displays",
+          "Check detailed day cards for meal/activity costs",
+          "Verify all currency symbols match configured display currency",
+          "Verify numeric values are converted (not raw CNY amounts)"
+        ],
+        "expected": "All budget values display with € symbol and converted amounts",
+        "success_criteria": "SC6"
+      }
+    ],
+    "documentation_verification": [
+      {
+        "test_id": "QA-D1",
+        "description": "Verify agent schema documentation exists and is complete",
+        "commands": [
+          "cat docs/dev/agent-schema-currency-update-20260203.md | grep -c 'currency'"
+        ],
+        "expected": "Document contains multiple references to currency field requirement",
+        "success_criteria": "SC8"
+      }
+    ]
+  },
+  "success_criteria_mapping": {
+    "SC1": {
+      "description": "Hardcoded CNY_TO_EUR constant removed from generate-travel-html.sh",
+      "tested_by": ["QA-F3"],
+      "dev_verified": true
+    },
+    "SC2": {
+      "description": "Exchange rate fetching script created and functional",
+      "tested_by": ["QA-F1"],
+      "dev_verified": true
+    },
+    "SC3": {
+      "description": "Global currency config file created with EUR as default",
+      "tested_by": ["QA-F4"],
+      "dev_verified": true
+    },
+    "SC4": {
+      "description": "HTML generation uses real-time exchange rates",
+      "tested_by": ["QA-F2"],
+      "dev_verified": true
+    },
+    "SC5": {
+      "description": "Support multiple currency pairs (not just CNY→EUR)",
+      "tested_by": ["QA-F1", "QA-I1", "QA-I2"],
+      "dev_verified": true
+    },
+    "SC6": {
+      "description": "HTML displays correctly with dynamic conversion",
+      "tested_by": ["QA-F5", "QA-I1", "QA-I2", "QA-U1"],
+      "dev_verified": true
+    },
+    "SC7": {
+      "description": "No caching - fresh rates fetched every generation",
+      "tested_by": ["QA-F2", "QA-I3"],
+      "dev_verified": true
+    },
+    "SC8": {
+      "description": "Agent schema documentation updated",
+      "tested_by": ["QA-D1"],
+      "dev_verified": true
+    },
+    "SC9": {
+      "description": "Error handling for API failures",
+      "tested_by": ["QA-E1", "QA-E2", "QA-E3", "QA-E4"],
+      "dev_verified": true
+    },
+    "SC10": {
+      "description": "Regenerate existing HTML successfully with new system",
+      "tested_by": ["QA-F2", "QA-F6"],
+      "dev_verified": true
+    }
+  },
+  "edge_cases_to_test": [
+    "API returns 429 rate limit error",
+    "API returns malformed JSON",
+    "Config file has invalid JSON syntax",
+    "Config file specifies unsupported currency code",
+    "Trip data has very large budget values (>1,000,000)",
+    "Trip data has zero budget values",
+    "Trip data has negative budget values (refunds)",
+    "Currency with no decimal places (JPY, KRW)",
+    "Multiple rapid HTML generations (stress test API)",
+    "Partial trip data (some agent outputs missing)"
+  ],
+  "dev_notes_for_qa": {
+    "api_limitations": "Free tier allows 1500 requests/month. QA testing should not exceed ~50 requests to avoid hitting limit.",
+    "timing_note": "Exchange rate API typically responds in 300-700ms. Total HTML generation adds ~1 second vs previous hardcoded version.",
+    "browser_compatibility": "JavaScript uses ES6 features (const, arrow functions, template literals). Should work in all modern browsers (Chrome 51+, Firefox 54+, Safari 10+, Edge 14+).",
+    "backward_compatibility": "Old trip data without currency fields will use CNY as default source currency. This matches previous behavior.",
+    "config_extensibility": "Users can add more currencies to currency_symbol_map in config. Script will use them automatically."
+  },
+  "files_for_qa_review": [
+    {
+      "path": "scripts/utils/fetch-exchange-rate.sh",
+      "purpose": "Exchange rate fetching utility",
+      "review_focus": "Error handling, input validation, timeout mechanism"
+    },
+    {
+      "path": "config/currency-config.json",
+      "purpose": "Global currency configuration",
+      "review_focus": "JSON validity, default values, extensibility"
+    },
+    {
+      "path": "scripts/generate-travel-html.sh",
+      "purpose": "Modified HTML generation with dynamic currency",
+      "review_focus": "Integration of rate fetching, currency config injection, backward compatibility"
+    },
+    {
+      "path": "docs/dev/agent-schema-currency-update-20260203.md",
+      "purpose": "Agent schema update documentation",
+      "review_focus": "Completeness, clarity, examples for all affected agents"
+    },
+    {
+      "path": "travel-plan-china-feb-15-mar-7-2026-20260202-195429.html",
+      "purpose": "Generated HTML with new currency system",
+      "review_focus": "CURRENCY_CONFIG injection, dynamic symbol usage, converted values"
+    }
+  ]
+}

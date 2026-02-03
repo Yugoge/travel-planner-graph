@@ -1,0 +1,117 @@
+{
+  "request_id": "dev-20260203-080000",
+  "timestamp": "2026-02-03T08:00:00Z",
+  "requirement": {
+    "original": "先修复这个系统性问题：优化路线不应该是agent的工作吗？为什么你自己运行？你只是orchestrator",
+    "clarified": "Fix orchestration architecture violation in /plan command Step 10 where orchestrator directly executes scripts/optimize-route.py instead of delegating to a subagent",
+    "what": "Remove direct script execution from plan.md Step 10, ensure route optimization is delegated to timeline-agent",
+    "why": "Orchestrator should only coordinate and delegate, not execute scripts directly. This violates separation of concerns in the agent architecture",
+    "where": [
+      ".claude/commands/plan.md - Step 10 (Route Optimization)",
+      ".claude/commands/plan.md - Step 11 (Timeline Agent prompt needs to reference route-optimization.json)"
+    ],
+    "scope": {
+      "included": [
+        "Remove bash command execution from Step 10 in plan.md",
+        "Update Step 11 timeline-agent prompt to handle route optimization",
+        "Ensure timeline-agent reads route-optimization.json and uses optimized order",
+        "Keep scripts/optimize-route.py as implementation detail (not exposed to orchestrator)"
+      ],
+      "excluded": [
+        "Creating explicit prohibition statements in plan.md",
+        "Modifying the optimize-route.py script itself",
+        "Changing the JSON output format of route-optimization.json",
+        "Adding new subagent types (use existing timeline-agent)"
+      ]
+    },
+    "success_criteria": [
+      "Step 10 in plan.md does NOT contain bash commands or direct script execution",
+      "Step 10 delegates route optimization work to timeline-agent",
+      "Timeline-agent prompt in Step 11 includes instructions to read route-optimization.json",
+      "Timeline-agent prompt instructs use of optimized order from route-optimization.json",
+      "Orchestrator has no knowledge of scripts/optimize-route.py existence",
+      "Architecture maintains clean separation: orchestrator coordinates, agents execute"
+    ],
+    "constraints": [
+      "Do NOT add explicit prohibitions or warnings about script execution",
+      "Keep scripts/optimize-route.py as internal implementation detail",
+      "Timeline-agent should handle route optimization transparently",
+      "Maintain backward compatibility with existing route-optimization.json format"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Orchestrator in /plan command directly runs bash command to execute scripts/optimize-route.py",
+    "root_cause": "Step 10 in plan.md (introduced in commit 795bea0) was designed with orchestrator directly executing the optimization script instead of delegating to a subagent",
+    "root_cause_commit": "795bea0 - checkpoint: Auto-save at 2026-02-02 23:32:45",
+    "why_introduced": "During initial route optimization feature implementation, Step 10 was designed as a script execution step rather than an agent delegation step, likely because timeline-agent wasn't yet updated to handle route optimization",
+    "why_problematic": "Violates orchestrator architecture principle: orchestrator should only coordinate and delegate, never execute scripts directly. This creates tight coupling between orchestrator and implementation details (script paths, parameters)",
+    "timeline": "Introduced on 2026-02-02 during route optimization feature development",
+    "affected_files": [
+      ".claude/commands/plan.md (Step 10 lines 290-340, Step 11 lines 341-370)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory clean after previous commit 4626511",
+    "recent_commits": [
+      "4626511 - fix: Replace decimal step numbering with substep labels in plan.md",
+      "4d7a7e4 - checkpoint: Auto-save at 2026-02-03 00:37:20", 
+      "795bea0 - checkpoint: Auto-save at 2026-02-02 23:32:45 (introduced Step 10 with script execution)"
+    ],
+    "file_contents": {
+      "plan.md_step10_current": "Step 10: Optimize Route Order - Contains bash command: source venv && python scripts/optimize-route.py {destination-slug}",
+      "plan.md_step11_current": "Step 11: Invoke Timeline Agent - Timeline agent prompt does NOT mention route-optimization.json",
+      "scripts/optimize-route.py": "377 lines, implements haversine distance calculation, A→B→A detection, greedy TSP optimization"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11 (venv at /root/.claude/venv)",
+      "packages": "Standard library only (math, json, sys, pathlib)",
+      "mcp_tools": "None (script uses pure Python)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "project_path": "/root/travel-planner",
+      "config_files": [".claude/commands/plan.md"]
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace Step 10 bash execution with timeline-agent delegation. Update timeline-agent prompt (Step 11) to include route optimization logic by reading route-optimization.json and using optimized order when creating timeline",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/commands/plan.md - Step 10: Remove bash execution, add timeline-agent delegation for route optimization",
+      ".claude/commands/plan.md - Step 11: Update timeline-agent prompt to read route-optimization.json and use optimized order"
+    ],
+    "changes_required": {
+      "step_10_changes": [
+        "Remove bash command execution block entirely",
+        "Replace with Task tool invocation to timeline-agent",
+        "Timeline-agent performs route optimization as part of timeline creation",
+        "Delegate both optimization script execution AND timeline creation to timeline-agent in single invocation"
+      ],
+      "step_11_changes": [
+        "Merge Step 10 and Step 11 - timeline-agent handles both route optimization and timeline creation",
+        "Update timeline-agent prompt to: (1) Execute scripts/optimize-route.py as first substep, (2) Read route-optimization.json, (3) Use optimized order when creating timeline, (4) Output timeline.json as usual",
+        "Timeline-agent becomes responsible for full timeline creation workflow including optimization"
+      ],
+      "alternative_approach": [
+        "Keep Step 10 separate but change to: 'Delegate route optimization to timeline-agent'",
+        "Step 10 invokes timeline-agent with specific prompt: 'Run route optimization script and generate route-optimization.json'",
+        "Step 11 (now Step 11 or merged) invokes timeline-agent again: 'Read route-optimization.json and create timeline using optimized order'"
+      ],
+      "recommended_approach": "Merge Steps 10 and 11 into single timeline-agent invocation that handles optimization + timeline creation as a unified workflow"
+    },
+    "validation_approach": "QA will verify: (1) Step 10 has no bash commands, (2) Timeline-agent prompt includes optimization logic, (3) Orchestrator cannot see scripts/optimize-route.py, (4) Route optimization still functions correctly"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "additional_standards": [
+      "Orchestrator must NEVER execute scripts directly",
+      "All script execution delegated to subagents",
+      "Implementation details (script paths, parameters) hidden from orchestrator",
+      "Agents receive high-level instructions, not low-level script commands"
+    ]
+  }
+}
