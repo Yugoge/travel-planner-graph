@@ -1,0 +1,251 @@
+{
+  "request_id": "dev-20260203-124227",
+  "timestamp": "2026-02-03T12:42:27Z",
+  "requirement": {
+    "original": "eur转换这个步骤彻底hardcode化，请你获取实时的汇率，而且不要hardcode到这一种货币对，同时加入对默认货币的支持（默认欧元，但是可以更改）",
+    "translation": "Remove hardcoded EUR conversion step, fetch real-time exchange rates, support multiple currency pairs (not just one), and add configurable default currency (default EUR but changeable)",
+    "clarified": "Implement dynamic currency conversion system to replace hardcoded EUR conversion in HTML generation script",
+    "clarity_score": 100,
+    "clarification_rounds": 1
+  },
+  "clarified_requirements": {
+    "1_remove_hardcoded_rate": {
+      "description": "Remove hardcoded CNY_TO_EUR = 7.8 constant from scripts/generate-travel-html.sh:505",
+      "current_state": "Fixed conversion rate of 7.8 used throughout HTML template"
+    },
+    "2_real_time_exchange_rates": {
+      "description": "Fetch real-time exchange rates using exchangerate-api.com",
+      "api_choice": "exchangerate-api.com (Option A)",
+      "api_url": "https://api.exchangerate-api.com/v4/latest/{BASE_CURRENCY}",
+      "free_tier": "1500 requests/month, no API key required"
+    },
+    "3_multiple_currency_pairs": {
+      "description": "Support conversion between any currency pairs, not just CNY→EUR",
+      "flexibility": "Allow any base currency to any display currency"
+    },
+    "4_configurable_default_currency": {
+      "description": "Add global configuration for default display currency",
+      "storage": "Global configuration file",
+      "default_value": "EUR",
+      "changeable": true,
+      "config_location": "config/currency-config.json (recommended path)"
+    },
+    "5_no_caching": {
+      "description": "Fetch fresh exchange rates every time HTML is generated",
+      "rationale": "Always display most up-to-date conversion rates",
+      "caching_strategy": "None - fetch at generation time"
+    },
+    "6_agent_schema_change": {
+      "description": "All budget-providing agents must include currency metadata",
+      "requirement": "Add separate 'currency' key to budget data outputs",
+      "impact": "Requires updating agent output schemas",
+      "affected_agents": ["accommodation", "attractions", "transportation", "meals", "shopping", "entertainment"],
+      "example_output": {
+        "price": 500,
+        "currency": "CNY"
+      }
+    }
+  },
+  "git_root_cause": {
+    "symptom": "HTML displays budget values with hardcoded CNY→EUR conversion rate of 7.8",
+    "root_cause_commit": "95a42d33ff3dc0cdf6326fe0fa2ac136db749db3",
+    "commit_date": "2026-02-03 00:48:58 UTC",
+    "commit_message": "checkpoint: Auto-save at 2026-02-03 00:48:58",
+    "affected_file": "scripts/generate-travel-html.sh",
+    "affected_lines": "505-510",
+    "root_cause_code": "const CNY_TO_EUR = 7.8;\nfunction toEUR(cny) {\n  return (cny / CNY_TO_EUR).toFixed(2);\n}",
+    "why_introduced": "Previous /dev task requested EUR display with 7.8 conversion rate from CNY. Requirement was to fix currency display issues, resulting in hardcoded constant for MVP implementation.",
+    "why_problematic": "Hardcoded rate becomes stale, doesn't reflect market rates, doesn't support multiple currency pairs, makes system inflexible for international users",
+    "previous_context": "Part of HTML generation script rewrite (commit 95a42d3) that added interactive features, route visualization, and currency conversion. EUR conversion was one of 6 systematic fixes requested.",
+    "related_commits": [
+      "95a42d33ff3dc0cdf6326fe0fa2ac136db749db3 - Introduced CNY_TO_EUR hardcoding",
+      "f7429ab - Initial MVP template without currency conversion"
+    ]
+  },
+  "implementation_approach": {
+    "strategy": "Create exchange rate fetching utility, modify HTML generation to use dynamic rates, add global config for default currency, update data schemas",
+    "components": [
+      {
+        "name": "Exchange Rate Fetcher Script",
+        "path": "scripts/utils/fetch-exchange-rate.sh",
+        "purpose": "Fetch real-time exchange rates from exchangerate-api.com",
+        "inputs": ["base_currency", "target_currency"],
+        "outputs": ["exchange_rate"],
+        "error_handling": "Return error code if API fails"
+      },
+      {
+        "name": "Global Currency Configuration",
+        "path": "config/currency-config.json",
+        "purpose": "Store default display currency preference",
+        "schema": {
+          "default_display_currency": "EUR",
+          "last_updated": "ISO8601 timestamp"
+        }
+      },
+      {
+        "name": "HTML Generation Script Modification",
+        "path": "scripts/generate-travel-html.sh",
+        "changes": [
+          "Remove hardcoded CNY_TO_EUR constant (line 505)",
+          "Replace toEUR() function with dynamic convertCurrency() function",
+          "Call fetch-exchange-rate.sh during HTML generation",
+          "Inject exchange rate data into HTML template",
+          "Update JavaScript to handle multiple currency conversions"
+        ]
+      },
+      {
+        "name": "Agent Output Schema Updates",
+        "affected_files": [
+          "Instructions for all budget-providing agents"
+        ],
+        "change": "Add 'currency' field to all budget outputs",
+        "implementation_note": "This is a documentation/instruction change, not code change"
+      }
+    ]
+  },
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "Hardcoded CNY_TO_EUR constant removed from generate-travel-html.sh",
+      "verification": "Grep for 'CNY_TO_EUR' should return no results in the script"
+    },
+    {
+      "id": "SC2",
+      "description": "Exchange rate fetching script created and functional",
+      "verification": "Run script with CNY→EUR, should return current market rate (≈7.8 but not exactly 7.8)"
+    },
+    {
+      "id": "SC3",
+      "description": "Global currency config file created with EUR as default",
+      "verification": "config/currency-config.json exists with default_display_currency: EUR"
+    },
+    {
+      "id": "SC4",
+      "description": "HTML generation uses real-time exchange rates",
+      "verification": "Generate HTML, verify PLAN_DATA includes exchange_rate field with current market value"
+    },
+    {
+      "id": "SC5",
+      "description": "Support multiple currency pairs (not just CNY→EUR)",
+      "verification": "Fetch USD→GBP rate successfully, verify non-hardcoded currency handling"
+    },
+    {
+      "id": "SC6",
+      "description": "HTML displays correctly with dynamic conversion",
+      "verification": "Open generated HTML, verify budget values display with '€' symbol and current market rate"
+    },
+    {
+      "id": "SC7",
+      "description": "No caching - fresh rates fetched every generation",
+      "verification": "Generate HTML twice, verify fetch-exchange-rate.sh called both times (check logs/behavior)"
+    },
+    {
+      "id": "SC8",
+      "description": "Agent schema documentation updated",
+      "verification": "Agent instructions include 'currency' field requirement in budget outputs"
+    },
+    {
+      "id": "SC9",
+      "description": "Error handling for API failures",
+      "verification": "Simulate API failure (network off), verify graceful degradation or clear error message"
+    },
+    {
+      "id": "SC10",
+      "description": "Regenerate existing HTML successfully with new system",
+      "verification": "Run generate-travel-html.sh on existing trip data, HTML renders correctly"
+    }
+  ],
+  "quality_standards": {
+    "no_hardcoding": "No exchange rates or currency symbols hardcoded except in config defaults",
+    "script_naming": "Clear names like fetch-exchange-rate.sh, not utils.sh",
+    "error_handling": "API failures must be caught and handled gracefully",
+    "bash_best_practices": "Use proper quoting, error checking (set -e), meaningful variable names",
+    "backward_compatibility": "Existing trip data (without currency field) should still work with default CNY assumption",
+    "documentation": "Add comments explaining API choice, rate fetching logic, config location"
+  },
+  "technical_context": {
+    "current_html_generation": {
+      "script": "scripts/generate-travel-html.sh",
+      "total_lines": 937,
+      "template_section": "lines 85-908",
+      "data_injection": "lines 910-932 (Python-based JSON merging)",
+      "currency_usage": "Lines 349, 352, 426, 471, 479, 566, 584, 608, 622 use toEUR() function"
+    },
+    "data_structure": {
+      "trip_data_location": "data/{trip-name}/",
+      "files": [
+        "requirements-skeleton.json",
+        "accommodation.json",
+        "attractions.json",
+        "transportation.json",
+        "meals.json",
+        "entertainment.json",
+        "route-optimization.json"
+      ],
+      "budget_fields": "Various price/budget fields in each JSON file"
+    },
+    "dependencies": {
+      "required_tools": ["curl", "jq", "python3"],
+      "api_dependency": "exchangerate-api.com (external, free tier)"
+    }
+  },
+  "edge_cases": {
+    "api_unavailable": "exchangerate-api.com returns error or times out",
+    "invalid_currency_code": "User provides non-standard currency code in config",
+    "missing_currency_field": "Old trip data doesn't have currency field in budget",
+    "rate_fetch_timeout": "API call takes too long (>5 seconds)",
+    "config_file_missing": "currency-config.json doesn't exist on first run",
+    "currency_mismatch": "Budget data has mixed currencies (CNY + USD + EUR in same trip)"
+  },
+  "files_to_modify": [
+    {
+      "path": "scripts/generate-travel-html.sh",
+      "reason": "Remove hardcoded conversion, integrate dynamic rate fetching",
+      "estimated_changes": "Lines 505-510 (remove), lines 508-622 (modify toEUR calls)"
+    }
+  ],
+  "files_to_create": [
+    {
+      "path": "scripts/utils/fetch-exchange-rate.sh",
+      "reason": "Utility to fetch real-time exchange rates from API",
+      "executable": true
+    },
+    {
+      "path": "config/currency-config.json",
+      "reason": "Store default display currency configuration",
+      "executable": false
+    }
+  ],
+  "dependencies_to_install": [],
+  "tests_required": [
+    "Test fetch-exchange-rate.sh with valid currency pairs",
+    "Test fetch-exchange-rate.sh with invalid inputs",
+    "Test HTML generation with dynamic rates",
+    "Test API failure handling",
+    "Test backward compatibility with old data"
+  ],
+  "security_considerations": [
+    "API endpoint is HTTPS (secure)",
+    "No API keys required (no secret management needed)",
+    "Rate limit: 1500 requests/month (unlikely to exceed)",
+    "No user input directly passed to API (currency codes validated)"
+  ],
+  "documentation_updates": [
+    "README: Document currency configuration system",
+    "README: Explain how to change default display currency",
+    "Script comments: Document API choice and rate fetching logic"
+  ],
+  "orchestrator_notes": {
+    "clarification_complete": true,
+    "git_analysis_complete": true,
+    "ready_for_dev_delegation": true,
+    "complexity_estimate": "Medium - requires script creation, modification, config management",
+    "estimated_files_changed": 3,
+    "qa_focus_areas": [
+      "Exchange rate accuracy",
+      "API error handling",
+      "Backward compatibility",
+      "Multiple currency pair support"
+    ]
+  }
+}

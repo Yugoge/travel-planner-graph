@@ -11,12 +11,34 @@ VERSION_SUFFIX="${2:-}"
 DATA_DIR="data/${DESTINATION_SLUG}"
 PLAN_FILE="${DATA_DIR}/plan-skeleton.json"
 OUTPUT_FILE="travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/../config/currency-config.json"
 
 # Verify required files exist
 if [[ ! -f "$PLAN_FILE" ]]; then
   echo "Error: Plan skeleton not found: $PLAN_FILE" >&2
   exit 2
 fi
+
+# Load currency configuration
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "Warning: Currency config not found, using defaults (EUR display, CNY source)" >&2
+  DEFAULT_DISPLAY_CURRENCY="EUR"
+  DEFAULT_SOURCE_CURRENCY="CNY"
+  CURRENCY_SYMBOL="€"
+else
+  DEFAULT_DISPLAY_CURRENCY=$(jq -r '.default_display_currency' "$CONFIG_FILE")
+  DEFAULT_SOURCE_CURRENCY=$(jq -r '.default_source_currency // "CNY"' "$CONFIG_FILE")
+  CURRENCY_SYMBOL=$(jq -r ".currency_symbol_map.${DEFAULT_DISPLAY_CURRENCY} // \"${DEFAULT_DISPLAY_CURRENCY}\"" "$CONFIG_FILE")
+fi
+
+# Fetch real-time exchange rate
+echo "Fetching exchange rate: ${DEFAULT_SOURCE_CURRENCY} → ${DEFAULT_DISPLAY_CURRENCY}..."
+EXCHANGE_RATE=$("${SCRIPT_DIR}/utils/fetch-exchange-rate.sh" "$DEFAULT_SOURCE_CURRENCY" "$DEFAULT_DISPLAY_CURRENCY") || {
+  echo "Error: Failed to fetch exchange rate. Check network connection or API availability." >&2
+  exit 1
+}
+echo "Exchange rate: 1 ${DEFAULT_SOURCE_CURRENCY} = ${EXCHANGE_RATE} ${DEFAULT_DISPLAY_CURRENCY}"
 
 # Merge agent outputs into plan-skeleton
 echo "Merging agent outputs..."
@@ -57,9 +79,19 @@ MERGED_DATA=$(jq -s '
     }
   ] |
   . + {
-    emergency_info: $skeleton.emergency_info
+    emergency_info: $skeleton.emergency_info,
+    currency_config: {
+      source_currency: $source_currency,
+      display_currency: $display_currency,
+      exchange_rate: ($exchange_rate | tonumber),
+      currency_symbol: $currency_symbol
+    }
   }
 ' \
+  --arg source_currency "$DEFAULT_SOURCE_CURRENCY" \
+  --arg display_currency "$DEFAULT_DISPLAY_CURRENCY" \
+  --arg exchange_rate "$EXCHANGE_RATE" \
+  --arg currency_symbol "$CURRENCY_SYMBOL" \
   "$PLAN_FILE" \
   "${DATA_DIR}/meals.json" \
   "${DATA_DIR}/accommodation.json" \
@@ -502,11 +534,23 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
   <script>
     // Data will be injected here
     const PLAN_DATA = PLAN_DATA_INJECTION;
-    const CNY_TO_EUR = 7.8;
 
-    // Helper: Convert CNY to EUR
+    // Currency configuration (dynamically fetched at HTML generation time)
+    const CURRENCY_CONFIG = PLAN_DATA.currency_config || {
+      source_currency: 'CNY',
+      display_currency: 'EUR',
+      exchange_rate: 7.8,
+      currency_symbol: '€'
+    };
+
+    // Helper: Convert source currency to display currency
+    function convertCurrency(amount) {
+      return (amount * CURRENCY_CONFIG.exchange_rate).toFixed(2);
+    }
+
+    // Legacy helper for backward compatibility
     function toEUR(cny) {
-      return (cny / CNY_TO_EUR).toFixed(2);
+      return convertCurrency(cny);
     }
 
     // Helper: Generate map links
@@ -572,10 +616,10 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
       const stats = [
         {
           label: 'Total Budget',
-          value: `€${toEUR(totalBudgetCNY)}`,
+          value: `${CURRENCY_CONFIG.currency_symbol}${toEUR(totalBudgetCNY)}`,
           details: PLAN_DATA.days.map(d => ({
             label: `Day ${d.day} - ${d.location}`,
-            value: `€${toEUR(d.budget?.total || 0)}`
+            value: `${CURRENCY_CONFIG.currency_symbol}${toEUR(d.budget?.total || 0)}`
           }))
         },
         {
@@ -649,11 +693,11 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
               ${days.map(d => `
                 <div class="route-day-item">
                   <div class="route-day-date">Day ${d.day} - ${d.date}</div>
-                  <div class="route-day-budget">€${toEUR(d.budget?.total || 0)}</div>
+                  <div class="route-day-budget">${CURRENCY_CONFIG.currency_symbol}${toEUR(d.budget?.total || 0)}</div>
                 </div>
               `).join('')}
               <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; font-weight: bold; color: #e74c3c;">
-                Total: €${toEUR(totalBudget)}
+                Total: ${CURRENCY_CONFIG.currency_symbol}${toEUR(totalBudget)}
               </div>
             </div>
           </div>
@@ -694,7 +738,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
           <div class="budget-city-header" onclick="toggleBudgetCity(${idx})">
             <div class="budget-city-name">${city}</div>
             <div>
-              <span class="budget-city-total">€${toEUR(data.total)}</span>
+              <span class="budget-city-total">${CURRENCY_CONFIG.currency_symbol}${toEUR(data.total)}</span>
               <span class="budget-city-expand">▼</span>
             </div>
           </div>
@@ -702,7 +746,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
             ${Object.entries(data.breakdown).map(([category, amount]) => `
               <div class="budget-breakdown-item">
                 <span>${category.replace(/_/g, ' ')}</span>
-                <span>€${toEUR(amount)}</span>
+                <span>${CURRENCY_CONFIG.currency_symbol}${toEUR(amount)}</span>
               </div>
             `).join('')}
           </div>
@@ -789,7 +833,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
             <div>
               <strong>Day ${day.day}</strong> - ${day.date} - ${day.location}
             </div>
-            <div>€${toEUR(day.budget?.total || 0)}</div>
+            <div>${CURRENCY_CONFIG.currency_symbol}${toEUR(day.budget?.total || 0)}</div>
           </div>
           <div class="day-content" id="day-${day.day}">
             ${renderDayContent(day)}
@@ -807,7 +851,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
           <h3>Transportation</h3>
           <p><strong>${day.location_change.from} → ${day.location_change.to}</strong></p>
           <p>${day.location_change.transportation} • ${day.location_change.departure_time} - ${day.location_change.arrival_time}</p>
-          <p class="cost">€${toEUR(day.location_change.cost)}</p>
+          <p class="cost">${CURRENCY_CONFIG.currency_symbol}${toEUR(day.location_change.cost)}</p>
         </div>`;
       }
 
@@ -831,7 +875,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
             <h4>${meal.charAt(0).toUpperCase() + meal.slice(1)}</h4>
             <p>${day[meal].name}</p>
             <p>${day[meal].location}</p>
-            <p class="cost">€${toEUR(day[meal].cost)}</p>
+            <p class="cost">${CURRENCY_CONFIG.currency_symbol}${toEUR(day[meal].cost)}</p>
           </div>`;
         }
       });
@@ -845,7 +889,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
           html += `<div class="activity-card">
             <h4>${attr.name}</h4>
             <p>${attr.location}</p>
-            <p class="cost">€${toEUR(attr.cost)}</p>
+            <p class="cost">${CURRENCY_CONFIG.currency_symbol}${toEUR(attr.cost)}</p>
             <div class="attraction-links" style="margin-top: 10px;">
               <a href="${links.mapLink}" target="_blank" class="attraction-link ${links.isMainland ? 'gaode' : 'google'}">
                 ${links.isMainland ? 'Gaode' : 'Google'}
@@ -867,7 +911,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
             html += `<div class="activity-card">
               <h4>${item.name}</h4>
               <p>${item.location}</p>
-              <p class="cost">€${toEUR(item.cost)}</p>
+              <p class="cost">${CURRENCY_CONFIG.currency_symbol}${toEUR(item.cost)}</p>
             </div>`;
           });
           html += '</div></div>';
