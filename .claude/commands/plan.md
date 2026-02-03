@@ -657,7 +657,7 @@ Map user request to domain agent(s):
 - "hotel", "accommodation" → accommodation-agent
 - "train", "flight", "transportation" → transportation-agent
 
-**Step 16.2: Re-invoke Specialist Agent with Day Filter**
+**Substep: Re-invoke Specialist Agent with Day Filter**
 
 ```
 Use Task tool with:
@@ -697,7 +697,7 @@ Use Task tool with:
 
 Wait for agent to return "complete".
 
-**Step 16.3: Re-invoke Dependent Agents (Timeline + Budget)**
+**Substep: Re-invoke Dependent Agents (Timeline + Budget)**
 
 After specialist agent completes, **ALWAYS** re-invoke timeline and budget agents:
 
@@ -743,19 +743,19 @@ Wait for both agents to return "complete".
 
 ---
 
-**Step 16.4: Validation (Day-Scoped)
+**Substep: Validation (Day-Scoped)
 
 Run day-scoped validation:
 ```bash
 source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-day-changes.py /root/travel-planner/data/{destination-slug} {day_number}
 ```
 
-**Exit code 0**: Changes valid → Proceed to Step 16.5
+**Exit code 0**: Changes valid → Proceed to next substep
 **Exit code 1**: Validation errors → Review and fix before proceeding
 
 ---
 
-**Step 16.5: Return to Step 15 INNER LOOP**
+**Substep: Return to Step 15 INNER LOOP**
 
 **CRITICAL**: Do NOT advance to next day. Return to Step 15 INNER loop to re-present the SAME day (Day N) with updated data.
 
@@ -961,7 +961,7 @@ Open the HTML file in any browser to view your complete travel plan.
 
 ---
 
-**Step 21.1: Wait for User Response**
+**Substep: Wait for User Response**
 
 After presenting the final plan (Step 20), wait for explicit user feedback.
 
@@ -974,11 +974,11 @@ After presenting the final plan (Step 20), wait for explicit user feedback.
 - Change requests ("Change Day 3 dinner", "Add museum")
 - Major restructure ("Change destination from X to Y")
 
-**Only proceed to Step 21.2 if user provides refinement request**.
+**Only proceed to next substep if user provides refinement request**.
 
 ---
 
-**Step 21.2: Parse Refinement Request**
+**Substep: Parse Refinement Request**
 
 Extract structured information from user's refinement:
 
@@ -1017,7 +1017,7 @@ Extract structured information from user's refinement:
 
 ---
 
-**Step 21.3: Classify Refinement Type**
+**Substep: Classify Refinement Type**
 
 Based on parsed `refinement_context`, classify into one of three types:
 
@@ -1046,7 +1046,7 @@ Based on parsed `refinement_context`, classify into one of three types:
 
 ---
 
-**Step 21.4: Handle Type 3 (Informational Query)**
+**Substep: Handle Type 3 (Informational Query)**
 
 **If refinement_type == Type3**:
 1. Read relevant data from existing JSONs in `data/{destination-slug}/`
@@ -1060,11 +1060,11 @@ User: "Is this restaurant vegetarian-friendly?"
 You: [Read meals.json] "Yes, {restaurant_name} on Day {N} offers vegetarian options including {dishes}."
 ```
 
-**Then immediately return to Step 21.1**.
+**Then immediately return to first substep**.
 
 ---
 
-**Step 21.5: Build Refinement Context for Agent Delegation (Type 1)**
+**Substep: Build Refinement Context for Agent Delegation (Type 1)**
 
 **⚠️ CRITICAL - DO NOT MANUALLY RESEARCH**:
 - **NEVER** use WebSearch, WebFetch, or gaode-maps MCP tools yourself
@@ -1097,11 +1097,11 @@ You: [Read meals.json] "Yes, {restaurant_name} on Day {N} offers vegetarian opti
 }
 ```
 
-**Save this context** to memory for use in Step 21.6.
+**Save this context** to memory for next substep.
 
 ---
 
-**Step 21.6: Re-invoke Specialist Agent(s) with Day-Scoped Context (Type 1)**
+**Substep: Re-invoke Specialist Agent(s) with Day-Scoped Context (Type 1)**
 
 **⚠️ CRITICAL - MANDATORY AGENT DELEGATION**:
 This is THE MOST IMPORTANT step. Orchestrator MUST delegate research to specialist agents.
@@ -1166,7 +1166,7 @@ Your action:
 
 ---
 
-**Step 21.7: Re-invoke Dependent Agents (timeline, budget)**
+**Substep: Re-invoke Dependent Agents (timeline, budget)**
 
 After specialist agent(s) complete refinement, **ALWAYS re-invoke dependent agents**:
 
@@ -1208,7 +1208,7 @@ Use Task tool with:
 
 ---
 
-**Step 21.8: Regenerate HTML with Version Suffix**
+**Substep: Regenerate HTML with Version Suffix**
 
 Increment version counter (track internally: v2, v3, etc.)
 
@@ -1228,7 +1228,7 @@ test -f /root/travel-planner/travel-plan-{destination-slug}-v{version}.html && e
 
 ---
 
-**Step 21.9: Present Updated Plan to User**
+**Substep: Present Updated Plan to User**
 
 Show what changed:
 ```
@@ -1249,13 +1249,13 @@ Updated your travel plan based on your refinement!
 Would you like any further adjustments?
 ```
 
-**After presenting**, return to Step 21.1 (wait for next user response).
+**After presenting**, return to first substep (wait for next user response).
 
 **Iteration limit**: Max 3 major refinements. After 3rd refinement, suggest accepting current state.
 
 ---
 
-**Step 21.10: Handle Type 2 (Major Restructure)**
+**Substep: Handle Type 2 (Major Restructure)**
 
 **If refinement_type == Type2**:
 
@@ -1282,11 +1282,11 @@ Your action:
 6. Present full updated plan
 ```
 
-**After completion**, return to Step 21.1.
+**After completion**, return to first substep.
 
 ---
 
-**Step 21.11: Dialogue Length Protection**
+**Substep: Dialogue Length Protection**
 
 Track refinement iterations internally (no user-facing counter).
 
