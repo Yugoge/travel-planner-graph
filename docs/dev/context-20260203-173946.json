@@ -1,0 +1,351 @@
+{
+  "request_id": "dev-20260203-173946",
+  "timestamp": "2026-02-03T17:39:46Z",
+  "requirement": {
+    "original": "哥们，关键是我上次提的要求全部加到了bash上面了，不只是currency问题！怎么办！给我计划",
+    "translation": "Man, the key issue is that all my previous requirements were added to the bash script, not just the currency issue! What should we do? Give me a plan",
+    "clarified": "Migrate all features from bash script (scripts/generate-travel-html.sh) to Python version (scripts/lib/html_generator.py), including dynamic currency conversion and all features from commit 95a42d3, while preserving the beige/coffee color scheme",
+    "what": "Full feature migration from bash to Python HTML generator",
+    "why": "Bash script has wrong color scheme (purple instead of beige), Python version is the correct design but missing new features",
+    "where": [
+      "scripts/lib/html_generator.py (target)",
+      "scripts/generate-travel-html.sh (source, to be archived)"
+    ],
+    "scope": {
+      "included": [
+        "Migrate 7 major features: expandable stats, Kanban route map, budget by city, attraction types, map links, cities panel, currency conversion",
+        "Replace purple colors with beige/coffee CSS variables",
+        "Create new wrapper script scripts/generate-html.sh",
+        "Archive old bash script to scripts/archive/",
+        "Preserve brand colors for map links (Gaode green, Google blue, RedNote red)"
+      ],
+      "excluded": [
+        "Not changing Python architecture or class structure",
+        "Not modifying agent output formats (future task)",
+        "Not changing project structure",
+        "Not adding new features beyond what exists in bash"
+      ]
+    },
+    "success_criteria": [
+      "Python html_generator.py has all 7 features from bash script",
+      "Uses beige/coffee color scheme (CSS variables: #F5F1E8, #8B7355, #D4AF37)",
+      "Dynamic currency conversion integrated (calls fetch-exchange-rate.sh)",
+      "New wrapper script scripts/generate-html.sh works",
+      "Old bash script archived to scripts/archive/generate-travel-html-20260203.sh",
+      "Generated HTML has all interactive features working",
+      "Brand colors preserved for map links"
+    ],
+    "constraints": [
+      "Maintain backward compatibility with existing trip data",
+      "Keep existing fetch-exchange-rate.sh and currency-config.json",
+      "Python version must support both itinerary and bucket-list projects",
+      "Use source venv for Python execution"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User's requirements implemented in bash script instead of Python version, wrong color scheme used",
+    "root_cause": "Two HTML generators exist (bash and Python), development happened on the wrong one (bash with purple colors) instead of correct one (Python with beige colors)",
+    "root_cause_commit": "95a42d3 - checkpoint: Auto-save at 2026-02-03 00:48:58",
+    "why_introduced": "Previous /dev task added HTML improvements to bash script (which was created first) instead of Python version (which has correct beige colors)",
+    "why_problematic": "Bash script uses purple gradient (#667eea → #764ba2) instead of user's beige/coffee design (#F5F1E8, #8B7355, #D4AF37). All new features exist only in wrong-colored bash version.",
+    "timeline": {
+      "2026-01-29_15:26": "cc1bb70 - Bash script created with purple colors",
+      "2026-02-02_05:47": "17b33d2 - Python version created (initially purple)",
+      "2026-02-02_06:34": "e0ea4a1 - Python colors changed to BEIGE (user's correct design)",
+      "2026-02-03_00:48": "95a42d3 - Bash script expanded with 7 new features (still purple - WRONG)",
+      "2026-02-03_12:49": "3d5971b - Currency conversion added to bash (still purple - WRONG)"
+    },
+    "affected_files": [
+      "scripts/generate-travel-html.sh (has features but wrong colors)",
+      "scripts/lib/html_generator.py (correct colors but missing features)"
+    ],
+    "git_analysis_document": "docs/dev/git-analysis-20260203-173946.md"
+  },
+  "features_to_migrate": {
+    "1_expandable_stats": {
+      "description": "Click-to-expand statistics cards showing detailed breakdowns",
+      "css_classes": [".stat-header", ".stat-details", ".stat-expand-icon", ".stat-card.expanded"],
+      "javascript": "toggleStat(index)",
+      "html_structure": "stat-header (click) + stat-details (expandable content)",
+      "color_mapping": {
+        "bash_purple": "#667eea",
+        "python_beige": "var(--color-secondary)"
+      }
+    },
+    "2_kanban_route_map": {
+      "description": "Horizontal scrolling timeline of cities with day counts and budgets",
+      "css_classes": [".route-map", ".route-kanban", ".route-city-card", ".route-day-item", ".route-day-date", ".route-day-budget"],
+      "javascript": "None (pure CSS horizontal scroll)",
+      "html_structure": "route-kanban container with route-city-card for each city",
+      "color_mapping": {
+        "bash_purple": "#667eea",
+        "python_beige": "var(--color-secondary)"
+      }
+    },
+    "3_budget_by_city": {
+      "description": "Geographic clustering of budget by city, expandable to show breakdown",
+      "css_classes": [".budget-city-section", ".budget-city-card", ".budget-city-header", ".budget-city-details", ".budget-city-name", ".budget-city-total", ".budget-city-expand", ".budget-breakdown-item"],
+      "javascript": "toggleBudgetCity(index)",
+      "html_structure": "budget-city-card with header (click) + details (breakdown)",
+      "color_mapping": {
+        "bash_red": "#e74c3c",
+        "python_danger": "var(--color-danger)"
+      }
+    },
+    "4_attraction_types": {
+      "description": "Group attractions by type (culture/nature/shopping/etc) with counts",
+      "css_classes": [".attraction-types-section", ".attraction-type-card", ".attraction-type-header", ".attraction-type-name", ".attraction-type-count", ".attraction-type-grid"],
+      "javascript": "toggleAttractionType(type)",
+      "html_structure": "attraction-type-card with header (click) + grid (items)",
+      "color_mapping": {
+        "bash_purple": "#667eea",
+        "python_beige": "var(--color-secondary)"
+      }
+    },
+    "5_map_links": {
+      "description": "Branded buttons for Gaode Maps, Google Maps, RedNote with brand colors",
+      "css_classes": [".attraction-links", ".attraction-link", ".gaode", ".google", ".rednote"],
+      "javascript": "generateMapLinks(attraction) - returns {mapLink, redNoteLink, isMainland}",
+      "html_structure": "div.attraction-links with a.attraction-link buttons",
+      "color_mapping": {
+        "gaode": "#28a745 (keep - brand color)",
+        "google": "#4285f4 (keep - brand color)",
+        "rednote": "#ff2442 (keep - brand color)",
+        "default": "var(--color-secondary)"
+      }
+    },
+    "6_cities_panel": {
+      "description": "Side panel for quick navigation to specific cities/days",
+      "css_classes": [".cities-panel", ".city-cluster", ".city-cluster-header", ".close-panel"],
+      "javascript": "toggleCitiesPanel(), scrollToDay(day)",
+      "html_structure": "Sidebar overlay with city list and day links",
+      "color_mapping": {
+        "bash_purple": "#667eea",
+        "python_beige": "var(--color-secondary)"
+      }
+    },
+    "7_dynamic_currency": {
+      "description": "Real-time exchange rate fetching with configurable display currency",
+      "config_file": "config/currency-config.json",
+      "fetch_script": "scripts/utils/fetch-exchange-rate.sh",
+      "python_integration": "Load config, subprocess call to fetch-exchange-rate.sh, inject into merged_data",
+      "javascript": "CURRENCY_CONFIG object, convertCurrency(amount) function, toEUR() legacy wrapper",
+      "data_injection": "merged_data['currency_config'] = {source_currency, display_currency, exchange_rate, currency_symbol}",
+      "color_mapping": "N/A (no color changes needed)"
+    }
+  },
+  "color_mapping_comprehensive": {
+    "header_gradient": {
+      "bash_wrong": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      "python_correct": "Keep existing beige gradient in Python or use flat var(--color-primary)"
+    },
+    "primary_color": {
+      "bash": "#667eea",
+      "python": "var(--color-secondary) (#8B7355)"
+    },
+    "accent_color": {
+      "bash": "#764ba2",
+      "python": "var(--color-accent) (#D4AF37)"
+    },
+    "hover_purple": {
+      "bash": "#5568d3",
+      "python": "var(--color-dark) (#4A3F35)"
+    },
+    "red_emphasis": {
+      "bash": "#e74c3c",
+      "python": "var(--color-danger) (#B5695F)"
+    },
+    "border_colors": {
+      "bash": "#ddd, #eee",
+      "python": "var(--color-neutral) (#E8E3DA)"
+    },
+    "background_gray": {
+      "bash": "#f9f9f9, #f5f5f5, #fafafa",
+      "python": "var(--color-light) (#FDFCFA)"
+    },
+    "brand_colors_keep": {
+      "gaode": "#28a745",
+      "google": "#4285f4",
+      "rednote": "#ff2442"
+    }
+  },
+  "css_extraction_from_bash": {
+    "note": "Full CSS blocks extracted from scripts/generate-travel-html.sh (commit 3d5971b) are available in /tmp/bash-current.sh lines 85-500",
+    "sections_to_extract": [
+      "Stats Dashboard - Expandable Cards (lines ~130-180)",
+      "Route Map - Kanban Style (lines ~180-230)",
+      "Budget by City Section (lines ~230-280)",
+      "Attraction Types Section (lines ~280-320)",
+      "Cities Panel - Geographic Clustering (lines ~320-370)",
+      "Attraction Links with brand colors (lines ~400-420)"
+    ]
+  },
+  "javascript_extraction_from_bash": {
+    "note": "Full JavaScript code extracted from scripts/generate-travel-html.sh (commit 3d5971b) available in /tmp/bash-current.sh lines 534-930",
+    "functions_to_extract": [
+      "CURRENCY_CONFIG and convertCurrency() - lines 534-553",
+      "generateMapLinks(attraction) - lines 555-580",
+      "toggleStat(index) - lines ~600-610",
+      "toggleBudgetCity(index) - lines ~700-710",
+      "toggleAttractionType(type) - lines ~750-760",
+      "toggleCitiesPanel() - lines ~620-630",
+      "scrollToDay(day) - lines ~640-650",
+      "renderStats() - lines ~580-650 (generates expandable stats HTML)",
+      "renderRouteMap() - lines ~650-700 (generates Kanban HTML)",
+      "renderBudgetByCity() - lines ~700-750 (generates city budget HTML)",
+      "renderAttractionTypes() - lines ~750-800 (generates attraction types HTML)"
+    ]
+  },
+  "python_integration_strategy": {
+    "approach": "Add new methods to TravelPlanHTMLGenerator class for each feature",
+    "methods_to_add": [
+      "_load_currency_config() -> Dict - Load config/currency-config.json",
+      "_fetch_exchange_rate(source, target) -> float - Subprocess call to fetch-exchange-rate.sh",
+      "_inject_currency_config(merged_data) -> None - Add currency_config to merged data",
+      "_generate_styles() -> str - Return complete CSS (with beige colors)",
+      "_generate_javascript() -> str - Return complete JavaScript (with all functions)",
+      "_generate_stats_dashboard() -> str - Expandable stats HTML",
+      "_generate_route_kanban() -> str - Kanban route map HTML",
+      "_generate_budget_by_city() -> str - City budget HTML",
+      "_generate_attraction_types() -> str - Attraction types HTML",
+      "_generate_cities_panel() -> str - Side panel HTML",
+      "_generate_map_links(attraction) -> str - Map link buttons HTML"
+    ],
+    "main_generate_method": "generate_html(output_file, version_suffix='') - Main entry point that calls all sub-methods"
+  },
+  "files_to_create": [
+    {
+      "path": "scripts/generate-html.sh",
+      "purpose": "Bash wrapper that calls Python html_generator.py with venv activation",
+      "content_template": "#!/bin/bash\nset -e\nSOURCE_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\nsource \"${SOURCE_DIR}/../.claude/venv/bin/activate\" || source /root/.claude/venv/bin/activate\npython \"${SOURCE_DIR}/lib/html_generator.py\" \"$@\"\n",
+      "permissions": "chmod +x scripts/generate-html.sh"
+    }
+  ],
+  "files_to_modify": [
+    {
+      "path": "scripts/lib/html_generator.py",
+      "changes": [
+        "Add currency config loading method",
+        "Add exchange rate fetching method (subprocess)",
+        "Add 7 feature generation methods",
+        "Add complete CSS with beige colors",
+        "Add complete JavaScript with all functions",
+        "Add main CLI entry point (if __name__ == '__main__')",
+        "Inject currency config into merged data"
+      ],
+      "estimated_lines_added": "~800 lines (CSS, JS, HTML templates, methods)"
+    }
+  ],
+  "files_to_archive": [
+    {
+      "path": "scripts/generate-travel-html.sh",
+      "archive_to": "scripts/archive/generate-travel-html-20260203.sh",
+      "reason": "Replaced by Python version, archived for reference"
+    }
+  ],
+  "files_to_keep_unchanged": [
+    "config/currency-config.json",
+    "scripts/utils/fetch-exchange-rate.sh"
+  ],
+  "implementation_phases": {
+    "phase_1_currency_integration": {
+      "description": "Add currency conversion to Python",
+      "tasks": [
+        "Add _load_currency_config() method",
+        "Add _fetch_exchange_rate() method using subprocess",
+        "Add _inject_currency_config() to merge process",
+        "Test currency fetching works from Python"
+      ]
+    },
+    "phase_2_css_migration": {
+      "description": "Migrate all CSS with color replacement",
+      "tasks": [
+        "Extract CSS blocks from bash script",
+        "Replace all purple colors with beige CSS variables",
+        "Keep brand colors for map links",
+        "Add to Python _generate_styles() method"
+      ]
+    },
+    "phase_3_javascript_migration": {
+      "description": "Migrate all JavaScript functions",
+      "tasks": [
+        "Extract JavaScript from bash",
+        "Convert to Python f-string templates",
+        "Add to Python _generate_javascript() method",
+        "Ensure all toggle/scroll functions included"
+      ]
+    },
+    "phase_4_html_generation": {
+      "description": "Add HTML generation methods for each feature",
+      "tasks": [
+        "Add _generate_stats_dashboard() method",
+        "Add _generate_route_kanban() method",
+        "Add _generate_budget_by_city() method",
+        "Add _generate_attraction_types() method",
+        "Add _generate_cities_panel() method",
+        "Add _generate_map_links() helper method",
+        "Integrate into main generate_html() method"
+      ]
+    },
+    "phase_5_wrapper_and_cli": {
+      "description": "Create wrapper script and CLI support",
+      "tasks": [
+        "Add CLI argument parsing to Python (argparse)",
+        "Add if __name__ == '__main__' entry point",
+        "Create scripts/generate-html.sh wrapper",
+        "Archive old bash script",
+        "Update permissions"
+      ]
+    }
+  },
+  "testing_strategy": {
+    "unit_tests": [
+      "Test currency config loading",
+      "Test exchange rate fetching",
+      "Test color variable replacement in CSS"
+    ],
+    "integration_tests": [
+      "Generate HTML for beijing-exchange-bucket-list-20260202-232405",
+      "Verify all 7 features appear in HTML",
+      "Verify beige/coffee colors (not purple)",
+      "Verify currency conversion works (not hardcoded 7.8)",
+      "Verify all interactive JavaScript functions work",
+      "Verify brand colors preserved for map links"
+    ],
+    "comparison_test": [
+      "Generate HTML with old bash script (purple)",
+      "Generate HTML with new Python script (beige)",
+      "Compare feature completeness (should be identical)",
+      "Verify color differences (purple vs beige)"
+    ]
+  },
+  "quality_standards": {
+    "no_hardcoded_values": "All colors use CSS variables, exchange rate fetched dynamically",
+    "use_source_venv": "Wrapper script uses 'source venv/bin/activate' not 'python3'",
+    "meaningful_naming": "Method names like _generate_route_kanban() not _generate_feature2()",
+    "git_root_cause_reference": "All commit messages reference 95a42d3 as source of features",
+    "backward_compatibility": "Old trip data without currency field still works"
+  },
+  "dependencies": {
+    "runtime": "Python 3.x, bash, curl, jq",
+    "python_imports": ["json", "sys", "subprocess", "pathlib"],
+    "external_scripts": ["scripts/utils/fetch-exchange-rate.sh"],
+    "config_files": ["config/currency-config.json"]
+  },
+  "success_verification": {
+    "step_1": "python scripts/lib/html_generator.py beijing-exchange-bucket-list-20260202-232405 -test",
+    "step_2": "grep 'color-primary.*#F5F1E8' output HTML (verify beige)",
+    "step_3": "grep 'CURRENCY_CONFIG' output HTML (verify currency injection)",
+    "step_4": "grep 'toggleStat\\|toggleBudgetCity\\|toggleAttractionType' output HTML (verify JS)",
+    "step_5": "Open HTML in browser, verify all 7 features work interactively"
+  },
+  "estimated_complexity": {
+    "overall": "Medium-High",
+    "currency_integration": "Medium (subprocess call, error handling)",
+    "css_migration": "Low (straightforward find-replace)",
+    "javascript_migration": "Medium (template string conversion)",
+    "html_generation": "Medium (Python f-strings, data iteration)",
+    "testing": "Medium (comprehensive feature verification)",
+    "risk_level": "Low (pure addition, no breaking changes)"
+  }
+}

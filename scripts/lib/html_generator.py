@@ -7,6 +7,7 @@ Supports both itinerary and bucket list project types.
 
 import json
 import sys
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from datetime import datetime
@@ -27,6 +28,8 @@ class TravelPlanHTMLGenerator:
         self.data_dir = Path(data_dir)
         self.project_type: Optional[str] = None
         self.merged_data: Dict = {}
+        self.script_dir = Path(__file__).parent.parent
+        self.config_dir = self.script_dir.parent / "config"
 
     def detect_project_type(self) -> str:
         """
@@ -70,6 +73,107 @@ class TravelPlanHTMLGenerator:
         except json.JSONDecodeError as e:
             print(f"Warning: Invalid JSON in {filename}: {e}", file=sys.stderr)
             return {}
+
+    def _load_currency_config(self) -> Dict:
+        """
+        Load currency configuration from config/currency-config.json.
+
+        Returns:
+            Currency config dict with defaults if file not found
+        """
+        config_file = self.config_dir / "currency-config.json"
+
+        if not config_file.exists():
+            print("Warning: Currency config not found, using defaults (EUR display, CNY source)", file=sys.stderr)
+            return {
+                "default_display_currency": "EUR",
+                "default_source_currency": "CNY",
+                "currency_symbol_map": {"EUR": "€", "USD": "$", "GBP": "£", "CNY": "¥"}
+            }
+
+        try:
+            return json.loads(config_file.read_text())
+        except json.JSONDecodeError as e:
+            print(f"Warning: Invalid currency config JSON: {e}, using defaults", file=sys.stderr)
+            return {
+                "default_display_currency": "EUR",
+                "default_source_currency": "CNY",
+                "currency_symbol_map": {"EUR": "€"}
+            }
+
+    def _fetch_exchange_rate(self, source_currency: str, display_currency: str) -> float:
+        """
+        Fetch real-time exchange rate using fetch-exchange-rate.sh script.
+
+        Args:
+            source_currency: Source currency code (e.g., CNY)
+            display_currency: Target currency code (e.g., EUR)
+
+        Returns:
+            Exchange rate as float
+
+        Raises:
+            RuntimeError: If exchange rate fetch fails
+        """
+        fetch_script = self.script_dir / "utils" / "fetch-exchange-rate.sh"
+
+        if not fetch_script.exists():
+            print(f"Warning: Exchange rate script not found at {fetch_script}, using fallback rate 7.8", file=sys.stderr)
+            return 7.8
+
+        try:
+            print(f"Fetching exchange rate: {source_currency} → {display_currency}...", file=sys.stderr)
+            result = subprocess.run(
+                [str(fetch_script), source_currency, display_currency],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10
+            )
+            exchange_rate = float(result.stdout.strip())
+            print(f"Exchange rate: 1 {source_currency} = {exchange_rate} {display_currency}", file=sys.stderr)
+            return exchange_rate
+        except subprocess.CalledProcessError as e:
+            print(f"Error fetching exchange rate: {e.stderr}", file=sys.stderr)
+            raise RuntimeError(f"Failed to fetch exchange rate: {e.stderr}")
+        except subprocess.TimeoutExpired:
+            print("Error: Exchange rate fetch timed out", file=sys.stderr)
+            raise RuntimeError("Exchange rate fetch timed out after 10 seconds")
+        except ValueError as e:
+            print(f"Error: Invalid exchange rate format: {e}", file=sys.stderr)
+            raise RuntimeError(f"Invalid exchange rate returned: {e}")
+
+    def _inject_currency_config(self, merged_data: Dict) -> None:
+        """
+        Inject currency configuration into merged data.
+
+        Modifies merged_data in-place to add currency_config section.
+
+        Args:
+            merged_data: Merged plan data dictionary
+        """
+        try:
+            config = self._load_currency_config()
+            source_currency = config.get("default_source_currency", "CNY")
+            display_currency = config.get("default_display_currency", "EUR")
+            currency_symbol = config.get("currency_symbol_map", {}).get(display_currency, display_currency)
+
+            exchange_rate = self._fetch_exchange_rate(source_currency, display_currency)
+
+            merged_data["currency_config"] = {
+                "source_currency": source_currency,
+                "display_currency": display_currency,
+                "exchange_rate": exchange_rate,
+                "currency_symbol": currency_symbol
+            }
+        except RuntimeError as e:
+            print(f"Warning: Currency integration failed: {e}, using defaults", file=sys.stderr)
+            merged_data["currency_config"] = {
+                "source_currency": "CNY",
+                "display_currency": "EUR",
+                "exchange_rate": 7.8,
+                "currency_symbol": "€"
+            }
 
     def merge_itinerary_data(self) -> Dict:
         """
@@ -184,12 +288,744 @@ class TravelPlanHTMLGenerator:
         else:
             raise ValueError(f"Unknown project type: {self.project_type}")
 
+        # Inject currency configuration (Phase 1: Currency integration from commit 95a42d3)
+        self._inject_currency_config(self.merged_data)
+
         # Generate HTML content
         html_content = self._generate_html_template()
 
         # Write to file
         output_path.write_text(html_content)
         print(f"✓ Generated HTML: {output_path}")
+
+    def _generate_additional_styles(self) -> str:
+        """
+        Generate additional CSS for features migrated from bash script (commit 95a42d3).
+
+        Includes expandable stats, Kanban route map, budget by city, attraction types,
+        cities panel, map links with brand colors.
+
+        Returns:
+            CSS string with beige/coffee colors (replacing purple from bash)
+        """
+        return '''
+    /* Stats Dashboard - Expandable Cards (Feature 1 from bash) */
+    .stats-expandable {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card-expandable {
+      background: var(--color-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-subtle);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card-expandable:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-medium);
+    }
+    .stat-header-expandable {
+      padding: 20px;
+      background: var(--color-light);
+    }
+    .stat-card-expandable .value { font-size: 2em; font-weight: bold; color: var(--color-secondary); }
+    .stat-card-expandable .label { color: #666; font-size: 0.9em; margin-top: 5px; }
+    .stat-expand-icon {
+      float: right;
+      color: #999;
+      transition: transform 0.2s;
+    }
+    .stat-card-expandable.expanded .stat-expand-icon { transform: rotate(180deg); }
+    .stat-details {
+      display: none;
+      padding: 0 20px 20px 20px;
+      background: var(--color-primary);
+      border-top: 1px solid var(--color-neutral);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .stat-details.active { display: block; }
+    .stat-detail-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--color-neutral);
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9em;
+    }
+    .stat-detail-item:last-child { border-bottom: none; }
+
+    /* Route Map - Kanban Style (Feature 2 from bash) */
+    .route-map {
+      background: var(--color-light);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-subtle);
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+      overflow-x: auto;
+    }
+    .route-map h2 {
+      color: var(--color-secondary);
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+    .route-kanban {
+      display: flex;
+      gap: 15px;
+      min-width: min-content;
+      padding-bottom: 10px;
+    }
+    .route-city {
+      min-width: 180px;
+      background: var(--color-primary);
+      border-radius: var(--radius-md);
+      border: 2px solid var(--color-secondary);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .route-city:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 8px rgba(139, 115, 85, 0.3);
+    }
+    .route-city-header {
+      background: var(--color-secondary);
+      color: white;
+      padding: 12px;
+      border-radius: 6px 6px 0 0;
+      font-weight: bold;
+      text-align: center;
+    }
+    .route-city-days {
+      padding: 10px;
+    }
+    .route-day-item {
+      background: var(--color-light);
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+      font-size: 0.85em;
+      border-left: 3px solid var(--color-secondary);
+    }
+    .route-day-date { font-weight: bold; color: var(--color-secondary); }
+    .route-day-budget { color: var(--color-danger); font-size: 0.9em; margin-top: 3px; }
+
+    /* Budget by City Section (Feature 3 from bash) */
+    .budget-city-section {
+      background: var(--color-light);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-subtle);
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+    .budget-city-section h2 {
+      color: var(--color-secondary);
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+    .budget-city-card {
+      background: var(--color-primary);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      border: 1px solid var(--color-neutral);
+    }
+    .budget-city-header {
+      padding: 15px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-light);
+      transition: background 0.2s;
+    }
+    .budget-city-header:hover { background: var(--color-primary); }
+    .budget-city-name { font-weight: bold; color: var(--color-dark); }
+    .budget-city-total { color: var(--color-danger); font-weight: bold; }
+    .budget-city-expand { color: #999; transition: transform 0.2s; }
+    .budget-city-card.expanded .budget-city-expand { transform: rotate(180deg); }
+    .budget-city-details {
+      display: none;
+      padding: 15px;
+      background: var(--color-primary);
+    }
+    .budget-city-details.active { display: block; }
+    .budget-breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-neutral);
+      font-size: 0.9em;
+    }
+    .budget-breakdown-item:last-child { border-bottom: none; }
+
+    /* Attraction Types Section (Feature 4 from bash) */
+    .attraction-types-section {
+      background: var(--color-light);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-subtle);
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+    .attraction-types-section h2 {
+      color: var(--color-secondary);
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+    .attraction-type-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .attraction-type-card {
+      background: var(--color-primary);
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid var(--color-secondary);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .attraction-type-card:hover { transform: translateX(3px); }
+    .attraction-type-name { font-weight: bold; color: var(--color-secondary); }
+    .attraction-type-count { color: #666; font-size: 0.9em; margin-top: 5px; }
+
+    /* Cities Panel - Geographic Clustering (Feature 6 from bash) */
+    .cities-panel-section {
+      background: var(--color-light);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-subtle);
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+    .cities-panel-section h2 {
+      color: var(--color-secondary);
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+    .city-cluster {
+      margin-bottom: 20px;
+    }
+    .city-cluster-header {
+      font-weight: bold;
+      color: var(--color-secondary);
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid var(--color-secondary);
+    }
+    .city-attractions {
+      display: grid;
+      gap: 10px;
+    }
+    .attraction-item {
+      background: var(--color-primary);
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--color-secondary);
+    }
+    .attraction-name {
+      font-weight: bold;
+      color: var(--color-dark);
+      margin-bottom: 5px;
+    }
+    .attraction-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .attraction-link {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--color-secondary);
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 0.85em;
+      transition: background 0.2s;
+    }
+    .attraction-link:hover { background: var(--color-dark); }
+    /* Map Links - Brand Colors (Feature 5 from bash - KEEP original colors) */
+    .attraction-link.gaode { background: #28a745; }
+    .attraction-link.google { background: #4285f4; }
+    .attraction-link.rednote { background: #ff2442; }
+
+    /* Day Cards with beige theme */
+    .day-card-bash-style {
+      background: var(--color-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-subtle);
+      margin-bottom: var(--space-md);
+      overflow: hidden;
+    }
+    .day-header-bash-style {
+      background: var(--color-secondary);
+      color: white;
+      padding: 15px 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .day-header-bash-style:hover { background: var(--color-dark); }
+    .day-content-bash-style {
+      padding: 20px;
+      display: none;
+    }
+    .day-content-bash-style.active { display: block; }
+
+    /* Timeline with beige theme */
+    .timeline-item-bash-style {
+      border-left: 3px solid var(--color-secondary);
+      padding-left: 20px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .timeline-item-bash-style::before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--color-secondary);
+    }
+    .timeline-time-bash-style { font-weight: bold; color: var(--color-secondary); }
+    .timeline-activity-bash-style { margin: 5px 0; }
+
+    /* Activity Grid with beige theme */
+    .activity-grid-bash-style {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .activity-card-bash-style {
+      background: var(--color-primary);
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid var(--color-secondary);
+    }
+    .activity-card-bash-style h4 { color: var(--color-secondary); margin-bottom: 8px; }
+    .activity-card-bash-style .cost { color: var(--color-danger); font-weight: bold; }
+
+    /* Side Panel */
+    .side-panel-bash-style {
+      position: fixed;
+      top: 0;
+      right: -450px;
+      width: 450px;
+      height: 100vh;
+      background: var(--color-light);
+      box-shadow: -2px 0 10px rgba(74, 63, 53, 0.1);
+      transition: right 0.3s;
+      overflow-y: auto;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .side-panel-bash-style.active { right: 0; }
+    .close-panel {
+      cursor: pointer;
+      font-size: 1.5em;
+      float: right;
+      color: #999;
+    }
+
+    /* Responsive for bash features */
+    @media (max-width: 768px) {
+      .side-panel-bash-style { width: 100%; right: -100%; }
+      .stats-expandable { grid-template-columns: 1fr; }
+      .route-kanban { flex-direction: column; }
+      .route-city { min-width: 100%; }
+    }
+
+    /* Utilities with beige theme */
+    .btn-bash-style {
+      background: var(--color-secondary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn-bash-style:hover { background: var(--color-dark); }
+    .section-bash-style { margin-bottom: 30px; }
+    .section-bash-style h3 { color: var(--color-secondary); margin-bottom: 15px; }
+'''
+
+    def _generate_bash_features_html(self) -> str:
+        """
+        Generate HTML for 7 features migrated from bash script (commit 95a42d3).
+
+        Features:
+        1. Expandable stats dashboard
+        2. Kanban route map
+        3. Budget by city
+        4. Attraction types
+        5. Map links (integrated in city content)
+        6. Cities panel (geographic clustering)
+        7. Currency conversion (handled via JS, data injected in merged_data)
+
+        Returns:
+            HTML string with all bash feature sections
+        """
+        if self.project_type != "itinerary" or not self.merged_data.get("days"):
+            # Bash features only apply to itinerary projects
+            return ""
+
+        return f'''
+    <!-- Bash Features Migration (commit 95a42d3) -->
+
+    <!-- Feature 1: Expandable Stats Dashboard -->
+    <div class="stats-expandable" id="stats-expandable-container"></div>
+
+    <!-- Feature 2: Kanban Route Map -->
+    <div class="route-map">
+      <h2>Route Overview</h2>
+      <div class="route-kanban" id="route-kanban-container"></div>
+    </div>
+
+    <!-- Feature 3: Budget by City -->
+    <div class="budget-city-section">
+      <h2>Budget by City</h2>
+      <div id="budget-by-city-container"></div>
+    </div>
+
+    <!-- Feature 4: Attraction Types -->
+    <div class="attraction-types-section">
+      <h2>Attraction Types</h2>
+      <div class="attraction-type-grid" id="attraction-types-grid-container"></div>
+    </div>
+
+    <!-- Feature 6: Cities Panel (Geographic Clustering) -->
+    <div class="cities-panel-section">
+      <h2>Cities & Attractions</h2>
+      <div id="cities-geographic-container"></div>
+    </div>
+'''
+
+    def _generate_bash_javascript(self) -> str:
+        """
+        Generate JavaScript functions for bash features (commit 95a42d3).
+
+        Includes:
+        - Currency conversion (Feature 7)
+        - Map links generation (Feature 5)
+        - Toggle functions for expandable sections
+        - Rendering functions for all features
+
+        Returns:
+            JavaScript code as string
+        """
+        return '''
+    // ============================================================
+    // Bash Features JavaScript (migrated from commit 95a42d3)
+    // ============================================================
+
+    // Feature 7: Currency Configuration (dynamically fetched)
+    const CURRENCY_CONFIG_BASH = PLAN_DATA.currency_config || {
+      source_currency: 'CNY',
+      display_currency: 'EUR',
+      exchange_rate: 7.8,
+      currency_symbol: '€'
+    };
+
+    function convertCurrencyBash(amount) {
+      if (!amount || isNaN(amount)) return '0.00';
+      return (amount / CURRENCY_CONFIG_BASH.exchange_rate).toFixed(2);
+    }
+
+    function toEURBash(cny) {
+      return convertCurrencyBash(cny);
+    }
+
+    // Feature 5: Map Links Generation
+    function generateMapLinksBash(name, location) {
+      const encodedName = encodeURIComponent(name);
+      const encodedLocation = encodeURIComponent(location);
+
+      const isMainland = !location.includes('Hong Kong') && !location.includes('Macau') &&
+                         !location.includes('HK') && !location.includes('MO');
+
+      const mapLink = isMainland
+        ? `https://ditu.amap.com/search?query=${encodedName}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodedName}+${encodedLocation}`;
+
+      const rednoteLink = `https://www.xiaohongshu.com/search_result?keyword=${encodedName}`;
+
+      return { mapLink, rednote: rednoteLink, isMainland };
+    }
+
+    // Toggle functions for expandable sections
+    function toggleStatBash(idx) {
+      const details = document.getElementById(`stat-details-bash-${idx}`);
+      const card = details.closest('.stat-card-expandable');
+      if (details && card) {
+        details.classList.toggle('active');
+        card.classList.toggle('expanded');
+      }
+    }
+
+    function toggleBudgetCityBash(idx) {
+      const details = document.getElementById(`budget-city-bash-${idx}`);
+      const card = details.closest('.budget-city-card');
+      if (details && card) {
+        details.classList.toggle('active');
+        card.classList.toggle('expanded');
+      }
+    }
+
+    function scrollToCityBash(city) {
+      const element = document.getElementById(`city-geo-${city.replace(/\\s+/g, '-')}`);
+      if (element) element.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Feature 1: Render Expandable Stats Dashboard
+    function renderStatsDashboardBash() {
+      if (PROJECT_TYPE !== "itinerary" || !PLAN_DATA.days) return;
+
+      const totalBudgetCNY = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget?.total || 0), 0);
+      const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions?.length || 0), 0);
+      const cities = [...new Set(PLAN_DATA.days.map(d => d.location))];
+
+      const activitiesByCity = {};
+      PLAN_DATA.days.forEach(day => {
+        if (!activitiesByCity[day.location]) activitiesByCity[day.location] = 0;
+        activitiesByCity[day.location] += (day.attractions?.length || 0) +
+                                          (day.entertainment?.length || 0) +
+                                          (day.shopping?.length || 0);
+      });
+
+      const daysByCity = {};
+      PLAN_DATA.days.forEach(day => {
+        daysByCity[day.location] = (daysByCity[day.location] || 0) + 1;
+      });
+
+      const stats = [
+        {
+          label: 'Total Budget',
+          value: `${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(totalBudgetCNY)}`,
+          details: PLAN_DATA.days.map(d => ({
+            label: `Day ${d.day} - ${d.location}`,
+            value: `${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(d.budget?.total || 0)}`
+          }))
+        },
+        {
+          label: 'Attractions',
+          value: totalAttractions,
+          details: Object.entries(activitiesByCity).map(([city, count]) => ({
+            label: city,
+            value: count
+          }))
+        },
+        {
+          label: 'Cities',
+          value: cities.length,
+          details: cities.map(city => ({
+            label: city,
+            value: `${daysByCity[city]} day${daysByCity[city] > 1 ? 's' : ''}`
+          }))
+        },
+        {
+          label: 'Travel Days',
+          value: PLAN_DATA.days.length,
+          details: PLAN_DATA.days.map(d => ({
+            label: `Day ${d.day} - ${d.date}`,
+            value: d.location
+          }))
+        }
+      ];
+
+      const container = document.getElementById('stats-expandable-container');
+      if (container) {
+        container.innerHTML = stats.map((s, idx) => `
+          <div class="stat-card-expandable" onclick="toggleStatBash(${idx})">
+            <div class="stat-header-expandable">
+              <span class="stat-expand-icon">▼</span>
+              <div class="value">${s.value}</div>
+              <div class="label">${s.label}</div>
+            </div>
+            <div class="stat-details" id="stat-details-bash-${idx}">
+              ${s.details.map(d => `
+                <div class="stat-detail-item">
+                  <span>${d.label}</span>
+                  <span>${d.value}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Feature 2: Render Kanban Route Map
+    function renderRouteKanbanBash() {
+      if (PROJECT_TYPE !== "itinerary" || !PLAN_DATA.days) return;
+
+      const cityGroups = {};
+      PLAN_DATA.days.forEach(day => {
+        if (!cityGroups[day.location]) cityGroups[day.location] = [];
+        cityGroups[day.location].push(day);
+      });
+
+      const container = document.getElementById('route-kanban-container');
+      if (container) {
+        container.innerHTML = Object.entries(cityGroups).map(([city, days]) => {
+          const totalBudget = days.reduce((sum, d) => sum + (d.budget?.total || 0), 0);
+          return `
+            <div class="route-city" onclick="scrollToCityBash('${city}')">
+              <div class="route-city-header">${city}</div>
+              <div class="route-city-days">
+                ${days.map(d => `
+                  <div class="route-day-item">
+                    <div class="route-day-date">Day ${d.day} - ${d.date}</div>
+                    <div class="route-day-budget">${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(d.budget?.total || 0)}</div>
+                  </div>
+                `).join('')}
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-neutral); font-weight: bold; color: var(--color-danger);">
+                  Total: ${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(totalBudget)}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Feature 3: Render Budget by City
+    function renderBudgetByCityBash() {
+      if (PROJECT_TYPE !== "itinerary" || !PLAN_DATA.days) return;
+
+      const cityBudgets = {};
+      PLAN_DATA.days.forEach(day => {
+        if (!cityBudgets[day.location]) {
+          cityBudgets[day.location] = {
+            total: 0,
+            breakdown: {}
+          };
+        }
+
+        const budget = day.budget || {};
+        cityBudgets[day.location].total += budget.total || 0;
+
+        Object.entries(budget).forEach(([key, value]) => {
+          if (key !== 'total' && typeof value === 'number') {
+            cityBudgets[day.location].breakdown[key] =
+              (cityBudgets[day.location].breakdown[key] || 0) + value;
+          }
+        });
+      });
+
+      const container = document.getElementById('budget-by-city-container');
+      if (container) {
+        container.innerHTML = Object.entries(cityBudgets).map(([city, data], idx) => `
+          <div class="budget-city-card">
+            <div class="budget-city-header" onclick="toggleBudgetCityBash(${idx})">
+              <div class="budget-city-name">${city}</div>
+              <div>
+                <span class="budget-city-total">${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(data.total)}</span>
+                <span class="budget-city-expand">▼</span>
+              </div>
+            </div>
+            <div class="budget-city-details" id="budget-city-bash-${idx}">
+              ${Object.entries(data.breakdown).map(([category, amount]) => `
+                <div class="budget-breakdown-item">
+                  <span>${category.replace(/_/g, ' ')}</span>
+                  <span>${CURRENCY_CONFIG_BASH.currency_symbol}${toEURBash(amount)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Feature 4: Render Attraction Types
+    function renderAttractionTypesBash() {
+      if (PROJECT_TYPE !== "itinerary" || !PLAN_DATA.days) return;
+
+      const types = {};
+      PLAN_DATA.days.forEach(day => {
+        (day.attractions || []).forEach(attr => {
+          const type = attr.type || 'Other';
+          types[type] = (types[type] || 0) + 1;
+        });
+      });
+
+      const container = document.getElementById('attraction-types-grid-container');
+      if (container) {
+        container.innerHTML = Object.entries(types)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, count]) => `
+            <div class="attraction-type-card">
+              <div class="attraction-type-name">${formatCategoryLabel(type, 'attraction')}</div>
+              <div class="attraction-type-count">${count} attraction${count > 1 ? 's' : ''}</div>
+            </div>
+          `).join('');
+      }
+    }
+
+    // Feature 6: Render Cities Panel (Geographic Clustering)
+    function renderCitiesGeographicBash() {
+      if (PROJECT_TYPE !== "itinerary" || !PLAN_DATA.days) return;
+
+      const cityClusters = {};
+      PLAN_DATA.days.forEach(day => {
+        (day.attractions || []).forEach(attr => {
+          const city = day.location;
+          if (!cityClusters[city]) cityClusters[city] = [];
+          cityClusters[city].push({ ...attr, location: day.location });
+        });
+      });
+
+      const container = document.getElementById('cities-geographic-container');
+      if (container) {
+        container.innerHTML = Object.entries(cityClusters).map(([city, attractions]) => {
+          const uniqueAttractions = attractions.filter((attr, idx, self) =>
+            idx === self.findIndex(a => a.name === attr.name)
+          );
+
+          return `
+            <div class="city-cluster" id="city-geo-${city.replace(/\\s+/g, '-')}">
+              <div class="city-cluster-header">${city} (${uniqueAttractions.length} attractions)</div>
+              <div class="city-attractions">
+                ${uniqueAttractions.map(attr => {
+                  const links = generateMapLinksBash(attr.name, attr.location);
+                  return `
+                    <div class="attraction-item">
+                      <div class="attraction-name">${attr.name}</div>
+                      <div class="attraction-links">
+                        <a href="${links.mapLink}" target="_blank" class="attraction-link ${links.isMainland ? 'gaode' : 'google'}">
+                          ${links.isMainland ? 'Gaode Maps' : 'Google Maps'}
+                        </a>
+                        <a href="${links.rednote}" target="_blank" class="attraction-link rednote">
+                          RedNote
+                        </a>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Initialize all bash features
+    function initBashFeatures() {
+      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {
+        renderStatsDashboardBash();
+        renderRouteKanbanBash();
+        renderBudgetByCityBash();
+        renderAttractionTypesBash();
+        renderCitiesGeographicBash();
+      }
+    }
+'''
 
     def _generate_html_template(self) -> str:
         """
@@ -200,6 +1036,15 @@ class TravelPlanHTMLGenerator:
         """
         # Convert merged data to JSON string for embedding
         merged_json = json.dumps(self.merged_data)
+
+        # Get additional styles for bash features
+        additional_styles = self._generate_additional_styles()
+
+        # Get bash features HTML sections
+        bash_features_html = self._generate_bash_features_html()
+
+        # Get bash features JavaScript
+        bash_features_js = self._generate_bash_javascript()
 
         return f'''<!DOCTYPE html>
 <html lang="en">
@@ -610,6 +1455,9 @@ class TravelPlanHTMLGenerator:
       }}
     }}
 
+    /* Additional styles migrated from bash script (commit 95a42d3) with beige colors */
+    {additional_styles}
+
     .detail-overlay {{
       position: fixed;
       top: 0;
@@ -714,6 +1562,8 @@ class TravelPlanHTMLGenerator:
     <div id="timeline-tab" class="tab-content">
       <div id="timeline-container"></div>
     </div>
+
+    {bash_features_html}
 
     <footer>
       <p>Generated on {datetime.now().strftime("%Y-%m-%d %H:%M")} | Travel Planner Dashboard</p>
@@ -1632,7 +2482,102 @@ class TravelPlanHTMLGenerator:
       item.classList.toggle('active');
     }}
 
+    // Additional JavaScript functions migrated from bash script (commit 95a42d3)
+    // Currency conversion functions (Feature 7)
+    const CURRENCY_CONFIG = PLAN_DATA.currency_config || {{
+      source_currency: 'CNY',
+      display_currency: 'EUR',
+      exchange_rate: 7.8,
+      currency_symbol: '€'
+    }};
+
+    function convertCurrency(amount) {{
+      return (amount * CURRENCY_CONFIG.exchange_rate).toFixed(2);
+    }}
+
+    function toEUR(cny) {{
+      return convertCurrency(cny);
+    }}
+
+    // Map links generation (Feature 5)
+    function generateMapLinks(name, location) {{
+      const encodedName = encodeURIComponent(name);
+      const encodedLocation = encodeURIComponent(location);
+
+      const isMainland = !location.includes('Hong Kong') && !location.includes('Macau') &&
+                         !location.includes('HK') && !location.includes('MO');
+
+      const mapLink = isMainland
+        ? `https://ditu.amap.com/search?query=${{encodedName}}`
+        : `https://www.google.com/maps/search/?api=1&query=${{encodedName}}+${{encodedLocation}}`;
+
+      const rednoteLink = `https://www.xiaohongshu.com/search_result?keyword=${{encodedName}}`;
+
+      return {{ mapLink, rednote: rednoteLink, isMainland }};
+    }}
+
+    // Toggle functions for expandable sections
+    function toggleStat(idx) {{
+      const details = document.getElementById(`stat-details-${{idx}}`);
+      const card = details.closest('.stat-card-expandable');
+      details.classList.toggle('active');
+      card.classList.toggle('expanded');
+    }}
+
+    function toggleBudgetCity(idx) {{
+      const details = document.getElementById(`budget-city-${{idx}}`);
+      const card = details.closest('.budget-city-card');
+      details.classList.toggle('active');
+      card.classList.toggle('expanded');
+    }}
+
+    function toggleAttractionType(type) {{
+      const element = document.getElementById(`attraction-type-${{type}}`);
+      if (element) {{
+        element.classList.toggle('expanded');
+      }}
+    }}
+
+    function scrollToCity(city) {{
+      const element = document.getElementById(`city-${{city.replace(/\\s+/g, '-')}}`);
+      if (element) element.scrollIntoView({{ behavior: 'smooth' }});
+    }}
+
+    function scrollToDay(day) {{
+      const element = document.getElementById(`day-${{day}}`);
+      if (element) element.scrollIntoView({{ behavior: 'smooth' }});
+    }}
+
+    function toggleCitiesPanel() {{
+      const panel = document.getElementById('cities-side-panel');
+      if (panel) {{
+        panel.classList.toggle('active');
+      }}
+    }}
+
+    function closePanel() {{
+      const panel = document.getElementById('emergency-panel');
+      if (panel) {{
+        panel.classList.remove('active');
+      }}
+      const citiesPanel = document.getElementById('cities-side-panel');
+      if (citiesPanel) {{
+        citiesPanel.classList.remove('active');
+      }}
+    }}
+
+    function toggleDay(dayNum) {{
+      const content = document.getElementById(`day-${{dayNum}}`);
+      if (content) {{
+        content.classList.toggle('active');
+      }}
+    }}
+
+    {bash_features_js}
+
+    // Initialize main features and bash features
     init();
+    initBashFeatures();
   </script>
 </body>
 </html>'''
