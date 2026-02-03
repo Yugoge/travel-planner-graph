@@ -1,0 +1,400 @@
+{
+  "judge_id": 3,
+  "judge_name": "Code Quality Auditor",
+  "audit_timestamp": "2026-02-03T20:00:00Z",
+  "severity": "high",
+  "files_audited": 4,
+  "files_analyzed": [
+    "/root/travel-planner/scripts/lib/html_generator.py",
+    "/root/travel-planner/scripts/generate-and-deploy.sh",
+    "/root/travel-planner/scripts/generate-html.sh",
+    "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html"
+  ],
+  "security_issues": [
+    {
+      "severity": "critical",
+      "category": "XSS Vulnerability",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [844, 876, 924, 960, 986, 1705, 1763, 1796, 1847, 1931, 2059, 2293, 2377, 2477],
+      "issue": "Multiple innerHTML assignments without proper HTML escaping",
+      "description": "14 instances of innerHTML assignments using user-controlled data without HTML entity escaping. Data from JSON (attraction names, descriptions, addresses) is directly interpolated into HTML strings. This creates XSS vulnerabilities if malicious content exists in JSON files.",
+      "impact": "Attackers could inject malicious JavaScript through JSON data files, leading to session hijacking, credential theft, or website defacement",
+      "evidence": [
+        "Line 1618: html += `<a href=\"${result.url}\"... (URL not validated)",
+        "Line 2078: <h4>${attr.name}${skillIcons}</h4> (name not escaped)",
+        "Line 2133: ${ent.description ? `<p>${ent.description}</p>` : ''} (description not escaped)",
+        "Line 2196: encodeURIComponent used for URLs but NOT for HTML content"
+      ],
+      "recommendation": "Implement HTML escaping function and apply to ALL user data before DOM insertion. Use textContent instead of innerHTML where possible, or use DOMPurify library for sanitization."
+    },
+    {
+      "severity": "medium",
+      "category": "Command Injection Risk",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [126],
+      "issue": "Subprocess call with external script path",
+      "description": "subprocess.run() calls external bash script 'fetch-exchange-rate.sh' with user-controlled currency parameters. While shell=True is NOT used (good), the parameters come from config file which could be manipulated.",
+      "impact": "If config file is compromised, malicious currency codes could be passed to subprocess",
+      "evidence": [
+        "Line 126: subprocess.run([str(fetch_script), source_currency, display_currency], ...)",
+        "No validation of source_currency/display_currency format before subprocess call"
+      ],
+      "recommendation": "Add input validation for currency codes (whitelist: CNY, USD, EUR, GBP only). Validate against regex ^[A-Z]{3}$ before subprocess call."
+    },
+    {
+      "severity": "low",
+      "category": "Information Disclosure",
+      "file": "scripts/generate-and-deploy.sh",
+      "lines": [106, 109],
+      "issue": "Environment variable existence checks may leak information",
+      "description": "Script checks for GITHUB_TOKEN existence and provides hints about authentication setup",
+      "impact": "Minimal - informational only",
+      "evidence": [
+        "Line 106: if [[ -z \"${GITHUB_TOKEN:-}\" ]]",
+        "Line 109: echo \"   To enable deployment, set GITHUB_TOKEN...\""
+      ],
+      "recommendation": "Acceptable for deployment scripts, no action needed"
+    }
+  ],
+  "performance_issues": [
+    {
+      "severity": "high",
+      "category": "Large Embedded Data",
+      "file": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "issue": "155KB of JSON data embedded in HTML (PLAN_DATA)",
+      "description": "Entire travel plan JSON (155,344 characters) is embedded inline in HTML, increasing initial page load time",
+      "impact": "Slower initial page load, increased memory usage, poor mobile performance",
+      "evidence": [
+        "HTML file size: 225KB (44% larger than recommended 150KB threshold)",
+        "PLAN_DATA embedded JSON: 155KB",
+        "No lazy loading or data chunking implemented"
+      ],
+      "recommendation": "Consider: (1) External JSON file loaded via fetch(), (2) Lazy load city data on demand, (3) Compress JSON with gzip, (4) Use IndexedDB for large datasets"
+    },
+    {
+      "severity": "medium",
+      "category": "Excessive DOM Manipulation",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "Multiple innerHTML replacements cause DOM reflows",
+      "description": "14 separate innerHTML assignments during page initialization cause multiple reflows/repaints",
+      "impact": "Slower rendering, poor performance on low-end devices",
+      "evidence": [
+        "Lines 844, 876, 924, 960, 986: 5 innerHTML calls in bash features alone",
+        "No DocumentFragment usage for batch DOM updates",
+        "All rendering happens on main thread"
+      ],
+      "recommendation": "Use DocumentFragment for batch updates, implement virtual DOM, or render to string once then set innerHTML"
+    },
+    {
+      "severity": "medium",
+      "category": "Redundant Function Calls",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "Chart.js instances created without cleanup",
+      "description": "Multiple Chart.js instances created but no destroy() calls, causing memory leaks when switching tabs",
+      "impact": "Memory leaks accumulate with repeated tab switching",
+      "evidence": [
+        "Lines 1849, 1872, 1933, 1968: new Chart() calls without storing references",
+        "No chart.destroy() in tab switching logic"
+      ],
+      "recommendation": "Store chart instances in global object, destroy before recreating on tab switch"
+    },
+    {
+      "severity": "low",
+      "category": "Blocking JavaScript",
+      "file": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "issue": "All JavaScript executes in <script> tag at end of body (blocking)",
+      "description": "Large JavaScript block (44 functions, 2000+ lines) executes synchronously",
+      "impact": "Delays time to interactive",
+      "evidence": [
+        "44 JavaScript functions defined inline",
+        "No async/defer attributes",
+        "No code splitting"
+      ],
+      "recommendation": "Extract JavaScript to external file with defer attribute, enable code splitting"
+    }
+  ],
+  "code_quality_issues": [
+    {
+      "severity": "high",
+      "category": "Code Duplication",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [2067, 2159],
+      "issue": "renderDayContent() and renderCityContent() have 80% duplicate code",
+      "description": "Two nearly identical functions for rendering attractions, hotels, restaurants, entertainment, shopping - differs only in data structure access patterns",
+      "impact": "Maintenance burden, bug duplication, violates DRY principle",
+      "evidence": [
+        "renderDayContent: 90 lines (2067-2157)",
+        "renderCityContent: 97 lines (2159-2256)",
+        "Shared logic: Attractions, hotels, restaurants, entertainment, shopping rendering",
+        "Only difference: day.attractions vs city.attractions"
+      ],
+      "recommendation": "Extract common rendering logic into renderActivitySection(items, type, config) function, pass different data sources"
+    },
+    {
+      "severity": "high",
+      "category": "Long Function",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [1030],
+      "issue": "_generate_html_template() is 1556 lines long",
+      "description": "Single function generates entire HTML template including CSS, JavaScript, and content. Far exceeds recommended 50-line limit",
+      "impact": "Difficult to test, debug, and maintain. Violates Single Responsibility Principle",
+      "evidence": [
+        "Function spans lines 1030-2586 (1556 lines)",
+        "Contains embedded CSS (400+ lines)",
+        "Contains embedded JavaScript (1000+ lines)",
+        "Mixes concerns: styling, logic, structure"
+      ],
+      "recommendation": "Split into: _generate_css(), _generate_javascript(), _generate_html_structure(). Use template files instead of string concatenation"
+    },
+    {
+      "severity": "medium",
+      "category": "Magic Numbers",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [122, 131, 175],
+      "issue": "Hardcoded values without named constants",
+      "description": "Fallback exchange rate 7.8, timeout 10 seconds, and other magic numbers embedded in code",
+      "impact": "Difficult to maintain, unclear meaning, hard to update",
+      "evidence": [
+        "Line 122: return 7.8 (fallback CNY to EUR rate)",
+        "Line 131: timeout=10 (subprocess timeout)",
+        "Line 175: 'exchange_rate': 7.8 (duplicate magic number)"
+      ],
+      "recommendation": "Define constants: DEFAULT_CNY_EUR_RATE = 7.8, EXCHANGE_RATE_TIMEOUT_SECONDS = 10"
+    },
+    {
+      "severity": "medium",
+      "category": "Poor Error Handling",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "Only 43.8% of functions have error handling",
+      "description": "16 functions defined, only 7 except blocks. Many functions can raise unhandled exceptions",
+      "impact": "Silent failures, poor user experience, difficult debugging",
+      "evidence": [
+        "Functions: 16, Except blocks: 7 (43.8% coverage)",
+        "detect_project_type() can raise ValueError but not always caught",
+        "load_json_safe() catches JSONDecodeError but not all JSON functions do",
+        "merge_itinerary_data() has no try-except at all"
+      ],
+      "recommendation": "Add try-except to all public functions, implement consistent error handling strategy"
+    },
+    {
+      "severity": "low",
+      "category": "Inconsistent Naming",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "Mixed naming conventions for similar functions",
+      "description": "Some functions use _prefix (private), some don't, inconsistently applied",
+      "impact": "Confusing API, unclear which functions are public vs private",
+      "evidence": [
+        "_generate_html_template() - private prefix",
+        "generate_html() - public (correct)",
+        "_inject_currency_config() - private prefix",
+        "merge_itinerary_data() - no prefix but seems public"
+      ],
+      "recommendation": "Follow PEP 8: single underscore for internal/private, no underscore for public API"
+    },
+    {
+      "severity": "low",
+      "category": "Missing Type Hints",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "Return types missing for some functions",
+      "description": "While parameters have type hints, some return types are missing",
+      "impact": "Reduced type safety, harder for IDEs to provide autocomplete",
+      "evidence": [
+        "Line 146: _inject_currency_config() -> None is missing return type",
+        "Line 301: _generate_additional_styles() has -> str",
+        "Inconsistent application of return type hints"
+      ],
+      "recommendation": "Add return type hints to ALL functions, use typing.NoReturn or None explicitly"
+    }
+  ],
+  "best_practice_violations": [
+    {
+      "severity": "medium",
+      "category": "Inline Styles",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [2071, 2088, 2105],
+      "issue": "Inline styles used in JavaScript-generated HTML",
+      "description": "HTML strings contain inline style attributes instead of CSS classes",
+      "impact": "Violates separation of concerns, harder to maintain, poor CSP compatibility",
+      "evidence": [
+        "Line 2071: '<h4 style=\"color: var(--color-accent); margin-bottom: 1rem;\">",
+        "Line 2088: '<h4 style=\"color: var(--color-accent); margin: 1.5rem 0 1rem;\">",
+        "Multiple instances of inline styles in template literals"
+      ],
+      "recommendation": "Define CSS classes for all styling, remove inline styles"
+    },
+    {
+      "severity": "medium",
+      "category": "Missing Accessibility",
+      "file": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "issue": "Insufficient ARIA labels and semantic HTML",
+      "description": "Interactive elements lack proper ARIA attributes, buttons use onclick instead of event listeners",
+      "impact": "Poor screen reader experience, violates WCAG 2.1 guidelines",
+      "evidence": [
+        "onclick attributes used instead of addEventListener (lines 2026, 2043)",
+        "No aria-label on expandable sections",
+        "No aria-expanded state management",
+        "No keyboard navigation support for accordions"
+      ],
+      "recommendation": "Add aria-label, aria-expanded, role attributes. Implement keyboard navigation (Enter/Space). Use addEventListener instead of onclick"
+    },
+    {
+      "severity": "low",
+      "category": "Hardcoded CDN Links",
+      "file": "scripts/lib/html_generator.py",
+      "lines": [1055, 1056],
+      "issue": "External dependencies on CDN without SRI",
+      "description": "Chart.js and Font Awesome loaded from CDN without Subresource Integrity checks",
+      "impact": "Security risk if CDN is compromised, no integrity verification",
+      "evidence": [
+        "Line 1055: <script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.0...\">",
+        "Line 1056: <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/...font-awesome...\">",
+        "No integrity or crossorigin attributes"
+      ],
+      "recommendation": "Add SRI hashes: integrity=\"sha384-...\" crossorigin=\"anonymous\""
+    },
+    {
+      "severity": "low",
+      "category": "No Content Security Policy",
+      "file": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "issue": "Missing CSP meta tag",
+      "description": "No Content-Security-Policy defined to prevent XSS",
+      "impact": "Reduces defense-in-depth security posture",
+      "evidence": [
+        "No <meta http-equiv=\"Content-Security-Policy\"> tag",
+        "Inline scripts and styles allowed by default"
+      ],
+      "recommendation": "Add CSP header or meta tag restricting script sources and inline execution"
+    },
+    {
+      "severity": "low",
+      "category": "Missing Error Pages",
+      "file": "scripts/lib/html_generator.py",
+      "issue": "No user-friendly error rendering",
+      "description": "When data is missing, generic 'No details available' shown without helpful context",
+      "impact": "Poor user experience when data is incomplete",
+      "evidence": [
+        "Line 2156: 'No details available' generic message",
+        "Line 2255: Same generic message",
+        "No suggestions for how to fix missing data"
+      ],
+      "recommendation": "Provide specific error messages: 'No attractions found for this city. Add some in attractions.json'"
+    }
+  ],
+  "total_issues": 24,
+  "critical_issues": 1,
+  "high_priority_issues": 6,
+  "medium_priority_issues": 10,
+  "low_priority_issues": 7,
+  "verdict": "CONDITIONAL_PASS",
+  "verdict_reasoning": "Code is functional but has 1 CRITICAL XSS vulnerability that MUST be fixed before production deployment. Multiple high-severity issues (code duplication, long functions, performance problems) should be addressed. Medium and low priority issues can be tackled incrementally.",
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "Implement HTML escaping for ALL user-controlled data before innerHTML assignment",
+      "estimated_effort": "4 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Refactor _generate_html_template() - split into separate CSS, JS, HTML functions",
+      "estimated_effort": "8 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Extract duplicate code from renderDayContent and renderCityContent into shared function",
+      "estimated_effort": "2 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Optimize HTML file size - externalize JSON data or implement lazy loading",
+      "estimated_effort": "6 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add input validation for subprocess parameters (currency codes)",
+      "estimated_effort": "1 hour",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Implement Chart.js instance management with proper cleanup",
+      "estimated_effort": "2 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add ARIA labels and keyboard navigation for accessibility",
+      "estimated_effort": "4 hours",
+      "files": ["scripts/lib/html_generator.py"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Add SRI hashes to CDN resources",
+      "estimated_effort": "30 minutes",
+      "files": ["scripts/lib/html_generator.py"]
+    }
+  ],
+  "positive_observations": [
+    "Good use of subprocess.run() WITHOUT shell=True (avoids shell injection)",
+    "Consistent error handling with try-except in critical paths",
+    "Good use of type hints for function parameters",
+    "Proper use of pathlib.Path for file operations",
+    "Good timeout handling for subprocess calls (10 second limit)",
+    "Responsive CSS with mobile breakpoints (@media queries)",
+    "Good use of CSS custom properties for theming",
+    "Script uses set -euo pipefail for bash error handling (14/15 scripts)",
+    "No hardcoded API keys or secrets in code",
+    "Good separation between Python logic and bash orchestration"
+  ],
+  "metrics": {
+    "python_module": {
+      "total_lines": 2606,
+      "functions": 16,
+      "average_function_length": 163,
+      "longest_function_lines": 1556,
+      "error_handling_coverage": "43.8%",
+      "type_hint_coverage": "~80%"
+    },
+    "generated_html": {
+      "file_size_kb": 225,
+      "embedded_json_size_kb": 155,
+      "javascript_functions": 44,
+      "dom_elements_approx": 204,
+      "innerHTML_assignments": 14
+    },
+    "bash_scripts": {
+      "total_scripts": 15,
+      "scripts_with_set_e": 14,
+      "error_handling_coverage": "93.3%"
+    }
+  },
+  "evidence": [
+    {
+      "type": "security",
+      "finding": "XSS vulnerability in innerHTML assignments",
+      "file": "scripts/lib/html_generator.py:1618",
+      "code_snippet": "html += `<a href=\"${result.url}\" target=\"_blank\" class=\"skill-icon-btn ${mapping.class}\" title=\"${result.display_text || result.skill}\">`"
+    },
+    {
+      "type": "performance",
+      "finding": "Large embedded JSON data",
+      "file": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v11.html",
+      "measurement": "155,344 characters of JSON embedded inline"
+    },
+    {
+      "type": "code_quality",
+      "finding": "Extremely long function",
+      "file": "scripts/lib/html_generator.py:1030-2586",
+      "measurement": "1556 lines in single function (_generate_html_template)"
+    },
+    {
+      "type": "code_quality",
+      "finding": "Code duplication",
+      "file": "scripts/lib/html_generator.py:2067-2256",
+      "measurement": "80% duplicate code between renderDayContent and renderCityContent"
+    }
+  ]
+}
