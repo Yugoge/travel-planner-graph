@@ -59,9 +59,15 @@ def extract_locations_for_day(day: int, agent_data: Dict) -> List[Dict]:
     """
     locations = []
 
-    # Handle different agent JSON structures
-    if "days" in agent_data:
-        day_data = next((d for d in agent_data["days"] if d.get("day") == day), None)
+    # Handle different agent JSON structures - check for data.days or days
+    days_array = None
+    if "data" in agent_data and "days" in agent_data["data"]:
+        days_array = agent_data["data"]["days"]
+    elif "days" in agent_data:
+        days_array = agent_data["days"]
+
+    if days_array:
+        day_data = next((d for d in days_array if d.get("day") == day), None)
         if not day_data:
             return locations
 

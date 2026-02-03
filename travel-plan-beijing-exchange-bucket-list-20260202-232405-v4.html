@@ -1,87 +1,9 @@
-#!/usr/bin/env bash
-# Merge all agent JSONs and generate interactive HTML travel plan
-# Usage: generate-travel-html.sh <destination-slug> [version-suffix]
-# Exit codes: 0=success, 1=generation failed, 2=missing files
-
-set -euo pipefail
-
-DESTINATION_SLUG="${1:?Missing required destination-slug}"
-VERSION_SUFFIX="${2:-}"
-
-DATA_DIR="data/${DESTINATION_SLUG}"
-PLAN_FILE="${DATA_DIR}/plan-skeleton.json"
-OUTPUT_FILE="travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
-
-# Verify required files exist
-if [[ ! -f "$PLAN_FILE" ]]; then
-  echo "Error: Plan skeleton not found: $PLAN_FILE" >&2
-  exit 2
-fi
-
-# Merge agent outputs into plan-skeleton
-echo "Merging agent outputs..."
-
-MERGED_DATA=$(jq -s '
-  .[0] as $skeleton |
-
-  # Load all agent outputs
-  .[1] as $meals |
-  .[2] as $accommodation |
-  .[3] as $attractions |
-  .[4] as $entertainment |
-  .[5] as $shopping |
-  .[6] as $transportation |
-  .[7] as $timeline |
-  .[8] as $budget |
-
-  # Merge into skeleton
-  $skeleton | .days |= [
-    .[] | . as $day |
-    . + {
-      breakfast: ($meals.data.days[] | select(.day == $day.day) | .breakfast),
-      lunch: ($meals.data.days[] | select(.day == $day.day) | .lunch),
-      dinner: ($meals.data.days[] | select(.day == $day.day) | .dinner),
-      accommodation: ($accommodation.data.days[] | select(.day == $day.day) | .accommodation),
-      attractions: ($attractions.data.days[] | select(.day == $day.day) | .attractions),
-      entertainment: ($entertainment.data.days[] | select(.day == $day.day) | .entertainment),
-      shopping: ($shopping.data.days[] | select(.day == $day.day) | .shopping),
-      location_change: (
-        if $day.location_change then
-          ($transportation.data.days[] | select(.day == $day.day) | .location_change)
-        else
-          null
-        end
-      ),
-      timeline: ($timeline.data.days[] | select(.day == $day.day) | .timeline),
-      budget: ($budget.data.days[] | select(.day == $day.day) | .budget)
-    }
-  ] |
-  . + {
-    emergency_info: $skeleton.emergency_info
-  }
-' \
-  "$PLAN_FILE" \
-  "${DATA_DIR}/meals.json" \
-  "${DATA_DIR}/accommodation.json" \
-  "${DATA_DIR}/attractions.json" \
-  "${DATA_DIR}/entertainment.json" \
-  "${DATA_DIR}/shopping.json" \
-  "${DATA_DIR}/transportation.json" \
-  "${DATA_DIR}/timeline.json" \
-  "${DATA_DIR}/budget.json" 2>/dev/null || echo "{}")
-
-if [[ "$MERGED_DATA" == "{}" ]]; then
-  echo "Warning: Some agent outputs missing, generating partial HTML" >&2
-fi
-
-# Generate HTML using template
-cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel Plan - DESTINATION_TITLE</title>
+  <title>Travel Plan - beijing-exchange-bucket-list-20260202-232405</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -501,7 +423,7 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
 
   <script>
     // Data will be injected here
-    const PLAN_DATA = PLAN_DATA_INJECTION;
+    const PLAN_DATA = ;
     const CNY_TO_EUR = 7.8;
 
     // Helper: Convert CNY to EUR
@@ -905,33 +827,3 @@ cat > "$OUTPUT_FILE" <<'HTML_TEMPLATE'
   </script>
 </body>
 </html>
-HTML_TEMPLATE
-
-# Inject merged data into HTML using Python for safe JSON handling
-TMP_DATA="/tmp/plan-data-$$.json"
-echo "$MERGED_DATA" > "$TMP_DATA"
-
-python3 <<PYTHON_INJECT
-import json
-
-# Load data
-with open('$TMP_DATA', 'r') as f:
-    merged_data = f.read()
-
-# Read HTML template
-with open('$OUTPUT_FILE', 'r', encoding='utf-8') as f:
-    html_content = f.read()
-
-# Replace placeholders
-html_content = html_content.replace('PLAN_DATA_INJECTION', merged_data)
-html_content = html_content.replace('DESTINATION_TITLE', '$DESTINATION_SLUG')
-
-# Write back
-with open('$OUTPUT_FILE', 'w', encoding='utf-8') as f:
-    f.write(html_content)
-PYTHON_INJECT
-
-rm -f "$TMP_DATA"
-
-echo "✓ Generated HTML: $OUTPUT_FILE"
-exit 0
