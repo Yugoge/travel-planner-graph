@@ -1,0 +1,104 @@
+{
+  "request_id": "dev-20260203-002700",
+  "timestamp": "2026-02-03T00:27:00Z",
+  "requirement": {
+    "original": "html生成脚本出现了重大系统性缺陷，我不要你修复html，我要你修复脚本：\n1. budget全都是欧元单位但是人民币价格\n2. budget by city不可展开了，不好，我之前不是已经设计过展开了吗（自己参考我的root/budget-management中graph command的展开功能\n3. 统计图表还应该有活动数量per city、建议旅行天数per city，都可以展开成活动和每天行程\n3. 还应该有travel路线地图，思考如何使用你现有的技能将所有旅行计划可视化为地图\n4. attraction type彻底乱套，完全没有加总了，变成了单个单个显示\n5. cities panel价格同样显示错误，同时并不是每一个景点都加入了超链接，我要求每一个景点都加入，同时有的有中文有的没有中文，全部取消中文显示\n6. cities展示的应该和timeline有所区别，既然timeline已经有day多少了，cities就纯按照地理聚类了",
+    "clarified": "Fix 6 systematic issues in HTML generation script (scripts/generate-travel-html.sh):\n1. Currency: Convert all CNY values to EUR (user wants EUR display everywhere)\n2. Budget by city: Add expandable/collapsible budget breakdown by city (reference: /root/budget-management asset-tracker.html expandable pattern)\n3. Statistics: Convert all stat cards to expandable format showing detailed breakdowns\n4. Travel route map: Create horizontal Kanban-style route visualization (cities horizontal, timeline vertical, click city to show details)\n5. Attraction aggregation: Group by type with counts, not individual listings\n6. Cities panel: Geographic clustering (not timeline order), add hyperlinks (Gaode/Google Maps + RedNote), remove all Chinese text",
+    "what": "Rewrite scripts/generate-travel-html.sh to generate enhanced HTML with expandable stats, route visualization, proper currency conversion, and improved data presentation",
+    "why": "Current HTML has incorrect currency display, missing interactivity, poor data aggregation, and lacks geographic organization - making it hard to use for trip planning",
+    "where": [
+      "scripts/generate-travel-html.sh (main script)",
+      "HTML template section (lines 78-405)",
+      "JavaScript rendering functions (lines 251-402)"
+    ],
+    "scope": {
+      "included": [
+        "Currency conversion CNY→EUR (rate: 7.8)",
+        "Expandable stat cards with detail panels",
+        "Kanban route visualization (horizontal cities, vertical timeline)",
+        "Budget by city summary with expand/collapse",
+        "Attraction type aggregation",
+        "Hyperlinks: Gaode (mainland), Google (HK/Macau), RedNote (all)",
+        "Geographic city clustering",
+        "Remove all Chinese text from display",
+        "Mobile responsive design"
+      ],
+      "excluded": [
+        "Backend API integration",
+        "Real-time map rendering (use static route diagram)",
+        "Modifying agent JSON structures",
+        "Changing data collection logic"
+      ]
+    },
+    "success_criteria": [
+      "All budget values display in EUR with correct conversion",
+      "All stat cards are clickable and expand to show details",
+      "Route visualization shows cities in Kanban format",
+      "Budget by city section exists and is expandable",
+      "Attractions grouped by type with counts",
+      "Every attraction has 3 hyperlinks (Gaode/Google + RedNote)",
+      "Cities panel uses geographic clustering",
+      "No Chinese characters in UI labels",
+      "Mobile responsive (tested at 375px width)",
+      "Re-generate HTML from existing data successfully"
+    ],
+    "constraints": [
+      "Must use existing JSON data structure",
+      "No external libraries beyond what's embedded",
+      "Pure bash/jq for data merging",
+      "Self-contained HTML file",
+      "7.8 CNY/EUR exchange rate"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "HTML shows CNY values with EUR labels, stats not expandable, no route map, attractions not aggregated, cities in timeline order",
+    "root_cause": "Initial HTML template was minimal MVP focusing on basic day-by-day display without considering: (1) currency conversion logic, (2) interactive UI patterns, (3) geographic analysis, (4) data aggregation needs",
+    "root_cause_commit": "f7429ab - checkpoint: Auto-save at 2026-01-29 15:29:52",
+    "why_introduced": "Script created for basic itinerary display, not comprehensive travel planning dashboard",
+    "why_problematic": "Bucket list with 13 days across 11 cities needs: proper budgeting (EUR), quick city comparison (stats), route understanding (map), attraction overview (aggregation), easy navigation (geographic clustering)",
+    "timeline": "Created 2026-01-29, issues discovered after first bucket list generation 2026-02-02",
+    "affected_files": [
+      "scripts/generate-travel-html.sh",
+      "travel-plan-beijing-exchange-bucket-list-20260202-232405.html (generated output)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working on travel-planner project, just generated first bucket list HTML",
+    "recent_commits": "Last 2 commits were auto-saves of generate-travel-html.sh",
+    "file_contents": {
+      "scripts/generate-travel-html.sh": "414 lines, bash script with embedded HTML template, uses jq for JSON merging",
+      "budget.json": "Contains CNY values in budget.data.days[].budget fields",
+      "Example expandable pattern": "/root/budget-management/asset-tracker.html has clickable category/merchant sections"
+    },
+    "dependencies": {
+      "runtime": "Bash 5.x, jq 1.6+",
+      "packages": "None (pure bash/jq)"
+    },
+    "environment": {
+      "venv_path": "N/A (bash script)",
+      "config_files": []
+    }
+  },
+  "development_approach": {
+    "strategy": "Rewrite HTML template section with: (1) CNY→EUR conversion in JavaScript, (2) Expandable card components, (3) Kanban route builder, (4) Budget city aggregator, (5) Attraction type grouper, (6) Hyperlink generator, (7) Geographic city sorter",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-travel-html.sh - Complete rewrite of HTML template (lines 78-405)"
+    ],
+    "validation_approach": "QA will: (1) Run script on existing data, (2) Verify EUR conversion accuracy, (3) Test all expandable interactions, (4) Check hyperlink generation, (5) Validate mobile responsiveness, (6) Confirm no Chinese in UI"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "clarification_results": {
+    "Q1_currency": "Option A confirmed - Keep CNY values, convert to EUR for display (7.8 rate)",
+    "Q2_budget_by_city": "Option A confirmed - Create NEW expandable budget by city summary section",
+    "Q3_route_map": "Option C confirmed - Kanban format: horizontal cities, vertical timeline, click to expand details",
+    "Q4_hyperlinks": "Option C confirmed - Gaode (mainland), Google (HK/Macau), plus RedNote for all",
+    "Q5_stats_placement": "All stats become expandable cards in dashboard"
+  }
+}
