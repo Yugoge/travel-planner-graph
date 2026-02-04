@@ -17,6 +17,115 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 /plan [destination]
 ```
 
+## Subagent Communication Protocol
+
+**CRITICAL ARCHITECTURE PRINCIPLE**: This workflow uses a file-based pipeline pattern where orchestrator coordinates and subagents execute. All data passes through working files, NOT agent responses.
+
+### Response Modes
+
+Subagents operate in two response modes:
+
+**Mode 1: Normal Operations** (default)
+- Subagent returns ONLY the string: `"complete"`
+- NO data, NO summaries, NO explanations in response
+- All output written to designated working file
+- Orchestrator verifies file exists with `test -f` before proceeding
+- Orchestrator reads working file for data presentation
+
+**Mode 2: Refine Operations** (optimization loops)
+- Subagent returns JSON with changes diff
+- Used in Day optimization loops (Step 14-15) and refinement iterations (Step 20)
+- Format:
+```json
+{
+  "status": "complete",
+  "modified_data": "Complete data matching working file structure",
+  "changes": [
+    {
+      "location": "JSONPath to changed field (e.g., days[2].entertainment[0].name)",
+      "action": "added|modified|deleted",
+      "before": "Previous value (if modified/deleted)",
+      "after": "New value (if added/modified)",
+      "reason": "Explanation of why this change was made"
+    }
+  ],
+  "summary": {
+    "total_changes": 5,
+    "items_added": 2,
+    "items_modified": 2,
+    "items_deleted": 1
+  }
+}
+```
+
+### File-Based Pipeline Rules
+
+1. **Orchestrator reads, subagents write**: Orchestrator uses Read tool for coordination, NEVER modifies working files directly
+2. **Pass file paths, not content**: Agent prompts specify file paths to read, not data content
+3. **Verify before proceeding**: Always use `test -f <file_path>` after agent returns to confirm output exists
+4. **No response parsing**: Orchestrator does NOT parse agent response text for data - only reads working files
+5. **Single source of truth**: Working files in `data/{destination-slug}/*.json` are authoritative
+
+### Working File Ownership
+
+Each specialist agent owns specific working files:
+- `meals.json` - meals-agent
+- `attractions.json` - attractions-agent
+- `entertainment.json` - entertainment-agent
+- `shopping.json` - shopping-agent
+- `accommodation.json` - accommodation-agent
+- `transportation.json` - transportation-agent
+- `timeline.json` - timeline-agent
+- `budget.json` - budget-agent
+
+**Architecture Enforcement**: Orchestrator MUST delegate modifications to owning agent via Task tool. Direct file modification by orchestrator violates separation of concerns.
+
+### Example: File-Based Pattern in Action
+
+**Scenario**: User requests "Add spa for Day 3"
+
+**❌ INCORRECT (Direct Data Return Pattern)**:
+```
+Orchestrator invokes entertainment-agent
+Agent response: "I've added three spas: Spa A, Spa B, Spa C. Here are the details... [returns full spa data in response text]"
+Orchestrator parses response text
+Orchestrator displays to user
+```
+**Problem**: Data in response text, not verifiable file, coupling between orchestrator and agent response format.
+
+**✅ CORRECT (File-Based Pipeline Pattern)**:
+```
+Step 1: Orchestrator invokes entertainment-agent
+  - Passes file paths: requirements-skeleton.json, entertainment.json
+  - Instruction: "Add spa options for Day 3, save to entertainment.json"
+  - Agent researches using gaode-maps/rednote
+  - Agent updates entertainment.json
+  - Agent returns: "complete"
+
+Step 2: Orchestrator verifies file exists
+  bash: test -f data/{destination-slug}/entertainment.json && echo "verified"
+
+Step 3: Orchestrator re-invokes timeline-agent
+  - Agent reads updated entertainment.json
+  - Agent recalculates timeline
+  - Agent returns: "complete"
+
+Step 4: Orchestrator verifies timeline.json exists
+  bash: test -f data/{destination-slug}/timeline.json && echo "verified"
+
+Step 5: Orchestrator reads both files to present results
+  - Reads entertainment.json for spa details
+  - Reads timeline.json for updated schedule
+  - Presents to user: "Added 3 spa options, timeline updated"
+```
+
+**Key Principles Demonstrated**:
+1. Agent returns ONLY "complete" (no data in response)
+2. All data flows through files (entertainment.json, timeline.json)
+3. Orchestrator verifies with test -f before proceeding
+4. Orchestrator reads files for presentation (not agent responses)
+5. Dependent agents re-invoked automatically (timeline after entertainment change)
+
 ## Bilingual Annotation Requirement
 
 **CRITICAL ARCHITECTURE PRINCIPLE**: All location-based subagents (meals, attractions, entertainment, shopping) MUST output proper nouns with bilingual annotations to prevent information loss.
@@ -356,7 +465,7 @@ Use Task tool with:
 
   Save to: data/{destination-slug}/meals.json
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
@@ -375,6 +484,18 @@ Use Task tool with:
 - Returns ONLY: `complete`
 
 **Wait for all 6 agents to return "complete"**.
+
+**Verify files exist before proceeding**:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/meals.json && echo "meals.json verified" || echo "meals.json missing"
+test -f /root/travel-planner/data/{destination-slug}/accommodation.json && echo "accommodation.json verified" || echo "accommodation.json missing"
+test -f /root/travel-planner/data/{destination-slug}/attractions.json && echo "attractions.json verified" || echo "attractions.json missing"
+test -f /root/travel-planner/data/{destination-slug}/entertainment.json && echo "entertainment.json verified" || echo "entertainment.json missing"
+test -f /root/travel-planner/data/{destination-slug}/shopping.json && echo "shopping.json verified" || echo "shopping.json missing"
+test -f /root/travel-planner/data/{destination-slug}/transportation.json && echo "transportation.json verified" || echo "transportation.json missing"
+```
+
+If any file missing: Debug and re-invoke failed agent.
 
 #### Step 9: Verify Agent Outputs
 
@@ -472,17 +593,19 @@ Use Task tool with:
   - Log warnings for missing coordinates but continue with optimization
   - Both route-optimization.json AND timeline.json must be created
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
-Wait for "complete".
+Wait for agent to return "complete".
 
-**Verification**: Confirm both files exist:
+**Verification**: Confirm both files exist before proceeding:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/route-optimization.json && echo "route-optimization.json verified" || echo "missing"
 test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "missing"
 ```
+
+If either file missing: Debug timeline-agent execution and retry.
 
 #### Step 11: Validate Timeline Consistency
 
@@ -522,11 +645,18 @@ Use Task tool with:
 
   Save to: data/{destination-slug}/budget.json
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
-Wait for "complete".
+Wait for agent to return "complete".
+
+**Verification**: Confirm file exists before proceeding:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "missing"
+```
+
+If file missing: Debug budget-agent execution and retry.
 
 #### Step 13: Budget Gate Check
 
@@ -802,7 +932,7 @@ Use Task tool with:
   2. Update data/{destination-slug}/{domain}.json for Day {N} ONLY
      - MODIFY/ADD/REMOVE items for Day {N} as requested
      - PRESERVE data for all other days unchanged
-  3. Return ONLY: complete
+  3. After completing all tasks, return ONLY the word 'complete'
 
   SPECIFIC INSTRUCTION: {parsed_user_instruction}
 
@@ -813,6 +943,13 @@ Use Task tool with:
 ```
 
 Wait for agent to return "complete".
+
+**Verification**: Confirm file updated before proceeding:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
+```
+
+If file missing: Debug specialist agent execution and retry.
 
 **What orchestrator does**: Reads current state, identifies domain, delegates via Task tool, waits for completion
 **What subagent does**: Researches using MCP tools, updates working file, returns completion signal
@@ -839,7 +976,7 @@ Use Task tool with:
   Update data/{destination-slug}/timeline.json (Day {N} section only).
   Detect any new conflicts.
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
@@ -855,11 +992,17 @@ Use Task tool with:
   Update data/{destination-slug}/budget.json (Day {N} section only).
   Check for new overages or warnings.
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
 Wait for both agents to return "complete".
+
+**Verification**: Confirm files updated before proceeding:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
+test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
+```
 
 ---
 
@@ -1256,7 +1399,7 @@ Use Task tool with:
   2. Update {domain}.json for Day {N} only
      - APPEND new items OR REPLACE existing items as appropriate
      - Preserve data for other days
-  3. Return ONLY: complete
+  3. After completing all tasks, return ONLY the word 'complete'
 
   **SPECIFIC INSTRUCTION**: {instruction from refinement_context}
 
@@ -1266,6 +1409,11 @@ Use Task tool with:
 ```
 
 **Wait for agent to return "complete"**.
+
+**Verification**: Confirm file updated before proceeding:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
+```
 
 **Example agent delegation**:
 ```
@@ -1307,7 +1455,7 @@ Use Task tool with:
   Recalculate timeline for Day {N} only (or all days if multiple domains affected).
   Update data/{destination-slug}/timeline.json
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
@@ -1322,11 +1470,17 @@ Use Task tool with:
   Recalculate budget for Day {N}.
   Update data/{destination-slug}/budget.json
 
-  Return ONLY: complete
+  After completing all tasks, return ONLY the word 'complete'.
   "
 ```
 
 **Wait for both agents to return "complete"**.
+
+**Verification**: Confirm files updated before proceeding:
+```bash
+test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
+test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
+```
 
 ---
 

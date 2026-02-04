@@ -1,0 +1,138 @@
+{
+  "request_id": "dev-20260204-203000",
+  "timestamp": "2026-02-04T20:30:00Z",
+  "requirement": {
+    "original": "所有subagent只回复complete，进行文档操作，学习application-assistant中的generate工作流和subagent回复模式",
+    "clarified": "Change travel-planner subagent communication pattern to match application-assistant generate workflow: (1) Subagents return ONLY 'complete' in normal operations, (2) All data passed via working files (data/*.json), (3) In refine scenarios, subagents return JSON with modified_data + changes diff, (4) Orchestrator verifies files with test -f before proceeding, (5) Never read file contents in agent responses - only pass file paths",
+    "what": "Redesign /plan workflow subagent communication to use file-based pipeline with diff reporting",
+    "why": "Current pattern has subagents returning verbose summaries directly to orchestrator. This creates coupling, makes orchestrator context-heavy, and prevents clean separation of concerns. File-based pattern (from application-assistant) enables: (1) Clear orchestrator/subagent boundaries, (2) Verifiable outputs, (3) Diff tracking for iterations, (4) Reduced context usage",
+    "where": [
+      ".claude/commands/plan.md (orchestrator workflow)",
+      "Potentially agent definitions if they exist"
+    ],
+    "scope": {
+      "included": [
+        "Update /plan workflow to use file-based pipeline pattern",
+        "Define standard response format: 'complete' for normal operations",
+        "Define refine response format: JSON with {status, modified_data, changes, summary}",
+        "Add file verification steps (test -f) after each subagent invocation",
+        "Update orchestrator prompts to NOT expect data in agent responses",
+        "Document diff format for changes tracking",
+        "Add examples showing correct file-based pattern"
+      ],
+      "excluded": [
+        "Not changing working file structure (data/*.json format stays same)",
+        "Not modifying actual subagent implementation (focus on orchestrator expectations)",
+        "Not changing HTML generation workflow (separate concern)",
+        "Not affecting other commands besides /plan"
+      ]
+    },
+    "success_criteria": [
+      "plan.md specifies subagents return ONLY 'complete' for normal operations",
+      "plan.md defines refine response JSON format with modified_data + changes diff",
+      "plan.md includes test -f file verification after agent invocations",
+      "plan.md prompts do NOT expect data content in agent responses",
+      "Diff format documented with location, action, before, after, reason fields",
+      "Examples demonstrate file-based pattern (agent writes file → orchestrator reads file)"
+    ],
+    "constraints": [
+      "Must maintain compatibility with existing working files (data/*.json)",
+      "Must not break current /plan functionality during transition",
+      "Follow application-assistant generate.md patterns exactly",
+      "Keep documentation concise and actionable"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Subagents (timeline, entertainment, etc.) return verbose summaries to orchestrator instead of just 'complete'",
+    "root_cause": "plan.md workflow was designed with direct data return pattern, not file-based pipeline. Orchestrator expects and processes agent response text as data source.",
+    "root_cause_evidence": "Recent conversation: timeline-agent returned 'Excellent. The Day 3 timeline has been successfully updated. Let me create a summary...' with full summary in response. Orchestrator displayed this directly to user instead of reading timeline.json.",
+    "why_introduced": "Original design didn't follow application-assistant patterns. Likely implemented before generate workflow was established as best practice.",
+    "why_problematic": "Direct data return: (1) Couples orchestrator to agent response format, (2) Prevents clean file verification, (3) No diff tracking for iterations, (4) Verbose responses waste context, (5) Orchestrator can't independently verify working file updates",
+    "timeline": "Present in current plan.md design since project creation",
+    "affected_files": [
+      ".claude/commands/plan.md (orchestrator workflow definitions)"
+    ]
+  },
+  "context": {
+    "codebase_state": "6 uncommitted files, working on master branch",
+    "recent_commits": [
+      "46b9d9e - fix: resolve 5 critical HTML generator issues",
+      "d91f843 - checkpoint: Auto-save at 2026-02-04 20:16:25"
+    ],
+    "reference_implementation": {
+      "source": "/root/application-assistant/.claude/commands/generate.md",
+      "key_principles": [
+        "Line 7: Agents return ONLY 'complete' - verify files exist with test -f before proceeding",
+        "Line 10: Pass FILE PATHS between steps (not data content)",
+        "Line 13: NEVER read file contents directly - only pass file paths to agents",
+        "Lines 521-532: layout-optimizer returns TWO files (optimized HTML + report JSON with changes_made diff)",
+        "Line 541: Orchestrator uses jq to read specific fields from report for decision-making",
+        "Lines 626-634: resume-refiner loop - agent returns 'complete', orchestrator verifies file, repeats steps"
+      ]
+    },
+    "current_working_files": {
+      "location": "data/china-feb-15-mar-7-2026-20260202-195429/",
+      "files": [
+        "meals.json - managed by meals-agent",
+        "attractions.json - managed by attractions-agent",
+        "entertainment.json - managed by entertainment-agent",
+        "shopping.json - managed by shopping-agent",
+        "accommodation.json - managed by accommodation-agent",
+        "transportation.json - managed by transportation-agent",
+        "timeline.json - managed by timeline-agent",
+        "budget.json - managed by budget-agent"
+      ]
+    },
+    "diff_format_design": {
+      "normal_operation": "Agent returns ONLY string 'complete'",
+      "refine_operation": {
+        "status": "complete",
+        "modified_data": "Complete data matching working file (for verification)",
+        "changes": [
+          {
+            "location": "JSONPath to changed field",
+            "action": "added|modified|deleted",
+            "before": "Previous value (if modified/deleted)",
+            "after": "New value (if added/modified)",
+            "reason": "Why this change was made"
+          }
+        ],
+        "summary": {
+          "total_changes": "Number",
+          "activities_added": "Number (or other relevant metrics)",
+          "activities_modified": "Number",
+          "activities_deleted": "Number"
+        }
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Update plan.md to specify file-based pipeline pattern with two response modes: (1) Normal: return 'complete', (2) Refine: return JSON with modified_data + changes. Add file verification steps. Update orchestrator prompts to pass file paths, not expect data in responses.",
+    "implementation_steps": [
+      "1. Read current .claude/commands/plan.md to understand structure",
+      "2. Add 'Subagent Communication Protocol' section at top defining two response modes",
+      "3. Document normal response format: string 'complete'",
+      "4. Document refine response format: JSON with {status, modified_data, changes, summary}",
+      "5. Document diff format with location, action, before, after, reason fields",
+      "6. Update all subagent invocation steps to add 'test -f' verification after agent returns",
+      "7. Update orchestrator prompts to specify: 'After completing all tasks, return ONLY the word \"complete\"'",
+      "8. For refine scenarios (Day optimization loops), specify JSON response format in prompt",
+      "9. Add examples showing correct file-based pattern",
+      "10. Ensure orchestrator reads working files for data presentation, not agent responses"
+    ],
+    "files_to_modify": [
+      ".claude/commands/plan.md"
+    ],
+    "validation_approach": "QA will verify: (1) Communication protocol section defines both response modes, (2) Diff format documented with all required fields, (3) All agent invocations include file verification, (4) Prompts specify 'complete' return, (5) Examples show file-based pattern, (6) No orchestrator prompts expect data in agent responses"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": "N/A (documentation only)",
+    "use_source_venv": "N/A (documentation only)",
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": false,
+    "follow_reference_implementation": "CRITICAL: Must match application-assistant generate.md patterns exactly",
+    "file_based_pipeline": "CRITICAL: All data passed via files, not agent responses",
+    "verify_before_proceed": "CRITICAL: Always use test -f to verify file exists before proceeding"
+  }
+}
