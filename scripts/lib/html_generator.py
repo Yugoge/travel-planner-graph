@@ -113,8 +113,24 @@ class TravelPlanHTMLGenerator:
             Exchange rate as float
 
         Raises:
+            ValueError: If currency codes are invalid
             RuntimeError: If exchange rate fetch fails
         """
+        # Security: Validate currency codes before subprocess call
+        # Root cause fix: commit 3d5971b added subprocess without input validation
+        import re
+        ALLOWED_CURRENCIES = ['CNY', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'HKD']
+        CURRENCY_PATTERN = re.compile(r'^[A-Z]{3}$')
+
+        if not CURRENCY_PATTERN.match(source_currency):
+            raise ValueError(f"Invalid source currency code: {source_currency} (must be 3 uppercase letters)")
+        if not CURRENCY_PATTERN.match(display_currency):
+            raise ValueError(f"Invalid display currency code: {display_currency} (must be 3 uppercase letters)")
+        if source_currency not in ALLOWED_CURRENCIES:
+            raise ValueError(f"Source currency {source_currency} not in whitelist: {ALLOWED_CURRENCIES}")
+        if display_currency not in ALLOWED_CURRENCIES:
+            raise ValueError(f"Display currency {display_currency} not in whitelist: {ALLOWED_CURRENCIES}")
+
         fetch_script = self.script_dir / "utils" / "fetch-exchange-rate.sh"
 
         if not fetch_script.exists():
@@ -546,8 +562,8 @@ class TravelPlanHTMLGenerator:
       transition: background 0.2s;
     }
     .attraction-link:hover { background: var(--color-dark); }
-    /* Map Links - Brand Colors (Feature 5 from bash - KEEP original colors) */
-    .attraction-link.gaode { background: #28a745; }
+    /* Map Links - Brand Colors (Feature 5 from bash - Official brand colors) */
+    .attraction-link.gaode { background: #52C41A; } /* Gaode/Ant Design official green */
     .attraction-link.google { background: #4285f4; }
     .attraction-link.rednote { background: #ff2442; }
 
@@ -1536,8 +1552,110 @@ class TravelPlanHTMLGenerator:
       background: rgba(255, 255, 255, 0.3);
     }}
 
+    .detail-panel-controls {{
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }}
+
+    .sort-toggle {{
+      display: flex;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 0.25rem;
+      gap: 0.25rem;
+    }}
+
+    .sort-btn {{
+      background: none;
+      border: none;
+      color: white;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }}
+
+    .sort-btn.active {{
+      background: rgba(255, 255, 255, 0.3);
+      font-weight: 600;
+    }}
+
+    .sort-btn:hover {{
+      background: rgba(255, 255, 255, 0.25);
+    }}
+
+    .detail-panel-summary {{
+      padding: 1rem 1.5rem;
+      background: var(--color-primary);
+      border-bottom: 1px solid var(--color-neutral);
+    }}
+
+    .summary-row {{
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+    }}
+
+    .summary-label {{
+      color: var(--color-secondary);
+      font-size: 0.9rem;
+    }}
+
+    .summary-value {{
+      font-weight: 600;
+      color: var(--color-dark);
+      font-size: 0.9rem;
+    }}
+
     .detail-panel-content {{
       padding: var(--space-md);
+    }}
+
+    .detail-item {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--color-neutral);
+      font-size: 0.9rem;
+    }}
+
+    .detail-item:last-child {{
+      border-bottom: none;
+    }}
+
+    .detail-item-info {{
+      flex: 1;
+      min-width: 0;
+    }}
+
+    .detail-item-name {{
+      color: var(--color-dark);
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }}
+
+    .detail-item-meta {{
+      color: var(--color-secondary);
+      font-size: 0.8rem;
+    }}
+
+    .detail-item-value {{
+      font-weight: 600;
+      color: var(--color-accent);
+      margin-left: 1rem;
+      white-space: nowrap;
+    }}
+
+    .chart-hint {{
+      font-size: 0.75rem;
+      color: #999;
+      text-align: center;
+      margin-top: 0.5rem;
+      font-style: italic;
     }}
 
     @media (max-width: 768px) {{
@@ -1586,7 +1704,16 @@ class TravelPlanHTMLGenerator:
   <div class="detail-panel" id="detail-panel">
     <div class="detail-panel-header">
       <div class="detail-panel-title" id="detail-panel-title">Details</div>
-      <button class="detail-panel-close" onclick="closeDetailPanel()">&times;</button>
+      <div class="detail-panel-controls">
+        <div class="sort-toggle" id="sort-toggle-container">
+          <button class="sort-btn active" id="sortByDefault" onclick="setDrawerSort('default')">Default</button>
+          <button class="sort-btn" id="sortByValue" onclick="setDrawerSort('value')">By Value</button>
+          <button class="sort-btn" id="sortByName" onclick="setDrawerSort('name')">By Name</button>
+        </div>
+        <button class="detail-panel-close" onclick="closeDetailPanel()">&times;</button>
+      </div>
+    </div>
+    <div class="detail-panel-summary" id="detail-panel-summary">
     </div>
     <div class="detail-panel-content" id="detail-panel-content">
     </div>
@@ -1723,6 +1850,85 @@ class TravelPlanHTMLGenerator:
       document.getElementById('detail-overlay').classList.remove('open');
     }}
 
+    // Enhanced drawer functionality with sort/filter
+    let currentDrawerData = [];
+    let currentDrawerSort = 'default';
+
+    function setDrawerSort(sortMode) {{
+      currentDrawerSort = sortMode;
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`sortBy${{sortMode.charAt(0).toUpperCase() + sortMode.slice(1)}}`).classList.add('active');
+      renderDrawerItems(currentDrawerData);
+    }}
+
+    function openDataDrawer(title, summaryData, items, config) {{
+      currentDrawerData = {{ items, config: config || {{}} }};
+      currentDrawerSort = 'default';
+
+      // Set title
+      document.getElementById('detail-panel-title').textContent = title;
+
+      // Render summary
+      let summaryHtml = '';
+      if (summaryData) {{
+        summaryHtml = Object.keys(summaryData).map(key => `
+          <div class="summary-row">
+            <span class="summary-label">${{key}}</span>
+            <span class="summary-value">${{summaryData[key]}}</span>
+          </div>
+        `).join('');
+      }}
+      document.getElementById('detail-panel-summary').innerHTML = summaryHtml;
+
+      // Reset sort buttons
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('sortByDefault').classList.add('active');
+
+      // Render items
+      renderDrawerItems(currentDrawerData);
+
+      // Open drawer
+      document.getElementById('detail-panel').classList.add('open');
+      document.getElementById('detail-overlay').classList.add('open');
+    }}
+
+    function renderDrawerItems(drawerData) {{
+      if (!drawerData || !drawerData.items || drawerData.items.length === 0) {{
+        document.getElementById('detail-panel-content').innerHTML = '<p style="text-align: center; color: #999; padding: 2rem;">No data available</p>';
+        return;
+      }}
+
+      let items = [...drawerData.items];
+      const config = drawerData.config || {{}};
+
+      // Apply sorting
+      if (currentDrawerSort === 'value' && config.valueKey) {{
+        items.sort((a, b) => (b[config.valueKey] || 0) - (a[config.valueKey] || 0));
+      }} else if (currentDrawerSort === 'name' && config.nameKey) {{
+        items.sort((a, b) => (a[config.nameKey] || '').localeCompare(b[config.nameKey] || ''));
+      }}
+
+      // Render items
+      const itemsHtml = items.map(item => {{
+        const name = config.nameKey ? item[config.nameKey] : item.name || item.label || 'Unnamed';
+        const value = config.valueKey ? item[config.valueKey] : item.value || '';
+        const meta = config.metaKey ? item[config.metaKey] : item.meta || '';
+        const formattedValue = config.formatValue ? config.formatValue(value) : value;
+
+        return `
+          <div class="detail-item">
+            <div class="detail-item-info">
+              <div class="detail-item-name">${{escapeHtml(name)}}</div>
+              ${{meta ? `<div class="detail-item-meta">${{escapeHtml(meta)}}</div>` : ''}}
+            </div>
+            <div class="detail-item-value">${{escapeHtml(formattedValue.toString())}}</div>
+          </div>
+        `;
+      }}).join('');
+
+      document.getElementById('detail-panel-content').innerHTML = itemsHtml;
+    }}
+
     function showCityDetailPanel(cityIndex) {{
       if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         const city = PLAN_DATA.cities[cityIndex];
@@ -1785,12 +1991,12 @@ class TravelPlanHTMLGenerator:
     function renderStats() {{
       let stats = [];
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
-        const totalBudget = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget && day.budget.total || 0), 0);
+        const totalBudgetCNY = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget && day.budget.total || 0), 0);
         const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions && day.attractions.length || 0), 0);
         const uniqueCities = new Set(PLAN_DATA.days.map(d => d.location)).size;
         stats = [
           {{ icon: 'fa-calendar-days', label: 'Days', value: PLAN_DATA.days.length }},
-          {{ icon: 'fa-money-bill-wave', label: 'Total Budget', value: `€${{totalBudget.toFixed(2)}}` }},
+          {{ icon: 'fa-money-bill-wave', label: 'Total Budget', value: `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(totalBudgetCNY)}}` }},
           {{ icon: 'fa-landmark', label: 'Attractions', value: totalAttractions }},
           {{ icon: 'fa-city', label: 'Cities', value: uniqueCities }}
         ];
@@ -1831,7 +2037,7 @@ class TravelPlanHTMLGenerator:
 
         if (day.attractions) {{
           day.attractions.forEach(attr => {{
-            const type = attr.type || 'general';
+            const type = (attr.type || 'general').toString().trim().toLowerCase();
             attractionTypes[type] = (attractionTypes[type] || 0) + 1;
           }});
         }}
@@ -1845,6 +2051,7 @@ class TravelPlanHTMLGenerator:
           <div class="chart-container">
             <canvas id="budgetByCityChart"></canvas>
           </div>
+          <div class="chart-hint">Click on any bar to see daily budget breakdown</div>
         </div>
         <div class="chart-card">
           <div class="chart-title">
@@ -1853,6 +2060,7 @@ class TravelPlanHTMLGenerator:
           <div class="chart-container">
             <canvas id="attractionTypesChart"></canvas>
           </div>
+          <div class="chart-hint">Click on any slice to see all attractions of that type</div>
         </div>
       `;
       document.getElementById('charts-container').innerHTML = chartsHtml;
@@ -1871,6 +2079,28 @@ class TravelPlanHTMLGenerator:
         options: {{
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (event, elements) => {{
+            if (elements.length > 0) {{
+              const index = elements[0].index;
+              const cityName = Object.keys(budgetByCity)[index];
+              const days = PLAN_DATA.days.filter(d => d.location === cityName);
+              const items = days.map(d => ({{
+                name: `Day ${{d.day}} - ${{d.date}}`,
+                value: d.budget?.total || 0,
+                meta: d.location
+              }}));
+              openDataDrawer(
+                `Budget Breakdown: ${{cityName}}`,
+                {{
+                  'Total Days': days.length,
+                  'Total Budget': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(budgetByCity[cityName])}}`,
+                  'Average per Day': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(budgetByCity[cityName] / days.length)}}`
+                }},
+                items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` }}
+              );
+            }}
+          }},
           plugins: {{
             legend: {{ display: false }}
           }},
@@ -1893,6 +2123,37 @@ class TravelPlanHTMLGenerator:
         options: {{
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (event, elements) => {{
+            if (elements.length > 0) {{
+              const index = elements[0].index;
+              const typeKey = Object.keys(attractionTypes)[index];
+              const typeLabel = formatCategoryLabel(typeKey, 'attraction');
+              const items = [];
+              PLAN_DATA.days.forEach(day => {{
+                if (day.attractions) {{
+                  day.attractions.forEach(attr => {{
+                    const normalizedType = (attr.type || 'general').toString().trim().toLowerCase();
+                    if (normalizedType === typeKey) {{
+                      items.push({{
+                        name: attr.name,
+                        value: attr.ticket_price_cny || 0,
+                        meta: `${{day.location}} - Day ${{day.day}}`
+                      }});
+                    }}
+                  }});
+                }}
+              }});
+              openDataDrawer(
+                `${{typeLabel}} Attractions`,
+                {{
+                  'Total Attractions': items.length,
+                  'Category': typeLabel
+                }},
+                items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v > 0 ? `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` : 'Free' }}
+              );
+            }}
+          }},
           plugins: {{
             legend: {{
               position: 'right',
@@ -1915,7 +2176,7 @@ class TravelPlanHTMLGenerator:
 
         if (city.attractions) {{
           city.attractions.forEach(attr => {{
-            const type = attr.type || 'general';
+            const type = (attr.type || 'general').toString().trim().toLowerCase();
             attractionTypes[type] = (attractionTypes[type] || 0) + 1;
           }});
         }}
@@ -1929,6 +2190,7 @@ class TravelPlanHTMLGenerator:
           <div class="chart-container">
             <canvas id="attractionsByCityChart"></canvas>
           </div>
+          <div class="chart-hint">Click on any bar to see city attractions details</div>
         </div>
         <div class="chart-card">
           <div class="chart-title">
@@ -1937,6 +2199,7 @@ class TravelPlanHTMLGenerator:
           <div class="chart-container">
             <canvas id="attractionTypesChart"></canvas>
           </div>
+          <div class="chart-hint">Click on any slice to see all attractions of that type</div>
         </div>
       `;
       document.getElementById('charts-container').innerHTML = chartsHtml;
@@ -2291,6 +2554,7 @@ class TravelPlanHTMLGenerator:
             <div class="chart-container">
               <canvas id="budgetCategoryChart"></canvas>
             </div>
+            <div class="chart-hint">Click on any category to see daily breakdown</div>
           </div>
           <div class="chart-card">
             <div class="chart-title">
@@ -2299,6 +2563,7 @@ class TravelPlanHTMLGenerator:
             <div class="chart-container">
               <canvas id="dailyBudgetChart"></canvas>
             </div>
+            <div class="chart-hint">Click on any point to see day details</div>
           </div>
         `;
         document.getElementById('budget-charts').innerHTML = budgetHtml;
@@ -2316,6 +2581,28 @@ class TravelPlanHTMLGenerator:
           options: {{
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (event, elements) => {{
+              if (elements.length > 0) {{
+                const index = elements[0].index;
+                const categoryKey = Object.keys(categories)[index];
+                const categoryLabel = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1);
+                const items = PLAN_DATA.days.map(d => ({{
+                  name: `Day ${{d.day}} - ${{d.location}}`,
+                  value: d.budget?.[categoryKey] || 0,
+                  meta: d.date
+                }})).filter(item => item.value > 0);
+                openDataDrawer(
+                  `${{categoryLabel}} Budget Breakdown`,
+                  {{
+                    'Category': categoryLabel,
+                    'Total': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(categories[categoryKey])}}`,
+                    'Days with Expense': items.length
+                  }},
+                  items,
+                  {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` }}
+                );
+              }}
+            }},
             plugins: {{
               legend: {{
                 position: 'right',
@@ -2327,7 +2614,7 @@ class TravelPlanHTMLGenerator:
               tooltip: {{
                 callbacks: {{
                   label: function(context) {{
-                    return context.label + ': €' + context.raw.toFixed(2);
+                    return context.label + ': ' + CURRENCY_CONFIG_BASH.currency_symbol + toEURBash(context.raw);
                   }}
                 }}
               }}
@@ -2352,6 +2639,29 @@ class TravelPlanHTMLGenerator:
           options: {{
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (event, elements) => {{
+              if (elements.length > 0) {{
+                const index = elements[0].index;
+                const day = PLAN_DATA.days[index];
+                if (day && day.budget) {{
+                  const items = Object.keys(categories).map(key => ({{
+                    name: key.charAt(0).toUpperCase() + key.slice(1),
+                    value: day.budget[key] || 0,
+                    meta: key
+                  }})).filter(item => item.value > 0);
+                  openDataDrawer(
+                    `Day ${{day.day}} Budget - ${{day.location}}`,
+                    {{
+                      'Date': day.date,
+                      'Location': day.location,
+                      'Total Budget': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(day.budget.total || 0)}}`
+                    }},
+                    items,
+                    {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` }}
+                  );
+                }}
+              }}
+            }},
             plugins: {{
               legend: {{ display: false }}
             }},

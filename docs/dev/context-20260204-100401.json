@@ -1,0 +1,142 @@
+{
+  "request_id": "dev-20260204-100401",
+  "timestamp": "2026-02-04T10:04:01Z",
+  "requirement": {
+    "original": "1. 分页设计不理想，有的东西跨越页面。请你咨询一个专业的Html和旅行计划设计专家思考如何使用我们当前Plan生成的data创建一个更美观更可视化更互动化的页面\n2. 货币转换仍然出现问题，你告诉我旅游总共的消费是20000欧元？我不信 total budget €19162.00？\n3. 我一直说的展开小窗口你一直没做，比如在任何数据图上我点击一个数据点，就应该弹出这个数据点相关的旅行数据，比如数据点是日期就是当天的旅行计划，数据点是消费类型，就是这个消费类型（设计一个sorter和filter，就像root/budget-management中的html生成机制一样）的全部消费数据同时可以自由地按照其他分类在这个分类中排序合并，就像notion一样\n4. 对我说就像notion一样懂吗\n5. 分类扇形图中的分类聚合完全失败，每一个扇形都是分别孤立的",
+    "clarified": "Fix 5 critical UI/UX issues in travel plan HTML: (1) Fix all chart bugs, (2) Fix currency display bug showing wrong total, (3) Implement interactive side drawer with click-on-datapoint, sort/filter like budget-management, (4) Make it Notion-style interactive, (5) Fix pie chart category aggregation where same categories are split",
+    "what": "Major UI/UX overhaul: fix chart bugs, add interactive drawer system, fix data aggregation",
+    "why": "Current HTML has multiple chart bugs, missing interactivity, and incorrect data displays that make it unusable",
+    "where": [
+      "scripts/lib/html_generator.py",
+      "Chart rendering JavaScript",
+      "Currency display logic",
+      "Data aggregation for pie charts"
+    ],
+    "scope": {
+      "included": [
+        "Fix currency display bug (€19,162 showing wrong value)",
+        "Fix pie chart category aggregation (same categories split into multiple slices)",
+        "Implement side drawer (desktop) / full-screen (mobile) for data point details",
+        "Add sort/filter functionality in drawer (reference: /root/budget-management/asset-tracker.html)",
+        "Fix all existing chart bugs",
+        "Improve overall UI polish"
+      ],
+      "excluded": [
+        "Print/PDF pagination optimization (user clarified: focus on web experience)",
+        "Complete UI redesign from scratch",
+        "Backend data structure changes"
+      ]
+    },
+    "success_criteria": [
+      "SC1: Currency total displays correct converted value (not wrong €19,162)",
+      "SC2: Pie chart categories properly aggregated (no duplicate category slices)",
+      "SC3: Click on any chart data point opens side drawer with details",
+      "SC4: Drawer shows sortable/filterable data (like budget-management)",
+      "SC5: Drawer is responsive: side panel on desktop, full-screen on mobile",
+      "SC6: All chart rendering bugs fixed",
+      "SC7: Notion-style interactivity and polish"
+    ],
+    "constraints": [
+      "Maintain beige color theme (#F5F1E8, #8B7355, #D4AF37)",
+      "Keep all 7 migrated bash features working",
+      "Reference budget-management drawer implementation",
+      "Use Chart.js (already in use)",
+      "Single-file HTML (no external dependencies beyond CDN)"
+    ]
+  },
+  "root_cause_analysis": {
+    "issue_1_currency_bug": {
+      "symptom": "One location displays €19,162.00 (wrong total budget)",
+      "root_cause": "Currency conversion not applied to specific display element, or hardcoded value from old data",
+      "root_cause_commit": "34e112a - Migration added features but some displays may not be hooked to currency conversion",
+      "why_problematic": "User sees inconsistent currency values across the page",
+      "affected_files": ["scripts/lib/html_generator.py"]
+    },
+    "issue_2_pie_aggregation": {
+      "symptom": "Budget category pie chart shows same categories as separate slices",
+      "root_cause": "Chart data preparation doesn't aggregate categories properly - likely case sensitivity, whitespace, or category name inconsistency in source data",
+      "root_cause_commit": "34e112a - Chart rendering logic doesn't normalize category names before aggregation",
+      "why_problematic": "Chart is unreadable and misleading with duplicate slices",
+      "affected_files": ["scripts/lib/html_generator.py"]
+    },
+    "issue_3_missing_interactivity": {
+      "symptom": "No way to explore data point details, static charts only",
+      "root_cause": "Chart click handlers never implemented, no drawer component exists",
+      "root_cause_commit": "34e112a - Migration focused on chart display, not interactivity",
+      "why_problematic": "User can't drill down into data, limiting usability",
+      "affected_files": ["scripts/lib/html_generator.py"]
+    },
+    "issue_4_chart_bugs": {
+      "symptom": "Multiple unspecified chart rendering bugs",
+      "root_cause": "User reports 'all charts have bugs, you didn't find any'",
+      "root_cause_commit": "34e112a - Chart implementations need thorough review",
+      "why_problematic": "Charts display wrong data or render incorrectly",
+      "affected_files": ["scripts/lib/html_generator.py"]
+    }
+  },
+  "context": {
+    "codebase_state": "master branch, clean",
+    "recent_commits": [
+      "59dbca3 - checkpoint: Auto-save at 2026-02-03 23:37:01",
+      "34e112a - feat: Migrate all features from bash to Python HTML generator with beige color scheme"
+    ],
+    "current_html": "travel-plan-beijing-exchange-bucket-list-20260202-232405-v12.html (226KB)",
+    "reference_file": "/root/budget-management/asset-tracker.html (drawer implementation)",
+    "dependencies": {
+      "runtime": "Python 3.x, Bash",
+      "packages": "Chart.js 4.4.0, Font Awesome 6.4.0"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "html_generator": "scripts/lib/html_generator.py (2606 lines)"
+    }
+  },
+  "development_approach": {
+    "strategy": "Phase 1: Analyze and fix data issues (currency, aggregation). Phase 2: Implement drawer system with reference to budget-management. Phase 3: Add chart interactivity (click handlers). Phase 4: Polish and responsive design.",
+    "files_to_modify": [
+      {
+        "file": "scripts/lib/html_generator.py",
+        "changes": [
+          "Fix currency display bug (find €19,162 display, apply conversion)",
+          "Fix pie chart aggregation (normalize category names, aggregate before charting)",
+          "Add drawer HTML/CSS (reference: budget-management detail-panel)",
+          "Add chart click handlers (onClick: Chart.js)",
+          "Implement drawer content rendering (detail view with sort/filter)",
+          "Add responsive CSS (@media for mobile full-screen drawer)",
+          "Fix all chart data preparation bugs",
+          "Add Notion-style polish (smooth animations, clean typography)"
+        ]
+      }
+    ],
+    "validation_approach": "Generate v13 HTML, test: (1) Currency displays correctly, (2) Pie chart categories aggregated, (3) Click chart → drawer opens, (4) Drawer sort/filter works, (5) Mobile responsive, (6) All charts render correctly"
+  },
+  "reference_implementation": {
+    "file": "/root/budget-management/asset-tracker.html",
+    "key_features": [
+      "Side drawer: .detail-panel (right: -450px → right: 0)",
+      "Sort toggle: .sort-btn with setSortMode() function",
+      "Filter logic: transactions.filter() with category/type",
+      "Responsive: @media for mobile full-screen",
+      "Smooth animations: transition: right 0.3s ease"
+    ],
+    "css_to_adapt": [
+      ".detail-panel { position: fixed; right: -450px; width: 450px; }",
+      ".detail-panel.open { right: 0; }",
+      "@media (max-width: 768px) { .detail-panel { width: 100%; } }"
+    ],
+    "javascript_pattern": [
+      "Chart onClick: (evt, elements) => { if (elements[0]) openDrawer(data); }",
+      "openDrawer(data): populate drawer, add .open class",
+      "closeDrawer(): remove .open class",
+      "Sort: array.sort((a,b) => compareFunc)",
+      "Filter: array.filter(item => matchesFilter)"
+    ]
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "single_file_html": true
+  }
+}
