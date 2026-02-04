@@ -1,0 +1,131 @@
+{
+  "request_id": "dev-20260204-151600",
+  "timestamp": "2026-02-04T15:16:00Z",
+  "requirement": {
+    "original": "立即重新修复所有7个问题（这次真正修复）。非常严重的可能是上一次agents只修复了html没有修复生成机制",
+    "clarified": "CRITICAL FIX: Previous dev session (123500) claimed to fix 7 UI/UX issues but DID NOT actually modify scripts/lib/html_generator.py correctly. The dev subagent only modified generated HTML files directly instead of fixing the Python generator script. This iteration must FIX THE GENERATOR SCRIPT (scripts/lib/html_generator.py) so that regenerated HTML includes all 7 fixes.",
+    "what": "Fix scripts/lib/html_generator.py to truly implement all 7 UI/UX fixes in the generation logic",
+    "why": "Previous fix was fake - dev subagent reported success but didn't actually modify the generator, so regenerated HTML has no fixes",
+    "where": [
+      "scripts/lib/html_generator.py (MUST BE MODIFIED, NOT JUST GENERATED HTML)"
+    ],
+    "scope": {
+      "included": [
+        "ISSUE-1: Fix Attraction Types pie chart aggregation IN GENERATOR",
+        "ISSUE-2: Fix Budget Breakdown drawer IN GENERATOR (add onClick to all charts)",
+        "ISSUE-3: Expand Chinese translations IN GENERATOR (CATEGORY_MAPPINGS)",
+        "ISSUE-4: Make stats cards expandable IN GENERATOR (add onClick handlers)",
+        "ISSUE-5: Remove duplicate content IN GENERATOR (tab rendering logic)",
+        "ISSUE-6: Add brand logo icons IN GENERATOR (map link rendering)",
+        "ISSUE-7: Differentiate Timeline/Cities tabs IN GENERATOR (add renderTimelineTab/renderCitiesTab functions + call them from switchTab)"
+      ],
+      "excluded": [
+        "Modifying generated HTML directly (FORBIDDEN - must fix generator)",
+        "Complete redesign",
+        "Backend data structure changes"
+      ]
+    },
+    "success_criteria": [
+      "SC1: scripts/lib/html_generator.py contains robust type normalization code",
+      "SC2: scripts/lib/html_generator.py has onClick handlers for ALL charts calling openDataDrawer",
+      "SC3: scripts/lib/html_generator.py CATEGORY_MAPPINGS has mountain/observation deck/tourist attraction",
+      "SC4: scripts/lib/html_generator.py renderStats() creates clickable stat cards",
+      "SC5: scripts/lib/html_generator.py removes duplicate bash features",
+      "SC6: scripts/lib/html_generator.py includes Font Awesome icons in map links",
+      "SC7: scripts/lib/html_generator.py has renderTimelineTab() and renderCitiesTab() functions AND switchTab() calls them",
+      "SC8: After regenerating HTML with scripts/generate-and-deploy.sh, all 7 fixes are present"
+    ],
+    "constraints": [
+      "CRITICAL: MUST modify scripts/lib/html_generator.py, NOT generated HTML files",
+      "Verify changes with grep on generator.py BEFORE regenerating",
+      "Test regeneration after changes",
+      "Maintain beige color theme",
+      "Single-file HTML output"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User sees no changes in regenerated HTML despite previous /dev claiming success",
+    "root_cause": "Previous dev subagent (session 123500, agent af9d80f) reported implementing all fixes but actually DID NOT modify scripts/lib/html_generator.py. The subagent appears to have only modified generated HTML files (v15.html) which are not used by the generator. Critical functions like renderTimelineTab() and renderCitiesTab() DO NOT EXIST in generator.py.",
+    "root_cause_commit": "d87204a - Commit shows html_generator.py gained 534 lines but investigation shows renderTimelineTab/renderCitiesTab functions are missing",
+    "why_introduced": "Dev subagent misunderstood task - thought it should modify generated HTML instead of generator script, or claimed to add functions but didn't actually write them to the file",
+    "why_problematic": "Regenerating HTML with generate-and-deploy.sh uses the generator.py which has NO FIXES, producing broken HTML",
+    "affected_files": ["scripts/lib/html_generator.py (NOT modified correctly)"],
+    "evidence": [
+      "grep for renderTimelineTab in generator.py returns nothing",
+      "grep for renderCitiesTab in generator.py returns nothing",
+      "Current HTML generated at 14:50 has no fixes despite generator commit at 14:16",
+      "QA report 20260204-123500 claimed PASS but fixes don't work when HTML regenerated"
+    ]
+  },
+  "context": {
+    "codebase_state": "master branch, clean",
+    "recent_commits": [
+      "d87204a - checkpoint: Auto-save at 2026-02-04 14:16:16 (+534 lines to html_generator.py but fixes missing)",
+      "41f1017 - checkpoint: Auto-save at 2026-02-04 12:31:18"
+    ],
+    "current_html": "travel-plan-beijing-exchange-bucket-list-20260202-232405.html (248KB, generated 14:50, NO FIXES)",
+    "generator_file": "scripts/lib/html_generator.py (3191 lines)",
+    "previous_dev_session": "docs/dev/*-20260204-123500.json (FAILED - claimed success but didn't fix generator)",
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "Chart.js 4.4.0, Font Awesome 6.4.0"
+    }
+  },
+  "development_approach": {
+    "strategy": "CRITICAL: Modify scripts/lib/html_generator.py ONLY. Do NOT touch generated HTML files. Implement all 7 fixes in the generator, then test by regenerating HTML.",
+    "validation_before_implementation": [
+      "grep -n 'renderTimelineTab' scripts/lib/html_generator.py (should return NOTHING currently)",
+      "grep -n 'renderCitiesTab' scripts/lib/html_generator.py (should return NOTHING currently)",
+      "Confirm these functions are missing"
+    ],
+    "phase_1_add_missing_functions": {
+      "issue_7": "Add renderTimelineTab() function to scripts/lib/html_generator.py - renders Kanban timeline to #timeline-container",
+      "issue_7b": "Add renderCitiesTab() function to scripts/lib/html_generator.py - renders city clusters to #cities-accordion",
+      "issue_7c": "Modify switchTab() function to call renderTimelineTab() when tabName === 'timeline' and renderCitiesTab() when tabName === 'cities'",
+      "location": "Around line 800-850 in JavaScript section of template"
+    },
+    "phase_2_fix_other_issues": {
+      "issue_1": "Enhance type normalization in renderItineraryCharts() and renderBucketListCharts() (handle null/undefined)",
+      "issue_2": "Ensure ALL chart onClick handlers use openDataDrawer() not showDetailPanel()",
+      "issue_3": "Expand CATEGORY_MAPPINGS dict with mountain/observation deck/tourist attraction Chinese translations",
+      "issue_4": "Make renderStats() create clickable stat cards with onClick handlers",
+      "issue_5": "Comment out duplicate bash features in initBashFeatures()",
+      "issue_6": "Add Font Awesome icons to map link rendering (fa-map-marked-alt, fa-map-marker-alt, fa-book-open)"
+    },
+    "phase_3_test_regeneration": {
+      "step_1": "Run: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405",
+      "step_2": "Verify generated HTML has renderTimelineTab and renderCitiesTab functions",
+      "step_3": "Verify all 7 fixes are present in generated HTML"
+    },
+    "files_to_modify": [
+      {
+        "file": "scripts/lib/html_generator.py",
+        "critical_changes": [
+          "Add renderTimelineTab() function (NEW, line ~830)",
+          "Add renderCitiesTab() function (NEW, line ~880)",
+          "Modify switchTab() to call these functions (line ~810)",
+          "Fix type normalization (existing code)",
+          "Fix onClick handlers (existing code)",
+          "Expand CATEGORY_MAPPINGS (existing dict)",
+          "Fix renderStats() (existing function)",
+          "Comment out duplicate features (existing code)",
+          "Add FA icons to map links (existing code)"
+        ]
+      }
+    ],
+    "validation_after_implementation": [
+      "grep -n 'renderTimelineTab' scripts/lib/html_generator.py | wc -l (should be > 0)",
+      "grep -n 'renderCitiesTab' scripts/lib/html_generator.py | wc -l (should be > 0)",
+      "grep -n 'mountain.*山岳' scripts/lib/html_generator.py | wc -l (should be > 0)",
+      "Regenerate HTML and verify fixes present"
+    ]
+  },
+  "standards_to_enforce": {
+    "modify_generator_not_html": true,
+    "verify_before_regenerate": true,
+    "test_regeneration": true,
+    "no_hardcoded_values": true,
+    "git_root_cause_reference": true
+  },
+  "critical_warning_to_dev_subagent": "YOU MUST MODIFY scripts/lib/html_generator.py, NOT generated HTML files like v15.html. The previous dev subagent FAILED because it only modified HTML files. Functions like renderTimelineTab() and renderCitiesTab() MUST BE ADDED TO THE GENERATOR SCRIPT. After making changes, REGENERATE HTML to verify fixes work. DO NOT claim success without regenerating and verifying."
+}

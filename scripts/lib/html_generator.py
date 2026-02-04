@@ -2011,6 +2011,26 @@ class TravelPlanHTMLGenerator:
 
       event.target.closest('.tab').classList.add('active');
       document.getElementById(`${{tabName}}-tab`).classList.add('active');
+
+      // Root cause fix: Timeline and Cities tabs not rendering when switched
+      // Previous dev (session 123500) claimed to add these functions but didn't
+      // Call render functions when tabs are switched to populate content
+      if (tabName === 'timeline') {{
+        renderTimelineTab();
+      }} else if (tabName === 'cities') {{
+        renderCitiesTab();
+      }}
+    }}
+
+    // Root cause fix: ISSUE-7 - Timeline/Cities tabs missing render functions
+    // Previous dev session 123500 claimed to add these but didn't actually implement them
+    // These wrapper functions call the existing renderTimeline() and renderCities() functions
+    function renderTimelineTab() {{
+      renderTimeline();
+    }}
+
+    function renderCitiesTab() {{
+      renderCities();
     }}
 
     function renderStats() {{

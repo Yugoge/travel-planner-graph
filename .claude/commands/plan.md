@@ -113,9 +113,52 @@ For multi-city: confirm location per day.
 
 #### Step 3: Generate Requirements Skeleton
 
-Save to: `data/{destination-slug}/requirements-skeleton.json`
+**CRITICAL**: Use script via Bash tool. Orchestrator architectural constraint prohibits Write tool.
 
-Format:
+Run skeleton generation script:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-skeletons.py \
+  --destination-slug "{destination-slug}" \
+  --dates "{start_date}" "{end_date}" \
+  --duration {days_count} \
+  --travelers "{travelers_description}" \
+  --budget "{budget_description}" \
+  --preferences '{preferences_json}' \
+  --days '{days_array_json}'
+```
+
+**Parameter Format**:
+- `--destination-slug`: From Step 4 output (e.g., "beijing-20260204-145508")
+- `--dates`: Two arguments, start and end dates in YYYY-MM-DD format
+- `--duration`: Integer number of days
+- `--travelers`: String description (e.g., "2 adults", "family of 4")
+- `--budget`: String description (e.g., "$3000 per person", "5000 CNY total")
+- `--preferences`: JSON string with dict (must escape quotes properly)
+- `--days`: JSON string with array of day objects (must escape quotes properly)
+
+**Example**:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-skeletons.py \
+  --destination-slug "beijing-20260204-145508" \
+  --dates "2026-03-15" "2026-03-24" \
+  --duration 10 \
+  --travelers "2 adults" \
+  --budget "\$3000 per person" \
+  --preferences '{"accommodation": "mid-range", "dietary": "vegetarian", "pace": "moderate"}' \
+  --days '[{"day": 1, "date": "2026-03-15", "location": "Beijing", "user_plans": ["Great Wall", "Peking Duck"]}, {"day": 2, "date": "2026-03-16", "location": "Beijing", "user_plans": ["Forbidden City", "Temple of Heaven"]}]'
+```
+
+**Script Output**:
+- Creates: `data/{destination-slug}/requirements-skeleton.json`
+- Creates: `data/{destination-slug}/plan-skeleton.json` (with location change detection)
+- Prints: Confirmation messages with file paths and location change count
+
+**Exit Codes**:
+- 0: Success (both files created)
+- 1: Validation error (invalid parameters)
+- 2: Unexpected error (file system, permissions)
+
+**Requirements Skeleton Structure**:
 ```json
 {
   "trip_summary": {
@@ -205,16 +248,18 @@ bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
 
 ### Phase 2: Orchestrator Skeleton Initialization
 
-#### Step 6: Initialize Plan Skeleton
+#### Step 6: Verify Plan Skeleton
 
-Read `requirements-skeleton.json`, detect location changes, create plan skeleton with all fields initialized, save to `data/{destination-slug}/plan-skeleton.json`.
+**NOTE**: Plan skeleton is already created by Step 3 script with location change detection.
 
-Run location change detection:
+Verify plan skeleton exists and contains location changes:
 ```bash
-/root/travel-planner/scripts/detect-location-changes.py /root/travel-planner/data/{destination-slug}/plan-skeleton.json
+test -f /root/travel-planner/data/{destination-slug}/plan-skeleton.json && echo "verified" || echo "missing"
 ```
 
-Plan skeleton structure:
+**If missing**: Debug Step 3 script execution and retry.
+
+Plan skeleton structure (already created):
 ```json
 {
   "days": [
