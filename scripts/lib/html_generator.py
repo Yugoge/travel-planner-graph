@@ -1836,9 +1836,6 @@ class TravelPlanHTMLGenerator:
     function formatCategoryLabel(code, type) {{
       if (!code) return '';
 
-      // Normalize the code for mapping lookup
-      const normalizedCode = code.toString().trim().toLowerCase().replace(/\\s+/g, '_');
-
       let mapping;
       if (type === 'attraction') {{
         mapping = CATEGORY_MAPPINGS.attraction_types;
@@ -1851,6 +1848,22 @@ class TravelPlanHTMLGenerator:
       }} else {{
         return code;
       }}
+
+      // Handle compound categories with slashes
+      if (code.toString().includes('/')) {{
+        const parts = code.toString().split('/');
+        const translatedParts = [];
+        for (const part of parts) {{
+          const trimmed = part.trim();
+          const normalized = trimmed.toLowerCase().replace(/\\s+/g, '_');
+          const translated = mapping[normalized] || mapping[trimmed.toLowerCase()] || mapping[trimmed] || trimmed;
+          translatedParts.push(translated);
+        }}
+        return translatedParts.join(' / ');
+      }}
+
+      // Single category: Normalize the code for mapping lookup
+      const normalizedCode = code.toString().trim().toLowerCase().replace(/\\s+/g, '_');
 
       // Try normalized code first, then original code with space normalization
       return mapping[normalizedCode] || mapping[code.toString().trim().toLowerCase()] || mapping[code] || code;

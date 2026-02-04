@@ -1,0 +1,132 @@
+{
+  "request_id": "issue-3-category-labels-chinese-not-english",
+  "timestamp": "2026-02-04T16:00:00Z",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "Category translation function exists and mappings are comprehensive, but fails to translate compound categories containing slashes (e.g., 'Mountain / Observation Deck / Tourist Attraction'). Simple categories work correctly.",
+    "success_criteria_results": [
+      {
+        "criterion": "All attraction category labels display in Chinese, not English",
+        "verification_method": "Analyzed CATEGORY_MAPPINGS dictionary, tested formatCategoryLabel() function logic, extracted actual category values from data, simulated translation with real data",
+        "result": "fail",
+        "details": "Function only translates simple single-word categories. Compound categories with slashes remain in English.",
+        "evidence": [
+          "Simple categories work: 'mountain' -> '山岳', 'observation deck' -> '观景台'",
+          "Compound categories fail: 'Mountain / Observation Deck / Tourist Attraction' -> 'Mountain / Observation Deck / Tourist Attraction' (untranslated)",
+          "Found 4+ compound mountain-related categories in data: 'Mountain / Observation Deck / Tourist Attraction', 'Mountain / Hiking / Viewpoint', 'Mountain Scenic Area / Cable Car', 'Mountain Scenic Area / Viewpoints'",
+          "Additional compound categories found: 'Ancestral Hall / Museum / Historic Architecture', 'Buddhist Pagoda / Temple / UNESCO World Heritage', 'Classical Chinese Garden / UNESCO World Heritage', etc."
+        ]
+      },
+      {
+        "criterion": "formatCategoryLabel function handles all category formats",
+        "verification_method": "Code review of formatCategoryLabel() at lines 1132-1153, tested normalization logic",
+        "result": "fail",
+        "details": "Function only handles simple categories. Does not split and translate compound categories separated by slashes.",
+        "evidence": [
+          "Line 1136: normalizedCode = code.toString().trim().toLowerCase().replace(/\\s+/g, '_')",
+          "This converts 'Mountain / Observation Deck' to 'mountain_/_observation_deck'",
+          "No mapping exists for 'mountain_/_observation_deck'",
+          "Function returns original untranslated string as fallback"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": false,
+      "confidence": "high",
+      "rationale": "Root cause was incomplete translation mapping. While CATEGORY_MAPPINGS was added with comprehensive entries, the formatCategoryLabel() function lacks logic to handle compound categories. The function needs to split slash-separated values, translate each component, then rejoin with Chinese slash separator."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Simple category translation",
+        "result": "pass",
+        "details": "Single-word categories like 'mountain', 'observation_deck', 'tourist attraction' translate correctly"
+      },
+      {
+        "test": "Compound category translation",
+        "result": "fail",
+        "details": "Multi-part categories with slashes remain in English"
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "critical",
+        "category": "incomplete-implementation",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1132-1153",
+        "issue": "formatCategoryLabel() does not handle compound categories (slash-separated values). Function only works for simple single-word categories.",
+        "recommendation": "Add logic to detect '/' in category string, split into parts, translate each part individually using the mapping, then rejoin with Chinese slash separator ' / ' or '·'"
+      },
+      {
+        "severity": "major",
+        "category": "data-mismatch",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1056-1130",
+        "issue": "CATEGORY_MAPPINGS only contains simple category entries but actual data contains many compound categories not in the mapping",
+        "recommendation": "Either: (1) Add compound category entries to mapping, or (2) Implement split-translate-rejoin logic in formatCategoryLabel()"
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1132-1153",
+        "issue": "formatCategoryLabel() does not translate compound categories containing slashes. Real data contains categories like 'Mountain / Observation Deck / Tourist Attraction' which remain in English.",
+        "recommendation": "Modify formatCategoryLabel() to split on '/', translate each component, then rejoin. Example logic:\n\nif (code.includes('/')) {\n  return code.split('/').map(part => {\n    const trimmed = part.trim().toLowerCase();\n    const normalized = trimmed.replace(/\\s+/g, '_');\n    return mapping[normalized] || mapping[trimmed] || part.trim();\n  }).join(' / ');\n}",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1056-1130",
+        "issue": "CATEGORY_MAPPINGS missing entries for compound categories. Data contains 50+ unique compound category combinations not in mapping.",
+        "recommendation": "Either extend mapping with all compound combinations, or implement split-translate-rejoin logic (recommended approach)",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 1,
+      "major_issues": 1,
+      "minor_issues": 0,
+      "total_findings": 2,
+      "release_recommendation": "reject"
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "Compound categories with slashes not translated"
+    ],
+    "critical_issues": [
+      "formatCategoryLabel() function at line 1132 does not handle slash-separated compound categories",
+      "Real data contains categories like 'Mountain / Observation Deck / Tourist Attraction', 'Buddhist Pagoda / Temple / UNESCO World Heritage', 'Ancestral Hall / Museum / Historic Architecture', etc.",
+      "These compound categories are rendered as-is in English because normalization produces keys like 'mountain_/_observation_deck_/_tourist_attraction' which don't exist in CATEGORY_MAPPINGS"
+    ],
+    "recommended_approach": "Modify formatCategoryLabel() function to detect '/' character, split the category into parts, translate each part individually using existing CATEGORY_MAPPINGS, then rejoin with slash separator. This avoids having to add hundreds of compound category combinations to the mapping.",
+    "additional_context": {
+      "compound_categories_found": [
+        "Mountain / Observation Deck / Tourist Attraction",
+        "Mountain / Hiking / Viewpoint",
+        "Mountain Scenic Area / Cable Car",
+        "Mountain Scenic Area / Viewpoints",
+        "Ancestral Hall / Museum / Historic Architecture",
+        "Buddhist Pagoda / Temple / UNESCO World Heritage",
+        "Buddhist Temple / Historic Site",
+        "Classical Chinese Garden / UNESCO World Heritage",
+        "Church / Museum / Historic Building",
+        "Cable Car / Scenic Transport",
+        "Casino Resort / Shopping Mall / Entertainment"
+      ],
+      "simple_categories_working": [
+        "mountain -> 山岳",
+        "observation deck -> 观景台",
+        "observation_deck -> 观景台",
+        "tourist attraction -> 旅游景点"
+      ],
+      "function_location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1132-1153",
+      "fix_pseudocode": "if (code.includes('/')) {\n  return code.split('/').map(part => {\n    const trimmed = part.trim();\n    const normalized = trimmed.toLowerCase().replace(/\\s+/g, '_');\n    return mapping[normalized] || mapping[trimmed.toLowerCase()] || mapping[trimmed] || trimmed;\n  }).join(' / ');\n}"
+    }
+  }
+}
