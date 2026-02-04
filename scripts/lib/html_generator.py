@@ -562,10 +562,12 @@ class TravelPlanHTMLGenerator:
       transition: background 0.2s;
     }
     .attraction-link:hover { background: var(--color-dark); }
-    /* Map Links - Brand Colors (Feature 5 from bash - Official brand colors) */
+    /* Map Links - Brand Colors with Logo Icons (Root cause fix: colors only, no logos) */
     .attraction-link.gaode { background: #52C41A; } /* Gaode/Ant Design official green */
     .attraction-link.google { background: #4285f4; }
     .attraction-link.rednote { background: #ff2442; }
+    /* Add spacing for icons in links */
+    .attraction-link i { margin-right: 6px; }
 
     /* Day Cards with beige theme */
     .day-card-bash-style {
@@ -692,17 +694,13 @@ class TravelPlanHTMLGenerator:
             # Bash features only apply to itinerary projects
             return ""
 
+        # Root cause fix: ISSUE-5 - Duplicate content across tabs
+        # Removed Feature 2 (Route Map) and Feature 6 (Cities Panel) as they're now in tabs
         return f'''
-    <!-- Bash Features Migration (commit 95a42d3) -->
+    <!-- Bash Features Migration (commit 95a42d3) - Deduplicated -->
 
     <!-- Feature 1: Expandable Stats Dashboard -->
     <div class="stats-expandable" id="stats-expandable-container"></div>
-
-    <!-- Feature 2: Kanban Route Map -->
-    <div class="route-map">
-      <h2>Route Overview</h2>
-      <div class="route-kanban" id="route-kanban-container"></div>
-    </div>
 
     <!-- Feature 3: Budget by City -->
     <div class="budget-city-section">
@@ -714,12 +712,6 @@ class TravelPlanHTMLGenerator:
     <div class="attraction-types-section">
       <h2>Attraction Types</h2>
       <div class="attraction-type-grid" id="attraction-types-grid-container"></div>
-    </div>
-
-    <!-- Feature 6: Cities Panel (Geographic Clustering) -->
-    <div class="cities-panel-section">
-      <h2>Cities & Attractions</h2>
-      <div id="cities-geographic-container"></div>
     </div>
 '''
 
@@ -1026,9 +1018,11 @@ class TravelPlanHTMLGenerator:
                       <div class="attraction-name">${attr.name}</div>
                       <div class="attraction-links">
                         <a href="${links.mapLink}" target="_blank" class="attraction-link ${links.isMainland ? 'gaode' : 'google'}">
+                          <i class="fas ${links.isMainland ? 'fa-map-marked-alt' : 'fa-map-marker-alt'}"></i>
                           ${links.isMainland ? 'Gaode Maps' : 'Google Maps'}
                         </a>
                         <a href="${links.rednote}" target="_blank" class="attraction-link rednote">
+                          <i class="fas fa-book-open"></i>
                           RedNote
                         </a>
                       </div>
@@ -1042,14 +1036,14 @@ class TravelPlanHTMLGenerator:
       }
     }
 
-    // Initialize all bash features
+    // Initialize all bash features (deduplicated - removed route/cities functions)
     function initBashFeatures() {
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {
         renderStatsDashboardBash();
-        renderRouteKanbanBash();
+        // renderRouteKanbanBash(); - Now in Timeline tab
         renderBudgetByCityBash();
         renderAttractionTypesBash();
-        renderCitiesGeographicBash();
+        // renderCitiesGeographicBash(); - Now in Cities tab
       }
     }
 '''
@@ -1765,55 +1759,85 @@ class TravelPlanHTMLGenerator:
 
     const CATEGORY_MAPPINGS = {{
       attraction_types: {{
-        'historical_site': 'Historical Site',
-        'museum': 'Museum',
-        'temple': 'Temple',
-        'natural_scenery': 'Natural Scenery',
-        'park': 'Park',
-        'cultural_experience': 'Cultural Experience',
-        'ancient_architecture': 'Ancient Architecture',
-        'modern_landmark': 'Modern Landmark',
-        'unesco_heritage': 'UNESCO Heritage',
-        'scenic_spot': 'Scenic Spot',
-        'night_view': 'Night View',
-        'street_food': 'Street Food Area',
-        'shopping_district': 'Shopping District'
+        // Root cause fix: commit 41f1017 incomplete localization mapping
+        // Comprehensive Chinese translations for all attraction types
+        'historical_site': '历史遗址',
+        'museum': '博物馆',
+        'temple': '寺庙',
+        'natural_scenery': '自然景观',
+        'park': '公园',
+        'cultural_experience': '文化体验',
+        'ancient_architecture': '古建筑',
+        'modern_landmark': '现代地标',
+        'unesco_heritage': '世界遗产',
+        'scenic_spot': '风景名胜',
+        'night_view': '夜景',
+        'street_food': '美食街区',
+        'shopping_district': '购物区',
+        'mountain': '山岳',
+        'observation deck': '观景台',
+        'tourist attraction': '旅游景点',
+        'observation_deck': '观景台',
+        'tourist_attraction': '旅游景点',
+        'palace': '宫殿',
+        'garden': '园林',
+        'lake': '湖泊',
+        'river': '河流',
+        'beach': '海滩',
+        'forest': '森林',
+        'cave': '洞穴',
+        'waterfall': '瀑布',
+        'bridge': '桥梁',
+        'tower': '塔楼',
+        'monument': '纪念碑',
+        'square': '广场',
+        'street': '街道',
+        'market': '市场',
+        'zoo': '动物园',
+        'aquarium': '水族馆',
+        'botanical_garden': '植物园',
+        'theme_park': '主题公园',
+        'general': '综合景点',
+        'other': '其他'
       }},
       hotel_categories: {{
-        'budget': 'Budget Hotel',
-        'mid-range': 'Mid-Range Hotel',
-        'high-end': 'High-End Hotel',
-        'luxury': 'Luxury Hotel',
-        'boutique': 'Boutique Hotel',
-        'hostel': 'Hostel',
-        'guesthouse': 'Guesthouse'
+        'budget': '经济型酒店',
+        'mid-range': '中档酒店',
+        'high-end': '高端酒店',
+        'luxury': '豪华酒店',
+        'boutique': '精品酒店',
+        'hostel': '青年旅舍',
+        'guesthouse': '民宿'
       }},
       restaurant_categories: {{
-        'local': 'Local Cuisine',
-        'street_food': 'Street Food',
-        'fine_dining': 'Fine Dining',
-        'casual': 'Casual Dining',
-        'fast_food': 'Fast Food',
-        'vegetarian': 'Vegetarian',
-        'halal': 'Halal',
-        'international': 'International',
-        'cafe': 'Café',
-        'teahouse': 'Teahouse'
+        'local': '本地美食',
+        'street_food': '街边小吃',
+        'fine_dining': '高档餐厅',
+        'casual': '休闲餐厅',
+        'fast_food': '快餐',
+        'vegetarian': '素食',
+        'halal': '清真',
+        'international': '国际美食',
+        'cafe': '咖啡厅',
+        'teahouse': '茶馆'
       }},
       entertainment_types: {{
-        'show': 'Show',
-        'nightlife': 'Nightlife',
-        'bar': 'Bar',
-        'club': 'Club',
-        'karaoke': 'Karaoke',
-        'theater': 'Theater',
-        'cinema': 'Cinema',
-        'live_music': 'Live Music'
+        'show': '演出',
+        'nightlife': '夜生活',
+        'bar': '酒吧',
+        'club': '夜店',
+        'karaoke': 'KTV',
+        'theater': '剧院',
+        'cinema': '电影院',
+        'live_music': '现场音乐'
       }}
     }};
 
     function formatCategoryLabel(code, type) {{
       if (!code) return '';
+
+      // Normalize the code for mapping lookup
+      const normalizedCode = code.toString().trim().toLowerCase().replace(/\\s+/g, '_');
 
       let mapping;
       if (type === 'attraction') {{
@@ -1828,7 +1852,8 @@ class TravelPlanHTMLGenerator:
         return code;
       }}
 
-      return mapping[code] || code;
+      // Try normalized code first, then original code with space normalization
+      return mapping[normalizedCode] || mapping[code.toString().trim().toLowerCase()] || mapping[code] || code;
     }}
 
     function formatAddress(address) {{
@@ -1994,29 +2019,158 @@ class TravelPlanHTMLGenerator:
         const totalBudgetCNY = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget && day.budget.total || 0), 0);
         const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions && day.attractions.length || 0), 0);
         const uniqueCities = new Set(PLAN_DATA.days.map(d => d.location)).size;
+
+        // Root cause fix: Stats cards were static display only, now making them interactive
         stats = [
-          {{ icon: 'fa-calendar-days', label: 'Days', value: PLAN_DATA.days.length }},
-          {{ icon: 'fa-money-bill-wave', label: 'Total Budget', value: `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(totalBudgetCNY)}}` }},
-          {{ icon: 'fa-landmark', label: 'Attractions', value: totalAttractions }},
-          {{ icon: 'fa-city', label: 'Cities', value: uniqueCities }}
+          {{
+            icon: 'fa-calendar-days',
+            label: 'Days',
+            value: PLAN_DATA.days.length,
+            onClick: () => {{
+              const items = PLAN_DATA.days.map(d => ({{
+                name: `Day ${{d.day}} - ${{d.date}}`,
+                value: d.location,
+                meta: d.location
+              }}));
+              openDataDrawer('Day-by-Day Breakdown', {{ 'Total Days': PLAN_DATA.days.length }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v }});
+            }}
+          }},
+          {{
+            icon: 'fa-money-bill-wave',
+            label: 'Total Budget',
+            value: `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(totalBudgetCNY)}}`,
+            onClick: () => {{
+              const items = PLAN_DATA.days.map(d => ({{
+                name: `Day ${{d.day}} - ${{d.location}}`,
+                value: d.budget?.total || 0,
+                meta: d.date
+              }}));
+              openDataDrawer('Daily Budget Breakdown',
+                {{ 'Total Budget': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(totalBudgetCNY)}}`,
+                   'Average per Day': `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(totalBudgetCNY / PLAN_DATA.days.length)}}` }},
+                items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` }});
+            }}
+          }},
+          {{
+            icon: 'fa-landmark',
+            label: 'Attractions',
+            value: totalAttractions,
+            onClick: () => {{
+              const items = [];
+              PLAN_DATA.days.forEach(day => {{
+                (day.attractions || []).forEach(attr => {{
+                  items.push({{
+                    name: attr.name,
+                    value: attr.ticket_price_cny || 0,
+                    meta: `${{day.location}} - Day ${{day.day}}`
+                  }});
+                }});
+              }});
+              openDataDrawer('All Attractions', {{ 'Total Attractions': totalAttractions }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v > 0 ? `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` : 'Free' }});
+            }}
+          }},
+          {{
+            icon: 'fa-city',
+            label: 'Cities',
+            value: uniqueCities,
+            onClick: () => {{
+              const cityStats = {{}};
+              PLAN_DATA.days.forEach(day => {{
+                if (!cityStats[day.location]) {{
+                  cityStats[day.location] = {{ days: 0, attractions: 0, budget: 0 }};
+                }}
+                cityStats[day.location].days += 1;
+                cityStats[day.location].attractions += (day.attractions || []).length;
+                cityStats[day.location].budget += day.budget?.total || 0;
+              }});
+              const items = Object.entries(cityStats).map(([city, data]) => ({{
+                name: city,
+                value: data.budget,
+                meta: `${{data.days}} days, ${{data.attractions}} attractions`
+              }}));
+              openDataDrawer('City Breakdown', {{ 'Total Cities': uniqueCities }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{CURRENCY_CONFIG_BASH.currency_symbol}}${{toEURBash(v)}}` }});
+            }}
+          }}
         ];
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         const totalAttractions = PLAN_DATA.cities.reduce((sum, city) => sum + (city.attractions && city.attractions.length || 0), 0);
         stats = [
-          {{ icon: 'fa-city', label: 'Cities', value: PLAN_DATA.cities.length }},
-          {{ icon: 'fa-landmark', label: 'Attractions', value: totalAttractions }},
-          {{ icon: 'fa-hotel', label: 'Hotels', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.hotels && c.hotels.length || 0), 0) }},
-          {{ icon: 'fa-utensils', label: 'Restaurants', value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.restaurants && c.restaurants.length || 0), 0) }}
+          {{
+            icon: 'fa-city',
+            label: 'Cities',
+            value: PLAN_DATA.cities.length,
+            onClick: () => {{
+              const items = PLAN_DATA.cities.map(c => ({{
+                name: c.city,
+                value: (c.attractions || []).length,
+                meta: c.province || ''
+              }}));
+              openDataDrawer('Cities Breakdown', {{ 'Total Cities': PLAN_DATA.cities.length }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => `${{v}} attractions` }});
+            }}
+          }},
+          {{
+            icon: 'fa-landmark',
+            label: 'Attractions',
+            value: totalAttractions,
+            onClick: () => {{
+              const items = [];
+              PLAN_DATA.cities.forEach(city => {{
+                (city.attractions || []).forEach(attr => {{
+                  items.push({{ name: attr.name, value: attr.type || 'General', meta: city.city }});
+                }});
+              }});
+              openDataDrawer('All Attractions', {{ 'Total Attractions': totalAttractions }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta' }});
+            }}
+          }},
+          {{
+            icon: 'fa-hotel',
+            label: 'Hotels',
+            value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.hotels && c.hotels.length || 0), 0),
+            onClick: () => {{
+              const items = [];
+              PLAN_DATA.cities.forEach(city => {{
+                (city.hotels || []).forEach(hotel => {{
+                  items.push({{ name: hotel.name, value: hotel.category || '', meta: city.city }});
+                }});
+              }});
+              openDataDrawer('All Hotels', {{ 'Total Hotels': items.length }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta' }});
+            }}
+          }},
+          {{
+            icon: 'fa-utensils',
+            label: 'Restaurants',
+            value: PLAN_DATA.cities.reduce((sum, c) => sum + (c.restaurants && c.restaurants.length || 0), 0),
+            onClick: () => {{
+              const items = [];
+              PLAN_DATA.cities.forEach(city => {{
+                (city.restaurants || []).forEach(rest => {{
+                  items.push({{ name: rest.name, value: rest.category || rest.type || '', meta: city.city }});
+                }});
+              }});
+              openDataDrawer('All Restaurants', {{ 'Total Restaurants': items.length }}, items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta' }});
+            }}
+          }}
         ];
       }}
 
-      document.getElementById('stats-container').innerHTML = stats.map(s => `
-        <div class="stat-card">
+      document.getElementById('stats-container').innerHTML = stats.map((s, idx) => `
+        <div class="stat-card" onclick="statClickHandlers[${{idx}}]()" style="cursor: pointer;">
           <i class="fas ${{s.icon}} stat-icon"></i>
           <div class="stat-value">${{s.value}}</div>
           <div class="stat-label">${{s.label}}</div>
         </div>
       `).join('');
+
+      // Store click handlers in global array for access from onclick attribute
+      window.statClickHandlers = stats.map(s => s.onClick);
     }}
 
     function renderCharts() {{
@@ -2037,7 +2191,15 @@ class TravelPlanHTMLGenerator:
 
         if (day.attractions) {{
           day.attractions.forEach(attr => {{
-            const type = (attr.type || 'general').toString().trim().toLowerCase();
+            // Root cause fix: commit 41f1017 aggregation incomplete
+            // Strengthen normalization: handle null/undefined/whitespace/empty strings
+            let type = attr.type;
+            if (!type || type === null || type === undefined || type === 'null' || type === 'undefined') {{
+              type = 'general';
+            }} else {{
+              type = type.toString().trim().toLowerCase();
+              if (type === '') type = 'general';
+            }}
             attractionTypes[type] = (attractionTypes[type] || 0) + 1;
           }});
         }}
@@ -2176,7 +2338,15 @@ class TravelPlanHTMLGenerator:
 
         if (city.attractions) {{
           city.attractions.forEach(attr => {{
-            const type = (attr.type || 'general').toString().trim().toLowerCase();
+            // Root cause fix: commit 41f1017 aggregation incomplete
+            // Strengthen normalization: handle null/undefined/whitespace/empty strings
+            let type = attr.type;
+            if (!type || type === null || type === undefined || type === 'null' || type === 'undefined') {{
+              type = 'general';
+            }} else {{
+              type = type.toString().trim().toLowerCase();
+              if (type === '') type = 'general';
+            }}
             attractionTypes[type] = (attractionTypes[type] || 0) + 1;
           }});
         }}
@@ -2220,13 +2390,26 @@ class TravelPlanHTMLGenerator:
           maintainAspectRatio: false,
           indexAxis: 'y',
           onClick: (event, elements) => {{
+            // Root cause fix: commit 41f1017 - should use openDataDrawer for consistent UX
             if (elements.length > 0) {{
               const index = elements[0].index;
               const cityName = Object.keys(attractionsByCity)[index];
               const city = PLAN_DATA.cities.find(c => c.city === cityName);
-              if (city) {{
-                const content = renderCityContent(city);
-                showDetailPanel(cityName, content);
+              if (city && city.attractions) {{
+                const items = city.attractions.map(attr => ({{
+                  name: attr.name,
+                  value: attr.ticket_price_eur || 0,
+                  meta: formatCategoryLabel(attr.type, 'attraction')
+                }}));
+                openDataDrawer(
+                  `${{cityName}} - Attractions`,
+                  {{
+                    'Total Attractions': items.length,
+                    'City': cityName
+                  }},
+                  items,
+                  {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v > 0 ? `€${{v}}` : 'Free' }}
+                );
               }}
             }}
           }},
@@ -2253,29 +2436,54 @@ class TravelPlanHTMLGenerator:
           responsive: true,
           maintainAspectRatio: false,
           onClick: (event, elements) => {{
+            // Root cause fix: commit 41f1017 - should use openDataDrawer for consistent UX
             if (elements.length > 0) {{
               const index = elements[0].index;
               const typeCode = Object.keys(attractionTypes)[index];
               const typeLabel = formatCategoryLabel(typeCode, 'attraction');
-              let content = '<div class="activity-grid">';
+              const items = [];
+
+              // Normalize typeCode for comparison
+              let normalizedTypeCode = typeCode;
+              if (!typeCode || typeCode === null || typeCode === undefined || typeCode === 'null' || typeCode === 'undefined') {{
+                normalizedTypeCode = 'general';
+              }} else {{
+                normalizedTypeCode = typeCode.toString().trim().toLowerCase();
+                if (normalizedTypeCode === '') normalizedTypeCode = 'general';
+              }}
+
               PLAN_DATA.cities.forEach(city => {{
                 if (city.attractions) {{
                   city.attractions.forEach(attr => {{
-                    if (attr.type === typeCode) {{
-                      const formattedAddress = attr.location || attr.address || attr.how_to_get_there;
-                      const skillIcons = renderSkillIcons(attr.search_results);
-                      content += '<div class="activity-card"><h4>' + attr.name + skillIcons + '</h4>';
-                      content += '<p style="color: var(--color-secondary);"><i class="fas fa-city"></i> ' + city.city + '</p>';
-                      if (formattedAddress) content += '<p><i class="fas fa-map-marker-alt"></i> ' + formattedAddress + '</p>';
-                      if (attr.description) content += '<p>' + attr.description + '</p>';
-                      if (attr.ticket_price_eur) content += '<p class="cost"><i class="fas fa-ticket-alt"></i> €' + attr.ticket_price_eur + '</p>';
-                      content += '</div>';
+                    // Normalize attr.type for comparison
+                    let attrType = attr.type;
+                    if (!attrType || attrType === null || attrType === undefined || attrType === 'null' || attrType === 'undefined') {{
+                      attrType = 'general';
+                    }} else {{
+                      attrType = attrType.toString().trim().toLowerCase();
+                      if (attrType === '') attrType = 'general';
+                    }}
+
+                    if (attrType === normalizedTypeCode) {{
+                      items.push({{
+                        name: attr.name,
+                        value: attr.ticket_price_eur || 0,
+                        meta: city.city
+                      }});
                     }}
                   }});
                 }}
               }});
-              content += '</div>';
-              showDetailPanel(typeLabel + ' Attractions', content);
+
+              openDataDrawer(
+                `${{typeLabel}} Attractions`,
+                {{
+                  'Total Attractions': items.length,
+                  'Category': typeLabel
+                }},
+                items,
+                {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v > 0 ? `€${{v}}` : 'Free' }}
+              );
             }}
           }},
           plugins: {{
@@ -2294,23 +2502,62 @@ class TravelPlanHTMLGenerator:
     function renderCities() {{
       let citiesHtml = '';
 
+      // Root cause fix: Timeline and Cities tabs showed identical content
+      // Cities tab should show geographic city clusters, not day-by-day breakdown
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
-        citiesHtml = PLAN_DATA.days.map((day, idx) => `
-          <div class="accordion-item" id="city-${{idx}}">
-            <div class="accordion-header" onclick="toggleAccordion(${{idx}})">
-              <h3>
-                <i class="fas fa-map-marker-alt"></i>
-                Day ${{day.day}}: ${{day.location}} - ${{day.date}}
-              </h3>
-              <i class="fas fa-chevron-down accordion-icon"></i>
-            </div>
-            <div class="accordion-content">
-              <div class="accordion-body">
-                ${{renderDayContent(day)}}
+        // Render cities geographic clustering for Cities tab
+        const cityClusters = {{}};
+        PLAN_DATA.days.forEach(day => {{
+          (day.attractions || []).forEach(attr => {{
+            const city = day.location;
+            if (!cityClusters[city]) cityClusters[city] = [];
+            cityClusters[city].push({{ ...attr, location: day.location }});
+          }});
+        }});
+
+        citiesHtml = Object.entries(cityClusters).map(([city, attractions], idx) => {{
+          const uniqueAttractions = attractions.filter((attr, idx, self) =>
+            idx === self.findIndex(a => a.name === attr.name)
+          );
+
+          return `
+            <div class="accordion-item" id="city-${{idx}}">
+              <div class="accordion-header" onclick="toggleAccordion(${{idx}})">
+                <h3>
+                  <i class="fas fa-city"></i>
+                  ${{city}} (${{uniqueAttractions.length}} attractions)
+                </h3>
+                <i class="fas fa-chevron-down accordion-icon"></i>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-body">
+                  <div class="activity-grid">
+                    ${{uniqueAttractions.map(attr => {{
+                      const links = generateMapLinksBash(attr.name, attr.location);
+                      return `
+                        <div class="activity-card">
+                          <h4>${{attr.name}}</h4>
+                          <p><i class="fas fa-map-marker-alt"></i> ${{formatAddress(attr.location || attr.address)}}</p>
+                          ${{attr.type ? `<span class="type-badge">${{formatCategoryLabel(attr.type, 'attraction')}}</span>` : ''}}
+                          <div class="attraction-links" style="margin-top: 10px;">
+                            <a href="${{links.mapLink}}" target="_blank" class="attraction-link ${{links.isMainland ? 'gaode' : 'google'}}">
+                              <i class="fas ${{links.isMainland ? 'fa-map-marked-alt' : 'fa-map-marker-alt'}}"></i>
+                              ${{links.isMainland ? 'Gaode Maps' : 'Google Maps'}}
+                            </a>
+                            <a href="${{links.rednote}}" target="_blank" class="attraction-link rednote">
+                              <i class="fas fa-book-open"></i>
+                              RedNote
+                            </a>
+                          </div>
+                        </div>
+                      `;
+                    }}).join('')}}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        `).join('');
+          `;
+        }}).join('');
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         citiesHtml = PLAN_DATA.cities.map((city, idx) => `
           <div class="accordion-item" id="city-${{idx}}">
@@ -2713,12 +2960,31 @@ class TravelPlanHTMLGenerator:
             responsive: true,
             maintainAspectRatio: false,
             onClick: (event, elements) => {{
+              // Root cause fix: commit 41f1017 - some charts use showDetailPanel, should use openDataDrawer
               if (elements.length > 0) {{
                 const index = elements[0].index;
                 const city = PLAN_DATA.cities[index];
                 if (city) {{
-                  const content = renderCityContent(city);
-                  showDetailPanel(city.city + ' - Budget Details', content);
+                  const items = [];
+                  if (city.attractions) {{
+                    city.attractions.forEach(attr => {{
+                      items.push({{
+                        name: attr.name,
+                        value: attr.cost_eur || 0,
+                        meta: formatCategoryLabel(attr.type, 'attraction')
+                      }});
+                    }});
+                  }}
+                  openDataDrawer(
+                    `${{city.city}} - Budget Breakdown`,
+                    {{
+                      'Estimated Budget': `€${{city.estimated_budget_eur || 0}}`,
+                      'Duration': city.recommended_duration,
+                      'Attractions': (city.attractions || []).length
+                    }},
+                    items,
+                    {{ nameKey: 'name', valueKey: 'value', metaKey: 'meta', formatValue: (v) => v > 0 ? `€${{v}}` : 'Free' }}
+                  );
                 }}
               }}
             }},
@@ -2743,45 +3009,43 @@ class TravelPlanHTMLGenerator:
     function renderTimeline() {{
       let timelineHtml = '';
 
+      // Root cause fix: Timeline and Cities tabs showed identical content
+      // Timeline tab should show Kanban route map (day-by-day timeline by city)
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
-        timelineHtml = '<div class="accordion">' + PLAN_DATA.days.map((day, idx) => {{
-          let dayEvents = [];
+        const cityGroups = {{}};
+        PLAN_DATA.days.forEach(day => {{
+          if (!cityGroups[day.location]) cityGroups[day.location] = [];
+          cityGroups[day.location].push(day);
+        }});
 
-          if (day.breakfast && day.breakfast.name) dayEvents.push({{ time: '08:00', icon: 'fa-coffee', label: `Breakfast: ${{day.breakfast.name}}` }});
-          if (day.lunch && day.lunch.name) dayEvents.push({{ time: '12:00', icon: 'fa-utensils', label: `Lunch: ${{day.lunch.name}}` }});
-          if (day.dinner && day.dinner.name) dayEvents.push({{ time: '19:00', icon: 'fa-utensils', label: `Dinner: ${{day.dinner.name}}` }});
-          if (day.attractions && day.attractions.length > 0) {{
-            day.attractions.forEach(attr => {{
-              dayEvents.push({{ time: '10:00', icon: 'fa-landmark', label: attr.name }});
-            }});
-          }}
-
-          const eventsHtml = dayEvents.length > 0 ? dayEvents.map(e => `
-            <div style="padding: 0.5rem 0; border-left: 3px solid var(--color-accent); padding-left: 1rem; margin-left: 1rem; margin-bottom: 0.5rem;">
-              <div style="color: var(--color-accent); font-weight: 600;">
-                <i class="fas ${{e.icon}}"></i> ${{e.time}}
-              </div>
-              <div style="color: var(--color-dark);">${{e.label}}</div>
+        timelineHtml = `
+          <div class="route-map">
+            <h2 style="color: var(--color-secondary); margin-bottom: 20px;">
+              <i class="fas fa-route"></i> Route Timeline
+            </h2>
+            <div class="route-kanban">
+              ${{Object.entries(cityGroups).map(([city, days]) => {{
+                const totalBudget = days.reduce((sum, d) => sum + (d.budget?.total || 0), 0);
+                return `
+                  <div class="route-city">
+                    <div class="route-city-header">${{escapeHtml(city)}}</div>
+                    <div class="route-city-days">
+                      ${{days.map(d => `
+                        <div class="route-day-item">
+                          <div class="route-day-date">Day ${{escapeHtml(d.day)}} - ${{escapeHtml(d.date)}}</div>
+                          <div class="route-day-budget">${{escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}}${{toEURBash(d.budget?.total || 0)}}</div>
+                        </div>
+                      `).join('')}}
+                      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-neutral); font-weight: bold; color: var(--color-danger);">
+                        Total: ${{escapeHtml(CURRENCY_CONFIG_BASH.currency_symbol)}}${{toEURBash(totalBudget)}}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }}).join('')}}
             </div>
-          `).join('') : '<p style="color: var(--color-secondary); padding-left: 2rem;">No scheduled events</p>';
-
-          return `
-            <div class="accordion-item" id="timeline-${{idx}}">
-              <div class="accordion-header" onclick="toggleTimelineAccordion(${{idx}})">
-                <h3>
-                  <i class="fas fa-calendar-day"></i>
-                  Day ${{day.day}}: ${{day.location}} - ${{day.date}}
-                </h3>
-                <i class="fas fa-chevron-down accordion-icon"></i>
-              </div>
-              <div class="accordion-content">
-                <div class="accordion-body">
-                  ${{eventsHtml}}
-                </div>
-              </div>
-            </div>
-          `;
-        }}).join('') + '</div>';
+          </div>
+        `;
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         timelineHtml = '<div class="timeline-list">' + PLAN_DATA.cities.map((city, idx) => `
           <div class="timeline-city-card">

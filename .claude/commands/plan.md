@@ -506,6 +506,8 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/ch
 
 **Root Cause Reference**: Commit 77dca06 inherited linear day iteration without per-day cycling support. This step implements nested loop: OUTER loop for sequential day progression (1→2→3...→N), INNER loop for current day refinement until user confirms perfect.
 
+**CRITICAL ORCHESTRATOR CONSTRAINT**: You CANNOT modify working files directly. All changes MUST be delegated to specialist subagents via Task tool. Working files in `data/{destination-slug}/*.json` represent specialist agent outputs and require domain expertise to modify correctly.
+
 Read warnings from:
 - `data/{destination-slug}/timeline.json` → Check `warnings` array
 - `data/{destination-slug}/budget.json` → Check `warnings` and `recommendations` arrays
@@ -623,9 +625,10 @@ Please choose an option or describe specific changes you'd like.
 - Present next day (if exists)
 
 **Option 2 - "Make changes to Day N"**:
-- Parse user's change request
+- Parse user's change request (identify affected domain and instruction)
 - Stay in INNER loop (do NOT increment day index)
-- Re-invoke agents (Step 15)
+- **CRITICAL**: Use Task tool to delegate changes to specialist subagent (Step 15)
+- **NEVER modify working files directly** - orchestrator reads, subagents write
 - After agent completion, re-present Day N with INNER loop
 
 **Option 3 - "Accept all remaining"**:
@@ -697,6 +700,8 @@ OUTER LOOP starts: current_day_index = 1
 
 **Root Cause Reference**: Commit 77dca06's linear design advanced to next day after changes. Nested loop requires returning to INNER loop for same day until user confirms perfect.
 
+**ORCHESTRATOR ARCHITECTURAL PRINCIPLE**: You are COORDINATING changes, not EXECUTING them. All file modifications MUST be delegated to specialist subagents via Task tool. Working files in `data/{destination-slug}/*.json` are specialist domains - orchestrator reads to coordinate, subagents write to implement.
+
 ---
 
 **When user selects "Make changes to Day N"** from Step 14:
@@ -705,6 +710,8 @@ Parse user's change request to extract:
 - **Domain affected**: Which agent? (meals, attractions, entertainment, shopping, transportation)
 - **Specific instruction**: What exactly to change/add/remove?
 - **Constraints**: Budget limits, time constraints, preferences
+
+**NEVER attempt to research or modify data yourself** - delegate to specialist subagent who will use MCP tools (gaode-maps, google-maps, rednote) and update working files.
 
 ---
 
@@ -721,6 +728,8 @@ Map user request to domain agent(s):
 - "train", "flight", "transportation" → transportation-agent
 
 **Substep: Re-invoke Specialist Agent with Day Filter**
+
+**CRITICAL DELEGATION PATTERN**: Orchestrator delegates research and file modification to specialist subagent. Orchestrator provides context, subagent executes and updates working files.
 
 ```
 Use Task tool with:
@@ -745,7 +754,7 @@ Use Task tool with:
   1. Research NEW options OR adjust existing items for Day {N} only
      - Use MCP tools: google-maps, gaode-maps, rednote, etc.
      - DO NOT use placeholder data
-  2. Update {domain}.json for Day {N} ONLY
+  2. Update data/{destination-slug}/{domain}.json for Day {N} ONLY
      - MODIFY/ADD/REMOVE items for Day {N} as requested
      - PRESERVE data for all other days unchanged
   3. Return ONLY: complete
@@ -759,6 +768,9 @@ Use Task tool with:
 ```
 
 Wait for agent to return "complete".
+
+**What orchestrator does**: Reads current state, identifies domain, delegates via Task tool, waits for completion
+**What subagent does**: Researches using MCP tools, updates working file, returns completion signal
 
 **Substep: Re-invoke Dependent Agents (Timeline + Budget)**
 
