@@ -679,41 +679,22 @@ class TravelPlanHTMLGenerator:
         Generate HTML for 7 features migrated from bash script (commit 95a42d3).
 
         Features:
-        1. Expandable stats dashboard
-        2. Kanban route map
-        3. Budget by city
-        4. Attraction types
+        1. Expandable stats dashboard - REMOVED (duplicates Overview tab)
+        2. Kanban route map - Now in Timeline tab
+        3. Budget by city - REMOVED (duplicates Budget tab)
+        4. Attraction types - REMOVED (duplicates Overview tab charts)
         5. Map links (integrated in city content)
-        6. Cities panel (geographic clustering)
+        6. Cities panel (geographic clustering) - Now in Cities tab
         7. Currency conversion (handled via JS, data injected in merged_data)
 
         Returns:
             HTML string with all bash feature sections
         """
-        if self.project_type != "itinerary" or not self.merged_data.get("days"):
-            # Bash features only apply to itinerary projects
-            return ""
-
-        # Root cause fix: ISSUE-5 - Duplicate content across tabs
-        # Removed Feature 2 (Route Map) and Feature 6 (Cities Panel) as they're now in tabs
-        return f'''
-    <!-- Bash Features Migration (commit 95a42d3) - Deduplicated -->
-
-    <!-- Feature 1: Expandable Stats Dashboard -->
-    <div class="stats-expandable" id="stats-expandable-container"></div>
-
-    <!-- Feature 3: Budget by City -->
-    <div class="budget-city-section">
-      <h2>Budget by City</h2>
-      <div id="budget-by-city-container"></div>
-    </div>
-
-    <!-- Feature 4: Attraction Types -->
-    <div class="attraction-types-section">
-      <h2>Attraction Types</h2>
-      <div class="attraction-type-grid" id="attraction-types-grid-container"></div>
-    </div>
-'''
+        # Root cause fix: ISSUE-5 - Duplicate content at bottom of tabs
+        # User reported "每个tab尾部内容一模一样" (Each tab has identical content at bottom)
+        # Problem: bash_features_html rendered sections AFTER tabs that duplicate tab content
+        # Solution: Return empty string - all features now integrated into tabs
+        return ""
 
     def _generate_bash_javascript(self) -> str:
         """
@@ -743,7 +724,10 @@ class TravelPlanHTMLGenerator:
 
     function convertCurrencyBash(amount) {
       if (!amount || isNaN(amount)) return '0.00';
-      return (amount / CURRENCY_CONFIG_BASH.exchange_rate).toFixed(2);
+      // Root cause fix: ISSUE-2 - Currency conversion formula bug
+      // API returns exchange_rate < 1 (e.g., 0.122 for CNY to EUR)
+      // Must multiply (not divide) to convert: 19162 CNY * 0.122 = €2,337
+      return (amount * CURRENCY_CONFIG_BASH.exchange_rate).toFixed(2);
     }
 
     function toEURBash(cny) {
@@ -1038,13 +1022,13 @@ class TravelPlanHTMLGenerator:
 
     // Initialize all bash features (deduplicated - removed route/cities functions)
     function initBashFeatures() {
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {
-        renderStatsDashboardBash();
-        // renderRouteKanbanBash(); - Now in Timeline tab
-        renderBudgetByCityBash();
-        renderAttractionTypesBash();
-        // renderCitiesGeographicBash(); - Now in Cities tab
-      }
+      // Root cause fix: ISSUE-5 - Remove duplicate bash feature rendering
+      // All features now integrated into tabs, no separate sections needed
+      // renderStatsDashboardBash(); - Duplicates Overview tab stats
+      // renderBudgetByCityBash(); - Duplicates Budget tab content
+      // renderAttractionTypesBash(); - Duplicates Overview tab charts
+      // renderRouteKanbanBash(); - Now in Timeline tab
+      // renderCitiesGeographicBash(); - Now in Cities tab
     }
 '''
 
@@ -1658,6 +1642,73 @@ class TravelPlanHTMLGenerator:
         right: -100vw;
       }}
     }}
+
+    /* Root cause fix: ISSUE-4 - Print CSS rules for proper PDF/print output */
+    @media print {{
+      @page {{
+        margin: 2cm;
+        size: A4;
+      }}
+
+      body {{
+        background: white !important;
+        min-height: auto;
+      }}
+
+      .container {{
+        max-width: 100%;
+        padding: 0;
+      }}
+
+      /* Hide interactive elements */
+      .no-print,
+      .drawer,
+      .detail-panel,
+      button,
+      .tabs {{
+        display: none !important;
+      }}
+
+      /* Remove viewport heights for print */
+      .tab-content {{
+        height: auto !important;
+        overflow: visible !important;
+      }}
+
+      /* Show all tab content for print */
+      .tab-content {{
+        display: block !important;
+        page-break-after: always;
+      }}
+
+      /* Page break controls */
+      header {{
+        page-break-after: avoid;
+      }}
+
+      .stats-grid,
+      .charts-grid,
+      .accordion,
+      .card {{
+        page-break-inside: avoid;
+      }}
+
+      h1, h2, h3 {{
+        page-break-after: avoid;
+      }}
+
+      /* Ensure charts print properly */
+      canvas {{
+        max-width: 100%;
+        height: auto !important;
+      }}
+
+      /* Footer on last page */
+      footer {{
+        page-break-before: auto;
+        margin-top: 2rem;
+      }}
+    }}
   </style>
 </head>
 <body>
@@ -1715,7 +1766,12 @@ class TravelPlanHTMLGenerator:
 
   <script>
     const PLAN_DATA = {merged_json};
-    const PROJECT_TYPE = "{self.project_type}";
+    // Root cause fix: ISSUE-3 - PROJECT_TYPE hardcoded via f-string interpolation
+    // Must read dynamically from embedded data after PLAN_DATA is defined
+    // Root cause fix: ISSUE-3 - Normalize trip_type to use hyphens for consistency
+    // Data uses "bucket_list" (underscore) but code expects "bucket-list" (hyphen)
+    const rawType = PLAN_DATA.trip_summary?.trip_type || "itinerary";
+    const PROJECT_TYPE = rawType.replace(/_/g, '-');
 
     const WARM_COLORS = [
       '#D4AF37', '#8B7355', '#D4A574', '#B5695F', '#8FAF7A',
@@ -2422,7 +2478,10 @@ class TravelPlanHTMLGenerator:
               type = type.toString().trim().toLowerCase();
               if (type === '') type = 'general';
             }}
-            attractionTypes[type] = (attractionTypes[type] || 0) + 1;
+            // QA-2 fix: Extract category from compound strings before aggregation
+            // This groups "Buddhist Pagoda / Temple / UNESCO..." → "temple"
+            const category = extractCategory(type);
+            attractionTypes[category] = (attractionTypes[category] || 0) + 1;
           }});
         }}
       }});
@@ -2578,7 +2637,10 @@ class TravelPlanHTMLGenerator:
               type = type.toString().trim().toLowerCase();
               if (type === '') type = 'general';
             }}
-            attractionTypes[type] = (attractionTypes[type] || 0) + 1;
+            // QA-2 fix: Extract category from compound strings before aggregation
+            // This groups "Buddhist Pagoda / Temple / UNESCO..." → "temple"
+            const category = extractCategory(type);
+            attractionTypes[category] = (attractionTypes[category] || 0) + 1;
           }});
         }}
       }});

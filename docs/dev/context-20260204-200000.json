@@ -1,0 +1,107 @@
+{
+  "request_id": "dev-20260204-200000",
+  "timestamp": "2026-02-04T20:00:00Z",
+  "requirement": {
+    "original": "系统性修复为什么你不用subagent查询，这是第五次了",
+    "clarified": "Fix orchestrator architectural violation: Orchestrator is directly using MCP research tools (gaode-maps, rednote, google-maps) instead of delegating to subagents. This is the 5th occurrence and represents a systemic architecture violation. Need to add explicit prohibition similar to Write/Edit prohibition implemented in dev-20260204-141257.",
+    "what": "Add orchestrator prohibition against using research MCP tools directly",
+    "why": "Orchestrator violated architecture by using gaode-maps/rednote/google-maps directly for domain research. This bypasses specialist subagents who should perform research using these tools. Similar to Write/Edit prohibition - orchestrator coordinates, subagents execute research.",
+    "where": [
+      "/root/.claude/CLAUDE.md (Orchestrator Behavior Constraints section)",
+      "/root/travel-planner/.claude/commands/plan.md (workflow reminders if needed)"
+    ],
+    "scope": {
+      "included": [
+        "Add explicit prohibition: Orchestrator CANNOT use gaode-maps, rednote, google-maps MCP tools",
+        "Add to 'Prohibited Tools' section in CLAUDE.md",
+        "Update delegation examples to show MCP tools used by subagents only",
+        "Add enforcement rule: If orchestrator needs location/POI/review data, delegate to appropriate subagent",
+        "List all prohibited research MCP tools explicitly"
+      ],
+      "excluded": [
+        "Not modifying subagent behavior (they should continue using these tools)",
+        "Not prohibiting WebSearch (orchestrator may still use for quick fact-checking)",
+        "Not changing existing delegation examples (they already show correct pattern)",
+        "Not modifying plan.md unless specific workflow reminders needed"
+      ]
+    },
+    "success_criteria": [
+      "CLAUDE.md explicitly lists gaode-maps, rednote, google-maps in Prohibited Tools section",
+      "CLAUDE.md explains WHY orchestrator cannot use research MCP tools (delegation principle)",
+      "Enforcement section includes decision tree: 'Need POI/location data? → Delegate to subagent'",
+      "Examples clearly show subagents using MCP tools, orchestrator using Task tool",
+      "Documentation prevents future violations of this pattern"
+    ],
+    "constraints": [
+      "Must maintain existing Write/Edit/NotebookEdit prohibitions",
+      "Must not break existing delegation examples",
+      "Must align with existing orchestrator architecture principles",
+      "Keep instructions concise and actionable"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Orchestrator directly used gaode-maps Skill to query restaurant-to-station distance instead of delegating to transportation-agent",
+    "root_cause": "No explicit prohibition against orchestrator using research MCP tools (gaode-maps, rednote, google-maps). CLAUDE.md only prohibits Write/Edit/NotebookEdit but doesn't prohibit research tools.",
+    "root_cause_evidence": {
+      "current_claude_md": "Lines 142-147 list only Write/Edit/NotebookEdit as prohibited. Lines 157-162 list allowed tools but don't explicitly exclude research MCP tools.",
+      "examples_show_wrong_pattern": "Line 238 shows WRONG pattern: 'Uses gaode-maps directly' but this is only in example, not in prohibition list",
+      "missing_explicit_rule": "No rule saying 'Orchestrator CANNOT use gaode-maps/rednote/google-maps'"
+    },
+    "why_introduced": "Previous architectural fix (dev-20260204-141257) focused on Write/Edit prohibition for file operations. MCP tool prohibition wasn't considered because focus was on file modification, not research delegation.",
+    "why_problematic": "When orchestrator uses research MCP tools directly: (1) Bypasses specialist subagent expertise, (2) Violates coordination vs execution separation, (3) Results may lack domain context that specialist would apply, (4) Creates inconsistent architecture (sometimes delegate, sometimes do directly)",
+    "timeline": "Violation occurred during Day 3 review when orchestrator used gaode-maps Skill directly to calculate restaurant-to-station distance instead of delegating to transportation-agent",
+    "affected_files": [
+      "/root/.claude/CLAUDE.md (missing prohibition)",
+      "Conversation history (5 instances of direct MCP tool usage)"
+    ]
+  },
+  "context": {
+    "codebase_state": "4 uncommitted files, working on master branch",
+    "recent_commits": [
+      "d87204a - checkpoint: Auto-save at 2026-02-04 14:16:16",
+      "41f1017 - checkpoint: Auto-save at 2026-02-04 12:31:18"
+    ],
+    "current_architecture": {
+      "orchestrator_role": "Coordinate subagents, present information, NEVER directly execute research or modifications",
+      "subagent_role": "Execute specialized tasks including domain research using MCP tools",
+      "prohibited_tools_current": ["Write", "Edit", "NotebookEdit"],
+      "prohibited_tools_needed": ["Write", "Edit", "NotebookEdit", "gaode-maps", "rednote", "google-maps", "plus any MCP research tools"],
+      "allowed_tools": ["Read", "Task", "TodoWrite", "Bash", "Skill", "WebSearch (for quick facts only)"]
+    },
+    "file_contents": {
+      "claude_md_lines_138_163": "Current Orchestrator Behavior Constraints section with Write/Edit/NotebookEdit prohibitions and allowed tools list",
+      "claude_md_lines_188_270": "Delegation examples showing correct pattern (subagents use gaode-maps, orchestrator uses Task tool) but prohibition not in main rules section"
+    },
+    "research_mcp_tools": {
+      "gaode_maps": "Chinese maps, POI search, routing - used by transportation/meals/attractions/accommodation/shopping agents",
+      "rednote": "Xiaohongshu reviews - used by meals/entertainment/shopping agents",
+      "google_maps": "International maps, POI search - used by same agents for non-China locations"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add MCP research tools to Prohibited Tools section in CLAUDE.md. Mirror the Write/Edit prohibition pattern: explicit prohibition + explanation of why + enforcement decision tree. Update allowed tools section to clarify WebSearch is allowed for quick facts but domain research must be delegated.",
+    "implementation_steps": [
+      "1. Read current CLAUDE.md Orchestrator Behavior Constraints section (lines 138-310)",
+      "2. Add gaode-maps, rednote, google-maps to Prohibited Tools list (after NotebookEdit)",
+      "3. Add explanation: 'Orchestrator NEVER uses research MCP tools - domain research is delegated to specialists'",
+      "4. Update 'Why This Restriction Exists' to include research delegation principle",
+      "5. Update 'Orchestrator CAN Use These Tools' to clarify WebSearch usage (quick facts only, not domain research)",
+      "6. Add to Enforcement section: Decision tree for 'Need POI/location/review data? → Delegate to appropriate subagent'",
+      "7. Verify delegation examples (lines 188-270) already show correct pattern",
+      "8. Test: Read updated section and verify all research MCP tools explicitly prohibited"
+    ],
+    "files_to_modify": [
+      "/root/.claude/CLAUDE.md (Orchestrator Behavior Constraints section, lines 138-310)"
+    ],
+    "validation_approach": "QA will verify: (1) gaode-maps/rednote/google-maps explicitly in Prohibited Tools, (2) Explanation of why research must be delegated, (3) Enforcement decision tree includes research delegation, (4) Examples remain correct, (5) No regression in Write/Edit prohibitions"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": "N/A (documentation only)",
+    "use_source_venv": "N/A (documentation only)",
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "clear_architectural_boundaries": "Orchestrator vs subagent research responsibilities must be crystal clear",
+    "actionable_examples": "Existing examples already show correct pattern, no new examples needed"
+  }
+}
