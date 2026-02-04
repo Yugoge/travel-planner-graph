@@ -1181,6 +1181,8 @@ You: [Read meals.json] "Yes, {restaurant_name} on Day {N} offers vegetarian opti
 **⚠️ CRITICAL - MANDATORY AGENT DELEGATION**:
 This is THE MOST IMPORTANT step. Orchestrator MUST delegate research to specialist agents.
 
+**ARCHITECTURAL PRINCIPLE**: Orchestrator coordinates, does NOT execute. All domain research and file modifications MUST be performed by specialist subagents via Task tool. Working files in `data/{destination-slug}/*.json` are specialist domains.
+
 **For each domain in refinement_context.domains**:
 
 **Re-invocation pattern**:
