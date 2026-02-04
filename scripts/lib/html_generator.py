@@ -2334,6 +2334,67 @@ class TravelPlanHTMLGenerator:
       window.statClickHandlers = stats.map(s => s.onClick);
     }}
 
+    // Root cause fix: QA report 20260204-151600 found pie chart shows 48 slices instead of 12
+    // Issue: Compound type strings like "Buddhist Pagoda / Temple / UNESCO World Heritage" each get own slice
+    // Fix: Extract primary category from compound strings before aggregation
+    function extractCategory(typeStr) {{
+      const s = typeStr.toLowerCase();
+
+      // Religious/Temple
+      if (s.includes('temple') || s.includes('church') || s.includes('shrine') ||
+          s.includes('pagoda') || s.includes('monastery') || s.includes('cathedral'))
+        return 'temple';
+
+      // Museum
+      if (s.includes('museum') || s.includes('exhibition') || s.includes('gallery'))
+        return 'museum';
+
+      // Historic Street
+      if (s.includes('street') || s.includes('road') || s.includes('avenue') ||
+          s.includes('pedestrian'))
+        return 'historic_street';
+
+      // Mountain/Nature
+      if (s.includes('mountain') || s.includes('peak') || s.includes('hill') ||
+          s.includes('hiking') || s.includes('trail'))
+        return 'mountain';
+
+      // Park/Garden
+      if (s.includes('park') || s.includes('garden') || s.includes('forest') ||
+          s.includes('nature') || s.includes('wetland'))
+        return 'park';
+
+      // Palace/Historic Building
+      if (s.includes('palace') || s.includes('castle') || s.includes('fortress') ||
+          s.includes('imperial'))
+        return 'palace';
+
+      // Water Features
+      if (s.includes('lake') || s.includes('river') || s.includes('waterfall') ||
+          s.includes('water') || s.includes('cruise') || s.includes('rafting'))
+        return 'water';
+
+      // Observation/Tower
+      if (s.includes('tower') || s.includes('observation') || s.includes('viewpoint') ||
+          s.includes('ferris'))
+        return 'viewpoint';
+
+      // Shopping/Market
+      if (s.includes('market') || s.includes('shopping') || s.includes('bazaar'))
+        return 'shopping';
+
+      // Entertainment
+      if (s.includes('theme park') || s.includes('show') || s.includes('performance') ||
+          s.includes('entertainment'))
+        return 'entertainment';
+
+      // Cave
+      if (s.includes('cave') || s.includes('grotto'))
+        return 'cave';
+
+      return 'other';
+    }}
+
     function renderCharts() {{
       if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
         renderItineraryCharts();

@@ -1,0 +1,165 @@
+{
+  "request_id": "qa-total-budget-display-20260204",
+  "timestamp": "2026-02-04T19:50:00Z",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "CRITICAL: Total budget displays €157,065.57 instead of correct €2,337.76 (6,619% overstatement). Root cause: Exchange rate formula uses division instead of multiplication when API returns CNY→EUR rate (0.122).",
+    "success_criteria_results": [
+      {
+        "criterion": "Total budget displays correct EUR amount",
+        "verification_method": "Manual calculation: Sum all daily budgets (19,162 CNY) × 0.122 EUR/CNY = €2,337.76. Checked displayed value in HTML.",
+        "result": "fail",
+        "details": "Expected: €2,337.76 (or €2,456.67 if using 7.8 rate). Displayed: €157,065.57. Error magnitude: 6,619% overstatement.",
+        "evidence": [
+          "budget.json total_cny: 19,162",
+          "budget.json exchange_rate: 7.8 CNY/EUR → €2,456.67",
+          "API exchange_rate: 0.122 EUR/CNY → €2,337.76 (correct)",
+          "HTML currency_config.exchange_rate: 0.122",
+          "HTML displayed: €157,065.57 (WRONG)"
+        ]
+      },
+      {
+        "criterion": "Currency conversion uses correct exchange rate",
+        "verification_method": "Traced exchange rate from API (0.122) through html_generator.py to HTML output",
+        "result": "fail",
+        "details": "Exchange rate value (0.122) is correct but used incorrectly in formula. Code divides when it should multiply.",
+        "evidence": [
+          "fetch-exchange-rate.sh returns: 0.122 (1 CNY = 0.122 EUR) ✓",
+          "html_generator.py:150 correctly receives 0.122 ✓",
+          "html_generator.py:2472 uses division: amount / 0.122 ✗",
+          "Should use multiplication: amount × 0.122 for CNY→EUR"
+        ]
+      },
+      {
+        "criterion": "Budget calculations match budget.json values",
+        "verification_method": "Compared PLAN_DATA.days budget totals with budget.json",
+        "result": "pass",
+        "details": "Sum of daily budgets correctly calculated as 19,162 CNY",
+        "evidence": [
+          "PLAN_DATA.days total: 19,162 CNY ✓",
+          "budget.json trip_total_cny: 19,162 ✓",
+          "JavaScript calculation: PLAN_DATA.days.reduce() = 19,162 ✓"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": false,
+      "confidence": "high",
+      "rationale": "Root cause is EXCHANGE RATE FORMULA MISMATCH between API response format and code expectations. API returns 'CNY→EUR' rate (1 CNY = 0.122 EUR) but code formula assumes 'EUR→CNY' rate (1 EUR = X CNY) and uses division. When rate < 1, division produces wildly incorrect results."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Exchange rate API call",
+        "result": "pass",
+        "details": "fetch-exchange-rate.sh correctly returns 0.122 for CNY→EUR"
+      },
+      {
+        "test": "Currency config injection",
+        "result": "pass",
+        "details": "html_generator.py correctly injects exchange_rate: 0.122 into PLAN_DATA"
+      },
+      {
+        "test": "Budget sum calculation",
+        "result": "pass",
+        "details": "JavaScript correctly sums daily budgets to 19,162 CNY"
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "critical",
+        "category": "semantic-logic-error",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py (embedded in HTML template, line 2470-2472)",
+        "issue": "Currency conversion formula uses division for all exchange rates, but this only works for 'EUR→CNY' rates (e.g., 7.8). When API returns 'CNY→EUR' rate (0.122), formula produces incorrect results.",
+        "recommendation": "Add rate_type metadata to distinguish conversion direction, OR always invert API response to match formula expectation (1 EUR = X CNY)"
+      },
+      {
+        "severity": "critical",
+        "category": "missing-validation",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:149-151",
+        "issue": "No validation that returned exchange_rate makes semantic sense. Rate of 0.122 should trigger warning if formula expects rates > 1.",
+        "recommendation": "Add sanity check: if exchange_rate < 1 and source='CNY', display='EUR', warn about potential formula mismatch"
+      },
+      {
+        "severity": "major",
+        "category": "inconsistent-data-model",
+        "location": "budget.json vs HTML currency_config",
+        "issue": "budget.json uses 'cny_to_eur: 7.8' (meaning 1 EUR = 7.8 CNY), but API returns inverse (1 CNY = 0.122 EUR). Inconsistent rate semantics.",
+        "recommendation": "Standardize on single rate representation: always store '1 EUR = X CNY' or always store '1 CNY = X EUR', never mix"
+      },
+      {
+        "severity": "major",
+        "category": "missing-unit-tests",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py",
+        "issue": "No unit tests for convertCurrencyBash() function with both rate types (>1 and <1)",
+        "recommendation": "Add test cases: (19162 CNY, rate=7.8) → €2456.67 AND (19162 CNY, rate=0.122) → €2337.76"
+      }
+    ],
+    "permissions_verification": {
+      "status": "n/a",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "html_generator.py:2470-2472 (convertCurrencyBash embedded in HTML)",
+        "issue": "Formula uses division (amount / rate) which only works for EUR→CNY rates (>1). API returns CNY→EUR rate (0.122), causing 6,619% error.",
+        "recommendation": "Option 1: Invert API response in html_generator.py line 177: exchange_rate = 1.0 / self._fetch_exchange_rate(). Option 2: Add rate_type field and use conditional: multiply if CNY→EUR, divide if EUR→CNY.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "html_generator.py:149",
+        "issue": "No validation that exchange_rate value matches formula expectations. Rate of 0.122 silently causes massive calculation error.",
+        "recommendation": "Add assertion: if display_currency in ['EUR', 'USD', 'GBP'] and source_currency == 'CNY': assert exchange_rate > 1, 'Rate should be EUR→CNY (e.g., 7.8), got CNY→EUR'",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "fetch-exchange-rate.sh + html_generator.py",
+        "issue": "API returns 'base→target' rate semantics, but code expects 'target→base'. Semantic mismatch not documented.",
+        "recommendation": "Document rate semantics in both files. Add comment: 'API returns 1 BASE = X TARGET, but formula expects 1 TARGET = X BASE, so invert'.",
+        "blocks_release": false
+      },
+      {
+        "severity": "major",
+        "location": "budget.json vs currency_config",
+        "issue": "budget.json 'cny_to_eur: 7.8' contradicts HTML 'exchange_rate: 0.122'. Same currencies, different rate direction.",
+        "recommendation": "Standardize naming: always use 'eur_per_cny' (0.122) or 'cny_per_eur' (7.8), never ambiguous 'cny_to_eur'.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 2,
+      "major_issues": 2,
+      "minor_issues": 0,
+      "total_findings": 4,
+      "release_recommendation": "reject"
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "Total budget displays correct EUR amount (displays €157,065.57 instead of €2,337.76)",
+      "Currency conversion uses correct formula (divides when should multiply)"
+    ],
+    "critical_issues": [
+      {
+        "issue": "Exchange rate formula mismatch",
+        "location": "html_generator.py:2470-2472 (convertCurrencyBash in HTML template)",
+        "explanation": "Code assumes exchange_rate means '1 EUR = X CNY' and uses division. But fetch-exchange-rate.sh API returns '1 CNY = X EUR' (0.122). When rate < 1, division produces catastrophically wrong results.",
+        "fix_required": "Invert API response OR change formula to multiply for rates < 1"
+      },
+      {
+        "issue": "No validation of exchange rate semantics",
+        "location": "html_generator.py:149-151",
+        "explanation": "Code accepts any positive float as exchange_rate without validating it makes sense for the formula. Rate of 0.122 should trigger error if formula expects > 1.",
+        "fix_required": "Add validation: if CNY→EUR and rate < 1, invert it OR throw error"
+      }
+    ],
+    "recommended_approach": "Fix exchange rate handling in html_generator.py:\n\n1. IMMEDIATE FIX (html_generator.py:177):\n   # API returns 1 BASE = X TARGET (e.g., 1 CNY = 0.122 EUR)\n   # But formula expects 1 TARGET = X BASE (e.g., 1 EUR = 7.8 CNY)\n   # So invert the rate\n   api_rate = self._fetch_exchange_rate(source_currency, display_currency)\n   exchange_rate = 1.0 / api_rate if api_rate > 0 else 7.8\n\n2. ADD VALIDATION (html_generator.py:150):\n   if exchange_rate < 1:\n       raise ValueError(f\"Exchange rate {exchange_rate} invalid: formula expects EUR→CNY rate (>1), got CNY→EUR\")\n\n3. UPDATE COMMENTS (html_generator.py:2470):\n   # Converts CNY to display currency\n   # exchange_rate format: 1 EUR = X CNY (e.g., 7.8)\n   # Formula: CNY_amount ÷ rate = EUR_amount\n\n4. ADD UNIT TEST:\n   Test convertCurrencyBash(19162, rate=7.8) == '2456.67'\n   Test that rate=0.122 either gets inverted or throws error",
+    "additional_context": "The bug was introduced when exchange rate API integration was added (commit 3d5971b mentioned in fetch-exchange-rate.sh). API response format (1 CNY = X EUR) differs from budget.json format (1 EUR = X CNY). No tests caught this because both formats produce valid-looking numbers, just with opposite semantics.\n\nCorrect values:\n- budget.json: 1 EUR = 7.8 CNY → 19,162 CNY ÷ 7.8 = €2,456.67 ✓\n- API: 1 CNY = 0.122 EUR → 19,162 CNY × 0.122 = €2,337.76 ✓\n- Current code: 19,162 CNY ÷ 0.122 = €157,065.57 ✗\n\nThe 0.122 vs 7.8 difference (1/8.2 vs 7.8) suggests API rate is slightly outdated or includes fees, but more importantly, it's in the WRONG direction for the formula."
+  }
+}
