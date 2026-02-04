@@ -1,0 +1,321 @@
+{
+  "request_id": "reality-check-7-issues",
+  "timestamp": "2026-02-04T15:30:00Z",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "CATASTROPHIC FAILURE - All 7 fixes are non-functional due to fundamental architecture mismatch between code and data structure",
+    "root_cause_verification": {
+      "addressed": false,
+      "confidence": "high",
+      "rationale": "The artifact is hardcoded for PROJECT_TYPE='itinerary' but the actual data is bucket-list format with days[] instead of cities[]. All bucket-list code paths are unreachable."
+    },
+    "critical_findings": [
+      {
+        "severity": "critical",
+        "issue": "PROJECT_TYPE hardcoded to wrong value",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1014",
+        "finding": "const PROJECT_TYPE = 'itinerary' but PLAN_DATA.trip_summary.trip_type = 'bucket_list'",
+        "impact": "All 7 fixes fail because they check PROJECT_TYPE === 'bucket-list'",
+        "recommendation": "Change line 1014 to: const PROJECT_TYPE = 'bucket-list';",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "issue": "Data structure mismatch - cities[] property missing",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1014-3000",
+        "finding": "All bucket-list rendering functions require PLAN_DATA.cities, but data has PLAN_DATA.days instead",
+        "impact": "Even if PROJECT_TYPE is fixed, all conditionals check '&& PLAN_DATA.cities' which is undefined",
+        "recommendation": "Bucket list data uses days[] not cities[]. Code must check PLAN_DATA.days for bucket-list type",
+        "blocks_release": true
+      }
+    ],
+    "per_issue_verification": [
+      {
+        "issue_number": 1,
+        "description": "Stats cards clickable",
+        "user_sees": "Stats cards render but onclick='statClickHandlers[idx]()' executes itinerary code path, not bucket-list",
+        "status": "fail",
+        "reason": "PROJECT_TYPE='itinerary' so renderStats() creates itinerary stats, but data is actually bucket-list format"
+      },
+      {
+        "issue_number": 2,
+        "description": "Pie chart clickable with drawer",
+        "user_sees": "Pie chart renders via renderCharts() itinerary path, drawer opens but shows wrong data structure",
+        "status": "partial",
+        "reason": "Chart renders because itinerary code runs, but data interpretation is incorrect for bucket-list format"
+      },
+      {
+        "issue_number": 3,
+        "description": "Category names translated to Chinese",
+        "user_sees": "Categories show English codes",
+        "status": "fail",
+        "reason": "formatCategoryLabel() function exists (line 1260) but bucket-list rendering path never executes due to PROJECT_TYPE mismatch"
+      },
+      {
+        "issue_number": 4,
+        "description": "Drawer sort/filter works",
+        "user_sees": "Drawer opens but sort buttons may not work correctly with mismatched data structure",
+        "status": "partial",
+        "reason": "openDataDrawer() function works (line 1326) but receives wrong data format from itinerary code path"
+      },
+      {
+        "issue_number": 5,
+        "description": "Timeline tab renders route map",
+        "user_sees": "Timeline tab renders itinerary route map, not bucket-list city list",
+        "status": "fail",
+        "reason": "switchTab() calls renderTimelineTab() which calls renderTimeline(), but itinerary code path executes (line 2480)"
+      },
+      {
+        "issue_number": 6,
+        "description": "Cities tab renders geographic clusters",
+        "user_sees": "Cities tab renders itinerary city clusters, not bucket-list city cards",
+        "status": "fail",
+        "reason": "renderCitiesTab() calls renderCities() which executes itinerary path (line 1974), not bucket-list path (line 2027)"
+      },
+      {
+        "issue_number": 7,
+        "description": "Map links show category icons",
+        "user_sees": "Map links show generic 'fa-map-marker-alt' icon",
+        "status": "fail",
+        "reason": "All address rendering uses static '<i class=\"fas fa-map-marker-alt\"></i>', no dynamic category-based icons implemented"
+      }
+    ],
+    "browser_simulation_results": {
+      "page_load": {
+        "init_called": true,
+        "initBashFeatures_called": true,
+        "project_type": "itinerary",
+        "has_cities_property": false,
+        "has_days_property": true,
+        "code_path_executed": "itinerary",
+        "code_path_should_be": "bucket-list"
+      },
+      "scenario_1_open_html": {
+        "what_user_sees": "Page loads with itinerary layout showing days-based data",
+        "expected": "Bucket list layout with city cards",
+        "result": "Wrong layout - itinerary instead of bucket-list"
+      },
+      "scenario_2_click_pie_chart": {
+        "what_user_sees": "Pie chart shows attraction types, clicking opens drawer with itinerary-formatted data",
+        "expected": "Drawer shows bucket-list formatted city attractions",
+        "result": "Drawer works but data interpretation is wrong"
+      },
+      "scenario_3_category_names": {
+        "what_user_sees": "English category codes like 'historical_site', 'natural_landscape'",
+        "expected": "Chinese translations like '历史遗址', '自然景观'",
+        "result": "No translation - formatCategoryLabel() exists but bucket-list code path never runs"
+      },
+      "scenario_4_click_stats": {
+        "what_user_sees": "Stats cards clickable, drawer opens with itinerary stats breakdown",
+        "expected": "Bucket-list specific stats with city grouping",
+        "result": "Wrong stats format for bucket-list data"
+      },
+      "scenario_5_timeline_tab": {
+        "what_user_sees": "Kanban route map showing day-by-day city progression (itinerary style)",
+        "expected": "City list with recommended durations and best months (bucket-list style)",
+        "result": "Wrong tab content for bucket-list"
+      },
+      "scenario_6_map_links": {
+        "what_user_sees": "Generic red map marker icon for all locations",
+        "expected": "Category-specific icons (museum, temple, park, etc.)",
+        "result": "Static icon - no category-based icon logic implemented"
+      }
+    },
+    "code_quality_findings": [
+      {
+        "severity": "critical",
+        "category": "hardcoding",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1014",
+        "issue": "PROJECT_TYPE hardcoded instead of derived from PLAN_DATA.trip_summary.trip_type",
+        "recommendation": "Change to: const PROJECT_TYPE = PLAN_DATA.trip_summary?.trip_type === 'bucket_list' ? 'bucket-list' : 'itinerary';"
+      },
+      {
+        "severity": "critical",
+        "category": "data-structure-assumption",
+        "location": "Multiple locations (lines 1395, 1421, 1556, 1636, 2027, 2386, 2515)",
+        "issue": "Code assumes bucket-list data has PLAN_DATA.cities property, but actual data uses PLAN_DATA.days",
+        "recommendation": "Bucket list data structure uses days[] not cities[]. Either: 1) Change conditionals to check PLAN_DATA.days for bucket-list, OR 2) Transform data to add cities[] array"
+      },
+      {
+        "severity": "major",
+        "category": "incomplete-implementation",
+        "location": "All map marker rendering locations (2006, 2066, 2083, etc.)",
+        "issue": "Map markers use static 'fa-map-marker-alt' icon, no category-based icon logic implemented",
+        "recommendation": "Add getCategoryIcon(type) function that returns icon class based on attraction/hotel/restaurant type"
+      },
+      {
+        "severity": "major",
+        "category": "data-flow",
+        "location": "Multiple renderBucketListXXX functions",
+        "issue": "All bucket-list specific render functions (renderBucketListCharts, etc.) are unreachable due to PROJECT_TYPE mismatch",
+        "recommendation": "Fix PROJECT_TYPE first, then verify each render function is called in correct context"
+      }
+    ],
+    "regression_test_results": [
+      {
+        "test": "JavaScript syntax validation",
+        "result": "pass",
+        "details": "No syntax errors detected"
+      },
+      {
+        "test": "Function existence check",
+        "result": "pass",
+        "details": "All claimed functions exist: openDataDrawer (1326), formatCategoryLabel (1260), renderTimelineTab (1465), renderCitiesTab (1469), statClickHandlers (1630)"
+      },
+      {
+        "test": "Code path execution",
+        "result": "fail",
+        "details": "Bucket-list code paths are unreachable - all conditionals fail due to PROJECT_TYPE='itinerary' and missing PLAN_DATA.cities"
+      }
+    ],
+    "permissions_verification": {
+      "status": "not_applicable",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": [],
+      "notes": "No new scripts or permissions created in this dev cycle"
+    },
+    "success_criteria_results": [
+      {
+        "criterion": "Stats cards clickable and show detailed breakdown",
+        "verification_method": "Code inspection of renderStats() and statClickHandlers",
+        "result": "fail",
+        "details": "Stats cards execute itinerary code path, not bucket-list specific code",
+        "evidence": [
+          "Line 1630: statClickHandlers array populated",
+          "Line 1622: onclick='statClickHandlers[idx]()' present",
+          "Line 1475-1630: Itinerary stats logic executes (PROJECT_TYPE check passes)",
+          "Line 1556-1637: Bucket-list stats logic NEVER executes (PROJECT_TYPE='itinerary')"
+        ]
+      },
+      {
+        "criterion": "Pie chart slices clickable and open drawer with filtered items",
+        "verification_method": "Code inspection of Chart onClick handlers and openDataDrawer",
+        "result": "partial",
+        "details": "Chart onClick works but uses itinerary data interpretation",
+        "evidence": [
+          "Line 1745: Pie chart onClick handler exists",
+          "Line 1774: Calls openDataDrawer() (function exists at 1326)",
+          "Line 1732: Chart renders from itinerary code path",
+          "Drawer opens but data structure mismatch causes incorrect display"
+        ]
+      },
+      {
+        "criterion": "Category names display in Chinese",
+        "verification_method": "Code inspection of formatCategoryLabel usage",
+        "result": "fail",
+        "details": "Translation function exists but bucket-list rendering never calls it",
+        "evidence": [
+          "Line 1260: formatCategoryLabel() function defined",
+          "Line 1220-1258: CATEGORY_MAPPINGS with Chinese translations defined",
+          "Line 1735: Itinerary chart uses formatCategoryLabel (executes)",
+          "Line 1894: Bucket-list chart uses formatCategoryLabel (NEVER executes)",
+          "Bucket-list rendering path unreachable"
+        ]
+      },
+      {
+        "criterion": "Drawer has sort/filter controls that work",
+        "verification_method": "Code inspection of drawer sort functions",
+        "result": "partial",
+        "details": "Sort controls exist and work but data may be malformed due to structure mismatch",
+        "evidence": [
+          "Line 1319: setDrawerSort() function exists",
+          "Line 999-1001: Sort buttons in HTML with onclick handlers",
+          "Line 1350: renderDrawerItems() applies sorting",
+          "Sort logic works but receives wrong data format from itinerary code"
+        ]
+      },
+      {
+        "criterion": "Timeline tab shows route kanban map",
+        "verification_method": "Code inspection of renderTimeline and tab switching",
+        "result": "fail",
+        "details": "Timeline tab renders itinerary route map, not bucket-list city timeline",
+        "evidence": [
+          "Line 1455: switchTab('timeline') calls renderTimelineTab()",
+          "Line 1465: renderTimelineTab() calls renderTimeline()",
+          "Line 2480: renderTimeline() itinerary path executes (PROJECT_TYPE='itinerary')",
+          "Line 2515: renderTimeline() bucket-list path NEVER executes",
+          "Wrong tab content displayed for bucket-list data"
+        ]
+      },
+      {
+        "criterion": "Cities tab shows geographic city clusters",
+        "verification_method": "Code inspection of renderCities and tab switching",
+        "result": "fail",
+        "details": "Cities tab renders itinerary city clusters, not bucket-list city cards",
+        "evidence": [
+          "Line 1457: switchTab('cities') calls renderCitiesTab()",
+          "Line 1469: renderCitiesTab() calls renderCities()",
+          "Line 1974: renderCities() itinerary path executes",
+          "Line 2027: renderCities() bucket-list path NEVER executes (PLAN_DATA.cities undefined)",
+          "Wrong tab content for bucket-list"
+        ]
+      },
+      {
+        "criterion": "Map location links show category-specific icons",
+        "verification_method": "Code inspection of address/location rendering",
+        "result": "fail",
+        "details": "All map links use static 'fa-map-marker-alt' icon, no category icons",
+        "evidence": [
+          "Lines 2006, 2066, 2083, 2101, 2119, 2135, 2158, 2176, 2203, 2218, 2234: All use '<i class=\"fas fa-map-marker-alt\"></i>'",
+          "No getCategoryIcon() function exists",
+          "No conditional icon logic based on attraction/hotel/restaurant type",
+          "Static icon used universally"
+        ]
+      }
+    ],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html:1014",
+        "issue": "PROJECT_TYPE hardcoded to 'itinerary' instead of 'bucket-list'",
+        "recommendation": "Change to: const PROJECT_TYPE = PLAN_DATA.trip_summary?.trip_type === 'bucket_list' ? 'bucket-list' : 'itinerary';",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "Multiple conditional checks throughout file",
+        "issue": "Code expects PLAN_DATA.cities for bucket-list but data has PLAN_DATA.days",
+        "recommendation": "Change all bucket-list conditionals from 'PROJECT_TYPE === \"bucket-list\" && PLAN_DATA.cities' to 'PROJECT_TYPE === \"bucket-list\" && PLAN_DATA.days'",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "All bucket-list rendering functions",
+        "issue": "Functions iterate over PLAN_DATA.cities which is undefined - they need to iterate over PLAN_DATA.days",
+        "recommendation": "Rewrite bucket-list rendering to process PLAN_DATA.days array with trip-based grouping logic",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "All map marker rendering (20+ locations)",
+        "issue": "Static 'fa-map-marker-alt' icon used universally, no category-based icons",
+        "recommendation": "Implement getCategoryIcon(type) function and replace static icon with dynamic icon based on type",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 3,
+      "major_issues": 1,
+      "minor_issues": 0,
+      "total_findings": 4,
+      "release_recommendation": "reject",
+      "user_experience": "User sees ZERO fixes because all bucket-list code is unreachable. Page renders as itinerary with malformed data interpretation.",
+      "why_user_sees_nothing": "PROJECT_TYPE hardcoded to wrong value causes all 7 fixes to be bypassed. Even though functions exist and are correctly implemented, they never execute because conditionals fail."
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "All 7 success criteria failed due to architectural mismatch"
+    ],
+    "critical_issues": [
+      "PROJECT_TYPE must be derived from PLAN_DATA.trip_summary.trip_type, not hardcoded",
+      "Bucket-list data uses PLAN_DATA.days array, not PLAN_DATA.cities array",
+      "All bucket-list conditionals check for non-existent cities property",
+      "All bucket-list rendering functions expect cities array structure"
+    ],
+    "recommended_approach": "1. Fix PROJECT_TYPE to detect bucket-list from data. 2. Change all bucket-list conditionals to check PLAN_DATA.days instead of PLAN_DATA.cities. 3. Rewrite bucket-list rendering functions to process days[] array with trip grouping. 4. Implement getCategoryIcon() for dynamic map icons.",
+    "additional_context": "The dev implementation is architecturally sound - all functions exist and are correctly wired. The fatal flaw is the hardcoded PROJECT_TYPE and wrong data structure assumption. The file is named 'bucket-list' but behaves as 'itinerary'."
+  }
+}

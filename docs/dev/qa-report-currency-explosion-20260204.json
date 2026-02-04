@@ -1,0 +1,260 @@
+{
+  "request_id": "currency-explosion-bug-20260204",
+  "timestamp": "2026-02-04T15:45:00Z",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "CRITICAL BUG CONFIRMED: Currency explosion caused by missing EUR conversion in displayed values. CNY amounts shown with € symbol without conversion, making costs appear 7.8x higher than actual.",
+
+    "bug_analysis": {
+      "root_cause": "HTML template references non-existent `_eur` fields (cost_eur, ticket_price_eur, price_per_night_eur) which fall back to raw CNY values displayed with € symbol",
+      "severity": "critical",
+      "user_impact": "All prices displayed are incorrect. Example: 120 CNY meal shown as €120 instead of €15.38",
+      "explosion_factor": "7.8x (values appear 780% higher than they should be)"
+    },
+
+    "specific_findings": [
+      {
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2771",
+        "issue": "Attraction costs display CNY as EUR",
+        "code": "€${attr.cost_eur || attr.cost || 0}",
+        "problem": "attr.cost_eur is undefined, falls back to attr.cost (CNY value)",
+        "example": "Day 1 Saint Sophia Cathedral: cost=3 CNY → displays €3 (should be €0.38)",
+        "severity": "critical"
+      },
+      {
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2789",
+        "issue": "Accommodation costs display incorrect values",
+        "code": "€${day.accommodation.cost_eur || 0}",
+        "problem": "cost_eur undefined → displays €0 even when cost exists in CNY",
+        "example": "Day 1 accommodation: cost=350 CNY → displays €0 (should be €44.87)",
+        "severity": "critical"
+      },
+      {
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2807",
+        "issue": "Meal costs display CNY as EUR",
+        "code": "€${day[meal].cost_eur || day[meal].cost || 0}",
+        "problem": "cost_eur undefined, falls back to cost (CNY)",
+        "example": "Day 1 lunch: cost=120 CNY → displays €120 (should be €15.38)",
+        "severity": "critical"
+      },
+      {
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2864",
+        "issue": "Attraction ticket prices missing entirely",
+        "code": "${attr.ticket_price_eur ? ... : ''}",
+        "problem": "ticket_price_eur undefined → no price displayed even when ticket_price_cny exists",
+        "example": "Attractions with ticket prices show no cost information",
+        "severity": "major"
+      },
+      {
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2882",
+        "issue": "Hotel prices per night missing entirely",
+        "code": "if (hotel.price_per_night_eur)",
+        "problem": "price_per_night_eur undefined → no price displayed",
+        "example": "Hotels show no price information even when price exists",
+        "severity": "major"
+      }
+    ],
+
+    "data_structure_analysis": {
+      "actual_fields_in_data": [
+        "cost (CNY value)",
+        "cost_cny (CNY value)",
+        "ticket_price_cny (for attractions)",
+        "price_per_night_cny (for hotels)"
+      ],
+      "missing_fields_referenced_by_template": [
+        "cost_eur",
+        "ticket_price_eur",
+        "price_per_night_eur",
+        "estimated_budget_eur (for cities)"
+      ],
+      "note": "Only budget.json has pre-calculated total_eur fields. Individual items lack EUR conversions."
+    },
+
+    "conversion_function_analysis": {
+      "correct_function": {
+        "name": "convertCurrencyBash / toEURBash",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:746",
+        "formula": "amount / CURRENCY_CONFIG_BASH.exchange_rate",
+        "example": "120 CNY / 7.8 = €15.38",
+        "status": "correct",
+        "usage": "Used in dashboard widgets and data drawers (lines 1507-1529)"
+      },
+      "incorrect_function": {
+        "name": "convertCurrency / toEUR",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:3250",
+        "formula": "amount * CURRENCY_CONFIG.exchange_rate",
+        "example": "120 CNY * 7.8 = €936",
+        "status": "WRONG FORMULA - multiplies instead of divides",
+        "usage": "Defined but appears unused (secondary bug)",
+        "explosion_factor": "60.8x if this function were used"
+      }
+    },
+
+    "examples_of_incorrect_display": {
+      "day_1_breakfast": {
+        "name": "老鼎丰 / Lao Ding Feng",
+        "cost_cny": 35,
+        "displayed_as": "€35",
+        "should_display": "€4.49",
+        "error_ratio": "7.8x too high"
+      },
+      "day_1_lunch": {
+        "name": "索菲娅俄式西餐厅 / Sofiya Russian Restaurant",
+        "cost_cny": 120,
+        "displayed_as": "€120",
+        "should_display": "€15.38",
+        "error_ratio": "7.8x too high"
+      },
+      "day_1_saint_sophia_cathedral": {
+        "name": "圣·索菲亚教堂 / Saint Sophia Cathedral",
+        "cost_cny": 3,
+        "displayed_as": "€3",
+        "should_display": "€0.38",
+        "error_ratio": "7.8x too high"
+      },
+      "day_1_accommodation": {
+        "name": "Hotel",
+        "cost_cny": 350,
+        "displayed_as": "€0",
+        "should_display": "€44.87",
+        "error_type": "missing entirely (cost_eur undefined)"
+      },
+      "total_budget": {
+        "description": "13-day trip total",
+        "budget_cny": 18096,
+        "correct_eur": 2320.00,
+        "note": "Dashboard uses toEURBash() correctly, but individual item displays are wrong"
+      }
+    },
+
+    "correct_behavior_found": {
+      "dashboard_widgets": {
+        "location": "Lines 1507-1529",
+        "status": "CORRECT",
+        "function_used": "toEURBash()",
+        "example": "Total Budget widget correctly shows converted EUR values"
+      },
+      "data_drawers": {
+        "location": "Lines 1510, 1529",
+        "status": "CORRECT",
+        "function_used": "toEURBash()",
+        "formatValue": "Uses toEURBash() for all displayed amounts"
+      },
+      "budget_json": {
+        "location": "/root/travel-planner/data/beijing-exchange-bucket-list-20260202-232405/budget.json",
+        "status": "CORRECT",
+        "total_cny": 1640,
+        "total_eur": 210.26,
+        "calculation": "1640 / 7.8 = 210.26 ✓"
+      }
+    },
+
+    "root_cause_verification": {
+      "addressed": false,
+      "confidence": "high",
+      "rationale": "Bug is NOT fixed. Individual item displays throughout the HTML use non-existent _eur fields, falling back to CNY values shown with € symbol. This creates 7.8x price inflation across all displayed items."
+    },
+
+    "regression_test_results": [],
+
+    "code_quality_findings": [
+      {
+        "severity": "critical",
+        "category": "data-integrity",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2771,2789,2807,2864,2882",
+        "issue": "Template assumes _eur fields exist in data, but they are never populated",
+        "recommendation": "Either: (1) Add conversion step in data merging to populate _eur fields, OR (2) Update template to call toEURBash() on CNY values"
+      },
+      {
+        "severity": "critical",
+        "category": "conversion-formula",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:3250",
+        "issue": "convertCurrency() multiplies by exchange rate instead of dividing",
+        "recommendation": "Change line 3250 from 'amount * CURRENCY_CONFIG.exchange_rate' to 'amount / CURRENCY_CONFIG.exchange_rate'"
+      },
+      {
+        "severity": "major",
+        "category": "inconsistent-naming",
+        "location": "Multiple locations",
+        "issue": "Two sets of conversion functions with similar names but different implementations",
+        "recommendation": "Consolidate to single set of conversion functions (toEURBash is correct, remove toEUR)"
+      }
+    ],
+
+    "permissions_verification": {
+      "status": "not_applicable",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2771",
+        "issue": "Attraction costs display CNY values with € symbol without conversion",
+        "recommendation": "Change to: €${toEURBash(attr.cost || 0)}",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2789",
+        "issue": "Accommodation costs display as €0 or wrong values",
+        "recommendation": "Change to: €${toEURBash(day.accommodation.cost || 0)}",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2807",
+        "issue": "Meal costs display CNY values with € symbol without conversion",
+        "recommendation": "Change to: €${toEURBash(day[meal].cost || 0)}",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:3250",
+        "issue": "convertCurrency() uses wrong formula (multiplies instead of divides)",
+        "recommendation": "Change to: return (amount / CURRENCY_CONFIG.exchange_rate).toFixed(2);",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2864",
+        "issue": "Attraction ticket prices not displayed (ticket_price_eur undefined)",
+        "recommendation": "Use ticket_price_cny with toEURBash() conversion",
+        "blocks_release": false
+      },
+      {
+        "severity": "major",
+        "location": "/root/travel-planner/scripts/lib/html_generator.py:2882",
+        "issue": "Hotel prices per night not displayed (price_per_night_eur undefined)",
+        "recommendation": "Use price_per_night_cny with toEURBash() conversion",
+        "blocks_release": false
+      }
+    ],
+
+    "summary": {
+      "critical_issues": 4,
+      "major_issues": 2,
+      "minor_issues": 0,
+      "total_findings": 6,
+      "release_recommendation": "reject"
+    }
+  },
+
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "Currency values must display correctly converted from CNY to EUR",
+      "User should see accurate pricing information for all items"
+    ],
+    "critical_issues": [
+      "Lines 2771, 2789, 2807: CNY values displayed with € symbol (7.8x inflation)",
+      "Line 3250: convertCurrency() uses wrong formula (multiply instead of divide)",
+      "Missing _eur fields in data that template expects to exist"
+    ],
+    "recommended_approach": "FIX OPTION 1 (Template-side conversion): Replace all ${...cost_eur || ...cost || 0} patterns with ${toEURBash(...cost || 0)} to convert CNY values on display. FIX OPTION 2 (Data-side conversion): Add conversion step in merge_itinerary_data() to populate _eur fields for all items. Recommended: OPTION 1 (simpler, uses existing toEURBash function).",
+    "additional_context": "Dashboard widgets and data drawers already work correctly using toEURBash(). Only individual item cards in day sections have the bug. The correct conversion function (toEURBash) exists and works - it just needs to be used in more places."
+  }
+}
