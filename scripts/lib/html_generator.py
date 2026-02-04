@@ -2172,13 +2172,17 @@ class TravelPlanHTMLGenerator:
     }}
 
     function renderHeader() {{
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      // Root cause fix: bucket-list can use either cities[] or days[] structure
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
+        // Use days structure (works for both itinerary and bucket-list with days)
         const firstDay = PLAN_DATA.days[0];
         const lastDay = PLAN_DATA.days[PLAN_DATA.days.length - 1];
-        document.getElementById('trip-title').textContent = `${{firstDay.location}} Travel Plan`;
+        const title = PLAN_DATA.trip_summary?.description || `${{firstDay.location}} Travel Plan`;
+        document.getElementById('trip-title').textContent = title;
         document.getElementById('trip-meta').textContent =
           `${{firstDay.date}} to ${{lastDay.date}} • ${{PLAN_DATA.days.length}} days`;
-      }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
+      }} else if (PLAN_DATA.cities && PLAN_DATA.cities.length > 0) {{
+        // Use cities structure (true bucket-list)
         document.getElementById('trip-title').textContent = PLAN_DATA.title || "Travel Bucket List";
         document.getElementById('trip-meta').textContent = `${{PLAN_DATA.cities.length}} cities to explore`;
       }}
@@ -2232,7 +2236,7 @@ class TravelPlanHTMLGenerator:
 
     function renderStats() {{
       let stats = [];
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
         const totalBudgetCNY = PLAN_DATA.days.reduce((sum, day) => sum + (day.budget && day.budget.total || 0), 0);
         const totalAttractions = PLAN_DATA.days.reduce((sum, day) => sum + (day.attractions && day.attractions.length || 0), 0);
         const uniqueCities = new Set(PLAN_DATA.days.map(d => d.location)).size;
@@ -2452,7 +2456,7 @@ class TravelPlanHTMLGenerator:
     }}
 
     function renderCharts() {{
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
         renderItineraryCharts();
       }} else if (PROJECT_TYPE === "bucket-list" && PLAN_DATA.cities) {{
         renderBucketListCharts();
@@ -2797,7 +2801,7 @@ class TravelPlanHTMLGenerator:
 
       // Root cause fix: Timeline and Cities tabs showed identical content
       // Cities tab should show geographic city clusters, not day-by-day breakdown
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
         // Render cities geographic clustering for Cities tab
         const cityClusters = {{}};
         PLAN_DATA.days.forEach(day => {{
@@ -3070,7 +3074,7 @@ class TravelPlanHTMLGenerator:
     }}
 
     function renderBudgetCharts() {{
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
         const categories = {{ meals: 0, accommodation: 0, activities: 0, shopping: 0, transportation: 0 }};
         const dailyBudget = [];
 
@@ -3304,7 +3308,7 @@ class TravelPlanHTMLGenerator:
 
       // Root cause fix: Timeline and Cities tabs showed identical content
       // Timeline tab should show Kanban route map (day-by-day timeline by city)
-      if (PROJECT_TYPE === "itinerary" && PLAN_DATA.days) {{
+      if (PLAN_DATA.days && PLAN_DATA.days.length > 0) {{
         const cityGroups = {{}};
         PLAN_DATA.days.forEach(day => {{
           if (!cityGroups[day.location]) cityGroups[day.location] = [];

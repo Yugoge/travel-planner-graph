@@ -1,0 +1,106 @@
+{
+  "request_id": "dev-20260204-201500",
+  "timestamp": "2026-02-04T20:15:00Z",
+  "requirement": {
+    "original": "禁止websearch，禁止一切skill mcp，不要hardcode",
+    "clarified": "Strengthen orchestrator prohibition by banning ALL Skill tool usage and ALL MCP tools (mcp__* pattern), not just specific tools. Remove hardcoded tool names (gaode-maps, rednote, google-maps). Use generic rules instead. Orchestrator's allowed tools are ONLY: Read, Task, TodoWrite, Bash. Write/Edit/NotebookEdit remain prohibited from previous fix.",
+    "what": "Replace specific tool prohibitions with generic category-based prohibitions",
+    "why": "Current fix (dev-20260204-200000) hardcodes specific tool names (gaode-maps, rednote, google-maps, WebSearch). This requires updating prohibition list every time new MCP tool added. Generic prohibition is more maintainable and comprehensive - blocks all current and future Skill/MCP tools automatically.",
+    "where": [
+      "/root/.claude/CLAUDE.md (Orchestrator Behavior Constraints section)"
+    ],
+    "scope": {
+      "included": [
+        "Replace hardcoded tool names (gaode-maps, rednote, google-maps, WebSearch) with generic categories",
+        "Add prohibition: 'Orchestrator CANNOT use Skill tool (all research delegated to subagents)'",
+        "Add prohibition: 'Orchestrator CANNOT use any MCP tools (mcp__* pattern)'",
+        "Update allowed tools list to ONLY: Read, Task, TodoWrite, Bash",
+        "Maintain existing Write/Edit/NotebookEdit prohibitions",
+        "Update enforcement decision tree to cover all Skill/MCP usage",
+        "Update examples to show generic delegation pattern, not specific tool names"
+      ],
+      "excluded": [
+        "Not changing subagent behavior (they can still use Skill/MCP tools)",
+        "Not prohibiting Bash (orchestrator needs to run scripts)",
+        "Not modifying delegation examples' core logic (just remove hardcoded tool references)",
+        "Not changing /dev or /test workflow exceptions"
+      ]
+    },
+    "success_criteria": [
+      "CLAUDE.md prohibits 'Skill tool' generically (no hardcoded skill names)",
+      "CLAUDE.md prohibits 'MCP tools (mcp__*)' generically (no hardcoded MCP names)",
+      "Allowed tools list contains ONLY: Read, Task, TodoWrite, Bash (explicit whitelist)",
+      "Prohibited tools list contains: Write, Edit, NotebookEdit, Skill, MCP tools (no hardcoded names)",
+      "Enforcement decision tree covers Skill/MCP usage generically",
+      "Examples demonstrate delegation pattern without naming specific tools"
+    ],
+    "constraints": [
+      "Must remove all hardcoded tool names (gaode-maps, rednote, google-maps, WebSearch)",
+      "Must use generic categories (Skill tool, MCP tools) instead",
+      "Must maintain architectural clarity despite being more generic",
+      "Keep instructions concise and actionable"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Previous fix (dev-20260204-200000) hardcoded specific MCP tool names (gaode-maps, rednote, google-maps) and WebSearch, requiring manual updates when new tools added",
+    "root_cause": "Prohibition approach was tool-specific rather than category-based. This creates maintenance burden and gaps (new MCP tools not automatically prohibited).",
+    "root_cause_commit": "dev-20260204-200000 (just completed) used hardcoded tool names instead of generic rules",
+    "why_introduced": "Previous fix focused on solving immediate problem (specific tools being misused) without considering maintainability and future-proofing",
+    "why_problematic": "Hardcoded prohibitions: (1) Require manual updates when new MCP tools added, (2) Create gaps if orchestrator uses new tool not in list, (3) Less clear architectural principle (seems like random tool list rather than category rule), (4) Verbose (listing many tools)",
+    "timeline": "Issue identified immediately after dev-20260204-200000 completion when user requested generic rules",
+    "affected_files": [
+      "/root/.claude/CLAUDE.md (lines 145-150, 163-167, 317-324 contain hardcoded tool names)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Just completed dev-20260204-200000, CLAUDE.md modified but not committed",
+    "recent_commits": [
+      "d87204a - checkpoint: Auto-save at 2026-02-04 14:16:16"
+    ],
+    "current_architecture": {
+      "orchestrator_role": "Coordinate subagents, present information, NEVER execute research or modifications",
+      "prohibited_tools_current": ["Write", "Edit", "NotebookEdit", "gaode-maps", "rednote", "google-maps", "WebSearch (hardcoded)"],
+      "prohibited_tools_desired": ["Write", "Edit", "NotebookEdit", "Skill tool (generic)", "All MCP tools (mcp__* pattern, generic)"],
+      "allowed_tools_current": ["Read", "Task", "TodoWrite", "Bash", "Skill (contradictory)"],
+      "allowed_tools_desired": ["Read", "Task", "TodoWrite", "Bash (ONLY these)"]
+    },
+    "file_contents": {
+      "claude_md_current_prohibitions": "Lines 145-147: Write/Edit/NotebookEdit. Lines 148-150: gaode-maps/rednote/google-maps (hardcoded)",
+      "claude_md_current_allowed": "Lines 163-167: Read/Task/TodoWrite/Bash/Skill, WebSearch with caveats (contradictory - Skill listed as allowed but specific Skills prohibited)"
+    },
+    "tool_categories": {
+      "file_modification": "Write, Edit, NotebookEdit (already prohibited)",
+      "research_skills": "Skill tool invocations (gaode-maps, rednote, google-maps, deep-search, etc.) - should all be prohibited generically",
+      "research_mcp": "All MCP tools matching mcp__* pattern - should all be prohibited generically",
+      "coordination": "Read, Task, TodoWrite, Bash - ONLY allowed tools"
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace hardcoded tool lists with generic category-based prohibitions. Create explicit whitelist (allowed tools: Read, Task, TodoWrite, Bash) and generic blacklist (prohibited: Write, Edit, NotebookEdit, Skill tool, MCP tools). Remove all hardcoded tool names. Update enforcement to check tool category, not specific names.",
+    "implementation_steps": [
+      "1. Read current CLAUDE.md Orchestrator Behavior Constraints section",
+      "2. Replace lines 148-150 (hardcoded gaode-maps/rednote/google-maps) with generic 'Skill tool' prohibition",
+      "3. Add generic 'MCP tools (mcp__*)' prohibition after Skill tool",
+      "4. Remove WebSearch from allowed tools list (lines 163-167)",
+      "5. Remove Skill from allowed tools list",
+      "6. Update allowed tools to be explicit whitelist: ONLY Read, Task, TodoWrite, Bash",
+      "7. Update 'Why This Restriction Exists' to explain generic prohibition rationale",
+      "8. Replace hardcoded tool references in examples (lines 193-276) with generic descriptions",
+      "9. Update enforcement decision tree to check 'Am I using Skill tool or MCP tool?' instead of specific names",
+      "10. Test: Verify no hardcoded tool names remain except in whitelist/blacklist definitions"
+    ],
+    "files_to_modify": [
+      "/root/.claude/CLAUDE.md (Orchestrator Behavior Constraints section)"
+    ],
+    "validation_approach": "QA will verify: (1) No hardcoded tool names (gaode-maps, rednote, google-maps, WebSearch) in prohibition/enforcement sections, (2) Generic Skill/MCP prohibitions present, (3) Allowed tools ONLY Read/Task/TodoWrite/Bash, (4) Examples use generic language, (5) Enforcement checks tool categories not names"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": "N/A (documentation only)",
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "generic_rules_not_specific_lists": "CRITICAL: Use categories (Skill tool, MCP tools) not specific names",
+    "explicit_whitelist": "Allowed tools must be explicit and complete: Read, Task, TodoWrite, Bash ONLY"
+  }
+}
