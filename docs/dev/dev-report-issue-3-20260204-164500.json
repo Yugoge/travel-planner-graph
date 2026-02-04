@@ -1,0 +1,124 @@
+{
+  "request_id": "issue-3-compound-categories",
+  "timestamp": "2026-02-04T16:45:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Modified formatCategoryLabel() to handle compound categories with slashes",
+        "type": "code_fix",
+        "files_modified": [
+          "/root/travel-planner/scripts/lib/html_generator.py"
+        ],
+        "changes": "Added slash-splitting logic to formatCategoryLabel function (line 1852-1863) that splits compound categories, translates each part individually, and rejoins with ' / ' separator",
+        "rationale": "Root cause: formatCategoryLabel only handled single categories. Compound categories like 'Mountain / Observation Deck / Tourist Attraction' were returned untranslated because the entire string wasn't in the mapping. Fix splits on '/', translates each part, then rejoins."
+      },
+      {
+        "id": 2,
+        "description": "Added comprehensive category translations to CATEGORY_MAPPINGS",
+        "type": "data_enhancement",
+        "files_modified": [
+          "/root/travel-planner/scripts/lib/html_generator.py"
+        ],
+        "changes": "Extended attraction_types mapping with 120+ additional translations covering all terms found in compound categories (church, historic_building, pedestrian_area, buddhist_temple, cable_car, etc.) with both underscore and space variants",
+        "rationale": "Compound categories contain terms not in original mappings. Added translations for all individual terms found in attractions.json to ensure complete translation coverage."
+      },
+      {
+        "id": 3,
+        "description": "Created test scripts to validate compound category translation",
+        "type": "testing",
+        "files_created": [
+          "/root/travel-planner/scripts/test-category-translation.js",
+          "/root/travel-planner/scripts/verify-compound-translation.py",
+          "/root/travel-planner/scripts/test-html-function.py"
+        ],
+        "changes": "Created Node.js and Python test scripts to verify formatCategoryLabel logic and validate translations in generated HTML",
+        "rationale": "Needed automated validation to confirm compound categories are properly split, translated, and rejoined"
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "/root/travel-planner/scripts/test-category-translation.js",
+        "purpose": "Unit test formatCategoryLabel logic with Node.js",
+        "usage": "node scripts/test-category-translation.js",
+        "exit_codes": {
+          "0": "All tests passed"
+        }
+      },
+      {
+        "path": "/root/travel-planner/scripts/verify-compound-translation.py",
+        "purpose": "Verify compound categories exist in generated HTML",
+        "usage": "python scripts/verify-compound-translation.py",
+        "exit_codes": {
+          "0": "Verification successful",
+          "1": "Verification failed"
+        }
+      },
+      {
+        "path": "/root/travel-planner/scripts/test-html-function.py",
+        "purpose": "Extract and test formatCategoryLabel from html_generator.py",
+        "usage": "python scripts/test-html-function.py",
+        "exit_codes": {
+          "0": "Function test passed",
+          "1": "Function test failed"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - new feature gap",
+      "why_issue_occurred": "formatCategoryLabel was designed for single-value categories. Attractions-agent generated compound categories like 'Mountain / Observation Deck' from gaode-maps POI data, but these weren't handled by the translation logic.",
+      "how_fix_addresses_root": "Added slash-detection logic before normalization. When '/' detected, split into parts, translate each part using existing mapping logic (normalized lookup → lowercase lookup → original), then rejoin with ' / '. Maintains backward compatibility for single categories."
+    },
+    "test_results": {
+      "test_cases_passed": [
+        {
+          "input": "Church / Museum / Historic Building",
+          "expected": "教堂 / 博物馆 / 历史建筑",
+          "actual": "教堂 / 博物馆 / 历史建筑",
+          "status": "PASS"
+        },
+        {
+          "input": "Mountain / Observation Deck / Tourist Attraction",
+          "expected": "山岳 / 观景台 / 旅游景点",
+          "actual": "山岳 / 观景台 / 旅游景点",
+          "status": "PASS"
+        },
+        {
+          "input": "Buddhist Temple / Historic Site",
+          "expected": "佛教寺庙 / 历史遗址",
+          "actual": "佛教寺庙 / 历史遗址",
+          "status": "PASS"
+        },
+        {
+          "input": "Winter Theme Park / Ice Sculpture Park",
+          "expected": "冬季主题公园 / 冰雕公园",
+          "actual": "冬季主题公园 / 冰雕公园",
+          "status": "PASS"
+        },
+        {
+          "input": "Historic Street / Pedestrian Area",
+          "expected": "历史街区 / 步行区",
+          "actual": "历史街区 / 步行区",
+          "status": "PASS"
+        },
+        {
+          "input": "museum",
+          "expected": "博物馆",
+          "actual": "博物馆",
+          "status": "PASS"
+        }
+      ],
+      "compound_categories_found": 44,
+      "html_regenerated": true
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should verify: (1) HTML generation succeeds, (2) Search for compound categories in HTML shows Chinese translations, (3) No untranslated compound categories remain, (4) Single categories still work correctly"
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding automated test to CI/CD that validates all category types in attractions.json have mappings",
+    "Consider extracting category mappings to external JSON file for easier maintenance",
+    "Consider adding logging when unknown categories are encountered to identify missing mappings"
+  ]
+}

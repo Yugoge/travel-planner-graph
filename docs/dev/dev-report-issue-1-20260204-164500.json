@@ -1,0 +1,45 @@
+{
+  "request_id": "issue-1-itinerary-onclick-normalization",
+  "timestamp": "2026-02-04T16:45:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed itinerary attractionTypesChart onClick normalization mismatch",
+        "type": "bug_fix",
+        "files_modified": ["scripts/lib/html_generator.py"],
+        "changes": "Updated onClick handler normalization logic (lines 2330-2339) to match aggregation logic (lines 2229-2235)",
+        "rationale": "Root cause: onClick handler used simplified normalization that did not handle string 'null'/'undefined' values. Aggregation logic had robust normalization added in commit 41f1017. Mismatch caused attraction items to not appear in detail drawer when chart segment clicked."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "41f1017 - aggregation logic strengthened but onClick handler not updated",
+      "why_issue_occurred": "Aggregation normalization was improved to handle null/undefined/whitespace edge cases, but onClick handler still used original simplified logic. This created asymmetry: aggregation grouped attractions under normalized keys, but onClick couldn't find matches due to different normalization.",
+      "how_fix_addresses_root": "Applied identical normalization logic to onClick handler. Both now use same multi-step process: (1) check for null/undefined/string 'null'/'undefined', (2) convert to string and trim/lowercase, (3) handle empty strings. Ensures typeKey from aggregation matches normalizedType in onClick filtering."
+    },
+    "technical_details": {
+      "location": "scripts/lib/html_generator.py:2330-2339",
+      "before_normalization": "const normalizedType = (attr.type || 'general').toString().trim().toLowerCase();",
+      "after_normalization": "let normalizedType = attr.type;\nif (!normalizedType || normalizedType === null || normalizedType === undefined ||\n    normalizedType === 'null' || normalizedType === 'undefined') {\n  normalizedType = 'general';\n} else {\n  normalizedType = normalizedType.toString().trim().toLowerCase();\n  if (normalizedType === '') normalizedType = 'general';\n}",
+      "edge_cases_handled": [
+        "null value (JavaScript null)",
+        "undefined value (JavaScript undefined)",
+        "string 'null' (from JSON serialization)",
+        "string 'undefined' (from malformed data)",
+        "whitespace-only strings",
+        "empty strings after trimming"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": "To validate: (1) Regenerate HTML using generator, (2) Click on attraction type chart segments in itinerary view, (3) Verify all attractions of clicked type appear in detail drawer, (4) Test with edge case data containing null/undefined/string 'null' values",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Add unit tests for normalization logic to catch future mismatches",
+    "Consider extracting normalization to reusable function to avoid duplication",
+    "Scan for similar onClick handlers in other charts (meals, entertainment, etc.) and verify consistency"
+  ]
+}
