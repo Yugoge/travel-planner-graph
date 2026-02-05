@@ -36,7 +36,14 @@ class NotionReactGenerator:
             print(f"Warning: {filename} not found, using empty dict")
             return {}
         with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+
+            # Agent files have structure: { agent, status, data: {...} }
+            # Extract actual data from 'data' field if it exists
+            if isinstance(data, dict) and 'data' in data and isinstance(data['data'], dict):
+                return data['data']
+
+            return data
 
     def _get_cover_image(self, location: str, index: int = 0) -> str:
         """Get cover image URL for location"""
@@ -209,15 +216,23 @@ class NotionReactGenerator:
     def generate_plan_data(self) -> dict:
         """Generate complete PLAN_DATA structure"""
 
-        # Build trip summary
+        # Build trip summary from skeleton's trip_summary section
+        skel_summary = self.skeleton.get("trip_summary", {})
+        prefs = skel_summary.get("preferences", {})
+        if isinstance(prefs, dict):
+            # Convert dict preferences to string
+            prefs_str = ", ".join([f"{k}: {v}" for k, v in prefs.items()])
+        else:
+            prefs_str = str(prefs)
+
         trip_summary = {
-            "trip_type": self.skeleton.get("trip_type", "itinerary"),
-            "description": self.skeleton.get("description", "Travel Plan"),
-            "base_location": self.skeleton.get("base_location", ""),
-            "period": f"{self.skeleton.get('start_date', '')} to {self.skeleton.get('end_date', '')}",
-            "travelers": self.skeleton.get("travelers", "1 adult"),
-            "budget_per_trip": self.skeleton.get("budget_per_trip", "€500"),
-            "preferences": self.skeleton.get("preferences", "")
+            "trip_type": skel_summary.get("trip_type", "itinerary"),
+            "description": skel_summary.get("description", "Travel Plan"),
+            "base_location": skel_summary.get("base_location", ""),
+            "period": skel_summary.get("period", ""),
+            "travelers": skel_summary.get("travelers", "1 adult"),
+            "budget_per_trip": skel_summary.get("budget_per_trip", "€500"),
+            "preferences": prefs_str
         }
 
         # Merge all days
