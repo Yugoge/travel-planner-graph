@@ -750,6 +750,11 @@ const TimelineView = ({ day, bp }) => {
   const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
   const hgt = (s, e) => Math.max(top(e) - top(s), sm ? 56 : 64);
 
+  // Debug: log entries count
+  if (entries.length === 0) {
+    console.warn('Timeline has no entries for day:', day.day, day.location);
+  }
+
   return (
     <div style={{ maxWidth: '900px' }}>
       <div style={{
@@ -766,7 +771,14 @@ const TimelineView = ({ day, bp }) => {
           </h2>
         </div>
 
-        <div style={{ display: 'flex', position: 'relative' }}>
+        {entries.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9b9a97' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏰</div>
+            <div style={{ fontSize: '16px', marginBottom: '8px' }}>No timeline data available</div>
+            <div style={{ fontSize: '13px' }}>This day has no scheduled activities with time information</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', position: 'relative' }}>
           <div style={{ width: timeW, flexShrink: 0 }}>
             {hours.map(h => (
               <div key={h} style={{ height: hH, fontSize: '12px', color: '#c4c4c0', fontFamily: 'ui-monospace, monospace', paddingTop: '2px' }}>
@@ -834,6 +846,7 @@ const TimelineView = ({ day, bp }) => {
             })}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
