@@ -726,13 +726,20 @@ const TimelineView = ({ day, bp }) => {
   const timeW = sm ? '48px' : '62px';
 
   const entries = [];
-  const add = (item, type, label) => { if (item?.time) entries.push({ ...item, _type: type, _label: label }); };
+  const add = (item, type, label) => {
+    // Only add if item has valid time with start and end
+    if (item?.time?.start && item?.time?.end) {
+      entries.push({ ...item, _type: type, _label: label });
+    }
+  };
   add(day.meals.breakfast, 'meal', 'Breakfast');
   add(day.meals.lunch, 'meal', 'Lunch');
   add(day.meals.dinner, 'meal', 'Dinner');
   day.attractions?.forEach(a => add(a, 'attraction', 'Attraction'));
   day.entertainment?.forEach(e => add(e, 'entertainment', 'Entertainment'));
   if (day.accommodation) add(day.accommodation, 'accommodation', 'Check-in');
+
+  // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
 
   const firstH = entries.length ? parseInt(entries[0].time.start) : 8;
