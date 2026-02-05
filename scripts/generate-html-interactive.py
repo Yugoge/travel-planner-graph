@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Notion-style React Travel Plan Generator
+Interactive React Travel Plan Generator
 Converts skeleton.json + agent outputs → standalone React HTML application
+Generates single-file HTML with embedded React components
 """
 
 import json
@@ -11,8 +12,8 @@ from pathlib import Path
 from datetime import datetime
 
 
-class NotionReactGenerator:
-    """Generate Notion-style React travel plan from skeleton and agent data"""
+class InteractiveHTMLGenerator:
+    """Generate interactive React travel plan from skeleton and agent data"""
 
     def __init__(self, plan_id: str):
         self.plan_id = plan_id
@@ -957,7 +958,7 @@ def main():
     plan_id = sys.argv[1]
 
     try:
-        generator = NotionReactGenerator(plan_id)
+        generator = InteractiveHTMLGenerator(plan_id)
         output_file = generator.generate()
 
         print("\n" + "="*60)

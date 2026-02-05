@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate Notion-style React HTML and deploy to GitHub Pages
+# Generate interactive React HTML and deploy to GitHub Pages
 # Usage: bash scripts/generate-and-deploy.sh <plan-id>
 
 set -e
@@ -25,10 +25,10 @@ fi
 
 PLAN_ID="$1"
 DATA_DIR="$PROJECT_ROOT/data/$PLAN_ID"
-OUTPUT_FILE="$PROJECT_ROOT/travel-plan-notion-${PLAN_ID}.html"
+OUTPUT_FILE="$PROJECT_ROOT/travel-plan-${PLAN_ID}.html"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}🎨 Notion React HTML Generator & Deployer${NC}"
+echo -e "${BLUE}🎨 Interactive HTML Generator & Deployer${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
@@ -42,10 +42,10 @@ echo -e "${GREEN}✓${NC} Plan ID: ${YELLOW}$PLAN_ID${NC}"
 echo -e "${GREEN}✓${NC} Data directory: $DATA_DIR"
 echo ""
 
-# Step 1: Generate Notion React HTML
-echo -e "${BLUE}[1/4]${NC} Generating Notion-style React HTML..."
+# Step 1: Generate interactive React HTML
+echo -e "${BLUE}[1/4]${NC} Generating interactive React HTML..."
 cd "$PROJECT_ROOT"
-python3 "$SCRIPT_DIR/generate-notion-react.py" "$PLAN_ID"
+python3 "$SCRIPT_DIR/generate-html-interactive.py" "$PLAN_ID"
 
 if [ ! -f "$OUTPUT_FILE" ]; then
     echo -e "${RED}❌ Error: HTML generation failed${NC}"
@@ -62,8 +62,8 @@ if ! grep -q "PLAN_DATA" "$OUTPUT_FILE"; then
     echo -e "${RED}❌ Error: PLAN_DATA not found in HTML${NC}"
     exit 1
 fi
-if ! grep -q "NotionTravelApp" "$OUTPUT_FILE"; then
-    echo -e "${RED}❌ Error: NotionTravelApp component not found${NC}"
+if ! grep -q "React.createElement" "$OUTPUT_FILE"; then
+    echo -e "${RED}❌ Error: React component not found${NC}"
     exit 1
 fi
 echo -e "${GREEN}✓${NC} HTML structure valid"
