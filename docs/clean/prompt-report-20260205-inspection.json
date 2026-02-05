@@ -1,0 +1,101 @@
+{
+  "request_id": "20260205-inspection",
+  "timestamp": "2026-02-05T00:00:00Z",
+  "inspector": "prompt-inspector",
+  "findings": [
+    {
+      "file": "/root/travel-planner/.claude/commands/plan.md",
+      "severity": "critical",
+      "total_lines": 1676,
+      "verbose_lines": 96,
+      "verbosity_percentage": 5.7,
+      "verbose_sections": [
+        {
+          "section": "CRITICAL WARNING: Orchestrator Prompt Enforcement",
+          "lines": 96,
+          "start_line": 183,
+          "end_line": 278
+        }
+      ],
+      "detailed_violations": [
+        {
+          "type": "verbose_explanation",
+          "location": "lines 185-193",
+          "severity": "major",
+          "violation": "Historical narrative explaining ISSUE HISTORY and ROOT CAUSE with detailed backstory",
+          "current_content": "**ISSUE HISTORY**: This is the SECOND occurrence of bilingual annotation violation (first: dev-20260204-141257, second: dev-20260204-210000). Despite having correct rules documented above, orchestrator failed to follow them when invoking subagents.\n\n**ROOT CAUSE**: Orchestrator's prompt to meals-agent only mentioned format briefly (\"Use bilingual annotation format: Restaurant Name (原文)\") WITHOUT emphasizing CRITICAL importance or explaining WHY (homophone prevention). This weak enforcement led to agent outputting incorrect Chinese characters (秦膳斋 instead of 钦膳斋).\n\n**WHY THIS IS CRITICAL**:\n- Chinese homophones (钦 vs 秦 both romanize to \"Qin\") are INDISTINGUISHABLE without character annotations\n- Brief format mention is INSUFFICIENT - subagents need FULL context\n- Without CRITICAL emphasis, subagents deprioritize character accuracy\n- Data corruption occurs silently (romanization matches but Chinese characters are wrong)",
+          "recommended_fix": "Delete historical narrative. Replace with direct rule: \"**RULE**: ALL subagent prompts MUST include full bilingual annotation template (see below). No abbreviated mentions.\"",
+          "lines_saved": 9
+        },
+        {
+          "type": "redundant_example",
+          "location": "lines 204-225",
+          "severity": "major",
+          "violation": "22-line markdown template block when reference to section above (lines 156-177) would suffice",
+          "current_content": "**ORCHESTRATOR PROMPT TEMPLATE** (REQUIRED):\n\n```\n**CRITICAL - Bilingual Annotation Required**:\nTo prevent information loss through romanization homophones (e.g., 钦 vs 秦 both romanize to 'Qin', causing character confusion), ALL proper nouns MUST include original script annotations.\n\nWHY: Chinese characters contain semantic information lost in romanization. Without original characters, homophones become indistinguishable and data corruption occurs silently.\n\nFormat: \"Romanized Name (原文字)\" or \"English Translation (Foreign Language)\"\n\nExamples:\n- \"Qinshanzhai (钦膳斋)\" ← CORRECT (钦 = respectful/imperial)\n- \"Qinshanzhai (秦膳斋)\" ← WRONG (秦 = Qin dynasty, different meaning)\n- \"Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)\"\n- \"Night View Hotpot Park (夜景火锅公园)\"\n\nApply to: Restaurant names, attraction names, entertainment venues, shopping locations, street/area names (if not standard romanization).\n\nDO NOT annotate: Common nouns, standardized place names (Beijing, Tokyo), English brands (Starbucks).\n\n**Validation**: Orchestrator will verify ALL proper nouns have annotations. Missing annotations = re-invocation required.\n```",
+          "recommended_fix": "Replace with: \"**TEMPLATE**: Use bilingual annotation template from lines 156-177. Copy exactly, no abbreviations.\" Reference existing section instead of duplicating.",
+          "lines_saved": 20
+        },
+        {
+          "type": "verbose_explanation",
+          "location": "lines 227-237",
+          "severity": "minor",
+          "violation": "11-line detailed response validation procedure with numbered steps and conditional logic",
+          "current_content": "**RESPONSE VALIDATION STEP** (MANDATORY):\n\nAfter subagent returns \"complete\", orchestrator MUST:\n\n1. Read updated working file (e.g., meals.json)\n2. Check ALL proper nouns have bilingual annotations in format \"Romanized (原文)\"\n3. If ANY proper noun lacks annotation:\n   - Flag as validation error\n   - Re-invoke agent with specific feedback: \"Missing bilingual annotation for: {item_name}. See CRITICAL requirement in prompt.\"\n4. Only proceed to next step after validation passes",
+          "recommended_fix": "Condense to validation rule: \"**VALIDATION**: After agent completion, verify all proper nouns have bilingual annotations (format: 'Name (原文)'). If missing → re-invoke agent with validation error.\"",
+          "lines_saved": 8
+        },
+        {
+          "type": "story_not_rule",
+          "location": "lines 239-256",
+          "severity": "major",
+          "violation": "18-line EXAMPLE showing step-by-step orchestrator behavior with bash commands - this is tutorial content, not execution rules",
+          "current_content": "**EXAMPLE OF CORRECT ORCHESTRATOR BEHAVIOR**:\n\n```\nUser: \"Add restaurant recommendations for Day 3\"\n\nStep 1 - Invoke meals-agent:\nUse Task tool with full CRITICAL prompt template (see above)\n\nStep 2 - Verify file exists:\nbash: test -f data/{destination-slug}/meals.json && echo \"verified\"\n\nStep 3 - Validate annotations:\nRead meals.json Day 3 entries\nCheck each restaurant name has format \"Name (中文)\"\nIf missing: Re-invoke with validation error feedback\n\nStep 4 - Proceed:\nOnly after validation passes, continue to timeline-agent\n```",
+          "recommended_fix": "Delete entire example block. Rules already specified in validation section. Examples belong in /dev, not command docs.",
+          "lines_saved": 18
+        },
+        {
+          "type": "redundant_example",
+          "location": "lines 258-269",
+          "severity": "minor",
+          "violation": "12-line WRONG BEHAVIOR examples showing what NOT to do - negative examples are training content, not execution rules",
+          "current_content": "**WRONG ORCHESTRATOR BEHAVIOR** (DO NOT REPEAT):\n\n```\n❌ WRONG - Brief mention only:\n\"Use bilingual annotation format: Restaurant Name (原文) for Chinese names.\"\n\n❌ WRONG - No WHY explanation:\n\"Include Chinese characters in parentheses.\"\n\n❌ WRONG - No validation step:\nAgent returns \"complete\" → Immediately proceed to next step without checking annotations\n```",
+          "recommended_fix": "Delete negative examples. Rules should state requirements positively, not enumerate failures.",
+          "lines_saved": 12
+        },
+        {
+          "type": "story_not_rule",
+          "location": "lines 271-277",
+          "severity": "minor",
+          "violation": "7-line ENFORCEMENT COMMITMENT section with escalation threats and philosophical reflection",
+          "current_content": "**ENFORCEMENT COMMITMENT**:\n\nThis is the SECOND occurrence. If orchestrator fails to follow this enforcement protocol again:\n1. Root cause will be escalated to workflow design flaw\n2. May require architectural changes to prevent human error\n\n**Orchestrator**: Before invoking ANY location-based subagent, verify you are using the FULL prompt template above. Do not abbreviate or paraphrase. Copy the template exactly.",
+          "recommended_fix": "Replace with direct rule: \"**CRITICAL**: Use full bilingual annotation template for ALL location-based subagent invocations. No abbreviations.\"",
+          "lines_saved": 6
+        }
+      ],
+      "recommendation": "Apply 'rules not stories' principle to lines 183-278:\n\n**CURRENT STRUCTURE** (96 lines):\n- Historical narrative (9 lines)\n- Explanatory rationales (8 lines)\n- Duplicate template (22 lines)\n- Validation procedure (11 lines)\n- Correct behavior example (18 lines)\n- Wrong behavior examples (12 lines)\n- Enforcement commitment (7 lines)\n\n**TARGET STRUCTURE** (13-15 lines):\n- Rule statement (2 lines): \"ALL location-based subagent prompts MUST include bilingual annotation template\"\n- Template reference (1 line): \"Use template from lines 156-177, copy exactly\"\n- Validation rule (2 lines): \"After completion, verify annotations. Missing → re-invoke\"\n- Examples reference (1 line): \"See lines 159-165 for format examples\"\n\n**ESTIMATED REDUCTION**: 81 lines removed (84% reduction in section, 4.8% reduction in file)\n\n**RATIONALE**: Section violates 'rules not stories' by:\n1. Explaining history/why instead of stating requirements\n2. Duplicating content already in lines 129-182\n3. Providing tutorial examples instead of execution rules\n4. Including negative examples (training content)\n5. Adding philosophical enforcement commitments\n\n**REFERENCE**: convert.md cleanup (commit 2d21631) reduced similar verbose sections by removing explanatory context and consolidating rules. Apply same principle here."
+    }
+  ],
+  "summary": {
+    "files_inspected": 1,
+    "files_with_violations": 1,
+    "critical": 1,
+    "major": 0,
+    "minor": 0,
+    "total_verbose_lines": 96,
+    "estimated_reduction": "81 lines (84% section reduction, 4.8% file reduction)",
+    "comparison_analysis": {
+      "verbose_section": {
+        "location": "lines 183-278",
+        "lines": 96,
+        "pattern": "story-style with history, examples, rationales, warnings"
+      },
+      "concise_reference": {
+        "location": "lines 129-182 (Bilingual Annotation Requirement)",
+        "lines": 54,
+        "pattern": "rules-first with minimal examples, covers same topic more efficiently"
+      },
+      "efficiency_comparison": "Lines 129-182 cover bilingual annotation concept in 54 lines using rules-first approach. Lines 183-278 attempt to enforce same concept using story-driven approach with 96 lines (78% more verbose). Content is largely redundant but presented as warnings/examples instead of rules."
+    }
+  }
+}

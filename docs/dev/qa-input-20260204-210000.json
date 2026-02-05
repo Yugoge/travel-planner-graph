@@ -1,0 +1,210 @@
+{
+  "request_id": "dev-20260204-210000",
+  "timestamp": "2026-02-04T21:00:00Z",
+  "requirement": {
+    "original": "不应该是钦膳斋吗？我之前不是修复过了agent之间沟通中文转英文再转中文出现的误差问题吗？为什么又出现了",
+    "clarified": "Chinese restaurant name '钦膳斋' (Qinshanzhai) was incorrectly written as '秦膳斋' in meals.json. This is the SAME bilingual annotation issue that was fixed before (dev-20260204-141257). User had previously fixed Chinese character corruption due to romanization homophones, but the issue recurred when orchestrator invoked meals-agent without proper bilingual annotation enforcement in the prompt.",
+    "what": "Fix immediate issue (correct 秦膳斋 → 钦膳斋) AND prevent recurrence by strengthening orchestrator prompt enforcement",
+    "why": "Bilingual annotation rules exist in plan.md but orchestrator didn't follow them when invoking meals-agent. Orchestrator's prompt only mentioned format ('Restaurant Name (原文)') without emphasizing CRITICAL importance or WHY (homophone prevention). This weak enforcement led to agent outputting incorrect Chinese characters.",
+    "where": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json (immediate fix: line 89)",
+      ".claude/commands/plan.md (strengthen enforcement)"
+    ],
+    "scope": {
+      "included": [
+        "Fix meals.json: 秦膳斋 → 钦膳斋",
+        "Add CRITICAL WARNING in plan.md bilingual section emphasizing orchestrator MUST include full requirement in prompts",
+        "Add validation reminder: orchestrator must verify bilingual annotations in agent responses",
+        "Add example of CORRECT vs INCORRECT orchestrator prompt",
+        "Document this as SECOND occurrence of same issue"
+      ],
+      "excluded": [
+        "Not changing bilingual annotation rules (they are correct)",
+        "Not modifying subagent behavior (focus on orchestrator enforcement)",
+        "Not changing working file structure"
+      ]
+    },
+    "success_criteria": [
+      "meals.json corrected: Qinshanzhai (钦膳斋) not (秦膳斋)",
+      "plan.md includes CRITICAL WARNING about orchestrator prompt enforcement",
+      "plan.md includes example of correct orchestrator prompt with full bilingual requirement",
+      "plan.md includes validation step: orchestrator must check annotations in responses",
+      "Documentation notes this is SECOND occurrence (history: dev-20260204-141257)"
+    ],
+    "constraints": [
+      "Must maintain compatibility with existing bilingual annotation rules",
+      "Must not break current plan.md structure",
+      "Keep documentation concise and actionable"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Restaurant name '钦膳斋' incorrectly written as '秦膳斋' in meals.json",
+    "root_cause": "Orchestrator did not follow bilingual annotation enforcement rules when invoking meals-agent. Orchestrator's prompt mentioned format but didn't emphasize CRITICAL importance or explain WHY (homophone prevention '钦' vs '秦' both romanize to 'Qin').",
+    "root_cause_evidence": {
+      "previous_fix": "dev-20260204-141257 added bilingual annotation rules to plan.md (lines 129-183)",
+      "current_violation": "Orchestrator's meals-agent prompt only said 'Use bilingual annotation format: Restaurant Name (原文)' without CRITICAL emphasis",
+      "plan_md_has_rules": "Lines 131, 181 specify bilingual annotations MUST be used and orchestrator MUST validate",
+      "orchestrator_didnt_follow": "Orchestrator's prompt was too weak, didn't enforce the CRITICAL requirement"
+    },
+    "why_introduced": "Orchestrator (me) invoked meals-agent without copying the full bilingual annotation requirement from plan.md. Assumed brief mention of format was sufficient, didn't include WHY or CRITICAL emphasis.",
+    "why_problematic": "Without CRITICAL emphasis in prompt: (1) Agent doesn't prioritize accuracy of Chinese characters, (2) Agent might use auto-complete or fuzzy matching for restaurant names, (3) Homophones (钦 vs 秦) get confused, (4) Same issue recurs despite previous fix",
+    "timeline": "SECOND occurrence. First fix: dev-20260204-141257. Current violation: 2026-02-04 ~11:58 when orchestrator invoked meals-agent",
+    "affected_files": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json (line 89: incorrect character)",
+      ".claude/commands/plan.md (needs stronger orchestrator enforcement guidance)"
+    ]
+  },
+  "context": {
+    "codebase_state": "6 uncommitted files, working on master branch",
+    "recent_commits": [
+      "46b9d9e - fix: resolve 5 critical HTML generator issues"
+    ],
+    "previous_fix_reference": {
+      "fix_id": "dev-20260204-141257",
+      "what_was_fixed": "Added bilingual annotation requirement to plan.md (lines 129-183)",
+      "why_didnt_prevent_recurrence": "Rules exist in plan.md but orchestrator didn't follow them when crafting prompt"
+    },
+    "incorrect_vs_correct": {
+      "incorrect": "秦膳斋 (Qin uses 秦 - different character, means 'Qin dynasty')",
+      "correct": "钦膳斋 (Qin uses 钦 - correct character, means 'respectful/imperial')",
+      "romanization": "Both romanize to 'Qin' - homophones indistinguishable without Chinese characters"
+    },
+    "orchestrator_prompt_used": {
+      "what_was_sent": "Use bilingual annotation format: 'Restaurant Name (原文)' for Chinese names.",
+      "what_should_have_been_sent": "**CRITICAL**: Use bilingual annotation format 'Romanized Name (原文字)' for ALL Chinese proper nouns. This prevents homophone confusion (e.g., 钦 vs 秦 both romanize to 'Qin'). Examples: 'Qinshanzhai (钦膳斋)'. Never output romanization-only names."
+    }
+  },
+  "development_approach": {
+    "strategy": "Two-part fix: (1) Immediate correction in meals.json (秦→钦), (2) Strengthen plan.md with CRITICAL WARNING and orchestrator prompt template to prevent third occurrence.",
+    "implementation_steps": [
+      "1. Read data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+      "2. Fix line 89: 'Qinshanzhai (秦膳斋)' → 'Qinshanzhai (钦膳斋)'",
+      "3. Fix notes section: Any mention of 秦膳斋 → 钦膳斋",
+      "4. Read .claude/commands/plan.md bilingual annotation section (lines 129-183)",
+      "5. Add CRITICAL WARNING subsection after line 183 (before Implementation section)",
+      "6. Warning content: Emphasize orchestrator MUST include full bilingual requirement in prompts, not just brief mention",
+      "7. Add 'Orchestrator Prompt Template' with required elements: CRITICAL emphasis + WHY + format example",
+      "8. Add 'Response Validation' step: Orchestrator must verify annotations present before accepting agent response",
+      "9. Document this as SECOND occurrence of same issue",
+      "10. Reference previous fix (dev-20260204-141257) and explain why it didn't prevent recurrence"
+    ],
+    "files_to_modify": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json (correct character)",
+      ".claude/commands/plan.md (strengthen enforcement)"
+    ],
+    "validation_approach": "QA will verify: (1) meals.json has correct character 钦 not 秦, (2) plan.md includes CRITICAL WARNING about prompt enforcement, (3) Orchestrator prompt template provided with all required elements, (4) Response validation step documented, (5) Second occurrence noted in history"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": "N/A (documentation and data correction)",
+    "use_source_venv": "N/A",
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "prevent_recurrence": "CRITICAL: Must add enforcement mechanisms so orchestrator doesn't violate rules again",
+    "learn_from_history": "CRITICAL: Second occurrence of same issue must be documented and prevented"
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed meals.json line 89: Corrected restaurant name from 秦膳斋 to 钦膳斋",
+        "type": "data_correction",
+        "files_modified": [
+          "data/china-feb-15-mar-7-2026-20260202-195429/meals.json"
+        ],
+        "changes": "Line 89: 'Qinshanzhai (秦膳斋)' → 'Qinshanzhai (钦膳斋)'",
+        "rationale": "Chinese character homophone error - 秦 (Qin dynasty) vs 钦 (respectful/imperial) both romanize to 'Qin' but have different meanings. Correct character is 钦膳斋."
+      },
+      {
+        "id": 2,
+        "description": "Fixed meals.json notes section: Corrected all mentions of restaurant name from 秦膳斋 to 钦膳斋",
+        "type": "data_correction",
+        "files_modified": [
+          "data/china-feb-15-mar-7-2026-20260202-195429/meals.json"
+        ],
+        "changes": "Line 578 notes field: 'QINSHANZHAI (秦膳斋)' → 'QINSHANZHAI (钦膳斋)'",
+        "rationale": "Ensuring consistency across all references to the restaurant name in the meals.json file"
+      },
+      {
+        "id": 3,
+        "description": "Added CRITICAL WARNING section to plan.md after Bilingual Annotation Requirement section",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added comprehensive 'CRITICAL WARNING: Orchestrator Prompt Enforcement' section after line 183, including: issue history, root cause explanation, WHY this is critical, mandatory orchestrator behavior, full prompt template, response validation steps, examples of correct/incorrect behavior, and enforcement commitment",
+        "rationale": "Strengthens orchestrator enforcement so that when invoking location-based subagents, orchestrator includes FULL bilingual annotation requirement with CRITICAL emphasis, WHY explanation, format examples, and validation warning. Prevents third occurrence of same issue."
+      },
+      {
+        "id": 4,
+        "description": "Documented SECOND occurrence in plan.md CRITICAL WARNING section",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'ISSUE HISTORY' noting this is SECOND occurrence (first: dev-20260204-141257, second: dev-20260204-210000) and explaining that despite correct rules, orchestrator didn't follow them",
+        "rationale": "Historical tracking to prevent recurrence and escalate if issue occurs again"
+      },
+      {
+        "id": 5,
+        "description": "Added orchestrator prompt template with required elements to plan.md",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'ORCHESTRATOR PROMPT TEMPLATE (REQUIRED)' section with exact template orchestrator must use when invoking location-based subagents, including CRITICAL flag, WHY explanation, format specification with examples, and enforcement warning",
+        "rationale": "Provides copy-paste template so orchestrator cannot abbreviate or paraphrase the requirement"
+      },
+      {
+        "id": 6,
+        "description": "Added response validation step to plan.md",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'RESPONSE VALIDATION STEP (MANDATORY)' section specifying orchestrator must read working file, check ALL proper nouns have annotations, flag validation errors, and re-invoke agent if annotations missing",
+        "rationale": "Ensures orchestrator verifies bilingual annotations in agent responses before proceeding to next workflow step"
+      },
+      {
+        "id": 7,
+        "description": "Added correct vs incorrect behavior examples to plan.md",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'EXAMPLE OF CORRECT ORCHESTRATOR BEHAVIOR' and 'WRONG ORCHESTRATOR BEHAVIOR' sections demonstrating proper delegation pattern vs weak enforcement that led to this issue",
+        "rationale": "Clear examples help orchestrator understand what constitutes proper enforcement vs insufficient enforcement"
+      },
+      {
+        "id": 8,
+        "description": "Added enforcement commitment warning to plan.md",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Added 'ENFORCEMENT COMMITMENT' section warning that if orchestrator fails again (third occurrence), root cause will be escalated to workflow design flaw requiring architectural changes",
+        "rationale": "Sets clear expectation that this is final warning before escalating to systemic solution"
+      }
+    ],
+    "scripts_created": [],
+    "files_modified": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+      ".claude/commands/plan.md"
+    ],
+    "git_rationale": {
+      "root_cause": "Orchestrator didn't follow bilingual annotation enforcement rules when crafting meals-agent prompt. Orchestrator only mentioned format briefly ('Use bilingual annotation format: Restaurant Name (原文)') without CRITICAL emphasis or WHY explanation (homophone prevention).",
+      "root_cause_commit": "Not applicable - this is process violation, not code bug. Previous fix (dev-20260204-141257) added bilingual annotation rules to plan.md lines 129-183, but orchestrator didn't follow them.",
+      "why_issue_occurred": "Rules existed in plan.md but orchestrator enforcement was weak. Orchestrator assumed brief format mention was sufficient, didn't include CRITICAL flag or homophone prevention rationale. Without emphasis, meals-agent deprioritized character accuracy and output incorrect homophone (秦 instead of 钦).",
+      "how_fix_addresses_root": "Added CRITICAL WARNING section with mandatory prompt template so orchestrator knows EXACTLY how to enforce bilingual annotations. Template includes: CRITICAL flag, WHY explanation, format examples, and validation warning. Added response validation step so orchestrator must verify annotations before proceeding. Documented as SECOND occurrence to emphasize urgency and prevent third occurrence.",
+      "recurrence_history": {
+        "first_occurrence": "dev-20260204-141257 - Added bilingual annotation rules to plan.md (lines 129-183)",
+        "second_occurrence": "dev-20260204-210000 - Orchestrator violated rules when invoking meals-agent, leading to homophone error (秦膳斋 instead of 钦膳斋)",
+        "prevention_strategy": "Strengthened enforcement with CRITICAL WARNING, mandatory prompt template, response validation step, and escalation warning if third occurrence"
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should verify: (1) meals.json line 89 and line 578 notes have correct character 钦 not 秦, (2) plan.md includes CRITICAL WARNING section after line 183, (3) Prompt template includes all required elements (CRITICAL flag, WHY explanation, format examples, validation warning), (4) Response validation step documented, (5) Correct/incorrect behavior examples provided, (6) SECOND occurrence documented in issue history",
+    "permissions_to_add": []
+  }
+}

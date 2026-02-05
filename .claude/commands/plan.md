@@ -180,6 +180,102 @@ This preserves original information alongside romanization, preventing homophone
 
 All subagent invocation prompts in this file explicitly require bilingual annotation format. If a subagent returns JSON without proper annotations, the orchestrator MUST flag this as a validation error and re-invoke the agent with specific feedback.
 
+### ⚠️ CRITICAL WARNING: Orchestrator Prompt Enforcement
+
+**ISSUE HISTORY**: This is the SECOND occurrence of bilingual annotation violation (first: dev-20260204-141257, second: dev-20260204-210000). Despite having correct rules documented above, orchestrator failed to follow them when invoking subagents.
+
+**ROOT CAUSE**: Orchestrator's prompt to meals-agent only mentioned format briefly ("Use bilingual annotation format: Restaurant Name (原文)") WITHOUT emphasizing CRITICAL importance or explaining WHY (homophone prevention). This weak enforcement led to agent outputting incorrect Chinese characters (秦膳斋 instead of 钦膳斋).
+
+**WHY THIS IS CRITICAL**:
+- Chinese homophones (钦 vs 秦 both romanize to "Qin") are INDISTINGUISHABLE without character annotations
+- Brief format mention is INSUFFICIENT - subagents need FULL context
+- Without CRITICAL emphasis, subagents deprioritize character accuracy
+- Data corruption occurs silently (romanization matches but Chinese characters are wrong)
+
+**MANDATORY ORCHESTRATOR BEHAVIOR**:
+
+When invoking ANY location-based subagent (meals, attractions, entertainment, shopping), orchestrator MUST include ALL of these elements in the prompt:
+
+1. **CRITICAL flag**: Use "**CRITICAL**:" prefix to emphasize importance
+2. **WHY explanation**: Explain homophone prevention rationale
+3. **Format specification**: Provide exact format with examples
+4. **Enforcement warning**: State that missing annotations = validation failure
+
+**ORCHESTRATOR PROMPT TEMPLATE** (REQUIRED):
+
+```
+**CRITICAL - Bilingual Annotation Required**:
+To prevent information loss through romanization homophones (e.g., 钦 vs 秦 both romanize to 'Qin', causing character confusion), ALL proper nouns MUST include original script annotations.
+
+WHY: Chinese characters contain semantic information lost in romanization. Without original characters, homophones become indistinguishable and data corruption occurs silently.
+
+Format: "Romanized Name (原文字)" or "English Translation (Foreign Language)"
+
+Examples:
+- "Qinshanzhai (钦膳斋)" ← CORRECT (钦 = respectful/imperial)
+- "Qinshanzhai (秦膳斋)" ← WRONG (秦 = Qin dynasty, different meaning)
+- "Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"
+- "Night View Hotpot Park (夜景火锅公园)"
+
+Apply to: Restaurant names, attraction names, entertainment venues, shopping locations, street/area names (if not standard romanization).
+
+DO NOT annotate: Common nouns, standardized place names (Beijing, Tokyo), English brands (Starbucks).
+
+**Validation**: Orchestrator will verify ALL proper nouns have annotations. Missing annotations = re-invocation required.
+```
+
+**RESPONSE VALIDATION STEP** (MANDATORY):
+
+After subagent returns "complete", orchestrator MUST:
+
+1. Read updated working file (e.g., meals.json)
+2. Check ALL proper nouns have bilingual annotations in format "Romanized (原文)"
+3. If ANY proper noun lacks annotation:
+   - Flag as validation error
+   - Re-invoke agent with specific feedback: "Missing bilingual annotation for: {item_name}. See CRITICAL requirement in prompt."
+4. Only proceed to next step after validation passes
+
+**EXAMPLE OF CORRECT ORCHESTRATOR BEHAVIOR**:
+
+```
+User: "Add restaurant recommendations for Day 3"
+
+Step 1 - Invoke meals-agent:
+Use Task tool with full CRITICAL prompt template (see above)
+
+Step 2 - Verify file exists:
+bash: test -f data/{destination-slug}/meals.json && echo "verified"
+
+Step 3 - Validate annotations:
+Read meals.json Day 3 entries
+Check each restaurant name has format "Name (中文)"
+If missing: Re-invoke with validation error feedback
+
+Step 4 - Proceed:
+Only after validation passes, continue to timeline-agent
+```
+
+**WRONG ORCHESTRATOR BEHAVIOR** (DO NOT REPEAT):
+
+```
+❌ WRONG - Brief mention only:
+"Use bilingual annotation format: Restaurant Name (原文) for Chinese names."
+
+❌ WRONG - No WHY explanation:
+"Include Chinese characters in parentheses."
+
+❌ WRONG - No validation step:
+Agent returns "complete" → Immediately proceed to next step without checking annotations
+```
+
+**ENFORCEMENT COMMITMENT**:
+
+This is the SECOND occurrence. If orchestrator fails to follow this enforcement protocol again:
+1. Root cause will be escalated to workflow design flaw
+2. May require architectural changes to prevent human error
+
+**Orchestrator**: Before invoking ANY location-based subagent, verify you are using the FULL prompt template above. Do not abbreviate or paraphrase. Copy the template exactly.
+
 ---
 
 ## Implementation
