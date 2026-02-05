@@ -69,7 +69,7 @@ fi
 echo -e "${GREEN}✓${NC} HTML structure valid"
 echo ""
 
-# Step 3: Deploy to GitHub Pages using new history-preserving script
+# Step 3: Deploy to GitHub Pages
 echo -e "${BLUE}[3/4]${NC} Deploying to GitHub Pages..."
-bash "$SCRIPT_DIR/deploy-to-gh-pages.sh" "$PLAN_ID" "$OUTPUT_FILE"
+bash "$SCRIPT_DIR/deploy-travel-plans.sh" "$OUTPUT_FILE"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

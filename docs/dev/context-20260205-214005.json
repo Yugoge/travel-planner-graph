@@ -1,0 +1,125 @@
+{
+  "request_id": "dev-20260205-audit-deployment",
+  "timestamp": "2026-02-05T21:20:00Z",
+  "requirement": {
+    "original": "根据之前的经验教训全面检测现在生成并push html工作流的健全性",
+    "clarified": "Comprehensive audit of HTML generation and GitHub Pages deployment workflow to prevent data loss incidents like the force push issue",
+    "what": "End-to-end testing and validation of deployment pipeline",
+    "why": "Prevent future data loss from deployment errors (e.g., force push wiping gh-pages history)",
+    "where": [
+      "scripts/deploy-travel-plans.sh",
+      "scripts/deploy-to-gh-pages.sh",
+      "scripts/generate-notion-and-deploy.sh",
+      "scripts/generate-notion-react.py",
+      "scripts/generate-gh-pages-index.py",
+      "scripts/generate-and-deploy.sh"
+    ],
+    "scope": {
+      "included": [
+        "Verify all git push commands have no -f flag",
+        "Test complete workflow end-to-end",
+        "Validate automatic index.html generation",
+        "Check error handling in all scripts",
+        "Verify history preservation in gh-pages",
+        "Document all deployment risks"
+      ],
+      "excluded": [
+        "HTML generation algorithm improvements",
+        "UI/UX changes to generated pages",
+        "Performance optimization"
+      ]
+    },
+    "success_criteria": [
+      "No git push -f found in any deployment script",
+      "End-to-end deployment test completes without errors",
+      "Previous deployments preserved after new deployment",
+      "Index.html automatically regenerates with all versions",
+      "All error cases handled gracefully",
+      "Documentation generated with preventive measures"
+    ],
+    "constraints": [
+      "Cannot test actual GitHub Pages deployment without affecting production",
+      "Must preserve existing deployments",
+      "Scripts must work with existing data structure"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "All previous GitHub Pages deployments (Feb 2-4) were lost",
+    "root_cause": "scripts/deploy-travel-plans.sh line 565 used 'git push -f origin gh-pages' which overwrote entire branch history",
+    "root_cause_commit": "f961ff2 - checkpoint: Auto-save at 2026-02-02 05:43:29",
+    "why_introduced": "Force push was used to simplify initial deployment, assuming it would only run once to create the branch",
+    "why_problematic": "Script was called multiple times for subsequent deployments, each time wiping previous history with -f flag",
+    "timeline": "Issue present since script creation, caused data loss on Feb 5 2026 when multiple deployments occurred",
+    "affected_files": [
+      "scripts/deploy-travel-plans.sh",
+      "scripts/generate-and-deploy.sh (calls deploy-travel-plans.sh)",
+      "scripts/generate-notion-and-deploy.sh (newly created, called deploy-to-gh-pages.sh)"
+    ]
+  },
+  "context": {
+    "codebase_state": "2 modified files (deploy scripts), recently fixed force push issue",
+    "recent_commits": [
+      "41e4544 - fix: remove force push from deployment scripts to preserve history",
+      "d453036 - checkpoint: Auto-save at 2026-02-05 21:10:12",
+      "81dedf5 - fix: Timeline view - validate time.start/end before sort"
+    ],
+    "deployment_scripts": {
+      "deploy-travel-plans.sh": {
+        "purpose": "Main deployment script for any HTML file",
+        "git_push_line": 565,
+        "git_push_command": "git push origin $BRANCH",
+        "force_push": false,
+        "status": "FIXED"
+      },
+      "deploy-to-gh-pages.sh": {
+        "purpose": "New history-preserving deployment script",
+        "git_push_lines": [80, 114],
+        "git_push_commands": ["git push -u origin gh-pages", "git push origin gh-pages"],
+        "force_push": false,
+        "status": "SAFE"
+      },
+      "generate-notion-and-deploy.sh": {
+        "purpose": "Generate Notion-style React HTML and deploy",
+        "calls": "deploy-to-gh-pages.sh",
+        "direct_push": false,
+        "status": "SAFE (delegates to safe script)"
+      },
+      "generate-and-deploy.sh": {
+        "purpose": "Unified generation and deployment",
+        "calls": "deploy-travel-plans.sh",
+        "direct_push": false,
+        "status": "SAFE (delegates to fixed script)"
+      }
+    },
+    "dependencies": {
+      "runtime": "Bash 5.x, Python 3.11, Git 2.x",
+      "packages": "beautifulsoup4 (for index generation), jq (for JSON parsing)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "gh_pages_repo": "git@github.com:Yugoge/travel-planner-graph.git",
+      "current_deployments": [
+        "beijing-exchange-bucket-list-20260202-232405/2026-02-02/",
+        "beijing-exchange-bucket-list-20260202-232405/2026-02-05/"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Create comprehensive test suite to validate entire deployment workflow",
+    "tests_to_create": [
+      "Test 1: Grep all scripts for 'git push -f' patterns",
+      "Test 2: Dry-run deployment to verify no force push",
+      "Test 3: Validate index.html generation",
+      "Test 4: Check error handling (missing files, invalid data)",
+      "Test 5: Verify history preservation simulation"
+    ],
+    "validation_approach": "Run test suite, document results, create preventive measures checklist"
+  },
+  "standards_to_enforce": {
+    "no_force_push_ever": true,
+    "always_preserve_history": true,
+    "auto_generate_index": true,
+    "graceful_error_handling": true,
+    "comprehensive_logging": true
+  }
+}
