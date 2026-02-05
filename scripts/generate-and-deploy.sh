@@ -1,132 +1,75 @@
-#!/usr/bin/env bash
-# Unified atomic script: Generate HTML + Deploy to GitHub Pages
-# Usage: generate-and-deploy.sh <destination-slug> [version-suffix]
-# Exit codes: 0=success, 1=generation failed, 2=deployment failed, 3=missing files
+#!/bin/bash
+# Generate Notion-style React HTML and deploy to GitHub Pages
+# Usage: bash scripts/generate-and-deploy.sh <plan-id>
 
-set -euo pipefail
+set -e
 
-DESTINATION_SLUG="${1:?Missing required destination-slug}"
-VERSION_SUFFIX="${2:-}"
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DATA_DIR="${PROJECT_ROOT}/data/${DESTINATION_SLUG}"
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-echo "=================================================="
-echo "🚀 Unified Generate + Deploy"
-echo "Destination: ${DESTINATION_SLUG}"
-echo "Version: ${VERSION_SUFFIX:-default}"
-echo "=================================================="
-
-# Step 1: Auto-detect project type (itinerary vs bucket list)
-echo ""
-echo "📋 Step 1: Detecting project type..."
-
-PROJECT_TYPE="unknown"
-
-if [[ -f "${DATA_DIR}/plan-skeleton.json" ]]; then
-  # Check if it's a bucket list (has "cities" array) or itinerary (has "days" array)
-  if jq -e '.cities' "${DATA_DIR}/plan-skeleton.json" > /dev/null 2>&1; then
-    PROJECT_TYPE="bucket-list"
-  elif jq -e '.days' "${DATA_DIR}/plan-skeleton.json" > /dev/null 2>&1; then
-    PROJECT_TYPE="itinerary"
-  fi
+# Check argument
+if [ -z "$1" ]; then
+    echo -e "${RED}❌ Error: Plan ID required${NC}"
+    echo -e "Usage: bash scripts/generate-and-deploy.sh <plan-id>"
+    echo -e "Example: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405"
+    exit 1
 fi
 
-if [[ "$PROJECT_TYPE" == "unknown" ]]; then
-  echo "❌ Error: Cannot detect project type"
-  echo "   Plan skeleton must have 'days' array (itinerary) or 'cities' array (bucket list)"
-  exit 3
-fi
+PLAN_ID="$1"
+DATA_DIR="$PROJECT_ROOT/data/$PLAN_ID"
+OUTPUT_FILE="$PROJECT_ROOT/travel-plan-notion-${PLAN_ID}.html"
 
-echo "✓ Detected project type: ${PROJECT_TYPE}"
-
-# Step 2: Generate HTML using Python module
-echo ""
-echo "📋 Step 2: Generating HTML..."
-
-OUTPUT_FILE="${PROJECT_ROOT}/travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
-
-# Activate virtual environment
-if [[ -f "${PROJECT_ROOT}/venv/bin/activate" ]]; then
-  source "${PROJECT_ROOT}/venv/bin/activate"
-elif [[ -f /root/.claude/venv/bin/activate ]]; then
-  source /root/.claude/venv/bin/activate
-else
-  echo "❌ Error: Virtual environment not found"
-  exit 3
-fi
-
-# Use Python module to generate HTML
-python - <<PYTHON_SCRIPT
-import sys
-from pathlib import Path
-
-# Add scripts directory to Python path
-project_root = Path("${PROJECT_ROOT}")
-sys.path.insert(0, str(project_root))
-
-# Import the HTML generator module
-from scripts.lib.html_generator import TravelPlanHTMLGenerator
-
-# Configuration
-destination_slug = "${DESTINATION_SLUG}"
-version_suffix = "${VERSION_SUFFIX}"
-project_type = "${PROJECT_TYPE}"
-data_dir = Path("${DATA_DIR}")
-output_file = Path("${OUTPUT_FILE}")
-
-# Generate HTML using the module
-try:
-    generator = TravelPlanHTMLGenerator(
-        destination_slug=destination_slug,
-        data_dir=data_dir
-    )
-    generator.generate_html(output_file)
-    print(f"✓ HTML generated: {output_file}")
-except Exception as e:
-    print(f"❌ Error: {e}", file=sys.stderr)
-    import traceback
-    traceback.print_exc(file=sys.stderr)
-    sys.exit(1)
-PYTHON_SCRIPT
-
-if [[ $? -ne 0 ]]; then
-  echo "❌ Error: HTML generation failed"
-  exit 1
-fi
-
-echo "✓ HTML generated successfully"
-
-# Step 3: Deploy to GitHub Pages (atomic - cannot be skipped)
-echo ""
-echo "📋 Step 3: Deploying to GitHub Pages..."
-
-# Check if deployment is possible
-if [[ -z "${GITHUB_TOKEN:-}" ]] && [[ ! -f ~/.ssh/id_ed25519 ]] && [[ ! -f ~/.ssh/id_rsa ]]; then
-  echo "⚠️  Warning: No GitHub authentication found"
-  echo "   Skipping deployment (local file only)"
-  echo "   To enable deployment, set GITHUB_TOKEN or configure SSH keys"
-  echo ""
-  echo "✓ Generation complete (local only): ${OUTPUT_FILE}"
-  exit 0
-fi
-
-# Deploy using existing script
-bash "${SCRIPT_DIR}/deploy-travel-plans.sh" "${OUTPUT_FILE}"
-
-if [[ $? -ne 0 ]]; then
-  echo "❌ Error: Deployment failed"
-  exit 2
-fi
-
-echo ""
-echo "=================================================="
-echo "✅ Complete: Generated + Deployed"
-echo "=================================================="
-echo ""
-echo "📄 Local file: ${OUTPUT_FILE}"
-echo "🌐 Live URL will be shown in deploy script output above"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}🎨 Notion React HTML Generator & Deployer${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-exit 0
+# Validate data directory
+if [ ! -d "$DATA_DIR" ]; then
+    echo -e "${RED}❌ Error: Data directory not found: $DATA_DIR${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Plan ID: ${YELLOW}$PLAN_ID${NC}"
+echo -e "${GREEN}✓${NC} Data directory: $DATA_DIR"
+echo ""
+
+# Step 1: Generate Notion React HTML
+echo -e "${BLUE}[1/4]${NC} Generating Notion-style React HTML..."
+cd "$PROJECT_ROOT"
+python3 "$SCRIPT_DIR/generate-notion-react.py" "$PLAN_ID"
+
+if [ ! -f "$OUTPUT_FILE" ]; then
+    echo -e "${RED}❌ Error: HTML generation failed${NC}"
+    exit 1
+fi
+
+FILE_SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
+echo -e "${GREEN}✓${NC} Generated: $OUTPUT_FILE (${FILE_SIZE})"
+echo ""
+
+# Step 2: Validate HTML
+echo -e "${BLUE}[2/4]${NC} Validating HTML structure..."
+if ! grep -q "PLAN_DATA" "$OUTPUT_FILE"; then
+    echo -e "${RED}❌ Error: PLAN_DATA not found in HTML${NC}"
+    exit 1
+fi
+if ! grep -q "NotionTravelApp" "$OUTPUT_FILE"; then
+    echo -e "${RED}❌ Error: NotionTravelApp component not found${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓${NC} HTML structure valid"
+echo ""
+
+# Step 3: Deploy to GitHub Pages
+echo -e "${BLUE}[3/4]${NC} Deploying to GitHub Pages..."
+bash "$SCRIPT_DIR/deploy-travel-plans.sh" "$OUTPUT_FILE"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
