@@ -939,7 +939,7 @@ function NotionTravelApp() {
         html = self.generate_html()
 
         # Write output
-        output_file = self.base_dir / f"travel-plan-notion-{self.plan_id}.html"
+        output_file = self.base_dir / f"travel-plan-{self.plan_id}.html"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html)
 
