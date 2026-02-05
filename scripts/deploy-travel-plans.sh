@@ -560,9 +560,9 @@ Generated: $CURRENT_TIME
 # Set remote
 git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
 
-# Push to gh-pages branch
+# Push to gh-pages branch (without force to preserve history)
 echo "  Pushing to ${BRANCH} branch..."
-git push -f origin "$BRANCH"
+git push origin "$BRANCH"
 
 echo "✓ Pushed to GitHub"
 

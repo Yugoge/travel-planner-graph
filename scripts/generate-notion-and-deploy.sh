@@ -69,70 +69,7 @@ fi
 echo -e "${GREEN}✓${NC} HTML structure valid"
 echo ""
 
-# Step 3: Deploy to GitHub Pages
+# Step 3: Deploy to GitHub Pages using new history-preserving script
 echo -e "${BLUE}[3/4]${NC} Deploying to GitHub Pages..."
-
-# Check if gh-pages branch exists
-if ! git show-ref --verify --quiet refs/heads/gh-pages; then
-    echo -e "${YELLOW}⚠${NC}  gh-pages branch doesn't exist, creating..."
-    git checkout --orphan gh-pages
-    git rm -rf .
-    git commit --allow-empty -m "Initialize gh-pages"
-    git checkout master
-fi
-
-# Create deployment directory
-DEPLOY_DATE=$(date +%Y-%m-%d)
-DEPLOY_DIR="$PROJECT_ROOT/_deploy"
-DEPLOY_SUBDIR="$DEPLOY_DIR/$PLAN_ID/$DEPLOY_DATE"
-
-mkdir -p "$DEPLOY_SUBDIR"
-cp "$OUTPUT_FILE" "$DEPLOY_SUBDIR/index.html"
-
-echo -e "${GREEN}✓${NC} Copied to deployment directory"
-
-# Commit and push
-cd "$DEPLOY_DIR"
-git init 2>/dev/null || true
-git checkout -B gh-pages 2>/dev/null || true
-git add .
-git commit -m "Deploy Notion React HTML: $PLAN_ID ($DEPLOY_DATE)" || true
-
-# Push to GitHub
-REMOTE_URL=$(cd "$PROJECT_ROOT" && git remote get-url origin 2>/dev/null || echo "")
-if [ -n "$REMOTE_URL" ]; then
-    # Extract username and repo from git URL
-    if [[ "$REMOTE_URL" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)?$ ]]; then
-        USERNAME="${BASH_REMATCH[1]}"
-        REPO="${BASH_REMATCH[2]}"
-
-        git remote add origin "$REMOTE_URL" 2>/dev/null || true
-        git push -f origin gh-pages
-
-        GITHUB_PAGES_URL="https://${USERNAME}.github.io/${REPO}/${PLAN_ID}/${DEPLOY_DATE}/"
-        echo -e "${GREEN}✓${NC} Deployed to GitHub Pages"
-        echo ""
-        echo -e "${BLUE}[4/4]${NC} Deployment complete!"
-        echo ""
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${GREEN}✅ Success!${NC}"
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "📄 Local file:  file://$OUTPUT_FILE"
-        echo -e "🌐 GitHub Pages: ${GITHUB_PAGES_URL}"
-        echo ""
-        echo -e "${YELLOW}💡 Tip:${NC} It may take 1-2 minutes for GitHub Pages to update"
-        echo ""
-    else
-        echo -e "${YELLOW}⚠${NC}  Could not parse GitHub URL, skipping push"
-        echo -e "   Manual push: cd $DEPLOY_DIR && git push -f origin gh-pages"
-    fi
-else
-    echo -e "${YELLOW}⚠${NC}  No git remote configured, skipping push"
-    echo -e "${GREEN}✓${NC} HTML ready for manual deployment"
-    echo ""
-    echo -e "📄 Local file: file://$OUTPUT_FILE"
-fi
-
-cd "$PROJECT_ROOT"
+bash "$SCRIPT_DIR/deploy-to-gh-pages.sh" "$PLAN_ID" "$OUTPUT_FILE"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
