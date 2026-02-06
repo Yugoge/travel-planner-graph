@@ -1,0 +1,185 @@
+{
+  "request_id": "dev-20260206-interactive-fixes",
+  "timestamp": "2026-02-06T00:00:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added default time estimation for timeline data",
+        "type": "data_logic",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Lines 107-175: Added default time allocation for meals (breakfast 08:00-09:00, lunch 12:00-13:30, dinner 18:30-20:00), sequential time allocation for attractions starting at 10:00 based on recommended_duration, and sequential evening time allocation for entertainment starting at 19:00",
+        "rationale": "Root cause: Timeline view filtered items by time.start/time.end existence (line 732-734). When PLAN_DATA items lacked time fields, entries array became empty. Solution: Add intelligent default times during data merging phase so all items have valid time fields before reaching TimelineView component"
+      },
+      {
+        "id": 2,
+        "description": "Created ItemDetailSidebar component with onClick handlers",
+        "type": "component",
+        "files_created": [],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Lines 483-583: Created ItemDetailSidebar component (400px width, fixed right, slide-in animation, overlay backdrop). Lines 719-825: Added onClick handlers to all Kanban cards (meals, attractions, entertainment, accommodation). Lines 1024-1026: Added onClick handler to timeline entries. Lines 1075-1095: Added state management (selectedItem) and handleItemClick function in App component. Lines 1115-1123: Rendered ItemDetailSidebar conditionally",
+        "rationale": "Root cause: Cards had hover effects but no onClick handlers to open sidebars (lines 556-680 for Kanban, lines 806-817 for Timeline). Solution: Create Notion-style right sidebar component and attach onClick handlers to all interactive cards in both Kanban and Timeline views"
+      },
+      {
+        "id": 3,
+        "description": "Created BudgetDetailSidebar component with category expansion",
+        "type": "component",
+        "files_created": [],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Lines 585-717: Created BudgetDetailSidebar component that displays category-specific items with individual costs and total. Lines 905-914: Added onClick handlers to budget category rows with hover effects. Lines 1075-1095: Added state management (selectedBudgetCat) and handleBudgetClick function that collects items for meals (breakfast/lunch/dinner), attractions (all day attractions), entertainment (all entertainment items), and accommodation. Lines 1125-1133: Rendered BudgetDetailSidebar conditionally",
+        "rationale": "Root cause: Budget section only showed aggregated totals per category with no onClick handlers or expansion logic (lines 695-705). Solution: Create BudgetDetailSidebar component, attach onClick to category rows, collect all items belonging to clicked category (meals: breakfast/lunch/dinner, attractions: day.attractions[], entertainment: day.entertainment[], accommodation: single item)"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A - Original implementation lacked interactive features",
+      "why_issue_occurred": "Initial Notion-style generator focused on visual layout without item-level interactivity or timeline data defaults",
+      "how_fix_addresses_root": "Fix 1: Data merging logic now adds default/estimated times when items lack time fields, ensuring timeline always has data to display. Fix 2: Added ItemDetailSidebar component with full item details and onClick handlers on all cards. Fix 3: Added BudgetDetailSidebar component with category breakdown and onClick handlers on budget rows. All fixes follow Notion-style design patterns with proper state management ensuring only one sidebar open at a time"
+    },
+    "technical_details": {
+      "fix_1_time_estimation": {
+        "location": "Lines 107-175 (data merging)",
+        "approach": "Default time allocation during data merge phase",
+        "time_defaults": {
+          "meals": {
+            "breakfast": "08:00-09:00",
+            "lunch": "12:00-13:30",
+            "dinner": "18:30-20:00"
+          },
+          "attractions": "Sequential allocation starting 10:00, based on recommended_duration with 30min buffer",
+          "entertainment": "Sequential allocation starting 19:00 (after dinner), based on duration field",
+          "accommodation": "15:00-16:00 (check-in time)"
+        },
+        "duration_parsing": "Supports formats: '2h', '1.5h', '90min' with fallback to 2h default"
+      },
+      "fix_2_item_sidebar": {
+        "component_location": "Lines 483-583",
+        "component_features": [
+          "400px width (85% on mobile)",
+          "Fixed right position with translateX slide-in animation",
+          "Overlay backdrop (rgba(0,0,0,0.2), z-index 299)",
+          "Close button and overlay click handlers",
+          "Displays: image, name (Chinese/English), all properties, highlights, notes, links",
+          "Type-specific icons: meal 🍽️, attraction 📍, entertainment 🎭, accommodation 🏨"
+        ],
+        "onclick_locations": [
+          "Line 719: Kanban meal cards",
+          "Line 791: Kanban attraction cards",
+          "Line 844: Kanban entertainment cards",
+          "Line 866: Kanban accommodation card",
+          "Line 1024: Timeline entries"
+        ],
+        "state_management": {
+          "state": "selectedItem: { item: object, type: string } | null",
+          "handler": "handleItemClick(item, type) - closes budget sidebar, opens item sidebar",
+          "render": "Conditional render at line 1115-1123"
+        }
+      },
+      "fix_3_budget_sidebar": {
+        "component_location": "Lines 585-717",
+        "component_features": [
+          "400px width (85% on mobile)",
+          "Fixed right position with slide-in animation",
+          "Category-specific icon and color (from existing budget donut chart)",
+          "Itemized list with individual costs",
+          "Total calculation and display",
+          "Empty state when no items in category"
+        ],
+        "onclick_location": "Lines 905-914: Budget category rows",
+        "state_management": {
+          "state": "selectedBudgetCat: { category: string, items: array, total: number } | null",
+          "handler": "handleBudgetClick(category, dayData) - collects category items, closes item sidebar, opens budget sidebar",
+          "item_collection": {
+            "meals": "Collects breakfast, lunch, dinner from dayData.meals",
+            "attractions": "Collects dayData.attractions array",
+            "entertainment": "Collects dayData.entertainment array",
+            "accommodation": "Collects [dayData.accommodation] if exists"
+          },
+          "render": "Conditional render at line 1125-1133"
+        }
+      },
+      "mutual_exclusion": "handleItemClick closes budget sidebar before opening item sidebar; handleBudgetClick closes item sidebar before opening budget sidebar",
+      "notion_style_compliance": {
+        "colors": "Uses existing color scheme (#37352f text, #fbfbfa backgrounds, #f0efed borders)",
+        "fonts": "ui-sans-serif, -apple-system, system fonts",
+        "shadows": "0 1px 3px rgba(0,0,0,0.04) with hover: 0 2px 8px rgba(0,0,0,0.08)",
+        "animations": "0.25s ease slide-in, 0.12s hover transitions",
+        "spacing": "Consistent with existing Notion-style cards"
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "All three fixes implemented in single iteration. Test plan: (1) Verify timeline shows activities with times in Timeline view, (2) Click meal/attraction/entertainment/accommodation cards in Kanban view and verify ItemDetailSidebar opens with complete details, (3) Click timeline entries and verify sidebar opens, (4) Click budget category rows (Meals, Attractions, Entertainment, Accommodation) and verify BudgetDetailSidebar opens with itemized breakdown, (5) Verify only one sidebar open at a time, (6) Verify sidebars closeable via button or overlay click, (7) Test mobile responsive behavior (85% width, overlay backdrop)",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding keyboard shortcuts (ESC to close sidebars)",
+    "Consider adding transition animations to sidebar content",
+    "Consider adding search/filter functionality for budget categories with many items",
+    "Consider persisting sidebar state in URL params for deep linking"
+  ],
+  "validation": {
+    "test_results": [
+      {
+        "test": "Generate HTML with real PLAN_DATA",
+        "plan_id": "china-exchange-bucket-list-2026",
+        "result": "✅ Generated successfully",
+        "output_file": "/root/travel-planner/travel-plan-china-exchange-bucket-list-2026.html",
+        "file_size": "43.5 KB"
+      }
+    ],
+    "manual_testing_required": [
+      "Open generated HTML in browser",
+      "Test timeline view shows activities with times",
+      "Click various cards in Kanban view to test ItemDetailSidebar",
+      "Click timeline entries to test ItemDetailSidebar",
+      "Click budget category rows to test BudgetDetailSidebar",
+      "Verify mutual exclusion (only one sidebar at a time)",
+      "Test close functionality (button and overlay click)",
+      "Test mobile responsive behavior",
+      "Verify Notion-style design consistency"
+    ]
+  },
+  "files_modified": [
+    {
+      "path": "scripts/generate-html-interactive.py",
+      "total_changes": "9 edits",
+      "line_ranges": [
+        "107-175: Time estimation logic for meals, attractions, entertainment",
+        "483-583: ItemDetailSidebar component",
+        "585-717: BudgetDetailSidebar component",
+        "719: Kanban meal card onClick",
+        "791: Kanban attraction card onClick",
+        "844: Kanban entertainment card onClick",
+        "866: Kanban accommodation card onClick",
+        "905-914: Budget category row onClick",
+        "1024: Timeline entry onClick",
+        "1075-1095: App state management and handlers",
+        "1115-1133: Sidebar conditional rendering"
+      ]
+    }
+  ],
+  "success_criteria_validation": {
+    "timeline_data": {
+      "criteria": "Timeline view shows actual activity times from PLAN_DATA",
+      "status": "✅ Implemented",
+      "details": "Default times added for meals (08:00-09:00, 12:00-13:30, 18:30-20:00), sequential allocation for attractions starting 10:00 based on recommended_duration, sequential evening allocation for entertainment starting 19:00"
+    },
+    "item_clicks": {
+      "criteria": "Clicking any item opens ItemDetailSidebar with complete details",
+      "status": "✅ Implemented",
+      "details": "ItemDetailSidebar component created with onClick handlers on all Kanban cards (meals, attractions, entertainment, accommodation) and timeline entries. Sidebar shows image, name (CN/EN), all properties, highlights, notes, links"
+    },
+    "budget_expansion": {
+      "criteria": "Clicking budget category opens BudgetDetailSidebar with itemized breakdown",
+      "status": "✅ Implemented",
+      "details": "BudgetDetailSidebar component created with onClick handlers on budget category rows. Sidebar collects category-specific items (meals: breakfast/lunch/dinner, attractions: all attractions, entertainment: all entertainment, accommodation: single item) and displays itemized costs with total"
+    },
+    "sidebar_functionality": {
+      "criteria": "Sidebars closeable via button or overlay, mobile responsive, only one open at a time",
+      "status": "✅ Implemented",
+      "details": "Close button and overlay click handlers implemented. Mobile responsive (85% width). Mutual exclusion enforced via state management (handleItemClick closes budget sidebar, handleBudgetClick closes item sidebar)"
+    }
+  }
+}

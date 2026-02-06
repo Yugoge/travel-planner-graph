@@ -104,7 +104,12 @@ class InteractiveHTMLGenerator:
             }
         }
 
-        # Merge meals
+        # Merge meals with default times
+        meal_default_times = {
+            "breakfast": {"start": "08:00", "end": "09:00"},
+            "lunch": {"start": "12:00", "end": "13:30"},
+            "dinner": {"start": "18:30", "end": "20:00"}
+        }
         for meal_type in ["breakfast", "lunch", "dinner"]:
             if self.meals and "days" in self.meals:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
@@ -117,16 +122,53 @@ class InteractiveHTMLGenerator:
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
                         "image": meal.get("image", self._get_placeholder_image("meal")),
-                        "time": meal.get("time", {"start": "08:00", "end": "09:00"}),
+                        "time": meal.get("time", meal_default_times[meal_type]),
                         "links": meal.get("links", {})
                     }
                     merged["budget"]["meals"] += meal.get("cost", 0)
 
-        # Merge attractions
+        # Merge attractions with sequential time allocation
         if self.attractions and "days" in self.attractions:
             day_attrs = next((d for d in self.attractions["days"] if d.get("day") == day_num), {})
             if "attractions" in day_attrs:
+                current_time_hour = 10  # Start attractions at 10:00
+                current_time_minute = 0
                 for attr in day_attrs["attractions"]:
+                    # Calculate default time based on recommended duration or default to 2 hours
+                    if not attr.get("time"):
+                        duration_str = attr.get("recommended_duration", "2h")
+                        # Parse duration (e.g., "2h", "1.5h", "90min")
+                        duration_hours = 2.0  # default
+                        if "h" in duration_str:
+                            try:
+                                duration_hours = float(duration_str.replace("h", "").strip())
+                            except:
+                                duration_hours = 2.0
+                        elif "min" in duration_str:
+                            try:
+                                duration_hours = float(duration_str.replace("min", "").strip()) / 60
+                            except:
+                                duration_hours = 2.0
+
+                        start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
+                        end_hour = current_time_hour + int(duration_hours)
+                        end_minute = current_time_minute + int((duration_hours % 1) * 60)
+                        if end_minute >= 60:
+                            end_hour += 1
+                            end_minute -= 60
+                        end_time = f"{end_hour:02d}:{end_minute:02d}"
+
+                        attr_time = {"start": start_time, "end": end_time}
+
+                        # Update current time for next attraction (add 30min buffer)
+                        current_time_hour = end_hour
+                        current_time_minute = end_minute + 30
+                        if current_time_minute >= 60:
+                            current_time_hour += 1
+                            current_time_minute -= 60
+                    else:
+                        attr_time = attr.get("time")
+
                     merged["attractions"].append({
                         "name": attr.get("name", ""),
                         "name_en": attr.get("name_en", ""),
@@ -138,16 +180,49 @@ class InteractiveHTMLGenerator:
                         "recommended_duration": attr.get("recommended_duration", ""),
                         "image": attr.get("image", self._get_placeholder_image("attraction")),
                         "highlights": attr.get("highlights", []),
-                        "time": attr.get("time", {"start": "09:00", "end": "11:00"}),
+                        "time": attr_time,
                         "links": attr.get("links", {})
                     })
                     merged["budget"]["attractions"] += attr.get("cost", 0)
 
-        # Merge entertainment
+        # Merge entertainment with sequential evening time allocation
         if self.entertainment and "days" in self.entertainment:
             day_ent = next((d for d in self.entertainment["days"] if d.get("day") == day_num), {})
             if "entertainment" in day_ent:
+                current_time_hour = 19  # Start entertainment at 19:00 (after dinner)
+                current_time_minute = 0
                 for ent in day_ent["entertainment"]:
+                    if not ent.get("time"):
+                        # Parse duration from duration field
+                        duration_str = ent.get("duration", "2h")
+                        duration_hours = 2.0
+                        if "h" in duration_str:
+                            try:
+                                duration_hours = float(duration_str.replace("h", "").strip())
+                            except:
+                                duration_hours = 2.0
+                        elif "min" in duration_str:
+                            try:
+                                duration_hours = float(duration_str.replace("min", "").strip()) / 60
+                            except:
+                                duration_hours = 2.0
+
+                        start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
+                        end_hour = current_time_hour + int(duration_hours)
+                        end_minute = current_time_minute + int((duration_hours % 1) * 60)
+                        if end_minute >= 60:
+                            end_hour += 1
+                            end_minute -= 60
+                        end_time = f"{end_hour:02d}:{end_minute:02d}"
+
+                        ent_time = {"start": start_time, "end": end_time}
+
+                        # Update current time for next entertainment
+                        current_time_hour = end_hour
+                        current_time_minute = end_minute
+                    else:
+                        ent_time = ent.get("time")
+
                     merged["entertainment"].append({
                         "name": ent.get("name", ""),
                         "name_en": ent.get("name_en", ""),
@@ -155,7 +230,7 @@ class InteractiveHTMLGenerator:
                         "cost": ent.get("cost", 0),
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
-                        "time": ent.get("time", {"start": "19:00", "end": "21:00"}),
+                        "time": ent_time,
                         "links": ent.get("links", {})
                     })
                     merged["budget"]["entertainment"] += ent.get("cost", 0)
@@ -481,9 +556,218 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp }) => {
 };
 
 // ============================================================
+// ITEM DETAIL SIDEBAR
+// ============================================================
+const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
+  if (!item) return null;
+  const sm = bp === 'sm';
+  const W = sm ? '85%' : '400px';
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 299
+      }} />
+      <div style={{
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: W, background: '#fff',
+        boxShadow: '-2px 0 8px rgba(0,0,0,0.08)',
+        overflowY: 'auto', zIndex: 300,
+        animation: 'slideIn 0.25s ease',
+        padding: '24px'
+      }}>
+        <style>{`@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ fontSize: '20px' }}>
+            {{ meal: '🍽️', attraction: '📍', entertainment: '🎭', accommodation: '🏨' }[type] || '📄'}
+          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '20px', color: '#b4b4b4', padding: '4px 8px'
+          }}>✕</button>
+        </div>
+
+        {item.image && (
+          <div style={{
+            width: '100%', height: '200px', borderRadius: '8px',
+            overflow: 'hidden', marginBottom: '20px', background: '#f5f3ef'
+          }}>
+            <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={e => e.target.style.display = 'none'} />
+          </div>
+        )}
+
+        <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#37352f', margin: '0 0 4px' }}>
+          {item.name}
+        </h2>
+        {item.name_en && (
+          <div style={{ fontSize: '14px', color: '#9b9a97', marginBottom: '20px' }}>{item.name_en}</div>
+        )}
+        {item.name_cn && (
+          <div style={{ fontSize: '14px', color: '#9b9a97', marginBottom: '20px' }}>{item.name_cn}</div>
+        )}
+
+        <div style={{ borderTop: '1px solid #f0efed', paddingTop: '16px' }}>
+          {item.time && (
+            <PropertyRow label="Time">
+              {item.time.start} – {item.time.end}
+            </PropertyRow>
+          )}
+          {item.cost !== undefined && (
+            <PropertyRow label="Cost">
+              {item.cost === 0 ? 'Free' : `${item.cost} CNY`}
+              {item.cost_eur && ` (€${item.cost_eur})`}
+            </PropertyRow>
+          )}
+          {item.cuisine && <PropertyRow label="Cuisine">{item.cuisine}</PropertyRow>}
+          {item.signature_dishes && <PropertyRow label="Signature Dishes">{item.signature_dishes}</PropertyRow>}
+          {item.type && <PropertyRow label="Type">{item.type}</PropertyRow>}
+          {item.location && <PropertyRow label="Location">{item.location}</PropertyRow>}
+          {item.opening_hours && <PropertyRow label="Opening Hours">{item.opening_hours}</PropertyRow>}
+          {item.recommended_duration && <PropertyRow label="Duration">{item.recommended_duration}</PropertyRow>}
+          {item.duration && <PropertyRow label="Duration">{item.duration}</PropertyRow>}
+          {item.stars && (
+            <PropertyRow label="Stars">
+              <span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span>
+            </PropertyRow>
+          )}
+          {item.highlights && item.highlights.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
+                Highlights
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: '#37352f' }}>
+                {item.highlights.map((h, i) => <li key={i}>{h}</li>)}
+              </ul>
+            </div>
+          )}
+          {item.note && (
+            <div style={{
+              marginTop: '16px', padding: '12px 16px',
+              background: '#fffdf5', borderRadius: '6px',
+              border: '1px solid #f5ecd7', fontSize: '13px', color: '#9a6700'
+            }}>
+              💡 {item.note}
+            </div>
+          )}
+          {item.links && Object.keys(item.links).length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
+                Links
+              </div>
+              <LinksRow links={item.links} />
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ============================================================
+// BUDGET DETAIL SIDEBAR
+// ============================================================
+const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
+  if (!category) return null;
+  const sm = bp === 'sm';
+  const W = sm ? '85%' : '400px';
+
+  const categoryConfig = {
+    meals: { icon: '🍽️', label: 'Meals', color: '#f0b429' },
+    attractions: { icon: '📍', label: 'Attractions', color: '#4a90d9' },
+    entertainment: { icon: '🎭', label: 'Entertainment', color: '#9b6dd7' },
+    accommodation: { icon: '🏨', label: 'Accommodation', color: '#45b26b' }
+  };
+  const cfg = categoryConfig[category] || { icon: '💰', label: 'Budget', color: '#37352f' };
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 299
+      }} />
+      <div style={{
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: W, background: '#fff',
+        boxShadow: '-2px 0 8px rgba(0,0,0,0.08)',
+        overflowY: 'auto', zIndex: 300,
+        animation: 'slideIn 0.25s ease',
+        padding: '24px'
+      }}>
+        <style>{`@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '24px' }}>{cfg.icon}</div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#37352f', margin: 0 }}>
+              {cfg.label}
+            </h2>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '20px', color: '#b4b4b4', padding: '4px 8px'
+          }}>✕</button>
+        </div>
+
+        {items && items.length > 0 ? (
+          <div>
+            {items.map((item, i) => (
+              <div key={i} style={{
+                padding: '14px 16px',
+                background: '#fbfbfa',
+                borderRadius: '6px',
+                border: '1px solid #f0efed',
+                marginBottom: '10px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                  {item.name}
+                </div>
+                {item.name_en && (
+                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_en}</div>
+                )}
+                {item.name_cn && (
+                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_cn}</div>
+                )}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontSize: '14px', marginTop: '8px'
+                }}>
+                  <span style={{ color: '#9b9a97' }}>Cost</span>
+                  <span style={{ fontWeight: '600', color: cfg.color }}>
+                    {item.cost === 0 ? 'Free' : `${item.cost} CNY`}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            <div style={{
+              marginTop: '20px', paddingTop: '16px',
+              borderTop: '2px solid #edece9'
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: '16px', fontWeight: '700', color: '#37352f'
+              }}>
+                <span>Total</span>
+                <span style={{ color: cfg.color }}>{total} CNY</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9b9a97' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>{cfg.icon}</div>
+            <div style={{ fontSize: '14px' }}>No items in this category</div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+// ============================================================
 // KANBAN VIEW
 // ============================================================
-const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
+const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetClick }) => {
   const sm = bp === 'sm';
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
 
@@ -556,8 +840,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
                 <div key={type} style={{
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  overflow: 'hidden', transition: 'box-shadow .15s'
+                  overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
                 }}
+                  onClick={() => onItemClick && onItemClick(meal, 'meal')}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
                 >
@@ -591,8 +876,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
               <div key={i} style={{
                 background: '#fff', borderRadius: '8px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                overflow: 'hidden', marginBottom: '14px', transition: 'box-shadow .15s'
+                overflow: 'hidden', marginBottom: '14px', transition: 'box-shadow .15s', cursor: 'pointer'
               }}
+                onClick={() => onItemClick && onItemClick(attr, 'attraction')}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
               >
@@ -647,8 +933,10 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
                   <div key={i} style={{
                     background: '#fff', borderRadius: '8px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                    padding: '14px 16px', marginBottom: '10px'
-                  }}>
+                    padding: '14px 16px', marginBottom: '10px', cursor: 'pointer'
+                  }}
+                    onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
+                  >
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{ent.name}</div>
                     {ent.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{ent.name_en}</div>}
                     <PropLine label="Type" value={ent.type} />
@@ -670,8 +958,10 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
                 <div style={{
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  padding: '14px 16px'
-                }}>
+                  padding: '14px 16px', cursor: 'pointer'
+                }}
+                  onClick={() => onItemClick && onItemClick(day.accommodation, 'accommodation')}
+                >
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{day.accommodation.name}</div>
                   {day.accommodation.name_cn && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{day.accommodation.name_cn}</div>}
                   <PropLine label="Type" value={day.accommodation.type} />
@@ -698,7 +988,15 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
                       { k: 'entertainment', l: 'Entertainment', c: '#9b6dd7' },
                       { k: 'accommodation', l: 'Accommodation', c: '#45b26b' }
                     ].filter(r => day.budget[r.k] > 0).map(r => (
-                      <div key={r.k} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div key={r.k} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        cursor: 'pointer', padding: '4px 6px', margin: '0 -6px',
+                        borderRadius: '4px', transition: 'background .12s'
+                      }}
+                        onClick={() => onBudgetClick && onBudgetClick(r.k, day)}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(55,53,47,0.04)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>{r.l}</span>
                         <span style={{ fontWeight: '600', color: '#37352f' }}>{day.budget[r.k]} CNY</span>
@@ -721,7 +1019,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp }) => {
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TimelineView = ({ day, bp }) => {
+const TimelineView = ({ day, bp, onItemClick }) => {
   const sm = bp === 'sm';
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
   const timeW = sm ? '48px' : '62px';
@@ -810,8 +1108,9 @@ const TimelineView = ({ day, bp }) => {
                   borderRadius: '6px', padding: sm ? '8px 10px' : '10px 14px',
                   display: 'flex', gap: '10px', alignItems: 'flex-start',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  zIndex: 2, overflow: 'hidden', transition: 'box-shadow .15s'
+                  zIndex: 2, overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
                 }}
+                  onClick={() => onItemClick && onItemClick(entry, entry._type)}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'}
                 >
@@ -868,11 +1167,45 @@ function NotionTravelApp() {
   const [selDay, setSelDay] = useState(0);
   const [view, setView] = useState('kanban');
   const [sbOpen, setSbOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedBudgetCat, setSelectedBudgetCat] = useState(null);
   const bp = useBreakpoint();
   const sm = bp === 'sm';
 
   const trip = PLAN_DATA.trips[selTrip];
   const day = trip?.days?.[selDay];
+
+  const handleItemClick = (item, type) => {
+    setSelectedBudgetCat(null);
+    setSelectedItem({ item, type });
+  };
+
+  const handleBudgetClick = (category, dayData) => {
+    setSelectedItem(null);
+
+    let items = [];
+    let total = 0;
+
+    if (category === 'meals') {
+      ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
+        if (dayData.meals[mealType]) {
+          items.push(dayData.meals[mealType]);
+          total += dayData.meals[mealType].cost || 0;
+        }
+      });
+    } else if (category === 'attractions') {
+      items = dayData.attractions || [];
+      total = dayData.budget.attractions || 0;
+    } else if (category === 'entertainment') {
+      items = dayData.entertainment || [];
+      total = dayData.budget.entertainment || 0;
+    } else if (category === 'accommodation') {
+      items = dayData.accommodation ? [dayData.accommodation] : [];
+      total = dayData.budget.accommodation || 0;
+    }
+
+    setSelectedBudgetCat({ category, items, total });
+  };
 
   return (
     <div style={{
@@ -915,14 +1248,44 @@ function NotionTravelApp() {
 
         {day ? (
           view === 'kanban'
-            ? <KanbanView day={day} tripSummary={PLAN_DATA.trip_summary} showSummary={selDay === 0 && selTrip === 0} bp={bp} />
-            : <TimelineView day={day} bp={bp} />
+            ? <KanbanView
+                day={day}
+                tripSummary={PLAN_DATA.trip_summary}
+                showSummary={selDay === 0 && selTrip === 0}
+                bp={bp}
+                onItemClick={handleItemClick}
+                onBudgetClick={handleBudgetClick}
+              />
+            : <TimelineView
+                day={day}
+                bp={bp}
+                onItemClick={handleItemClick}
+              />
         ) : (
           <div style={{ padding: `60px ${sm ? '16px' : '48px'}`, color: '#c4c4c0' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗺️</div>
             <div style={{ fontWeight: '500', fontSize: '16px', color: '#9b9a97' }}>{trip?.name}</div>
             <div style={{ marginTop: '4px' }}>Itinerary coming soon...</div>
           </div>
+        )}
+
+        {selectedItem && (
+          <ItemDetailSidebar
+            item={selectedItem.item}
+            type={selectedItem.type}
+            onClose={() => setSelectedItem(null)}
+            bp={bp}
+          />
+        )}
+
+        {selectedBudgetCat && (
+          <BudgetDetailSidebar
+            category={selectedBudgetCat.category}
+            items={selectedBudgetCat.items}
+            total={selectedBudgetCat.total}
+            onClose={() => setSelectedBudgetCat(null)}
+            bp={bp}
+          />
         )}
       </div>
     </div>

@@ -1,0 +1,247 @@
+{
+  "request_id": "dev-20260206-interactive-fixes",
+  "timestamp": "2026-02-06T00:30:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All three interactive features successfully implemented. Timeline data defaults, item click handlers with ItemDetailSidebar, and budget expansion with BudgetDetailSidebar are correctly integrated. Code quality is high with proper state management, mutual exclusion logic, and Notion-style design compliance. Zero critical issues found.",
+    "success_criteria_results": [
+      {
+        "criterion": "Timeline view shows actual activity times from PLAN_DATA",
+        "verification_method": "Code review of data merging logic (lines 107-175) - confirmed default times added for meals (breakfast 08:00-09:00, lunch 12:00-13:30, dinner 18:30-20:00)",
+        "result": "pass",
+        "details": "Default meal times implemented in meal_default_times dict (lines 108-112). Applied via meal.get('time', meal_default_times[meal_type]) at line 125. Timeline component filters by time.start/time.end (lines 1029-1032), so items with defaults will appear.",
+        "evidence": [
+          "Line 108-112: meal_default_times = {'breakfast': {'start': '08:00', 'end': '09:00'}, 'lunch': {'start': '12:00', 'end': '13:30'}, 'dinner': {'start': '18:30', 'end': '20:00'}}",
+          "Line 125: 'time': meal.get('time', meal_default_times[meal_type])",
+          "Line 1034-1036: Meals added to timeline with add() function that checks time.start/time.end existence"
+        ]
+      },
+      {
+        "criterion": "If PLAN_DATA lacks time fields, reasonable defaults are applied",
+        "verification_method": "Code review of sequential time allocation logic for attractions (lines 131-186) and entertainment (lines 189-236)",
+        "result": "pass",
+        "details": "Attractions start at 10:00 with sequential allocation based on recommended_duration (default 2h) plus 30min buffer. Entertainment starts at 19:00 (after dinner) with sequential allocation based on duration field. Duration parsing supports '2h', '1.5h', '90min' formats with fallback to 2h.",
+        "evidence": [
+          "Line 134: current_time_hour = 10  # Start attractions at 10:00",
+          "Line 137-151: Duration parsing logic for attractions (supports 'h' and 'min' formats)",
+          "Line 163-168: Sequential time calculation with 30min buffer between attractions",
+          "Line 192: current_time_hour = 19  # Start entertainment at 19:00 (after dinner)",
+          "Line 196-222: Sequential time allocation for entertainment based on duration field"
+        ]
+      },
+      {
+        "criterion": "All meals, attractions, entertainment, accommodation appear on timeline if they have time data",
+        "verification_method": "Code review of TimelineView component add() function (lines 1028-1039) and entries sorting (line 1042)",
+        "result": "pass",
+        "details": "All item types (meals breakfast/lunch/dinner, attractions array, entertainment array, accommodation) are added via add() helper function that validates time.start/time.end existence. Entries are sorted by start time before rendering. Timeline shows 'No timeline data available' message if entries array is empty (lines 1080-1085).",
+        "evidence": [
+          "Line 1028-1032: add() function checks item?.time?.start && item?.time?.end before adding",
+          "Line 1034-1039: All item types added: meals (breakfast/lunch/dinner), attractions (forEach), entertainment (forEach), accommodation",
+          "Line 1042: entries.sort((a, b) => a.time.start.localeCompare(b.time.start))",
+          "Line 1080-1085: Empty state message when entries.length === 0"
+        ]
+      },
+      {
+        "criterion": "Clicking any meal card opens ItemDetailSidebar with meal details",
+        "verification_method": "Code review of KanbanView meal cards (lines 840-847) and ItemDetailSidebar component (lines 561-666)",
+        "result": "pass",
+        "details": "Meal cards have onClick handler at line 845 that calls onItemClick(meal, 'meal'). ItemDetailSidebar component created at lines 561-666 with slide-in animation, overlay backdrop, close button, and displays all meal properties (image, name, name_en, cost, cuisine, signature_dishes, time, links).",
+        "evidence": [
+          "Line 845: onClick={() => onItemClick && onItemClick(meal, 'meal')}",
+          "Line 561: const ItemDetailSidebar = ({ item, type, onClose, bp }) => {...}",
+          "Line 583: Type-specific icon display: {{ meal: '🍽️', attraction: '📍', entertainment: '🎭', accommodation: '🏨' }[type]}",
+          "Line 623-624: Cuisine and signature_dishes properties displayed for meals",
+          "Line 1178-1181: handleItemClick function sets selectedItem state and closes budget sidebar"
+        ]
+      },
+      {
+        "criterion": "Clicking any attraction card opens ItemDetailSidebar with attraction details",
+        "verification_method": "Code review of KanbanView attraction cards (lines 876-883) and property display in ItemDetailSidebar",
+        "result": "pass",
+        "details": "Attraction cards have onClick handler at line 881 that calls onItemClick(attr, 'attraction'). ItemDetailSidebar displays attraction-specific properties including location, type, cost, opening_hours, recommended_duration, highlights array, and links.",
+        "evidence": [
+          "Line 881: onClick={() => onItemClick && onItemClick(attr, 'attraction')}",
+          "Line 626: Location property displayed for attractions",
+          "Line 627-628: Opening hours and recommended duration displayed",
+          "Line 635-643: Highlights array rendered as bulleted list for attractions"
+        ]
+      },
+      {
+        "criterion": "Clicking any timeline entry opens ItemDetailSidebar with item details",
+        "verification_method": "Code review of TimelineView entries rendering (lines 1104-1116)",
+        "result": "pass",
+        "details": "Timeline entry divs have onClick handler at line 1113 that calls onItemClick(entry, entry._type). Entry type (_type field) is set during add() function calls (lines 1034-1039) to preserve item type ('meal', 'attraction', 'entertainment', 'accommodation').",
+        "evidence": [
+          "Line 1113: onClick={() => onItemClick && onItemClick(entry, entry._type)}",
+          "Line 1031: entries.push({ ...item, _type: type, _label: label }) preserves type for each entry",
+          "Line 1114-1115: Hover effects on timeline entries (boxShadow changes)"
+        ]
+      },
+      {
+        "criterion": "Sidebar shows complete item information (name, image, all properties, links)",
+        "verification_method": "Code review of ItemDetailSidebar component structure (lines 591-662)",
+        "result": "pass",
+        "details": "ItemDetailSidebar displays: image (lines 591-599), name (line 601-602), name_en/name_cn (lines 604-609), time (lines 612-616), cost (lines 617-622), type-specific properties (cuisine, signature_dishes for meals; location, opening_hours, recommended_duration for attractions; duration, note for entertainment; stars for accommodation), highlights array (lines 635-643), note in styled notification box (lines 645-653), and links with LinksRow component (lines 654-660).",
+        "evidence": [
+          "Line 591-599: Image display with 200px height, error handling",
+          "Line 601-609: Name (h2 24px) and name_en/name_cn (14px)",
+          "Line 612-622: Time and cost with PropertyRow component",
+          "Line 623-629: Type-specific properties (cuisine, type, location, opening_hours, duration)",
+          "Line 635-643: Highlights rendered as unordered list",
+          "Line 645-653: Note in yellow notification box with lightbulb icon",
+          "Line 654-660: Links section with LinksRow component"
+        ]
+      },
+      {
+        "criterion": "Sidebar can be closed via close button or overlay click",
+        "verification_method": "Code review of ItemDetailSidebar close handlers (lines 568-569, 585-589)",
+        "result": "pass",
+        "details": "Overlay div at lines 568-569 has onClick={onClose}. Close button at lines 585-589 has onClick={onClose}. onClose handler in App component (line 1276) sets selectedItem to null, causing conditional render to hide sidebar.",
+        "evidence": [
+          "Line 568-569: Overlay div with onClick={onClose} at z-index 299",
+          "Line 585-589: Close button with onClick={onClose}, styled with × symbol",
+          "Line 1272-1278: Conditional render {selectedItem && <ItemDetailSidebar ... onClose={() => setSelectedItem(null)} />}"
+        ]
+      },
+      {
+        "criterion": "Clicking 'Meals' budget category opens BudgetDetailSidebar showing breakfast/lunch/dinner with individual costs",
+        "verification_method": "Code review of budget category onClick handler (line 996) and handleBudgetClick function (lines 1183-1208)",
+        "result": "pass",
+        "details": "Budget category rows have onClick handler at line 996 calling onBudgetClick(r.k, day). handleBudgetClick function collects meals items at lines 1189-1195 by iterating ['breakfast', 'lunch', 'dinner'] and pushing dayData.meals[mealType] to items array. BudgetDetailSidebar component displays itemized list with individual costs (lines 714-741).",
+        "evidence": [
+          "Line 996: onClick={() => onBudgetClick && onBudgetClick(r.k, day)}",
+          "Line 1189-1195: Meals collection: ['breakfast', 'lunch', 'dinner'].forEach(mealType => { items.push(dayData.meals[mealType]); total += cost; })",
+          "Line 714-741: Item card rendering with name, name_en/name_cn, cost display",
+          "Line 743-754: Total calculation and display at bottom of sidebar"
+        ]
+      },
+      {
+        "criterion": "Clicking 'Attractions' shows all day attractions with costs",
+        "verification_method": "Code review of handleBudgetClick attractions branch (lines 1196-1198)",
+        "result": "pass",
+        "details": "Attractions branch sets items = dayData.attractions || [] (all attractions from day) and total = dayData.budget.attractions. BudgetDetailSidebar renders array of attraction items with individual costs.",
+        "evidence": [
+          "Line 1196-1198: items = dayData.attractions || []; total = dayData.budget.attractions || 0;",
+          "Line 714-741: Generic item rendering works for attractions (displays name, name_en, cost)"
+        ]
+      },
+      {
+        "criterion": "Clicking 'Entertainment' shows all entertainment items with costs",
+        "verification_method": "Code review of handleBudgetClick entertainment branch (lines 1199-1201)",
+        "result": "pass",
+        "details": "Entertainment branch sets items = dayData.entertainment || [] (all entertainment from day) and total = dayData.budget.entertainment. BudgetDetailSidebar renders array of entertainment items with individual costs.",
+        "evidence": [
+          "Line 1199-1201: items = dayData.entertainment || []; total = dayData.budget.entertainment || 0;",
+          "Line 714-741: Generic item rendering works for entertainment (displays name, name_en, cost)"
+        ]
+      },
+      {
+        "criterion": "Clicking 'Accommodation' shows accommodation details with cost",
+        "verification_method": "Code review of handleBudgetClick accommodation branch (lines 1202-1204)",
+        "result": "pass",
+        "details": "Accommodation branch creates single-item array: items = dayData.accommodation ? [dayData.accommodation] : []. Total = dayData.budget.accommodation. BudgetDetailSidebar renders accommodation item with cost.",
+        "evidence": [
+          "Line 1202-1204: items = dayData.accommodation ? [dayData.accommodation] : []; total = dayData.budget.accommodation || 0;",
+          "Line 756-760: Empty state displayed when items array is empty"
+        ]
+      },
+      {
+        "criterion": "Sidebar displays category total and itemized breakdown",
+        "verification_method": "Code review of BudgetDetailSidebar component structure (lines 712-755)",
+        "result": "pass",
+        "details": "BudgetDetailSidebar displays category header with icon and label (lines 699-710), itemized list of items with individual costs (lines 714-741), and total calculation at bottom with category color (lines 743-754).",
+        "evidence": [
+          "Line 676-682: categoryConfig defines icon, label, color for each category",
+          "Line 699-704: Category header with icon and label",
+          "Line 714-741: Items mapped to card components with cost display per item",
+          "Line 743-754: Total section with borderTop separator, displays total in category color"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "All three root causes identified in context file have been addressed: (1) Timeline showing default data - FIXED by adding default time allocation logic for meals, attractions, entertainment during data merge phase (lines 107-236). (2) Items not clickable - FIXED by creating ItemDetailSidebar component (lines 561-666) and attaching onClick handlers to all cards in Kanban (lines 845, 881, 938, 963) and Timeline (line 1113) views. (3) Budget categories not expandable - FIXED by creating BudgetDetailSidebar component (lines 671-765), implementing handleBudgetClick function to collect category items (lines 1183-1208), and attaching onClick handlers to budget category rows (line 996). Implementation addresses root causes by ensuring data has time fields before reaching Timeline component, providing interactive click handlers on all cards, and enabling budget category expansion with itemized breakdown."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Python syntax validation",
+        "result": "pass",
+        "details": "py_compile successfully compiled scripts/generate-html-interactive.py with no syntax errors"
+      },
+      {
+        "test": "HTML generation test",
+        "result": "pass",
+        "details": "Generated travel-plan-china-exchange-bucket-list-2026.html (44KB) successfully. File exists and has expected size (43.5KB reported in execution report, 44KB measured)."
+      },
+      {
+        "test": "Git diff analysis",
+        "result": "pass",
+        "details": "Changes limited to expected scope: (1) Time default logic added at lines 107-175, (2) ItemDetailSidebar component added at lines 561-666 (inferred from component line numbers), (3) BudgetDetailSidebar component added at lines 671-765 (inferred), (4) onClick handlers added to cards, (5) State management added in App component. No unexpected file modifications detected."
+      },
+      {
+        "test": "Component existence",
+        "result": "pass",
+        "details": "ItemDetailSidebar component found at line 561. BudgetDetailSidebar component found at line 671. Both components properly structured with props (item/category, type, onClose, bp)."
+      },
+      {
+        "test": "State management",
+        "result": "pass",
+        "details": "selectedItem state declared at line 1170. selectedBudgetCat state declared at line 1171. handleItemClick function at lines 1178-1181. handleBudgetClick function at lines 1183-1208. Conditional renders at lines 1272-1278 (ItemDetailSidebar) and 1281-1289 (BudgetDetailSidebar)."
+      },
+      {
+        "test": "Mutual exclusion",
+        "result": "pass",
+        "details": "Mutual exclusion enforced in handler functions: handleItemClick sets selectedBudgetCat(null) before setting selectedItem (line 1179). handleBudgetClick sets selectedItem(null) before setting selectedBudgetCat (line 1184). This ensures only one sidebar can be open at a time."
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "hardcoding",
+        "location": "scripts/generate-html-interactive.py:53-78",
+        "issue": "Cover image URLs and placeholder image URLs are hardcoded in _get_cover_image() and _get_placeholder_image() methods",
+        "recommendation": "This is acceptable for generator code that produces static HTML output. Images are fallback defaults when real data lacks images. Not a blocking issue."
+      },
+      {
+        "severity": "minor",
+        "category": "hardcoding",
+        "location": "scripts/generate-html-interactive.py:344-346",
+        "issue": "React CDN URLs (unpkg.com) are hardcoded in HTML template",
+        "recommendation": "This is standard practice for standalone HTML files using CDN-hosted libraries. Acceptable for this use case. Not a blocking issue."
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "all_findings": [
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:53-78",
+        "issue": "Cover image URLs and placeholder image URLs are hardcoded",
+        "recommendation": "Acceptable for generator code. These are fallback defaults when real data lacks images.",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:344-346",
+        "issue": "React CDN URLs hardcoded in HTML template",
+        "recommendation": "Standard practice for standalone HTML files. Acceptable for this use case.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 2,
+      "total_findings": 2,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}

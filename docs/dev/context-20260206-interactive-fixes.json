@@ -1,0 +1,253 @@
+{
+  "request_id": "dev-20260206-interactive-fixes",
+  "timestamp": "2026-02-06T00:00:00Z",
+  "requirement": {
+    "original": "现在最新的notion风格有几个问题：1. 为什么timeline视图中都是默认时间线 2. 为什么看板中和timeline中每一个具体的项目无法打开。我要求点击一个项目可以看出那个项目在侧边栏展示。3. 为什么budget分析没有侧边栏展开（就像notion那样的），我要求点击budget中一个分类可以看出那个分类的全部项目在侧边栏展示。",
+    "clarified": "Fix three interactive features in Notion-style HTML: (1) Timeline view shows default/placeholder data instead of actual times from PLAN_DATA, (2) Items in Kanban and Timeline views cannot be clicked to open detail sidebar (Notion-style page peek), (3) Budget analysis lacks category expansion to show all items in a sidebar when clicking a category",
+    "user_confirmed": "是的，理解正确，请继续实现这三个功能"
+  },
+  "root_cause_analysis": {
+    "issue_1_timeline_default_data": {
+      "symptom": "Timeline view shows no data or default placeholder message",
+      "location": "scripts/generate-html-interactive.py:724-823 (TimelineView component)",
+      "root_cause": "Timeline entries are filtered by time.start and time.end existence (line 732-734). If PLAN_DATA items don't have time objects with start/end fields, entries array becomes empty and shows 'No timeline data available' message (line 782-787)",
+      "affected_code": [
+        "Line 732-734: add() function only adds items with valid time.start and time.end",
+        "Line 736-741: Attempts to add meals, attractions, entertainment, accommodation",
+        "Line 762-764: Console warning when entries.length === 0"
+      ],
+      "data_structure_issue": "PLAN_DATA.trips[].days[].meals.breakfast/lunch/dinner may not have time: {start, end} fields. Same for attractions, entertainment, accommodation.",
+      "fix_required": "Either: (a) Ensure data generation includes time fields, or (b) Add default/estimated times when time fields are missing"
+    },
+    "issue_2_no_click_handlers": {
+      "symptom": "Clicking items in Kanban or Timeline view does nothing",
+      "location_kanban": "scripts/generate-html-interactive.py:548-714 (KanbanView component)",
+      "location_timeline": "scripts/generate-html-interactive.py:801-823 (TimelineView entries rendering)",
+      "root_cause": "Cards have hover effects (onMouseEnter/onMouseLeave) but no onClick handlers to open sidebars",
+      "affected_code": [
+        "Kanban meals: Lines 556-580 - div with hover but no onClick",
+        "Kanban attractions: Lines 591-636 - div with hover but no onClick",
+        "Kanban accommodation: Lines 642-680 - div with hover but no onClick",
+        "Timeline entries: Lines 806-817 - div with hover but no onClick"
+      ],
+      "missing_functionality": [
+        "No sidebar component for displaying item details",
+        "No state management for selected item",
+        "No onClick handlers attached to card divs"
+      ],
+      "fix_required": "Create ItemDetailSidebar component with React state (selectedItem, setSelectedItem), attach onClick handlers to all cards, display sidebar when item selected"
+    },
+    "issue_3_budget_no_expansion": {
+      "symptom": "Budget categories (Meals, Attractions, etc.) cannot be clicked to expand and show itemized breakdown",
+      "location": "scripts/generate-html-interactive.py:686-713 (Budget section in KanbanView)",
+      "root_cause": "Budget section only shows aggregated totals per category, with no onClick handlers or expansion logic",
+      "affected_code": [
+        "Lines 695-705: Budget categories rendered as static divs with totals",
+        "Line 701: div key={r.k} has no onClick handler"
+      ],
+      "missing_functionality": [
+        "No sidebar component for budget category details",
+        "No state management for selected budget category",
+        "No onClick handlers on category rows",
+        "No logic to collect all items (meals, attractions, etc.) belonging to a category"
+      ],
+      "data_access_needed": "day.meals (breakfast/lunch/dinner with costs), day.attractions[] (with costs), day.entertainment[] (with costs), day.accommodation (with cost)",
+      "fix_required": "Create BudgetDetailSidebar component, attach onClick to category rows, collect and display all items in clicked category with individual costs"
+    }
+  },
+  "current_implementation": {
+    "file": "scripts/generate-html-interactive.py",
+    "generator_class": "InteractiveHTMLGenerator",
+    "recent_commits": [
+      "02a4e6f - checkpoint: Auto-save at 2026-02-05 23:28:21",
+      "0dd0b40 - refactor: rename to generic naming without Notion branding"
+    ],
+    "existing_onclick_handlers": [
+      "Line 416: Mobile sidebar overlay close",
+      "Line 428: Mobile sidebar close button",
+      "Line 437: Trip/day navigation in sidebar",
+      "Line 459: Day selection in sidebar",
+      "Line 898: Mobile menu toggle",
+      "Line 904: View switcher (kanban/timeline)"
+    ],
+    "existing_components": [
+      "Sidebar (lines ~400-480): Left navigation",
+      "KanbanView (lines 486-719): Day view with cards",
+      "TimelineView (lines 724-823): Timeline visualization",
+      "Section, PropertyRow, PropLine, LinksRow: Helper components",
+      "Donut: Budget donut chart component"
+    ],
+    "missing_components": [
+      "ItemDetailSidebar: Right sidebar for displaying clicked item details",
+      "BudgetDetailSidebar: Right sidebar for displaying budget category breakdown"
+    ]
+  },
+  "implementation_plan": {
+    "fix_1_timeline_data": {
+      "approach": "Add default/estimated times to items when time fields are missing",
+      "changes": [
+        {
+          "location": "Data merging logic (lines ~100-180)",
+          "action": "When processing meals/attractions/entertainment/accommodation, if item.time is missing, add default time estimates",
+          "estimates": {
+            "breakfast": {"start": "08:00", "end": "09:00"},
+            "lunch": {"start": "12:00", "end": "13:30"},
+            "dinner": {"start": "18:30", "end": "20:00"},
+            "attractions": "Sequential allocation based on recommended_duration, starting from 10:00",
+            "entertainment": "Evening slots after dinner",
+            "accommodation": {"start": "15:00", "end": "16:00"}
+          }
+        },
+        {
+          "location": "TimelineView component (line 732-734)",
+          "action": "Keep validation logic, but ensure data has time fields before reaching component"
+        }
+      ]
+    },
+    "fix_2_item_click_handlers": {
+      "approach": "Create ItemDetailSidebar component with React state management",
+      "changes": [
+        {
+          "location": "New component before KanbanView (~line 485)",
+          "action": "Create ItemDetailSidebar component that displays item details",
+          "features": [
+            "Right-side slide-out sidebar (similar to Notion page peek)",
+            "Close button and overlay",
+            "Display item name, image, all properties, links",
+            "Responsive mobile support"
+          ]
+        },
+        {
+          "location": "App component state",
+          "action": "Add useState for selectedItem: const [selectedItem, setSelectedItem] = useState(null)",
+          "type": "selectedItem: {item: object, type: 'meal'|'attraction'|'entertainment'|'accommodation'}"
+        },
+        {
+          "location": "KanbanView component",
+          "action": "Pass onItemClick prop, attach onClick to all cards",
+          "cards_to_update": [
+            "Meals cards (lines 556-580)",
+            "Attractions cards (lines 591-636)",
+            "Entertainment cards",
+            "Accommodation card (lines 642-680)"
+          ]
+        },
+        {
+          "location": "TimelineView component",
+          "action": "Pass onItemClick prop, attach onClick to timeline entry divs (lines 806-817)"
+        }
+      ]
+    },
+    "fix_3_budget_expansion": {
+      "approach": "Create BudgetDetailSidebar component with category item collection",
+      "changes": [
+        {
+          "location": "New component before KanbanView (~line 485)",
+          "action": "Create BudgetDetailSidebar component",
+          "features": [
+            "Right-side slide-out sidebar",
+            "Category title with icon and color",
+            "List all items in category with names and costs",
+            "Total calculation",
+            "Close button and overlay"
+          ]
+        },
+        {
+          "location": "App component state",
+          "action": "Add useState for selectedBudgetCategory: const [selectedBudgetCat, setSelectedBudgetCat] = useState(null)",
+          "type": "selectedBudgetCat: {category: 'meals'|'attractions'|'entertainment'|'accommodation', items: array, total: number}"
+        },
+        {
+          "location": "KanbanView Budget section (lines 695-705)",
+          "action": "Attach onClick handler to category rows, pass onBudgetClick prop"
+        },
+        {
+          "location": "Budget click handler logic",
+          "action": "Collect items: for 'meals' get [breakfast, lunch, dinner] with costs; for 'attractions' get day.attractions[] with costs; etc."
+        }
+      ]
+    }
+  },
+  "technical_specifications": {
+    "sidebar_design": {
+      "width": "400px (desktop), 85% (mobile)",
+      "position": "fixed right",
+      "animation": "translateX slide-in with 0.25s ease transition",
+      "overlay": "rgba(0,0,0,0.2) backdrop when open",
+      "z_index": "sidebar: 300, overlay: 299",
+      "close_triggers": ["Close button click", "Overlay click", "ESC key (optional)"]
+    },
+    "state_management": {
+      "item_sidebar": "selectedItem: null | {item: object, type: string}",
+      "budget_sidebar": "selectedBudgetCat: null | {category: string, items: array, total: number}",
+      "mutual_exclusion": "Only one sidebar open at a time (item OR budget, not both)"
+    },
+    "notion_style_guidelines": {
+      "colors": "Use existing color scheme (#37352f text, #fbfbfa backgrounds)",
+      "fonts": "system-ui, -apple-system, sans-serif",
+      "borders": "#f0efed (light gray)",
+      "shadows": "0 1px 3px rgba(0,0,0,0.04)",
+      "spacing": "Consistent with existing Notion-style cards"
+    }
+  },
+  "success_criteria": {
+    "timeline_data": [
+      "Timeline view shows actual activity times from PLAN_DATA",
+      "If PLAN_DATA lacks time fields, reasonable defaults are applied",
+      "All meals, attractions, entertainment, accommodation appear on timeline if they have time data"
+    ],
+    "item_clicks": [
+      "Clicking any meal card opens ItemDetailSidebar with meal details",
+      "Clicking any attraction card opens ItemDetailSidebar with attraction details",
+      "Clicking any timeline entry opens ItemDetailSidebar with item details",
+      "Sidebar shows complete item information (name, image, all properties, links)",
+      "Sidebar can be closed via close button or overlay click"
+    ],
+    "budget_expansion": [
+      "Clicking 'Meals' budget category opens BudgetDetailSidebar showing breakfast/lunch/dinner with individual costs",
+      "Clicking 'Attractions' shows all day attractions with costs",
+      "Clicking 'Entertainment' shows all entertainment items with costs",
+      "Clicking 'Accommodation' shows accommodation details with cost",
+      "Sidebar displays category total and itemized breakdown"
+    ]
+  },
+  "files_to_modify": [
+    {
+      "path": "scripts/generate-html-interactive.py",
+      "changes": [
+        "Add time estimation logic to data merging (lines ~100-180)",
+        "Create ItemDetailSidebar component (~line 485)",
+        "Create BudgetDetailSidebar component (~line 485)",
+        "Add selectedItem and selectedBudgetCat state in App component",
+        "Pass onItemClick prop to KanbanView and TimelineView",
+        "Pass onBudgetClick prop to KanbanView",
+        "Attach onClick handlers to all cards in KanbanView",
+        "Attach onClick handlers to timeline entries in TimelineView",
+        "Attach onClick handlers to budget category rows"
+      ]
+    }
+  ],
+  "validation": {
+    "test_plan": [
+      "Generate HTML with real PLAN_DATA and verify timeline shows activities",
+      "Click meal card in Kanban view, verify sidebar opens with meal details",
+      "Click attraction card, verify sidebar opens with attraction details",
+      "Click timeline entry, verify sidebar opens with item details",
+      "Click budget category 'Meals', verify sidebar shows breakfast/lunch/dinner breakdown",
+      "Click budget category 'Attractions', verify sidebar shows all attractions with costs",
+      "Verify only one sidebar open at a time",
+      "Test mobile responsiveness of sidebars"
+    ],
+    "edge_cases": [
+      "Day with no timeline data (should show placeholder message)",
+      "Items missing time fields (should use defaults)",
+      "Budget category with no items (should show empty state)",
+      "Mobile view sidebar interactions"
+    ]
+  },
+  "git_context": {
+    "current_branch": "master",
+    "working_tree": "clean",
+    "recent_generator_changes": "Renamed from generate-notion-react.py to generate-html-interactive.py (commit 0dd0b40)"
+  }
+}
