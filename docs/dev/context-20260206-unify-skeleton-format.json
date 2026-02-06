@@ -1,0 +1,205 @@
+{
+  "request_id": "dev-20260206-unify-skeleton-format",
+  "timestamp": "2026-02-06T13:00:00Z",
+  "requirement": {
+    "original": "不对我的意思是应该将所有的骨架统一为相同的格式，html只适应一种格式",
+    "clarified": "Unify all plan skeleton data to a single standard format (trip_summary + days), migrate legacy city_guides format data, and simplify HTML generator to support only one format",
+    "what": "Standardize all skeleton data structures and remove format compatibility code",
+    "why": "Multiple skeleton formats create maintenance burden and complexity in HTML generation",
+    "where": [
+      "data/china-exchange-bucket-list-2026/ - Legacy city_guides format data",
+      "scripts/generate-html-interactive.py - HTML generator with format compatibility code",
+      "scripts/migrate-city-guides-format.py - Migration script (to be enhanced)"
+    ],
+    "scope": {
+      "included": [
+        "Migrate china-exchange-bucket-list-2026 from city_guides to trip_summary+days format",
+        "Transform agent data (attractions, meals, etc.) from cities structure to days structure",
+        "Remove city_guides compatibility code from HTML generator",
+        "Verify all three plans (beijing, china-feb, china-exchange) generate working HTML",
+        "Maintain all existing functionality - no features broken"
+      ],
+      "excluded": [
+        "No changes to HTML rendering logic (only data format)",
+        "No changes to other scripts or commands",
+        "No modifications to working plans (beijing, china-feb)"
+      ]
+    },
+    "success_criteria": [
+      "All plan skeletons have trip_summary + days structure",
+      "All agent data files use days structure (not cities)",
+      "HTML generator has no city_guides compatibility code",
+      "beijing-exchange HTML generation works (baseline)",
+      "china-feb HTML generation works (baseline)",
+      "china-exchange HTML generation works (after migration)",
+      "Generated HTML pages display all content correctly"
+    ],
+    "constraints": [
+      "Must preserve data integrity during migration",
+      "Must maintain backward compatibility with existing HTML",
+      "Migration must be idempotent (can run multiple times safely)",
+      "Must create backups before modifying data"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Multiple skeleton formats (city_guides and trip_summary+days) require compatibility code in HTML generator",
+    "root_cause": "/plan command evolved data format between 2026-02-01 and 2026-02-02, creating format fragmentation",
+    "root_cause_commit": "06d35f5 - created china-exchange with city_guides format (2026-02-01 23:52)",
+    "why_introduced": "/plan command used city_guides format for bucket list type plans initially, then evolved to trip_summary+days format for all plan types",
+    "why_problematic": "Two different formats require HTML generator to detect and convert formats on-the-fly, adding complexity and maintenance burden",
+    "timeline": "2026-02-01: city_guides format used; 2026-02-02: trip_summary+days format adopted; 2026-02-06: HTML generator complexity identified",
+    "affected_files": [
+      "data/china-exchange-bucket-list-2026/plan-skeleton.json",
+      "data/china-exchange-bucket-list-2026/attractions.json",
+      "data/china-exchange-bucket-list-2026/meals.json",
+      "data/china-exchange-bucket-list-2026/accommodation.json",
+      "data/china-exchange-bucket-list-2026/entertainment.json",
+      "data/china-exchange-bucket-list-2026/shopping.json",
+      "data/china-exchange-bucket-list-2026/transportation.json",
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Multiple skeleton formats coexist, HTML generator has city_guides compatibility code",
+    "standard_format": {
+      "description": "trip_summary + days format",
+      "structure": {
+        "trip_summary": {
+          "trip_type": "itinerary | bucket_list",
+          "description": "string",
+          "base_location": "string",
+          "period": "string",
+          "travelers": "string",
+          "budget_per_trip": "string",
+          "preferences": "string | object"
+        },
+        "days": [
+          {
+            "day": "integer",
+            "date": "string",
+            "location": "string",
+            "trip_name": "string (optional)",
+            "user_plans": ["array of strings"],
+            "location_change": "null | object"
+          }
+        ]
+      },
+      "agent_data_structure": {
+        "format": "{ agent, status, data: { days: [...] } }",
+        "days": [
+          {
+            "day": "integer",
+            "location": "string",
+            "attractions": ["array"],
+            "meals": {"breakfast": {}, "lunch": {}, "dinner": {}},
+            "entertainment": ["array"],
+            "accommodation": "object"
+          }
+        ]
+      }
+    },
+    "legacy_format": {
+      "description": "city_guides format (used by china-exchange)",
+      "structure": {
+        "bucket_list_type": "city_guides",
+        "cities": [
+          {
+            "city": "string",
+            "city_chinese": "string",
+            "recommended_duration": "string",
+            "sample_itinerary": {
+              "day_1": [],
+              "day_2": [],
+              "day_3": []
+            }
+          }
+        ]
+      },
+      "agent_data_structure": {
+        "format": "{ agent, status, cities: [...] }",
+        "cities": [
+          {
+            "city": "string",
+            "attractions": ["array"],
+            "restaurants": ["array"],
+            "recommended_hotels": ["array"]
+          }
+        ]
+      }
+    },
+    "migration_strategy": {
+      "approach": "Convert cities to trips, each city becomes a trip with multiple days",
+      "skeleton_conversion": {
+        "trip_summary": "Create from metadata (bucket_list type)",
+        "days": "Generate from cities list - each city becomes 2-3 day trip"
+      },
+      "agent_data_conversion": {
+        "attractions": "Split city attractions across days (3-4 per day)",
+        "meals": "Distribute city restaurants across days as breakfast/lunch/dinner",
+        "accommodation": "Select one recommended hotel per city",
+        "entertainment": "Distribute entertainment options across evening slots",
+        "shopping": "Add shopping as optional activities",
+        "transportation": "Keep transportation info but restructure"
+      }
+    },
+    "files_to_modify": {
+      "data_migration": [
+        "data/china-exchange-bucket-list-2026/plan-skeleton.json",
+        "data/china-exchange-bucket-list-2026/attractions.json",
+        "data/china-exchange-bucket-list-2026/meals.json",
+        "data/china-exchange-bucket-list-2026/accommodation.json",
+        "data/china-exchange-bucket-list-2026/entertainment.json",
+        "data/china-exchange-bucket-list-2026/shopping.json"
+      ],
+      "html_generator_cleanup": [
+        "scripts/generate-html-interactive.py"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Two-phase approach: 1) Enhance migration script to properly convert data, 2) Clean HTML generator",
+    "phase_1": {
+      "description": "Enhance and run data migration",
+      "steps": [
+        "1. Enhance scripts/migrate-city-guides-format.py with proper conversion logic",
+        "2. Create trip_summary from city_guides metadata",
+        "3. Generate days from cities (each city = 2-3 days based on recommended_duration)",
+        "4. Convert agent data from cities to days structure properly",
+        "5. Backup original data before migration",
+        "6. Run migration on china-exchange-bucket-list-2026",
+        "7. Validate migrated data structure"
+      ]
+    },
+    "phase_2": {
+      "description": "Remove compatibility code from HTML generator",
+      "steps": [
+        "1. Remove _detect_city_guides_format() method",
+        "2. Remove _convert_city_guides_to_days() method",
+        "3. Remove _merge_city_guide_data() method",
+        "4. Remove is_city_guides attribute",
+        "5. Remove city_guides format check in generate_plan_data()",
+        "6. Clean up conditional logic for format detection"
+      ]
+    },
+    "validation_approach": {
+      "description": "Test HTML generation for all three plans",
+      "test_cases": [
+        "1. Generate beijing-exchange HTML - should work (baseline)",
+        "2. Generate china-feb HTML - should work (baseline)",
+        "3. Generate china-exchange HTML - should work (after migration)",
+        "4. Verify all HTML files have content (not empty)",
+        "5. Check HTML trips array is populated",
+        "6. Spot-check attractions, meals, accommodations in HTML"
+      ]
+    }
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "data_backup": true,
+    "idempotent_migration": true
+  }
+}

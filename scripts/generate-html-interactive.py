@@ -116,6 +116,84 @@ class InteractiveHTMLGenerator:
         }
         return placeholders.get(category, placeholders["attraction"])
 
+    def _merge_city_guide_data(self, day_skeleton: dict, merged: dict) -> dict:
+        """Merge city guide data from cities structure (for city_guides format)"""
+        location = day_skeleton.get("location", "Unknown")
+
+        # Find city in attractions agent data
+        agent_cities = self.attractions.get("cities", []) if self.attractions else []
+        city_data = next((c for c in agent_cities if c.get("city") == location), None)
+
+        if city_data:
+            # Add all attractions from this city
+            for attr in city_data.get("attractions", []):
+                merged["attractions"].append({
+                    "name": attr.get("name", ""),
+                    "name_en": attr.get("name_chinese", ""),
+                    "location": attr.get("location", ""),
+                    "type": attr.get("type", ""),
+                    "cost": attr.get("ticket_price_eur", 0),
+                    "cost_eur": attr.get("ticket_price_eur", 0),
+                    "opening_hours": attr.get("opening_hours", ""),
+                    "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
+                    "image": self._get_placeholder_image("attraction", poi_name=attr.get("name", "")),
+                    "highlights": attr.get("tips", [])[:3] if attr.get("tips") else [],
+                    "time": None,  # No specific time for city guides
+                    "links": {}
+                })
+                merged["budget"]["attractions"] += attr.get("ticket_price_eur", 0)
+
+        # Find city in meals agent data
+        meal_cities = self.meals.get("cities", []) if self.meals else []
+        meal_city_data = next((c for c in meal_cities if c.get("city") == location), None)
+
+        if meal_city_data:
+            # Add sample meals from this city (just pick first 3 restaurants)
+            restaurants = meal_city_data.get("restaurants", [])[:3]
+            meal_types = ["breakfast", "lunch", "dinner"]
+            for idx, restaurant in enumerate(restaurants):
+                if idx < len(meal_types):
+                    meal_type = meal_types[idx]
+                    merged["meals"][meal_type] = {
+                        "name": restaurant.get("name", ""),
+                        "name_en": restaurant.get("name_chinese", ""),
+                        "cost": restaurant.get("average_cost_eur", 0),
+                        "cuisine": restaurant.get("cuisine_type", ""),
+                        "signature_dishes": ", ".join(restaurant.get("signature_dishes", [])[:3]),
+                        "image": self._get_placeholder_image("meal", poi_name=restaurant.get("name", "")),
+                        "time": None,  # No specific time for city guides
+                        "links": {}
+                    }
+                    merged["budget"]["meals"] += restaurant.get("average_cost_eur", 0)
+
+        # Find city in accommodation agent data
+        acc_cities = self.accommodation.get("cities", []) if self.accommodation else []
+        acc_city_data = next((c for c in acc_cities if c.get("city") == location), None)
+
+        if acc_city_data and acc_city_data.get("recommended_hotels"):
+            hotel = acc_city_data["recommended_hotels"][0]  # Pick first recommended hotel
+            merged["accommodation"] = {
+                "name": hotel.get("name", ""),
+                "name_en": hotel.get("name_chinese", ""),
+                "cost": hotel.get("price_per_night_eur", 0),
+                "type": hotel.get("hotel_type", ""),
+                "rating": hotel.get("rating", ""),
+                "location": hotel.get("location", ""),
+                "image": self._get_placeholder_image("accommodation"),
+                "links": {}
+            }
+            merged["budget"]["accommodation"] = hotel.get("price_per_night_eur", 0)
+
+        # Calculate total budget
+        merged["budget"]["total"] = (
+            merged["budget"]["meals"] +
+            merged["budget"]["attractions"] +
+            merged["budget"]["entertainment"] +
+            merged["budget"]["accommodation"]
+        )
+
+        return merged
+
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data"""
         day_num = day_skeleton.get("day", 1)
@@ -140,6 +218,10 @@ class InteractiveHTMLGenerator:
                 "total": 0
             }
         }
+
+        # For city_guides format, merge from cities structure instead of days
+        if self.is_city_guides:
+            return self._merge_city_guide_data(day_skeleton, merged)
 
         # Merge meals with default times
         meal_default_times = {
@@ -335,7 +417,7 @@ class InteractiveHTMLGenerator:
         return trips
 
     def _convert_city_guides_to_days(self):
-        """Convert legacy city_guides format to days format for HTML generation"""
+        """Convert city_guides format (cities-based) to days format using agent data"""
         cities = self.skeleton.get("cities", [])
 
         # Create trip_summary from city guides metadata
@@ -349,29 +431,46 @@ class InteractiveHTMLGenerator:
             "preferences": ""
         }
 
-        # Convert cities to days (each city becomes a trip with sample itinerary days)
+        # Convert cities to days using agent data
         days = []
         day_counter = 1
 
-        for city in cities:
-            city_name = city.get("city", "Unknown")
-            # Each city's sample_itinerary becomes days
-            sample_itinerary = city.get("sample_itinerary", {})
+        # Get cities from attractions agent data (which has the actual content)
+        # For city_guides format, cities are at top level, not in "data" wrapper
+        if self.attractions:
+            if "cities" in self.attractions:
+                agent_cities = self.attractions["cities"]
+            elif "data" in self.attractions and "cities" in self.attractions["data"]:
+                agent_cities = self.attractions["data"]["cities"]
+            else:
+                agent_cities = []
+        else:
+            agent_cities = []
 
-            for day_key in sorted(sample_itinerary.keys()):
-                day_data = sample_itinerary[day_key]
-                if isinstance(day_data, list) and len(day_data) > 0:
-                    days.append({
-                        "day": day_counter,
-                        "date": f"Day {day_counter}",
-                        "location": city_name,
-                        "trip_name": f"{city_name} ({city.get('recommended_duration', '2-3 days')})",
-                        "user_plans": day_data,
-                        "location_change": None
-                    })
-                    day_counter += 1
+        for city_data in agent_cities:
+            city_name = city_data.get("city", "Unknown")
+            city_chinese = city_data.get("city_chinese", "")
+            attractions = city_data.get("attractions", [])
+
+            # Find corresponding skeleton city for duration
+            skel_city = next((c for c in cities if c.get("city") == city_name), {})
+            duration = skel_city.get("recommended_duration", "2-3 days")
+
+            # Create one "day" per city as a city guide (not actual day-by-day itinerary)
+            # This represents the city as a destination
+            if len(attractions) > 0:
+                days.append({
+                    "day": day_counter,
+                    "date": f"City {day_counter}",
+                    "location": city_name,
+                    "trip_name": f"{city_name} / {city_chinese} ({duration})",
+                    "user_plans": [f"{len(attractions)} attractions available"],
+                    "location_change": None
+                })
+                day_counter += 1
 
         self.skeleton["days"] = days
+        print(f"Converted {len(agent_cities)} cities to {len(days)} city guides")
 
     def generate_plan_data(self) -> dict:
         """Generate complete PLAN_DATA structure"""
