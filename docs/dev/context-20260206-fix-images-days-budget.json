@@ -1,0 +1,91 @@
+{
+  "request_id": "dev-20260206-fix-images-days-budget",
+  "timestamp": "2026-02-06T16:20:00Z",
+  "requirement": {
+    "original": "1. 只有attraction有图片\n2. 图片都是竖式图片，格式不对，或者至少你要有一个子自适应\n3. 新增了很多没有的天数，怎么回事\n4. budget为什么出现了：397.79999999999995 CNY",
+    "clarified": "Fix 4 issues: (1) Extend image fetching to meals/accommodation/entertainment; (2) Add CSS object-fit + prefer landscape; (3) Bucket list was wrongly expanded from 10 cities to 25 days - should remain 10 city entries; (4) Fix float precision in budget display",
+    "what": "Revert incorrect migration that expanded bucket list cities into multiple days. Keep 10 city entries. Plus image fixes and CSS fixes.",
+    "why": "Migration script incorrectly treated bucket list like itinerary, expanding each city's sample_itinerary into separate day entries. User expects 10 cities as 10 trips, not 25-day itinerary.",
+    "where": [
+      "data/china-exchange-bucket-list-2026/plan-skeleton.json (restore to 10 cities)",
+      "scripts/migrate-city-guides-format.py (should NOT run for this plan)",
+      "scripts/fetch-images-batch.py (extend to all POI types)",
+      "scripts/generate-html-interactive.py (CSS + number formatting)"
+    ],
+    "scope": {
+      "included": [
+        "Restore plan-skeleton.json from backup to 10-city city_guides format",
+        "Keep HTML generator support for city_guides format for bucket lists",
+        "Remove migration-generated 25-day skeleton",
+        "Extend fetch-images-batch.py for meals/accommodation/entertainment",
+        "Add CSS object-fit: cover to images",
+        "Add toFixed(2) for budget amounts",
+        "Fetch real city cover photos"
+      ],
+      "excluded": [
+        "Migrating to trip_summary+days format (wrong for bucket lists)",
+        "Changing HTML layout design"
+      ]
+    },
+    "success_criteria": [
+      "China Exchange plan shows 10 cities/trips, not 25 days",
+      "Each city shows as one trip card with recommended duration as metadata",
+      "Meals, accommodation, entertainment have real photos in images.json",
+      "All images have object-fit: cover CSS",
+      "Budget amounts display as clean decimals (397.80 not 397.7999...)",
+      "City covers use real Google Maps/Gaode photos"
+    ],
+    "constraints": [
+      "Must preserve city_guides format for bucket list plans",
+      "Must not break trip_summary+days format for itinerary plans",
+      "HTML generator must support both formats"
+    ]
+  },
+  "root_cause_analysis": {
+    "issue_3_wrong_expansion": {
+      "symptom": "China Exchange shows 25 days instead of 10 cities",
+      "root_cause": "Migration script scripts/migrate-city-guides-format.py incorrectly expanded bucket list cities into multiple day entries based on sample_itinerary structure",
+      "root_cause_commit": "52d3528 - feat: unify skeleton format and regenerate HTML for all plans",
+      "root_cause_file": "scripts/migrate-city-guides-format.py:27-118",
+      "why_introduced": "Attempted to unify all formats to trip_summary+days, but bucket lists should remain in city_guides format as they represent destination options, not itineraries",
+      "why_problematic": "Bucket list is not an itinerary. It's a list of potential destinations with recommendations. Expanding to 25 days makes it look like a detailed itinerary when it's just 10 city options.",
+      "timeline": "2026-02-06 13:32 when migration ran",
+      "affected_files": [
+        "data/china-exchange-bucket-list-2026/plan-skeleton.json (incorrectly migrated)",
+        "data/china-exchange-bucket-list-2026/attractions.json (redistributed across 25 days)",
+        "data/china-exchange-bucket-list-2026/meals.json (redistributed across 25 days)"
+      ],
+      "correct_structure": {
+        "format": "city_guides (original)",
+        "cities": 10,
+        "each_city": {
+          "recommended_duration": "display as metadata (e.g., 3-4 days)",
+          "sample_itinerary": "keep as nested structure, don't expand",
+          "display_as": "one trip card per city"
+        }
+      },
+      "fix_approach": "Restore plan-skeleton.json from .backup file. Keep city_guides format. Ensure HTML generator handles city_guides format correctly (it already did before migration)."
+    }
+  },
+  "development_approach": {
+    "strategy": "Rollback incorrect migration + implement other 3 fixes",
+    "implementation_order": [
+      "1. Restore plan-skeleton.json from backup (10 cities, city_guides format)",
+      "2. Restore agent data files from backups (cities structure)",
+      "3. Extend fetch-images-batch.py to fetch from all agent files",
+      "4. Add CSS object-fit: cover to generate-html-interactive.py",
+      "5. Add toFixed(2) for budget in generate-html-interactive.py",
+      "6. Fetch real city photos and POI photos",
+      "7. Regenerate HTML with city_guides format (10 trips)"
+    ],
+    "files_to_modify": [
+      "data/china-exchange-bucket-list-2026/plan-skeleton.json (restore from backup)",
+      "data/china-exchange-bucket-list-2026/*.json (restore agent files from backups)",
+      "scripts/fetch-images-batch.py (already modified - fetch from all POI types)",
+      "scripts/generate-html-interactive.py (add CSS + number formatting)"
+    ],
+    "files_NOT_to_modify": [
+      "scripts/migrate-city-guides-format.py (don't run migration for bucket lists)"
+    ]
+  }
+}

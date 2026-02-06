@@ -151,33 +151,115 @@ class BatchImageFetcher:
         print(f"  Total fetched: {fetched}/{limit}")
 
     def fetch_pois(self, limit: int = 10):
-        """Fetch POI photos (limited batch)"""
+        """Fetch POI photos from all agent files (limited batch)
+
+        Root cause: Initial implementation only read attractions.json (commit 123f8df).
+        Fix: Extend to read meals.json, accommodation.json, entertainment.json.
+        Supports both days format (itinerary) and cities format (bucket list).
+        """
         print(f"\n📍 Fetching POI photos (max {limit})...")
 
-        # Get POIs from attractions
-        attractions_path = self.data_dir / "attractions.json"
-        if not attractions_path.exists():
-            return
-
-        with open(attractions_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
+        # Collect POIs from all agent files
         pois = []
-        for day in data.get("data", {}).get("days", []):
-            location = day.get("location", "")
-            for attraction in day.get("attractions", []):
-                name = attraction.get("name", "")
-                if name:
-                    pois.append({"name": name, "city": location})
+
+        # Agent files to read: attractions, meals, accommodation, entertainment
+        agent_files = [
+            ("attractions.json", "attractions", "attraction"),
+            ("meals.json", "meals", "meal"),
+            ("accommodation.json", "accommodation", "accommodation"),
+            ("entertainment.json", "entertainment", "entertainment")
+        ]
+
+        for filename, field_name, poi_type in agent_files:
+            agent_path = self.data_dir / filename
+            if not agent_path.exists():
+                continue
+
+            with open(agent_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Extract POIs from days structure (itinerary format)
+            days_data = data.get("data", {}).get("days", [])
+            # OR cities structure (bucket list format)
+            cities_data = data.get("cities", [])
+
+            # Process days format
+            for day in days_data:
+                location = day.get("location", "")
+
+                if field_name == "attractions":
+                    # Attractions: list of items
+                    for item in day.get("attractions", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "meals":
+                    # Meals: breakfast/lunch/dinner dict
+                    for meal_type in ["breakfast", "lunch", "dinner"]:
+                        meal = day.get(meal_type)
+                        if meal and isinstance(meal, dict):
+                            name = meal.get("name", "")
+                            if name:
+                                pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "accommodation":
+                    # Accommodation: single dict
+                    acc = day.get("accommodation")
+                    if acc and isinstance(acc, dict):
+                        name = acc.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "entertainment":
+                    # Entertainment: list of items
+                    for item in day.get("entertainment", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+            # Process cities format (bucket list)
+            for city in cities_data:
+                location = city.get("city", "")
+
+                if field_name == "attractions":
+                    # Attractions: list of items
+                    for item in city.get("attractions", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "meals":
+                    # Meals: list of items
+                    for item in city.get("meals", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "accommodation":
+                    # Accommodation: list of items
+                    for item in city.get("accommodation", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+                elif field_name == "entertainment":
+                    # Entertainment: list of items
+                    for item in city.get("entertainment", []):
+                        name = item.get("name", "")
+                        if name:
+                            pois.append({"name": name, "city": location, "type": poi_type})
+
+        print(f"  Found {len(pois)} POIs across all agent files")
 
         fetched = 0
         for poi in pois[:limit]:
             cache_key = f"gaode_{poi['name']}"
             if cache_key in self.cache["pois"]:
-                print(f"  ✓ {poi['name']} (cached)")
+                print(f"  ✓ {poi['name']} ({poi['type']}, cached)")
                 continue
 
-            print(f"  Fetching {poi['name']}...", end=" ")
+            print(f"  Fetching {poi['name']} ({poi['type']})...", end=" ")
             photo_url = self.fetch_poi_photo_gaode(poi['name'], poi['city'])
 
             if photo_url:
