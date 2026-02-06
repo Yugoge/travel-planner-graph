@@ -29,10 +29,16 @@ else
   echo "Warning: Virtual environment not found, using system Python" >&2
 fi
 
-# Call Python HTML generator
-python "${SCRIPT_DIR}/lib/html_generator.py" \
-  "${DESTINATION_SLUG}" \
-  --data-dir "${DATA_DIR}" \
-  --output "${OUTPUT_FILE}"
+# Step 1: Fetch images from Google Maps and Gaode Maps APIs
+echo "Step 1: Fetching images from APIs..."
+if python "${SCRIPT_DIR}/lib/image_fetcher.py" "${DESTINATION_SLUG}"; then
+  echo "✓ Images fetched successfully"
+else
+  echo "⚠ Image fetching failed or incomplete, will use Unsplash fallbacks"
+fi
+
+# Step 2: Generate HTML using interactive generator
+echo "Step 2: Generating interactive HTML..."
+python "${SCRIPT_DIR}/generate-html-interactive.py" "${DESTINATION_SLUG}"
 
 exit 0

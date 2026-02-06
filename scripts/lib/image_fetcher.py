@@ -19,6 +19,17 @@ sys.path.insert(0, os.path.dirname(__file__))
 class ImageFetcher:
     """Fetch and cache images from Google Maps and Gaode Maps APIs"""
 
+    # Mainland China cities (use Gaode Maps first)
+    CHINA_CITIES = {
+        "beijing", "shanghai", "guangzhou", "shenzhen", "chengdu", "chongqing",
+        "tianjin", "wuhan", "xian", "hangzhou", "nanjing", "suzhou", "zhengzhou",
+        "changsha", "shenyang", "qingdao", "xiamen", "harbin", "kunming", "dalian",
+        "济南", "青岛", "郑州", "石家庄", "太原", "呼和浩特", "沈阳", "长春", "哈尔滨",
+        "南京", "杭州", "合肥", "福州", "南昌", "武汉", "长沙", "广州", "南宁",
+        "海口", "成都", "贵阳", "昆明", "拉萨", "西安", "兰州", "西宁", "银川",
+        "乌鲁木齐", "北京", "天津", "上海", "重庆", "深圳", "厦门", "大连", "苏州"
+    }
+
     def __init__(self, destination_slug: str, data_dir: Optional[Path] = None):
         """
         Initialize image fetcher.
@@ -34,6 +45,28 @@ class ImageFetcher:
 
         # Image cache structure
         self.cache = self._load_cache()
+
+    def _is_china_location(self, location: str) -> bool:
+        """
+        Check if location is in mainland China.
+
+        Args:
+            location: City or location name
+
+        Returns:
+            True if in mainland China, False otherwise
+        """
+        if not location:
+            return False
+
+        location_lower = location.lower().strip()
+
+        # Check against known China cities
+        for city in self.CHINA_CITIES:
+            if city in location_lower:
+                return True
+
+        return False
 
     def _load_cache(self) -> Dict[str, Any]:
         """Load existing image cache or create new structure"""
@@ -190,10 +223,10 @@ class ImageFetcher:
 
     def fetch_city_cover_image(self, city_name: str) -> Optional[str]:
         """
-        Fetch city cover image from Google Maps.
+        Fetch city cover image from Gaode Maps or Google Maps based on location.
 
         Args:
-            city_name: City name (e.g., 'Beijing', 'Harbin')
+            city_name: City name (e.g., 'Beijing', 'Harbin', 'Hong Kong')
 
         Returns:
             City cover photo URL or None
@@ -202,11 +235,21 @@ class ImageFetcher:
         if city_name in self.cache["city_covers"]:
             return self.cache["city_covers"][city_name]
 
-        # Fetch using Google Maps (cities work better with Google than Gaode)
-        photo_url = self.fetch_google_place_photos(
-            place_name=city_name,
-            location="China"
-        )
+        is_china = self._is_china_location(city_name)
+        photo_url = None
+
+        if is_china:
+            # China: Try Gaode first, fallback to Google
+            photo_url = self._fetch_gaode_city_cover(city_name)
+            if not photo_url:
+                print(f"Gaode Maps failed for {city_name}, trying Google Maps")
+                photo_url = self._fetch_google_city_cover(city_name)
+        else:
+            # International: Try Google first, fallback to Gaode
+            photo_url = self._fetch_google_city_cover(city_name)
+            if not photo_url:
+                print(f"Google Maps failed for {city_name}, trying Gaode Maps")
+                photo_url = self._fetch_gaode_city_cover(city_name)
 
         if photo_url:
             self.cache["city_covers"][city_name] = photo_url
@@ -214,6 +257,49 @@ class ImageFetcher:
             return photo_url
 
         return None
+
+    def _fetch_gaode_city_cover(self, city_name: str) -> Optional[str]:
+        """Fetch city cover from Gaode Maps"""
+        try:
+            google_maps_script_dir = self.base_dir / ".claude" / "skills" / "google-maps" / "scripts"
+            sys.path.insert(0, str(google_maps_script_dir))
+            from mcp_client import MCPClient
+
+            api_key = os.environ.get("AMAP_API_KEY")
+            if not api_key:
+                return None
+
+            env_vars = {"AMAP_API_KEY": api_key}
+
+            with MCPClient("@plugin/amap-maps", env_vars) as client:
+                # Search for city POI
+                result = client.call_tool("poi_search_keyword", {
+                    "keywords": city_name,
+                    "city": city_name,
+                    "types": "110000",  # Tourist attractions category
+                    "offset": 1,
+                    "extensions": "all"
+                })
+
+                if isinstance(result, str):
+                    result = json.loads(result)
+
+                # Get first POI's photos
+                if "pois" in result and isinstance(result["pois"], list) and len(result["pois"]) > 0:
+                    poi = result["pois"][0]
+                    if "photos" in poi and isinstance(poi["photos"], list) and len(poi["photos"]) > 0:
+                        return poi["photos"][0].get("url")
+        except Exception as e:
+            print(f"Gaode Maps city cover error for {city_name}: {e}")
+
+        return None
+
+    def _fetch_google_city_cover(self, city_name: str) -> Optional[str]:
+        """Fetch city cover from Google Maps"""
+        return self.fetch_google_place_photos(
+            place_name=city_name,
+            location="China"
+        )
 
     def fetch_all_images(self, parallel: bool = True) -> Dict[str, Any]:
         """
@@ -316,22 +402,42 @@ class ImageFetcher:
         print(f"\nFetching POI photos for {len(all_pois)} POIs...")
 
         def fetch_poi_photo(poi: Dict[str, Any]) -> Optional[str]:
-            """Fetch single POI photo"""
+            """Fetch single POI photo based on location"""
             name = poi.get("name", "Unknown")
             gaode_id = poi.get("gaode_id")
+            location = poi.get("location") or poi.get("address", "")
 
-            if gaode_id:
-                # Try Gaode Maps first (for China POIs)
-                photo_url = self.fetch_gaode_poi_photos(gaode_id, name)
+            # Determine if POI is in China
+            is_china = self._is_china_location(location)
+
+            if is_china:
+                # China: Try Gaode first, fallback to Google
+                if gaode_id:
+                    photo_url = self.fetch_gaode_poi_photos(gaode_id, name)
+                    if photo_url:
+                        return photo_url
+
+                # Fallback to Google Maps
+                photo_url = self.fetch_google_place_photos(
+                    place_name=name,
+                    location=location
+                )
+                return photo_url
+            else:
+                # International: Try Google first, fallback to Gaode
+                photo_url = self.fetch_google_place_photos(
+                    place_name=name,
+                    location=location
+                )
                 if photo_url:
                     return photo_url
 
-            # Fallback to Google Maps
-            photo_url = self.fetch_google_place_photos(
-                place_name=name,
-                location=poi.get("location") or poi.get("address")
-            )
-            return photo_url
+                # Fallback to Gaode (if has gaode_id)
+                if gaode_id:
+                    photo_url = self.fetch_gaode_poi_photos(gaode_id, name)
+                    return photo_url
+
+                return None
 
         if parallel:
             with ThreadPoolExecutor(max_workers=5) as executor:

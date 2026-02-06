@@ -50,8 +50,20 @@ class InteractiveHTMLGenerator:
             return data
 
     def _get_cover_image(self, location: str, index: int = 0) -> str:
-        """Get cover image URL for location"""
-        # Map of cities to cover images (fallback to generic travel images)
+        """Get cover image URL for location from images cache or fallback to Unsplash"""
+        # Try to get from images cache first
+        if self.images_cache and "city_covers" in self.images_cache:
+            city_covers = self.images_cache["city_covers"]
+            # Try exact match
+            if location in city_covers:
+                return city_covers[location]
+            # Try case-insensitive match
+            key = location.lower()
+            for city, url in city_covers.items():
+                if city.lower() == key or city.lower() in key or key in city.lower():
+                    return url
+
+        # Fallback to Unsplash placeholders (hardcoded for backward compatibility)
         covers = {
             "harbin": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1200&h=400&fit=crop",
             "beijing": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=1200&h=400&fit=crop",
@@ -72,8 +84,30 @@ class InteractiveHTMLGenerator:
         ]
         return fallbacks[index % len(fallbacks)]
 
-    def _get_placeholder_image(self, category: str) -> str:
-        """Get placeholder image for different categories"""
+    def _get_placeholder_image(self, category: str, poi_name: str = "", gaode_id: str = "") -> str:
+        """Get image from cache or fallback to Unsplash placeholder"""
+        # Try to get from images cache first
+        if self.images_cache and "pois" in self.images_cache:
+            pois = self.images_cache["pois"]
+
+            # Try gaode_id cache key
+            if gaode_id:
+                cache_key = f"gaode_{gaode_id}"
+                if cache_key in pois:
+                    return pois[cache_key]
+
+            # Try google name cache key
+            if poi_name:
+                cache_key = f"google_{poi_name}"
+                if cache_key in pois:
+                    return pois[cache_key]
+
+        # Fallback to Unsplash placeholders
+        if self.images_cache and "fallback_unsplash" in self.images_cache:
+            fallbacks = self.images_cache["fallback_unsplash"]
+            return fallbacks.get(category, fallbacks.get("attraction", ""))
+
+        # Hardcoded fallback (for backward compatibility)
         placeholders = {
             "meal": "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=300&h=200&fit=crop",
             "attraction": "https://images.unsplash.com/photo-1548013146-72479768bada?w=400&h=300&fit=crop",
@@ -124,7 +158,11 @@ class InteractiveHTMLGenerator:
                         "cost": meal.get("cost", 0),
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
-                        "image": meal.get("image", self._get_placeholder_image("meal")),
+                        "image": meal.get("image", self._get_placeholder_image(
+                            "meal",
+                            poi_name=meal.get("name", ""),
+                            gaode_id=meal.get("gaode_id", "")
+                        )),
                         "time": meal.get("time", meal_default_times[meal_type]),
                         "links": meal.get("links", {})
                     }
@@ -181,7 +219,11 @@ class InteractiveHTMLGenerator:
                         "cost_eur": attr.get("cost_eur", 0),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
-                        "image": attr.get("image", self._get_placeholder_image("attraction")),
+                        "image": attr.get("image", self._get_placeholder_image(
+                            "attraction",
+                            poi_name=attr.get("name", ""),
+                            gaode_id=attr.get("gaode_id", "")
+                        )),
                         "highlights": attr.get("highlights", []),
                         "time": attr_time,
                         "links": attr.get("links", {})
@@ -292,8 +334,52 @@ class InteractiveHTMLGenerator:
 
         return trips
 
+    def _convert_city_guides_to_days(self):
+        """Convert legacy city_guides format to days format for HTML generation"""
+        cities = self.skeleton.get("cities", [])
+
+        # Create trip_summary from city guides metadata
+        self.skeleton["trip_summary"] = {
+            "trip_type": "bucket_list",
+            "description": f"City Guides - {len(cities)} cities",
+            "base_location": "Beijing",
+            "period": "",
+            "travelers": "1 adult",
+            "budget_per_trip": "€500",
+            "preferences": ""
+        }
+
+        # Convert cities to days (each city becomes a trip with sample itinerary days)
+        days = []
+        day_counter = 1
+
+        for city in cities:
+            city_name = city.get("city", "Unknown")
+            # Each city's sample_itinerary becomes days
+            sample_itinerary = city.get("sample_itinerary", {})
+
+            for day_key in sorted(sample_itinerary.keys()):
+                day_data = sample_itinerary[day_key]
+                if isinstance(day_data, list) and len(day_data) > 0:
+                    days.append({
+                        "day": day_counter,
+                        "date": f"Day {day_counter}",
+                        "location": city_name,
+                        "trip_name": f"{city_name} ({city.get('recommended_duration', '2-3 days')})",
+                        "user_plans": day_data,
+                        "location_change": None
+                    })
+                    day_counter += 1
+
+        self.skeleton["days"] = days
+
     def generate_plan_data(self) -> dict:
         """Generate complete PLAN_DATA structure"""
+
+        # Handle legacy city_guides format (convert to days format)
+        if "bucket_list_type" in self.skeleton and self.skeleton.get("bucket_list_type") == "city_guides":
+            print("Warning: Detected legacy city_guides format, converting to days format...")
+            self._convert_city_guides_to_days()
 
         # Build trip summary from skeleton's trip_summary section
         skel_summary = self.skeleton.get("trip_summary", {})
