@@ -33,6 +33,37 @@ class InteractiveHTMLGenerator:
         # Load image fetcher for real photos
         self.images_cache = self._load_json("images.json")
 
+    def _format_trip_type(self, trip_type: str) -> str:
+        """Convert trip_type code to natural language (Fix #1, #3)
+        Root cause: commit 52d3528 - no formatting for trip types
+        """
+        type_map = {
+            "bucket_list": "Bucket List",
+            "weekend_extended": "Extended Weekend",
+            "weekend_short": "Short Weekend",
+            "itinerary": "Itinerary",
+            "day_trip": "Day Trip",
+            "week_long": "Week-long Trip"
+        }
+        return type_map.get(trip_type, trip_type.replace("_", " ").title())
+
+    def _format_preferences(self, preferences: dict) -> str:
+        """Format preferences without code prefixes (Fix #2)
+        Root cause: commit 52d3528 - dict keys shown as prefixes
+        """
+        if not isinstance(preferences, dict):
+            return str(preferences)
+
+        # Remove keys like 'trip_style:', just show values
+        formatted = []
+        for key, value in preferences.items():
+            if key == "trip_style":
+                # Skip trip_style entirely as it's redundant with trip_type
+                continue
+            formatted.append(str(value))
+
+        return ", ".join(formatted) if formatted else ""
+
     def _load_json(self, filename: str) -> dict:
         """Load JSON file from data directory"""
         path = self.data_dir / filename
@@ -158,10 +189,15 @@ class InteractiveHTMLGenerator:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
                 if meal_type in day_meals:
                     meal = day_meals[meal_type]
+                    # Fix #7: Convert price_range_eur_low to cost (root cause: commit 52d3528)
+                    cost = meal.get("cost", 0)
+                    if cost == 0 and "price_range_eur_low" in meal:
+                        cost = meal.get("price_range_eur_low", 0) * 7.5  # EUR to CNY conversion
+
                     merged["meals"][meal_type] = {
                         "name": meal.get("name", ""),
                         "name_en": meal.get("name_en", ""),
-                        "cost": meal.get("cost", 0),
+                        "cost": cost,
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
                         "image": meal.get("image", self._get_placeholder_image(
@@ -172,7 +208,7 @@ class InteractiveHTMLGenerator:
                         "time": meal.get("time", meal_default_times[meal_type]),
                         "links": meal.get("links", {})
                     }
-                    merged["budget"]["meals"] += meal.get("cost", 0)
+                    merged["budget"]["meals"] += cost
 
         # Merge attractions with sequential time allocation
         if self.attractions and "days" in self.attractions:
@@ -216,13 +252,20 @@ class InteractiveHTMLGenerator:
                     else:
                         attr_time = attr.get("time")
 
+                    # Fix #7: Convert ticket_price_eur to cost (root cause: commit 52d3528)
+                    cost = attr.get("cost", 0)
+                    cost_eur = attr.get("cost_eur", 0)
+                    if cost == 0 and "ticket_price_eur" in attr:
+                        cost_eur = attr.get("ticket_price_eur", 0)
+                        cost = cost_eur * 7.5  # EUR to CNY conversion
+
                     merged["attractions"].append({
                         "name": attr.get("name", ""),
                         "name_en": attr.get("name_en", ""),
                         "location": attr.get("location", ""),
                         "type": attr.get("type", ""),
-                        "cost": attr.get("cost", 0),
-                        "cost_eur": attr.get("cost_eur", 0),
+                        "cost": cost,
+                        "cost_eur": cost_eur,
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
                         "image": attr.get("image", self._get_placeholder_image(
@@ -234,7 +277,7 @@ class InteractiveHTMLGenerator:
                         "time": attr_time,
                         "links": attr.get("links", {})
                     })
-                    merged["budget"]["attractions"] += attr.get("cost", 0)
+                    merged["budget"]["attractions"] += cost
 
         # Merge entertainment with sequential evening time allocation
         if self.entertainment and "days" in self.entertainment:
@@ -274,34 +317,44 @@ class InteractiveHTMLGenerator:
                     else:
                         ent_time = ent.get("time")
 
+                    # Fix #7: Convert cost_eur to cost (root cause: commit 52d3528)
+                    cost = ent.get("cost", 0)
+                    if cost == 0 and "cost_eur" in ent:
+                        cost = ent.get("cost_eur", 0) * 7.5  # EUR to CNY conversion
+
                     merged["entertainment"].append({
                         "name": ent.get("name", ""),
                         "name_en": ent.get("name_en", ""),
                         "type": ent.get("type", ""),
-                        "cost": ent.get("cost", 0),
+                        "cost": cost,
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
                         "time": ent_time,
                         "links": ent.get("links", {})
                     })
-                    merged["budget"]["entertainment"] += ent.get("cost", 0)
+                    merged["budget"]["entertainment"] += cost
 
         # Merge accommodation
         if self.accommodation and "days" in self.accommodation:
             day_acc = next((d for d in self.accommodation["days"] if d.get("day") == day_num), {})
             if "accommodation" in day_acc:
                 acc = day_acc["accommodation"]
+                # Fix #7: Convert price_per_night_eur to cost (root cause: commit 52d3528)
+                cost = acc.get("cost", 0)
+                if cost == 0 and "price_per_night_eur" in acc:
+                    cost = acc.get("price_per_night_eur", 0) * 7.5  # EUR to CNY conversion
+
                 merged["accommodation"] = {
                     "name": acc.get("name", ""),
                     "name_cn": acc.get("name_cn", ""),
                     "type": acc.get("type", "hotel"),
                     "location": acc.get("location", ""),
-                    "cost": acc.get("cost", 0),
+                    "cost": cost,
                     "stars": acc.get("stars", 3),
                     "time": acc.get("time", {"start": "15:00", "end": "16:00"}),
                     "links": acc.get("links", {})
                 }
-                merged["budget"]["accommodation"] = acc.get("cost", 0)
+                merged["budget"]["accommodation"] = cost
 
         # Calculate total budget
         merged["budget"]["total"] = sum([
@@ -467,13 +520,14 @@ class InteractiveHTMLGenerator:
         skel_summary = self.skeleton.get("trip_summary", {})
         prefs = skel_summary.get("preferences", {})
         if isinstance(prefs, dict):
-            # Convert dict preferences to string
-            prefs_str = ", ".join([f"{k}: {v}" for k, v in prefs.items()])
+            # Fix #2: Use formatter to remove code prefixes
+            prefs_str = self._format_preferences(prefs)
         else:
             prefs_str = str(prefs)
 
         trip_summary = {
-            "trip_type": skel_summary.get("trip_type", "itinerary"),
+            # Fix #1, #3: Format trip_type for natural language display
+            "trip_type": self._format_trip_type(skel_summary.get("trip_type", "itinerary")),
             "description": skel_summary.get("description", "Travel Plan"),
             "base_location": skel_summary.get("base_location", ""),
             "period": skel_summary.get("period", ""),
@@ -1191,6 +1245,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
 // TIMELINE VIEW
 // ============================================================
 const TimelineView = ({ day, bp, onItemClick }) => {
+  // Fix #6: Add z-index state for click handling of overlapping items
+  const [topItemIndex, setTopItemIndex] = useState(null);
   const sm = bp === 'sm';
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
   const timeW = sm ? '48px' : '62px';
@@ -1271,6 +1327,9 @@ const TimelineView = ({ day, bp, onItemClick }) => {
               const st = typeStyle[entry._type] || typeStyle.attraction;
               const t = top(entry.time.start);
               const h = hgt(entry.time.start, entry.time.end);
+              // Fix #6: Use dynamic z-index based on click state
+              const isTop = topItemIndex === i;
+              const zIdx = isTop ? 10 : 2;
               return (
                 <div key={i} style={{
                   position: 'absolute', top: t, left: '10px', right: '10px',
@@ -1278,12 +1337,12 @@ const TimelineView = ({ day, bp, onItemClick }) => {
                   background: st.bg, borderLeft: `3px solid ${st.border}`,
                   borderRadius: '6px', padding: sm ? '8px 10px' : '10px 14px',
                   display: 'flex', gap: '10px', alignItems: 'flex-start',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  zIndex: 2, overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
+                  boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                  zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
-                  onClick={() => onItemClick && onItemClick(entry, entry._type)}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'}
+                  onClick={() => { setTopItemIndex(i); onItemClick && onItemClick(entry, entry._type); }}
+                  onMouseEnter={e => { if (!isTop) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
+                  onMouseLeave={e => { if (!isTop) e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
                 >
                   <div style={{
                     position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)',

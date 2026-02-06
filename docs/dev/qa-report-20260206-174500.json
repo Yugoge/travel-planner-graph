@@ -1,0 +1,148 @@
+{
+  "request_id": "dev-20260206-174500",
+  "timestamp": "2026-02-06T17:50:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All 7 success criteria verified and passing. Implementation correctly addresses root cause (commit 52d3528 cost conversion logic), restores budget display functionality, implements natural language formatting, adds timeline z-index interaction, and provides comprehensive image quality analysis. Zero critical issues, zero major issues, zero minor issues. Release approved.",
+    "success_criteria_results": [
+      {
+        "criterion": "All budgets display correctly (non-zero where data exists)",
+        "verification_method": "Extracted budget JSON from regenerated HTML, verified Day 1 budget calculation (Terracotta Army 16 EUR * 7.5 = 120 CNY, total attractions 172.5 CNY, accommodation 487.5 CNY, total 660 CNY), counted days with non-zero budgets across all trips",
+        "result": "pass",
+        "details": "Found 18 days with non-zero budgets. Day 1 budget verified: attractions 172.5 CNY (120 + 52.5 + 0), accommodation 487.5 CNY, total 660.0 CNY. All conversions use correct 7.5 EUR-to-CNY rate.",
+        "evidence": [
+          "Day 1 budget total: 660.0 CNY (expected: 660.0)",
+          "Day 2 budget total: 686.25 CNY (non-zero)",
+          "Terracotta Army cost: 120.0 CNY (16 EUR * 7.5, verified)",
+          "Xi'an City Wall cost: 52.5 CNY (7 EUR * 7.5, verified)",
+          "18 days with non-zero budgets across all trips"
+        ]
+      },
+      {
+        "criterion": "Trip types show as natural language (Bucket List, Extended Weekend)",
+        "verification_method": "Searched HTML for trip_type field, verified value displays as natural language format",
+        "result": "pass",
+        "details": "Trip type displays as 'Bucket List' (natural language) in HTML. _format_trip_type() helper function implemented with mapping: bucket_list -> Bucket List, weekend_extended -> Extended Weekend",
+        "evidence": [
+          "HTML trip_type field: \"Bucket List\" (not \"bucket_list\")",
+          "_format_trip_type() function exists in generate-html-interactive.py lines 36-48",
+          "Applied in _generate_itinerary_data at line 471",
+          "No raw code values found in trip type display"
+        ]
+      },
+      {
+        "criterion": "No code prefixes in UI (trip_style:)",
+        "verification_method": "Searched entire HTML for 'trip_style:' pattern to verify code prefixes removed from preferences display",
+        "result": "pass",
+        "details": "No 'trip_style:' prefix found in HTML. _format_preferences() helper function filters out code keys and only displays values. Preferences display cleanly as: 'Cultural exploration, natural scenery, food experiences, Exchange student budget, weekend availability'",
+        "evidence": [
+          "Full HTML search for 'trip_style:': not found",
+          "_format_preferences() function exists in generate-html-interactive.py lines 50-61",
+          "Function explicitly skips 'trip_style' key (lines 60-62)",
+          "Applied in _generate_itinerary_data at line 476",
+          "Preferences display clean natural language only"
+        ]
+      },
+      {
+        "criterion": "Timeline items can be brought to front on click",
+        "verification_method": "Verified React TimelineView component has topItemIndex state, dynamic z-index logic, and onClick handler to manage overlapping item layers",
+        "result": "pass",
+        "details": "Timeline z-index implementation complete. TimelineView component uses topItemIndex state (useState(null)), applies dynamic z-index (10 for clicked item, 2 for others), enhanced shadow for clicked items (12px vs 3px), and onClick handler calls setTopItemIndex(i) to bring items to front",
+        "evidence": [
+          "topItemIndex state declared in TimelineView component",
+          "Dynamic z-index logic: const zIdx = isTop ? 10 : 2",
+          "Enhanced shadow for clicked items: isTop ? '0 4px 12px' : '0 1px 3px'",
+          "onClick handler: onClick={() => { setTopItemIndex(i); }}",
+          "Implementation verified in HTML at lines 1194, 1274-1288"
+        ]
+      },
+      {
+        "criterion": "Image quality assessment documented",
+        "verification_method": "Reviewed dev report image_investigation section, verified Gaode Maps image URLs in images.json, assessed image domains and quality characteristics",
+        "result": "pass",
+        "details": "Image quality comprehensively assessed. Gaode Maps provides high-quality images from two domains: (1) aos-comment.amap.com - user-uploaded photos at 2048x2048 resolution, (2) store.is.autonavi.com - official POI photos. Both domains provide legitimate, relevant attraction images. User concern about 'wrong images' likely stems from Unsplash fallbacks for POIs without cached Gaode images, not from Gaode image quality issues.",
+        "evidence": [
+          "Gaode images verified: 52 POI images total (43 attractions + 9 accommodation)",
+          "Sample verified: Terracotta Army uses aos-comment 2048x2048 image",
+          "Sample verified: Xi'an City Wall uses store.is.autonavi official image",
+          "Quality assessment: GOOD - both domains provide authentic POI photos",
+          "Dev report documents: Gaode weaker for Hong Kong/Macau (outside mainland)",
+          "Recommendation documented: Consider Google Places API for Hong Kong/Macau"
+        ]
+      },
+      {
+        "criterion": "POI image coverage measured",
+        "verification_method": "Counted total attractions from attractions.json (62), counted POI images in images.json excluding accommodation (43), calculated coverage percentage (69.4%), verified against dev report claim",
+        "result": "pass",
+        "details": "POI image coverage measured and documented. Total attractions: 62, attractions with cached Gaode images: 43, missing images: 19, coverage: 69.4%. Dev report provides detailed breakdown including missing POI locations (Mount Huashan, Lingyin Temple, various Zhangjiajie/Hong Kong/Macau attractions).",
+        "evidence": [
+          "Total attractions counted: 62 (from attractions.json data.days array)",
+          "POI images cached: 43 (from images.json pois object, excluding 9 accommodation)",
+          "Coverage calculated: 43/62 = 69.4%",
+          "Dev report coverage claim: 69.4% (verified match)",
+          "Missing POIs list documented in dev report (19 attractions)",
+          "Recommendation provided: Re-run fetcher for missing POIs, consider Google Places for HK/Macau"
+        ]
+      },
+      {
+        "criterion": "Root cause commit 52d3528 properly referenced",
+        "verification_method": "Verified git commit 52d3528 exists, reviewed commit message and diff statistics, confirmed it removed _merge_city_guide_data with cost conversion logic, verified dev report references this commit as root cause",
+        "result": "pass",
+        "details": "Root cause commit 52d3528 correctly identified and referenced. Commit removed 134 lines of city_guides compatibility code including _merge_city_guide_data method which contained correct EUR-to-CNY cost conversion logic. New _merge_day_data only read cost field (defaulting to 0) without conversion. Fix restored conversion logic with correct 7.5 rate for all four cost categories.",
+        "evidence": [
+          "Git commit verified: 52d3528 - feat: unify skeleton format and regenerate HTML for all plans",
+          "Commit date: 2026-02-06 14:45:06",
+          "Removed method: _merge_city_guide_data (had ticket_price_eur → cost conversion)",
+          "Problem: _merge_day_data reads attr.get('cost', 0) defaulting to 0",
+          "Fix: Restored EUR-to-CNY conversion (rate 7.5) in all categories",
+          "Dev report git_rationale section thoroughly documents root cause chain"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause comprehensively addressed. Commit 52d3528 removed _merge_city_guide_data containing EUR-to-CNY conversion logic, causing all budgets to display 0. Fix restored conversion in _merge_day_data for all four cost categories (attractions: ticket_price_eur * 7.5, accommodation: price_per_night_eur * 7.5, meals: price_range_eur_low * 7.5, entertainment: cost_eur * 7.5). Verified Day 1 budget displays 660 CNY (expected value based on agent data). All conversions mathematically correct and tested."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Python syntax validation",
+        "result": "pass",
+        "details": "scripts/generate-html-interactive.py compiles without errors (python3 -m py_compile)"
+      },
+      {
+        "test": "HTML generation succeeds",
+        "result": "pass",
+        "details": "travel-plan-china-exchange-bucket-list-2026.html regenerated successfully, file size 152 KB, contains valid React JSX and embedded JSON data"
+      },
+      {
+        "test": "Backward compatibility",
+        "result": "pass",
+        "details": "Changes isolated to _merge_day_data cost conversion and new helper functions (_format_trip_type, _format_preferences). No changes to data structure or API signatures. Beijing and china-feb plans remain compatible."
+      },
+      {
+        "test": "Reference integrity",
+        "result": "pass",
+        "details": "All modified code sections reference existing fields in agent data (ticket_price_eur, price_per_night_eur, price_range_eur_low, cost_eur). No broken references detected."
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
