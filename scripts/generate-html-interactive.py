@@ -102,6 +102,12 @@ class InteractiveHTMLGenerator:
                 if cache_key in pois:
                     return pois[cache_key]
 
+            # Try gaode name cache key
+            if poi_name:
+                cache_key = f"gaode_{poi_name}"
+                if cache_key in pois:
+                    return pois[cache_key]
+
         # Fallback to Unsplash placeholders
         if self.images_cache and "fallback_unsplash" in self.images_cache:
             fallbacks = self.images_cache["fallback_unsplash"]

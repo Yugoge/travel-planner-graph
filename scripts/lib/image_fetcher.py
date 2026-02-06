@@ -12,6 +12,15 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Load from project root .env file
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    load_dotenv(env_path)
+except ImportError:
+    print("Warning: python-dotenv not installed. Install with: pip install python-dotenv")
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -115,12 +124,12 @@ class ImageFetcher:
             from mcp_client import MCPClient
 
             # Fetch POI details from Gaode Maps via MCP
-            api_key = os.environ.get("AMAP_API_KEY")
+            api_key = os.environ.get("AMAP_MAPS_API_KEY")
             if not api_key:
-                print(f"Warning: AMAP_API_KEY not set, cannot fetch Gaode photos for {poi_name}")
+                print(f"Warning: AMAP_MAPS_API_KEY not set, cannot fetch Gaode photos for {poi_name}")
                 return None
 
-            env_vars = {"AMAP_API_KEY": api_key}
+            env_vars = {"AMAP_MAPS_API_KEY": api_key}
 
             with MCPClient("@plugin/amap-maps", env_vars) as client:
                 result = client.call_tool("poi_detail", {"id": gaode_id, "extensions": "all"})
@@ -265,11 +274,11 @@ class ImageFetcher:
             sys.path.insert(0, str(google_maps_script_dir))
             from mcp_client import MCPClient
 
-            api_key = os.environ.get("AMAP_API_KEY")
+            api_key = os.environ.get("AMAP_MAPS_API_KEY")
             if not api_key:
                 return None
 
-            env_vars = {"AMAP_API_KEY": api_key}
+            env_vars = {"AMAP_MAPS_API_KEY": api_key}
 
             with MCPClient("@plugin/amap-maps", env_vars) as client:
                 # Search for city POI
