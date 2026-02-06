@@ -1,0 +1,185 @@
+{
+  "request_id": "dev-20260206-auto-fetch-images",
+  "timestamp": "2026-02-06T03:00:00Z",
+  "requirement": {
+    "original": "好的那就只用Google和gaode，搜索对应项目的城市图片和项目图片，自动替换目前默认的图片，在生成html的时候用脚本自动执行",
+    "clarified": "Use Google Maps and Gaode Maps APIs to automatically fetch real photos for cities and POIs (meals, attractions, accommodation, entertainment), replacing current Unsplash placeholder images during HTML generation",
+    "what": "Create automated image fetching system using Google Maps and Gaode Maps APIs",
+    "why": "Replace generic Unsplash placeholders with real, location-specific photos from mapping services",
+    "where": [
+      "scripts/generate-html-interactive.py - HTML generator",
+      "scripts/lib/ - Create new image_fetcher.py module",
+      ".claude/skills/google-maps/ - Extend to support Place Photos API",
+      ".claude/skills/gaode-maps/ - Use existing POI photos support"
+    ],
+    "scope": {
+      "included": [
+        "Create scripts/lib/image_fetcher.py module for fetching images",
+        "Extend Google Maps skill to fetch place photos via Place Photos API",
+        "Use Gaode Maps existing poi_detail photos field",
+        "Modify generate-html-interactive.py to call image fetcher before HTML generation",
+        "Replace _get_cover_image() to use Google/Gaode Maps city photos",
+        "Replace _get_placeholder_image() to use real POI photos from APIs",
+        "Cache fetched image URLs in data/{destination}/images.json",
+        "Handle API failures gracefully with fallback to Unsplash placeholders"
+      ],
+      "excluded": [
+        "No Unsplash API integration (use only Google + Gaode)",
+        "No image downloading/hosting (use direct API URLs)",
+        "No changes to existing agent data collection (attractions.json, meals.json)",
+        "No modifications to HTML rendering logic (only data source changes)"
+      ]
+    },
+    "success_criteria": [
+      "City cover images fetched from Google Maps Place Photos API",
+      "Attraction photos fetched from Gaode Maps POI detail API (China) or Google Maps (international)",
+      "Meal photos fetched from Gaode Maps POI detail API",
+      "Accommodation photos fetched from Gaode Maps/Google Maps",
+      "Entertainment photos fetched from Gaode Maps/Google Maps",
+      "Image URLs cached in images.json to avoid redundant API calls",
+      "HTML generator automatically uses fetched images instead of Unsplash placeholders",
+      "Graceful fallback to Unsplash if API calls fail",
+      "Generated HTML displays real location photos"
+    ],
+    "constraints": [
+      "Must not break existing HTML generation workflow",
+      "Must handle API rate limits and errors gracefully",
+      "Must work with existing Google Maps and Gaode Maps API keys",
+      "Image fetching should be fast (parallel API calls when possible)",
+      "Must preserve existing data structure in agent JSON files"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "HTML travel plans use generic Unsplash placeholder images instead of real location photos",
+    "root_cause": "Image URLs are hardcoded Unsplash placeholders in generate-html-interactive.py lines 49-80. HTML generator does not call Google Maps or Gaode Maps APIs to fetch real POI photos.",
+    "root_cause_commit": "3f51a5e - feat: add interactive features to Notion-style HTML generator",
+    "why_introduced": "Initial HTML generator implementation used Unsplash placeholders for quick prototyping. No integration with mapping API photo capabilities was built.",
+    "why_problematic": "Generic placeholders don't represent actual locations. Users want to see real photos of destinations, restaurants, and attractions to make informed decisions.",
+    "current_state": {
+      "city_covers": "Hardcoded Unsplash URLs for 5 cities (harbin, beijing, shanghai, chengdu, xi'an) + 3 generic fallbacks",
+      "poi_images": "Generic Unsplash category placeholders (meal, attraction, accommodation, entertainment)",
+      "image_sources": "All from Unsplash, none from Google/Gaode APIs",
+      "location": "generate-html-interactive.py lines 49-80"
+    },
+    "affected_files": [
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/html_generator.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "HTML generator with Unsplash placeholders, existing Google Maps and Gaode Maps skills with photo support",
+    "existing_capabilities": {
+      "gaode_maps": {
+        "skill_path": ".claude/skills/gaode-maps/",
+        "photo_support": "YES - poi_detail API returns photos array with URLs",
+        "documentation": "tools/poi-search.md lines 169-201",
+        "usage": "extensions=all parameter returns photos field",
+        "script": "scripts/poi_search.py detail <POI_ID>",
+        "response_structure": {
+          "photos": [
+            {"title": "店面", "url": "https://..."},
+            {"title": "菜品", "url": "https://..."}
+          ]
+        }
+      },
+      "google_maps": {
+        "skill_path": ".claude/skills/google-maps/",
+        "photo_support": "YES - Place Photos API via places.photos.getMedia",
+        "api_method": "Place Details returns photo references, then fetch via Place Photos API",
+        "limitations": [
+          "Photo names expire and cannot be cached",
+          "Must include author attribution",
+          "Requires maxHeightPx or maxWidthPx parameter"
+        ],
+        "current_scripts": [
+          "scripts/places.py - Search places",
+          "scripts/place_details.py - Get place details"
+        ],
+        "needs_extension": "Add photo fetching capability to place_details.py"
+      }
+    },
+    "data_flow": {
+      "current": [
+        "1. Agents create data/{destination}/attractions.json with POI info (no image URLs)",
+        "2. generate-html-interactive.py loads agent JSON files",
+        "3. HTML generator uses hardcoded Unsplash URLs for all images",
+        "4. HTML rendered with placeholder images"
+      ],
+      "proposed": [
+        "1. Agents create data/{destination}/attractions.json with POI info (gaode_id, address)",
+        "2. NEW: Image fetcher script reads agent JSONs and fetches real photos via APIs",
+        "3. NEW: Image URLs cached in data/{destination}/images.json",
+        "4. generate-html-interactive.py loads images.json and uses real photo URLs",
+        "5. HTML rendered with real location photos"
+      ]
+    },
+    "api_details": {
+      "gaode_poi_photos": {
+        "endpoint": "POI Detail API",
+        "tool": "mcp__plugin_amap-maps_amap-maps__poi_detail",
+        "parameters": {"id": "<gaode_id>", "extensions": "all"},
+        "returns": "photos array with title and URL",
+        "rate_limit": "5000 requests/day",
+        "cost": "Free (within daily quota)"
+      },
+      "google_place_photos": {
+        "endpoint": "Place Photos API (New)",
+        "method": "places.photos.getMedia",
+        "workflow": [
+          "1. Call Place Details to get photo name/reference",
+          "2. Call places.photos.getMedia with photo name",
+          "3. Specify maxHeightPx/maxWidthPx for image size"
+        ],
+        "rate_limit": "Based on Google Cloud quota",
+        "cost": "Pay-per-request (check Google Cloud pricing)"
+      }
+    },
+    "file_structure": {
+      "html_generator": "scripts/generate-html-interactive.py",
+      "html_lib": "scripts/lib/html_generator.py",
+      "new_module": "scripts/lib/image_fetcher.py (to be created)",
+      "image_cache": "data/{destination}/images.json (to be created)",
+      "agent_data": [
+        "data/{destination}/attractions.json (has gaode_id)",
+        "data/{destination}/meals.json (has gaode_id)",
+        "data/{destination}/accommodation.json (has gaode_id)",
+        "data/{destination}/entertainment.json (has gaode_id)"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Create modular image fetcher, extend Google Maps skill, integrate into HTML generation workflow",
+    "files_to_create": [
+      "scripts/lib/image_fetcher.py - Image fetching module",
+      ".claude/skills/google-maps/scripts/fetch_place_photos.py - Google Place Photos fetcher"
+    ],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py - Replace placeholder logic with API calls",
+      "scripts/generate-html.sh - Add image fetching step before HTML generation"
+    ],
+    "implementation_steps": [
+      "Step 1: Create scripts/lib/image_fetcher.py module",
+      "Step 2: Implement fetch_gaode_poi_photos() function",
+      "Step 3: Create Google Maps Place Photos script",
+      "Step 4: Implement fetch_google_place_photos() function",
+      "Step 5: Implement fetch_city_cover_image() function",
+      "Step 6: Create image cache structure (images.json)",
+      "Step 7: Modify generate-html-interactive.py to use image_fetcher",
+      "Step 8: Update generate-html.sh to run image fetcher before HTML generation",
+      "Step 9: Add graceful fallback to Unsplash placeholders on API errors",
+      "Step 10: Test with existing travel plans (harbin, beijing, china)"
+    ],
+    "validation_approach": "QA will verify images.json created, HTML uses real photos, graceful fallback on API errors"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "modular_design": true,
+    "error_handling": "Graceful fallback to Unsplash placeholders",
+    "caching": "Cache fetched URLs in images.json to minimize API calls",
+    "parallel_execution": "Fetch multiple images concurrently when possible"
+  }
+}

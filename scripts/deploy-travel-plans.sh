@@ -289,227 +289,93 @@ echo "📋 Step 6: Generating index page..."
 # Scan all directories to build plan list
 PLAN_DIRS=$(find . -mindepth 2 -maxdepth 2 -type d | grep -E '^\./[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r || echo "")
 
-# Generate index.html
-cat > "${DEPLOY_DIR}/index.html" << 'EOF_TEMPLATE'
+# Generate index.html with simple Notion-style template
+cat > "${DEPLOY_DIR}/index.html" << 'EOF_INDEX_HEAD'
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Travel Plans</title>
+    <title>Travel Plans</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #37352f;
+            font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             background: #fbfbfa;
+            color: #37352f;
+            padding: 40px 20px;
             min-height: 100vh;
-            padding: 2rem 1rem;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 3rem;
-        }
-
-        header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .plans-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
-        }
-
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { margin-bottom: 40px; }
+        .title { font-size: 40px; font-weight: 700; margin-bottom: 12px; color: #37352f; }
+        .subtitle { font-size: 16px; color: #9b9a97; }
+        .plans-grid { display: flex; flex-direction: column; gap: 12px; }
         .plan-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .plan-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .plan-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .plan-card h2 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-            text-transform: capitalize;
-        }
-
-        .plan-meta {
-            color: #7f8c8d;
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        .plan-date {
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .view-button {
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            gap: 16px;
+            padding: 16px;
+            background: white;
+            border: 1px solid #e3e2e0;
+            border-radius: 8px;
             text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            text-align: center;
-            transition: opacity 0.3s ease;
-            margin-top: auto;
+            color: inherit;
+            transition: all 0.15s ease;
         }
-
-        .view-button:hover {
-            opacity: 0.9;
+        .plan-card:hover {
+            background: #f7f6f3;
+            border-color: #d3d1cb;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-
-        .empty-state {
-            text-align: center;
-            color: white;
-            padding: 3rem;
-        }
-
-        .empty-state h2 {
-            font-size: 1.8rem;
-            margin-bottom: 1rem;
-        }
-
-        footer {
-            text-align: center;
-            color: white;
-            padding: 2rem 0;
-            opacity: 0.8;
-        }
-
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 2rem;
-            }
-
-            .plans-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+        .plan-icon { font-size: 40px; flex-shrink: 0; }
+        .plan-content { flex: 1; min-width: 0; }
+        .plan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #37352f; }
+        .plan-meta { font-size: 13px; color: #9b9a97; }
+        .arrow { font-size: 20px; color: #9b9a97; flex-shrink: 0; transition: transform 0.15s ease; }
+        .plan-card:hover .arrow { transform: translateX(4px); color: #37352f; }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>My Travel Plans</h1>
-            <p>All your adventures in one place</p>
-        </header>
+        <div class="header">
+            <div class="title">✈️ Travel Plans</div>
+            <div class="subtitle">Your travel planning hub</div>
+        </div>
+        <div class="plans-grid">
+EOF_INDEX_HEAD
 
-        <main>
-            <div class="plans-grid" id="plans-grid">
-                <!-- Plans will be inserted here -->
-            </div>
-        </main>
-
-        <footer>
-            <p>Generated by Claude Travel Planner</p>
-            <p>Last updated: TIMESTAMP_PLACEHOLDER</p>
-        </footer>
-    </div>
-
-    <script>
-        // Plans data will be inserted here
-        const plans = PLANS_DATA_PLACEHOLDER;
-
-        const plansGrid = document.getElementById('plans-grid');
-
-        if (plans.length === 0) {
-            plansGrid.innerHTML = '<div class="empty-state"><h2>No travel plans yet</h2><p>Create your first plan to see it here!</p></div>';
-        } else {
-            plans.forEach(plan => {
-                const card = document.createElement('div');
-                card.className = 'plan-card';
-                card.innerHTML = `
-                    <div class="plan-icon">🗺️</div>
-                    <h2>${plan.destination}</h2>
-                    <div class="plan-meta">
-                        <span class="plan-date">${plan.date}</span>
-                    </div>
-                    <a href="${plan.url}" class="view-button">View Plan</a>
-                `;
-                plansGrid.appendChild(card);
-            });
-        }
-    </script>
-</body>
-</html>
-EOF_TEMPLATE
-
-# Build plans JSON data
-PLANS_JSON="["
-FIRST=true
-
+# Generate plan cards dynamically
 if [ -n "$PLAN_DIRS" ]; then
     for dir in $PLAN_DIRS; do
         # Extract destination and date from path
-        # Format: ./destination/YYYY-MM-DD
         DEST=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f1)
         DATE=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f2)
 
         # Format destination name (capitalize and replace hyphens with spaces)
         DEST_NAME=$(echo "$DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
 
-        if [ "$FIRST" = true ]; then
-            FIRST=false
-        else
-            PLANS_JSON+=","
-        fi
-
-        PLANS_JSON+="{\"destination\":\"$DEST_NAME\",\"date\":\"$DATE\",\"url\":\"./$DEST/$DATE/\"}"
+        # Generate card HTML
+        cat >> "${DEPLOY_DIR}/index.html" << EOF_CARD
+            <a href="./$DEST/$DATE/" class="plan-card">
+                <div class="plan-icon">🗺️</div>
+                <div class="plan-content">
+                    <div class="plan-title">$DEST_NAME</div>
+                    <div class="plan-meta">Updated $DATE</div>
+                </div>
+                <div class="arrow">→</div>
+            </a>
+EOF_CARD
     done
 fi
 
-PLANS_JSON+="]"
-
-# Replace placeholders in index.html
-CURRENT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-sed -i "s|PLANS_DATA_PLACEHOLDER|$PLANS_JSON|g" "${DEPLOY_DIR}/index.html"
-sed -i "s|TIMESTAMP_PLACEHOLDER|$CURRENT_TIME|g" "${DEPLOY_DIR}/index.html"
+# Close HTML
+cat >> "${DEPLOY_DIR}/index.html" << 'EOF_INDEX_FOOT'
+        </div>
+    </div>
+</body>
+</html>
+EOF_INDEX_FOOT
 
 echo "✓ Index page generated with all plans"
 

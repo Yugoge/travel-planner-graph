@@ -30,6 +30,9 @@ class InteractiveHTMLGenerator:
         self.timeline = self._load_json("timeline.json")
         self.budget = self._load_json("budget.json")
 
+        # Load image fetcher for real photos
+        self.images_cache = self._load_json("images.json")
+
     def _load_json(self, filename: str) -> dict:
         """Load JSON file from data directory"""
         path = self.data_dir / filename
