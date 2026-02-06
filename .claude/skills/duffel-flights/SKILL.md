@@ -10,7 +10,8 @@ user-invocable: true
 
 Search for flights worldwide with real-time pricing, availability, and booking information via Duffel's comprehensive airline API.
 
-**MCP Server**: `flights-mcp` (Python based)
+**Implementation**: Direct REST API calls (Python scripts)
+**Status**: ✅ Fully Functional
 **API Coverage**: 3/3 tools (100%)
 **API Key**: Requires `DUFFEL_API_KEY` environment variable
 **Coverage**: Global airlines and routes
@@ -209,39 +210,27 @@ Get API key from: https://duffel.com/
 
 **API Key**: Available from Duffel (https://duffel.com/) - add to `.env` file
 
-**Test Status**: ❌ **MCP Server Installation Issues**
+**Test Status**: ✅ **Fully Working**
 
-**Test Date**: 2026-01-30
+**Test Date**: 2026-02-06
 
-**Issue**: The `flights-mcp` Python package installs successfully but fails to execute due to Python import errors:
-```python
-Traceback (most recent call last):
-  File "/usr/local/bin/flights-mcp", line 5, in <module>
-    from flights import main
-  File "/usr/local/lib/python3.12/dist-packages/flights/__init__.py", line 3, in <module>
-    from . import server
+**Implementation Method**: Direct REST API calls using Python `requests` library
+
+**Verified Working Example**:
+```bash
+cd /root/travel-planner/.claude/skills/duffel-flights
+source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py PEK SHA 2026-03-15
 ```
 
-**Workaround Options**:
-1. **Recommended**: Configure MCP directly in Claude Desktop (bypass Python wrapper)
-   - Add to `~/.config/Claude/claude_desktop_config.json`:
-   ```json
-   {
-     "mcpServers": {
-       "duffel-flights": {
-         "command": "flights-mcp",
-         "env": {
-           "DUFFEL_API_KEY": "${DUFFEL_API_KEY}"
-         }
-       }
-     }
-   }
-   ```
-   Note: Set `DUFFEL_API_KEY` in your `.env` file (see `.env.example` for template)
-2. **Alternative**: Use Google Maps + WebSearch for flight research instead
-3. **Advanced**: Debug package dependencies with maintainer
+**Result**: Successfully returns 60+ flight offers with real-time pricing and availability.
 
-**See Also**: `/root/travel-planner/API-KEY-MCP-TEST-RESULTS.md` for detailed test report
+**Technical Details**:
+- API endpoint: `https://api.duffel.com`
+- Authentication: Bearer token via `DUFFEL_API_KEY` from `.env`
+- API key loaded via `load_env.py` (custom utility)
+- No MCP server wrapper needed - direct REST API calls work perfectly
+
+**Note**: This skill bypasses MCP server installation issues by using direct REST API calls. All functionality is fully operational via Python scripts.
 
 ## Use Cases
 

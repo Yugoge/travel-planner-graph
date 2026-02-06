@@ -307,8 +307,8 @@ cat > "${DEPLOY_DIR}/index.html" << 'EOF_TEMPLATE'
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #2c3e50;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #37352f;
+            background: #fbfbfa;
             min-height: 100vh;
             padding: 2rem 1rem;
         }

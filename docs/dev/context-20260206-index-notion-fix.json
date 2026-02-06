@@ -1,0 +1,106 @@
+{
+  "request_id": "dev-20260206-index-notion-fix",
+  "timestamp": "2026-02-06T02:00:00Z",
+  "requirement": {
+    "original": "为什么html索引页又变成了紫色渐变？不应该是notion风格吗？谁自动修改了？",
+    "clarified": "Fix deployment script to generate Notion-style white background index page instead of purple gradient that keeps overwriting the correct style",
+    "what": "Update scripts/deploy-travel-plans.sh to use Notion-style white/beige background instead of purple gradient",
+    "why": "Every deployment overwrites the manually-fixed Notion-style index with purple gradient from hardcoded template in deploy script",
+    "where": ["scripts/deploy-travel-plans.sh"],
+    "scope": {
+      "included": [
+        "Replace purple gradient with Notion white/beige background (#fbfbfa)",
+        "Update all 3 occurrences of gradient (lines 311, 363, 393)",
+        "Match Notion style from commit dd1d4eb",
+        "Keep all other styling consistent"
+      ],
+      "excluded": [
+        "No changes to travel plan HTML files",
+        "No changes to deployment logic",
+        "No changes to GitHub Pages structure"
+      ]
+    },
+    "success_criteria": [
+      "Deployment script generates index with Notion-style background (#fbfbfa)",
+      "No purple gradient in generated index",
+      "Index page matches Notion aesthetic",
+      "Future deployments maintain Notion style"
+    ],
+    "constraints": [
+      "Must preserve all other index page functionality",
+      "Must not break existing deployments"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Index page keeps reverting to purple gradient after being fixed to Notion style",
+    "root_cause": "Deployment script (scripts/deploy-travel-plans.sh) has hardcoded purple gradient in index.html template. Every time deploy script runs, it regenerates index.html with purple gradient, overwriting the Notion style.",
+    "root_cause_commit": "22ed10a - checkpoint: Auto-save at 2026-01-29 09:29:38 (deployment script created with purple gradient)",
+    "why_introduced": "Deployment script template included purple gradient as default styling, likely copied from an older design",
+    "why_problematic": "User previously fixed index to Notion style (commit dd1d4eb), but subsequent deployments (af457d4, d1e81f0) overwrote it because deploy script regenerates index with hardcoded gradient",
+    "timeline": [
+      "2026-01-29: Deployment script created with purple gradient (22ed10a)",
+      "Earlier: User manually fixed to Notion style (dd1d4eb)",
+      "2026-02-06: Beijing deployment overwrote with gradient (af457d4)",
+      "2026-02-06: China deployment overwrote again (d1e81f0)"
+    ],
+    "affected_files": ["scripts/deploy-travel-plans.sh"],
+    "affected_lines": [311, 363, 393]
+  },
+  "context": {
+    "codebase_state": "Deployment script contains purple gradient template",
+    "purple_gradient_code": "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);",
+    "notion_style_code": "background: #fbfbfa; color: #37352f;",
+    "file_contents": {
+      "scripts/deploy-travel-plans.sh": {
+        "line_311": "body { ... background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); ... }",
+        "line_363": "plan-icon { ... background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); ... }",
+        "line_393": "view-button { ... background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); ... }"
+      }
+    },
+    "notion_reference": {
+      "commit": "dd1d4eb - Update index to Notion style",
+      "background": "#fbfbfa",
+      "text_color": "#37352f",
+      "aesthetic": "Clean, minimal, white/beige background similar to Notion.so"
+    },
+    "dependencies": {
+      "runtime": "Bash script",
+      "no_external_deps": true
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace all 3 purple gradient occurrences with Notion-style background",
+    "files_to_modify": ["scripts/deploy-travel-plans.sh"],
+    "changes_needed": [
+      {
+        "line": 311,
+        "change": "Body background",
+        "from": "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);",
+        "to": "background: #fbfbfa;",
+        "context": "Main body styling in index template"
+      },
+      {
+        "line": 363,
+        "change": "Plan icon background",
+        "from": "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);",
+        "to": "background: #37352f;",
+        "reason": "Use Notion dark gray for icons instead of gradient"
+      },
+      {
+        "line": 393,
+        "change": "View button background",
+        "from": "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);",
+        "to": "background: #37352f;",
+        "reason": "Use Notion dark gray for buttons instead of gradient"
+      }
+    ],
+    "validation_approach": "Run deploy script, check generated index uses Notion colors"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "use_source_venv": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

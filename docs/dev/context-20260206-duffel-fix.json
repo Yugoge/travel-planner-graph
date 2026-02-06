@@ -1,0 +1,109 @@
+{
+  "request_id": "dev-20260206-duffel-fix",
+  "timestamp": "2026-02-06T01:30:00Z",
+  "requirement": {
+    "original": "什么鸡巴玩意，彻底修复duffel skill，就是可以运行啊",
+    "clarified": "Fix Duffel skill documentation to accurately reflect that it is fully working via Python scripts that directly call Duffel REST API",
+    "what": "Update SKILL.md to remove misleading error status and clarify working implementation",
+    "why": "SKILL.md incorrectly states skill has 'MCP Server Installation Issues' but Python scripts work perfectly",
+    "where": [".claude/skills/duffel-flights/SKILL.md"],
+    "scope": {
+      "included": [
+        "Update SKILL.md to show ✅ working status",
+        "Remove misleading 'MCP Server Installation Issues' section",
+        "Clarify that skill uses Python scripts with direct REST API calls (not MCP server)",
+        "Update 'MCP Server' line to clarify implementation method",
+        "Keep all existing scripts and functionality unchanged"
+      ],
+      "excluded": [
+        "No changes to Python scripts (they already work)",
+        "No changes to .env configuration",
+        "No changes to load_env.py",
+        "No implementation of actual MCP server wrapper"
+      ]
+    },
+    "success_criteria": [
+      "SKILL.md shows ✅ status for Duffel skill",
+      "Documentation clearly states skill uses direct REST API calls",
+      "No misleading 'Installation Issues' text",
+      "Python scripts continue to work exactly as before",
+      "Users can clearly understand how to use the skill"
+    ],
+    "constraints": [
+      "Do not break existing functionality",
+      "Do not change Python scripts",
+      "Keep API key in .env (gitignored)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "SKILL.md says '❌ MCP Server Installation Issues' but scripts work fine",
+    "root_cause": "Documentation was written when flights-mcp MCP server package failed to install, but implementation bypassed MCP by using direct REST API calls instead. Documentation was never updated to reflect the working implementation.",
+    "root_cause_commit": "9366177 - feat: Replace broken weather MCP with Open-Meteo + restore Duffel key",
+    "why_introduced": "When flights-mcp MCP server had Python import errors, developers created direct REST API implementation as workaround. Testing confirmed scripts work, but SKILL.md template text was copied from when MCP server was attempted.",
+    "why_problematic": "Users see ❌ status and think skill is broken, when it actually works perfectly via Python scripts",
+    "timeline": "2026-02-01 - Duffel restored with working scripts, but documentation still showed old MCP server error",
+    "affected_files": [".claude/skills/duffel-flights/SKILL.md"]
+  },
+  "context": {
+    "codebase_state": "Working duffel-flights skill with 5 Python scripts that successfully call Duffel REST API",
+    "working_scripts": [
+      "search_flights.py - Successfully searches flights PEK->SHA, returns offers",
+      "search_airports.py - Successfully searches airports",
+      "get_offer_details.py - Gets offer details",
+      "list_airlines.py - Lists airlines",
+      "search_multi_city.py - Multi-city search"
+    ],
+    "file_contents": {
+      "SKILL.md": {
+        "line_13": "**MCP Server**: `flights-mcp` (Python based)",
+        "line_212": "**Test Status**: ❌ **MCP Server Installation Issues**",
+        "lines_216_223": "Issue description about Python import errors that don't apply to current implementation"
+      }
+    },
+    "test_results": {
+      "search_flights_test": "python3 search_flights.py PEK SHA 2026-03-15 → SUCCESS, returned 60 offers",
+      "api_method": "Direct REST API calls using requests library",
+      "api_base": "https://api.duffel.com",
+      "authentication": "DUFFEL_API_KEY from .env via load_env.py"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "requests, load_env (custom)",
+      "api_key_source": ".env file (gitignored)"
+    }
+  },
+  "development_approach": {
+    "strategy": "Update SKILL.md to accurately reflect working implementation via direct REST API",
+    "files_to_modify": [
+      ".claude/skills/duffel-flights/SKILL.md"
+    ],
+    "changes_needed": [
+      {
+        "location": "Line 13 - MCP Server description",
+        "current": "**MCP Server**: `flights-mcp` (Python based)",
+        "new": "**Implementation**: Direct REST API calls (Python scripts)",
+        "reason": "Clarify that skill doesn't use MCP server, uses direct API"
+      },
+      {
+        "location": "Lines 208-240 - Test API Key section",
+        "current": "Shows ❌ status and MCP Server Installation Issues",
+        "new": "Show ✅ status and confirm working via Python REST API scripts",
+        "reason": "Remove misleading error information"
+      },
+      {
+        "location": "Line 15 - Status/Coverage",
+        "action": "Add explicit status line after Implementation",
+        "new": "**Status**: ✅ Fully Functional",
+        "reason": "Make working status immediately visible"
+      }
+    ],
+    "validation_approach": "QA will verify SKILL.md shows correct status and run test script to confirm still working"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
