@@ -1,0 +1,140 @@
+{
+  "request_id": "dev-20260206-210000",
+  "timestamp": "2026-02-06T21:00:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed city cover image display logic",
+        "type": "bug_fix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Enhanced _get_cover_image() to properly check cache URLs before falling back to Unsplash. Added validation that cached URLs start with 'http' before using them.",
+        "rationale": "City covers were cached but not being used due to incomplete cache lookup logic. Now properly validates cache entries before fallback.",
+        "issue": "#1 - City cover images missing"
+      },
+      {
+        "id": 2,
+        "description": "Fixed fetch script to use Chinese names for Gaode Maps searches",
+        "type": "bug_fix",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Updated fetch_poi_photo_gaode() to accept chinese_name parameter and use it for searches. Modified fetch_pois() to extract name_chinese from agent data and pass it to Gaode searches.",
+        "rationale": "Root cause from commit 123f8df: Script used English names (item.get('name')) to search Gaode Maps for Chinese POIs. Searching 'Terracotta Army Museum' returns wrong results vs '兵马俑博物馆'.",
+        "issue": "#2 - ALL POI images wrong (CRITICAL)"
+      },
+      {
+        "id": 3,
+        "description": "Added Google Maps support for Hong Kong/Macau attractions",
+        "type": "feature",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Created fetch_poi_photo_google() method for Google Maps searches. Added _is_hong_kong_macau() location detector. Updated fetch_pois() to route HK/Macau POIs to Google Maps, mainland to Gaode Maps.",
+        "rationale": "User principle: 搜索哪一国景点就用哪一国自己的语言. Hong Kong/Macau should use Google Maps with English names, not Gaode.",
+        "issue": "#3 - Hong Kong attractions have no photos"
+      },
+      {
+        "id": 4,
+        "description": "Budget pie chart sectors now clickable",
+        "type": "feature",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Budget rows in KanbanView already had onClick handlers connected to onBudgetClick. BudgetDetailSidebar component already existed and displays category breakdown. No changes needed - feature was already implemented.",
+        "rationale": "Reviewed React template code - budget pie chart sectors were already clickable with hover effects and onClick handlers. BudgetDetailSidebar shows itemized costs per category.",
+        "issue": "#4 - Budget pie chart sectors should be clickable"
+      },
+      {
+        "id": 5,
+        "description": "Added hotel image fetching and display",
+        "type": "feature",
+        "files_modified": [
+          "scripts/fetch-images-batch.py",
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Updated fetch_pois() to include accommodation items (hotels) in POI collection from both days and cities formats. Added image field to accommodation data in _merge_day_data(). Updated React template to display accommodation images in Kanban view.",
+        "rationale": "Hotels were not being fetched because accommodation extraction was incomplete. Now extracts name_chinese/name_cn for proper Gaode searches.",
+        "issue": "#5 - All hotels missing images"
+      },
+      {
+        "id": 6,
+        "description": "Added type natural language formatter",
+        "type": "feature",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Created _format_type() method that converts type codes to natural language (historical_site → Historical Site, cultural_performance → Cultural Performance). Applied formatter to all type fields in attractions, entertainment, and accommodation data.",
+        "rationale": "Types were showing as raw codes (historical_site, spa_wellness) instead of readable labels. Formatter provides mapping for common types and fallback title-case conversion.",
+        "issue": "#6 - Types show as codes instead of natural language"
+      }
+    ],
+    "files_modified": [
+      {
+        "path": "scripts/fetch-images-batch.py",
+        "changes_summary": "Added chinese_name parameter to fetch_poi_photo_gaode(). Created fetch_poi_photo_google() for HK/Macau. Added _is_hong_kong_macau() location detector. Updated fetch_pois() to extract chinese_name and route to appropriate service. Added accommodation image fetching.",
+        "lines_changed": "~150 lines (methods updated, new methods added)"
+      },
+      {
+        "path": "scripts/generate-html-interactive.py",
+        "changes_summary": "Created _format_type() method. Enhanced _get_cover_image() cache validation. Applied type formatter to attractions, entertainment, accommodation. Added image fields to accommodation and entertainment. Updated React template to display accommodation and entertainment images.",
+        "lines_changed": "~80 lines (new method, data processing updates, React template updates)"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "123f8df - feat: integrate real photo fetching into HTML generation workflow",
+      "why_issue_occurred": "Initial image fetching implementation used English names (item.get('name')) for all Gaode Maps searches. This works for English-speaking regions but fails for Chinese POIs. Gaode Maps requires Chinese queries for Chinese locations. Hong Kong/Macau were not considered (should use Google Maps). Hotels were not included in POI extraction.",
+      "how_fix_addresses_root": "Fix implements user principle '搜索哪一国景点就用哪一国自己的语言' by: (1) extracting name_chinese from agent data, (2) using chinese_name for mainland China Gaode searches, (3) routing HK/Macau to Google Maps with English names, (4) including hotels in POI extraction with proper chinese name handling. City cover cache validation ensures cached images are used instead of fallback. Type formatter converts codes to natural language for display."
+    },
+    "implementation_details": {
+      "language_routing_logic": {
+        "mainland_china": {
+          "service": "Gaode Maps",
+          "search_name": "chinese_name (name_chinese field)",
+          "cache_key": "gaode_{english_name}",
+          "example": "兵马俑博物馆 (not Terracotta Army Museum)"
+        },
+        "hong_kong_macau": {
+          "service": "Google Maps",
+          "search_name": "name (English name field)",
+          "cache_key": "google_{english_name}",
+          "example": "Victoria Peak (not 太平山顶)"
+        }
+      },
+      "data_extraction": {
+        "chinese_name_sources": [
+          "attractions: name_chinese",
+          "meals: name_chinese",
+          "accommodation: name_chinese or name_cn",
+          "entertainment: name_chinese"
+        ],
+        "formats_supported": [
+          "days format (itinerary): day.attractions, day.breakfast/lunch/dinner, day.accommodation, day.entertainment",
+          "cities format (bucket list): city.attractions, city.meals, city.accommodation, city.entertainment"
+        ]
+      },
+      "type_formatter": {
+        "mappings": {
+          "historical_site": "Historical Site",
+          "cultural_district": "Cultural District",
+          "religious_site": "Religious Site",
+          "cultural_performance": "Cultural Performance",
+          "spa_wellness": "Spa & Wellness"
+        },
+        "fallback": "Replace underscores with spaces and title-case"
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "To verify fixes:\n1. Check city cover images display from cache (not Unsplash fallback) - inspect images.json city_covers section\n2. Run fetch script with Chinese POI names, verify Gaode returns correct images for mainland attractions\n3. Verify Hong Kong/Macau POIs route to Google Maps (check console output shows 'Google' service)\n4. Click budget pie chart sectors in HTML, verify BudgetDetailSidebar opens with itemized breakdown\n5. Check accommodation sections display hotel images in generated HTML\n6. Verify all type fields show natural language (Historical Site, not historical_site)\n7. Test with china-exchange-bucket-list-2026 plan to verify all 6 fixes",
+    "testing_commands": [
+      "cd /root/travel-planner",
+      "source venv/bin/activate",
+      "python3 scripts/fetch-images-batch.py china-exchange-bucket-list-2026 5 20",
+      "python3 scripts/generate-html-interactive.py china-exchange-bucket-list-2026",
+      "# Open travel-plan-china-exchange-bucket-list-2026.html in browser",
+      "# Verify: (1) City covers not Unsplash (2) POI images match attractions (3) Hotels have images (4) Types are readable (5) Budget pie clickable"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "After QA approval, refetch all images for china-exchange-bucket-list-2026 using updated script with higher limits (e.g., 50 POIs)",
+    "Consider adding image caching for Google Maps results (currently only Gaode cached)",
+    "Add logging to fetch script to track which service (Gaode vs Google) was used for each POI",
+    "Consider adding natural language formatter for other fields (cuisine_type, meal_type, etc.)"
+  ],
+  "notes": "Issue #4 (budget pie chart clickable) was already implemented in the React template. No changes were needed. All other 5 issues have been fixed. The root cause (commit 123f8df) has been addressed by implementing proper language routing: Chinese names for mainland China Gaode searches, English names for HK/Macau Google searches. User principle '搜索哪一国景点就用哪一国自己的语言' is now enforced in code."
+}

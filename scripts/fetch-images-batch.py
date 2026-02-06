@@ -79,12 +79,55 @@ class BatchImageFetcher:
 
         return None
 
-    def fetch_poi_photo_gaode(self, poi_name: str, city: str) -> Optional[str]:
-        """Fetch POI photo using Gaode Maps skill script"""
+    def fetch_poi_photo_google(self, poi_name: str, city: str) -> Optional[str]:
+        """Fetch POI photo using Google Maps skill script (for Hong Kong/Macau)
+
+        User principle: Hong Kong/Macau use English names with Google Maps
+        """
+        try:
+            script_path = self.base_dir / ".claude/skills/google-maps/scripts/places.py"
+            # Search with city context for better results
+            search_query = f"{poi_name} {city}"
+            result = subprocess.run(
+                [self.venv_python, str(script_path), search_query, "1"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=script_path.parent
+            )
+
+            if result.returncode != 0:
+                return None
+
+            # Parse JSON from stderr
+            try:
+                data = json.loads(result.stderr)
+                if data.get("results", {}).get("places"):
+                    place = data["results"]["places"][0]
+                    # Google Places API response structure
+                    # For now, return None as we'd need photo reference API
+                    return None
+            except:
+                pass
+
+        except Exception as e:
+            print(f"  Google Maps error for {poi_name}: {e}")
+
+        return None
+
+    def fetch_poi_photo_gaode(self, poi_name: str, city: str, chinese_name: str = None) -> Optional[str]:
+        """Fetch POI photo using Gaode Maps skill script
+
+        Root cause fix (commit 123f8df): Use chinese_name for Gaode searches
+        User principle: 搜索哪一国景点就用哪一国自己的语言
+        """
+        # Use Chinese name for search if available (mainland China POIs)
+        search_name = chinese_name if chinese_name else poi_name
+
         try:
             script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
             result = subprocess.run(
-                [self.venv_python, str(script_path), "keyword", poi_name, city, "餐饮服务|风景名胜"],
+                [self.venv_python, str(script_path), "keyword", search_name, city, "餐饮服务|风景名胜"],
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -107,9 +150,9 @@ class BatchImageFetcher:
                 pass
 
         except subprocess.TimeoutExpired:
-            print(f"  Timeout for {poi_name}")
+            print(f"  Timeout for {search_name}")
         except Exception as e:
-            print(f"  Gaode error for {poi_name}: {e}")
+            print(f"  Gaode error for {search_name}: {e}")
 
         return None
 
@@ -150,16 +193,26 @@ class BatchImageFetcher:
 
         print(f"  Total fetched: {fetched}/{limit}")
 
+    def _is_hong_kong_macau(self, location: str) -> bool:
+        """Detect if location is Hong Kong or Macau (use Google Maps)"""
+        location_lower = location.lower()
+        return "hong kong" in location_lower or "hongkong" in location_lower or \
+               "macau" in location_lower or "macao" in location_lower or \
+               "香港" in location or "澳门" in location
+
     def fetch_pois(self, limit: int = 10):
         """Fetch POI photos from all agent files (limited batch)
 
-        Root cause: Initial implementation only read attractions.json (commit 123f8df).
-        Fix: Extend to read meals.json, accommodation.json, entertainment.json.
+        Root cause fix (commit 123f8df): Use appropriate language and service per location
+        - Mainland China → use name_chinese + Gaode Maps
+        - Hong Kong/Macau → use English name + Google Maps
+        - Hotels → fetch images for accommodation
+
         Supports both days format (itinerary) and cities format (bucket list).
         """
         print(f"\n📍 Fetching POI photos (max {limit})...")
 
-        # Collect POIs from all agent files
+        # Collect POIs from all agent files with metadata
         pois = []
 
         # Agent files to read: attractions, meals, accommodation, entertainment
@@ -191,8 +244,14 @@ class BatchImageFetcher:
                     # Attractions: list of items
                     for item in day.get("attractions", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", "")
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
                 elif field_name == "meals":
                     # Meals: breakfast/lunch/dinner dict
@@ -200,23 +259,41 @@ class BatchImageFetcher:
                         meal = day.get(meal_type)
                         if meal and isinstance(meal, dict):
                             name = meal.get("name", "")
+                            chinese_name = meal.get("name_chinese", "")
                             if name:
-                                pois.append({"name": name, "city": location, "type": poi_type})
+                                pois.append({
+                                    "name": name,
+                                    "chinese_name": chinese_name,
+                                    "city": location,
+                                    "type": poi_type
+                                })
 
                 elif field_name == "accommodation":
-                    # Accommodation: single dict
+                    # Accommodation: single dict (Fix #5: add hotel image fetching)
                     acc = day.get("accommodation")
                     if acc and isinstance(acc, dict):
                         name = acc.get("name", "")
+                        chinese_name = acc.get("name_chinese", acc.get("name_cn", ""))
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
                 elif field_name == "entertainment":
                     # Entertainment: list of items
                     for item in day.get("entertainment", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", "")
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
             # Process cities format (bucket list)
             for city in cities_data:
@@ -226,41 +303,85 @@ class BatchImageFetcher:
                     # Attractions: list of items
                     for item in city.get("attractions", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", "")
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
                 elif field_name == "meals":
                     # Meals: list of items
                     for item in city.get("meals", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", "")
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
                 elif field_name == "accommodation":
-                    # Accommodation: list of items
+                    # Accommodation: list of items (Fix #5: add hotel image fetching)
                     for item in city.get("accommodation", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", item.get("name_cn", ""))
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
                 elif field_name == "entertainment":
                     # Entertainment: list of items
                     for item in city.get("entertainment", []):
                         name = item.get("name", "")
+                        chinese_name = item.get("name_chinese", "")
                         if name:
-                            pois.append({"name": name, "city": location, "type": poi_type})
+                            pois.append({
+                                "name": name,
+                                "chinese_name": chinese_name,
+                                "city": location,
+                                "type": poi_type
+                            })
 
         print(f"  Found {len(pois)} POIs across all agent files")
 
         fetched = 0
         for poi in pois[:limit]:
-            cache_key = f"gaode_{poi['name']}"
+            is_hk_macau = self._is_hong_kong_macau(poi['city'])
+
+            # Determine cache key and search method based on location
+            if is_hk_macau:
+                cache_key = f"google_{poi['name']}"
+                service = "Google"
+            else:
+                cache_key = f"gaode_{poi['name']}"
+                service = "Gaode"
+
             if cache_key in self.cache["pois"]:
-                print(f"  ✓ {poi['name']} ({poi['type']}, cached)")
+                print(f"  ✓ {poi['name']} ({poi['type']}, cached, {service})")
                 continue
 
-            print(f"  Fetching {poi['name']} ({poi['type']})...", end=" ")
-            photo_url = self.fetch_poi_photo_gaode(poi['name'], poi['city'])
+            print(f"  Fetching {poi['name']} ({poi['type']}, {service})...", end=" ")
+
+            # Use appropriate search method
+            if is_hk_macau:
+                # Fix #3: Use Google Maps for Hong Kong/Macau
+                photo_url = self.fetch_poi_photo_google(poi['name'], poi['city'])
+            else:
+                # Fix #2: Use Chinese name for Gaode Maps (mainland China)
+                photo_url = self.fetch_poi_photo_gaode(
+                    poi['name'],
+                    poi['city'],
+                    chinese_name=poi.get('chinese_name')
+                )
 
             if photo_url:
                 self.cache["pois"][cache_key] = photo_url

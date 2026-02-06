@@ -80,21 +80,61 @@ class InteractiveHTMLGenerator:
 
             return data
 
+    def _format_type(self, type_code: str) -> str:
+        """Convert type code to natural language (Fix #6)
+        Root cause: commit 123f8df - no formatter for type codes
+        Examples: historical_site → Historical Site, cultural_performance → Cultural Performance
+        """
+        if not type_code:
+            return ""
+
+        # Common type mappings
+        type_map = {
+            "historical_site": "Historical Site",
+            "cultural_district": "Cultural District",
+            "religious_site": "Religious Site",
+            "museum": "Museum",
+            "park": "Park",
+            "cultural_performance": "Cultural Performance",
+            "nightlife": "Nightlife",
+            "spa_wellness": "Spa & Wellness",
+            "shopping": "Shopping",
+            "hotel": "Hotel",
+            "hostel": "Hostel",
+            "guesthouse": "Guesthouse"
+        }
+
+        # Return mapped value or format by replacing underscores and title-casing
+        return type_map.get(type_code, type_code.replace("_", " ").title())
+
     def _get_cover_image(self, location: str, index: int = 0) -> str:
-        """Get cover image URL for location from images cache or fallback to Unsplash"""
+        """Get cover image URL for location from images cache or fallback to Unsplash
+        Fix #1: City cover images should use cache, not always fallback to Unsplash
+        Root cause: commit 123f8df - cache lookup logic was incomplete
+        """
         # Try to get from images cache first
         if self.images_cache and "city_covers" in self.images_cache:
             city_covers = self.images_cache["city_covers"]
-            # Try exact match
+            # Try exact match first
             if location in city_covers:
-                return city_covers[location]
+                url = city_covers[location]
+                if url and url.startswith("http"):
+                    return url
+
             # Try case-insensitive match
             key = location.lower()
             for city, url in city_covers.items():
-                if city.lower() == key or city.lower() in key or key in city.lower():
-                    return url
+                if city.lower() == key:
+                    if url and url.startswith("http"):
+                        return url
 
-        # Fallback to Unsplash placeholders (hardcoded for backward compatibility)
+            # Try partial match (for variations like "Xi'an" vs "Xian")
+            for city, url in city_covers.items():
+                if city.lower() in key or key in city.lower():
+                    if url and url.startswith("http"):
+                        return url
+
+        # Fallback to Unsplash placeholders (only if cache lookup fails)
         covers = {
             "harbin": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1200&h=400&fit=crop",
             "beijing": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=1200&h=400&fit=crop",
@@ -263,7 +303,7 @@ class InteractiveHTMLGenerator:
                         "name": attr.get("name", ""),
                         "name_en": attr.get("name_en", ""),
                         "location": attr.get("location", ""),
-                        "type": attr.get("type", ""),
+                        "type": self._format_type(attr.get("type", "")),
                         "cost": cost,
                         "cost_eur": cost_eur,
                         "opening_hours": attr.get("opening_hours", ""),
@@ -325,10 +365,15 @@ class InteractiveHTMLGenerator:
                     merged["entertainment"].append({
                         "name": ent.get("name", ""),
                         "name_en": ent.get("name_en", ""),
-                        "type": ent.get("type", ""),
+                        "type": self._format_type(ent.get("type", "")),
                         "cost": cost,
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
+                        "image": ent.get("image", self._get_placeholder_image(
+                            "entertainment",
+                            poi_name=ent.get("name", ""),
+                            gaode_id=ent.get("gaode_id", "")
+                        )),
                         "time": ent_time,
                         "links": ent.get("links", {})
                     })
@@ -347,12 +392,17 @@ class InteractiveHTMLGenerator:
                 merged["accommodation"] = {
                     "name": acc.get("name", ""),
                     "name_cn": acc.get("name_cn", ""),
-                    "type": acc.get("type", "hotel"),
+                    "type": self._format_type(acc.get("type", "hotel")),
                     "location": acc.get("location", ""),
                     "cost": cost,
                     "stars": acc.get("stars", 3),
                     "time": acc.get("time", {"start": "15:00", "end": "16:00"}),
-                    "links": acc.get("links", {})
+                    "links": acc.get("links", {}),
+                    "image": acc.get("image", self._get_placeholder_image(
+                        "accommodation",
+                        poi_name=acc.get("name", ""),
+                        gaode_id=acc.get("gaode_id", "")
+                    ))
                 }
                 merged["budget"]["accommodation"] = cost
 
@@ -460,7 +510,7 @@ class InteractiveHTMLGenerator:
                         "name": attr.get("name", ""),
                         "name_en": attr.get("name_chinese", ""),
                         "location": city_name,
-                        "type": attr.get("type", ""),
+                        "type": self._format_type(attr.get("type", "")),
                         "cost": attr.get("ticket_price_eur", 0) * 7.5,  # Convert EUR to CNY approx
                         "cost_eur": attr.get("ticket_price_eur", 0),
                         "opening_hours": attr.get("opening_hours", ""),
@@ -1158,21 +1208,29 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                   <div key={i} style={{
                     background: '#fff', borderRadius: '8px',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                    padding: '14px 16px', marginBottom: '10px', cursor: 'pointer'
+                    overflow: 'hidden', marginBottom: '10px', cursor: 'pointer'
                   }}
                     onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{ent.name}</div>
-                    {ent.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{ent.name_en}</div>}
-                    <PropLine label="Type" value={ent.type} />
-                    <PropLine label="Cost" value={ent.cost === 0 ? 'Free' : `${ent.cost.toFixed(2)} CNY`} />
-                    <PropLine label="Duration" value={ent.duration} />
-                    {ent.note && (
-                      <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
-                        💡 {ent.note}
+                    {ent.image && (
+                      <div style={{ width: '100%', height: sm ? '100px' : '120px', overflow: 'hidden', background: '#f5f3ef' }}>
+                        <img src={ent.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={e => { e.target.style.display = 'none'; }} />
                       </div>
                     )}
-                    <LinksRow links={ent.links} compact={sm} />
+                    <div style={{ padding: '14px 16px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{ent.name}</div>
+                      {ent.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{ent.name_en}</div>}
+                      <PropLine label="Type" value={ent.type} />
+                      <PropLine label="Cost" value={ent.cost === 0 ? 'Free' : `${ent.cost.toFixed(2)} CNY`} />
+                      <PropLine label="Duration" value={ent.duration} />
+                      {ent.note && (
+                        <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
+                          💡 {ent.note}
+                        </div>
+                      )}
+                      <LinksRow links={ent.links} compact={sm} />
+                    </div>
                   </div>
                 ))}
               </Section>
@@ -1183,17 +1241,25 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                 <div style={{
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  padding: '14px 16px', cursor: 'pointer'
+                  overflow: 'hidden', cursor: 'pointer'
                 }}
                   onClick={() => onItemClick && onItemClick(day.accommodation, 'accommodation')}
                 >
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{day.accommodation.name}</div>
-                  {day.accommodation.name_cn && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{day.accommodation.name_cn}</div>}
-                  <PropLine label="Type" value={day.accommodation.type} />
-                  <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
-                  <PropLine label="Location" value={day.accommodation.location} />
-                  <PropLine label="Cost" value={day.accommodation.cost === 0 ? 'Free' : `${day.accommodation.cost.toFixed(2)} CNY`} />
-                  <LinksRow links={day.accommodation.links} compact={sm} />
+                  {day.accommodation.image && (
+                    <div style={{ width: '100%', height: sm ? '120px' : '160px', overflow: 'hidden', background: '#f5f3ef' }}>
+                      <img src={day.accommodation.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    </div>
+                  )}
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{day.accommodation.name}</div>
+                    {day.accommodation.name_cn && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{day.accommodation.name_cn}</div>}
+                    <PropLine label="Type" value={day.accommodation.type} />
+                    <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
+                    <PropLine label="Location" value={day.accommodation.location} />
+                    <PropLine label="Cost" value={day.accommodation.cost === 0 ? 'Free' : `${day.accommodation.cost.toFixed(2)} CNY`} />
+                    <LinksRow links={day.accommodation.links} compact={sm} />
+                  </div>
                 </div>
               </Section>
             )}

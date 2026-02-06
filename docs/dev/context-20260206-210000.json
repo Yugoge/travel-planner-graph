@@ -1,0 +1,123 @@
+{
+  "request_id": "dev-20260206-210000",
+  "timestamp": "2026-02-06T21:00:00Z",
+  "requirement": {
+    "original": "1. 城市图片还是没有了\n2. 所有图片没有一张符合景点。没有一张！搜索出了问题，是不是用错了搜索？比如英文搜高德或者中国景点用谷歌\n3. 所有香港景点没有照片，是不是谷歌损坏了\n4. 我需要点击budget扇形图的扇形区域格局弹出具体的消费，和点击内容一样\n5. 所有酒店没有图片\n6. 每一个项目的type全都非英语自然语言",
+    "clarified": "Fix 6 critical issues in china-exchange-bucket-list-2026:\n1. City cover images missing (using Unsplash instead of cached images)\n2. ALL POI images are WRONG - fetch script searches with English names in Gaode Maps (should use Chinese names)\n3. Hong Kong attractions have no photos (Google Maps not used for HK)\n4. Budget pie chart sectors should be clickable to show details (like content items)\n5. Hotel images missing (accommodation has no image field)\n6. Item types show as codes (historical_site) instead of natural language (Historical Site)",
+    "what": "Fix image fetching logic and UI interactions",
+    "why": "Users see wrong images for all POIs because fetch script uses English names to search Gaode Maps for Chinese attractions",
+    "where": [
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-html-interactive.py",
+      "React template in HTML"
+    ],
+    "scope": {
+      "included": [
+        "Fix fetch script to use name_chinese for Gaode searches",
+        "Use Google Maps for Hong Kong/Macau attractions",
+        "Fix city cover image display",
+        "Add clickable budget pie chart",
+        "Fetch hotel images",
+        "Add type natural language formatter"
+      ],
+      "excluded": [
+        "Refetch ALL images immediately (can be done after fix)",
+        "Change data structure",
+        "Major UI redesign"
+      ]
+    },
+    "success_criteria": [
+      "Fetch script uses name_chinese for Gaode searches in mainland China",
+      "Fetch script uses English name for Google searches in HK/Macau",
+      "City cover images display from cache (not Unsplash fallback)",
+      "Budget pie chart sectors are clickable and show details",
+      "Hotels have image fetching logic",
+      "Types display as natural language (Historical Site, not historical_site)"
+    ],
+    "constraints": [
+      "Maintain backward compatibility",
+      "Don't break existing cached images",
+      "Follow user principle: search Chinese POIs with Chinese, other countries with their language"
+    ]
+  },
+  "root_cause_analysis": {
+    "issue_2_wrong_images": {
+      "symptom": "ALL POI images are wrong - completely unrelated to the attraction",
+      "root_cause": "fetch-images-batch.py uses item.get('name') which is English name, then searches Gaode Maps with English",
+      "root_cause_commit": "123f8df - feat: integrate real photo fetching into HTML generation workflow",
+      "why_introduced": "Initial implementation didn't consider that Gaode Maps requires Chinese queries for Chinese POIs",
+      "why_problematic": "Searching '兵马俑' (Chinese) vs 'Terracotta Army Museum' (English) in Gaode returns completely different results",
+      "timeline": "Since initial image fetching implementation",
+      "affected_code": "scripts/fetch-images-batch.py lines 193, 228 (uses name instead of name_chinese)"
+    },
+    "issue_1_city_covers": {
+      "symptom": "City cover images not showing from cache",
+      "root_cause": "HTML generator _get_cover_image falls back to Unsplash even when cache exists",
+      "affected_code": "scripts/generate-html-interactive.py:_get_cover_image"
+    },
+    "issue_3_hong_kong": {
+      "symptom": "Hong Kong attractions have no photos",
+      "root_cause": "Fetch script only uses Gaode Maps, doesn't use Google Maps for HK/Macau",
+      "affected_code": "scripts/fetch-images-batch.py - no Google Maps logic for HK"
+    },
+    "issue_5_hotels": {
+      "symptom": "All hotels missing images",
+      "root_cause": "Hotels not being fetched because accommodation extraction logic may be incomplete",
+      "affected_code": "scripts/fetch-images-batch.py accommodation extraction"
+    },
+    "issue_6_type_codes": {
+      "symptom": "Types show as historical_site, cultural_performance etc",
+      "root_cause": "No formatter for type field",
+      "affected_code": "React template or HTML generator"
+    }
+  },
+  "context": {
+    "agent_data_structure": {
+      "attractions": {
+        "name": "English name (Terracotta Army Museum)",
+        "name_chinese": "Chinese name (兵马俑博物馆)",
+        "type": "Code like historical_site"
+      },
+      "accommodation": {
+        "name": "English hotel name",
+        "name_chinese": "Chinese hotel name (if available)"
+      }
+    },
+    "fetch_script_current_logic": {
+      "line_193": "name = item.get('name')  # Gets English name",
+      "line_257": "cache_key = f'gaode_{poi[\"name\"]}'  # Uses English in cache key",
+      "line_86_poi_search": "poi_search.py 'keyword' poi_name city  # Searches Gaode with English",
+      "problem": "English names don't match Chinese POIs in Gaode Maps"
+    },
+    "correct_logic_needed": {
+      "mainland_china": "Use name_chinese for Gaode searches",
+      "hong_kong_macau": "Use English name for Google Maps searches",
+      "cache_key": "Use original English name for consistency"
+    },
+    "user_principle": "搜索哪一国景点就用哪一国自己的语言 (Search each country's POIs in that country's language)"
+  },
+  "development_approach": {
+    "strategy": "Fix fetch script to detect location and use appropriate language/service",
+    "files_to_modify": [
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "changes_needed": [
+      "1. Add language detection logic: mainland China → use name_chinese, HK/Macau → use English",
+      "2. Update fetch_poi_photo_gaode to accept chinese_name parameter",
+      "3. Add fetch_poi_photo_google for HK/Macau POIs",
+      "4. Fix _get_cover_image to properly use cache",
+      "5. Add _format_type() helper: historical_site → Historical Site",
+      "6. Add budget pie chart click handler in React",
+      "7. Ensure accommodation images are fetched"
+    ],
+    "validation_approach": [
+      "Run fetch script with chinese names, verify Gaode returns correct images",
+      "Check HK attractions use Google Maps",
+      "Verify city covers display from cache",
+      "Test budget pie chart clickability",
+      "Check hotel images fetched",
+      "Verify types display as natural language"
+    ]
+  }
+}
