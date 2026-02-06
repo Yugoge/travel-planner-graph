@@ -194,7 +194,8 @@ python3 scripts/geocode.py "北京市朝阳区"
 
 #### 设置环境变量
 ```bash
-export DUFFEL_API_KEY="duffel_test_..."
+# Add to .env file
+echo "DUFFEL_API_KEY=your_api_key_here" >> .env
 ```
 
 #### 使用示例

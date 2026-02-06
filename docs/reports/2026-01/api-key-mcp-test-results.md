@@ -19,7 +19,7 @@
 
 ### 1. Duffel Flights
 
-**API Key**: `duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt`
+**API Key**: `<REDACTED - stored in .env>`
 **环境变量**: `DUFFEL_API_KEY`
 
 #### 测试过程

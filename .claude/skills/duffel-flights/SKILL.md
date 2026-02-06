@@ -205,9 +205,9 @@ echo "DUFFEL_API_KEY=your_api_key_here" >> .env
 
 Get API key from: https://duffel.com/
 
-### Test API Key (Provided)
+### Test API Key
 
-**API Key**: `duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt`
+**API Key**: Available from Duffel (https://duffel.com/) - add to `.env` file
 
 **Test Status**: ❌ **MCP Server Installation Issues**
 
@@ -231,12 +231,13 @@ Traceback (most recent call last):
        "duffel-flights": {
          "command": "flights-mcp",
          "env": {
-           "DUFFEL_API_KEY": "duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt"
+           "DUFFEL_API_KEY": "${DUFFEL_API_KEY}"
          }
        }
      }
    }
    ```
+   Note: Set `DUFFEL_API_KEY` in your `.env` file (see `.env.example` for template)
 2. **Alternative**: Use Google Maps + WebSearch for flight research instead
 3. **Advanced**: Debug package dependencies with maintainer
 

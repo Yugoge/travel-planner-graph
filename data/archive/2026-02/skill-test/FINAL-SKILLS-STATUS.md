@@ -71,8 +71,7 @@ python3 forecast.py 40.71 -74.01 --days 3 --location-name "New York"
 - Scripts存在但无法运行（缺环境变量）
 
 **解决方案**:
-- ✅ 找回测试API key: `duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt`
-- ✅ 添加到 `.env` 文件（gitignored）
+- ✅ 找回测试API key并添加到 `.env` 文件（gitignored）
 - ✅ 复制 `load_env.py` 到duffel-flights/scripts/
 - ✅ 在5个Python脚本中添加 `import load_env`
 
@@ -117,10 +116,10 @@ skills:
 AMAP_MAPS_API_KEY=99e97af6fd426ce3cfc45d22d26e78e3
 
 # Google Maps
-GOOGLE_MAPS_API_KEY=AIzaSyAUgrWhyX0f47YufM4X5jQ1kKPALzB-Koc
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 
 # Duffel Flights (测试key)
-DUFFEL_API_KEY=duffel_test__l0xgJrsCgBXvjh1dgYxQJL4rBHnCaKXCqZ0AMAS2Bt
+DUFFEL_API_KEY=your_duffel_test_key_here
 
 # Open-Meteo (无需key)
 # 完全免费，直接使用
