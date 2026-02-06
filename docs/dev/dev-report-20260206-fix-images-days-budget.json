@@ -1,0 +1,142 @@
+{
+  "request_id": "dev-20260206-fix-images-days-budget",
+  "timestamp": "2026-02-06T16:32:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Restored plan-skeleton.json and agent files from .backup files",
+        "type": "rollback",
+        "files_modified": [
+          "data/china-exchange-bucket-list-2026/plan-skeleton.json",
+          "data/china-exchange-bucket-list-2026/attractions.json",
+          "data/china-exchange-bucket-list-2026/meals.json",
+          "data/china-exchange-bucket-list-2026/accommodation.json",
+          "data/china-exchange-bucket-list-2026/entertainment.json",
+          "data/china-exchange-bucket-list-2026/shopping.json",
+          "data/china-exchange-bucket-list-2026/transportation.json"
+        ],
+        "changes": "Reverted from incorrect 25-day migration back to 10-city city_guides format",
+        "rationale": "Root cause: Migration script (commit 52d3528) incorrectly expanded bucket list cities into 25-day itinerary. Bucket list should remain as 10 city options, not a multi-day itinerary.",
+        "verification": "plan-skeleton.json now has bucket_list_type: city_guides with 10 cities"
+      },
+      {
+        "id": 2,
+        "description": "Extended fetch-images-batch.py to support both days and cities formats",
+        "type": "script_update",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Added cities format support in fetch_pois() method. Script now reads from both data.data.days (itinerary) and data.cities (bucket list) structures.",
+        "rationale": "Initial implementation only supported days format. After restoring bucket list to cities format, script needed to support both structures to fetch POI photos.",
+        "verification": "Successfully fetched 10 new POI photos from cities structure (attractions, meals, accommodation, entertainment)"
+      },
+      {
+        "id": 3,
+        "description": "Added toFixed(2) to all budget/price displays in HTML generator",
+        "type": "code_update",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Applied .toFixed(2) to 14 locations: item.cost, item.cost_eur, total, meal.cost, attr.cost, ent.cost, day.accommodation.cost, day.budget.total, day.budget[category], entry.cost",
+        "rationale": "Root cause: JavaScript floating point arithmetic caused display of values like 397.79999999999995 CNY instead of 397.80 CNY",
+        "verification": "HTML now contains 14 instances of toFixed(2) for clean decimal display"
+      },
+      {
+        "id": 4,
+        "description": "Added bucket list (city_guides) format support to HTML generator",
+        "type": "feature",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added _generate_bucket_list_data() method to convert city_guides format into trip cards. Each city becomes one trip with POI data from cities structure in agent files. Updated generate_plan_data() to detect bucket_list_type and route to appropriate generator.",
+        "rationale": "HTML generator only supported trip_summary+days format. Bucket lists use city_guides format with cities array. Migration wrongly tried to convert bucket lists to days format instead of updating HTML generator.",
+        "verification": "Generated HTML shows 10 trips (cities), not 25 days. Each city is a separate trip card."
+      },
+      {
+        "id": 5,
+        "description": "Verified CSS object-fit: cover is applied to all images",
+        "type": "verification",
+        "files_modified": [],
+        "changes": "No changes needed - all img tags already had objectFit: 'cover' in React JSX",
+        "rationale": "User reported vertical images not fitting properly. Verified all 5 img tags in React template use objectFit: 'cover' for proper aspect ratio handling.",
+        "verification": "HTML contains 5 instances of objectFit: 'cover'"
+      },
+      {
+        "id": 6,
+        "description": "Regenerated HTML with all fixes applied",
+        "type": "generation",
+        "files_created": ["travel-plan-china-exchange-bucket-list-2026.html"],
+        "changes": "Generated clean HTML with: 10 city trips, real POI photos from images.json, object-fit CSS, toFixed(2) budget displays",
+        "rationale": "Final deliverable incorporating all 4 fixes",
+        "verification": "HTML file size 108 KB, shows 10 cities as bucket_list type"
+      }
+    ],
+    "scripts_created": [],
+    "scripts_modified": [
+      {
+        "path": "scripts/fetch-images-batch.py",
+        "purpose": "Extended to support both itinerary (days) and bucket list (cities) formats",
+        "changes": "Added cities structure parsing in fetch_pois() method alongside existing days structure parsing"
+      },
+      {
+        "path": "scripts/generate-html-interactive.py",
+        "purpose": "Added bucket list support and fixed budget display precision",
+        "changes": [
+          "Added _generate_bucket_list_data() method for city_guides format",
+          "Updated generate_plan_data() to detect and route format types",
+          "Applied toFixed(2) to 14 budget/price display locations",
+          "Verified all images use objectFit: 'cover' (no changes needed)"
+        ]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "52d3528 - feat: unify skeleton format and regenerate HTML for all plans",
+      "why_issue_occurred": "Migration script attempted to unify all formats to trip_summary+days, but bucket lists should remain in city_guides format as they represent destination options, not multi-day itineraries",
+      "how_fix_addresses_root": "Restored original city_guides format from backups and updated HTML generator to support both formats instead of forcing conversion"
+    },
+    "qa_ready": true,
+    "qa_notes": [
+      "Verify HTML displays exactly 10 cities (Xi'an, Tianjin, Suzhou, Hangzhou, Guangzhou, Xiamen, Guilin, Zhangjiajie, Hong Kong, Macau)",
+      "Verify each city is a separate trip card, not multiple days for same city",
+      "Verify budget amounts display as clean decimals (e.g., 397.80 not 397.799999...)",
+      "Verify images from meals, accommodation, entertainment appear (not just attractions)",
+      "Verify all images have proper aspect ratio (object-fit: cover)",
+      "Test fetch-images-batch.py with both itinerary and bucket list plans",
+      "Verify sidebar shows 10 cities with recommended duration labels"
+    ],
+    "permissions_to_add": [],
+    "test_results": {
+      "plan_skeleton_format": {
+        "format": "city_guides",
+        "cities_count": 10,
+        "cities": ["Xi'an", "Tianjin", "Suzhou", "Hangzhou", "Guangzhou", "Xiamen", "Guilin", "Zhangjiajie", "Hong Kong", "Macau"],
+        "status": "PASS"
+      },
+      "fetch_images": {
+        "cities_structure_support": "Added",
+        "pois_found": 0,
+        "pois_fetched": 10,
+        "city_covers": 10,
+        "total_photos": 15,
+        "status": "PASS"
+      },
+      "html_generation": {
+        "trip_type": "bucket_list",
+        "trips_count": 10,
+        "toFixed_count": 14,
+        "objectFit_count": 5,
+        "file_size_kb": 108.0,
+        "status": "PASS"
+      }
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Add format type detection to migration scripts to avoid converting bucket lists",
+    "Document that bucket_list plans use city_guides format, not trip_summary+days",
+    "Add validation script to check plan format consistency",
+    "Consider adding format type field to plan metadata for easier detection"
+  ],
+  "lessons_learned": [
+    "Bucket lists and itineraries are fundamentally different formats - don't force unification",
+    "Always check backup files exist before running migrations",
+    "HTML generators should support multiple formats, not force single format",
+    "JavaScript floating point precision requires explicit toFixed() for currency display"
+  ]
+}

@@ -341,7 +341,127 @@ class InteractiveHTMLGenerator:
         return trips
 
     def generate_plan_data(self) -> dict:
-        """Generate complete PLAN_DATA structure"""
+        """Generate complete PLAN_DATA structure
+
+        Supports both formats:
+        - itinerary: trip_summary + days (multi-day trips)
+        - bucket_list: city_guides (10 destination options)
+        """
+
+        # Check format type
+        is_bucket_list = self.skeleton.get("bucket_list_type") == "city_guides"
+
+        if is_bucket_list:
+            # Bucket list format: city_guides
+            return self._generate_bucket_list_data()
+        else:
+            # Itinerary format: trip_summary + days
+            return self._generate_itinerary_data()
+
+    def _generate_bucket_list_data(self) -> dict:
+        """Generate PLAN_DATA for bucket list (city_guides format)"""
+
+        trip_summary = {
+            "trip_type": "bucket_list",
+            "description": "Destination Options",
+            "base_location": "",
+            "period": "",
+            "travelers": "1 adult",
+            "budget_per_trip": "€200-500",
+            "preferences": ""
+        }
+
+        # Convert each city into a trip
+        trips = []
+        cities = self.skeleton.get("cities", [])
+
+        for city_data in cities:
+            city_name = city_data.get("city", "Unknown")
+
+            # Create a single "day" for this city with all POIs
+            day = {
+                "day": 1,
+                "date": city_data.get("recommended_duration", "1-2 days"),
+                "location": city_name,
+                "cover": self._get_cover_image(city_name, len(trips)),
+                "user_plans": city_data.get("user_requirements", []),
+                "meals": {},
+                "attractions": [],
+                "entertainment": [],
+                "accommodation": None,
+                "budget": {
+                    "meals": 0,
+                    "attractions": 0,
+                    "entertainment": 0,
+                    "accommodation": 0,
+                    "total": 0
+                }
+            }
+
+            # Get POI data from agent files
+            # Find attractions for this city
+            if self.attractions and "cities" in self.attractions:
+                city_attractions = next((c for c in self.attractions["cities"] if c.get("city") == city_name), {})
+                for attr in city_attractions.get("attractions", []):
+                    day["attractions"].append({
+                        "name": attr.get("name", ""),
+                        "name_en": attr.get("name_chinese", ""),
+                        "location": city_name,
+                        "type": attr.get("type", ""),
+                        "cost": attr.get("ticket_price_eur", 0) * 7.5,  # Convert EUR to CNY approx
+                        "cost_eur": attr.get("ticket_price_eur", 0),
+                        "opening_hours": attr.get("opening_hours", ""),
+                        "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
+                        "image": self._get_placeholder_image("attraction", poi_name=attr.get("name", "")),
+                        "highlights": attr.get("tips", [])[:3],
+                        "time": {"start": "10:00", "end": "12:00"},
+                        "links": {}
+                    })
+                    day["budget"]["attractions"] += attr.get("ticket_price_eur", 0) * 7.5
+
+            # Find meals for this city
+            if self.meals and "cities" in self.meals:
+                city_meals = next((c for c in self.meals["cities"] if c.get("city") == city_name), {})
+                for i, meal in enumerate(city_meals.get("meals", [])[:3]):
+                    meal_type = ["breakfast", "lunch", "dinner"][i]
+                    day["meals"][meal_type] = {
+                        "name": meal.get("name", ""),
+                        "name_en": meal.get("name_chinese", ""),
+                        "cost": meal.get("price_range_eur_low", 10) * 7.5,
+                        "cuisine": meal.get("cuisine_type", ""),
+                        "signature_dishes": meal.get("signature_dish", ""),
+                        "image": self._get_placeholder_image("meal", poi_name=meal.get("name", "")),
+                        "time": {"start": "08:00", "end": "09:00"} if meal_type == "breakfast" else
+                                {"start": "12:00", "end": "13:30"} if meal_type == "lunch" else
+                                {"start": "18:30", "end": "20:00"},
+                        "links": {}
+                    }
+                    day["budget"]["meals"] += meal.get("price_range_eur_low", 10) * 7.5
+
+            # Calculate total
+            day["budget"]["total"] = sum([
+                day["budget"]["meals"],
+                day["budget"]["attractions"],
+                day["budget"]["entertainment"],
+                day["budget"]["accommodation"]
+            ])
+
+            # Create trip with this single day
+            trip = {
+                "name": city_name,
+                "days_label": city_data.get("recommended_duration", "1-2 days"),
+                "cover": day["cover"],
+                "days": [day]
+            }
+            trips.append(trip)
+
+        return {
+            "trip_summary": trip_summary,
+            "trips": trips
+        }
+
+    def _generate_itinerary_data(self) -> dict:
+        """Generate PLAN_DATA for itinerary (trip_summary + days format)"""
 
         # Build trip summary from skeleton's trip_summary section
         skel_summary = self.skeleton.get("trip_summary", {})
@@ -667,8 +787,8 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
           )}
           {item.cost !== undefined && (
             <PropertyRow label="Cost">
-              {item.cost === 0 ? 'Free' : `${item.cost} CNY`}
-              {item.cost_eur && ` (€${item.cost_eur})`}
+              {item.cost === 0 ? 'Free' : `${item.cost.toFixed(2)} CNY`}
+              {item.cost_eur && ` (€${item.cost_eur.toFixed(2)})`}
             </PropertyRow>
           )}
           {item.cuisine && <PropertyRow label="Cuisine">{item.cuisine}</PropertyRow>}
@@ -785,7 +905,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 }}>
                   <span style={{ color: '#9b9a97' }}>Cost</span>
                   <span style={{ fontWeight: '600', color: cfg.color }}>
-                    {item.cost === 0 ? 'Free' : `${item.cost} CNY`}
+                    {item.cost === 0 ? 'Free' : `${item.cost.toFixed(2)} CNY`}
                   </span>
                 </div>
               </div>
@@ -800,7 +920,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 fontSize: '16px', fontWeight: '700', color: '#37352f'
               }}>
                 <span>Total</span>
-                <span style={{ color: cfg.color }}>{total} CNY</span>
+                <span style={{ color: cfg.color }}>{total.toFixed(2)} CNY</span>
               </div>
             </div>
           </div>
@@ -907,7 +1027,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                     </div>
                     {meal.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{meal.name_en}</div>}
                     <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
-                      <div><span style={{ color: '#9b9a97' }}>Cost</span> {meal.cost === 0 ? 'Free' : `${meal.cost} CNY`}</div>
+                      <div><span style={{ color: '#9b9a97' }}>Cost</span> {meal.cost === 0 ? 'Free' : `${meal.cost.toFixed(2)} CNY`}</div>
                       {meal.cuisine && <div><span style={{ color: '#9b9a97' }}>Cuisine</span> {meal.cuisine}</div>}
                       {meal.signature_dishes && !sm && <div><span style={{ color: '#9b9a97' }}>Signature</span> {meal.signature_dishes}</div>}
                     </div>
@@ -941,7 +1061,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                     <div style={{ padding: '12px 14px' }}>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{attr.name}</div>
                       {attr.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{attr.name_en}</div>}
-                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost} CNY${attr.cost_eur ? ` (€${attr.cost_eur})` : ''}`} />
+                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       <LinksRow links={attr.links} compact />
@@ -957,7 +1077,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                       {attr.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{attr.name_en}</div>}
                       {attr.location && <PropLine label="Location" value={attr.location} />}
                       <PropLine label="Type" value={attr.type} />
-                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost} CNY${attr.cost_eur ? ` (€${attr.cost_eur})` : ''}`} />
+                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       {attr.highlights && attr.highlights.length > 0 && (
@@ -991,7 +1111,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{ent.name}</div>
                     {ent.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{ent.name_en}</div>}
                     <PropLine label="Type" value={ent.type} />
-                    <PropLine label="Cost" value={`${ent.cost} CNY`} />
+                    <PropLine label="Cost" value={ent.cost === 0 ? 'Free' : `${ent.cost.toFixed(2)} CNY`} />
                     <PropLine label="Duration" value={ent.duration} />
                     {ent.note && (
                       <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
@@ -1018,7 +1138,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                   <PropLine label="Type" value={day.accommodation.type} />
                   <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
                   <PropLine label="Location" value={day.accommodation.location} />
-                  <PropLine label="Cost" value={`${day.accommodation.cost} CNY`} />
+                  <PropLine label="Cost" value={day.accommodation.cost === 0 ? 'Free' : `${day.accommodation.cost.toFixed(2)} CNY`} />
                   <LinksRow links={day.accommodation.links} compact={sm} />
                 </div>
               </Section>
@@ -1050,11 +1170,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                       >
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>{r.l}</span>
-                        <span style={{ fontWeight: '600', color: '#37352f' }}>{day.budget[r.k]} CNY</span>
+                        <span style={{ fontWeight: '600', color: '#37352f' }}>{day.budget[r.k].toFixed(2)} CNY</span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Total</span><span>{day.budget.total} CNY</span>
+                      <span>Total</span><span>{day.budget.total.toFixed(2)} CNY</span>
                     </div>
                   </div>
                 </div>
@@ -1192,7 +1312,7 @@ const TimelineView = ({ day, bp, onItemClick }) => {
                           background: entry.cost === 0 ? '#e9f5ec' : '#f5f5f3',
                           color: entry.cost === 0 ? '#1a7a32' : '#37352f'
                         }}>
-                          {entry.cost === 0 ? 'Free' : `¥${entry.cost}`}
+                          {entry.cost === 0 ? 'Free' : `¥${entry.cost.toFixed(2)}`}
                         </span>
                       )}
                       {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
