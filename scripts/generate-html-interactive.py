@@ -307,10 +307,19 @@ class InteractiveHTMLGenerator:
                 current_time_hour = 10  # Start attractions at 10:00
                 current_time_minute = 0
                 for attr in day_attrs["attractions"]:
-                    # Calculate default time based on recommended duration or default to 2 hours
-                    if not attr.get("time"):
+                    # Fix #6: Lookup actual time from timeline.json first
+                    attr_name = attr.get("name", "")
+                    timeline_item = self._find_timeline_item(attr_name, day_timeline)
+
+                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
+                        # Use actual timeline times
+                        attr_time = {
+                            "start": timeline_item["start_time"],
+                            "end": timeline_item["end_time"]
+                        }
+                    elif not attr.get("time"):
+                        # Fallback: Calculate virtual time based on recommended duration
                         duration_str = attr.get("recommended_duration", "2h")
-                        # Parse duration (e.g., "2h", "1.5h", "90min")
                         duration_hours = 2.0  # default
                         if "h" in duration_str:
                             try:
@@ -978,7 +987,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div style={{ fontSize: '20px' }}>
-            {{ meal: '🍽️', attraction: '📍', entertainment: '🎭', accommodation: '🏨' }[type] || '📄'}
+            {{ meal: '🍽️', attraction: '📍', entertainment: '🎭', accommodation: '🏨', transportation: item.icon || '🚄' }[type] || '📄'}
           </div>
           <button onClick={onClose} style={{
             background: 'none', border: 'none', cursor: 'pointer',
@@ -1387,6 +1396,82 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
               </Section>
             )}
 
+            {day.transportation && (
+              <Section title="Transportation" icon={day.transportation.icon}>
+                <div style={{
+                  background: '#fff', borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {day.transportation.icon} {day.transportation.from} → {day.transportation.to}
+                    </div>
+                    <PropLine label="Route" value={`${day.transportation.departure_point} → ${day.transportation.arrival_point}`} />
+                    <PropLine label="Type" value={day.transportation.transport_type} />
+                    {day.transportation.route_number && day.transportation.route_number !== 'VERIFIED' && (
+                      <PropLine label="Route #" value={day.transportation.route_number} />
+                    )}
+                    {day.transportation.airline && (
+                      <PropLine label="Airline" value={day.transportation.airline} />
+                    )}
+                    <PropLine label="Departure" value={day.transportation.departure_time} />
+                    <PropLine label="Arrival" value={day.transportation.arrival_time} />
+                    {day.transportation.cost > 0 && (
+                      <PropLine label="Cost" value={`${day.transportation.cost.toFixed(2)} USD`} />
+                    )}
+                    {day.transportation.booking_status && (
+                      <div style={{ marginTop: '8px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          background: day.transportation.booking_status.includes('URGENT') ? '#fff4e6' :
+                                     day.transportation.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                          color: day.transportation.booking_status.includes('URGENT') ? '#d97706' :
+                                day.transportation.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5',
+                          border: `1px solid ${day.transportation.booking_status.includes('URGENT') ? '#fed7aa' :
+                                              day.transportation.booking_status.includes('VERIFIED') ? '#a2d9b1' : '#bdd7f0'}`
+                        }}>
+                          {day.transportation.booking_status}
+                        </span>
+                      </div>
+                    )}
+                    {day.transportation.booking_urgency && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '10px 12px',
+                        background: '#fff4e6',
+                        borderRadius: '6px',
+                        border: '1px solid #fed7aa',
+                        fontSize: '12px',
+                        color: '#9a6700',
+                        lineHeight: 1.6
+                      }}>
+                        ⚠️ {day.transportation.booking_urgency}
+                      </div>
+                    )}
+                    {day.transportation.notes && !sm && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '10px 12px',
+                        background: '#f5f9fc',
+                        borderRadius: '6px',
+                        border: '1px solid #d9e8f5',
+                        fontSize: '12px',
+                        color: '#37352f',
+                        lineHeight: 1.6
+                      }}>
+                        {day.transportation.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Section>
+            )}
+
             <Section title="Budget" icon="💰">
               <div style={{
                 background: '#fff', borderRadius: '8px',
@@ -1447,6 +1532,8 @@ const TimelineView = ({ day, bp, onItemClick }) => {
       entries.push({ ...item, _type: type, _label: label });
     }
   };
+  // Add transportation if exists (Fix Issue #8)
+  if (day.transportation) add(day.transportation, 'transportation', `${day.transportation.from}→${day.transportation.to}`);
   add(day.meals.breakfast, 'meal', 'Breakfast');
   add(day.meals.lunch, 'meal', 'Lunch');
   add(day.meals.dinner, 'meal', 'Dinner');
@@ -1463,6 +1550,7 @@ const TimelineView = ({ day, bp, onItemClick }) => {
 
   const hH = sm ? 68 : 80;
   const typeStyle = {
+    transportation: { bg: '#f0f9ff', border: '#7dd3fc', dot: '#0ea5e9' },
     meal: { bg: '#fffdf5', border: '#ebd984', dot: '#f0b429' },
     attraction: { bg: '#f6fafd', border: '#a8cceb', dot: '#4a90d9' },
     entertainment: { bg: '#faf6fd', border: '#c9aee6', dot: '#9b6dd7' },
@@ -1550,22 +1638,51 @@ const TimelineView = ({ day, bp, onItemClick }) => {
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
-                      {entry._label}: {entry.name}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#9b9a97', flexWrap: 'wrap', marginTop: '2px' }}>
-                      {entry.recommended_duration && <span>⏱ {entry.recommended_duration}</span>}
-                      {entry.cost !== undefined && (
-                        <span style={{
-                          padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
-                          background: entry.cost === 0 ? '#e9f5ec' : '#f5f5f3',
-                          color: entry.cost === 0 ? '#1a7a32' : '#37352f'
-                        }}>
-                          {entry.cost === 0 ? 'Free' : `¥${entry.cost.toFixed(2)}`}
-                        </span>
+                      {entry._type === 'transportation' ? (
+                        <span>{entry.icon} {entry._label}</span>
+                      ) : (
+                        <span>{entry._label}: {entry.name}</span>
                       )}
-                      {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
                     </div>
-                    <LinksRow links={entry.links} compact={sm} />
+                    {entry._type === 'transportation' ? (
+                      <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
+                        <div>{entry.departure_point} → {entry.arrival_point}</div>
+                        {entry.route_number && entry.route_number !== 'VERIFIED' && (
+                          <div>{entry.transport_type} {entry.route_number}</div>
+                        )}
+                        {entry.booking_status && (
+                          <span style={{
+                            display: 'inline-block',
+                            marginTop: '2px',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            background: entry.booking_status.includes('URGENT') ? '#fff4e6' :
+                                       entry.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                            color: entry.booking_status.includes('URGENT') ? '#d97706' :
+                                  entry.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                          }}>
+                            {entry.booking_status}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#9b9a97', flexWrap: 'wrap', marginTop: '2px' }}>
+                        {entry.recommended_duration && <span>⏱ {entry.recommended_duration}</span>}
+                        {entry.cost !== undefined && (
+                          <span style={{
+                            padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
+                            background: entry.cost === 0 ? '#e9f5ec' : '#f5f5f3',
+                            color: entry.cost === 0 ? '#1a7a32' : '#37352f'
+                          }}>
+                            {entry.cost === 0 ? 'Free' : `¥${entry.cost.toFixed(2)}`}
+                          </span>
+                        )}
+                        {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
+                      </div>
+                    )}
+                    {entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
                   </div>
                 </div>
               );

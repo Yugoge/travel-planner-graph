@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-issue5-20260207-120927",
+  "timestamp": "2026-02-07T12:15:00Z",
+  "issue_number": 5,
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Enhanced _extract_chinese_name() to handle both bilingual formats",
+        "type": "code_fix",
+        "files_modified": [
+          "scripts/fetch-images-batch.py"
+        ],
+        "changes": "Updated _extract_chinese_name() function (lines 292-332) to detect and handle two formats: Format 1 (attractions) 'English (Chinese)' extracts from parentheses, Format 2 (entertainment) 'Chinese (English)' extracts before parentheses. Detection uses Chinese Unicode character ranges (\\u4e00-\\u9fff) to identify which format is used.",
+        "rationale": "Root cause: Entertainment agent outputs Chinese names before parentheses (e.g., '静·serene SPA 泰式按摩足疗 (Serene Thai SPA)'), but old extraction logic only handled English-first format. Gaode Maps searches with English failed for mainland China entertainment venues."
+      },
+      {
+        "id": 2,
+        "description": "Created validation script for Chinese name extraction",
+        "type": "script",
+        "files_created": [
+          "scripts/validate-chinese-extraction.py"
+        ],
+        "rationale": "Provides automated testing of extraction logic for both formats with 8 test cases covering attractions, entertainment, and edge cases. All tests pass."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/validate-chinese-extraction.py",
+        "purpose": "Validate Chinese name extraction logic for both bilingual formats",
+        "parameters": [],
+        "usage": "python3 scripts/validate-chinese-extraction.py",
+        "exit_codes": {
+          "0": "All tests passed",
+          "1": "One or more tests failed"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "0dcb2da - fix: convert china-exchange to standard format and fix all 4 bugs",
+      "why_issue_occurred": "Issue 3 fix added chinese_name extraction for entertainment (line 420), but _extract_chinese_name() only handled Format 1 (English first). Entertainment uses Format 2 (Chinese first), causing empty extraction.",
+      "how_fix_addresses_root": "Enhanced extraction function detects bilingual format direction by checking for Chinese characters before parentheses. If found, extracts before parentheses (entertainment). If not, extracts from inside parentheses (attractions). Unified solution handles all agent output formats."
+    },
+    "qa_ready": true,
+    "qa_notes": "Test with: python3 scripts/fetch-images-batch.py china-feb-15-mar-7-2026-20260202-195429 0 71 to fetch all POIs. Verify entertainment items (Day 1 Chongqing spas: 静·serene SPA, 观远足道养生, KOH Thai SPA) display with images in generated HTML. Check images.json for cache entries with gaode_ prefix for entertainment POIs.",
+    "verification_steps": [
+      "Run validation script: python3 scripts/validate-chinese-extraction.py (8 tests pass)",
+      "Check extraction examples: '静·serene SPA 泰式按摩足疗 (Serene Thai SPA)' → '静·serene SPA 泰式按摩足疗'",
+      "Fetch entertainment POI images and verify cache entries created",
+      "Regenerate HTML and confirm entertainment images display correctly"
+    ],
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(scripts/validate-chinese-extraction.py:*)",
+        "reason": "Allow execution of Chinese extraction validation script created by /dev for Issue 5"
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider standardizing bilingual format across all agents (either always Chinese first or always English first)",
+    "Add format validation in agent output schemas to prevent future inconsistencies",
+    "Monitor entertainment image fetch success rate to verify fix effectiveness"
+  ],
+  "technical_details": {
+    "extraction_logic": {
+      "format_detection": "Uses regex \\u4e00-\\u9fff to detect Chinese characters",
+      "format_1_pattern": "^(.+?)\\s*\\((.+?\\))$ where before_paren has no Chinese chars → extract inside_paren",
+      "format_2_pattern": "^(.+?)\\s*\\((.+?\\))$ where before_paren has Chinese chars → extract before_paren"
+    },
+    "affected_pois": [
+      "静·serene SPA 泰式按摩足疗 (Serene Thai SPA)",
+      "观远足道养生 (Guanyuan Zudao Wellness - Jiefangbei)",
+      "KOH Thai SPA 暹罗之屿泰式按摩足疗 (Jiefangbei 2nd Branch)"
+    ],
+    "expected_behavior": "Gaode Maps searches use extracted Chinese names for mainland China entertainment venues, resulting in accurate photo fetching"
+  }
+}

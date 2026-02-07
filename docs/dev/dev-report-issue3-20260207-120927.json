@@ -1,0 +1,118 @@
+{
+  "request_id": "dev-issue3-20260207-120927",
+  "timestamp": "2026-02-07T12:15:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added _extract_chinese_name() method to extract Chinese names from parentheses",
+        "type": "code",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Added regex-based extraction method that parses 'English (中文)' format and returns Chinese text",
+        "rationale": "Root cause: Agent outputs use bilingual format in single field without separate name_chinese. Method extracts Chinese from parentheses for Gaode Maps search."
+      },
+      {
+        "id": 2,
+        "description": "Updated all POI collection points to use Chinese name extraction",
+        "type": "code",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Modified 8 POI collection sections (attractions/meals/accommodation/entertainment for both days and cities formats) to use: chinese_name = item.get('name_chinese', '') or self._extract_chinese_name(name)",
+        "rationale": "Ensures extracted Chinese names are used when name_chinese field is empty, which is the current state of all agent outputs"
+      },
+      {
+        "id": 3,
+        "description": "Created validation test scripts",
+        "type": "test",
+        "files_created": [
+          "scripts/test-chinese-extraction.py",
+          "scripts/verify-extraction-on-data.py"
+        ],
+        "changes": "Unit tests for regex extraction and integration test against real Chongqing Day 1 data",
+        "rationale": "Verify extraction logic works correctly on actual data before QA testing"
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/test-chinese-extraction.py",
+        "purpose": "Unit test for Chinese name extraction regex",
+        "parameters": [],
+        "usage": "python3 scripts/test-chinese-extraction.py",
+        "exit_codes": {
+          "0": "All tests passed",
+          "1": "Tests failed"
+        }
+      },
+      {
+        "path": "scripts/verify-extraction-on-data.py",
+        "purpose": "Verify extraction works on actual attractions.json data",
+        "parameters": [],
+        "usage": "python3 scripts/verify-extraction-on-data.py",
+        "exit_codes": {
+          "0": "Verification successful"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "3755270 - Added name_chinese routing but agents don't populate the field",
+      "why_issue_occurred": "Commit 3755270 added chinese_name parameter to fetch_poi_photo_gaode() expecting agents to provide separate name_chinese field. However, agents output bilingual names in single 'name' field as 'English (中文)', leaving name_chinese empty. Script tried to use poi.get('chinese_name') which returned empty string, causing fallback to full English name for Gaode search.",
+      "how_fix_addresses_root": "Extract Chinese text from parentheses in name field using regex r'\\((.+?)\\)'. This works with current agent output format without requiring agent modifications. Gaode Maps now receives accurate Chinese names for mainland China POI searches."
+    },
+    "implementation_details": {
+      "extraction_pattern": "r'\\((.+?)\\)' - Matches first content within parentheses",
+      "fallback_strategy": "chinese_name = item.get('name_chinese', '') or self._extract_chinese_name(name)",
+      "edge_cases_handled": [
+        "Names without parentheses -> returns empty string",
+        "Multiple parentheses -> extracts first match only",
+        "Empty name_chinese field -> uses extraction",
+        "Existing name_chinese field -> preserves it (future-proof)"
+      ],
+      "affected_data_formats": [
+        "Days format (itinerary): data.days[].attractions/meals/entertainment/accommodation",
+        "Cities format (bucket list): cities[].attractions/meals/entertainment/accommodation"
+      ]
+    },
+    "test_results": {
+      "unit_tests": {
+        "passed": 8,
+        "failed": 0,
+        "test_cases": [
+          "'Raffles City Chongqing Observation Deck (来福士观景台)' -> '来福士观景台'",
+          "'Huguang Guild Hall (湖广会馆)' -> '湖广会馆'",
+          "'Xiayao Li (下浩里) & Longmenhao Old Street (龙门浩老街)' -> '下浩里'",
+          "'Liziba Station (李子坝单轨穿楼) - Optional' -> '李子坝单轨穿楼'",
+          "'Hongyadong (洪崖洞民俗风貌区) - Optional' -> '洪崖洞民俗风貌区'",
+          "'Chengdu Taikoo Li (成都太古里)' -> '成都太古里'",
+          "'Some Place Without Chinese' -> ''",
+          "'' -> ''"
+        ]
+      },
+      "integration_tests": {
+        "chongqing_day1_validation": "All 5 attractions correctly extracted Chinese names",
+        "verified_pois": [
+          "来福士观景台",
+          "湖广会馆",
+          "下浩里",
+          "李子坝单轨穿楼",
+          "洪崖洞民俗风貌区"
+        ]
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should re-fetch Chongqing Day 1 POI images using updated script and verify Gaode Maps returns relevant photos for attractions. Check that extracted Chinese names appear in debug output. Hong Kong/Macau POIs should still use Google Maps with English names (unchanged behavior).",
+    "qa_validation_steps": [
+      "Step 1: Clear image cache for Chongqing POIs (remove gaode_* entries from images.json)",
+      "Step 2: Run fetch-images-batch.py for china-feb-15-mar-7-2026-20260202-195429 with limit 5",
+      "Step 3: Verify Gaode Maps searches use Chinese names (来福士观景台, 湖广会馆, etc)",
+      "Step 4: Check fetched images are relevant to actual POIs",
+      "Step 5: Verify Hong Kong/Macau still use Google Maps with English names"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider asking agents to output separate name and name_chinese fields in future for clarity",
+    "Monitor Gaode Maps search success rate with Chinese names vs previous English names",
+    "Add logging to show which name (extracted vs field) was used for each search"
+  ]
+}

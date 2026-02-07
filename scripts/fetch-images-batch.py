@@ -290,30 +290,46 @@ class BatchImageFetcher:
                "香港" in location or "澳门" in location
 
     def _extract_chinese_name(self, name: str) -> str:
-        """Extract Chinese name from parentheses in format 'English Name (中文名)'
+        """Extract Chinese name from bilingual format
 
-        Root cause fix (Issue #3): Agent outputs use bilingual format in single field.
+        Root cause fix (Issue #3, #5): Agent outputs use bilingual format in single field.
         Gaode Maps requires Chinese names for accurate mainland China POI search.
 
+        Handles two formats:
+        - Format 1 (attractions): 'English Name (中文名)' → extract from parentheses
+        - Format 2 (entertainment): '中文名 (English Name)' → extract before parentheses
+
         Args:
-            name: POI name, possibly in format 'English (中文)' or just 'Name'
+            name: POI name, possibly bilingual format or plain name
 
         Returns:
-            Chinese text from parentheses if found, otherwise empty string
+            Chinese text if found, otherwise empty string
 
         Examples:
-            'Raffles City Chongqing Observation Deck (来福士观景台)' -> '来福士观景台'
-            'Hongyadong (洪崖洞民俗风貌区)' -> '洪崖洞民俗风貌区'
+            'Raffles City Observation Deck (来福士观景台)' -> '来福士观景台'
+            '静·serene SPA 泰式按摩足疗 (Serene Thai SPA)' -> '静·serene SPA 泰式按摩足疗'
             'Some Place' -> ''
         """
         import re
 
-        # Match content within parentheses
-        match = re.search(r'\((.+?)\)', name)
-        if match:
-            return match.group(1)
+        # Match content within parentheses and text before them
+        match = re.search(r'^(.+?)\s*\((.+?)\)$', name)
+        if not match:
+            return ""
 
-        return ""
+        before_paren = match.group(1).strip()
+        inside_paren = match.group(2).strip()
+
+        # Detect if text before parentheses contains Chinese characters
+        # Chinese Unicode ranges: \u4e00-\u9fff (CJK Unified Ideographs)
+        has_chinese_before = bool(re.search(r'[\u4e00-\u9fff]', before_paren))
+
+        if has_chinese_before:
+            # Format 2: Chinese (English) - entertainment style
+            return before_paren
+        else:
+            # Format 1: English (Chinese) - attractions style
+            return inside_paren
 
     def fetch_pois(self, limit: int = 10):
         """Fetch POI photos from all agent files (limited batch)
