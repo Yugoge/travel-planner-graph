@@ -1,0 +1,131 @@
+{
+  "request_id": "dev-20260207-003000",
+  "timestamp": "2026-02-07T00:30:00Z",
+  "requirement": {
+    "original": "完成12346: 3. plan数据结构要一致，无论是bucket list还是标准的plan，同时html生成也要一致结构 4. 对（饼图扇形可点击）",
+    "clarified": "Task 3: Unify data structure between bucket list format and standard plan format - both should use the same JSON schema. HTML generator should handle both formats consistently. Task 4: Make pie chart SVG sectors (paths) clickable to show budget details, not just the budget row text.",
+    "what": "1. Unify plan data structure (requirements-skeleton vs plan-skeleton) 2. Add SVG pie chart sector click handlers",
+    "why": "Currently bucket list uses 'cities' array while standard plans use 'days' array. HTML generator only supports 'days' format after commit 52d3528 removed city_guides compatibility. Pie chart sectors are not clickable, only budget rows are.",
+    "where": [
+      "data/*/requirements-skeleton.json (bucket list format)",
+      "data/*/plan-skeleton.json (standard format)",
+      "scripts/generate-html-interactive.py (HTML generator)",
+      "React template in HTML (pie chart click handlers)"
+    ],
+    "scope": {
+      "included": [
+        "Convert requirements-skeleton.json 'cities' format to unified 'days' format",
+        "Ensure HTML generator handles both bucket list and standard plan consistently",
+        "Add onClick handlers to SVG <path> elements in pie chart",
+        "Connect pie chart sector clicks to BudgetDetailSidebar"
+      ],
+      "excluded": [
+        "Changing agent output formats (attractions.json, meals.json, etc)",
+        "Refetching images",
+        "Modifying budget calculation logic",
+        "Redesigning pie chart visual appearance"
+      ]
+    },
+    "success_criteria": [
+      "All plan-skeleton.json files use trip_summary + days format",
+      "All requirements-skeleton.json files use trip_summary + days format (no 'cities' array)",
+      "HTML generator produces identical structure for bucket list and standard plans",
+      "Pie chart SVG sectors are clickable and trigger BudgetDetailSidebar",
+      "Clicking pie chart sector shows same details as clicking budget row"
+    ],
+    "constraints": [
+      "Maintain backward compatibility for existing plans",
+      "Don't break current HTML generation for standard plans",
+      "Preserve all existing data (cities, trips, recommendations)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom_task3": "Bucket list requirements-skeleton.json uses 'cities' array, standard plans use 'days' array - inconsistent structure",
+    "root_cause_task3": "Commit 52d3528 unified plan-skeleton.json to 'days' format but didn't update requirements-skeleton.json for bucket lists",
+    "root_cause_commit": "52d3528 - feat: unify skeleton format and regenerate HTML for all plans",
+    "why_introduced": "Commit removed city_guides compatibility from HTML generator to simplify code, converted plan-skeleton but forgot requirements-skeleton",
+    "why_problematic": "requirements-skeleton.json is the source format for bucket lists. It still has 'cities' array which doesn't match unified 'days' format. HTML generator can't handle it.",
+    "timeline": "2026-02-06 14:45:06 (commit 52d3528)",
+    "affected_files": [
+      "data/china-exchange-bucket-list-2026/requirements-skeleton.json",
+      "data/beijing-exchange-bucket-list-20260202-232405/requirements-skeleton.json",
+      "scripts/generate-html-interactive.py"
+    ],
+    "symptom_task4": "Pie chart SVG sectors (paths) are not clickable, only budget row text is clickable",
+    "root_cause_task4": "React template has onClick handler on budget rows but not on pie chart <path> elements",
+    "root_cause_commit_task4": "3f51a5e - feat: add interactive features to Notion-style HTML generator",
+    "why_introduced_task4": "Initial implementation added click to budget rows but missed pie chart paths",
+    "why_problematic_task4": "User expects to click pie chart visual, not just text labels"
+  },
+  "context": {
+    "codebase_state": "Clean working directory with recent commits 3755270 (Google Maps photos) and earlier 0dcb2da (6 bug fixes)",
+    "current_formats": {
+      "standard_plan": {
+        "file": "plan-skeleton.json",
+        "structure": "trip_summary + days[]",
+        "example": "beijing-exchange-bucket-list-20260202-232405"
+      },
+      "bucket_list_requirements": {
+        "file": "requirements-skeleton.json",
+        "structure": "trip_summary + cities[] + trip_recommendations + practical_info",
+        "example": "china-exchange-bucket-list-2026"
+      },
+      "bucket_list_plan": {
+        "file": "plan-skeleton.json",
+        "structure": "trip_summary + days[] (already unified)",
+        "example": "china-exchange-bucket-list-2026"
+      }
+    },
+    "file_contents": {
+      "data/china-exchange-bucket-list-2026/requirements-skeleton.json": {
+        "top_level_keys": ["trip_summary", "cities", "trip_recommendations", "practical_info"],
+        "trip_summary_type": "bucket_list_guide",
+        "cities_count": 11,
+        "cities_structure": "city, city_chinese, trip_type, recommended_days, best_season, highlights, user_interests"
+      },
+      "data/beijing-exchange-bucket-list-20260202-232405/plan-skeleton.json": {
+        "top_level_keys": ["trip_summary", "days"],
+        "trip_summary_type": "bucket_list",
+        "days_count": 13,
+        "days_structure": "day, date, location, trip_name, user_plans, location_change"
+      }
+    },
+    "html_generator_current_logic": {
+      "line_455": "is_bucket_list = self.skeleton.get('bucket_list_type') == 'city_guides'",
+      "line_465": "def _generate_bucket_list_data(self): # For city_guides format",
+      "problem": "HTML generator checks for 'city_guides' format but all plans now use 'days' format"
+    },
+    "pie_chart_current_code": {
+      "location": "React template in generate-html-interactive.py",
+      "budget_row_onclick": "Line ~2442: onClick={() => onBudgetClick && onBudgetClick(r.k, day)}",
+      "pie_chart_svg": "SVG paths generated but no onClick handler",
+      "handler_exists": "handleBudgetClick function at line ~2634"
+    }
+  },
+  "development_approach": {
+    "strategy_task3": "1. Convert requirements-skeleton.json 'cities' format to unified 'days' format. 2. Update HTML generator to treat bucket list and standard plan identically (both use 'days' format). 3. Preserve trip_recommendations and practical_info as metadata in trip_summary or separate section.",
+    "strategy_task4": "Add onClick handler to SVG <path> elements in pie chart, connecting to existing handleBudgetClick function with appropriate category parameter",
+    "files_to_modify": [
+      "data/china-exchange-bucket-list-2026/requirements-skeleton.json",
+      "data/beijing-exchange-bucket-list-20260202-232405/requirements-skeleton.json (if has cities format)",
+      "scripts/generate-html-interactive.py (React template - pie chart SVG)"
+    ],
+    "changes_needed": [
+      "Task 3.1: Convert requirements-skeleton 'cities' array to 'days' array format",
+      "Task 3.2: Move trip_recommendations to trip_summary.trip_recommendations",
+      "Task 3.3: Move practical_info to trip_summary.practical_info",
+      "Task 3.4: Update HTML generator to remove city_guides checks (all use days now)",
+      "Task 4.1: Find pie chart SVG generation code in React template",
+      "Task 4.2: Add onClick handler to each <path> element",
+      "Task 4.3: Pass category and dayData to handleBudgetClick"
+    ],
+    "validation_approach": "1. Regenerate HTML for china-exchange bucket list. 2. Verify structure matches standard plan HTML. 3. Test pie chart sector clicks trigger BudgetDetailSidebar. 4. Verify both formats produce working interactive HTML."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

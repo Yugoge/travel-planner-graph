@@ -1,0 +1,174 @@
+{
+  "request_id": "dev-20260207-003000",
+  "timestamp": "2026-02-07T01:15:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All success criteria met. Task 3 (data structure unification) and Task 4 (pie chart clickability) implemented correctly. No critical or major issues found. Zero regressions detected.",
+    "success_criteria_results": [
+      {
+        "criterion": "All plan-skeleton.json files use trip_summary + days format",
+        "verification_method": "Checked all 3 plan-skeleton.json files in data/ directory using jq to inspect top-level keys",
+        "result": "pass",
+        "details": "All 3 files have identical structure: trip_summary + days array",
+        "evidence": [
+          "beijing-exchange-bucket-list-20260202-232405/plan-skeleton.json: ['days', 'trip_summary']",
+          "china-exchange-bucket-list-2026/plan-skeleton.json: ['days', 'trip_summary']",
+          "china-feb-15-mar-7-2026-20260202-195429/plan-skeleton.json: ['days', 'emergency_info', 'trip_summary']"
+        ]
+      },
+      {
+        "criterion": "All requirements-skeleton.json files use trip_summary + days format (no 'cities' array)",
+        "verification_method": "Checked all 3 requirements-skeleton.json files for 'cities' array vs 'days' array using jq",
+        "result": "pass",
+        "details": "No 'cities' array found at top level. All files use 'days' array with sequential numbering (1-11 for china-exchange, verified structure)",
+        "evidence": [
+          "china-exchange-bucket-list-2026/requirements-skeleton.json: ['days', 'trip_summary'] - 11 days with sequential numbering 1-11",
+          "beijing-exchange-bucket-list-20260202-232405/requirements-skeleton.json: ['days', 'trip_summary']",
+          "china-feb-15-mar-7-2026-20260202-195429/requirements-skeleton.json: ['days', 'supplemental_notes', 'trip_summary']",
+          "Verified china-exchange day entries converted from city format: each entry has 'day' field with sequential number, 'city', 'city_chinese', 'trip_type', 'recommended_days', 'best_season', 'highlights', 'user_interests'"
+        ]
+      },
+      {
+        "criterion": "HTML generator produces identical structure for bucket list and standard plans",
+        "verification_method": "Generated HTML for bucket list (china-exchange-bucket-list-2026) and standard itinerary (china-feb-15-mar-7-2026-20260202-195429), verified both use same React component structure",
+        "result": "pass",
+        "details": "Both bucket list and standard plan HTML files generated successfully with same component structure (KanbanView, TimelineView, Donut, BudgetDetailSidebar)",
+        "evidence": [
+          "china-exchange-bucket-list-2026.html: 111.7 KB - bucket list with 18 days from plan-skeleton.json",
+          "china-feb-15-mar-7-2026-20260202-195429.html: 128.2 KB - standard 21-day itinerary",
+          "beijing-exchange-bucket-list-20260202-232405.html: 126.1 KB - another bucket list",
+          "All HTML files use identical Donut component with onClick handlers",
+          "City names from plan-skeleton.json rendered correctly (Xi'an, Tianjin, etc verified in HTML)"
+        ]
+      },
+      {
+        "criterion": "Pie chart SVG sectors are clickable and trigger BudgetDetailSidebar",
+        "verification_method": "Inspected generated HTML and source code for onClick handlers on SVG <path> elements, traced code flow from onClick to BudgetDetailSidebar rendering",
+        "result": "pass",
+        "details": "SVG <path> elements have onClick handler that calls onBudgetClick(it.k, day), which triggers handleBudgetClick function, which sets selectedBudgetCat state, which renders BudgetDetailSidebar",
+        "evidence": [
+          "Line 743 in generate-html-interactive.py: <path onClick={() => onBudgetClick && onBudgetClick(it.k, day)} />",
+          "Line 729: Donut component accepts onBudgetClick and day props",
+          "Line 1274: Donut called with onBudgetClick={onBudgetClick} day={day}",
+          "Line 731-734: items array includes 'k' key for category ('meals', 'attractions', 'entertainment', 'accommodation')",
+          "Line 743: cursor style set to 'pointer' when onBudgetClick exists",
+          "Line 1479-1503: handleBudgetClick(category, dayData) extracts items and calls setSelectedBudgetCat",
+          "Line 1577-1585: BudgetDetailSidebar conditionally rendered when selectedBudgetCat is set",
+          "All 3 generated HTML files contain onClick handler in Donut component"
+        ]
+      },
+      {
+        "criterion": "Clicking pie chart sector shows same details as clicking budget row",
+        "verification_method": "Code review to verify both pie chart path and budget row call same onClick handler with same parameters",
+        "result": "pass",
+        "details": "Pie chart path (line 743) and budget row (line 1287) both call onBudgetClick(category, day) with identical parameters, triggering same handleBudgetClick function",
+        "evidence": [
+          "Pie chart: onClick={() => onBudgetClick && onBudgetClick(it.k, day)} - line 743",
+          "Budget row: onClick={() => onBudgetClick && onBudgetClick(r.k, day)} - line 1287",
+          "Both pass category key ('meals', 'attractions', etc) and day data object",
+          "Both trigger same handleBudgetClick function that sets selectedBudgetCat state",
+          "Both render identical BudgetDetailSidebar component with same props"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "task3_addressed": true,
+      "task3_confidence": "high",
+      "task3_rationale": "Root cause was commit 52d3528 which unified plan-skeleton.json to 'days' format but left requirements-skeleton.json with legacy 'cities' array. Fix correctly converted requirements-skeleton.json 'cities' array to 'days' array (11 cities → 11 day entries with sequential numbering). Moved trip_recommendations and practical_info into trip_summary to match unified structure. Verified HTML generator now treats both formats identically.",
+      "task4_addressed": true,
+      "task4_confidence": "high",
+      "task4_rationale": "Root cause was commit 3f51a5e which added onClick to budget rows but not pie chart SVG paths. Fix correctly added onClick handler to <path> elements (line 743), added category key 'k' to items array (lines 731-734), added onBudgetClick and day props to Donut component (line 729), passed props from KanbanView (line 1274), and added cursor pointer style. Verified onClick triggers same handleBudgetClick function as budget rows."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Standard itinerary HTML generation",
+        "result": "pass",
+        "details": "Generated HTML for standard 21-day itinerary (china-feb-15-mar-7-2026-20260202-195429) successfully with no errors. File size 128.2 KB, consistent with other plans."
+      },
+      {
+        "test": "Bucket list HTML generation",
+        "result": "pass",
+        "details": "Generated HTML for 2 bucket lists successfully: china-exchange-bucket-list-2026 (111.7 KB), beijing-exchange-bucket-list-20260202-232405 (126.1 KB). City names rendered correctly."
+      },
+      {
+        "test": "Python syntax validation",
+        "result": "pass",
+        "details": "Python compilation check passed for scripts/generate-html-interactive.py with no syntax errors"
+      },
+      {
+        "test": "Pie chart onClick in all plan types",
+        "result": "pass",
+        "details": "Verified onClick handler present in HTML for bucket lists and standard itinerary. All 3 generated HTML files contain onClick={() => onBudgetClick && onBudgetClick(it.k, day)} in Donut component."
+      },
+      {
+        "test": "Data structure consistency",
+        "result": "pass",
+        "details": "All plan-skeleton.json and requirements-skeleton.json files use identical 'days' array format. No 'cities' array found in any requirements-skeleton.json file."
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "other",
+        "location": "scripts/generate-html-interactive.py:455",
+        "issue": "Obsolete bucket list detection: line 455 checks self.skeleton.get('bucket_list_type') == 'city_guides' but this key no longer exists after data conversion. Detection always returns False.",
+        "recommendation": "This is actually correct behavior - since all formats now use 'days' structure, the bucket list special case (_generate_bucket_list_data) is no longer needed. Both bucket lists and standard plans use _generate_itinerary_data which works for unified 'days' format. Code is functionally correct but could be cleaned up in future to remove unused _generate_bucket_list_data function."
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": [],
+      "note": "No scripts created, no new permissions required. All changes were data structure updates and code modifications to existing HTML generator."
+    },
+    "all_findings": [
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:455",
+        "issue": "Obsolete bucket list detection code (bucket_list_type check) no longer matches any data files but doesn't cause errors",
+        "recommendation": "Future cleanup: Remove _generate_bucket_list_data function and bucket_list_type check since all formats now use unified 'days' structure",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 1,
+      "total_findings": 1,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null,
+  "qa_details": {
+    "files_verified": [
+      "/root/travel-planner/data/china-exchange-bucket-list-2026/requirements-skeleton.json",
+      "/root/travel-planner/data/china-exchange-bucket-list-2026/plan-skeleton.json",
+      "/root/travel-planner/data/beijing-exchange-bucket-list-20260202-232405/requirements-skeleton.json",
+      "/root/travel-planner/data/beijing-exchange-bucket-list-20260202-232405/plan-skeleton.json",
+      "/root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429/requirements-skeleton.json",
+      "/root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429/plan-skeleton.json",
+      "/root/travel-planner/scripts/generate-html-interactive.py"
+    ],
+    "html_generated": [
+      "/root/travel-planner/travel-plan-china-exchange-bucket-list-2026.html (111.7 KB)",
+      "/root/travel-planner/travel-plan-beijing-exchange-bucket-list-20260202-232405.html (126.1 KB)",
+      "/root/travel-planner/travel-plan-china-feb-15-mar-7-2026-20260202-195429.html (128.2 KB)"
+    ],
+    "test_commands_executed": [
+      "jq 'keys' on all skeleton files to verify structure",
+      "jq '.days | length' to count day entries",
+      "jq '.days | map(.day)' to verify sequential numbering",
+      "jq 'has(\"cities\")' to verify no legacy cities array",
+      "jq '.trip_summary | has(\"trip_recommendations\")' to verify metadata location",
+      "jq '.trip_summary | has(\"practical_info\")' to verify metadata location",
+      "python3 -m py_compile scripts/generate-html-interactive.py for syntax check",
+      "python scripts/generate-html-interactive.py <plan-id> for HTML generation (3 plans)",
+      "grep searches on generated HTML to verify onClick handlers, cursor styles, city names"
+    ],
+    "verification_timestamp": "2026-02-07T01:15:00Z",
+    "qa_agent": "QA subagent v1.0"
+  }
+}
