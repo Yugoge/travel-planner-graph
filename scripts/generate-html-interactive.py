@@ -134,30 +134,12 @@ class InteractiveHTMLGenerator:
                     if url and url.startswith("http"):
                         return url
 
-        # Fallback to Unsplash placeholders (only if cache lookup fails)
-        covers = {
-            "harbin": "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1200&h=400&fit=crop",
-            "beijing": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=1200&h=400&fit=crop",
-            "shanghai": "https://images.unsplash.com/photo-1537887534808-c02b98e72156?w=1200&h=400&fit=crop",
-            "chengdu": "https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=1200&h=400&fit=crop",
-            "xi'an": "https://images.unsplash.com/photo-1583259916581-e2cc0d0e0d66?w=1200&h=400&fit=crop",
-        }
-        key = location.lower()
-        for city in covers:
-            if city in key:
-                return covers[city]
-
-        # Generic fallbacks
-        fallbacks = [
-            "https://images.unsplash.com/photo-1609766856923-7e0a23024e9c?w=1200&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1470004914212-05527e49370b?w=1200&h=400&fit=crop",
-        ]
-        return fallbacks[index % len(fallbacks)]
+        # NO FALLBACK - return empty string if not in cache
+        return ""
 
     def _get_placeholder_image(self, category: str, poi_name: str = "", gaode_id: str = "") -> str:
-        """Get image from cache or fallback to Unsplash placeholder"""
-        # Try to get from images cache first
+        """Get image from cache ONLY - NO fallbacks allowed"""
+        # ONLY return images from cache, never fallback
         if self.images_cache and "pois" in self.images_cache:
             pois = self.images_cache["pois"]
 
@@ -179,19 +161,8 @@ class InteractiveHTMLGenerator:
                 if cache_key in pois:
                     return pois[cache_key]
 
-        # Fallback to Unsplash placeholders
-        if self.images_cache and "fallback_unsplash" in self.images_cache:
-            fallbacks = self.images_cache["fallback_unsplash"]
-            return fallbacks.get(category, fallbacks.get("attraction", ""))
-
-        # Hardcoded fallback (for backward compatibility)
-        placeholders = {
-            "meal": "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=300&h=200&fit=crop",
-            "attraction": "https://images.unsplash.com/photo-1548013146-72479768bada?w=400&h=300&fit=crop",
-            "accommodation": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop",
-            "entertainment": "https://images.unsplash.com/photo-1499364615650-ec38552f4f34?w=400&h=300&fit=crop",
-        }
-        return placeholders.get(category, placeholders["attraction"])
+        # NO FALLBACK - return empty string if not in cache
+        return ""
 
     def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
         """Find timeline entry for given item name with fuzzy matching
@@ -368,11 +339,11 @@ class InteractiveHTMLGenerator:
                         "cost_eur": cost_eur,
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
-                        "image": attr.get("image", self._get_placeholder_image(
+                        "image": self._get_placeholder_image(
                             "attraction",
                             poi_name=attr.get("name", ""),
                             gaode_id=attr.get("gaode_id", "")
-                        )),
+                        ),
                         "highlights": attr.get("highlights", []),
                         "time": attr_time,
                         "links": attr.get("links", {})
@@ -439,11 +410,11 @@ class InteractiveHTMLGenerator:
                         "cost": cost,
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
-                        "image": ent.get("image", self._get_placeholder_image(
+                        "image": self._get_placeholder_image(
                             "entertainment",
                             poi_name=ent.get("name", ""),
                             gaode_id=ent.get("gaode_id", "")
-                        )),
+                        ),
                         "time": ent_time,
                         "links": ent.get("links", {})
                     })
@@ -468,20 +439,26 @@ class InteractiveHTMLGenerator:
                     "stars": acc.get("stars", 3),
                     "time": acc.get("time", {"start": "15:00", "end": "16:00"}),
                     "links": acc.get("links", {}),
-                    "image": acc.get("image", self._get_placeholder_image(
+                    "image": self._get_placeholder_image(
                         "accommodation",
                         poi_name=acc.get("name", ""),
                         gaode_id=acc.get("gaode_id", "")
-                    ))
+                    )
                 }
                 merged["budget"]["accommodation"] = cost
 
         # Merge transportation (Fix Issue #8: transportation missing from HTML)
         # Root cause: transportation.json loaded but never processed in _merge_day_data
+        # Fix Issue #9: Handle both location_change (itinerary) and from_beijing (bucket-list) formats
         if self.transportation and "days" in self.transportation:
             day_trans = next((d for d in self.transportation["days"] if d.get("day") == day_num), {})
-            if "location_change" in day_trans:
-                loc_change = day_trans["location_change"]
+
+            # Support both formats: location_change (itinerary) and from_beijing (bucket-list)
+            loc_change = day_trans.get("location_change")
+            from_beijing = day_trans.get("from_beijing")
+
+            if loc_change:
+                # Itinerary format: location_change with route_details
                 route_details = loc_change.get("route_details", {})
 
                 # Determine transport type and icon
@@ -543,6 +520,81 @@ class InteractiveHTMLGenerator:
                         "end": loc_change.get("arrival_time", "10:00")
                     }
                 }
+
+            elif from_beijing:
+                # Bucket-list format: from_beijing with options array
+                # Use recommended option
+                recommended_method = from_beijing.get("recommended", "high_speed_train")
+                options = from_beijing.get("options", [])
+
+                # Find recommended option
+                option = next((o for o in options if o.get("method") == recommended_method),
+                             options[0] if options else {})
+
+                if option:
+                    method = option.get("method", "")
+
+                    # Determine transport type and icon
+                    if "flight" in method:
+                        icon = "✈️"
+                        type_display = "Flight"
+                    elif "train" in method:
+                        icon = "🚄"
+                        type_display = option.get("train_type", "High-speed Train")
+                    else:
+                        icon = "🚌"
+                        type_display = method.replace("_", " ").title()
+
+                    # Extract station/airport info
+                    stations = option.get("stations", {})
+                    airports = option.get("airports", {})
+                    departure_point = stations.get("departure", "") or airports.get("departure", "")
+                    arrival_point = stations.get("arrival", "") or airports.get("arrival", "")
+
+                    # Build descriptive notes
+                    notes_parts = []
+                    if "duration_hours" in option:
+                        hours = option["duration_hours"]
+                        notes_parts.append(f"Duration: {hours}h")
+                    elif "duration_minutes" in option:
+                        mins = option["duration_minutes"]
+                        notes_parts.append(f"Duration: {mins} minutes")
+
+                    if "frequency" in option:
+                        notes_parts.append(f"Frequency: {option['frequency']}")
+
+                    if "notes" in option:
+                        notes_parts.append(option["notes"])
+
+                    # Extract cost
+                    cost_cny = option.get("cost_cny", 0)
+                    cost_eur = option.get("cost_eur", cost_cny * 0.124 if cost_cny else 0)
+
+                    # Route info (train number, flight code, etc.)
+                    route_number = ""
+                    if "fastest_trains" in option and option["fastest_trains"]:
+                        route_number = option["fastest_trains"][0]
+
+                    merged["transportation"] = {
+                        "from": "Beijing",
+                        "to": location,
+                        "departure_point": departure_point,
+                        "arrival_point": arrival_point,
+                        "departure_time": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
+                        "arrival_time": "",  # Not specified in bucket-list format
+                        "transport_type": type_display,
+                        "icon": icon,
+                        "route_number": route_number,
+                        "airline": "",
+                        "cost": cost_cny,
+                        "booking_status": "RECOMMENDED",
+                        "booking_urgency": "",
+                        "notes": " | ".join(notes_parts),
+                        "time": {
+                            "start": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
+                            "end": "12:00"  # Placeholder
+                        }
+                    }
 
         # Calculate total budget
         merged["budget"]["total"] = sum([
@@ -1240,7 +1292,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
       <div style={{
         width: '100%',
         height: sm ? '120px' : '200px',
-        background: `linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.03) 100%), url(${day.cover || 'https://images.unsplash.com/photo-1609766856923-7e0a23024e9c?w=1200&h=400&fit=crop'})`,
+        background: day.cover ? `linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.03) 100%), url(${day.cover})` : '#f5f5f5',
         backgroundSize: 'cover', backgroundPosition: 'center'
       }} />
 
@@ -1626,7 +1678,7 @@ const TimelineView = ({ day, bp, onItemClick }) => {
     <div style={{ maxWidth: '900px' }}>
       <div style={{
         width: '100%', height: sm ? '100px' : '160px',
-        background: `url(${day.cover || 'https://images.unsplash.com/photo-1609766856923-7e0a23024e9c?w=1200&h=400&fit=crop'})`,
+        background: day.cover ? `url(${day.cover})` : '#f5f5f5',
         backgroundSize: 'cover', backgroundPosition: 'center'
       }} />
 

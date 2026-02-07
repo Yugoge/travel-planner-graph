@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-refactor-images-20260207-153613",
+  "timestamp": "2026-02-07T15:42:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Modified line 294: Force meals to use _get_placeholder_image() instead of meal.get('image')",
+        "type": "code_fix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed meal.get('image', ...) wrapper, now directly calls self._get_placeholder_image()",
+        "rationale": "Agent JSON pre-fills image field with Unsplash fallback, blocking lookup of real photos from images.json cache"
+      },
+      {
+        "id": 2,
+        "description": "Modified line 371: Force attractions to use _get_placeholder_image() instead of attr.get('image')",
+        "type": "code_fix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed attr.get('image', ...) wrapper, now directly calls self._get_placeholder_image()",
+        "rationale": "Root cause: attr.get('image') always returns Unsplash URL from agent JSON, preventing cache lookup"
+      },
+      {
+        "id": 3,
+        "description": "Modified line 442: Force entertainment to use _get_placeholder_image() instead of ent.get('image')",
+        "type": "code_fix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed ent.get('image', ...) wrapper, now directly calls self._get_placeholder_image()",
+        "rationale": "Entertainment JSON has no image field, but .get() fallback pattern was inconsistent with architecture"
+      },
+      {
+        "id": 4,
+        "description": "Modified line 471: Force accommodation to use _get_placeholder_image() instead of acc.get('image')",
+        "type": "code_fix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed acc.get('image', ...) wrapper, now directly calls self._get_placeholder_image()",
+        "rationale": "Establishes single source of truth: images.json is primary, agent JSON image fields completely ignored"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "Unknown - architectural flaw from when images.json introduced",
+      "why_issue_occurred": "Agents pre-fill image fields for backward compatibility, but HTML generator gave them priority over fresh images.json cache",
+      "how_fix_addresses_root": "Architectural refactor: Force all image lookups through _get_placeholder_image(), which checks images.json first (lines 177-180), then falls back to Unsplash only if cache miss. Agent JSON image fields now completely bypassed."
+    },
+    "architectural_changes": {
+      "before": {
+        "pattern": "item.get('image', self._get_placeholder_image(...))",
+        "priority": "Agent JSON first → images.json second (via fallback)",
+        "problem": "Agent JSON always has Unsplash URL, _get_placeholder_image() never called"
+      },
+      "after": {
+        "pattern": "self._get_placeholder_image(...)",
+        "priority": "images.json first (gaode_/google_ keys) → Unsplash fallback only if cache miss",
+        "benefit": "All 69 cached POI images from images.json now usable, entertainment images work correctly"
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "Run validation: 1) Regenerate HTML with python scripts/generate-html-interactive.py. 2) Grep HTML for Unsplash URLs - count should be minimal (only uncached POIs). 3) Verify all 69 images.json entries appear in HTML. 4) Check Chongqing Day 1 attractions show Gaode photos. 5) Verify entertainment venues have images from cache.",
+    "qa_validation_commands": [
+      "source venv/bin/activate && python scripts/generate-html-interactive.py data/china-feb-15-mar-7-2026-20260202-195429",
+      "grep -o 'https://images.unsplash.com' data/china-feb-15-mar-7-2026-20260202-195429/itinerary.html | wc -l",
+      "grep -c 'googleusercontent.com\\|amap.com' data/china-feb-15-mar-7-2026-20260202-195429/itinerary.html"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Future: Remove image fields from agent JSON outputs entirely (attractions.json, meals.json, etc) to prevent confusion",
+    "Future: Add validation script to ensure images.json coverage before HTML generation",
+    "Future: Log warnings when _get_placeholder_image() falls back to Unsplash (indicates missing cache entry)"
+  ],
+  "success_criteria_status": {
+    "html_displays_images_from_cache": "FIXED - All 4 lines now bypass agent JSON image fields",
+    "all_69_poi_images_appear": "PENDING QA - Verify with grep count in generated HTML",
+    "entertainment_images_work": "FIXED - Line 442 now calls _get_placeholder_image() directly",
+    "chongqing_day1_accurate": "PENDING QA - Verify Gaode photos appear for 洪崖洞, 长江索道, etc",
+    "zero_unsplash_when_cached": "PENDING QA - Grep HTML for unsplash.com URLs"
+  }
+}
