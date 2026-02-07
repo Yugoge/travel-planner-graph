@@ -292,12 +292,14 @@ class BatchImageFetcher:
     def _extract_chinese_name(self, name: str) -> str:
         """Extract Chinese name from bilingual format
 
-        Root cause fix (Issue #3, #5): Agent outputs use bilingual format in single field.
+        Root cause fix (Issue #3): Agent outputs use bilingual format in single field.
         Gaode Maps requires Chinese names for accurate mainland China POI search.
 
         Handles two formats:
         - Format 1 (attractions): 'English Name (中文名)' → extract from parentheses
         - Format 2 (entertainment): '中文名 (English Name)' → extract before parentheses
+
+        Also handles trailing text like " - Optional" after parentheses.
 
         Args:
             name: POI name, possibly bilingual format or plain name
@@ -307,13 +309,14 @@ class BatchImageFetcher:
 
         Examples:
             'Raffles City Observation Deck (来福士观景台)' -> '来福士观景台'
+            'Liziba Station (李子坝单轨穿楼) - Optional' -> '李子坝单轨穿楼'
             '静·serene SPA 泰式按摩足疗 (Serene Thai SPA)' -> '静·serene SPA 泰式按摩足疗'
             'Some Place' -> ''
         """
         import re
 
-        # Match content within parentheses and text before them
-        match = re.search(r'^(.+?)\s*\((.+?)\)$', name)
+        # Find FIRST parenthesized content (handles multiple parentheses)
+        match = re.search(r'^(.+?)\s*\(([^)]+)\)', name)
         if not match:
             return ""
 

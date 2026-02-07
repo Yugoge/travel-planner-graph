@@ -385,8 +385,18 @@ class InteractiveHTMLGenerator:
                 current_time_hour = 19  # Start entertainment at 19:00 (after dinner)
                 current_time_minute = 0
                 for ent in day_ent["entertainment"]:
-                    if not ent.get("time"):
-                        # Parse duration from duration field
+                    # Fix #6: Lookup actual time from timeline.json first
+                    ent_name = ent.get("name", "")
+                    timeline_item = self._find_timeline_item(ent_name, day_timeline)
+
+                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
+                        # Use actual timeline times
+                        ent_time = {
+                            "start": timeline_item["start_time"],
+                            "end": timeline_item["end_time"]
+                        }
+                    elif not ent.get("time"):
+                        # Fallback: Calculate virtual time based on duration
                         duration_str = ent.get("duration", "2h")
                         duration_hours = 2.0
                         if "h" in duration_str:
@@ -1039,6 +1049,34 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
               <span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span>
             </PropertyRow>
           )}
+          {item.departure_point && <PropertyRow label="From">{item.departure_point}</PropertyRow>}
+          {item.arrival_point && <PropertyRow label="To">{item.arrival_point}</PropertyRow>}
+          {item.transport_type && <PropertyRow label="Type">{item.transport_type}</PropertyRow>}
+          {item.route_number && item.route_number !== 'VERIFIED' && (
+            <PropertyRow label="Route Number">{item.route_number}</PropertyRow>
+          )}
+          {item.airline && <PropertyRow label="Airline">{item.airline}</PropertyRow>}
+          {item.departure_time && <PropertyRow label="Departure">{item.departure_time}</PropertyRow>}
+          {item.arrival_time && <PropertyRow label="Arrival">{item.arrival_time}</PropertyRow>}
+          {item.booking_status && (
+            <PropertyRow label="Booking Status">
+              <span style={{
+                display: 'inline-block',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '600',
+                background: item.booking_status.includes('URGENT') ? '#fff4e6' :
+                           item.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                color: item.booking_status.includes('URGENT') ? '#d97706' :
+                      item.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5',
+                border: `1px solid ${item.booking_status.includes('URGENT') ? '#fed7aa' :
+                                    item.booking_status.includes('VERIFIED') ? '#a2d9b1' : '#bdd7f0'}`
+              }}>
+                {item.booking_status}
+              </span>
+            </PropertyRow>
+          )}
           {item.highlights && item.highlights.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
@@ -1049,6 +1087,15 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
               </ul>
             </div>
           )}
+          {item.booking_urgency && (
+            <div style={{
+              marginTop: '16px', padding: '12px 16px',
+              background: '#fff4e6', borderRadius: '6px',
+              border: '1px solid #fed7aa', fontSize: '13px', color: '#9a6700'
+            }}>
+              ⚠️ {item.booking_urgency}
+            </div>
+          )}
           {item.note && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
@@ -1056,6 +1103,15 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
               border: '1px solid #f5ecd7', fontSize: '13px', color: '#9a6700'
             }}>
               💡 {item.note}
+            </div>
+          )}
+          {item.notes && (
+            <div style={{
+              marginTop: '16px', padding: '12px 16px',
+              background: '#f5f9fc', borderRadius: '6px',
+              border: '1px solid #d9e8f5', fontSize: '13px', color: '#37352f', lineHeight: 1.6
+            }}>
+              {item.notes}
             </div>
           )}
           {item.links && Object.keys(item.links).length > 0 && (
