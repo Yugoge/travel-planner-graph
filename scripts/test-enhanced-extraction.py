@@ -9,8 +9,8 @@ import re
 
 def extract_chinese_name(name: str) -> str:
     """Extract Chinese name from bilingual format (current implementation)"""
-    # Match content within parentheses and text before them
-    match = re.search(r'^(.+?)\s*\((.+?)\)$', name)
+    # Find FIRST parenthesized content (handles multiple parentheses and trailing text)
+    match = re.search(r'^(.+?)\s*\(([^)]+)\)', name)
     if not match:
         return ""
 

@@ -59,13 +59,16 @@
       "how_fix_addresses_root": "Extract Chinese text from parentheses in name field using regex r'\\((.+?)\\)'. This works with current agent output format without requiring agent modifications. Gaode Maps now receives accurate Chinese names for mainland China POI searches."
     },
     "implementation_details": {
-      "extraction_pattern": "r'\\((.+?)\\)' - Matches first content within parentheses",
+      "extraction_pattern": "r'^(.+?)\\s*\\(([^)]+)\\)' - Matches first parenthesized content, allows trailing text",
+      "extraction_logic": "Detects if text before parentheses contains Chinese chars (\\u4e00-\\u9fff). If yes: use before_paren (Format 2: Chinese (English)). If no: use inside_paren (Format 1: English (Chinese))",
       "fallback_strategy": "chinese_name = item.get('name_chinese', '') or self._extract_chinese_name(name)",
       "edge_cases_handled": [
         "Names without parentheses -> returns empty string",
         "Multiple parentheses -> extracts first match only",
+        "Trailing text after parentheses (e.g., ' - Optional') -> ignored, extraction works",
         "Empty name_chinese field -> uses extraction",
-        "Existing name_chinese field -> preserves it (future-proof)"
+        "Existing name_chinese field -> preserves it (future-proof)",
+        "Both formats supported: 'English (中文)' and '中文 (English)'"
       ],
       "affected_data_formats": [
         "Days format (itinerary): data.days[].attractions/meals/entertainment/accommodation",

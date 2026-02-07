@@ -10,11 +10,21 @@ from pathlib import Path
 
 
 def extract_chinese_name(name: str) -> str:
-    """Extract Chinese name from parentheses in format 'English Name (中文名)'"""
-    match = re.search(r'\((.+?)\)', name)
-    if match:
-        return match.group(1)
-    return ""
+    """Extract Chinese name from bilingual format (current implementation)"""
+    # Find FIRST parenthesized content (handles multiple parentheses and trailing text)
+    match = re.search(r'^(.+?)\s*\(([^)]+)\)', name)
+    if not match:
+        return ""
+
+    before_paren = match.group(1).strip()
+    inside_paren = match.group(2).strip()
+
+    has_chinese_before = bool(re.search(r'[\u4e00-\u9fff]', before_paren))
+
+    if has_chinese_before:
+        return before_paren
+    else:
+        return inside_paren
 
 
 # Load Chongqing Day 1 attractions

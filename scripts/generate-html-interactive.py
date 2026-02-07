@@ -226,10 +226,11 @@ class InteractiveHTMLGenerator:
         location = day_skeleton.get("location", "Unknown")
 
         # Fix #6: Get timeline for this day (root cause: timeline data ignored)
+        # Note: _load_json already extracts 'data' field, so timeline has 'days' directly
         day_timeline = {}
-        if self.timeline and "data" in self.timeline and "days" in self.timeline["data"]:
+        if self.timeline and "days" in self.timeline:
             timeline_day = next(
-                (d for d in self.timeline["data"]["days"] if d.get("day") == day_num),
+                (d for d in self.timeline["days"] if d.get("day") == day_num),
                 None
             )
             if timeline_day and "timeline" in timeline_day:

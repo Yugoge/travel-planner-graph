@@ -1,0 +1,183 @@
+================================================================================
+ISSUE #3 IMPLEMENTATION DELIVERY SUMMARY
+================================================================================
+
+Issue: Gaode Maps image search uses English names, returns irrelevant results
+Priority: P0
+Status: ✅ COMPLETE - Ready for QA
+
+================================================================================
+ROOT CAUSE
+================================================================================
+
+Symptom:
+  Chongqing Day 1 POI images are "风牛马不相及的" (completely irrelevant)
+
+Root Cause:
+  - Agent outputs have format: name = "English Name (中文名)"
+  - But name_chinese field is empty: name_chinese = ""
+  - Script passes empty chinese_name to Gaode Maps
+  - Gaode falls back to full English name search
+  - Gaode Maps cannot find POIs with English names in mainland China
+
+Root Cause Commit:
+  3755270 - Added chinese_name routing but agents don't populate field
+
+================================================================================
+SOLUTION IMPLEMENTED
+================================================================================
+
+Strategy:
+  Extract Chinese text from parentheses in name field using regex
+  No changes to agent outputs, no changes to data format
+  Minimal invasive change with maximum impact
+
+Code Changes:
+  1. Added _extract_chinese_name() method (33 lines)
+     - Location: scripts/fetch-images-batch.py lines 292-332
+     - Regex: r'^(.+?)\s*\(([^)]+)\)'
+     - Handles both formats:
+       * Format 1: "English (Chinese)" → returns Chinese
+       * Format 2: "Chinese (English)" → returns Chinese
+     - Edge cases: multiple parentheses, trailing text, no parentheses
+
+  2. Updated 8 POI collection points (1 line each)
+     - Lines: 378, 393, 407, 421, 436, 451, 465, 479
+     - Changed: chinese_name = item.get("name_chinese", "")
+     - To: chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
+     - Fallback to extraction when name_chinese field is empty
+
+================================================================================
+TEST RESULTS
+================================================================================
+
+Unit Tests (scripts/test-chinese-extraction.py):
+  ✅ 8/8 test cases passed
+  - Basic extraction: "Name (中文)" → "中文"
+  - Multiple parentheses: "Name1 (中文1) & Name2 (中文2)" → "中文1"
+  - Trailing text: "Name (中文) - Optional" → "中文"
+  - No parentheses: "Name" → ""
+
+Format Detection Tests (scripts/test-enhanced-extraction.py):
+  ✅ 7/7 test cases passed
+  - Format 1: "English (Chinese)" → Chinese
+  - Format 2: "Chinese (English)" → Chinese
+
+Integration Tests (scripts/verify-extraction-on-data.py):
+  ✅ 5/5 Chongqing Day 1 POIs correctly extracted
+  - 来福士观景台
+  - 湖广会馆
+  - 下浩里
+  - 李子坝单轨穿楼
+  - 洪崖洞民俗风貌区
+
+End-to-End Flow Test (scripts/test-complete-flow.py):
+  ✅ Complete POI collection flow verified
+  - Data loaded from JSON
+  - Extraction applied
+  - Chinese names passed to Gaode Maps
+
+================================================================================
+FILES DELIVERED
+================================================================================
+
+Code Changes:
+  ✅ scripts/fetch-images-batch.py (committed: 2a4d2bc)
+
+Test Scripts:
+  ✅ scripts/test-chinese-extraction.py
+  ✅ scripts/test-enhanced-extraction.py
+  ✅ scripts/verify-extraction-on-data.py
+  ✅ scripts/test-complete-flow.py
+
+Documentation:
+  ✅ docs/dev/context-issue3-20260207-120927.json (input context)
+  ✅ docs/dev/dev-report-issue3-20260207-120927.json (dev report)
+  ✅ docs/dev/issue3-implementation-summary.md (technical summary)
+  ✅ docs/dev/issue3-before-after.md (before/after comparison)
+  ✅ docs/dev/issue3-delivery-summary.txt (this file)
+
+================================================================================
+QA VALIDATION STEPS
+================================================================================
+
+Step 1: Clear Cache
+  Remove gaode_* entries from images.json for Chongqing POIs
+
+Step 2: Re-fetch Images
+  Run: python3 scripts/fetch-images-batch.py china-feb-15-mar-7-2026-20260202-195429 1 5
+
+Step 3: Verify Chinese Names Used
+  Check output shows:
+    Fetching 来福士观景台 (attraction, Gaode)...
+    Fetching 湖广会馆 (attraction, Gaode)...
+    etc.
+
+Step 4: Verify Image Relevance
+  Open images.json and check URLs for Chongqing Day 1 POIs
+  Verify images are relevant to actual POIs
+
+Step 5: Verify Hong Kong/Macau Unchanged
+  Confirm HK/Macau still use Google Maps with English names
+
+Expected Result:
+  All Chongqing Day 1 POI images should be accurate and relevant ✅
+
+================================================================================
+QUALITY CHECKLIST
+================================================================================
+
+✅ Root cause addressed (not just symptom fixed)
+✅ No hardcoded values (regex pattern only)
+✅ Meaningful naming (_extract_chinese_name)
+✅ Used source venv for Python tests
+✅ Checked if existing scripts can be extended (new functionality, separate scripts)
+✅ Code comments are concise
+✅ Git root cause referenced in commit messages and docs
+✅ Exit codes documented for test scripts
+✅ Usage examples provided
+✅ No decimal step numbering in QA steps
+
+================================================================================
+BLOCKING ISSUES
+================================================================================
+
+None ✅
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+1. Future Enhancement: Ask agents to output separate name and name_chinese fields
+   - Clearer data structure
+   - No need for extraction logic
+   - Better for future maintenance
+
+2. Monitoring: Track Gaode Maps search success rate
+   - Compare Chinese name success vs previous English name attempts
+   - Log which extraction format was used (Format 1 vs Format 2)
+
+3. Logging Enhancement: Add debug output showing extracted names
+   - Helps QA verify correct names are used
+   - Useful for troubleshooting future issues
+
+================================================================================
+STATUS
+================================================================================
+
+Implementation: ✅ COMPLETE
+Testing: ✅ ALL TESTS PASSING
+Documentation: ✅ COMPLETE
+Ready for QA: ✅ YES
+Blocking Issues: ✅ NONE
+Permissions Required: ✅ NONE
+
+================================================================================
+DELIVERY COMPLETE
+================================================================================
+
+Dev Agent: Implementation complete and tested
+Next: QA subagent validation
+Report: docs/dev/dev-report-issue3-20260207-120927.json
+
+================================================================================
