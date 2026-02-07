@@ -1,0 +1,82 @@
+{
+  "request_id": "dev-issue4-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 4,
+  "priority": "P1",
+  "requirement": {
+    "original": "城市图片一如既往从来没有修复过除了香港，还有很多城市没有图片",
+    "clarified": "City cover photo fetching is completely broken (except Hong Kong). fetch_city_photo_google() returns None because it doesn't call Place Details API for photos.",
+    "what": "Implement Google Maps Place Details API call to fetch actual city cover photos",
+    "why": "All city covers are missing (empty dict in images.json), users see generic Unsplash fallbacks",
+    "where": [
+      "scripts/fetch-images-batch.py line 61-91 (fetch_city_photo_google method)"
+    ],
+    "scope": {
+      "included": [
+        "Add Google Maps Place Details API call after Place Search",
+        "Extract photo_reference from details response",
+        "Construct photo URL from photo_reference",
+        "Handle API errors and missing photos gracefully"
+      ],
+      "excluded": [
+        "Implementing Unsplash API as alternative",
+        "Changing city cover display logic in HTML generator"
+      ]
+    },
+    "success_criteria": [
+      "fetch_city_photo_google() returns actual photo URLs",
+      "City covers populated in images.json",
+      "Photos display in generated HTML for all cities"
+    ],
+    "constraints": [
+      "Use existing Google Maps API key",
+      "Disable proxy for Google API calls (proxies={\"http\": None, \"https\": None})",
+      "Follow existing fetch_poi_photo_google() pattern (lines 93-170)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "images.json has empty city_covers dict, all cities use Unsplash fallbacks",
+    "root_cause": "fetch_city_photo_google() stub returns None with comment 'Would need place details API'",
+    "root_cause_commit": "Unknown - initial implementation incomplete",
+    "why_introduced": "Place Search API returns place_id but not photo URLs, developer didn't complete implementation",
+    "why_problematic": "No city cover photos ever fetched, visual quality degraded",
+    "timeline": "Since initial image fetching implementation",
+    "affected_files": [
+      "scripts/fetch-images-batch.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "file_contents": {
+      "fetch-images-batch.py": {
+        "line_82_84": "# For now, we don't have photo URLs in place search\n# Would need place details API\nreturn None",
+        "working_example": "fetch_poi_photo_google() lines 93-170 shows complete implementation pattern"
+      }
+    },
+    "dependencies": {
+      "google_api_key": "GOOGLE_MAPS_API_KEY environment variable",
+      "requests": "Already imported and used"
+    }
+  },
+  "development_approach": {
+    "strategy": "Copy Place Details API pattern from fetch_poi_photo_google(), adapt for city search",
+    "files_to_modify": [
+      "scripts/fetch-images-batch.py"
+    ],
+    "changes_needed": [
+      "After successful Place Search (line 78), add Place Details API call",
+      "Extract place_id from search results",
+      "Call /place/details/json with place_id and fields=photos",
+      "Extract photo_reference from response",
+      "Construct photo URL using /place/photo endpoint",
+      "Return photo URL or None on failure"
+    ],
+    "validation_approach": "Run fetch_cities(5), verify city_covers dict populated in images.json"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

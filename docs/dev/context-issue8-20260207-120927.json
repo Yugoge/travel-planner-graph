@@ -1,0 +1,87 @@
+{
+  "request_id": "dev-issue8-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 8,
+  "priority": "P0",
+  "requirement": {
+    "original": "我的交通项目完全没有加入到html中",
+    "clarified": "Transportation data exists in transportation.json but is completely missing from HTML display. Must add transportation section to both KanbanView and TimelineView.",
+    "what": "Add transportation display to HTML generator (both Kanban and Timeline views)",
+    "why": "Critical travel information (trains, flights) is hidden from users",
+    "where": [
+      "scripts/generate-html-interactive.py _merge_day_data() (no transportation processing)",
+      "KanbanView component (no transportation section)",
+      "TimelineView component (no transportation entries)"
+    ],
+    "scope": {
+      "included": [
+        "Read transportation.json in _merge_day_data()",
+        "Add transportation section to merged day data",
+        "Display in KanbanView as separate card/section",
+        "Display in TimelineView as timeline entries",
+        "Show key info: route, departure/arrival times, cost, booking status"
+      ],
+      "excluded": [
+        "Modifying transportation.json structure",
+        "Adding booking functionality"
+      ]
+    },
+    "success_criteria": [
+      "Transportation section visible in Kanban view for days with location_change",
+      "Transportation entries appear in Timeline view at correct times",
+      "Shows: departure station/airport, arrival station/airport, times, transport type, cost",
+      "Booking status highlighted (VERIFIED, BOOKED, URGENT)",
+      "Inter-city routes (Day 2 Chongqing→Bazhong, Day 3 Bazhong→Chengdu, etc.) displayed"
+    ],
+    "constraints": [
+      "Transportation only for days with location_change",
+      "Some days have intra_city_routes (Day 5 Shanghai) - display separately",
+      "Match existing UI style (cards, colors, icons)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Transportation data completely missing from HTML despite transportation.json existing",
+    "root_cause": "generate-html-interactive.py loads transportation.json (line 28) but _merge_day_data() never processes it",
+    "root_cause_commit": "Unknown - transportation.json added but HTML generator never updated",
+    "why_introduced": "Transportation agent added later, HTML generator not updated to consume output",
+    "why_problematic": "Users cannot see critical travel logistics (train times, flight info, transfers)",
+    "timeline": "Transportation.json recently populated, HTML never updated",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "evidence": {
+      "transportation_json": "Rich data: Day 2 train 07:26 Chongqing→Bazhong, Day 3 train 12:42, Day 4/8 flights",
+      "html_merged_data": "No transportation key in merged day structure"
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "file_contents": {
+      "transportation.json": {
+        "structure": "days[]{day, date, location_change{from, to, transportation, route_details, departure_time, arrival_time, cost, booking_required, notes}, intra_city_routes{...}}",
+        "day2_example": "Chongqing→Bazhong train G8574 07:26-10:36, VERIFIED, URGENT booking"
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Add transportation to merged data structure, create Transportation component for display",
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "changes_needed": [
+      "In _merge_day_data(): lookup transportation for day_num from self.transportation",
+      "Add transportation key to merged dict with location_change data",
+      "In KanbanView: add Transportation card after accommodation",
+      "In TimelineView: add transportation entries at departure time",
+      "Style: Use transportation icon (🚄/✈️), color theme (blue/sky), highlight urgency",
+      "Display: from→to, times, cost, booking status, verification badge"
+    ],
+    "validation_approach": "Regenerate HTML, verify Day 2 shows train, Day 4/8 show flights"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

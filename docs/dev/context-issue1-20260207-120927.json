@@ -1,0 +1,73 @@
+{
+  "request_id": "dev-issue1-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 1,
+  "priority": "P2",
+  "requirement": {
+    "original": "base_location填写机制是什么？如果不是系统性字段就删除，如果是请你给我证明。我要求为空的话自动在html不加载",
+    "clarified": "Remove or conditionally render base_location field in HTML. Field is hardcoded as empty string in generator, not present in skeleton data, and should not display when empty.",
+    "what": "Conditionally render base_location field - only show if non-empty",
+    "why": "Field is non-systematic (hardcoded empty), clutters UI with empty rows",
+    "where": [
+      "scripts/generate-html-interactive.py line 470 (hardcoded empty value)",
+      "scripts/generate-html-interactive.py line 1073 (unconditional display)"
+    ],
+    "scope": {
+      "included": [
+        "Add conditional rendering to base_location PropertyRow",
+        "Remove hardcoded empty base_location from data preparation"
+      ],
+      "excluded": [
+        "Adding actual base_location logic (not a system field)",
+        "Modifying trip_summary structure"
+      ]
+    },
+    "success_criteria": [
+      "base_location PropertyRow only renders if tripSummary.base_location is non-empty",
+      "No empty base_location rows in generated HTML",
+      "Existing plans without base_location show no change"
+    ],
+    "constraints": [
+      "Maintain backward compatibility for plans that might have base_location",
+      "No regression in other PropertyRow displays"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Empty 'Base Location' row displayed in HTML trip summary",
+    "root_cause": "Hardcoded empty string in line 470, unconditional display in line 1073",
+    "root_cause_commit": "Unknown - likely initial implementation",
+    "why_introduced": "Field added as placeholder but never implemented with actual data",
+    "why_problematic": "Creates visual clutter with empty UI elements, confuses users about required fields",
+    "timeline": "Present since initial HTML generator implementation",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "file_contents": {
+      "scripts/generate-html-interactive.py": {
+        "line_470": "\"base_location\": \"\",",
+        "line_1073": "<PropertyRow label=\"Base Location\">{tripSummary.base_location}</PropertyRow>",
+        "PropertyRow_pattern": "Conditional rendering used elsewhere for optional fields"
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Add conditional rendering using && operator in React JSX",
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "changes_needed": [
+      "Line 1073: Wrap PropertyRow in conditional {tripSummary.base_location && ...}",
+      "Line 470: Remove hardcoded empty base_location or keep for backward compat"
+    ],
+    "validation_approach": "Regenerate HTML for existing plan, verify no base_location row appears"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

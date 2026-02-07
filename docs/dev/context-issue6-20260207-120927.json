@@ -1,0 +1,87 @@
+{
+  "request_id": "dev-issue6-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 6,
+  "priority": "P0",
+  "requirement": {
+    "original": "time view中全都是使用的虚拟时间并不是我实际plan的时间，深度调查",
+    "clarified": "Timeline View displays hardcoded virtual times instead of actual times from timeline.json. _merge_day_data() generates default times (breakfast 8-9, lunch 12-13:30, etc.) instead of reading timeline.json.",
+    "what": "Replace virtual time generation with actual times from timeline.json",
+    "why": "User's carefully planned timeline is ignored, showing wrong schedule",
+    "where": [
+      "scripts/generate-html-interactive.py line 222-276 (_merge_day_data method)",
+      "Timeline.json has actual times but they're never read"
+    ],
+    "scope": {
+      "included": [
+        "Read timeline.json in _merge_day_data()",
+        "Match timeline items to POI names",
+        "Use actual start_time/end_time from timeline",
+        "Keep virtual times as fallback only when timeline missing"
+      ],
+      "excluded": [
+        "Modifying timeline.json structure",
+        "Changing timeline agent logic"
+      ]
+    },
+    "success_criteria": [
+      "Meals show actual times from timeline.json (e.g., breakfast 9:00-9:45, not 8:00-9:00)",
+      "Attractions show actual scheduled times (e.g., Raffles 8:00-9:00, not 10:00-12:00)",
+      "Virtual times only used when timeline.json has no entry for item",
+      "All Day 1 times match timeline.json exactly"
+    ],
+    "constraints": [
+      "Maintain backward compatibility if timeline.json missing",
+      "Handle mismatches between skeleton POIs and timeline items gracefully"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline View shows wrong times (hardcoded 8am breakfast, 10am attractions, etc.)",
+    "root_cause": "generate-html-interactive.py:222-276 hardcodes meal_default_times and generates sequential attraction times starting at 10:00, never reads self.timeline",
+    "root_cause_commit": "Unknown - likely initial implementation oversight",
+    "why_introduced": "Timeline.json added later, HTML generator never updated to use it",
+    "why_problematic": "User's actual plan (e.g., 4:40am flight arrival, 9am breakfast) completely ignored",
+    "timeline": "Timeline.json exists with accurate times, but never consumed",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "evidence": {
+      "timeline_json_day1": "Raffles breakfast 09:00-09:45, Observation Deck 08:00-09:00",
+      "current_display": "Breakfast 08:00-09:00 (wrong), Attractions start 10:00 (wrong)"
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "file_contents": {
+      "generate-html-interactive.py": {
+        "line_29": "self.timeline = self._load_json('timeline.json')  # Loaded but never used",
+        "line_222_226": "meal_default_times = { 'breakfast': {'start': '08:00', 'end': '09:00'}, ... }",
+        "line_257": "current_time_hour = 10  # Virtual time generation"
+      },
+      "timeline.json": {
+        "structure": "days[].timeline{item_name: {start_time, end_time, duration_minutes}}"
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "In _merge_day_data(), lookup timeline for current day, match items by name, use actual times",
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "changes_needed": [
+      "At start of _merge_day_data(), get timeline for day_num from self.timeline",
+      "Create helper _find_timeline_item(item_name, day_timeline) with fuzzy name matching",
+      "For meals: lookup in timeline by restaurant name, use start_time/end_time",
+      "For attractions: lookup by POI name, use start_time/end_time",
+      "Keep virtual times as fallback when timeline item not found",
+      "For entertainment/accommodation: same pattern"
+    ],
+    "validation_approach": "Regenerate HTML, verify Day 1 times match timeline.json exactly"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

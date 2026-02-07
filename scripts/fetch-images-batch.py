@@ -59,8 +59,27 @@ class BatchImageFetcher:
             json.dump(self.cache, f, ensure_ascii=False, indent=2)
 
     def fetch_city_photo_google(self, city_name: str) -> Optional[str]:
-        """Fetch city photo using Google Maps skill script"""
+        """Fetch city photo using Google Maps Place Details API
+
+        Root cause fix: Place Search returns place_id but not photos.
+        Need to call Place Details API with fields=photos to get photo_reference.
+        Follows same pattern as fetch_poi_photo_google() (lines 93-161).
+        """
+        import requests
+
+        # Load Google Maps API key from environment
+        google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+        if not google_api_key:
+            return None
+
+        # Disable proxy for Google Maps API (proxy blocks it)
+        proxies = {
+            "http": None,
+            "https": None
+        }
+
         try:
+            # Step 1: Search for city to get place_id
             script_path = self.base_dir / ".claude/skills/google-maps/scripts/places.py"
             result = subprocess.run(
                 [self.venv_python, str(script_path), city_name, "1"],
@@ -73,22 +92,47 @@ class BatchImageFetcher:
             if result.returncode != 0:
                 return None
 
-            # Parse JSON from stderr
-            try:
-                data = json.loads(result.stderr)
-                if data.get("results", {}).get("places"):
-                    place = data["results"]["places"][0]
-                    place_id = place.get("place_id")
-                    # For now, we don't have photo URLs in place search
-                    # Would need place details API
-                    return None
-            except:
-                pass
+            # Parse JSON from stderr to get place_id
+            data = json.loads(result.stderr)
+            if not data.get("results", {}).get("places"):
+                return None
+
+            place = data["results"]["places"][0]
+            place_id = place.get("place_id")
+            if not place_id:
+                return None
+
+            # Step 2: Get place details with photos field
+            details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+            details_params = {
+                "place_id": place_id,
+                "fields": "photos",
+                "key": google_api_key
+            }
+
+            details_response = requests.get(details_url, params=details_params, timeout=10, proxies=proxies)
+            details_data = details_response.json()
+
+            if details_data.get("status") != "OK":
+                return None
+
+            # Extract photo reference
+            photos = details_data.get("result", {}).get("photos", [])
+            if not photos:
+                return None
+
+            photo_reference = photos[0].get("photo_reference")
+            if not photo_reference:
+                return None
+
+            # Step 3: Construct photo URL
+            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_reference}&key={google_api_key}"
+
+            return photo_url
 
         except Exception as e:
             print(f"  Google Maps error for {city_name}: {e}")
-
-        return None
+            return None
 
     def fetch_poi_photo_google(self, poi_name: str, city: str) -> Optional[str]:
         """Fetch POI photo using Google Maps Place Details API (for Hong Kong/Macau)

@@ -1,0 +1,82 @@
+{
+  "request_id": "dev-issue3-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 3,
+  "priority": "P0",
+  "requirement": {
+    "original": "为什么重庆第一天你搜的图片都很不准确？都是风牛马不相及的。是不是搜索使用了英文？我不是之前修复过这个脚本了吗？",
+    "clarified": "Image search uses English names for Gaode Maps, causing irrelevant results. Must extract Chinese names from parentheses in POI names (format: 'English Name (中文名)') and use for Gaode search.",
+    "what": "Parse and extract Chinese names from POI name field, use for Gaode Maps image search",
+    "why": "Gaode Maps requires Chinese names for accurate POI photo results in mainland China",
+    "where": [
+      "scripts/fetch-images-batch.py line 424-429 (Gaode search logic)",
+      "Agent output files (attractions.json, meals.json, etc.) have names as 'English (中文)' but no name_chinese field"
+    ],
+    "scope": {
+      "included": [
+        "Add Chinese name extraction from parentheses using regex",
+        "Pass extracted Chinese name to fetch_poi_photo_gaode()",
+        "Fallback to full name if no parentheses found"
+      ],
+      "excluded": [
+        "Modifying agent output formats",
+        "Changing Gaode Maps API calls"
+      ]
+    },
+    "success_criteria": [
+      "Chinese names extracted from 'Name (中文名)' format",
+      "Gaode Maps search uses extracted Chinese names",
+      "Accurate POI photos fetched for all mainland China locations"
+    ],
+    "constraints": [
+      "Must handle names without parentheses gracefully",
+      "Hong Kong/Macau still use English names with Google Maps"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Irrelevant POI photos fetched for Chongqing Day 1 attractions",
+    "root_cause": "Agent outputs have format 'English (中文)' but name_chinese field is empty. fetch_poi_photo_gaode() receives poi['name'] which includes English, searches Gaode with English, gets wrong results.",
+    "root_cause_commit": "Commit 3755270 - Added chinese_name routing but agents don't provide name_chinese field",
+    "why_introduced": "Agents output bilingual names in single field, not separate fields",
+    "why_problematic": "Gaode Maps cannot find POIs with English names in mainland China",
+    "timeline": "2026-02-07 (recent image fetching)",
+    "affected_files": [
+      "scripts/fetch-images-batch.py",
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json"
+    ],
+    "evidence": {
+      "attractions_day1": "Name: Raffles City Chongqing Observation Deck (来福士观景台), Chinese: '' (empty)",
+      "current_search": "Uses poi['name'] = full string with English",
+      "needed": "Extract '来福士观景台' from parentheses"
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "file_contents": {
+      "fetch-images-batch.py": {
+        "line_424_429": "Uses poi.get('chinese_name') which is empty, falls back to poi['name']",
+        "poi_name_format": "English Name (中文名)"
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Add regex extraction function, use in fetch_pois() to extract Chinese from parentheses before passing to Gaode",
+    "files_to_modify": [
+      "scripts/fetch-images-batch.py"
+    ],
+    "changes_needed": [
+      "Add _extract_chinese_name(name: str) -> str method with regex r'\\((.+?)\\)'",
+      "In fetch_pois(), extract Chinese name when building poi dict",
+      "Pass extracted Chinese to fetch_poi_photo_gaode()",
+      "Handle edge cases: no parentheses, multiple parentheses, empty result"
+    ],
+    "validation_approach": "Re-fetch Day 1 Chongqing POIs, verify Chinese names extracted and used"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

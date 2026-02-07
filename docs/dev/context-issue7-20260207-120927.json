@@ -1,0 +1,79 @@
+{
+  "request_id": "dev-issue7-20260207-120927",
+  "timestamp": "2026-02-07T12:09:27Z",
+  "issue_number": 7,
+  "priority": "P2",
+  "requirement": {
+    "original": "timeline中的时间并不是真实的时间变量，因为我竟然看到了27点？这是什么东西。此外为什么一天一定要从8点开始？我的",
+    "clarified": "Investigate timeline.json generation for invalid times (27:00) and hardcoded 8am start. Check timeline-agent for time calculation bugs.",
+    "what": "Analyze timeline-agent code for time calculation errors, fix cross-midnight handling",
+    "why": "Times > 24:00 are invalid, hardcoded start times ignore user's actual itinerary",
+    "where": [
+      "Timeline-agent code (need to find agent location)",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+    ],
+    "scope": {
+      "included": [
+        "Find timeline-agent code",
+        "Analyze time calculation logic",
+        "Fix invalid time generation (>= 24:00)",
+        "Fix hardcoded start time assumptions",
+        "Ensure times respect user_requirements from skeleton"
+      ],
+      "excluded": [
+        "Modifying timeline.json manually (agent should regenerate correctly)",
+        "Changing HTML display logic"
+      ]
+    },
+    "success_criteria": [
+      "No times >= 24:00 in timeline.json",
+      "Day starts based on actual first activity (e.g., 4:40am flight), not hardcoded 8am",
+      "Cross-midnight activities handled correctly (e.g., 23:00-01:00 next day)",
+      "Timeline respects user_requirements from plan-skeleton"
+    ],
+    "constraints": [
+      "Agent code must be found first (likely .claude/agents/ or agents/)",
+      "May need to regenerate timeline.json to verify fix"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User reported seeing 27:00 times, hardcoded 8am starts",
+    "root_cause": "Timeline-agent likely uses cross-day time addition (e.g., 23:00 + 4 hours = 27:00) instead of modulo 24 or next-day handling",
+    "root_cause_commit": "Timeline-agent implementation",
+    "why_introduced": "Naive time arithmetic without day boundary handling",
+    "why_problematic": "Invalid times displayed, schedule doesn't match reality",
+    "timeline": "Unknown when introduced, current timeline.json checked shows no 27:00 (may have been fixed or regenerated)",
+    "affected_files": [
+      "Timeline-agent code (location TBD)",
+      "data/*/timeline.json output files"
+    ]
+  },
+  "context": {
+    "codebase_state": "Clean working directory",
+    "investigation_needed": [
+      "Find timeline-agent code location",
+      "Examine time calculation logic",
+      "Check for hardcoded start time assumptions"
+    ]
+  },
+  "development_approach": {
+    "strategy": "Investigative task - find agent, analyze code, fix time arithmetic",
+    "files_to_find": [
+      ".claude/agents/timeline.md or similar",
+      "agents/timeline-agent.py or similar"
+    ],
+    "changes_needed": [
+      "Fix time addition to use datetime or modulo 24",
+      "Handle cross-midnight properly (next day entry)",
+      "Remove hardcoded 8am start, read from user_requirements",
+      "Add validation to reject times >= 24:00"
+    ],
+    "validation_approach": "Regenerate timeline for Day 1, verify times valid and match plan"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

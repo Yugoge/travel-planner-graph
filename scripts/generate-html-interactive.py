@@ -575,12 +575,17 @@ class InteractiveHTMLGenerator:
         else:
             prefs_str = str(prefs)
 
+        # Fix #2: Calculate period from duration_days
+        # Root cause: Missing from original implementation
+        duration_days = skel_summary.get("duration_days", 0)
+        period = f"{duration_days} day{'s' if duration_days != 1 else ''}"
+
         trip_summary = {
             # Fix #1, #3: Format trip_type for natural language display
             "trip_type": self._format_trip_type(skel_summary.get("trip_type", "itinerary")),
             "description": skel_summary.get("description", "Travel Plan"),
             "base_location": skel_summary.get("base_location", ""),
-            "period": skel_summary.get("period", ""),
+            "period": period,
             "travelers": skel_summary.get("travelers", "1 adult"),
             "budget_per_trip": skel_summary.get("budget_per_trip", "€500"),
             "preferences": prefs_str
