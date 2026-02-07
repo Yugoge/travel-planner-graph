@@ -1,0 +1,65 @@
+{
+  "request_id": "dev-issue4-20260207-120927",
+  "timestamp": "2026-02-07T12:15:43Z",
+  "issue_number": 4,
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Implemented Google Maps Place Details API call in fetch_city_photo_google()",
+        "type": "code",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Added complete Place Details API integration: Step 1 (Place Search for place_id), Step 2 (Place Details API with fields=photos), Step 3 (Construct photo URL from photo_reference)",
+        "rationale": "Root cause was incomplete implementation - Place Search returns place_id but not photo URLs. Need Place Details API call to get photo_reference, then construct photo URL. Followed proven pattern from fetch_poi_photo_google() (lines 137-161)."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "Initial implementation - fetch_city_photo_google() was stub with TODO comment",
+      "why_issue_occurred": "Place Search API returns place_id but not photo data. Developer left comment 'Would need place details API' but didn't complete implementation.",
+      "how_fix_addresses_root": "Added missing Place Details API call after Place Search, extracting photo_reference and constructing photo URL. This completes the two-step process required by Google Maps API: 1) Search for place_id, 2) Get details including photos."
+    },
+    "implementation_details": {
+      "api_integration": {
+        "step_1": "Place Search via subprocess call to places.py skill script (already existed)",
+        "step_2": "Place Details API call with place_id and fields=photos (newly added)",
+        "step_3": "Photo URL construction from photo_reference (newly added)"
+      },
+      "pattern_followed": "fetch_poi_photo_google() at lines 137-161",
+      "key_changes": [
+        "Import requests module",
+        "Load GOOGLE_MAPS_API_KEY from environment",
+        "Disable proxy (proxies={'http': None, 'https': None})",
+        "Call Place Details API: https://maps.googleapis.com/maps/api/place/details/json",
+        "Extract photo_reference from response: details_data['result']['photos'][0]['photo_reference']",
+        "Construct photo URL: https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_reference}&key={api_key}"
+      ],
+      "error_handling": [
+        "Check API key exists before making requests",
+        "Validate Place Search returned place_id",
+        "Validate Place Details API status == 'OK'",
+        "Validate photos array exists and not empty",
+        "Validate photo_reference exists",
+        "Catch all exceptions and return None gracefully"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": "Run 'source venv/bin/activate && python scripts/fetch-images-batch.py' to fetch city photos. Verify city_covers dict in images.json is populated with photo URLs. Check that generated HTML displays city cover photos instead of Unsplash fallbacks.",
+    "qa_validation_steps": [
+      "Step 1: Activate virtual environment: source venv/bin/activate",
+      "Step 2: Run image fetching: python scripts/fetch-images-batch.py",
+      "Step 3: Verify city_covers in images.json is populated (not empty dict)",
+      "Step 4: Check photo URLs are valid Google Maps photo URLs",
+      "Step 5: Regenerate HTML and verify city cover photos display",
+      "Step 6: Test with multiple cities (not just Hong Kong)"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding photo size parameter (maxwidth) as configurable constant",
+    "Consider caching Place Details API responses to reduce API calls",
+    "Consider logging successful photo fetches for monitoring"
+  ]
+}

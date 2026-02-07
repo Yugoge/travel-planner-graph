@@ -289,6 +289,32 @@ class BatchImageFetcher:
                "macau" in location_lower or "macao" in location_lower or \
                "香港" in location or "澳门" in location
 
+    def _extract_chinese_name(self, name: str) -> str:
+        """Extract Chinese name from parentheses in format 'English Name (中文名)'
+
+        Root cause fix (Issue #3): Agent outputs use bilingual format in single field.
+        Gaode Maps requires Chinese names for accurate mainland China POI search.
+
+        Args:
+            name: POI name, possibly in format 'English (中文)' or just 'Name'
+
+        Returns:
+            Chinese text from parentheses if found, otherwise empty string
+
+        Examples:
+            'Raffles City Chongqing Observation Deck (来福士观景台)' -> '来福士观景台'
+            'Hongyadong (洪崖洞民俗风貌区)' -> '洪崖洞民俗风貌区'
+            'Some Place' -> ''
+        """
+        import re
+
+        # Match content within parentheses
+        match = re.search(r'\((.+?)\)', name)
+        if match:
+            return match.group(1)
+
+        return ""
+
     def fetch_pois(self, limit: int = 10):
         """Fetch POI photos from all agent files (limited batch)
 
@@ -333,7 +359,7 @@ class BatchImageFetcher:
                     # Attractions: list of items
                     for item in day.get("attractions", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "")
+                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -348,7 +374,7 @@ class BatchImageFetcher:
                         meal = day.get(meal_type)
                         if meal and isinstance(meal, dict):
                             name = meal.get("name", "")
-                            chinese_name = meal.get("name_chinese", "")
+                            chinese_name = meal.get("name_chinese", "") or self._extract_chinese_name(name)
                             if name:
                                 pois.append({
                                     "name": name,
@@ -362,7 +388,7 @@ class BatchImageFetcher:
                     acc = day.get("accommodation")
                     if acc and isinstance(acc, dict):
                         name = acc.get("name", "")
-                        chinese_name = acc.get("name_chinese", acc.get("name_cn", ""))
+                        chinese_name = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -375,7 +401,7 @@ class BatchImageFetcher:
                     # Entertainment: list of items
                     for item in day.get("entertainment", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "")
+                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -392,7 +418,7 @@ class BatchImageFetcher:
                     # Attractions: list of items
                     for item in city.get("attractions", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "")
+                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -405,7 +431,7 @@ class BatchImageFetcher:
                     # Meals: list of items
                     for item in city.get("meals", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "")
+                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -418,7 +444,7 @@ class BatchImageFetcher:
                     # Accommodation: list of items (Fix #5: add hotel image fetching)
                     for item in city.get("accommodation", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", item.get("name_cn", ""))
+                        chinese_name = item.get("name_chinese", item.get("name_cn", "")) or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,
@@ -431,7 +457,7 @@ class BatchImageFetcher:
                     # Entertainment: list of items
                     for item in city.get("entertainment", []):
                         name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "")
+                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
                         if name:
                             pois.append({
                                 "name": name,

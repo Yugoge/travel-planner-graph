@@ -43,16 +43,27 @@ class TimelineAgent:
             return 0
 
     def minutes_to_time(self, minutes: int) -> str:
-        """Convert minutes since midnight to HH:MM format."""
+        """Convert minutes since midnight to HH:MM format.
+
+        Handles cross-midnight times by using modulo 1440 (24 hours).
+        Times >= 24:00 wrap to next day (e.g., 1500 minutes = 01:00).
+        """
+        # Modulo 1440 (24 hours * 60 minutes) to handle day overflow
+        minutes = minutes % 1440
         hours = minutes // 60
         mins = minutes % 60
         return f"{hours:02d}:{mins:02d}"
 
-    def calculate_end_time(self, start_time: str, duration_minutes: int) -> str:
-        """Calculate end time given start time and duration."""
+    def calculate_end_time(self, start_time: str, duration_minutes: int) -> Tuple[str, bool]:
+        """Calculate end time given start time and duration.
+
+        Returns tuple of (end_time, crosses_midnight).
+        Handles cross-midnight activities properly (e.g., 23:00 + 120min = 01:00 next day).
+        """
         start_mins = self.time_to_minutes(start_time)
         end_mins = start_mins + duration_minutes
-        return self.minutes_to_time(end_mins)
+        crosses_midnight = end_mins >= 1440
+        return self.minutes_to_time(end_mins), crosses_midnight
 
     def detect_conflicts(self, timeline: Dict[str, Dict]) -> List[str]:
         """Detect overlapping activities in timeline."""
@@ -78,23 +89,52 @@ class TimelineAgent:
         return conflicts
 
     def validate_meal_times(self, day: int, timeline: Dict[str, Dict]) -> None:
-        """Validate that meal times fall within reasonable windows."""
+        """Validate that meal times fall within reasonable windows.
+
+        Uses flexible time windows that account for early flights, late dinners, etc.
+        Warnings are informational only, not hard constraints.
+        """
+        # Flexible meal windows (expanded from hardcoded Western times)
         meal_windows = {
-            "breakfast": (420, 600),  # 7:00 AM - 10:00 AM (minutes)
-            "lunch": (720, 900),  # 12:00 PM - 3:00 PM
-            "dinner": (1080, 1320),  # 6:00 PM - 10:00 PM
+            "breakfast": (300, 660),  # 5:00 AM - 11:00 AM (accounts for early flights)
+            "lunch": (660, 960),  # 11:00 AM - 4:00 PM (flexible Chinese meal timing)
+            "dinner": (1020, 1380),  # 5:00 PM - 11:00 PM (accounts for late dinners)
         }
 
         for activity_name, activity in timeline.items():
             for meal_type, (start_min, end_min) in meal_windows.items():
                 if meal_type.lower() in activity_name.lower():
                     meal_start = self.time_to_minutes(activity["start_time"])
+                    # Only warn if VERY unusual (outside expanded windows)
                     if not (start_min <= meal_start <= end_min):
                         time_str = activity["start_time"]
                         self.warnings.append(
                             f"Day {day}: {activity_name} at {time_str} "
-                            f"falls outside typical {meal_type} window"
+                            f"is unusually early/late for {meal_type}"
                         )
+
+    def validate_time_format(self, day: int, timeline: Dict[str, Dict]) -> None:
+        """Validate that all times are in valid 24-hour format (00:00 - 23:59).
+
+        This catches any times >= 24:00 that shouldn't exist in output.
+        """
+        for activity_name, activity in timeline.items():
+            for time_field in ["start_time", "end_time"]:
+                time_str = activity.get(time_field, "")
+                if not time_str:
+                    continue
+
+                try:
+                    hours, minutes = map(int, time_str.split(":"))
+                    if hours >= 24 or minutes >= 60:
+                        self.warnings.append(
+                            f"Day {day}: INVALID TIME {time_str} in {activity_name} "
+                            f"({time_field}). Times must be 00:00-23:59"
+                        )
+                except (ValueError, AttributeError):
+                    self.warnings.append(
+                        f"Day {day}: Malformed time '{time_str}' in {activity_name}"
+                    )
 
     def validate_day_schedule(self, day: int, timeline: Dict[str, Dict]) -> None:
         """Check if day schedule is reasonable."""
@@ -150,65 +190,104 @@ class TimelineAgent:
         # Add accommodation check-out
         for hotel in accommodation.get("data", {}).get("hotels", []):
             if hotel.get("day") == day:
+                checkout_time = hotel.get("check_out_time", "11:00")
+                end_time, crosses = self.calculate_end_time(checkout_time, 15)
                 timeline["Hotel check-out"] = {
-                    "start_time": hotel.get("check_out_time", "11:00"),
-                    "end_time": self.calculate_end_time(
-                        hotel.get("check_out_time", "11:00"), 15
-                    ),
+                    "start_time": checkout_time,
+                    "end_time": end_time,
                     "duration_minutes": 15,
                 }
+                if crosses:
+                    self.warnings.append(
+                        f"Day {day}: Hotel check-out crosses midnight (unusual)"
+                    )
 
         # Add meals
         for meal in meals.get("data", {}).get("meals", []):
             if meal.get("day") == day:
                 meal_name = meal.get("name", f"{meal.get('type', 'Meal')}")
+                meal_time = meal.get("time")
+                duration = meal.get("duration_minutes", 60)
+                end_time, crosses = self.calculate_end_time(meal_time, duration)
                 timeline[meal_name] = {
-                    "start_time": meal.get("time"),
-                    "end_time": self.calculate_end_time(
-                        meal.get("time"), meal.get("duration_minutes", 60)
-                    ),
-                    "duration_minutes": meal.get("duration_minutes", 60),
+                    "start_time": meal_time,
+                    "end_time": end_time,
+                    "duration_minutes": duration,
                 }
+                if crosses:
+                    self.warnings.append(
+                        f"Day {day}: {meal_name} extends past midnight into next day"
+                    )
 
         # Add attractions
         for attraction in attractions.get("data", {}).get("attractions", []):
             if attraction.get("day") == day:
                 attr_name = attraction.get("name", "Attraction")
-                recommended_time = attraction.get("recommended_time", "10:00")
+                # Use recommended_time from data, fallback to start_time, no hardcoded default
+                start_time = attraction.get("recommended_time") or attraction.get("start_time")
+                if not start_time:
+                    self.warnings.append(
+                        f"Day {day}: {attr_name} missing start time, skipping from timeline"
+                    )
+                    continue
+                duration = attraction.get("duration_minutes", 120)
+                end_time, crosses = self.calculate_end_time(start_time, duration)
                 timeline[attr_name] = {
-                    "start_time": recommended_time,
-                    "end_time": self.calculate_end_time(
-                        recommended_time, attraction.get("duration_minutes", 120)
-                    ),
-                    "duration_minutes": attraction.get("duration_minutes", 120),
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "duration_minutes": duration,
                 }
+                if crosses:
+                    self.warnings.append(
+                        f"Day {day}: {attr_name} extends past midnight into next day"
+                    )
 
         # Add entertainment shows
         for show in entertainment.get("data", {}).get("shows", []):
             if show.get("day") == day:
                 show_name = show.get("name", "Show")
+                show_time = show.get("start_time")
+                if not show_time:
+                    self.warnings.append(
+                        f"Day {day}: {show_name} missing start time, skipping from timeline"
+                    )
+                    continue
+                duration = show.get("duration_minutes", 120)
+                end_time, crosses = self.calculate_end_time(show_time, duration)
                 timeline[show_name] = {
-                    "start_time": show.get("start_time"),
-                    "end_time": self.calculate_end_time(
-                        show.get("start_time"), show.get("duration_minutes", 120)
-                    ),
-                    "duration_minutes": show.get("duration_minutes", 120),
+                    "start_time": show_time,
+                    "end_time": end_time,
+                    "duration_minutes": duration,
                 }
+                if crosses:
+                    self.warnings.append(
+                        f"Day {day}: {show_name} extends past midnight into next day"
+                    )
 
         # Add shopping locations
         for shop in shopping.get("data", {}).get("locations", []):
             if shop.get("day") == day:
                 shop_name = shop.get("name", "Shopping")
+                shop_time = shop.get("start_time")
+                if not shop_time:
+                    self.warnings.append(
+                        f"Day {day}: {shop_name} missing start time, skipping from timeline"
+                    )
+                    continue
+                duration = shop.get("duration_minutes", 120)
+                end_time, crosses = self.calculate_end_time(shop_time, duration)
                 timeline[shop_name] = {
-                    "start_time": shop.get("start_time", "10:00"),
-                    "end_time": self.calculate_end_time(
-                        shop.get("start_time", "10:00"),
-                        shop.get("duration_minutes", 120),
-                    ),
-                    "duration_minutes": shop.get("duration_minutes", 120),
+                    "start_time": shop_time,
+                    "end_time": end_time,
+                    "duration_minutes": duration,
                 }
+                if crosses:
+                    self.warnings.append(
+                        f"Day {day}: {shop_name} extends past midnight into next day"
+                    )
 
         # Validate and detect issues
+        self.validate_time_format(day, timeline)  # Check for invalid times (>= 24:00)
         conflicts = self.detect_conflicts(timeline)
         if conflicts:
             self.warnings.extend([f"Day {day}: {c}" for c in conflicts])
