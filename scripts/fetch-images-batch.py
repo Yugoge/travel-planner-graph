@@ -5,10 +5,21 @@ More reliable than MCP Client for large batch operations.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+# Load environment variables from .env file
+env_file = Path(__file__).parent.parent / ".env"
+if env_file.exists():
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ[key.strip()] = value.strip()
 
 
 class BatchImageFetcher:
@@ -80,40 +91,74 @@ class BatchImageFetcher:
         return None
 
     def fetch_poi_photo_google(self, poi_name: str, city: str) -> Optional[str]:
-        """Fetch POI photo using Google Maps skill script (for Hong Kong/Macau)
+        """Fetch POI photo using Google Maps Place Details API (for Hong Kong/Macau)
 
         User principle: Hong Kong/Macau use English names with Google Maps
+        Uses direct API call to get photo reference, then constructs photo URL
         """
-        try:
-            script_path = self.base_dir / ".claude/skills/google-maps/scripts/places.py"
-            # Search with city context for better results
-            search_query = f"{poi_name} {city}"
-            result = subprocess.run(
-                [self.venv_python, str(script_path), search_query, "1"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                cwd=script_path.parent
-            )
+        import requests
 
-            if result.returncode != 0:
+        # Load Google Maps API key from environment
+        google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+        if not google_api_key:
+            return None
+
+        # Disable proxy for Google Maps API (proxy blocks it)
+        proxies = {
+            "http": None,
+            "https": None
+        }
+
+        try:
+            # Step 1: Search for place to get place_id
+            search_query = f"{poi_name} {city}"
+            search_url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+            search_params = {
+                "input": search_query,
+                "inputtype": "textquery",
+                "fields": "place_id,name",
+                "key": google_api_key
+            }
+
+            search_response = requests.get(search_url, params=search_params, timeout=10, proxies=proxies)
+            search_data = search_response.json()
+
+            if search_data.get("status") != "OK" or not search_data.get("candidates"):
                 return None
 
-            # Parse JSON from stderr
-            try:
-                data = json.loads(result.stderr)
-                if data.get("results", {}).get("places"):
-                    place = data["results"]["places"][0]
-                    # Google Places API response structure
-                    # For now, return None as we'd need photo reference API
-                    return None
-            except:
-                pass
+            place_id = search_data["candidates"][0]["place_id"]
+
+            # Step 2: Get place details with photos field
+            details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+            details_params = {
+                "place_id": place_id,
+                "fields": "photos",
+                "key": google_api_key
+            }
+
+            details_response = requests.get(details_url, params=details_params, timeout=10, proxies=proxies)
+            details_data = details_response.json()
+
+            if details_data.get("status") != "OK":
+                return None
+
+            # Extract photo reference
+            photos = details_data.get("result", {}).get("photos", [])
+            if not photos:
+                return None
+
+            photo_reference = photos[0].get("photo_reference")
+            if not photo_reference:
+                return None
+
+            # Step 3: Construct photo URL
+            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_reference}&key={google_api_key}"
+
+            return photo_url
 
         except Exception as e:
             print(f"  Google Maps error for {poi_name}: {e}")
-
-        return None
+            return None
 
     def fetch_poi_photo_gaode(self, poi_name: str, city: str, chinese_name: str = None) -> Optional[str]:
         """Fetch POI photo using Gaode Maps skill script
