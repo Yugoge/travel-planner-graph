@@ -1,0 +1,107 @@
+{
+  "request_id": "dev-refactor-timeline-20260207-153613",
+  "timestamp": "2026-02-07T15:36:13Z",
+  "refactor_type": "bug_fix",
+  "priority": "P1",
+  "requirement": {
+    "original": "timeline有冲突，为什么，我记得我指定的计划timeline没有冲突",
+    "clarified": "Timeline View shows time conflicts despite user-specified timeline.json having no conflicts. Debug and fix timeline display overlap issues.",
+    "what": "Investigate and fix timeline conflict display in TimelineView",
+    "why": "User sees overlapping activities despite planning non-overlapping schedule",
+    "where": [
+      "scripts/generate-html-interactive.py _find_timeline_item() fuzzy matching",
+      "scripts/generate-html-interactive.py TimelineView rendering logic",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+    ],
+    "scope": {
+      "included": [
+        "Verify timeline.json has no time overlaps",
+        "Debug _find_timeline_item() fuzzy matching accuracy",
+        "Check if wrong timeline items matched to wrong POIs",
+        "Verify TimelineView top/height calculations don't cause visual overlap",
+        "Ensure Issue 6 fix didn't introduce matching bugs"
+      ],
+      "excluded": [
+        "Regenerating timeline.json (assume timeline data is correct)",
+        "Changing timeline-agent logic"
+      ]
+    },
+    "success_criteria": [
+      "timeline.json verified to have no overlapping time ranges",
+      "All POIs matched to correct timeline entries",
+      "TimelineView displays activities in sequence without overlap",
+      "Visual rendering shows gaps between activities",
+      "Day 1 breakfast 09:00-09:45 does not overlap with observation deck 08:00-09:00"
+    ],
+    "constraints": [
+      "Preserve fuzzy matching for name variations",
+      "Maintain backward compatibility if timeline.json missing"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User sees timeline conflicts in rendered view",
+    "possible_causes": [
+      "Issue 6 _find_timeline_item() fuzzy match too aggressive, matches wrong items",
+      "timeline.json actually has overlaps (user memory incorrect)",
+      "TimelineView CSS positioning creates visual overlap",
+      "Multiple POIs matched to same timeline entry",
+      "Fallback virtual times used despite timeline.json existing"
+    ],
+    "investigation_needed": [
+      "Parse timeline.json Day 1, check for time overlaps",
+      "Test _find_timeline_item() with actual POI names",
+      "Verify each POI gets unique timeline entry",
+      "Check TimelineView top() calculation for overlaps",
+      "Compare rendered times to timeline.json source"
+    ],
+    "evidence": {
+      "user_claim": "我记得我指定的计划timeline没有冲突",
+      "issue_6_status": "Supposedly fixed to use actual timeline times",
+      "visual_symptom": "User sees conflicts in browser"
+    }
+  },
+  "context": {
+    "codebase_state": "Issue 6 implemented _find_timeline_item() with fuzzy matching",
+    "fuzzy_matching_logic": {
+      "location": "scripts/generate-html-interactive.py _find_timeline_item()",
+      "approach": "Lowercase comparison, partial string matching",
+      "risk": "May match wrong items if names similar"
+    },
+    "timeline_json_sample": {
+      "day_1": {
+        "Flight arrival HU718": "04:40-05:40",
+        "Airport to Raffles": "05:40-06:50",
+        "Luggage check-in": "06:50-08:00",
+        "Raffles Observation Deck": "08:00-09:00",
+        "Raffles Mall Food Court": "09:00-09:45"
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Validate timeline.json integrity, debug fuzzy matching, fix rendering",
+    "investigation_steps": [
+      "1. Write script to validate timeline.json has no overlaps",
+      "2. Test _find_timeline_item() with all Day 1 POI names",
+      "3. Check if multiple POIs matched to same timeline entry",
+      "4. Verify TimelineView rendering doesn't create visual overlaps",
+      "5. Compare browser display to timeline.json source times"
+    ],
+    "likely_fixes": [
+      "Tighten fuzzy matching to prevent wrong matches",
+      "Add exact match priority before fuzzy match",
+      "Fix TimelineView CSS if visual overlap",
+      "Add validation to reject timeline with overlaps"
+    ],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Visual check in browser Day 1, verify no overlapping activity boxes"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "accurate_fuzzy_matching": true
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "request_id": "dev-refactor-images-20260207-153613",
+  "timestamp": "2026-02-07T15:36:13Z",
+  "refactor_type": "architectural",
+  "priority": "P0",
+  "requirement": {
+    "original": "图片没有被更新，图片依旧风马牛不相及，entertainment没有照片",
+    "clarified": "Systematic refactor of image integration between agent JSON outputs and images.json cache. HTML generator must ALWAYS prefer images.json over agent JSON image fields.",
+    "what": "Refactor image lookup architecture to use images.json as single source of truth",
+    "why": "Agent JSON pre-fills image fields with Unsplash fallbacks, blocking lookup of real photos from images.json",
+    "where": [
+      "scripts/generate-html-interactive.py _merge_day_data() method",
+      "scripts/generate-html-interactive.py _get_placeholder_image() method",
+      "All agent JSON files (attractions.json, meals.json, entertainment.json, accommodation.json)"
+    ],
+    "scope": {
+      "included": [
+        "Modify _get_placeholder_image() to ignore agent JSON image fields",
+        "Force all image lookups through images.json first",
+        "Add fallback chain: images.json → Unsplash (if cache miss)",
+        "Ensure entertainment images work from images.json cache",
+        "Verify all 69 POI images from images.json are used"
+      ],
+      "excluded": [
+        "Modifying agent output formats (agents already generate data)",
+        "Re-fetching images (already cached in images.json)",
+        "Changing fetch-images-batch.py logic"
+      ]
+    },
+    "success_criteria": [
+      "HTML displays images from images.json, not agent JSON Unsplash fallbacks",
+      "All 69 POI images from images.json appear in HTML",
+      "Entertainment venues show images from cache",
+      "Chongqing Day 1 attractions show accurate Gaode photos",
+      "Zero Unsplash fallback images used when cache exists"
+    ],
+    "constraints": [
+      "Maintain backward compatibility if images.json missing",
+      "Preserve existing _get_placeholder_image() signature for other callers"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "HTML shows Unsplash generic images despite images.json having real photos",
+    "root_cause": "HTML generator reads agent JSON image field first (line 371: attr.get('image', ...)), which always has Unsplash URL from agent, blocking _get_placeholder_image() from being called",
+    "architectural_flaw": "Two-tier caching without priority: agent JSON (stale) vs images.json (fresh)",
+    "why_introduced": "Agents pre-fill image fields for backward compatibility, but HTML generator gives them priority",
+    "why_problematic": "Fresh cached images from Gaode/Google never used, defeating purpose of fetch-images-batch.py",
+    "timeline": "Issue existed since images.json was introduced but agent JSON kept image fields",
+    "affected_files": [
+      "scripts/generate-html-interactive.py",
+      "data/*/attractions.json",
+      "data/*/meals.json",
+      "data/*/entertainment.json",
+      "data/*/accommodation.json"
+    ],
+    "evidence": {
+      "cache_exists": "images.json has 69 POIs with gaode_ prefix",
+      "never_used": "attr.get('image') returns Unsplash, _get_placeholder_image() never called",
+      "entertainment_empty": "entertainment.json has NO image field, but _get_placeholder_image() still falls back to Unsplash instead of using cache"
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working directory, 8 issues supposedly fixed but images still broken",
+    "current_logic": {
+      "line_371": "attr.get('image', self._get_placeholder_image(...)) - WRONG PRIORITY",
+      "line_442": "ent.get('image', self._get_placeholder_image(...)) - ent has no image field, should work but doesn't",
+      "line_177_180": "_get_placeholder_image tries gaode_{poi_name} lookup - CORRECT but never reached for attractions/meals"
+    },
+    "images_cache": {
+      "location": "data/china-feb-15-mar-7-2026-20260202-195429/images.json",
+      "pois": 69,
+      "city_covers": 5,
+      "key_format": "gaode_{full_name_with_chinese}"
+    }
+  },
+  "development_approach": {
+    "strategy": "Architectural refactor: Force images.json priority by changing image assignment logic",
+    "option_1_preferred": {
+      "approach": "Modify _merge_day_data() to IGNORE agent JSON image fields, always call _get_placeholder_image()",
+      "changes": [
+        "Line 294: Change meal['image'] = meal.get('image', ...) → meal['image'] = self._get_placeholder_image('meal', meal.get('name'))",
+        "Line 371: Change attr['image'] = attr.get('image', ...) → attr['image'] = self._get_placeholder_image('attraction', attr.get('name'))",
+        "Line 442: Already correct for entertainment, but verify fallback chain",
+        "Line 471: Change acc['image'] = acc.get('image', ...) → acc['image'] = self._get_placeholder_image('accommodation', acc.get('name'))"
+      ],
+      "rationale": "Single source of truth: images.json. Agent JSON image fields completely ignored."
+    },
+    "option_2_fallback": {
+      "approach": "Modify _get_placeholder_image() to check images.json BEFORE returning input",
+      "changes": [
+        "Add parameter to accept agent_image_url",
+        "Check images.json cache first",
+        "Only return agent_image_url if cache miss",
+        "Update all callers to pass agent image"
+      ],
+      "rationale": "Preserve agent JSON images as fallback, but cache takes priority"
+    },
+    "recommended": "Option 1 - cleaner architecture, single source of truth",
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Grep HTML for Unsplash URLs, count should be 0 for cached POIs. Verify all 69 images.json entries appear in HTML."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "single_source_of_truth": true
+  }
+}

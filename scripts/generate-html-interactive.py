@@ -291,11 +291,11 @@ class InteractiveHTMLGenerator:
                         "cost": cost,
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
-                        "image": meal.get("image", self._get_placeholder_image(
+                        "image": self._get_placeholder_image(
                             "meal",
                             poi_name=meal_name,
                             gaode_id=meal.get("gaode_id", "")
-                        )),
+                        ),
                         "time": meal_time,
                         "links": meal.get("links", {})
                     }

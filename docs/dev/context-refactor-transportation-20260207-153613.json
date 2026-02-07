@@ -1,0 +1,107 @@
+{
+  "request_id": "dev-refactor-transportation-20260207-153613",
+  "timestamp": "2026-02-07T15:36:13Z",
+  "refactor_type": "implementation_debug",
+  "priority": "P0",
+  "requirement": {
+    "original": "很多交通完全没有显示，我只看到了寥寥几处",
+    "clarified": "User reports most transportation not visible despite HTML containing 21 transportation references. Debug and fix transportation display in both KanbanView and TimelineView.",
+    "what": "Debug why transportation is in HTML (21 occurrences) but not visible to user",
+    "why": "Issue 8 implementation may have incomplete rendering logic or CSS hiding",
+    "where": [
+      "scripts/generate-html-interactive.py KanbanView component (transportation section)",
+      "scripts/generate-html-interactive.py TimelineView component (transportation entries)",
+      "Transportation data structure in _merge_day_data()"
+    ],
+    "scope": {
+      "included": [
+        "Verify transportation data merged correctly for Days 2, 3, 4, 8",
+        "Debug KanbanView transportation section rendering",
+        "Debug TimelineView transportation entry rendering",
+        "Check conditional rendering logic (transportation only for location_change)",
+        "Verify intra_city_routes (Day 5 Shanghai) handling",
+        "Ensure transportation visible in BOTH views"
+      ],
+      "excluded": [
+        "Modifying transportation.json structure",
+        "Adding new transportation types"
+      ]
+    },
+    "success_criteria": [
+      "All 4 inter-city transportations visible in KanbanView (Days 2, 3, 4, 8)",
+      "All 4 inter-city transportations visible in TimelineView at correct times",
+      "Transportation sections not hidden by CSS",
+      "User can see train details: Chongqing→Bazhong 07:26, Bazhong→Chengdu 12:42",
+      "User can see flight details: CA4509 14:35, MU5129 09:05",
+      "Booking status badges visible (URGENT, VERIFIED, CONFIRMED)"
+    ],
+    "constraints": [
+      "Only show transportation for days with location_change",
+      "Match existing UI style and component patterns"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "User sees 'only a few' transportations despite 21 occurrences in HTML",
+    "possible_causes": [
+      "Transportation section rendered but hidden by CSS",
+      "Conditional rendering fails for some days",
+      "Transportation in data but not in component JSX",
+      "TimelineView shows but KanbanView doesn't (or vice versa)",
+      "Only first transportation shown, others filtered out"
+    ],
+    "investigation_needed": [
+      "Grep HTML for actual transportation display (not just data)",
+      "Check if transportation section exists in rendered JSX",
+      "Verify KanbanView has Transportation component",
+      "Verify TimelineView adds transportation to entries array",
+      "Check CSS for display:none or visibility:hidden on transportation"
+    ],
+    "evidence": {
+      "grep_count": "21 transportation references in HTML",
+      "expected_count": "4 location_change days (Days 2, 3, 4, 8)",
+      "user_report": "只看到了寥寥几处 (only saw a few places)"
+    }
+  },
+  "context": {
+    "codebase_state": "Issue 8 supposedly implemented transportation display",
+    "transportation_data": {
+      "day_2": "Chongqing → Bazhong, train G8574, 07:26-10:36, URGENT",
+      "day_3": "Bazhong → Chengdu, train, 12:42-14:52, URGENT",
+      "day_4": "Chengdu → Shanghai, flight CA4509, 14:35-17:20, CONFIRMED",
+      "day_8": "Shanghai → Beijing, flight MU5129, 09:05-11:25, CONFIRMED"
+    },
+    "issue_8_implementation": {
+      "claims": "Added transportation to merged data, KanbanView, TimelineView, ItemDetailSidebar",
+      "lines_changed": "+193 -6",
+      "status": "Reported as completed"
+    }
+  },
+  "development_approach": {
+    "strategy": "Debug-first refactor: Find why transportation invisible, then fix systematically",
+    "investigation_steps": [
+      "1. Read generate-html-interactive.py transportation merging code",
+      "2. Verify merged data structure has transportation for Days 2,3,4,8",
+      "3. Check KanbanView JSX for Transportation section",
+      "4. Check TimelineView JSX for transportation entries",
+      "5. Grep HTML output for actual rendered transportation elements",
+      "6. Identify gap between data and rendering"
+    ],
+    "likely_fixes": [
+      "Transportation section exists but conditional render fails",
+      "Transportation merged to data but not passed to component",
+      "TimelineView filters out transportation entries",
+      "CSS z-index or visibility issue"
+    ],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Visual inspection of HTML in browser, verify 4 transportation cards/entries visible"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "visible_by_default": true
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "request_id": "dev-issue6-20260207-120927",
+  "timestamp": "2026-02-07T12:30:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added _find_timeline_item() helper method for fuzzy name matching",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Created fuzzy matching method that handles exact matches and partial matches (ignoring parenthetical suffixes and extra qualifiers like '- Late Lunch')",
+        "rationale": "Timeline keys often differ slightly from POI names (e.g., restaurant name + '- Late Lunch' vs just restaurant name). Fuzzy matching ensures timeline entries are found despite naming variations."
+      },
+      {
+        "id": 2,
+        "description": "Modified _merge_day_data() to load timeline for current day",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added code at start of _merge_day_data() to extract timeline dict for current day from self.timeline['days']. Handles case where timeline may be missing or empty.",
+        "rationale": "Root cause was that timeline.json was loaded into self.timeline but never consumed. This change extracts the day-specific timeline data for use in time lookups."
+      },
+      {
+        "id": 3,
+        "description": "Updated meals merging to use actual times from timeline",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "For each meal (breakfast/lunch/dinner), lookup meal name in day_timeline using _find_timeline_item(). If found with start_time/end_time, use those. Otherwise fallback to meal_default_times.",
+        "rationale": "Meals were using hardcoded defaults (breakfast 08:00-09:00). Now uses actual times from timeline.json (e.g., 16:30-17:30 for late lunch)."
+      },
+      {
+        "id": 4,
+        "description": "Updated attractions merging to use actual times from timeline",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "For each attraction, lookup attraction name in day_timeline. If found with start_time/end_time, use those. Otherwise fallback to virtual sequential allocation (10:00, 12:00, etc.).",
+        "rationale": "Attractions were using virtual sequential times starting at 10:00. Now uses actual scheduled times from timeline.json (e.g., 08:00-09:00 for observation deck)."
+      },
+      {
+        "id": 5,
+        "description": "Updated entertainment merging to use actual times from timeline",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "For each entertainment item, lookup name in day_timeline. If found with start_time/end_time, use those. Otherwise fallback to virtual evening allocation (19:00+).",
+        "rationale": "Entertainment items were using virtual evening times. Now uses actual scheduled times from timeline.json when available."
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "Unknown - likely initial implementation oversight",
+      "why_issue_occurred": "Timeline.json was added to data model and loaded by generator, but _merge_day_data() never consumed it. Hardcoded meal_default_times and virtual sequential allocation remained from initial implementation.",
+      "how_fix_addresses_root": "Fix reads timeline data that was already being loaded, matches items by name using fuzzy logic, and uses actual start_time/end_time instead of virtual defaults. Backward compatible - falls back to virtual times if timeline missing or item not found.",
+      "timeline": "Timeline.json exists and is loaded at line 30, but was never used until this fix"
+    },
+    "qa_ready": true,
+    "qa_notes": "Test cases:\n1. Generate HTML for beijing-exchange-bucket-list-20260202-232405 (has timeline data)\n   - Verify Day 1 breakfast shows 16:30-17:30 (not 08:00-09:00)\n   - Verify attractions show actual times from timeline\n2. Generate HTML for china-feb-15-mar-7-2026-20260202-195429 (timeline empty)\n   - Verify meals still show default times (08:00, 12:00, 18:30)\n   - Verify attractions show sequential virtual times (10:00, 12:00, etc.)\n   - Ensures backward compatibility when timeline missing\n3. Check fuzzy matching works:\n   - Timeline: 'Restaurant Name (Location) - Late Lunch'\n   - Meals: 'Restaurant Name (Location)'\n   - Should match despite extra qualifier",
+    "permissions_to_add": [],
+    "verification": {
+      "test_performed": "Generated HTML for beijing plan with timeline data",
+      "results": "Day 1 breakfast correctly shows 16:30-17:30 from timeline (not virtual 08:00-09:00)",
+      "files_generated": [
+        "travel-plan-beijing-exchange-bucket-list-20260202-232405.html",
+        "travel-plan-china-feb-15-mar-7-2026-20260202-195429.html"
+      ]
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Timeline agent should populate timeline.json for all plans to ensure actual times are used",
+    "Consider adding timeline completeness check to generator: warn if timeline empty but could be populated",
+    "Fuzzy matching could be enhanced to handle more name variations (e.g., Chinese-only vs bilingual names)"
+  ]
+}
