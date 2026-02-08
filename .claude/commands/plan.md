@@ -644,6 +644,25 @@ bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-
 **Exit code 0**: Timeline valid → Proceed
 **Exit code 1**: Validation errors (mismatched keys, conflicts) → Review timeline.json warnings
 
+#### Step 11.5: Sync Agent Data from Timeline (Single Source of Truth)
+
+**CRITICAL**: After timeline validation, synchronize all agent JSONs with authoritative times from timeline.json. This ensures meals, attractions, entertainment, shopping all have correct times before budget calculation and HTML generation.
+
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug} --skip-html
+```
+
+**What this does**:
+1. Normalizes time formats (string → {start, end} dict) across all agent JSONs
+2. Injects authoritative times from timeline.json into meals, attractions, entertainment, shopping
+3. Normalizes bilingual name fields (name → name_base/name_local) where applicable
+4. Saves sync-report.json for audit trail
+
+**Exit code 0**: Sync successful → Proceed to Step 12
+**Exit code 1**: Sync errors → Review sync-report.json and fix
+
+**Root Cause Reference**: Timeline.json is the Single Source of Truth for time data. Without sync, agent JSONs may have stale/missing times, causing HTML Timeline View to show incorrect times or drop items entirely.
+
 #### Step 12: Invoke Budget Agent (Serial)
 
 **IMPORTANT**: Budget agent runs AFTER timeline agent completes.
@@ -1058,6 +1077,17 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/va
 
 ---
 
+**Substep: Re-sync Agent Data After Refinement**
+
+After timeline/budget agents update, re-sync all agent times:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug} --skip-html
+```
+
+This ensures agent JSONs stay synchronized with updated timeline after each refinement cycle.
+
+---
+
 **Substep: Return to Step 14 INNER LOOP**
 
 **CRITICAL**: Do NOT advance to next day. Return to Step 14 INNER loop to re-present the SAME day (Day N) with updated data.
@@ -1135,6 +1165,16 @@ Step 14 OUTER LOOP:
 **⚠️ CRITICAL: Steps 16-18 are MANDATORY and ATOMIC. NEVER skip these steps.**
 
 Root cause reference: Script separation caused workflow interruption where AI subjectively skipped deployment steps, violating the principle that generated plans must be immediately published.
+
+#### Step 15.5: Final Data Sync Before HTML Generation
+
+**MANDATORY**: Run final sync to ensure all agent data is synchronized with timeline before HTML generation. This sync also regenerates the HTML automatically.
+
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug}
+```
+
+Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-report.json for any remaining unmatched items.
 
 #### Step 16: Generate and Deploy (Atomic Operation)
 

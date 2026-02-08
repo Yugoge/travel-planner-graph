@@ -176,56 +176,106 @@ class AgentDataSyncer:
         """Check if a timeline key is a transit/travel entry (not a POI)."""
         return key.lower().startswith(self.TRANSIT_PREFIXES)
 
-    def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
+    def _find_timeline_item(self, item_name: str, day_timeline: dict,
+                            time_hint: str = None) -> dict:
         """Find timeline entry for item name using precise multi-tier matching.
 
         Tier 1: Exact match
         Tier 2: Base-name exact match (strip parenthetical suffixes)
         Tier 3: Substring match (POI entries only, exclude transit)
+
+        When multiple entries match (e.g. "Family Home" as lunch and dinner),
+        uses time_hint to disambiguate.
+        Args:
+            time_hint: "breakfast"/"lunch"/"dinner" or "HH:MM"
         """
         if not day_timeline or not item_name:
             return None
 
+        hint_ranges = {
+            "breakfast": (5, 10),
+            "lunch": (10, 15),
+            "dinner": (17, 23),
+        }
+
+        def _time_in_range(tl_val: dict, hint: str) -> bool:
+            if not hint or not tl_val:
+                return True
+            start = tl_val.get("start_time", "")
+            if not start:
+                return True
+            try:
+                h = int(start.split(":")[0])
+            except (ValueError, IndexError):
+                return True
+            if hint in hint_ranges:
+                lo, hi = hint_ranges[hint]
+                return lo <= h < hi
+            try:
+                hint_h = int(hint.split(":")[0])
+                return abs(h - hint_h) <= 2
+            except (ValueError, IndexError):
+                return True
+
+        def _pick_best(candidates):
+            if not candidates:
+                return None
+            if len(candidates) == 1 or not time_hint:
+                return candidates[0][1]
+            for key, val in candidates:
+                if _time_in_range(val, time_hint):
+                    return val
+            return candidates[0][1]
+
         # Tier 1: Exact match
-        if item_name in day_timeline:
-            return day_timeline[item_name]
+        exact = [(k, v) for k, v in day_timeline.items() if k == item_name]
+        if exact:
+            return _pick_best(exact)
 
         # Tier 2: Base-name exact match
         item_base = item_name.split("(")[0].strip().split("（")[0].strip()
+        tier2 = []
         for tl_key, tl_val in day_timeline.items():
             if self._is_transit(tl_key):
                 continue
             tl_base = tl_key.split("(")[0].strip().split("（")[0].strip()
             if item_base.lower() == tl_base.lower():
-                return tl_val
+                tier2.append((tl_key, tl_val))
+        if tier2:
+            return _pick_best(tier2)
 
         # Tier 3: Substring match (POI only)
+        tier3 = []
         for tl_key, tl_val in day_timeline.items():
             if self._is_transit(tl_key):
                 continue
             tl_base = tl_key.split("(")[0].strip().lower()
             if item_base.lower() in tl_key.lower() or tl_base in item_base.lower():
-                return tl_val
+                tier3.append((tl_key, tl_val))
+        if tier3:
+            return _pick_best(tier3)
 
         return None
 
     def _inject_time(self, item: dict, day_timeline: dict, agent: str, day_num: int,
-                     default_duration: float = 1.0) -> dict:
+                     default_duration: float = 1.0, time_hint: str = None) -> dict:
         """Inject authoritative time from timeline into an item.
 
         Priority:
           1. timeline.json lookup (Single Source of Truth)
           2. Existing time in item (normalize format)
           3. None (skip)
+        Args:
+            time_hint: "breakfast"/"lunch"/"dinner" or "HH:MM" for disambiguation
         """
         item_name = item.get("name_base", item.get("name", ""))
         # Also try name_local for matching
         item_name_local = item.get("name_local", "")
 
         # Try matching with name_base first, then name_local
-        tl_item = self._find_timeline_item(item_name, day_timeline)
+        tl_item = self._find_timeline_item(item_name, day_timeline, time_hint=time_hint)
         if not tl_item and item_name_local:
-            tl_item = self._find_timeline_item(item_name_local, day_timeline)
+            tl_item = self._find_timeline_item(item_name_local, day_timeline, time_hint=time_hint)
 
         if tl_item and "start_time" in tl_item and "end_time" in tl_item:
             new_time = {"start": tl_item["start_time"], "end": tl_item["end_time"]}
@@ -285,7 +335,7 @@ class AgentDataSyncer:
 
                 original = deepcopy(meal)
                 self._inject_time(meal, day_tl, "meals", day_num,
-                                  default_duration=1.0)
+                                  default_duration=1.0, time_hint=meal_type)
                 if meal != original:
                     day[meal_type] = meal
                     modified = True
