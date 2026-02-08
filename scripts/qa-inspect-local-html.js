@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-const LOCAL_HTML = path.join(__dirname, '..', 'travel-plan-china-feb-15-mar-7-2026-20260202-195429.html');
+const LOCAL_HTML = path.join(__dirname, '..', 'output', 'travel-plan-china-feb-15-mar-7-2026-20260202-195429.html');
 const OUTPUT_DIR = path.join(__dirname, '..', 'docs', 'dev', 'playwright-screenshots');
 const REPORT_PATH = path.join(__dirname, '..', 'docs', 'dev', 'qa-report-playwright-20260207.json');
 

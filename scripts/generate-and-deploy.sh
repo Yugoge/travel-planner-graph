@@ -25,7 +25,8 @@ fi
 
 PLAN_ID="$1"
 DATA_DIR="$PROJECT_ROOT/data/$PLAN_ID"
-OUTPUT_FILE="$PROJECT_ROOT/travel-plan-${PLAN_ID}.html"
+mkdir -p "$PROJECT_ROOT/output"
+OUTPUT_FILE="$PROJECT_ROOT/output/travel-plan-${PLAN_ID}.html"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}🎨 Interactive HTML Generator & Deployer${NC}"

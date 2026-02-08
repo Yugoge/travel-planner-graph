@@ -12,7 +12,8 @@ VERSION_SUFFIX="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DATA_DIR="${PROJECT_ROOT}/data/${DESTINATION_SLUG}"
-OUTPUT_FILE="${PROJECT_ROOT}/travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
+mkdir -p "${PROJECT_ROOT}/output"
+OUTPUT_FILE="${PROJECT_ROOT}/output/travel-plan-${DESTINATION_SLUG}${VERSION_SUFFIX}.html"
 
 # Verify data directory exists
 if [[ ! -d "$DATA_DIR" ]]; then
