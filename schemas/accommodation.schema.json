@@ -2,33 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "accommodation.schema.json",
   "title": "Accommodation Agent Output",
-  "description": "Schema for the accommodation agent output. Each day contains a single accommodation entry with bilingual names, locations, costs, type, amenities, and optional check-in/check-out details.",
+  "description": "Schema for the accommodation agent output. STRICT: rating always present (null for unrated), no total_for_stay/total_cost (use notes), coordinates {lat,lng} only.",
   "type": "object",
   "properties": {
-    "agent": {
-      "type": "string",
-      "const": "accommodation"
-    },
-    "status": {
-      "type": "string",
-      "enum": ["complete"]
-    },
+    "agent": { "type": "string", "const": "accommodation" },
+    "status": { "type": "string", "enum": ["complete"] },
     "data": {
       "type": "object",
       "properties": {
-        "days": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/day_entry"
-          }
-        }
+        "days": { "type": "array", "items": { "$ref": "#/$defs/day_entry" } }
       },
       "required": ["days"],
       "additionalProperties": true
     },
-    "notes": {
-      "type": "string"
-    }
+    "notes": { "type": "string" }
   },
   "required": ["agent", "status", "data"],
   "additionalProperties": true,
@@ -37,105 +24,37 @@
     "accommodation_item": {
       "type": "object",
       "properties": {
-        "name_base": {
-          "type": "string",
-          "description": "Accommodation name in English/romanized form."
-        },
-        "name_local": {
-          "type": ["string", "null"],
-          "description": "Accommodation name in local script, or null."
-        },
-        "location_base": {
-          "type": "string",
-          "description": "Accommodation address in English/romanized form."
-        },
-        "location_local": {
-          "type": "string",
-          "description": "Accommodation address in local script."
-        },
-        "coordinates": {
-          "$ref": "poi-common.schema.json#/$defs/coordinates"
-        },
-        "cost": {
-          "$ref": "poi-common.schema.json#/$defs/cost_field",
-          "description": "Cost per night."
-        },
-        "type": {
-          "type": "string",
-          "description": "Accommodation type (e.g., 'Hotel', 'Vacation Rental (Airbnb)', 'Hostel', 'Guesthouse', 'Family Home Stay', 'Vacation Rental / Short-term Apartment')."
-        },
-        "amenities": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of amenities available."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Free-form notes about the accommodation."
-        },
-        "rating": {
-          "type": ["number", "null"],
-          "minimum": 0,
-          "maximum": 5,
-          "description": "Rating score (0-5 scale), or null for unrated accommodations (e.g., family homes, TBD rentals)."
-        },
-        "check_in": {
-          "type": "string",
-          "description": "Check-in time or description (e.g., '14:00', 'Previous day')."
-        },
-        "check_out": {
-          "type": "string",
-          "description": "Check-out time or description (e.g., '12:00', 'Morning Feb 17')."
-        },
-        "check_in_time": {
-          "type": "string",
-          "description": "Actual check-in time injected by sync agent (HH:MM format)."
-        },
-        "total_cost": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Total cost for the entire stay (for multi-night vacation rentals)."
-        },
-        "total_for_stay": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Alternate field for total stay cost."
-        },
+        "name_base": { "type": "string", "minLength": 1 },
+        "name_local": { "type": "string" },
+        "location_base": { "type": "string" },
+        "location_local": { "type": "string" },
+        "coordinates": { "$ref": "poi-common.schema.json#/$defs/coordinates" },
+        "cost": { "$ref": "poi-common.schema.json#/$defs/cost_field", "description": "Cost per night." },
+        "currency": { "$ref": "poi-common.schema.json#/$defs/currency_code" },
+        "type": { "type": "string" },
+        "amenities": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "rating": { "type": ["number", "null"], "minimum": 0, "maximum": 5, "description": "Rating 0-5, or null for unrated." },
+        "check_in": { "type": "string", "description": "Check-in time in HH:MM format." },
+        "check_out": { "type": "string", "description": "Check-out time or description." },
         "search_results": {
           "type": "array",
-          "items": {
-            "$ref": "poi-common.schema.json#/$defs/search_result"
-          }
-        },
-        "currency": {
-          "$ref": "poi-common.schema.json#/$defs/currency_code"
+          "items": { "$ref": "poi-common.schema.json#/$defs/search_result" }
         }
       },
-      "required": ["name_base", "name_local", "location_base", "location_local", "cost", "type", "amenities"],
-      "additionalProperties": true
+      "required": ["name_base", "name_local", "location_base", "location_local", "cost", "currency", "type", "amenities", "rating"],
+      "additionalProperties": false
     },
 
     "day_entry": {
       "type": "object",
       "properties": {
-        "day": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Day number in the trip (1-indexed)."
-        },
-        "date": {
-          "type": "string",
-          "description": "Date in YYYY-MM-DD format."
-        },
-        "location": {
-          "type": "string",
-          "description": "City or location for this day."
-        },
-        "accommodation": {
-          "$ref": "#/$defs/accommodation_item"
-        }
+        "day": { "type": "integer", "minimum": 1 },
+        "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "location": { "type": "string" },
+        "accommodation": { "$ref": "#/$defs/accommodation_item" }
       },
-      "required": ["day", "accommodation"],
+      "required": ["day", "date", "accommodation"],
       "additionalProperties": true
     }
   }
