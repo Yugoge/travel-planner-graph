@@ -245,24 +245,48 @@ class InteractiveHTMLGenerator:
         return None
 
     def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
-        """Find timeline entry for given item name with fuzzy matching
+        """Find timeline entry for given item name with precise matching.
 
-        Fix #6: Match POI names to timeline.json entries (root cause: timeline never read)
-        Supports exact match and partial match (ignoring parenthetical suffixes)
+        Root cause fix: Previous fuzzy matching matched "Travel to X"/"Walk to X"
+        transit entries instead of actual POI entries. Now excludes transit entries
+        and uses multi-tier matching: exact > base-name exact > substring (POI only).
         """
-        if not day_timeline:
+        if not day_timeline or not item_name:
             return None
 
-        # Try exact match first
+        # Transit prefixes to exclude from matching (these are travel segments, not POIs)
+        transit_prefixes = (
+            "travel to", "walk to", "drive to", "taxi to", "bus to",
+            "train to", "metro to", "subway to", "transfer to",
+            "travel from", "walk from", "drive from",
+            "travel back", "return to", "board train",
+            "hotel check", "check luggage", "wake up", "arrive ",
+            "return home", "free time",
+        )
+
+        def _is_transit(key: str) -> bool:
+            return key.lower().startswith(transit_prefixes)
+
+        # Tier 1: Exact match (highest priority)
         if item_name in day_timeline:
             return day_timeline[item_name]
 
-        # Try partial match (ignore text in parentheses for Chinese/English variants)
-        item_base = item_name.split("(")[0].strip()
-        for timeline_key in day_timeline.keys():
-            timeline_base = timeline_key.split("(")[0].strip()
-            if item_base == timeline_base or item_name in timeline_key or timeline_key in item_name:
-                return day_timeline[timeline_key]
+        # Tier 2: Base-name exact match (strip parenthetical Chinese/English suffixes)
+        item_base = item_name.split("(")[0].strip().split("（")[0].strip()
+        for timeline_key, timeline_val in day_timeline.items():
+            if _is_transit(timeline_key):
+                continue
+            timeline_base = timeline_key.split("(")[0].strip().split("（")[0].strip()
+            if item_base.lower() == timeline_base.lower():
+                return timeline_val
+
+        # Tier 3: Substring match - POI entries only (exclude transit)
+        # Only match if item_name is contained in timeline_key or vice versa
+        for timeline_key, timeline_val in day_timeline.items():
+            if _is_transit(timeline_key):
+                continue
+            if item_base.lower() in timeline_key.lower() or timeline_key.split("(")[0].strip().lower() in item_base.lower():
+                return timeline_val
 
         return None
 
