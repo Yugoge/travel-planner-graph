@@ -1,0 +1,99 @@
+{
+  "request_id": "dev-20260208-010850",
+  "timestamp": "2026-02-08T01:30:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Updated attractions.md agent prompt to use name_base/name_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/attractions.md"],
+        "changes": "Replaced 'Bilingual Annotation Format' with standardized name_base/name_local fields. Updated all examples to show China POIs with separate fields.",
+        "rationale": "Root cause (commit 8f2bddd) was bilingual format putting English first, breaking Gaode search. Standardized fields ensure name_local is used for map searches."
+      },
+      {
+        "id": 2,
+        "description": "Updated meals.md agent prompt to use name_base/name_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/meals.md"],
+        "changes": "Replaced 'Native Language Format' with standardized name_base/name_local fields. Updated all examples to show proper field usage.",
+        "rationale": "Ensures meals agent generates JSON with standardized bilingual fields for consistent image search."
+      },
+      {
+        "id": 3,
+        "description": "Updated entertainment.md agent prompt to use name_base/name_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/entertainment.md"],
+        "changes": "Replaced 'Bilingual Annotation Format' with standardized name_base/name_local fields.",
+        "rationale": "Consistency across all POI-generating agents."
+      },
+      {
+        "id": 4,
+        "description": "Updated shopping.md agent prompt to use name_base/name_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/shopping.md"],
+        "changes": "Replaced 'Bilingual Annotation Format' with standardized name_base/name_local fields.",
+        "rationale": "Consistency across all POI-generating agents."
+      },
+      {
+        "id": 5,
+        "description": "Updated accommodation.md agent prompt to use name_base/name_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/accommodation.md"],
+        "changes": "Added standardized name_base/name_local and location_base/location_local fields.",
+        "rationale": "Consistency across all agents, even though accommodation doesn't use image search."
+      },
+      {
+        "id": 6,
+        "description": "Updated transportation.md agent prompt to use from_base/from_local fields",
+        "type": "config",
+        "files_modified": [".claude/agents/transportation.md"],
+        "changes": "Added standardized from_base/from_local and to_base/to_local fields for city names.",
+        "rationale": "Consistency across all agents for bilingual city naming."
+      },
+      {
+        "id": 7,
+        "description": "Modified fetch-images-batch.py to use name_local for searches",
+        "type": "script",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Replaced chinese_name parameter with name_local. Updated all POI extraction logic to read name_base and name_local fields with backward compatibility fallback to old name/name_chinese fields.",
+        "rationale": "Direct implementation of standardized field usage. Searches now use name_local (native language) for Gaode Maps, fixing the root cause where English names were used."
+      },
+      {
+        "id": 8,
+        "description": "Added language toggle to HTML generator",
+        "type": "script",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added React state for language preference (local/base). Created getDisplayName() helper function. Added language toggle buttons (Local/EN) to UI. Updated merge logic to populate name_base and name_local fields with backward compatibility. Updated all POI display locations to use getDisplayName() instead of direct item.name.",
+        "rationale": "Allows users to toggle between native language and English names in the HTML viewer. Default shows local language, matching the search principle."
+      }
+    ],
+    "scripts_created": [],
+    "files_modified": [
+      ".claude/agents/attractions.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "git_rationale": {
+      "root_cause_commit": "8f2bddd",
+      "why_issue_occurred": "Bilingual Annotation Format placed English name first in format 'English (中文)', causing English names to be extracted and used for Gaode Maps searches. This violated the core principle 'search in destination country's native language' and returned incorrect images for China POIs.",
+      "how_fix_addresses_root": "Standardized name_base and name_local fields ensure separation of concerns: name_base for international communication (English), name_local for native searches (Chinese for China, Japanese for Japan, etc). Image search scripts now explicitly use name_local, guaranteeing correct language is used per destination."
+    },
+    "qa_ready": true,
+    "qa_notes": "To verify fix: 1) Re-run meals agent to generate new JSON with name_base/name_local fields. 2) Run fetch-images-batch.py and verify it uses name_local (Chinese) for Gaode searches. 3) Generate HTML and verify language toggle button appears and works correctly. 4) Verify old JSON files still work (backward compatibility via fallback logic).",
+    "backward_compatibility_notes": "Full backward compatibility maintained. All scripts check for name_base/name_local first, then fallback to old name/name_chinese/name_en fields. Existing JSON files will continue to work with _extract_chinese_name() fallback. New agent runs will generate standardized fields.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "After agents regenerate JSON with new fields, remove _extract_chinese_name() function from fetch-images-batch.py (no longer needed)",
+    "Consider adding base_lang configuration to requirements-skeleton.json for future extensibility",
+    "Test HTML language toggle with real data from multiple destinations (China, Japan, Korea, USA)"
+  ]
+}

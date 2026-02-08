@@ -1051,7 +1051,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp }) => {
 // ============================================================
 // ITEM DETAIL SIDEBAR
 // ============================================================
-const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
+const ItemDetailSidebar = ({ item, type, onClose, bp, lang }) => {
   if (!item) return null;
   const sm = bp === 'sm';
   const W = sm ? '85%' : '400px';
@@ -1092,14 +1092,8 @@ const ItemDetailSidebar = ({ item, type, onClose, bp }) => {
         )}
 
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#37352f', margin: '0 0 4px' }}>
-          {item.name}
+          {getDisplayName(item, lang)}
         </h2>
-        {item.name_en && (
-          <div style={{ fontSize: '14px', color: '#9b9a97', marginBottom: '20px' }}>{item.name_en}</div>
-        )}
-        {item.name_cn && (
-          <div style={{ fontSize: '14px', color: '#9b9a97', marginBottom: '20px' }}>{item.name_cn}</div>
-        )}
 
         <div style={{ borderTop: '1px solid #f0efed', paddingTop: '16px' }}>
           {item.time && (
@@ -1306,7 +1300,16 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
 // ============================================================
 // KANBAN VIEW
 // ============================================================
-const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetClick }) => {
+// Root cause fix (commit 8f2bddd): Helper to get display name based on language preference
+const getDisplayName = (item, lang) => {
+  if (!item) return '';
+  if (lang === 'base') {
+    return item.name_base || item.name || '';
+  }
+  return item.name_local || item.name || '';
+};
+
+const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBudgetClick }) => {
   const sm = bp === 'sm';
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
 
@@ -1391,7 +1394,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                   </div>
                   <div style={{ padding: '12px 14px' }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '6px' }}>
-                      {lb}: {meal.name}
+                      {lb}: {getDisplayName(meal, lang)}
                     </div>
                     {meal.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{meal.name_en}</div>}
                     <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
@@ -1427,8 +1430,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                       <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                     </div>
                     <div style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{attr.name}</div>
-                      {attr.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{attr.name_en}</div>}
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{getDisplayName(attr, lang)}</div>
                       <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
@@ -1441,8 +1443,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                       <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '160px' }} onError={e => e.target.style.display = 'none'} />
                     </div>
                     <div style={{ padding: '14px 16px', flex: 1, lineHeight: 1.7 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>{attr.name}</div>
-                      {attr.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{attr.name_en}</div>}
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>{getDisplayName(attr, lang)}</div>
                       {attr.location && <PropLine label="Location" value={attr.location} />}
                       <PropLine label="Type" value={attr.type} />
                       <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
@@ -1483,8 +1484,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
                       </div>
                     )}
                     <div style={{ padding: '14px 16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{ent.name}</div>
-                      {ent.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{ent.name_en}</div>}
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{getDisplayName(ent, lang)}</div>
                       <PropLine label="Type" value={ent.type} />
                       <PropLine label="Cost" value={ent.cost === 0 ? 'Free' : `${ent.cost.toFixed(2)} CNY`} />
                       <PropLine label="Duration" value={ent.duration} />
@@ -1650,7 +1650,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, onItemClick, onBudgetCl
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TimelineView = ({ day, bp, onItemClick }) => {
+const TimelineView = ({ day, bp, lang, onItemClick }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
   const [topItemIndex, setTopItemIndex] = useState(null);
   const sm = bp === 'sm';
@@ -1773,7 +1773,7 @@ const TimelineView = ({ day, bp, onItemClick }) => {
                       {entry._type === 'transportation' ? (
                         <span>{entry.icon} {entry._label}</span>
                       ) : (
-                        <span>{entry._label}: {entry.name}</span>
+                        <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                       )}
                     </div>
                     {entry._type === 'transportation' ? (
@@ -1947,12 +1947,14 @@ function NotionTravelApp() {
                 tripSummary={PLAN_DATA.trip_summary}
                 showSummary={selDay === 0 && selTrip === 0}
                 bp={bp}
+                lang={lang}
                 onItemClick={handleItemClick}
                 onBudgetClick={handleBudgetClick}
               />
             : <TimelineView
                 day={day}
                 bp={bp}
+                lang={lang}
                 onItemClick={handleItemClick}
               />
         ) : (
@@ -1969,6 +1971,7 @@ function NotionTravelApp() {
             type={selectedItem.type}
             onClose={() => setSelectedItem(null)}
             bp={bp}
+            lang={lang}
           />
         )}
 
