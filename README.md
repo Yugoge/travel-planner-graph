@@ -8,6 +8,7 @@ This repository contains auto-generated travel plans from the travel-planner.
 
 - [China Feb 15 Mar 7 2026 20260202 195429.html - 2026-02-08](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-08/)
 - [China Feb 15 Mar 7 2026 20260202 195429.html - 2026-02-07](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-07/)
+- [China Exchange Bucket List 2026.html - 2026-02-08](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-08/)
 - [China Exchange Bucket List 2026.html - 2026-02-07](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-07/)
 - [China Exchange Bucket List 2026.html - 2026-02-06](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-06/)
 - [China Exchange - 2026-02-25](https://Yugoge.github.io/travel-planner-graph/china-exchange/2026-02-25/)
