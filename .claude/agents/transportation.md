@@ -154,6 +154,10 @@ Write(
 )
 ```
 
+**Schema**: `schemas/transportation.schema.json` (references `schemas/poi-common.schema.json`)
+**Required fields**: `from`/`to` (or `from_base`/`to_base`), `transportation`, `departure_time`, `arrival_time`, `duration_minutes`, `cost`
+**Validated by**: `scripts/validate-agent-outputs.py`
+
 **JSON Format**:
 ```json
 {

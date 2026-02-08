@@ -35,6 +35,7 @@ AGENT_SCHEMA_MAP = {
     "transportation": "transportation.schema.json",
     "timeline": "timeline.schema.json",
     "budget": "budget.schema.json",
+    "shopping": "shopping.schema.json",
 }
 
 # China coordinate bounds for geographic sanity checks

@@ -515,7 +515,7 @@ class AgentDataSyncer:
             validation_errors = []
             agents_to_check = [
                 "meals", "attractions", "entertainment",
-                "accommodation", "transportation", "timeline", "budget",
+                "accommodation", "transportation", "timeline", "budget", "shopping",
             ]
 
             for agent_name in agents_to_check:

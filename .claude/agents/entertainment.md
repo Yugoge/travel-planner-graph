@@ -175,6 +175,10 @@ Write(
 )
 ```
 
+**Schema**: `schemas/entertainment.schema.json` (references `schemas/poi-common.schema.json`)
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `type`
+**Validated by**: `scripts/validate-agent-outputs.py`
+
 **JSON Format**:
 ```json
 {

@@ -136,6 +136,10 @@ Write(
 )
 ```
 
+**Schema**: `schemas/budget.schema.json`
+**Required fields**: Per day: `meals`, `accommodation`, `activities`, `shopping`, `transportation`, `total`. Trip level: `trip_total`, `user_budget`, `overage`, `overage_percentage`
+**Validated by**: `scripts/validate-agent-outputs.py`
+
 **JSON Format**:
 ```json
 {

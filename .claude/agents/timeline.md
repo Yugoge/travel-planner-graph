@@ -144,6 +144,10 @@ Write(
 )
 ```
 
+**Schema**: `schemas/timeline.schema.json`
+**Required fields**: Each activity entry needs `start_time`, `end_time` (HH:MM format)
+**Validated by**: `scripts/validate-agent-outputs.py`
+
 **JSON Format**:
 ```json
 {
