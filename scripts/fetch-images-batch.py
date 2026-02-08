@@ -229,12 +229,12 @@ class BatchImageFetcher:
             print(f"  Google Maps error for {poi_name}: {e}")
             return None
 
-    def _gaode_search(self, search_name: str, city: str, typecodes: str) -> Optional[str]:
-        """Execute a single Gaode POI search and return photo URL if found"""
+    def _gaode_search(self, search_name: str, city: str) -> Optional[str]:
+        """Execute a Gaode POI search and return photo URL if found"""
         try:
             script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
             result = subprocess.run(
-                [self.venv_python, str(script_path), "keyword", search_name, city, typecodes],
+                [self.venv_python, str(script_path), "keyword", search_name, city],
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -258,15 +258,19 @@ class BatchImageFetcher:
 
         return None
 
-    def fetch_poi_photo_gaode(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
-        """Fetch POI photo using Gaode Maps skill script
+    def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
+        """Fetch POI photo using configured map service.
 
-        Root cause fix (commit 8f2bddd): Use name_local for native-language searches
-        User principle: 搜索哪一国景点就用哪一国自己的语言
+        Reads map_service from requirements-skeleton.json config.
+        Uses name_local for search (native language), falls back to poi_name.
         """
         search_name = name_local if name_local else poi_name
-        typecodes = "餐饮服务|风景名胜|购物服务|生活服务|体育休闲服务|住宿服务|科教文化服务"
-        return self._gaode_search(search_name, city, typecodes)
+        service = self.config.get("map_service", "google")
+
+        if service == "gaode":
+            return self._gaode_search(search_name, city)
+        else:
+            return self.fetch_poi_photo_google(search_name, city)
 
     def fetch_cities(self, limit: int = 5):
         """Fetch city cover photos (limited batch)"""
@@ -293,6 +297,7 @@ class BatchImageFetcher:
                 continue
 
             print(f"  Fetching {city}...", end=" ")
+            # City covers always use Google (better coverage for skyline/cityscape photos)
             photo_url = self.fetch_city_photo_google(city)
 
             if photo_url:
@@ -305,30 +310,18 @@ class BatchImageFetcher:
 
         print(f"  Total fetched: {fetched}/{limit}")
 
-    def _is_hong_kong_macau(self, location: str) -> bool:
-        """Detect if location is Hong Kong or Macau (use Google Maps)"""
-        location_lower = location.lower()
-        return "hong kong" in location_lower or "hongkong" in location_lower or \
-               "macau" in location_lower or "macao" in location_lower or \
-               "香港" in location or "澳门" in location
-
-    def _extract_chinese_name(self, name: str) -> str:
-        """Extract Chinese name from bilingual format
-
-        Root cause fix (Issue #3): Agent outputs use bilingual format in single field.
-        Gaode Maps requires Chinese names for accurate mainland China POI search.
+    def _extract_local_name(self, name: str) -> str:
+        """Extract non-Latin local name from bilingual format (backward compat for old JSON).
 
         Handles two formats:
-        - Format 1 (attractions): 'English Name (中文名)' → extract from parentheses
-        - Format 2 (entertainment): '中文名 (English Name)' → extract before parentheses
-
-        Also handles trailing text like " - Optional" after parentheses.
+        - 'English Name (本地名)' → extract from parentheses
+        - '本地名 (English Name)' → extract before parentheses
 
         Args:
-            name: POI name, possibly bilingual format or plain name
+            name: POI name, possibly bilingual format
 
         Returns:
-            Chinese text if found, otherwise empty string
+            Local name if found, otherwise empty string
 
         Examples:
             'Raffles City Observation Deck (来福士观景台)' -> '来福士观景台'
@@ -346,27 +339,23 @@ class BatchImageFetcher:
         before_paren = match.group(1).strip()
         inside_paren = match.group(2).strip()
 
-        # Detect if text before parentheses contains Chinese characters
-        # Chinese Unicode ranges: \u4e00-\u9fff (CJK Unified Ideographs)
-        has_chinese_before = bool(re.search(r'[\u4e00-\u9fff]', before_paren))
+        # Detect if text before parentheses contains CJK characters
+        # Covers Chinese, Japanese kanji, Korean hanja
+        has_cjk_before = bool(re.search(r'[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]', before_paren))
 
-        if has_chinese_before:
-            # Format 2: Chinese (English) - entertainment style
+        if has_cjk_before:
+            # Format: LocalName (English)
             return before_paren
         else:
-            # Format 1: English (Chinese) - attractions style
+            # Format: English (LocalName)
             return inside_paren
 
     def fetch_pois(self, limit: int = 10):
-        """Fetch POI photos from all agent files (limited batch)
+        """Fetch POI photos from all agent files (limited batch).
 
-        Root cause fix (commit 8f2bddd): Use standardized name_local field for native-language search
-        - Mainland China → use name_local (Chinese) + Gaode Maps
-        - Hong Kong/Macau → use name_base (English) + Google Maps
-        - Hotels → fetch images for accommodation
-        - Backward compatible: Falls back to name_chinese or _extract_chinese_name() for old JSON
-
-        Supports both days format (itinerary) and cities format (bucket list).
+        Uses map_service from requirements-skeleton.json config to choose search engine.
+        Searches with name_local (native language) for accurate results.
+        Backward compatible: falls back to _extract_local_name() for old JSON format.
         """
         print(f"\n📍 Fetching POI photos (max {limit})...")
 
@@ -409,7 +398,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -432,7 +421,7 @@ class BatchImageFetcher:
                             if not name_base:
                                 name_base = meal.get("name", "")
                             if not name_local:
-                                name_local = meal.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                                name_local = meal.get("name_chinese", "") or self._extract_local_name(name_base)
 
                             if name_base:
                                 pois.append({
@@ -454,7 +443,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = acc.get("name", "")
                         if not name_local:
-                            name_local = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_chinese_name(name_base)
+                            name_local = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -475,7 +464,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -500,7 +489,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -521,7 +510,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -542,7 +531,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", item.get("name_cn", "")) or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", item.get("name_cn", "")) or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -563,7 +552,7 @@ class BatchImageFetcher:
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:
-                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
                             pois.append({
@@ -575,35 +564,23 @@ class BatchImageFetcher:
 
         print(f"  Found {len(pois)} POIs across all agent files")
 
+        service = self.config.get("map_service", "google")
+
         fetched = 0
         for poi in pois[:limit]:
-            is_hk_macau = self._is_hong_kong_macau(poi['city'])
-
-            # Determine cache key and search method based on location
-            if is_hk_macau:
-                cache_key = f"google_{poi['name']}"
-                service = "Google"
-            else:
-                cache_key = f"gaode_{poi['name']}"
-                service = "Gaode"
+            cache_key = f"{service}_{poi['name']}"
 
             if cache_key in self.cache["pois"] and not self.force_refresh:
-                print(f"  ✓ {poi['name']} ({poi['type']}, cached, {service})")
+                print(f"  ✓ {poi['name']} ({poi['type']}, cached)")
                 continue
 
             print(f"  Fetching {poi['name']} ({poi['type']}, {service})...", end=" ")
 
-            # Use appropriate search method
-            if is_hk_macau:
-                # Use Google Maps for Hong Kong/Macau with English name
-                photo_url = self.fetch_poi_photo_google(poi['name'], poi['city'])
-            else:
-                # Use Gaode Maps for mainland China with native language name
-                photo_url = self.fetch_poi_photo_gaode(
-                    poi['name'],
-                    poi['city'],
-                    name_local=poi.get('name_local')
-                )
+            photo_url = self.fetch_poi_photo(
+                poi['name'],
+                poi['city'],
+                name_local=poi.get('name_local')
+            )
 
             if photo_url:
                 self.cache["pois"][cache_key] = photo_url
@@ -624,7 +601,7 @@ def main():
 
     import argparse
 
-    parser = argparse.ArgumentParser(description='Batch fetch images from Google Maps and Gaode Maps')
+    parser = argparse.ArgumentParser(description='Batch fetch POI images using map_service from config')
     parser.add_argument('destination', help='Destination slug (e.g., china-feb-15-mar-7-2026-20260202-195429)')
     parser.add_argument('city_limit', nargs='?', type=int, default=5, help='Max cities to fetch (default: 5)')
     parser.add_argument('poi_limit', nargs='?', type=int, default=10, help='Max POIs to fetch (default: 10)')
