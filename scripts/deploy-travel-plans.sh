@@ -6,7 +6,7 @@
 set -e
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_NAME="travel-planner-graph"
+REPO_NAME="${GITHUB_PAGES_REPO:-travel-planner-graph}"
 BRANCH="${GITHUB_PAGES_BRANCH:-gh-pages}"
 TEMP_BASE="${TEMP_DIR:-/tmp}"
 DEPLOY_DIR="${TEMP_BASE}/${REPO_NAME}-deploy"

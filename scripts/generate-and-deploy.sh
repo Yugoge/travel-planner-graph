@@ -43,6 +43,17 @@ echo -e "${GREEN}✓${NC} Plan ID: ${YELLOW}$PLAN_ID${NC}"
 echo -e "${GREEN}✓${NC} Data directory: $DATA_DIR"
 echo ""
 
+# Activate virtual environment
+if [[ -f "${PROJECT_ROOT}/venv/bin/activate" ]]; then
+    source "${PROJECT_ROOT}/venv/bin/activate"
+elif [[ -f "${PROJECT_ROOT}/.claude/venv/bin/activate" ]]; then
+    source "${PROJECT_ROOT}/.claude/venv/bin/activate"
+elif [[ -f "/root/.claude/venv/bin/activate" ]]; then
+    source "/root/.claude/venv/bin/activate"
+else
+    echo -e "${YELLOW}⚠${NC}  Virtual environment not found, using system Python" >&2
+fi
+
 # Step 1: Fetch real images from Google Maps and Gaode Maps
 echo -e "${BLUE}[1/5]${NC} Fetching real photos from Google Maps and Gaode Maps..."
 cd "$PROJECT_ROOT"

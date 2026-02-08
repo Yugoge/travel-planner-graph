@@ -42,7 +42,9 @@ class BatchImageFetcher:
     def _find_venv_python(self) -> str:
         """Find Python in venv or fallback to system python3"""
         candidates = [
+            self.base_dir / "venv/bin/python3",
             self.base_dir / ".venv/bin/python3",
+            self.base_dir / ".claude/venv/bin/python3",
             Path.home() / ".claude/venv/bin/python3",
             Path("/usr/bin/python3"),
         ]
