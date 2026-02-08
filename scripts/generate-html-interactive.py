@@ -665,9 +665,8 @@ class InteractiveHTMLGenerator:
                         if normalized_acc_time:
                             acc_time = normalized_acc_time
 
-                # Note (issue #1): accommodation cost may be in EUR not CNY for some data sources.
-                # If cost seems unusually low for the region (e.g., < 200 for a 4-5 star hotel in China),
-                # it may actually be in EUR. Review source data if prices look incorrect.
+                # Pass currency through so HTML can display in base currency
+                acc_currency = acc.get("currency", "CNY")
 
                 merged["accommodation"] = {
                     "name": acc_name_local if acc_name_local else acc_name_base,
@@ -680,6 +679,8 @@ class InteractiveHTMLGenerator:
                     "location_local": acc.get("location_local", acc.get("location", "")),
                     "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
+                    "cost_eur": cost_eur,
+                    "currency": acc_currency,
                     "stars": acc.get("stars", 3),
                     "time": acc_time,
                     "links": acc.get("links", {}),
@@ -1837,7 +1838,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                     <PropLine label="Type" value={day.accommodation.type} />
                     <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
                     <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} />} />
-                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
+                    <PropLine label="Cost" value={<>{fmtCost(day.accommodation.cost)}{day.accommodation.cost_eur > 0 && ` (€${day.accommodation.cost_eur.toFixed(0)}/night)`}</>} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
