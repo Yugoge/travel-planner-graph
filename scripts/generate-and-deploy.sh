@@ -42,20 +42,26 @@ echo -e "${GREEN}✓${NC} Plan ID: ${YELLOW}$PLAN_ID${NC}"
 echo -e "${GREEN}✓${NC} Data directory: $DATA_DIR"
 echo ""
 
-# Step 1: Fetch real images from Google Maps and Gaode Maps (FORCE REFRESH ALL)
-echo -e "${BLUE}[1/5]${NC} Fetching ALL photos from Google Maps and Gaode Maps..."
-echo -e "${YELLOW}⚡${NC} Force mode: Re-fetching all images (ignoring cache)"
+# Step 1: Fetch real images from Google Maps and Gaode Maps
+echo -e "${BLUE}[1/5]${NC} Fetching real photos from Google Maps and Gaode Maps..."
 cd "$PROJECT_ROOT"
 
-# Force re-fetch ALL images (no cache, no limit)
-# Max limit: 300 to ensure we get all POIs (attractions + meals + accommodation + entertainment)
-python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 --force || {
-    echo -e "${RED}❌${NC}  Image fetch failed, trying without force..."
-    python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 5 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
-}
-
-# Show cache status
+# Check if images.json exists and has photos
 IMAGES_FILE="$DATA_DIR/images.json"
+if [ -f "$IMAGES_FILE" ]; then
+    POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
+    if [ "$POI_COUNT" -gt "50" ]; then
+        echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
+    else
+        echo -e "${YELLOW}⚠${NC}  Only $POI_COUNT POI photos cached, fetching more (limit 300)..."
+        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
+    fi
+else
+    echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 300 POIs..."
+    python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+fi
+
+# Show final cache status
 if [ -f "$IMAGES_FILE" ]; then
     POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
     echo -e "${GREEN}✓${NC} Total cached POI photos: $POI_COUNT"
