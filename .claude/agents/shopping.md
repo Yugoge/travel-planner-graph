@@ -74,8 +74,8 @@ For each day in the trip:
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
 
-   **CRITICAL: `name_local` MUST be the real POI name as it appears on Gaode/Google Maps.**
-   Do NOT invent or translate names. Use the actual registered name from map search results.
+   **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
+   No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
 
    ```json
    {

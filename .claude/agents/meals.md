@@ -73,10 +73,8 @@ For each day in the trip:
    - Korea POI → `name_local` in Korean
    - If destination language = `base_lang` → `name_local` same as `name_base`
 
-   **CRITICAL: `name_local` MUST be the real POI name as it appears on Gaode/Google Maps.**
-   Do NOT invent or translate names. Use the actual registered business name from map search results.
-   - WRONG: "来福士购物中心美食广场" (does not exist on Gaode)
-   - RIGHT: "超食代美食街区(重庆来福士店)" (actual business name on Gaode)
+   **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
+   No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
 
    ```json
    {

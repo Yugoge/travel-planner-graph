@@ -17,7 +17,7 @@ class TimelineAgent:
     def __init__(self, destination_slug: str):
         """Initialize the timeline agent with a destination."""
         self.destination_slug = destination_slug
-        self.data_dir = Path(f"/root/travel-planner/data/{destination_slug}")
+        self.data_dir = Path(__file__).parent.parent / "data" / destination_slug
         self.warnings = []
         self.timeline_data = None
 
