@@ -70,6 +70,9 @@ For each day in the trip:
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
 
+   **CRITICAL: `name_local` MUST be the real POI name as it appears on Gaode/Google Maps.**
+   Do NOT invent or translate names. Use the actual registered name from map search results.
+
    ```json
    {
      "name_base": "Nanshan Night View",

@@ -30,11 +30,35 @@ class BatchImageFetcher:
         self.base_dir = Path(__file__).parent.parent
         self.data_dir = self.base_dir / "data" / destination_slug
         self.cache_file = self.data_dir / "images.json"
-        self.venv_python = "/root/.claude/venv/bin/python3"
+        self.venv_python = self._find_venv_python()
         self.force_refresh = False  # Set to True to ignore cache and re-fetch all
+
+        # Load config from requirements-skeleton.json
+        self.config = self._load_config()
 
         # Load cache
         self.cache = self._load_cache()
+
+    def _find_venv_python(self) -> str:
+        """Find Python in venv or fallback to system python3"""
+        candidates = [
+            self.base_dir / ".venv/bin/python3",
+            Path.home() / ".claude/venv/bin/python3",
+            Path("/usr/bin/python3"),
+        ]
+        for p in candidates:
+            if p.exists():
+                return str(p)
+        return "python3"
+
+    def _load_config(self) -> dict:
+        """Load trip config from requirements-skeleton.json"""
+        config_path = self.data_dir / "requirements-skeleton.json"
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get("trip_summary", {})
+        return {}
 
     def _load_cache(self):
         """Load existing cache or create new"""
@@ -240,31 +264,9 @@ class BatchImageFetcher:
         Root cause fix (commit 8f2bddd): Use name_local for native-language searches
         User principle: 搜索哪一国景点就用哪一国自己的语言
         """
-        # Use name_local for search if available (standardized bilingual field)
-        # Fallback to poi_name for backward compatibility with old JSON
         search_name = name_local if name_local else poi_name
-
-        # Broad typecodes covering restaurants, attractions, shopping, entertainment, hotels
         typecodes = "餐饮服务|风景名胜|购物服务|生活服务|体育休闲服务|住宿服务|科教文化服务"
-
-        # Try 1: Search with full name_local
-        url = self._gaode_search(search_name, city, typecodes)
-        if url:
-            return url
-
-        # Try 2: If name_local is long, try a shorter version (first meaningful segment)
-        # e.g. "来福士购物中心美食广场" → "来福士购物中心" or "来福士"
-        if search_name and len(search_name) > 4:
-            # Try removing common suffixes
-            for suffix in ["美食广场", "美食城", "餐饮区", "美食街", "美食", "广场", "中心"]:
-                if search_name.endswith(suffix) and len(search_name) > len(suffix) + 2:
-                    shorter = search_name[:-len(suffix)]
-                    url = self._gaode_search(shorter, city, typecodes)
-                    if url:
-                        return url
-                    break  # Only try one suffix removal
-
-        return None
+        return self._gaode_search(search_name, city, typecodes)
 
     def fetch_cities(self, limit: int = 5):
         """Fetch city cover photos (limited batch)"""
