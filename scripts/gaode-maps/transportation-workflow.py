@@ -130,7 +130,7 @@ def research_route(
 
 def transportation_agent_workflow(
     destination_slug: str,
-    data_dir: str = '/root/travel-planner/data',
+    data_dir: str = str(Path(__file__).parent.parent.parent / 'data'),
     rate_limit_delay: float = 0.2
 ) -> str:
     """Complete transportation agent workflow.
@@ -253,8 +253,8 @@ def main():
     parser.add_argument(
         '-d', '--data-dir',
         type=str,
-        default='/root/travel-planner/data',
-        help='Base data directory (default: /root/travel-planner/data)'
+        default=str(Path(__file__).parent.parent.parent / 'data'),
+        help='Base data directory (default: <project_root>/data)'
     )
     parser.add_argument(
         '-r', '--rate-limit-delay',

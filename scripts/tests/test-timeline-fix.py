@@ -10,7 +10,8 @@ Tests:
 """
 
 import sys
-sys.path.insert(0, '/root/travel-planner/scripts')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from timeline_agent import TimelineAgent
 

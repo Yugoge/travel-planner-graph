@@ -6,6 +6,9 @@
 import subprocess
 import json
 import sys
+from pathlib import Path
+
+PROJECT_ROOT = str(Path(__file__).parent.parent.parent)
 
 def run_test(skill_name, description, command, expected_patterns=None):
     """运行单个测试"""

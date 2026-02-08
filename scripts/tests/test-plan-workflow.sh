@@ -94,13 +94,13 @@ test_start "Test Python HTML generator module import"
 # Activate venv
 if [[ -f "${PROJECT_ROOT}/venv/bin/activate" ]]; then
   source "${PROJECT_ROOT}/venv/bin/activate"
-elif [[ -f /root/.claude/venv/bin/activate ]]; then
-  source /root/.claude/venv/bin/activate
+elif [[ -f "$HOME/.claude/venv/bin/activate" ]]; then
+  source "$HOME/.claude/venv/bin/activate"
 fi
 
 IMPORT_TEST=$(python - <<'PYTHON_TEST'
 import sys
-sys.path.insert(0, '/root/travel-planner/scripts')
+sys.path.insert(0, '${PROJECT_ROOT}/scripts')
 
 try:
     from lib.html_generator import TravelPlanHTMLGenerator

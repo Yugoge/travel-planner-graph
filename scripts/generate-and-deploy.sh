@@ -48,8 +48,8 @@ if [[ -f "${PROJECT_ROOT}/venv/bin/activate" ]]; then
     source "${PROJECT_ROOT}/venv/bin/activate"
 elif [[ -f "${PROJECT_ROOT}/.claude/venv/bin/activate" ]]; then
     source "${PROJECT_ROOT}/.claude/venv/bin/activate"
-elif [[ -f "/root/.claude/venv/bin/activate" ]]; then
-    source "/root/.claude/venv/bin/activate"
+elif [[ -f "$HOME/.claude/venv/bin/activate" ]]; then
+    source "$HOME/.claude/venv/bin/activate"
 else
     echo -e "${YELLOW}⚠${NC}  Virtual environment not found, using system Python" >&2
 fi

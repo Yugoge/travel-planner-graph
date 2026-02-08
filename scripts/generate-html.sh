@@ -24,8 +24,8 @@ fi
 # Activate virtual environment (try project venv first, then global)
 if [[ -f "${PROJECT_ROOT}/.claude/venv/bin/activate" ]]; then
   source "${PROJECT_ROOT}/.claude/venv/bin/activate"
-elif [[ -f "/root/.claude/venv/bin/activate" ]]; then
-  source "/root/.claude/venv/bin/activate"
+elif [[ -f "$HOME/.claude/venv/bin/activate" ]]; then
+  source "$HOME/.claude/venv/bin/activate"
 else
   echo "Warning: Virtual environment not found, using system Python" >&2
 fi

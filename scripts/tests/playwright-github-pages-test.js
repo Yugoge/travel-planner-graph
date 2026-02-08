@@ -2,9 +2,10 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-const TARGET_URL = 'https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202/2026-02-02/';
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
+const TARGET_URL = process.env.GITHUB_PAGES_URL || 'https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202/2026-02-02/';
 const EXPECTED_BEIGE_BG = 'rgb(245, 241, 232)'; // #F5F1E8
-const OUTPUT_DIR = '/root/travel-planner/docs/dev/playwright-judge5-output';
+const OUTPUT_DIR = path.join(PROJECT_ROOT, 'docs', 'dev', 'playwright-judge5-output');
 const SCREENSHOT_DIR = path.join(OUTPUT_DIR, 'screenshots');
 
 // Ensure output directories exist
@@ -518,12 +519,12 @@ async function testGitHubPagesDeployment() {
   }
 
   // Save report
-  const reportPath = '/root/travel-planner/docs/dev/judge-5-github-pages-20260203.json';
+  const reportPath = path.join(PROJECT_ROOT, 'docs', 'dev', 'judge-5-github-pages-20260203.json');
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
   console.log(`\n💾 Report saved to: ${reportPath}`);
 
   // Save summary
-  const summaryPath = '/root/travel-planner/docs/dev/judge-5-github-pages-20260203-summary.md';
+  const summaryPath = path.join(PROJECT_ROOT, 'docs', 'dev', 'judge-5-github-pages-20260203-summary.md');
   const summary = generateSummary(report);
   fs.writeFileSync(summaryPath, summary);
   console.log(`💾 Summary saved to: ${summaryPath}`);

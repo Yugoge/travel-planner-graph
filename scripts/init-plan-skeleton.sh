@@ -34,8 +34,8 @@ echo "Output: ${OUTPUT_PATH}"
 # Activate virtual environment
 if [[ -f "${PROJECT_ROOT}/venv/bin/activate" ]]; then
   source "${PROJECT_ROOT}/venv/bin/activate"
-elif [[ -f /root/.claude/venv/bin/activate ]]; then
-  source /root/.claude/venv/bin/activate
+elif [[ -f "$HOME/.claude/venv/bin/activate" ]]; then
+  source "$HOME/.claude/venv/bin/activate"
 else
   echo "Error: Virtual environment not found" >&2
   exit 1
