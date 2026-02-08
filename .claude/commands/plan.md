@@ -594,7 +594,9 @@ Use Task tool with:
 
   3. Detect conflicts: overlapping times, unrealistic travel, tight schedules
 
-  4. Save to: data/{destination-slug}/timeline.json
+  4. **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
+     Use Write tool explicitly (see timeline.md Step 3 for details).
+     Root Cause Reference (commit ef0ed28): Explicit Write instruction prevents timeline data loss.
 
   **IMPORTANT**:
   - If any locations lack GPS coordinates, optimize only locations with valid coordinates
@@ -607,13 +609,30 @@ Use Task tool with:
 
 Wait for agent to return "complete".
 
-**Verification**: Confirm both files exist before proceeding:
+**Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires explicit verification after subagent completion.
+
+**Step 1**: Confirm both files exist:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/route-optimization.json && echo "route-optimization.json verified" || echo "missing"
 test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "missing"
 ```
 
 If either file missing: Debug timeline-agent execution and retry.
+
+**Step 2**: Read and verify timeline.json content (equity-analyst pattern):
+```bash
+Read data/{destination-slug}/timeline.json
+```
+
+**Step 3**: Validate timeline data completeness:
+- Verify JSON contains "data.days" array
+- Verify at least one day has non-empty "timeline" dictionary (not {})
+- Count days with populated timeline data
+
+**Step 4**: If timeline.json has empty timeline dictionaries for all days:
+- Flag as data loss error
+- Re-invoke timeline-agent with explicit Write instruction reminder
+- Do NOT proceed to Step 11 until timeline data is verified
 
 #### Step 11: Validate Timeline Consistency
 
@@ -981,7 +1000,11 @@ Use Task tool with:
   - data/{destination-slug}/transportation.json (Day {N})
 
   Recalculate timeline ONLY for Day {N}.
-  Update data/{destination-slug}/timeline.json (Day {N} section only).
+
+  **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json** (Day {N} section only).
+  Use Write tool explicitly (see timeline.md Step 3).
+  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
+
   Detect any new conflicts.
 
   After completing all tasks, return ONLY the word 'complete'.
@@ -1006,11 +1029,20 @@ Use Task tool with:
 
 Wait for both agents to return "complete".
 
-**Verification**: Confirm files updated before proceeding:
+**Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
+
+**Step 1**: Confirm files exist:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
 test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
 ```
+
+**Step 2**: Read and verify timeline.json content (equity-analyst pattern):
+```bash
+Read data/{destination-slug}/timeline.json
+```
+
+Verify Day {N} timeline is populated (not empty dictionary).
 
 ---
 
@@ -1461,7 +1493,10 @@ Use Task tool with:
   - [all other domain JSONs]
 
   Recalculate timeline for Day {N} only (or all days if multiple domains affected).
-  Update data/{destination-slug}/timeline.json
+
+  **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
+  Use Write tool explicitly (see timeline.md Step 3).
+  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
 
   After completing all tasks, return ONLY the word 'complete'.
   "
@@ -1484,11 +1519,20 @@ Use Task tool with:
 
 **Wait for both agents to return "complete"**.
 
-**Verification**: Confirm files updated before proceeding:
+**Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
+
+**Step 1**: Confirm files exist:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
 test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
 ```
+
+**Step 2**: Read and verify timeline.json content (equity-analyst pattern):
+```bash
+Read data/{destination-slug}/timeline.json
+```
+
+Verify affected day timelines are populated (not empty dictionaries).
 
 ---
 

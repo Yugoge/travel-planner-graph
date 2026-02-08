@@ -116,9 +116,69 @@ For each day in the trip:
 
 ## Output
 
-Save to: `data/{destination-slug}/attractions.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure attractions data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/requirements-skeleton.json
+Read data/{destination-slug}/plan-skeleton.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each day:
+- User interests (cultural, natural, architectural)
+- Activity level preferences
+- Photography spots and viewpoints
+- Family-friendly vs adult-oriented
+- Budget constraints for attractions
+
+### Step 2: Generate Attractions List
+
+For each day, research and structure attraction data:
+- Top-rated attractions in day's location
+- Opening hours and best visiting times
+- Ticket prices and booking requirements
+- Duration estimates including queue time
+- All with bilingual annotations (Original Script)
+- Include search_results array with skill URLs
+
+Validate:
+- All attractions are real and currently open
+- Costs are per-person admission in USD
+- Durations are realistic (include travel/queue time)
+- No over-scheduling (2-4 major attractions per day)
+- Geographic clustering to minimize travel
+- Balance of indoor/outdoor activities
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent attractions data loss.
+
+Use Write tool to save complete attractions JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/attractions.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "attractions",
@@ -127,7 +187,24 @@ Format:
     "days": [
       {
         "day": 1,
-        "attractions": [...]
+        "attractions": [
+          {
+            "name": "Attraction Name (Original Script)",
+            "location": "Full address or area",
+            "cost": 15,
+            "duration_minutes": 120,
+            "type": "Museum",
+            "notes": "Book tickets online, skip-the-line available",
+            "search_results": [
+              {
+                "skill": "google-maps",
+                "type": "place_detail",
+                "url": "https://maps.google.com/?cid=12345",
+                "display_text": "Google Maps"
+              }
+            ]
+          }
+        ]
       }
     ]
   },
@@ -135,7 +212,9 @@ Format:
 }
 ```
 
-Return only: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
+
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Quality Standards
 

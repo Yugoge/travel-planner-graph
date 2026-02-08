@@ -1,0 +1,128 @@
+{
+  "request_id": "dev-20260208-timeline-fix",
+  "timestamp": "2026-02-08T00:30:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Modified timeline.md agent definition with explicit Write instructions",
+        "type": "agent_definition",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Added Step 0 (Verify Inputs), Step 1 (Read and Analyze), Step 2 (Generate Timeline), Step 3 (Save JSON and Return) following equity-analyst.md pattern (lines 88-106)",
+        "rationale": "Root cause was missing explicit Write tool instruction. Agent definition only said 'Save to:' without clear step-by-step workflow. Following equity-analyst.md pattern ensures agent explicitly uses Write tool before returning completion signal."
+      },
+      {
+        "id": 2,
+        "description": "Updated plan.md orchestrator Step 10 timeline verification",
+        "type": "orchestrator",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Added 4-step verification after timeline-agent Task invocation (lines 610-632): Step 1 test -f, Step 2 Read timeline.json, Step 3 validate completeness, Step 4 error handling if empty",
+        "rationale": "Root cause was orchestrator not verifying file contents after agent completion. Following equity-research.md pattern, orchestrator must Read working file to confirm data was saved, not just test file existence."
+      },
+      {
+        "id": 3,
+        "description": "Updated plan.md orchestrator Step 15 timeline verification (Day optimization loop)",
+        "type": "orchestrator",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Added Read verification after timeline-agent re-invocation in day optimization loop (lines 1026-1038)",
+        "rationale": "Same pattern applied to day-scoped timeline updates during user refinement loops. Ensures consistency across all timeline-agent invocations."
+      },
+      {
+        "id": 4,
+        "description": "Updated plan.md orchestrator Step 20 timeline verification (Refinement phase)",
+        "type": "orchestrator",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Added Read verification after timeline-agent re-invocation in refinement phase (lines 1517-1527)",
+        "rationale": "Complete coverage - all three timeline-agent invocation points in plan.md now follow equity-research verification pattern."
+      },
+      {
+        "id": 5,
+        "description": "Added 'Save JSON to:' explicit instruction to all timeline-agent prompts",
+        "type": "orchestrator",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Modified three timeline-agent Task prompts to include 'CRITICAL - Save JSON to: data/{destination-slug}/timeline.json' with Write tool instruction and commit ef0ed28 reference",
+        "rationale": "Orchestrator prompts now mirror equity-research.md pattern where agent is explicitly instructed on output path and Write tool usage, not just 'Update timeline.json' which is ambiguous."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/validate-timeline-data.py",
+        "purpose": "Validate timeline.json data completeness (detect empty timeline dictionaries)",
+        "parameters": ["timeline_json_path"],
+        "usage": "source venv/bin/activate && python scripts/validate-timeline-data.py data/{destination-slug}/timeline.json",
+        "exit_codes": {
+          "0": "Timeline data valid (>50% coverage)",
+          "1": "Timeline data invalid (most days empty)",
+          "2": "File not found or JSON parse error"
+        },
+        "validation_logic": "Counts days with non-empty timeline dictionaries, reports coverage percentage, fails if ≤50% coverage"
+      }
+    ],
+    "files_modified": [
+      {
+        "path": ".claude/agents/timeline.md",
+        "lines_changed": "79-125 (replaced Output section with 4-step workflow)",
+        "before": "Single 'Save to:' instruction without explicit Write tool usage",
+        "after": "Step 0: Verify Inputs (MANDATORY), Step 1: Read/Analyze, Step 2: Generate Timeline, Step 3: Save JSON with Write tool (explicit), Return 'complete' only after Write succeeds"
+      },
+      {
+        "path": ".claude/commands/plan.md",
+        "lines_changed": "Multiple sections: 579-632 (Step 10), 994-1038 (Step 15), 1483-1527 (Step 20)",
+        "before": "test -f verification only, no Read verification, ambiguous 'Update timeline.json' instruction",
+        "after": "4-step verification (test -f, Read, validate completeness, error handling), explicit 'Save JSON to:' instruction with Write tool reference"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "ef0ed28 - checkpoint: Auto-save at 2026-02-07 12:16:57",
+      "why_issue_occurred": "Timeline.json was cleared to empty framework (all timeline: {}) during checkpoint save. Agent definition lacked explicit Write instructions, orchestrator didn't verify file contents after agent completion. Agent may have returned 'complete' without actually saving timeline data, or data was lost during checkpoint save operation.",
+      "how_fix_addresses_root": "Following equity-analyst.md pattern: (1) Agent definition now has explicit Step 3 'Use Write tool' instruction before returning 'complete', (2) Orchestrator now Reads timeline.json after Task completion to verify data exists (not just file existence), (3) Validation script detects empty timeline dictionaries. This triple-layered approach (explicit Write + Read verification + validation) prevents data loss regardless of checkpoint timing."
+    },
+    "reference_pattern": {
+      "source": "/root/multi-asset-portfolio/.claude/agents/equity-analyst.md",
+      "key_elements_applied": [
+        "Step 0: Verify Inputs (MANDATORY) - lines 88-106 in equity-analyst.md",
+        "Step 3: Save JSON to: <explicit_path> using Write tool - lines 174-239 in equity-analyst.md",
+        "Return only: 'complete' AFTER Write succeeds - line 234 in equity-analyst.md",
+        "Orchestrator Read verification after Task call - equity-research.md pattern (referenced in context JSON lines 56-63)"
+      ],
+      "pattern_adherence": "100% - timeline.md now follows exact equity-analyst structure with 4-step workflow (Step 0-3), plan.md follows equity-research verification pattern (Read after Task)"
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should verify: (1) timeline.md has explicit Write instruction in Step 3, (2) plan.md has Read verification after all three timeline-agent invocations, (3) validate-timeline-data.py correctly detects empty timeline dictionaries (tested on current timeline.json - correctly reported 0/21 coverage), (4) Pattern matches equity-analyst.md exactly (Step 0 input verification, Step 3 explicit Write, completion signal only after Write)"
+  },
+  "validation_performed": [
+    {
+      "test": "Validated timeline.md structure matches equity-analyst.md pattern",
+      "result": "PASS - Step 0 (Verify Inputs), Step 1 (Read/Analyze), Step 2 (Generate), Step 3 (Save JSON with Write tool)",
+      "evidence": "Lines 79-125 in timeline.md show exact 4-step structure"
+    },
+    {
+      "test": "Validated plan.md has Read verification after timeline-agent Task calls",
+      "result": "PASS - All three invocation points (Step 10, Step 15, Step 20) have Read verification",
+      "evidence": "Lines 610-632, 1026-1038, 1517-1527 in plan.md"
+    },
+    {
+      "test": "Tested validate-timeline-data.py on current timeline.json",
+      "result": "PASS - Correctly detected 0/21 coverage (all days have empty timeline: {})",
+      "evidence": "Script output: 'Days with timeline data: 0/21, Coverage: 0.0%, Status: FAIL'"
+    },
+    {
+      "test": "Verified no hardcoded values in validation script",
+      "result": "PASS - Script uses parameter {timeline_json_path}, no hardcoded destination slugs",
+      "evidence": "Line 1 of script: sys.argv[1] for path parameter"
+    }
+  ],
+  "recommendations": [
+    "After QA approval, re-invoke timeline-agent for china-feb-15-mar-7-2026-20260202-195429 to regenerate all 21 days of timeline data using new explicit Write workflow",
+    "Consider adding validate-timeline-data.py to plan.md Step 11 validation suite (currently only has validate-timeline-consistency.sh)",
+    "Future enhancement: Add pre-commit hook to run validate-timeline-data.py before HTML generation to catch empty timelines early"
+  ],
+  "permissions_to_add": [
+    {
+      "section": "allow",
+      "pattern": "Bash(source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-timeline-data.py:*)",
+      "reason": "Allow execution of timeline data validation script created by /dev to verify timeline.json completeness"
+    }
+  ]
+}

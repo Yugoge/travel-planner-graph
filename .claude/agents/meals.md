@@ -97,9 +97,67 @@ For each day in the trip:
 
 ## Output
 
-Save to: `data/{destination-slug}/meals.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure meals data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/requirements-skeleton.json
+Read data/{destination-slug}/plan-skeleton.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each day:
+- Dietary restrictions and cuisine preferences
+- Budget constraints for meals
+- Restaurant locations near accommodation/attractions
+- Opening hours and meal times
+- Special occasions requiring upgrades
+
+### Step 2: Generate Meals List
+
+For each day, research and structure meal data:
+- Breakfast options near accommodation
+- Lunch options near planned attractions
+- Dinner options matching cuisine preferences
+- All with bilingual annotations (Original Script)
+- Include search_results array with skill URLs
+
+Validate:
+- All restaurants are real and currently operating
+- Costs align with per-person budget expectations
+- Locations are convenient (near accommodation/activities)
+- Variety across days (no repeat restaurants)
+- Ratings meet quality standards (≥4.0 stars, ≥20 reviews)
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent meals data loss.
+
+Use Write tool to save complete meals JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/meals.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "meals",
@@ -108,7 +166,21 @@ Format:
     "days": [
       {
         "day": 1,
-        "breakfast": {...},
+        "breakfast": {
+          "name": "Restaurant Name (Original Script)",
+          "location": "Full address or area",
+          "cost": 25,
+          "cuisine": "Italian",
+          "notes": "Famous for pasta, reservations recommended",
+          "search_results": [
+            {
+              "skill": "google-maps",
+              "type": "place_detail",
+              "url": "https://maps.google.com/?cid=12345",
+              "display_text": "Google Maps"
+            }
+          ]
+        },
         "lunch": {...},
         "dinner": {...}
       }
@@ -118,7 +190,9 @@ Format:
 }
 ```
 
-Return only: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
+
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Workflow
 
