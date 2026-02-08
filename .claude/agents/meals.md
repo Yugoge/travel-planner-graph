@@ -54,40 +54,41 @@ For each day in the trip:
 
 5. **Structure data** for each meal:
 
-   **CRITICAL - Bilingual Annotation Format**:
-   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+   **CRITICAL - Native Language Format**:
+   Use the NATIVE language of the destination country in the name field.
+   The FIRST part (before parentheses) is used for map searches - it MUST be in the destination's native language.
 
-   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+   **Rule: Search language = Destination country language**
+   - China POI → Chinese name first (for Gaode search)
+   - Japan POI → Japanese name first (for Google Maps Japan)
+   - Korea POI → Korean name first
+   - USA/Europe → English name
+
+   Format: "Native Language Name (Romanization or Translation)" - parentheses are OPTIONAL for clarity only
 
    ```json
    {
-     "name": "Restaurant Name (Original Script)",
-     "location": "Full address or area",
+     "name": "本地语言名称 (Optional Translation)",
+     "location": "Full address in native language",
      "cost": 25,
-     "cuisine": "Italian",
-     "notes": "Famous for pasta, reservations recommended",
+     "cuisine": "Cuisine type",
+     "notes": "Details",
      "search_results": [
        {
-         "skill": "google-maps",
+         "skill": "gaode-maps",
          "type": "place_detail",
-         "url": "https://maps.google.com/?cid=12345",
-         "display_text": "Google Maps"
-       },
-       {
-         "skill": "rednote",
-         "type": "note",
-         "url": "https://www.xiaohongshu.com/explore/abc123",
-         "display_text": "小红书"
+         "url": "https://...",
+         "display_text": "高德地图"
        }
      ]
    }
    ```
 
    **Examples**:
-   - Chinese: `"name": "Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"`
-   - Japanese: `"name": "Sushi Saito (鮨 さいとう)"`
-   - Korean: `"name": "Gwangjang Market (광장시장)"`
-   - Thai: `"name": "Som Tam Nua (ส้มตำนัว)"`
+   - China: `"name": "去南山夜景火锅公园"` or `"name": "去南山夜景火锅公园 (Qu Nanshan Yeqing Huoguo Gongyuan)"`
+   - Japan: `"name": "鮨 さいとう"` or `"name": "鮨 さいとう (Sushi Saito)"`
+   - Korea: `"name": "광장시장"` or `"name": "광장시장 (Gwangjang Market)"`
+   - USA: `"name": "In-N-Out Burger"`
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this restaurant

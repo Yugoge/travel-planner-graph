@@ -61,9 +61,82 @@ For each day in the trip:
 
 ## Output
 
-Save to: `data/{destination-slug}/budget.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure budget data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/requirements-skeleton.json
+Read data/{destination-slug}/plan-skeleton.json
+Read data/{destination-slug}/meals.json
+Read data/{destination-slug}/accommodation.json
+Read data/{destination-slug}/attractions.json
+Read data/{destination-slug}/entertainment.json
+Read data/{destination-slug}/shopping.json
+Read data/{destination-slug}/transportation.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each day:
+- Meal costs (breakfast + lunch + dinner)
+- Accommodation costs per night
+- Activity costs (attractions + entertainment)
+- Shopping budget allocations
+- Transportation costs (if location_change day)
+- Compare against user's budget expectations
+
+### Step 2: Generate Budget Breakdown
+
+For each day, calculate budget breakdown:
+- Sum all cost categories
+- Calculate daily totals
+- Compute trip total vs user budget
+- Identify overage by category and day
+- Generate warnings for over/under budget days
+- Provide actionable optimization recommendations
+
+Validate:
+- All calculations sum correctly (cross-verify with source JSONs)
+- Identify specific days and categories causing overage
+- Recommendations are actionable (specific alternatives)
+- Flag if budget is tight (less than 10% buffer)
+- Consider currency exchange buffer (5% for international)
+
+**CRITICAL - JSON Validation**:
+
+Before Step 3, validate the JSON structure:
+- Verify `recommendations` is array ending with `]`, NOT `}`
+- Check all array elements are properly comma-separated
+- Ensure no trailing commas after last array element
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent budget data loss.
+
+Use Write tool to save complete budget JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/budget.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "budget",
@@ -100,27 +173,9 @@ Format:
 }
 ```
 
-**CRITICAL - JSON Validation**:
+**After Write tool completes successfully**, return ONLY the word: `complete`
 
-Before saving `budget.json`, you MUST validate the JSON structure:
-
-1. Verify `recommendations` is an array ending with `]`, NOT `}`
-2. Check all array elements are properly comma-separated
-3. Ensure no trailing commas after last array element
-4. Run validation command:
-   ```bash
-   jq empty data/{destination-slug}/budget.json
-   ```
-   - Exit code 0: Valid JSON, proceed
-   - Exit code 1+: Invalid JSON, fix syntax errors
-
-**Common JSON errors to avoid**:
-- ❌ `"recommendations": [{...},{...},` (missing closing bracket)
-- ❌ `"recommendations": [{...},{...}},` (extra brace instead of bracket)
-- ❌ `"recommendations": [{...},{...},]` (trailing comma)
-- ✅ `"recommendations": [{...},{...}]` (correct)
-
-Return only: `complete`
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Quality Standards
 

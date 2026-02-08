@@ -82,9 +82,69 @@ For each location change day:
 
 ## Output
 
-Save to: `data/{destination-slug}/transportation.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure transportation data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/requirements-skeleton.json
+Read data/{destination-slug}/plan-skeleton.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each location change day:
+- From/To locations (identify days with location_change object)
+- Distance and travel time estimates
+- Budget constraints for transportation
+- Luggage considerations
+- Time constraints (must arrive before planned activities)
+
+### Step 2: Generate Transportation Data
+
+For each location change day, research and structure transportation data:
+- Flight, train, bus, or other inter-city options
+- Departure and arrival times
+- Duration and cost per person
+- Booking requirements and baggage policies
+- Use appropriate skills (Duffel Flights, Gaode Maps, Google Maps)
+
+Validate:
+- Only process days with location_change object
+- All transportation options are real and currently operating
+- Costs are per person in USD
+- Departure time allows for hotel checkout
+- Arrival time allows for hotel check-in and first activity
+- Include airport/station transfer time in total journey
+- Document data source (duffel_flights, gaode_maps, google_maps)
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent transportation data loss.
+
+Use Write tool to save complete transportation JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/transportation.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "transportation",
@@ -93,7 +153,16 @@ Format:
     "days": [
       {
         "day": 3,
-        "location_change": {...}
+        "location_change": {
+          "from": "City A",
+          "to": "City B",
+          "transportation": "High-speed train",
+          "departure_time": "08:30",
+          "arrival_time": "11:45",
+          "duration_minutes": 195,
+          "cost": 80,
+          "notes": "Book 2 weeks in advance for discount, luggage included"
+        }
       }
     ]
   },
@@ -101,7 +170,9 @@ Format:
 }
 ```
 
-Return only: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
+
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Duffel Flights Integration
 

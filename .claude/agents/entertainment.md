@@ -101,9 +101,68 @@ For each day in the trip:
 
 ## Output
 
-Save to: `data/{destination-slug}/entertainment.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure entertainment data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/requirements-skeleton.json
+Read data/{destination-slug}/plan-skeleton.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each day:
+- Entertainment preferences (theater, concerts, nightlife)
+- Family-friendly vs adult-oriented options
+- Budget for entertainment
+- Show times and venue locations
+- Dress codes and age restrictions
+
+### Step 2: Generate Entertainment List
+
+For each day, research and structure entertainment data:
+- Evening shows, performances, nightlife options
+- Local event calendars for travel dates
+- Venue locations and accessibility
+- Ticket availability and pricing
+- All with bilingual annotations (Original Script)
+- Include search_results array with skill URLs
+
+Validate:
+- All venues and shows are real and scheduled for travel dates
+- Costs are per-person ticket prices in USD
+- Show times don't conflict with dinner/other plans
+- Venue locations are accessible from accommodation
+- Consider energy levels (not every night needs entertainment)
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent entertainment data loss.
+
+Use Write tool to save complete entertainment JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/entertainment.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "entertainment",
@@ -112,7 +171,24 @@ Format:
     "days": [
       {
         "day": 1,
-        "entertainment": [...]
+        "entertainment": [
+          {
+            "name": "Show/Venue Name (Original Script)",
+            "location": "Full address or area",
+            "cost": 50,
+            "time": "20:00",
+            "type": "Theater",
+            "notes": "Book tickets in advance, dress code: smart casual",
+            "search_results": [
+              {
+                "skill": "google-maps",
+                "type": "place_detail",
+                "url": "https://maps.google.com/?cid=12345",
+                "display_text": "Google Maps"
+              }
+            ]
+          }
+        ]
       }
     ]
   },
@@ -120,7 +196,9 @@ Format:
 }
 ```
 
-Return only: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
+
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Quality Standards
 
