@@ -57,15 +57,21 @@ For each day in the trip:
 
 4. **Structure data** for each entertainment option:
 
-   **CRITICAL - Bilingual Annotation Format**:
-   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   To support native-language image search and prevent information loss, ALL POIs MUST use standardized bilingual fields.
 
-   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+   **Required fields**:
+   - `name_base`: Base language name (English for international communication)
+   - `name_local`: Native language name (USED FOR MAP SEARCHES)
+   - `location_base`: Base language address
+   - `location_local`: Native language address
 
    ```json
    {
-     "name": "Show/Venue Name (Original Script)",
-     "location": "Full address or area",
+     "name_base": "Nanshan Night View",
+     "name_local": "南山夜景",
+     "location_base": "Nanshan District, Chongqing",
+     "location_local": "重庆市南岸区南山",
      "cost": 50,
      "time": "20:00",
      "type": "Theater",
@@ -87,11 +93,11 @@ For each day in the trip:
    }
    ```
 
-   **Examples**:
-   - Chinese: `"name": "Nanshan Night View (南山夜景)"`
-   - Japanese: `"name": "Kabuki-za Theatre (歌舞伎座)"`
-   - Korean: `"name": "Nanta Show (난타)"`
-   - French: `"name": "Moulin Rouge (Moulin Rouge)"`
+   **Examples by destination**:
+   - **China**: `"name_base": "Nanshan Night View", "name_local": "南山夜景"`
+   - **Japan**: `"name_base": "Kabuki-za Theatre", "name_local": "歌舞伎座"`
+   - **Korea**: `"name_base": "Nanta Show", "name_local": "난타"`
+   - **USA/UK**: `"name_base": "Broadway Theater", "name_local": "Broadway Theater"` (same as base)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this entertainment option
@@ -173,8 +179,10 @@ Write(
         "day": 1,
         "entertainment": [
           {
-            "name": "Show/Venue Name (Original Script)",
-            "location": "Full address or area",
+            "name_base": "Nanshan Night View",
+            "name_local": "南山夜景",
+            "location_base": "Nanshan District, Chongqing",
+            "location_local": "重庆市南岸区南山",
             "cost": 50,
             "time": "20:00",
             "type": "Theater",

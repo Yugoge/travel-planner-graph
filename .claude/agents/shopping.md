@@ -61,15 +61,21 @@ For each day in the trip:
 
 4. **Structure data** for each shopping location:
 
-   **CRITICAL - Bilingual Annotation Format**:
-   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   To support native-language image search and prevent information loss, ALL POIs MUST use standardized bilingual fields.
 
-   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+   **Required fields**:
+   - `name_base`: Base language name (English for international communication)
+   - `name_local`: Native language name (USED FOR MAP SEARCHES)
+   - `location_base`: Base language address
+   - `location_local`: Native language address
 
    ```json
    {
-     "name": "Market/Store Name (Original Script)",
-     "location": "Full address or area",
+     "name_base": "Ciqikou Ancient Town",
+     "name_local": "磁器口古镇",
+     "location_base": "Shapingba District, Chongqing",
+     "location_local": "重庆市沙坪坝区磁器口",
      "cost": 100,
      "type": "Local Market",
      "notes": "Open 9am-5pm, bargaining expected, famous for textiles",
@@ -90,11 +96,11 @@ For each day in the trip:
    }
    ```
 
-   **Examples**:
-   - Chinese: `"name": "Ciqikou Ancient Town (磁器口古镇)"`
-   - Japanese: `"name": "Takeshita Street (竹下通り)"`
-   - Korean: `"name": "Myeongdong Shopping District (명동)"`
-   - Arabic: `"name": "Khan el-Khalili (خان الخليلي)"`
+   **Examples by destination**:
+   - **China**: `"name_base": "Ciqikou Ancient Town", "name_local": "磁器口古镇"`
+   - **Japan**: `"name_base": "Takeshita Street", "name_local": "竹下通り"`
+   - **Korea**: `"name_base": "Myeongdong Shopping District", "name_local": "명동"`
+   - **USA/UK**: `"name_base": "Fifth Avenue", "name_local": "Fifth Avenue"` (same as base)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this shopping location
@@ -177,8 +183,10 @@ Write(
         "day": 1,
         "shopping": [
           {
-            "name": "Market/Store Name (Original Script)",
-            "location": "Full address or area",
+            "name_base": "Ciqikou Ancient Town",
+            "name_local": "磁器口古镇",
+            "location_base": "Shapingba District, Chongqing",
+            "location_local": "重庆市沙坪坝区磁器口",
             "cost": 100,
             "type": "Local Market",
             "notes": "Open 9am-5pm, bargaining expected, famous for textiles",

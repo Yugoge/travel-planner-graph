@@ -67,10 +67,16 @@ For each location change day:
    - Note booking requirements
 
 4. **Structure data**:
+
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   For consistency across all agents, use standardized bilingual fields for city names.
+
    ```json
    {
-     "from": "City A",
-     "to": "City B",
+     "from_base": "Chongqing",
+     "from_local": "重庆",
+     "to_base": "Chengdu",
+     "to_local": "成都",
      "transportation": "High-speed train",
      "departure_time": "08:30",
      "arrival_time": "11:45",
@@ -154,8 +160,10 @@ Write(
       {
         "day": 3,
         "location_change": {
-          "from": "City A",
-          "to": "City B",
+          "from_base": "Chongqing",
+          "from_local": "重庆",
+          "to_base": "Chengdu",
+          "to_local": "成都",
           "transportation": "High-speed train",
           "departure_time": "08:30",
           "arrival_time": "11:45",

@@ -256,15 +256,22 @@ class InteractiveHTMLGenerator:
                         # Fallback to default times if timeline missing
                         meal_time = meal.get("time", meal_default_times[meal_type])
 
+                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
+                    # Backward compatible with old name/name_en format
+                    name_base = meal.get("name_base", meal_name)
+                    name_local = meal.get("name_local", meal.get("name_en", ""))
+
                     merged["meals"][meal_type] = {
-                        "name": meal_name,
-                        "name_en": meal.get("name_en", ""),
+                        "name": name_local if name_local else name_base,  # Display local by default
+                        "name_base": name_base,
+                        "name_local": name_local,
+                        "name_en": meal.get("name_en", ""),  # Keep for backward compatibility
                         "cost": cost,
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
                         "image": self._get_placeholder_image(
                             "meal",
-                            poi_name=meal_name,
+                            poi_name=name_local if name_local else meal_name,
                             gaode_id=meal.get("gaode_id", "")
                         ),
                         "time": meal_time,
@@ -330,10 +337,19 @@ class InteractiveHTMLGenerator:
                         cost_eur = attr.get("ticket_price_eur", 0)
                         cost = cost_eur * 7.5  # EUR to CNY conversion
 
+                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
+                    # Backward compatible with old name/name_en format
+                    attr_name_base = attr.get("name_base", attr_name)
+                    attr_name_local = attr.get("name_local", attr.get("name_en", ""))
+
                     merged["attractions"].append({
-                        "name": attr.get("name", ""),
-                        "name_en": attr.get("name_en", ""),
-                        "location": attr.get("location", ""),
+                        "name": attr_name_local if attr_name_local else attr_name_base,  # Display local by default
+                        "name_base": attr_name_base,
+                        "name_local": attr_name_local,
+                        "name_en": attr.get("name_en", ""),  # Keep for backward compatibility
+                        "location": attr.get("location_local", attr.get("location", "")),
+                        "location_base": attr.get("location_base", attr.get("location", "")),
+                        "location_local": attr.get("location_local", attr.get("location", "")),
                         "type": self._format_type(attr.get("type", "")),
                         "cost": cost,
                         "cost_eur": cost_eur,
@@ -341,7 +357,7 @@ class InteractiveHTMLGenerator:
                         "recommended_duration": attr.get("recommended_duration", ""),
                         "image": self._get_placeholder_image(
                             "attraction",
-                            poi_name=attr.get("name", ""),
+                            poi_name=attr_name_local if attr_name_local else attr_name,
                             gaode_id=attr.get("gaode_id", "")
                         ),
                         "highlights": attr.get("highlights", []),
@@ -403,16 +419,23 @@ class InteractiveHTMLGenerator:
                     if cost == 0 and "cost_eur" in ent:
                         cost = ent.get("cost_eur", 0) * 7.5  # EUR to CNY conversion
 
+                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
+                    # Backward compatible with old name/name_en format
+                    ent_name_base = ent.get("name_base", ent_name)
+                    ent_name_local = ent.get("name_local", ent.get("name_en", ""))
+
                     merged["entertainment"].append({
-                        "name": ent.get("name", ""),
-                        "name_en": ent.get("name_en", ""),
+                        "name": ent_name_local if ent_name_local else ent_name_base,  # Display local by default
+                        "name_base": ent_name_base,
+                        "name_local": ent_name_local,
+                        "name_en": ent.get("name_en", ""),  # Keep for backward compatibility
                         "type": self._format_type(ent.get("type", "")),
                         "cost": cost,
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
                         "image": self._get_placeholder_image(
                             "entertainment",
-                            poi_name=ent.get("name", ""),
+                            poi_name=ent_name_local if ent_name_local else ent_name,
                             gaode_id=ent.get("gaode_id", "")
                         ),
                         "time": ent_time,
@@ -1814,6 +1837,8 @@ function NotionTravelApp() {
   const [sbOpen, setSbOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedBudgetCat, setSelectedBudgetCat] = useState(null);
+  // Root cause fix (commit 8f2bddd): Add language toggle for bilingual POI display
+  const [lang, setLang] = useState('local');  // 'local' or 'base'
   const bp = useBreakpoint();
   const sm = bp === 'sm';
 
@@ -1889,6 +1914,30 @@ function NotionTravelApp() {
               {m === 'kanban' ? 'Kanban View' : 'Timeline View'}
             </button>
           ))}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+            <button onClick={() => setLang('local')} style={{
+              padding: sm ? '8px 10px' : '9px 14px',
+              background: lang === 'local' ? '#e9f5ec' : '#f5f5f3',
+              border: `1px solid ${lang === 'local' ? '#45b26b' : '#e0e0e0'}`,
+              borderRadius: '6px',
+              fontSize: '13px', fontWeight: lang === 'local' ? '600' : '400',
+              color: lang === 'local' ? '#45b26b' : '#6b6b6b',
+              cursor: 'pointer', transition: 'all .12s'
+            }}>
+              🌏 Local
+            </button>
+            <button onClick={() => setLang('base')} style={{
+              padding: sm ? '8px 10px' : '9px 14px',
+              background: lang === 'base' ? '#e9f5ec' : '#f5f5f3',
+              border: `1px solid ${lang === 'base' ? '#45b26b' : '#e0e0e0'}`,
+              borderRadius: '6px',
+              fontSize: '13px', fontWeight: lang === 'base' ? '600' : '400',
+              color: lang === 'base' ? '#45b26b' : '#6b6b6b',
+              cursor: 'pointer', transition: 'all .12s'
+            }}>
+              🇬🇧 EN
+            </button>
+          </div>
         </div>
 
         {day ? (

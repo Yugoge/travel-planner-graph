@@ -1,0 +1,145 @@
+{
+  "request_id": "dev-20260208-010850",
+  "timestamp": "2026-02-08T01:08:50Z",
+  "requirement": {
+    "original": "你真的这么喜欢hardcode？",
+    "clarified": "实施系统性双语架构，消除hardcode的name_chinese字段，改用name_base和name_local标准化字段",
+    "what": "添加base_lang配置并重构所有agent的POI数据结构为标准化双语格式",
+    "why": "当前设计用英文名搜索中国POI导致图片错误，违反'搜索用所在国语言'原则",
+    "where": [
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "scope": {
+      "included": [
+        "添加base_lang配置到requirements-skeleton.json（与budget EUR同级）",
+        "修改所有6个agent的prompt使用name_base和name_local字段",
+        "更新fetch-images-batch.py使用name_local搜索",
+        "更新HTML生成器支持双语切换按钮",
+        "所有POI字段（name, location）都需要双语"
+      ],
+      "excluded": [
+        "自动翻译已有数据（要求重新运行agent）",
+        "修改budget.json结构（EUR已经存在，不需要改动）"
+      ]
+    },
+    "success_criteria": [
+      "所有agent prompt使用name_base/name_local标准字段",
+      "fetch-images-batch.py用name_local搜索POI",
+      "HTML有语言切换按钮",
+      "重新运行meals agent生成的JSON包含双语字段",
+      "用中文名搜索Gaode能找到正确图片"
+    ],
+    "constraints": [
+      "不修改已有JSON数据",
+      "必须向后兼容（旧JSON仍能读取）",
+      "base_lang默认值为'en'"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "用'Raffles City Mall Food Court'搜索Gaode返回错误图片",
+    "root_cause": "commit 8f2bddd引入的'Bilingual Annotation Format'设计错误，格式为'English (中文)'导致英文名被用于搜索",
+    "root_cause_commit": "8f2bddd - checkpoint: Auto-save at 2026-02-03 19:44:26",
+    "why_introduced": "防止中文同音字信息丢失（如夜景vs野青）",
+    "why_problematic": "违反了'搜索用所在国语言'的核心原则，导致中国POI用英文名搜索Gaode API失败",
+    "timeline": "2026-02-03引入，影响所有4个agent（meals, attractions, entertainment, shopping）",
+    "affected_files": [
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md", 
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "8 uncommitted files",
+    "current_design_flaws": {
+      "wrong_format": "name: 'Romanized Name (原文)' - 英文在前",
+      "no_standard_fields": "使用name_chinese而非标准化字段",
+      "no_base_lang_config": "没有类似base_currency的配置",
+      "hardcoded_language_logic": "fetch-images-batch.py硬编码使用_extract_chinese_name()"
+    },
+    "affected_agents": {
+      "meals": "已修改为Native Language Format，但其他agent未修改",
+      "attractions": "仍使用错误的Bilingual Annotation Format",
+      "entertainment": "仍使用错误的Bilingual Annotation Format",
+      "shopping": "仍使用错误的Bilingual Annotation Format",
+      "accommodation": "需要检查并修复",
+      "transportation": "需要检查并修复"
+    },
+    "dependencies": {
+      "runtime": "Python 3",
+      "image_search": "Gaode Maps API (中国), Google Maps API (其他)"
+    }
+  },
+  "development_approach": {
+    "strategy": "标准化双语架构 - 所有POI必须包含name_base和name_local字段",
+    "phase_1_config": {
+      "task": "添加base_lang配置",
+      "location": "requirements-skeleton.json顶层（与trip_summary同级）",
+      "format": {
+        "base_lang": "en",
+        "destination_lang": "zh-CN"
+      }
+    },
+    "phase_2_agents": {
+      "task": "修改所有6个agent prompt",
+      "agents": ["attractions", "meals", "entertainment", "shopping", "accommodation", "transportation"],
+      "new_format": {
+        "name_base": "English name (base language)",
+        "name_local": "Native language name (for search)",
+        "location_base": "English address",
+        "location_local": "Native language address"
+      },
+      "examples": {
+        "china": {
+          "name_base": "Raffles City Mall Food Court",
+          "name_local": "来福士购物中心美食广场",
+          "location_base": "Raffles City Chongqing, Jiesheng Street 8",
+          "location_local": "重庆来福士广场捷盛街8号"
+        }
+      }
+    },
+    "phase_3_fetch_images": {
+      "task": "修改fetch-images-batch.py使用name_local",
+      "changes": [
+        "移除_extract_chinese_name()逻辑",
+        "直接使用poi['name_local']搜索",
+        "向后兼容：如果没有name_local，fallback到旧逻辑"
+      ]
+    },
+    "phase_4_html": {
+      "task": "添加语言切换功能",
+      "changes": [
+        "HTML顶部添加语言切换按钮（EN/本地语言）",
+        "默认显示name_local",
+        "点击按钮切换到name_base",
+        "使用React state管理语言偏好"
+      ]
+    },
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md", 
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "重新运行meals agent验证生成双语字段JSON，用name_local搜索验证图片正确"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "backward_compatibility": true
+  }
+}

@@ -72,15 +72,21 @@ For each day in the trip:
 
 4. **Structure data** for each attraction:
 
-   **CRITICAL - Bilingual Annotation Format**:
-   To prevent information loss during orchestrator-subagent communication (e.g., Chinese homophones like 夜景 yèjǐng vs 野青 yěqīng), ALL proper nouns MUST include original script annotations.
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   To support native-language image search and prevent information loss, ALL POIs MUST use standardized bilingual fields.
 
-   Format: "Romanized Name (原文)" or "English Translation (Foreign Language)"
+   **Required fields**:
+   - `name_base`: Base language name (English for international communication)
+   - `name_local`: Native language name (USED FOR MAP SEARCHES)
+   - `location_base`: Base language address
+   - `location_local`: Native language address
 
    ```json
    {
-     "name": "Attraction Name (Original Script)",
-     "location": "Full address or area",
+     "name_base": "Raffles City Observation Deck",
+     "name_local": "来福士观景台",
+     "location_base": "Raffles City Chongqing, Jiesheng Street 8",
+     "location_local": "重庆来福士广场捷盛街8号",
      "cost": 15,
      "duration_minutes": 120,
      "type": "Museum",
@@ -102,11 +108,11 @@ For each day in the trip:
    }
    ```
 
-   **Examples**:
-   - Chinese: `"name": "Hongya Cave (洪崖洞)"`
-   - Japanese: `"name": "Fushimi Inari Shrine (伏見稲荷大社)"`
-   - Korean: `"name": "Gyeongbokgung Palace (경복궁)"`
-   - Arabic: `"name": "Al-Masjid an-Nabawi (المسجد النبوي)"`
+   **Examples by destination**:
+   - **China**: `"name_base": "Hongya Cave", "name_local": "洪崖洞"`
+   - **Japan**: `"name_base": "Fushimi Inari Shrine", "name_local": "伏見稲荷大社"`
+   - **Korea**: `"name_base": "Gyeongbokgung Palace", "name_local": "경복궁"`
+   - **USA/UK**: `"name_base": "Big Ben", "name_local": "Big Ben"` (same as base)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this attraction
@@ -189,8 +195,10 @@ Write(
         "day": 1,
         "attractions": [
           {
-            "name": "Attraction Name (Original Script)",
-            "location": "Full address or area",
+            "name_base": "Raffles City Observation Deck",
+            "name_local": "来福士观景台",
+            "location_base": "Raffles City Chongqing, Jiesheng Street 8",
+            "location_local": "重庆来福士广场捷盛街8号",
             "cost": 15,
             "duration_minutes": 120,
             "type": "Museum",

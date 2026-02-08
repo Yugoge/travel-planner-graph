@@ -205,14 +205,15 @@ class BatchImageFetcher:
             print(f"  Google Maps error for {poi_name}: {e}")
             return None
 
-    def fetch_poi_photo_gaode(self, poi_name: str, city: str, chinese_name: str = None) -> Optional[str]:
+    def fetch_poi_photo_gaode(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
         """Fetch POI photo using Gaode Maps skill script
 
-        Root cause fix (commit 123f8df): Use chinese_name for Gaode searches
+        Root cause fix (commit 8f2bddd): Use name_local for native-language searches
         User principle: 搜索哪一国景点就用哪一国自己的语言
         """
-        # Use Chinese name for search if available (mainland China POIs)
-        search_name = chinese_name if chinese_name else poi_name
+        # Use name_local for search if available (standardized bilingual field)
+        # Fallback to poi_name for backward compatibility with old JSON
+        search_name = name_local if name_local else poi_name
 
         try:
             script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
@@ -338,10 +339,11 @@ class BatchImageFetcher:
     def fetch_pois(self, limit: int = 10):
         """Fetch POI photos from all agent files (limited batch)
 
-        Root cause fix (commit 123f8df): Use appropriate language and service per location
-        - Mainland China → use name_chinese + Gaode Maps
-        - Hong Kong/Macau → use English name + Google Maps
+        Root cause fix (commit 8f2bddd): Use standardized name_local field for native-language search
+        - Mainland China → use name_local (Chinese) + Gaode Maps
+        - Hong Kong/Macau → use name_base (English) + Google Maps
         - Hotels → fetch images for accommodation
+        - Backward compatible: Falls back to name_chinese or _extract_chinese_name() for old JSON
 
         Supports both days format (itinerary) and cities format (bucket list).
         """
@@ -378,12 +380,20 @@ class BatchImageFetcher:
                 if field_name == "attractions":
                     # Attractions: list of items
                     for item in day.get("attractions", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -393,26 +403,42 @@ class BatchImageFetcher:
                     for meal_type in ["breakfast", "lunch", "dinner"]:
                         meal = day.get(meal_type)
                         if meal and isinstance(meal, dict):
-                            name = meal.get("name", "")
-                            chinese_name = meal.get("name_chinese", "") or self._extract_chinese_name(name)
-                            if name:
+                            # New format: name_base and name_local
+                            name_base = meal.get("name_base", "")
+                            name_local = meal.get("name_local", "")
+
+                            # Backward compatibility: fallback to old fields
+                            if not name_base:
+                                name_base = meal.get("name", "")
+                            if not name_local:
+                                name_local = meal.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                            if name_base:
                                 pois.append({
-                                    "name": name,
-                                    "chinese_name": chinese_name,
+                                    "name": name_base,
+                                    "name_local": name_local,
                                     "city": location,
                                     "type": poi_type
                                 })
 
                 elif field_name == "accommodation":
-                    # Accommodation: single dict (Fix #5: add hotel image fetching)
+                    # Accommodation: single dict
                     acc = day.get("accommodation")
                     if acc and isinstance(acc, dict):
-                        name = acc.get("name", "")
-                        chinese_name = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = acc.get("name_base", "")
+                        name_local = acc.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = acc.get("name", "")
+                        if not name_local:
+                            name_local = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -420,12 +446,20 @@ class BatchImageFetcher:
                 elif field_name == "entertainment":
                     # Entertainment: list of items
                     for item in day.get("entertainment", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -437,12 +471,20 @@ class BatchImageFetcher:
                 if field_name == "attractions":
                     # Attractions: list of items
                     for item in city.get("attractions", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -450,25 +492,41 @@ class BatchImageFetcher:
                 elif field_name == "meals":
                     # Meals: list of items
                     for item in city.get("meals", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
 
                 elif field_name == "accommodation":
-                    # Accommodation: list of items (Fix #5: add hotel image fetching)
+                    # Accommodation: list of items
                     for item in city.get("accommodation", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", item.get("name_cn", "")) or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", item.get("name_cn", "")) or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -476,12 +534,20 @@ class BatchImageFetcher:
                 elif field_name == "entertainment":
                     # Entertainment: list of items
                     for item in city.get("entertainment", []):
-                        name = item.get("name", "")
-                        chinese_name = item.get("name_chinese", "") or self._extract_chinese_name(name)
-                        if name:
+                        # New format: name_base and name_local
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_chinese_name(name_base)
+
+                        if name_base:
                             pois.append({
-                                "name": name,
-                                "chinese_name": chinese_name,
+                                "name": name_base,
+                                "name_local": name_local,
                                 "city": location,
                                 "type": poi_type
                             })
@@ -508,14 +574,14 @@ class BatchImageFetcher:
 
             # Use appropriate search method
             if is_hk_macau:
-                # Fix #3: Use Google Maps for Hong Kong/Macau
+                # Use Google Maps for Hong Kong/Macau with English name
                 photo_url = self.fetch_poi_photo_google(poi['name'], poi['city'])
             else:
-                # Fix #2: Use Chinese name for Gaode Maps (mainland China)
+                # Use Gaode Maps for mainland China with native language name
                 photo_url = self.fetch_poi_photo_gaode(
                     poi['name'],
                     poi['city'],
-                    chinese_name=poi.get('chinese_name')
+                    name_local=poi.get('name_local')
                 )
 
             if photo_url:

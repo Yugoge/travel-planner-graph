@@ -58,10 +58,22 @@ For each day in the trip:
    - Verify Superhost status preferred
 
 5. **Structure data**:
+
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   For consistency across all agents, use standardized bilingual fields.
+
+   **Required fields**:
+   - `name_base`: Base language name (English for international communication)
+   - `name_local`: Native language name (for local context)
+   - `location_base`: Base language address
+   - `location_local`: Native language address
+
    ```json
    {
-     "name": "Accommodation Name",
-     "location": "Full address or area",
+     "name_base": "Chongqing Marriott Hotel",
+     "name_local": "重庆万豪酒店",
+     "location_base": "235 Minquan Road, Yuzhong District",
+     "location_local": "重庆市渝中区民权路235号",
      "cost": 120,
      "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
      "amenities": ["WiFi", "Breakfast included", "Pool"],
@@ -86,8 +98,10 @@ For each day in the trip:
    For vacation rentals, include total cost breakdown:
    ```json
    {
-     "name": "Apartment Name",
-     "location": "Neighborhood, City",
+     "name_base": "Modern Apartment in Downtown",
+     "name_local": "市中心现代公寓",
+     "location_base": "Jiefangbei District, Chongqing",
+     "location_local": "重庆市解放碑商圈",
      "cost": 180,
      "total_cost": 1250,
      "type": "Vacation Rental (Airbnb)",
@@ -184,8 +198,10 @@ Write(
       {
         "day": 1,
         "accommodation": {
-          "name": "Accommodation Name",
-          "location": "Full address or area",
+          "name_base": "Chongqing Marriott Hotel",
+          "name_local": "重庆万豪酒店",
+          "location_base": "235 Minquan Road, Yuzhong District",
+          "location_local": "重庆市渝中区民权路235号",
           "cost": 120,
           "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
           "amenities": ["WiFi", "Breakfast included", "Pool"],

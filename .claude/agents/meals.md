@@ -54,22 +54,27 @@ For each day in the trip:
 
 5. **Structure data** for each meal:
 
-   **CRITICAL - Native Language Format**:
-   Use the NATIVE language of the destination country in the name field.
-   The FIRST part (before parentheses) is used for map searches - it MUST be in the destination's native language.
+   **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
+   To support native-language image search and prevent information loss, ALL POIs MUST use standardized bilingual fields.
 
-   **Rule: Search language = Destination country language**
-   - China POI → Chinese name first (for Gaode search)
-   - Japan POI → Japanese name first (for Google Maps Japan)
-   - Korea POI → Korean name first
-   - USA/Europe → English name
+   **Required fields**:
+   - `name_base`: Base language name (English for international communication)
+   - `name_local`: Native language name (USED FOR MAP SEARCHES)
+   - `location_base`: Base language address
+   - `location_local`: Native language address
 
-   Format: "Native Language Name (Romanization or Translation)" - parentheses are OPTIONAL for clarity only
+   **Rule: name_local = Destination country language**
+   - China POI → `name_local` in Chinese (for Gaode search)
+   - Japan POI → `name_local` in Japanese (for Google Maps Japan)
+   - Korea POI → `name_local` in Korean
+   - USA/Europe → `name_local` same as `name_base`
 
    ```json
    {
-     "name": "本地语言名称 (Optional Translation)",
-     "location": "Full address in native language",
+     "name_base": "Raffles City Mall Food Court",
+     "name_local": "来福士购物中心美食广场",
+     "location_base": "Raffles City Chongqing, Jiesheng Street 8",
+     "location_local": "重庆来福士广场捷盛街8号",
      "cost": 25,
      "cuisine": "Cuisine type",
      "notes": "Details",
@@ -84,11 +89,11 @@ For each day in the trip:
    }
    ```
 
-   **Examples**:
-   - China: `"name": "去南山夜景火锅公园"` or `"name": "去南山夜景火锅公园 (Qu Nanshan Yeqing Huoguo Gongyuan)"`
-   - Japan: `"name": "鮨 さいとう"` or `"name": "鮨 さいとう (Sushi Saito)"`
-   - Korea: `"name": "광장시장"` or `"name": "광장시장 (Gwangjang Market)"`
-   - USA: `"name": "In-N-Out Burger"`
+   **Examples by destination**:
+   - **China**: `"name_base": "Qu Nanshan Night View Hotpot Park", "name_local": "去南山夜景火锅公园"`
+   - **Japan**: `"name_base": "Sushi Saito", "name_local": "鮨 さいとう"`
+   - **Korea**: `"name_base": "Gwangjang Market", "name_local": "광장시장"`
+   - **USA**: `"name_base": "In-N-Out Burger", "name_local": "In-N-Out Burger"` (same as base)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this restaurant
@@ -168,8 +173,10 @@ Write(
       {
         "day": 1,
         "breakfast": {
-          "name": "Restaurant Name (Original Script)",
-          "location": "Full address or area",
+          "name_base": "Raffles City Mall Food Court",
+          "name_local": "来福士购物中心美食广场",
+          "location_base": "Raffles City Chongqing, Jiesheng Street 8",
+          "location_local": "重庆来福士广场捷盛街8号",
           "cost": 25,
           "cuisine": "Italian",
           "notes": "Famous for pasta, reservations recommended",
