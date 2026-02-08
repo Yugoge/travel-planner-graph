@@ -134,8 +134,10 @@ class TravelPlanHTMLGenerator:
         fetch_script = self.script_dir / "utils" / "fetch-exchange-rate.sh"
 
         if not fetch_script.exists():
-            print(f"Warning: Exchange rate script not found at {fetch_script}, using fallback rate 7.8", file=sys.stderr)
-            return 7.8
+            config = self._load_currency_config()
+            fallback = config.get("fallback_exchange_rate", 0.128)
+            print(f"Warning: Exchange rate script not found at {fetch_script}, using fallback rate {fallback}", file=sys.stderr)
+            return fallback
 
         try:
             print(f"Fetching exchange rate: {source_currency} → {display_currency}...", file=sys.stderr)
@@ -183,12 +185,14 @@ class TravelPlanHTMLGenerator:
                 "currency_symbol": currency_symbol
             }
         except RuntimeError as e:
-            print(f"Warning: Currency integration failed: {e}, using defaults", file=sys.stderr)
+            config = self._load_currency_config()
+            fallback_rate = config.get("fallback_exchange_rate", 0.128)
+            print(f"Warning: Currency integration failed: {e}, using fallback rate {fallback_rate}", file=sys.stderr)
             merged_data["currency_config"] = {
-                "source_currency": "CNY",
-                "display_currency": "EUR",
-                "exchange_rate": 7.8,
-                "currency_symbol": "€"
+                "source_currency": source_currency,
+                "display_currency": display_currency,
+                "exchange_rate": fallback_rate,
+                "currency_symbol": currency_symbol
             }
 
     def merge_itinerary_data(self) -> Dict:
@@ -718,7 +722,7 @@ class TravelPlanHTMLGenerator:
     const CURRENCY_CONFIG_BASH = PLAN_DATA.currency_config || {
       source_currency: 'CNY',
       display_currency: 'EUR',
-      exchange_rate: 7.8,
+      exchange_rate: 0.128,
       currency_symbol: '€'
     };
 
@@ -3369,7 +3373,7 @@ class TravelPlanHTMLGenerator:
     const CURRENCY_CONFIG = PLAN_DATA.currency_config || {{
       source_currency: 'CNY',
       display_currency: 'EUR',
-      exchange_rate: 7.8,
+      exchange_rate: 0.128,
       currency_symbol: '€'
     }};
 

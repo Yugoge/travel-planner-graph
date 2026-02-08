@@ -33,6 +33,30 @@ class InteractiveHTMLGenerator:
         # Load image fetcher for real photos
         self.images_cache = self._load_json("images.json")
 
+        # Load currency config for EUR↔CNY conversion
+        self._eur_to_cny_rate = self._load_eur_to_cny_rate()
+
+    def _load_eur_to_cny_rate(self) -> float:
+        """Load EUR→CNY conversion rate from currency config."""
+        config_path = self.base_dir / "config" / "currency-config.json"
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            # fallback_exchange_rate is CNY→EUR (e.g. 0.128)
+            # We need EUR→CNY, so invert it
+            cny_to_eur = config.get("fallback_exchange_rate", 0.128)
+            return 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8
+        except (FileNotFoundError, json.JSONDecodeError):
+            return 7.8
+
+    def _eur_to_cny(self, eur_amount: float) -> float:
+        """Convert EUR amount to CNY using configured rate."""
+        return eur_amount * self._eur_to_cny_rate
+
+    def _cny_to_eur(self, cny_amount: float) -> float:
+        """Convert CNY amount to EUR using configured rate."""
+        return cny_amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
+
     def _format_trip_type(self, trip_type: str) -> str:
         """Convert trip_type code to natural language (Fix #1, #3)
         Root cause: commit 52d3528 - no formatting for trip types
@@ -171,6 +195,40 @@ class InteractiveHTMLGenerator:
         # NO FALLBACK - return empty string if not in cache
         return ""
 
+    def _normalize_time(self, time_val, default_duration_hours: float = 1.0) -> dict:
+        """Normalize time values to {start, end} dict format.
+
+        Handles:
+        - dict with start/end: returns as-is
+        - string "HH:MM-HH:MM": splits into start/end
+        - string "HH:MM": uses default_duration_hours to calculate end
+        - None/invalid: returns None
+        """
+        if isinstance(time_val, dict) and time_val.get("start") and time_val.get("end"):
+            return time_val
+        if isinstance(time_val, str):
+            if "-" in time_val and ":" in time_val:
+                # Format: "07:00-08:00"
+                parts = time_val.split("-")
+                if len(parts) == 2:
+                    return {"start": parts[0].strip(), "end": parts[1].strip()}
+            elif ":" in time_val:
+                # Format: "22:00" - single time, add default duration
+                try:
+                    h, m = map(int, time_val.split(":"))
+                    end_h = h + int(default_duration_hours)
+                    end_m = m + int((default_duration_hours % 1) * 60)
+                    if end_m >= 60:
+                        end_h += 1
+                        end_m -= 60
+                    if end_h >= 24:
+                        end_h = 23
+                        end_m = 59
+                    return {"start": time_val, "end": f"{end_h:02d}:{end_m:02d}"}
+                except (ValueError, TypeError):
+                    pass
+        return None
+
     def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
         """Find timeline entry for given item name with fuzzy matching
 
@@ -249,7 +307,7 @@ class InteractiveHTMLGenerator:
                     # Fix #7: Convert price_range_eur_low to cost (root cause: commit 52d3528)
                     cost = meal.get("cost", 0)
                     if cost == 0 and "price_range_eur_low" in meal:
-                        cost = meal.get("price_range_eur_low", 0) * 7.5  # EUR to CNY conversion
+                        cost = meal.get("price_range_eur_low", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
 
                     # Fix #6: Lookup actual time from timeline.json instead of using virtual defaults
                     meal_name = meal.get("name_base", meal.get("name", ""))
@@ -261,7 +319,8 @@ class InteractiveHTMLGenerator:
                         }
                     else:
                         # Fallback to default times if timeline missing
-                        meal_time = meal.get("time", meal_default_times[meal_type])
+                        raw_time = meal.get("time", meal_default_times[meal_type])
+                        meal_time = self._normalize_time(raw_time) or meal_default_times[meal_type]
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -337,14 +396,14 @@ class InteractiveHTMLGenerator:
                             current_time_hour += 1
                             current_time_minute -= 60
                     else:
-                        attr_time = attr.get("time")
+                        attr_time = self._normalize_time(attr.get("time"), default_duration_hours=1.5) or attr.get("time")
 
                     # Fix #7: Convert ticket_price_eur to cost (root cause: commit 52d3528)
                     cost = attr.get("cost", 0)
                     cost_eur = attr.get("cost_eur", 0)
                     if cost == 0 and "ticket_price_eur" in attr:
                         cost_eur = attr.get("ticket_price_eur", 0)
-                        cost = cost_eur * 7.5  # EUR to CNY conversion
+                        cost = cost_eur * self._eur_to_cny_rate  # EUR to CNY conversion
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -394,41 +453,44 @@ class InteractiveHTMLGenerator:
                             "start": timeline_item["start_time"],
                             "end": timeline_item["end_time"]
                         }
-                    elif not ent.get("time"):
-                        # Fallback: Calculate virtual time based on duration
-                        duration_str = ent.get("duration", "2h")
-                        duration_hours = 2.0
-                        if "h" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("h", "").strip())
-                            except:
-                                duration_hours = 2.0
-                        elif "min" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("min", "").strip()) / 60
-                            except:
-                                duration_hours = 2.0
-
-                        start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
-                        end_hour = current_time_hour + int(duration_hours)
-                        end_minute = current_time_minute + int((duration_hours % 1) * 60)
-                        if end_minute >= 60:
-                            end_hour += 1
-                            end_minute -= 60
-                        end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                        ent_time = {"start": start_time, "end": end_time}
-
-                        # Update current time for next entertainment
-                        current_time_hour = end_hour
-                        current_time_minute = end_minute
                     else:
-                        ent_time = ent.get("time")
+                        # Try to normalize existing time value
+                        normalized = self._normalize_time(ent.get("time"), default_duration_hours=1.0)
+                        if normalized:
+                            ent_time = normalized
+                        else:
+                            # Fallback: Calculate virtual time based on duration
+                            duration_str = ent.get("duration", "2h")
+                            duration_hours = 2.0
+                            if "h" in duration_str:
+                                try:
+                                    duration_hours = float(duration_str.replace("h", "").strip())
+                                except:
+                                    duration_hours = 2.0
+                            elif "min" in duration_str:
+                                try:
+                                    duration_hours = float(duration_str.replace("min", "").strip()) / 60
+                                except:
+                                    duration_hours = 2.0
+
+                            start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
+                            end_hour = current_time_hour + int(duration_hours)
+                            end_minute = current_time_minute + int((duration_hours % 1) * 60)
+                            if end_minute >= 60:
+                                end_hour += 1
+                                end_minute -= 60
+                            end_time = f"{end_hour:02d}:{end_minute:02d}"
+
+                            ent_time = {"start": start_time, "end": end_time}
+
+                            # Update current time for next entertainment
+                            current_time_hour = end_hour
+                            current_time_minute = end_minute
 
                     # Fix #7: Convert cost_eur to cost (root cause: commit 52d3528)
                     cost = ent.get("cost", 0)
                     if cost == 0 and "cost_eur" in ent:
-                        cost = ent.get("cost_eur", 0) * 7.5  # EUR to CNY conversion
+                        cost = ent.get("cost_eur", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -464,7 +526,7 @@ class InteractiveHTMLGenerator:
                 # Fix #7: Convert price_per_night_eur to cost (root cause: commit 52d3528)
                 cost = acc.get("cost", 0)
                 if cost == 0 and "price_per_night_eur" in acc:
-                    cost = acc.get("price_per_night_eur", 0) * 7.5  # EUR to CNY conversion
+                    cost = acc.get("price_per_night_eur", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
 
                 # Root cause fix: Support standardized name_base/name_local fields
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
@@ -614,7 +676,7 @@ class InteractiveHTMLGenerator:
 
                     # Extract cost
                     cost_cny = option.get("cost_cny", 0)
-                    cost_eur = option.get("cost_eur", cost_cny * 0.124 if cost_cny else 0)
+                    cost_eur = option.get("cost_eur", self._cny_to_eur(cost_cny) if cost_cny else 0)
 
                     # Route info (train number, flight code, etc.)
                     route_number = ""
@@ -750,7 +812,7 @@ class InteractiveHTMLGenerator:
                         "name_local": a_name_local,
                         "location": city_name,
                         "type": self._format_type(attr.get("type", "")),
-                        "cost": attr.get("ticket_price_eur", 0) * 7.5,  # Convert EUR to CNY approx
+                        "cost": attr.get("ticket_price_eur", 0) * self._eur_to_cny_rate,  # Convert EUR to CNY
                         "cost_eur": attr.get("ticket_price_eur", 0),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
@@ -759,7 +821,7 @@ class InteractiveHTMLGenerator:
                         "time": {"start": "10:00", "end": "12:00"},
                         "links": {}
                     })
-                    day["budget"]["attractions"] += attr.get("ticket_price_eur", 0) * 7.5
+                    day["budget"]["attractions"] += attr.get("ticket_price_eur", 0) * self._eur_to_cny_rate
 
             # Find meals for this city
             if self.meals and "cities" in self.meals:
@@ -772,7 +834,7 @@ class InteractiveHTMLGenerator:
                         "name": m_name_local if m_name_local else m_name_base,
                         "name_base": m_name_base,
                         "name_local": m_name_local,
-                        "cost": meal.get("price_range_eur_low", 10) * 7.5,
+                        "cost": meal.get("price_range_eur_low", 10) * self._eur_to_cny_rate,
                         "cuisine": meal.get("cuisine_type", ""),
                         "signature_dishes": meal.get("signature_dish", ""),
                         "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
@@ -781,7 +843,7 @@ class InteractiveHTMLGenerator:
                                 {"start": "18:30", "end": "20:00"},
                         "links": {}
                     }
-                    day["budget"]["meals"] += meal.get("price_range_eur_low", 10) * 7.5
+                    day["budget"]["meals"] += meal.get("price_range_eur_low", 10) * self._eur_to_cny_rate
 
             # Calculate total
             day["budget"]["total"] = sum([

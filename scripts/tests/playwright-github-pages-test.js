@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
-const TARGET_URL = process.env.GITHUB_PAGES_URL || 'https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202/2026-02-02/';
+const GITHUB_USER = process.env.GITHUB_PAGES_USER || 'Yugoge';
+const GITHUB_REPO = process.env.GITHUB_PAGES_REPO || 'travel-planner-graph';
+const TARGET_URL = process.env.GITHUB_PAGES_URL || `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/beijing-exchange-bucket-list-20260202/2026-02-02/`;
 const EXPECTED_BEIGE_BG = 'rgb(245, 241, 232)'; // #F5F1E8
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'docs', 'dev', 'playwright-judge5-output');
 const SCREENSHOT_DIR = path.join(OUTPUT_DIR, 'screenshots');
