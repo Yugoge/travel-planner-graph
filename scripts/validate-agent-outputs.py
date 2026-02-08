@@ -120,8 +120,8 @@ def semantic_checks(data_dir: Path) -> Tuple[List[str], List[str]]:
     # 1. Cost sanity check on accommodation
     _check_cost_sanity(data_dir, warnings)
 
-    # 2. Timeline overlap detection
-    _check_timeline_overlaps(data_dir, errors)
+    # 2. Timeline overlap detection (intentional overlaps → warnings)
+    _check_timeline_overlaps(data_dir, errors, warnings)
 
     # 3. Budget sum verification
     _check_budget_sums(data_dir, warnings)
@@ -177,8 +177,15 @@ def _check_cost_sanity(data_dir: Path, warnings: List[str]):
             )
 
 
-def _check_timeline_overlaps(data_dir: Path, errors: List[str]):
-    """Detect overlapping activities in timeline.json."""
+def _check_timeline_overlaps(data_dir: Path, errors: List[str], warnings: List[str] = None):
+    """Detect overlapping activities in timeline.json.
+
+    Intentional overlaps (Optional, Alternative, OR, In-Park dining) are
+    reported as warnings rather than critical errors.
+    """
+    # Keywords indicating an overlap is intentional (case-insensitive check)
+    INTENTIONAL_KEYWORDS = ["optional", "alternative", " or ", "in-park"]
+
     data = _load_agent_data(data_dir, "timeline")
     if not data:
         return
@@ -206,10 +213,21 @@ def _check_timeline_overlaps(data_dir: Path, errors: List[str]):
             curr_name, curr_start, curr_end = timed_activities[i]
             next_name, next_start, next_end = timed_activities[i + 1]
             if curr_end > next_start:
-                errors.append(
+                msg = (
                     f"[timeline] Day {day_num}: '{curr_name}' ({curr_start}-{curr_end}) "
                     f"overlaps '{next_name}' ({next_start}-{next_end})"
                 )
+                # Check if overlap is intentional:
+                # 1. Activity name contains Optional/Alternative/OR/In-Park keywords
+                # 2. One activity is fully contained within the other (sub-activity)
+                combined = (curr_name + " " + next_name).lower()
+                has_keyword = any(kw in combined for kw in INTENTIONAL_KEYWORDS)
+                is_contained = (next_start >= curr_start and next_end <= curr_end)
+                is_intentional = has_keyword or is_contained
+                if is_intentional and warnings is not None:
+                    warnings.append(msg + " [intentional]")
+                else:
+                    errors.append(msg)
 
 
 def _check_budget_sums(data_dir: Path, warnings: List[str]):
