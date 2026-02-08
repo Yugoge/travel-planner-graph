@@ -423,6 +423,10 @@ class InteractiveHTMLGenerator:
                         "name_base": name_base,
                         "name_local": name_local,
                         "name_en": meal.get("name_en", ""),  # Keep for backward compatibility
+                        "location": meal.get("location_local", meal.get("location", "")),
+                        "location_base": meal.get("location_base", meal.get("location", "")),
+                        "location_local": meal.get("location_local", meal.get("location", "")),
+                        "coordinates": meal.get("coordinates", {}),
                         "cost": cost,
                         "cuisine": meal.get("cuisine", ""),
                         "signature_dishes": meal.get("signature_dishes", ""),
@@ -501,6 +505,16 @@ class InteractiveHTMLGenerator:
                     attr_name_base = attr.get("name_base", attr_name)
                     attr_name_local = attr.get("name_local", attr.get("name_en", ""))
 
+                    # Fix issue #11: Detect optional items from timeline name or attraction notes
+                    is_optional = False
+                    if day_timeline:
+                        for tl_name in day_timeline:
+                            if attr_name.lower() in tl_name.lower() and "optional" in tl_name.lower():
+                                is_optional = True
+                                break
+                    if "optional" in str(attr.get("notes", "")).lower():
+                        is_optional = True
+
                     merged["attractions"].append({
                         "name": attr_name_local if attr_name_local else attr_name_base,  # Display local by default
                         "name_base": attr_name_base,
@@ -509,11 +523,13 @@ class InteractiveHTMLGenerator:
                         "location": attr.get("location_local", attr.get("location", "")),
                         "location_base": attr.get("location_base", attr.get("location", "")),
                         "location_local": attr.get("location_local", attr.get("location", "")),
+                        "coordinates": attr.get("coordinates", {}),
                         "type": self._format_type(attr.get("type", "")),
                         "cost": cost,
                         "cost_eur": cost_eur,
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
+                        "optional": is_optional,
                         "image": self._get_placeholder_image(
                             "attraction",
                             poi_name=attr_name_local if attr_name_local else attr_name,
@@ -593,6 +609,10 @@ class InteractiveHTMLGenerator:
                         "name_base": ent_name_base,
                         "name_local": ent_name_local,
                         "name_en": ent.get("name_en", ""),  # Keep for backward compatibility
+                        "location": ent.get("location_local", ent.get("location", "")),
+                        "location_base": ent.get("location_base", ent.get("location", "")),
+                        "location_local": ent.get("location_local", ent.get("location", "")),
+                        "coordinates": ent.get("coordinates", {}),
                         "type": self._format_type(ent.get("type", "")),
                         "cost": cost,
                         "duration": ent.get("duration", ""),
@@ -623,6 +643,32 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
+                # Fix issue #10: Lookup check-in time from timeline instead of hardcode
+                acc_time = {"start": "15:00", "end": "16:00"}  # default
+                if day_timeline:
+                    # Try accommodation name first (via standard matching)
+                    acc_name_for_lookup = acc.get("name_base", acc.get("name", ""))
+                    timeline_item_acc = self._find_timeline_item(acc_name_for_lookup, day_timeline)
+                    if not timeline_item_acc:
+                        # Direct lookup for check-in entries (bypasses transit filter)
+                        for tl_key, tl_val in day_timeline.items():
+                            if isinstance(tl_val, dict) and "check-in" in tl_key.lower():
+                                if "start_time" in tl_val and "end_time" in tl_val:
+                                    timeline_item_acc = tl_val
+                                    break
+                    if timeline_item_acc and "start_time" in timeline_item_acc and "end_time" in timeline_item_acc:
+                        acc_time = {"start": timeline_item_acc["start_time"], "end": timeline_item_acc["end_time"]}
+                else:
+                    raw_acc_time = acc.get("time")
+                    if raw_acc_time:
+                        normalized_acc_time = self._normalize_time(raw_acc_time)
+                        if normalized_acc_time:
+                            acc_time = normalized_acc_time
+
+                # Note (issue #1): accommodation cost may be in EUR not CNY for some data sources.
+                # If cost seems unusually low for the region (e.g., < 200 for a 4-5 star hotel in China),
+                # it may actually be in EUR. Review source data if prices look incorrect.
+
                 merged["accommodation"] = {
                     "name": acc_name_local if acc_name_local else acc_name_base,
                     "name_base": acc_name_base,
@@ -632,9 +678,10 @@ class InteractiveHTMLGenerator:
                     "location": acc.get("location_local", acc.get("location", "")),
                     "location_base": acc.get("location_base", acc.get("location", "")),
                     "location_local": acc.get("location_local", acc.get("location", "")),
+                    "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
                     "stars": acc.get("stars", 3),
-                    "time": acc.get("time", {"start": "15:00", "end": "16:00"}),
+                    "time": acc_time,
                     "links": acc.get("links", {}),
                     "image": self._get_placeholder_image(
                         "accommodation",
@@ -794,6 +841,21 @@ class InteractiveHTMLGenerator:
                             "end": "12:00"  # Placeholder
                         }
                     }
+
+        # Fix issue #6: Merge travel segments from timeline
+        if day_timeline:
+            for activity_name, times in day_timeline.items():
+                if isinstance(times, dict) and activity_name.lower().startswith("travel"):
+                    start_time = times.get("start_time", "")
+                    end_time = times.get("end_time", "")
+                    if start_time and end_time:
+                        merged.setdefault("travel_segments", []).append({
+                            "name": activity_name,
+                            "name_base": activity_name,
+                            "name_local": activity_name,
+                            "time": {"start": start_time, "end": end_time},
+                            "type": "travel"
+                        })
 
         # Calculate total budget
         merged["budget"]["total"] = sum([
@@ -1275,6 +1337,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang }) => {
 
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#37352f', margin: '0 0 4px' }}>
           {getDisplayName(item, lang)}
+          <RedNoteLink name={item.name_local || item.name_base} />
         </h2>
 
         <div style={{ borderTop: '1px solid #f0efed', paddingTop: '16px' }}>
@@ -1285,14 +1348,14 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang }) => {
           )}
           {item.cost !== undefined && (
             <PropertyRow label="Cost">
-              {item.cost === 0 ? 'Free' : `${item.cost.toFixed(2)} CNY`}
-              {item.cost_eur && ` (€${item.cost_eur.toFixed(2)})`}
+              {fmtCost(item.cost)}
+              {item.cost_eur > 0 && ` (€${item.cost_eur.toFixed(0)})`}
             </PropertyRow>
           )}
           {item.cuisine && <PropertyRow label="Cuisine">{item.cuisine}</PropertyRow>}
           {item.signature_dishes && <PropertyRow label="Signature Dishes">{item.signature_dishes}</PropertyRow>}
           {item.type && <PropertyRow label="Type">{item.type}</PropertyRow>}
-          {item.location && <PropertyRow label="Location">{item.location}</PropertyRow>}
+          {(item.location || item.location_base || item.location_local) && <PropertyRow label="Location"><MapLink item={item} lang={lang} /></PropertyRow>}
           {item.opening_hours && <PropertyRow label="Opening Hours">{item.opening_hours}</PropertyRow>}
           {item.recommended_duration && <PropertyRow label="Duration">{item.recommended_duration}</PropertyRow>}
           {item.duration && <PropertyRow label="Duration">{item.duration}</PropertyRow>}
@@ -1449,7 +1512,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 }}>
                   <span style={{ color: '#9b9a97' }}>Cost</span>
                   <span style={{ fontWeight: '600', color: cfg.color }}>
-                    {item.cost === 0 ? 'Free' : `${item.cost.toFixed(2)} CNY`}
+                    {fmtCost(item.cost)}
                   </span>
                 </div>
               </div>
@@ -1464,7 +1527,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 fontSize: '16px', fontWeight: '700', color: '#37352f'
               }}>
                 <span>Total</span>
-                <span style={{ color: cfg.color }}>{total.toFixed(2)} CNY</span>
+                <span style={{ color: cfg.color }}>¥{total.toFixed(0)}</span>
               </div>
             </div>
           </div>
@@ -1489,6 +1552,60 @@ const getDisplayName = (item, lang) => {
     return item.name_base || item.name || '';
   }
   return item.name_local || item.name || '';
+};
+
+// Fix issues #2,3,9: Smart cost formatter - no trailing zeros for integers
+const fmtCost = (c) => {
+  const n = Number(c);
+  if (!n || n === 0) return 'Free';
+  return Number.isInteger(n) ? `¥${n}` : `¥${n.toFixed(1)}`;
+};
+
+// Fix issues #4,7,12: Language-aware location display
+const getDisplayLocation = (item, lang) => {
+  if (!item) return '';
+  if (lang === 'base') return item.location_base || item.location || '';
+  return item.location_local || item.location || '';
+};
+
+// Fix issue #8: Google Maps link component
+const MapLink = ({ item, lang }) => {
+  const loc = getDisplayLocation(item, lang);
+  if (!loc) return null;
+  const coords = item.coordinates;
+  let href;
+  if (coords && (coords.latitude || coords.lat)) {
+    const lat = coords.latitude || coords.lat;
+    const lng = coords.longitude || coords.lng;
+    href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  } else {
+    href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+  }
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      style={{ color: '#4a90d9', textDecoration: 'none', borderBottom: '1px dashed #4a90d9' }}
+      title="Open in Google Maps"
+      onClick={e => e.stopPropagation()}>
+      {loc}
+    </a>
+  );
+};
+
+// Fix issue #8: RedNote (小红书) search link component
+const RedNoteLink = ({ name }) => {
+  if (!name) return null;
+  const url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(name)}`;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', padding: '2px 6px', background: '#fff0f0', borderRadius: '4px', textDecoration: 'none', fontSize: '11px', color: '#ff2442', border: '1px solid #ffe0e0', transition: 'all .12s', verticalAlign: 'middle' }}
+      title="Search on RedNote"
+      onClick={e => e.stopPropagation()}
+      onMouseEnter={e => { e.currentTarget.style.background = '#ffe0e0'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#fff0f0'; }}>
+      <span style={{ fontWeight: '700', marginRight: '2px' }}>红</span>
+      <span style={{ fontSize: '10px' }}>书</span>
+    </a>
+  );
 };
 
 const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBudgetClick }) => {
@@ -1577,11 +1694,13 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                   <div style={{ padding: '12px 14px' }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '6px' }}>
                       {lb}: {getDisplayName(meal, lang)}
+                      <RedNoteLink name={meal.name_local || meal.name_base} />
                     </div>
                     {meal.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{meal.name_en}</div>}
                     <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
-                      <div><span style={{ color: '#9b9a97' }}>Cost</span> {meal.cost === 0 ? 'Free' : `${meal.cost.toFixed(2)} CNY`}</div>
+                      <div><span style={{ color: '#9b9a97' }}>Cost</span> {fmtCost(meal.cost)}</div>
                       {meal.cuisine && <div><span style={{ color: '#9b9a97' }}>Cuisine</span> {meal.cuisine}</div>}
+                      {(meal.location || meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>Location</span> <MapLink item={meal} lang={lang} /></div>}
                       {meal.signature_dishes && !sm && <div><span style={{ color: '#9b9a97' }}>Signature</span> {meal.signature_dishes}</div>}
                     </div>
                     <LinksRow links={meal.links} compact={sm} />
@@ -1612,8 +1731,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                     </div>
                     <div style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{getDisplayName(attr, lang)}</div>
-                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                        {getDisplayName(attr, lang)}
+                        <RedNoteLink name={attr.name_local || attr.name_base} />
+                        {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
+                      </div>
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}{attr.cost_eur > 0 && ` (€${attr.cost_eur.toFixed(0)})`}</>} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       <LinksRow links={attr.links} compact />
@@ -1625,10 +1748,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '160px' }} onError={e => e.target.style.display = 'none'} />
                     </div>
                     <div style={{ padding: '14px 16px', flex: 1, lineHeight: 1.7 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>{getDisplayName(attr, lang)}</div>
-                      {attr.location && <PropLine label="Location" value={attr.location} />}
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>
+                        {getDisplayName(attr, lang)}
+                        <RedNoteLink name={attr.name_local || attr.name_base} />
+                        {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
+                      </div>
+                      {(attr.location || attr.location_base || attr.location_local) && <PropLine label="Location" value={<MapLink item={attr} lang={lang} />} />}
                       <PropLine label="Type" value={attr.type} />
-                      <PropLine label="Cost" value={attr.cost === 0 ? 'Free' : `${attr.cost.toFixed(2)} CNY${attr.cost_eur ? ` (€${attr.cost_eur.toFixed(2)})` : ''}`} />
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}{attr.cost_eur > 0 && ` (€${attr.cost_eur.toFixed(0)})`}</>} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       {attr.highlights && attr.highlights.length > 0 && (
@@ -1666,9 +1793,13 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       </div>
                     )}
                     <div style={{ padding: '14px 16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{getDisplayName(ent, lang)}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
+                        {getDisplayName(ent, lang)}
+                        <RedNoteLink name={ent.name_local || ent.name_base} />
+                      </div>
                       <PropLine label="Type" value={ent.type} />
-                      <PropLine label="Cost" value={ent.cost === 0 ? 'Free' : `${ent.cost.toFixed(2)} CNY`} />
+                      <PropLine label="Cost" value={fmtCost(ent.cost)} />
+                      {(ent.location || ent.location_base || ent.location_local) && <PropLine label="Location" value={<MapLink item={ent} lang={lang} />} />}
                       <PropLine label="Duration" value={ent.duration} />
                       {ent.note && (
                         <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
@@ -1698,12 +1829,15 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                     </div>
                   )}
                   <div style={{ padding: '14px 16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>{day.accommodation.name}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                      {getDisplayName(day.accommodation, lang)}
+                      <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
+                    </div>
                     {day.accommodation.name_cn && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{day.accommodation.name_cn}</div>}
                     <PropLine label="Type" value={day.accommodation.type} />
                     <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
-                    <PropLine label="Location" value={day.accommodation.location} />
-                    <PropLine label="Cost" value={day.accommodation.cost === 0 ? 'Free' : `${day.accommodation.cost.toFixed(2)} CNY`} />
+                    <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} />} />
+                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -1732,7 +1866,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                     <PropLine label="Departure" value={day.transportation.departure_time} />
                     <PropLine label="Arrival" value={day.transportation.arrival_time} />
                     {day.transportation.cost > 0 && (
-                      <PropLine label="Cost" value={`${day.transportation.cost.toFixed(2)} USD`} />
+                      <PropLine label="Cost" value={fmtCost(day.transportation.cost)} />
                     )}
                     {day.transportation.booking_status && (
                       <div style={{ marginTop: '8px' }}>
@@ -1812,11 +1946,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       >
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>{r.l}</span>
-                        <span style={{ fontWeight: '600', color: '#37352f' }}>{day.budget[r.k].toFixed(2)} CNY</span>
+                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k])}</span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Total</span><span>{day.budget.total.toFixed(2)} CNY</span>
+                      <span>Total</span><span>¥{day.budget.total.toFixed(0)}</span>
                     </div>
                   </div>
                 </div>
@@ -1854,6 +1988,8 @@ const TimelineView = ({ day, bp, lang, onItemClick }) => {
   day.attractions?.forEach(a => add(a, 'attraction', 'Attraction'));
   day.entertainment?.forEach(e => add(e, 'entertainment', 'Entertainment'));
   if (day.accommodation) add(day.accommodation, 'accommodation', 'Check-in');
+  // Fix issue #6: Add travel segments from timeline
+  day.travel_segments?.forEach(t => add(t, 'travel', t.name));
 
   // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
@@ -1868,7 +2004,8 @@ const TimelineView = ({ day, bp, lang, onItemClick }) => {
     meal: { bg: '#fffdf5', border: '#ebd984', dot: '#f0b429' },
     attraction: { bg: '#f6fafd', border: '#a8cceb', dot: '#4a90d9' },
     entertainment: { bg: '#faf6fd', border: '#c9aee6', dot: '#9b6dd7' },
-    accommodation: { bg: '#f5fbf6', border: '#a2d9b1', dot: '#45b26b' }
+    accommodation: { bg: '#f5fbf6', border: '#a2d9b1', dot: '#45b26b' },
+    travel: { bg: '#f8f8f8', border: '#d0d0d0', dot: '#999' }
   };
 
   const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
@@ -1925,7 +2062,7 @@ const TimelineView = ({ day, bp, lang, onItemClick }) => {
                 <div key={i} style={{
                   position: 'absolute', top: t, left: '10px', right: '10px',
                   minHeight: h - 4,
-                  background: st.bg, borderLeft: `3px solid ${st.border}`,
+                  background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
                   borderRadius: '6px', padding: sm ? '8px 10px' : '10px 14px',
                   display: 'flex', gap: '10px', alignItems: 'flex-start',
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
@@ -1952,10 +2089,13 @@ const TimelineView = ({ day, bp, lang, onItemClick }) => {
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
-                      {entry._type === 'transportation' ? (
-                        <span>{entry.icon} {entry._label}</span>
+                      {entry._type === 'transportation' || entry._type === 'travel' ? (
+                        <span>{entry._type === 'transportation' ? entry.icon : '🚶'} {entry._label}</span>
                       ) : (
                         <span>{entry._label}: {getDisplayName(entry, lang)}</span>
+                      )}
+                      {entry.optional && (
+                        <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>
                       )}
                     </div>
                     {entry._type === 'transportation' ? (
@@ -1987,10 +2127,10 @@ const TimelineView = ({ day, bp, lang, onItemClick }) => {
                         {entry.cost !== undefined && (
                           <span style={{
                             padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
-                            background: entry.cost === 0 ? '#e9f5ec' : '#f5f5f3',
-                            color: entry.cost === 0 ? '#1a7a32' : '#37352f'
+                            background: Number(entry.cost) === 0 ? '#e9f5ec' : '#f5f5f3',
+                            color: Number(entry.cost) === 0 ? '#1a7a32' : '#37352f'
                           }}>
-                            {entry.cost === 0 ? 'Free' : `¥${entry.cost.toFixed(2)}`}
+                            {fmtCost(entry.cost)}
                           </span>
                         )}
                         {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
@@ -2106,7 +2246,7 @@ function NotionTravelApp() {
               color: lang === 'local' ? '#45b26b' : '#6b6b6b',
               cursor: 'pointer', transition: 'all .12s'
             }}>
-              🌏 Local
+              中文
             </button>
             <button onClick={() => setLang('base')} style={{
               padding: sm ? '8px 10px' : '9px 14px',
@@ -2117,7 +2257,7 @@ function NotionTravelApp() {
               color: lang === 'base' ? '#45b26b' : '#6b6b6b',
               cursor: 'pointer', transition: 'all .12s'
             }}>
-              🇬🇧 EN
+              EN
             </button>
           </div>
         </div>

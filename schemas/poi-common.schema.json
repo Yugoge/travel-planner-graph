@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "poi-common.schema.json",
+  "title": "POI Common Definitions",
+  "description": "Shared definitions for all travel planner agent outputs. These reusable components define the formal contract for bilingual names, locations, coordinates, time ranges, search results, costs, and the agent envelope wrapper.",
+  "$defs": {
+    "bilingual_name": {
+      "type": "object",
+      "description": "A name in both base (English/romanized) and local (native script) languages.",
+      "properties": {
+        "name_base": {
+          "type": "string",
+          "description": "Name in English or romanized form."
+        },
+        "name_local": {
+          "type": ["string", "null"],
+          "description": "Name in local/native script, or null if not applicable."
+        }
+      },
+      "required": ["name_base", "name_local"]
+    },
+
+    "bilingual_location": {
+      "type": "object",
+      "description": "A location/address in both base and local languages.",
+      "properties": {
+        "location_base": {
+          "type": "string",
+          "description": "Location/address in English or romanized form."
+        },
+        "location_local": {
+          "type": "string",
+          "description": "Location/address in local/native script."
+        }
+      },
+      "required": ["location_base", "location_local"]
+    },
+
+    "coordinates": {
+      "description": "Geographic coordinates. Accepts both {latitude, longitude} and {lat, lng} formats for compatibility with different map providers (Google Maps uses lat/lng, others use latitude/longitude).",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "latitude": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90,
+              "description": "Latitude in decimal degrees."
+            },
+            "longitude": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180,
+              "description": "Longitude in decimal degrees."
+            }
+          },
+          "required": ["latitude", "longitude"],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90,
+              "description": "Latitude in decimal degrees (short form)."
+            },
+            "lng": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180,
+              "description": "Longitude in decimal degrees (short form)."
+            }
+          },
+          "required": ["lat", "lng"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "time_range": {
+      "type": "object",
+      "description": "A time range with start and end in HH:MM 24-hour format.",
+      "properties": {
+        "start": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Start time in HH:MM format."
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "End time in HH:MM format."
+        }
+      },
+      "required": ["start", "end"],
+      "additionalProperties": true
+    },
+
+    "time_flexible": {
+      "description": "Time specification that accepts either a time_range object {start, end} or a plain HH:MM string. The sync agent normalizes strings to objects.",
+      "oneOf": [
+        { "$ref": "#/$defs/time_range" },
+        {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Simple time in HH:MM format (pre-normalization)."
+        }
+      ]
+    },
+
+    "search_result": {
+      "type": "object",
+      "description": "A search result from a map or web search skill used during research.",
+      "properties": {
+        "skill": {
+          "type": "string",
+          "description": "The search skill/tool that produced this result (e.g., 'gaode-maps', 'google-maps', 'web-search')."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of search result (e.g., 'poi_detail', 'place_search', 'hotel_info')."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the search result."
+        },
+        "display_text": {
+          "type": "string",
+          "description": "Human-readable display text for the link."
+        }
+      },
+      "required": ["skill", "type", "url", "display_text"],
+      "additionalProperties": true
+    },
+
+    "cost_field": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A monetary cost value, always >= 0."
+    },
+
+    "currency_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code (e.g., USD, CNY, EUR)."
+    },
+
+    "agent_envelope": {
+      "type": "object",
+      "description": "The standard wrapper for all agent outputs.",
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "The name of the agent that produced this output."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["complete"],
+          "description": "Processing status. Currently only 'complete' is valid."
+        },
+        "data": {
+          "type": "object",
+          "description": "The agent-specific data payload."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional free-form notes from the agent about the data."
+        }
+      },
+      "required": ["agent", "status", "data"],
+      "additionalProperties": true
+    }
+  }
+}

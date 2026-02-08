@@ -1,0 +1,133 @@
+{
+  "request_id": "dev-20260208-150000",
+  "timestamp": "2026-02-08T15:30:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fix A: Smart cost formatting - replaced all .toFixed(2) with fmtCost() helper",
+        "type": "bugfix",
+        "issues_resolved": [2, 3, 9],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added fmtCost() JS helper that returns 'Free' for zero, integer format for whole numbers, and one decimal for fractional amounts. Replaced all .toFixed(2) occurrences in ItemDetailSidebar, BudgetDetailSidebar, KanbanView meal/attraction/entertainment/accommodation cards, budget section, and Timeline cost badges. Budget totals use .toFixed(0) for clean integer display.",
+        "rationale": "Root cause: .toFixed(2) created '30.00 CNY' display for integer costs, and string '0' was not caught by strict === 0 comparison. fmtCost uses Number() coercion to handle both string and number types."
+      },
+      {
+        "id": 2,
+        "description": "Fix B: Added location fields to meals and entertainment, plus lang-aware location display",
+        "type": "feature",
+        "issues_resolved": [4, 7, 12],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Python: Added location, location_base, location_local, coordinates fields to meal merge (line ~421), entertainment merge (line ~591), and coordinates to attraction merge (line ~508) and accommodation merge (line ~626). JS: Added getDisplayLocation() helper similar to getDisplayName() that respects language toggle. Updated all location renders in KanbanView (meal cards, attraction cards, entertainment cards, accommodation cards) and ItemDetailSidebar to use getDisplayLocation() or MapLink component.",
+        "rationale": "Root cause: meal and entertainment merge dicts omitted location fields present in source data. Attraction location display used item.location directly without checking language preference."
+      },
+      {
+        "id": 3,
+        "description": "Fix C: Added MapLink and RedNoteLink components for all item cards",
+        "type": "feature",
+        "issues_resolved": [8],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added MapLink component that generates Google Maps links using coordinates (latitude/longitude) when available, falling back to address-based search. Added RedNoteLink component with styled '红书' badge linking to xiaohongshu.com search. Both components use onClick={e => e.stopPropagation()} to prevent triggering parent card click. Applied MapLink to all location displays and RedNoteLink next to all item names across KanbanView (meals, attractions, entertainment, accommodation), ItemDetailSidebar, and timeline entries.",
+        "rationale": "Coordinates are now passed through from source data for all item types (meals, attractions, entertainment, accommodation), enabling accurate map links."
+      },
+      {
+        "id": 4,
+        "description": "Fix D: Replaced language toggle emoji labels with text-only labels",
+        "type": "bugfix",
+        "issues_resolved": [5],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Line ~2109: Replaced '🌏 Local' with '中文'. Line ~2120: Replaced '🇬🇧 EN' with 'EN'. No flag emojis, clean text-only labels.",
+        "rationale": "Root cause: Hardcoded emoji flags were region-specific (GB flag for EN) and would be incorrect if base language was not English."
+      },
+      {
+        "id": 5,
+        "description": "Fix E: Added travel segments from timeline to timeline view",
+        "type": "feature",
+        "issues_resolved": [6],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Python: In _merge_day_data(), after all category merges and before budget calculation, scans day_timeline for entries starting with 'travel' (case-insensitive) and adds them as travel_segments with name, time, and type fields. JS: Added 'travel' type to typeStyle with neutral grey styling. Added travel_segments forEach to timeline add() calls. Updated timeline label rendering to show walking emoji for travel type entries.",
+        "rationale": "Root cause: Timeline.json contains intra-day travel entries like 'Travel to Huguang Guild Hall' with start/end times, but _merge_day_data() only extracted times for POI matching, never created travel items."
+      },
+      {
+        "id": 6,
+        "description": "Fix F: Accommodation check-in time looked up from timeline instead of hardcoded",
+        "type": "bugfix",
+        "issues_resolved": [10],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Replaced hardcoded 'time': acc.get('time', {'start': '15:00', 'end': '16:00'}) with timeline lookup. First tries accommodation name via _find_timeline_item(), then does direct lookup for 'check-in' entries in timeline (bypassing transit filter that would otherwise exclude 'hotel check' prefixed keys). Falls back to 15:00-16:00 default only if no timeline match found.",
+        "rationale": "Root cause: _find_timeline_item() has 'hotel check' in its transit_prefixes exclusion list, so 'Hotel check-in' timeline entries were being filtered out. Direct iteration over day_timeline with 'check-in' substring match bypasses this filter."
+      },
+      {
+        "id": 7,
+        "description": "Fix G: Optional items detection and visual badge",
+        "type": "feature",
+        "issues_resolved": [11],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Python: In attraction merge, scans day_timeline keys for pattern where attraction name appears with 'optional' suffix (e.g., 'Liziba Station - Optional'). Also checks attr.notes for 'optional' keyword. Adds 'optional': true/false to merged attraction dict. JS: Timeline entries with optional=true get dashed left border instead of solid. Optional badge ('Optional' text in grey pill) shown next to item names in both KanbanView attraction cards and timeline entries.",
+        "rationale": "Root cause: Timeline.json marks optional items with '- Optional' suffix in activity names, but this information was lost during merge."
+      },
+      {
+        "id": 8,
+        "description": "Fix H: Added comment about potential EUR/CNY confusion in accommodation costs",
+        "type": "documentation",
+        "issues_resolved": [1],
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added comment block in accommodation merge section noting that cost values < 200 for China hotels may actually be in EUR not CNY. No auto-conversion implemented as it could break correct data.",
+        "rationale": "Data-level concern. Accommodation cost=90 for InterContinental is likely EUR (90 EUR ~ 738 CNY). Generator cannot reliably determine currency without explicit metadata."
+      }
+    ],
+    "scripts_created": [],
+    "js_helpers_added": [
+      {
+        "name": "fmtCost",
+        "purpose": "Smart cost formatting: Free for 0, integer display for whole numbers, one decimal otherwise",
+        "signature": "fmtCost(c) => string"
+      },
+      {
+        "name": "getDisplayLocation",
+        "purpose": "Language-aware location display, similar to getDisplayName",
+        "signature": "getDisplayLocation(item, lang) => string"
+      },
+      {
+        "name": "MapLink",
+        "purpose": "Google Maps link component using coordinates or address",
+        "signature": "<MapLink item={item} lang={lang} />"
+      },
+      {
+        "name": "RedNoteLink",
+        "purpose": "RedNote (小红书) search link with styled badge",
+        "signature": "<RedNoteLink name={string} />"
+      }
+    ],
+    "python_changes": [
+      {
+        "method": "_merge_day_data",
+        "changes": [
+          "Added location, location_base, location_local, coordinates to meal merge dict",
+          "Added coordinates to attraction merge dict",
+          "Added location, location_base, location_local, coordinates to entertainment merge dict",
+          "Added coordinates to accommodation merge dict",
+          "Added optional detection for attractions from timeline names and notes",
+          "Added travel_segments extraction from timeline entries",
+          "Replaced hardcoded accommodation time with timeline lookup",
+          "Added comment about potential EUR/CNY confusion in accommodation costs"
+        ]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commits": "Multiple issues traced to initial generator implementation that used .toFixed(2) universally and did not pass through all source data fields",
+      "why_issues_occurred": "Generator was designed for basic display without language-aware location, smart cost formatting, or travel segment visibility. Transit prefix filtering inadvertently blocked accommodation check-in time lookup.",
+      "how_fix_addresses_root": "Added proper data pipeline for all fields (location, coordinates) across all item types. Replaced fixed formatting with context-aware helpers. Added direct timeline lookup for check-in that bypasses transit filter."
+    },
+    "qa_ready": true,
+    "qa_notes": "Regenerate HTML with: python3 scripts/generate-html-interactive.py china-feb-15-mar-7-2026-20260202-195429. Then verify: (1) Cost displays use smart formatting (no trailing zeros), (2) Location fields appear for meals and entertainment, (3) MapLink and RedNoteLink render correctly, (4) Language toggle shows '中文' and 'EN', (5) Travel segments appear in timeline view, (6) Accommodation check-in time matches timeline data, (7) Optional attractions have dashed borders and badges, (8) All links open in new tabs without triggering parent card clicks.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Review accommodation source data to determine if cost values are in EUR or CNY",
+    "Consider adding Gaode Maps as an alternate map link for users inside China",
+    "Consider adding a data validation step that flags suspiciously low accommodation costs"
+  ]
+}

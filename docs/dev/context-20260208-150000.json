@@ -1,0 +1,176 @@
+{
+  "request_id": "dev-20260208-150000",
+  "timestamp": "2026-02-08T15:00:00Z",
+  "plan_id": "china-feb-15-mar-7-2026-20260202-195429",
+  "generator_file": "scripts/generate-html-interactive.py",
+  "issues": [
+    {
+      "id": 1,
+      "title": "Hotel price systematic data format issue",
+      "description": "User asks: accommodation cost=90 for InterContinental - is this a systemic data format issue? The accommodation source data has cost=90 in CNY but this seems too low. The generator also has a EUR→CNY conversion path (line 619: price_per_night_eur). Need to check if cost field is in wrong currency or just the data value.",
+      "root_cause": "Accommodation data has cost=90 which is directly used. No price_per_night_eur field exists so no conversion happens. The 90 is likely in EUR not CNY (90 EUR ≈ 738 CNY). This is a data-level issue, not generator bug. But the generator should handle this better.",
+      "severity": "major",
+      "type": "data_format",
+      "location": "generate-html-interactive.py:618-620, accommodation.json",
+      "fix": "Check if the accommodation data cost field looks like EUR (low values for China hotels) and auto-convert. Or flag for user review."
+    },
+    {
+      "id": 2,
+      "title": "Attractions show 'CNY 0' with trailing zero for free items",
+      "description": "来福士观景台 cost=30 shows fine, but FREE items show 'Free0' or 'CNY0.00' with trailing zero. User reports 'cost显示为cny0后面有个0'. Looking at template line 1631: `attr.cost === 0 ? 'Free' : \\`${attr.cost.toFixed(2)} CNY\\`` - this should show 'Free' for cost=0. But attractions like 来福士 have cost=30 so this isn't it. User says '来福士观景台cost显示为cny0后面有个0' - likely the cost displays as '30.00 CNY' and the trailing zeros look odd.",
+      "root_cause": "The .toFixed(2) creates '30.00 CNY' which looks weird for round numbers. User sees '0' after the number. The display format uses .toFixed(2) everywhere (lines 1288, 1452, 1583, 1616, 1631, 1671, 1706, 1815, 1993). Should use smarter formatting: show decimals only when needed.",
+      "severity": "minor",
+      "type": "display_format",
+      "location": "generate-html-interactive.py: all .toFixed(2) occurrences in React JSX",
+      "fix": "Replace .toFixed(2) with a smart formatter: if integer show no decimals, else show 2 decimals. E.g., cost === 0 ? 'Free' : Number.isInteger(cost) ? `¥${cost}` : `¥${cost.toFixed(2)}`"
+    },
+    {
+      "id": 3,
+      "title": "湖广会馆 also shows trailing 0",
+      "description": "Same issue as #2. cost=30 displays as '30.00 CNY'",
+      "root_cause": "Same as issue #2 - .toFixed(2) formatting",
+      "severity": "minor",
+      "type": "display_format",
+      "location": "Same as #2",
+      "fix": "Same fix as #2"
+    },
+    {
+      "id": 4,
+      "title": "湖广会馆 location shows Chinese even in base lang mode",
+      "description": "When user switches to 'base' language, attraction location still shows Chinese. Looking at line 509: `'location': attr.get('location_local', attr.get('location', ''))`. The 'location' field in merged data always uses location_local. The kanban view line 1629 uses `attr.location` which is always local. Need to make location respect lang toggle.",
+      "root_cause": "Generator line 509 sets 'location' to location_local. React code line 1629 and 1705 always display item.location without checking lang. getDisplayName() handles name but NOT location.",
+      "severity": "major",
+      "type": "rendering_logic",
+      "location": "generate-html-interactive.py:1629,1705,1295 (React JSX)",
+      "fix": "Add getDisplayLocation() helper similar to getDisplayName(): `const getDisplayLocation = (item, lang) => lang === 'base' ? (item.location_base || item.location || '') : (item.location_local || item.location || '');` Then use it everywhere location is displayed."
+    },
+    {
+      "id": 5,
+      "title": "Language toggle uses hardcoded GB flag emoji, not generic",
+      "description": "Base lang button shows '🇬🇧 EN' (line 2120). User wants: no flag icons, just text labels like 'EN' or '中文'. This follows HTML language design conventions. User also worries if they set base lang to Chinese, the GB flag would be wrong.",
+      "root_cause": "Hardcoded emoji flags in language toggle buttons (lines 2109 and 2120)",
+      "severity": "major",
+      "type": "hardcode",
+      "location": "generate-html-interactive.py:2109,2120",
+      "fix": "Replace '🌏 Local' with '中文' and '🇬🇧 EN' with 'EN'. No flag emojis. Clean text-only labels following HTML i18n conventions."
+    },
+    {
+      "id": 6,
+      "title": "Travel time not shown in day schedule",
+      "description": "Timeline.json has travel entries like 'Travel to Huguang Guild Hall' (09:00-09:30), 'Travel to lunch restaurant' (11:00-11:15), 'Travel to Xiayao Li' (12:45-13:00) etc. These are NOT included in the HTML because the generator only merges meals, attractions, entertainment, accommodation, and transportation (inter-city). Intra-day travel segments are missing.",
+      "root_cause": "The _merge_day_data() method reads timeline.json only for time lookups (_find_timeline_item), but never adds travel/transit entries as their own items. The timeline view's `add()` function only adds items from meals/attractions/entertainment/accommodation/transportation categories. Travel segments from timeline.json are completely ignored.",
+      "severity": "critical",
+      "type": "missing_feature",
+      "location": "generate-html-interactive.py:386-806 (_merge_day_data), 1842-1856 (timeline add calls)",
+      "fix": "Add a new category 'travel' to merged data. In _merge_day_data(), after merging all other categories, scan timeline.json for entries that start with 'Travel to' or similar patterns and add them as travel segments with their times. Add travel entries to the timeline view rendering."
+    },
+    {
+      "id": 7,
+      "title": "聚发财重庆江湖菜 has no address/location",
+      "description": "The meal card doesn't show a location/address. Looking at the generator, meals don't include location fields at all (lines 421-438). The source data HAS location_base and location_local fields for meals.",
+      "root_cause": "Generator _merge_day_data() for meals (lines 421-438) doesn't include location_base or location_local in the merged meal object. Source data has these fields.",
+      "severity": "major",
+      "type": "missing_field",
+      "location": "generate-html-interactive.py:421-438 (meal merge), 1556-1593 (meal rendering)",
+      "fix": "Add location_base, location_local, location, and coordinates to meal merge. Add location display to meal card in React. Also add to detail sidebar."
+    },
+    {
+      "id": 8,
+      "title": "Every item should have address as hyperlink to Google Maps or Gaode Maps, plus RedNote search icon",
+      "description": "User wants: (a) Every location/address should be a clickable hyperlink that opens Google Maps or Gaode Maps. (b) Every item should have a small RedNote (小红书) icon that links to a RedNote search for that POI name. Must be well-designed/aesthetic.",
+      "root_cause": "No map link or RedNote integration exists. Locations are plain text. Need to generate URLs: Google Maps uses coordinates, Gaode uses coordinates in GCJ-02. RedNote search URL format: https://www.xiaohongshu.com/search_result?keyword=ENCODED_NAME",
+      "severity": "major",
+      "type": "new_feature",
+      "location": "generate-html-interactive.py: React rendering sections for attractions, meals, entertainment, accommodation",
+      "fix": "1. Create helper function to generate map link from coordinates (prefer Google Maps for international, add Gaode as alternate). Format: `https://www.google.com/maps/search/?api=1&query=LAT,LNG` or `https://uri.amap.com/marker?position=LNG,LAT&name=NAME`. 2. Create RedNote search link: `https://www.xiaohongshu.com/search_result?keyword=ENCODED_NAME`. 3. Add these as small icons next to each location display. 4. Ensure coordinates are passed through from source data to merged data for all categories.",
+      "coordinates_needed": true,
+      "note": "Must pass coordinates from source data through to PLAN_DATA for all item types"
+    },
+    {
+      "id": 9,
+      "title": "下浩里 shows 'CostFree0' display bug",
+      "description": "Free attractions show 'Free' but something appends '0'. cost=0 should show just 'Free'. Looking at line 1631: `attr.cost === 0 ? 'Free' : \\`${attr.cost.toFixed(2)} CNY...\\`` - this ternary looks correct. But the PropLine shows 'Cost Free' with value. Maybe the issue is in the PropLine rendering where label 'Cost' and value 'Free' concatenate with no space, or cost_eur=0 is appended.",
+      "root_cause": "Line 1616/1631: the cost_eur display. For free items, cost=0 and cost_eur may be 0 or undefined. The template: `attr.cost === 0 ? 'Free' : \\`${attr.cost.toFixed(2)} CNY${attr.cost_eur ? \\` (€${attr.cost_eur.toFixed(2)})\\` : ''}\\`` - When cost=0, it shows 'Free'. But cost_eur is set to 0 (not undefined), and `0` is falsy in JS so the EUR part won't show. The issue might be that cost_eur=0 evaluates as falsy BUT something else adds '0'. Looking more carefully at line 1631: the value string for PropLine. If cost=0 but there's something else... Actually the user says 'costfree0' - could this be concatenation of 'Cost' label + 'Free' value + '0' from cost_eur? Let me check: `attr.cost === 0 ? 'Free' : ...` - if attr.cost is actually 0 as number, this works. But if attr.cost is string '0', then '0' === 0 is false. Need to ensure cost is always a number.",
+      "severity": "minor",
+      "type": "display_format",
+      "location": "generate-html-interactive.py:1616,1631 (PropLine cost value)",
+      "fix": "Use `Number(attr.cost) === 0` instead of `attr.cost === 0` to handle string '0'. Also clean up the formatting to use the smart formatter from issue #2."
+    },
+    {
+      "id": 10,
+      "title": "Hotel check-in hardcoded at 15:00 in timeline",
+      "description": "Accommodation time defaults to {'start': '15:00', 'end': '16:00'} (line 637). User says this wasn't their plan. Timeline.json has 'Hotel check-in' at 23:00-23:30. But the generator uses hardcoded default instead of looking up timeline.",
+      "root_cause": "Line 637: `'time': acc.get('time', {'start': '15:00', 'end': '16:00'})` - hardcoded default. The accommodation.json data has no 'time' field, so it always falls back to 15:00. The generator doesn't look up the accommodation check-in time from timeline.json like it does for attractions and meals.",
+      "severity": "major",
+      "type": "hardcode",
+      "location": "generate-html-interactive.py:637",
+      "fix": "Before using hardcoded default, lookup 'Hotel check-in' or 'check-in' or accommodation name in timeline.json for the day. Use _find_timeline_item() with the accommodation name or 'Hotel check-in' keyword."
+    },
+    {
+      "id": 11,
+      "title": "Optional items (李子坝, 洪崖洞) not visually distinguished in timeline",
+      "description": "Timeline.json marks these as 'Liziba Station (李子坝单轨穿楼) - Optional' and 'Hongyadong (洪崖洞民俗风貌区) - Optional'. The attractions.json may also have optional flags. The HTML should visually indicate optional items differently.",
+      "root_cause": "No 'optional' flag is passed through the data pipeline. The ' - Optional' suffix exists in timeline.json activity names but is stripped/ignored during matching. The rendered HTML treats all items identically.",
+      "severity": "minor",
+      "type": "missing_feature",
+      "location": "generate-html-interactive.py: _merge_day_data() and React rendering",
+      "fix": "1. In _merge_day_data(), detect 'Optional' in timeline item names or attraction notes. 2. Add 'optional: true' flag to merged data. 3. In timeline/kanban rendering, show optional items with dashed border and 'Optional' badge."
+    },
+    {
+      "id": 12,
+      "title": "南山火锅 and spa have no address in the rendered HTML",
+      "description": "The dinner (Qu Nanshan Yeqing Huoguo Gongyuan) and entertainment (Guanyuan Zudao Wellness) don't show addresses. Dinner has location data in meals.json but meal cards don't render location (issue #7). Entertainment has location_base/location_local in data but the generator doesn't include these in merged entertainment objects.",
+      "root_cause": "Entertainment merge (lines 591-609) doesn't include location_base, location_local, or coordinates. Same as issue #7 for meals.",
+      "severity": "major",
+      "type": "missing_field",
+      "location": "generate-html-interactive.py:591-609 (entertainment merge), 1652-1682 (entertainment rendering)",
+      "fix": "Add location_base, location_local, location, coordinates to entertainment merge. Add location display to entertainment card. Combined fix with issue #7."
+    }
+  ],
+  "grouped_fixes": {
+    "fix_A_cost_formatting": {
+      "issues": [2, 3, 9],
+      "description": "Smart cost formatting - replace .toFixed(2) with intelligent display",
+      "approach": "Add JS helper: `const fmtCost = (c) => c === 0 || Number(c) === 0 ? 'Free' : Number.isInteger(c) ? \\`¥${c}\\` : \\`¥${c.toFixed(1)}\\``. Use consistently across all cost displays. Also use ¥ symbol instead of 'CNY' suffix for cleaner look."
+    },
+    "fix_B_location_fields": {
+      "issues": [4, 7, 12],
+      "description": "Add location/address to all item types and respect lang toggle",
+      "approach": "1. Add location_base, location_local, location, coordinates to meal and entertainment merge. 2. Add getDisplayLocation() helper. 3. Update all rendering to use lang-aware location display."
+    },
+    "fix_C_map_rednote_links": {
+      "issues": [8],
+      "description": "Add Google Maps/Gaode hyperlinks and RedNote search icons",
+      "approach": "1. Pass coordinates through for all item types. 2. Create MapLink component with Google Maps URL. 3. Create RedNoteIcon component with search URL. 4. Add to all item cards next to location."
+    },
+    "fix_D_language_toggle": {
+      "issues": [5],
+      "description": "Remove flag emojis from language toggle",
+      "approach": "Replace '🌏 Local' with '中文' and '🇬🇧 EN' with 'EN'"
+    },
+    "fix_E_travel_segments": {
+      "issues": [6],
+      "description": "Add intra-day travel segments to timeline",
+      "approach": "In _merge_day_data(), after merging all categories, scan timeline.json for 'Travel to...' entries. Add them as 'travel' type items. Add 'travel' styling to timeline view."
+    },
+    "fix_F_accommodation_time": {
+      "issues": [10],
+      "description": "Lookup check-in time from timeline instead of hardcode",
+      "approach": "Use _find_timeline_item() with accommodation name or 'Hotel check-in'/'check-in' before falling back to default 15:00."
+    },
+    "fix_G_optional_badge": {
+      "issues": [11],
+      "description": "Visual distinction for optional items",
+      "approach": "Detect 'Optional' in timeline names or attraction notes. Add optional flag. Render with dashed border and badge."
+    },
+    "fix_H_hotel_price": {
+      "issues": [1],
+      "description": "Hotel price may be in EUR not CNY",
+      "approach": "If accommodation has no price_per_night_eur but cost < 200 for a China hotel, it's likely EUR. Add a heuristic or ensure data consistency. For now, document for user review."
+    }
+  },
+  "files_to_modify": [
+    "scripts/generate-html-interactive.py"
+  ],
+  "data_dir": "data/china-feb-15-mar-7-2026-20260202-195429"
+}
