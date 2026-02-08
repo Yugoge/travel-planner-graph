@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
-const LOCAL_HTML = path.join(PROJECT_ROOT, 'output', 'travel-plan-china-feb-15-mar-7-2026-20260202-195429.html');
+const LOCAL_HTML = process.argv[2] || path.join(PROJECT_ROOT, 'output', 'travel-plan-china-feb-15-mar-7-2026-20260202-195429.html');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'docs', 'dev', 'playwright-screenshots');
 const REPORT_PATH = path.join(PROJECT_ROOT, 'docs', 'dev', 'qa-report-playwright-20260207.json');
 

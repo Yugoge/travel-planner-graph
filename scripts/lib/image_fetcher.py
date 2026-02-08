@@ -77,6 +77,18 @@ class ImageFetcher:
 
         return False
 
+    def _load_fallback_images(self) -> dict:
+        """Load fallback image URLs from config."""
+        config_path = Path(__file__).parent.parent.parent / "config" / "fallback-images.json"
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f).get("fallback_unsplash", {})
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {
+                "meal": "", "attraction": "",
+                "accommodation": "", "entertainment": ""
+            }
+
     def _load_cache(self) -> Dict[str, Any]:
         """Load existing image cache or create new structure"""
         if self.cache_file.exists():
@@ -87,12 +99,7 @@ class ImageFetcher:
             "destination": self.destination_slug,
             "city_covers": {},
             "pois": {},
-            "fallback_unsplash": {
-                "meal": "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=300&h=200&fit=crop",
-                "attraction": "https://images.unsplash.com/photo-1548013146-72479768bada?w=400&h=300&fit=crop",
-                "accommodation": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&h=300&fit=crop",
-                "entertainment": "https://images.unsplash.com/photo-1499364615650-ec38552f4f34?w=400&h=300&fit=crop"
-            }
+            "fallback_unsplash": self._load_fallback_images()
         }
 
     def _save_cache(self) -> None:

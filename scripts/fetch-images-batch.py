@@ -62,6 +62,18 @@ class BatchImageFetcher:
                 return data.get("trip_summary", {})
         return {}
 
+    def _load_fallback_images(self) -> dict:
+        """Load fallback image URLs from config."""
+        config_path = self.base_dir / "config" / "fallback-images.json"
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f).get("fallback_unsplash", {})
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {
+                "meal": "", "attraction": "",
+                "accommodation": "", "entertainment": ""
+            }
+
     def _load_cache(self):
         """Load existing cache or create new"""
         if self.cache_file.exists():
