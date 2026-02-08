@@ -125,7 +125,10 @@ if [[ -f "$CACHE_FILE" ]]; then
   fi
 fi
 
-# Step 4: Fallback to hardcoded default only if no cache and no network
-echo "Error: Failed to fetch exchange rate from API and no cache available, using fallback rate 7.8" >&2
-echo "7.8"
+# Step 4: Fallback to config default only if no cache and no network
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/../../config/currency-config.json"
+FALLBACK_RATE=$(jq -r '.fallback_exchange_rate // 0.128' "$CONFIG_FILE" 2>/dev/null || echo "0.128")
+echo "Error: Failed to fetch exchange rate from API and no cache available, using config fallback $FALLBACK_RATE" >&2
+echo "$FALLBACK_RATE"
 exit 1

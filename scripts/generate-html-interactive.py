@@ -8,6 +8,7 @@ Generates single-file HTML with embedded React components
 import json
 import sys
 import os
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -37,15 +38,29 @@ class InteractiveHTMLGenerator:
         self._eur_to_cny_rate = self._load_eur_to_cny_rate()
 
     def _load_eur_to_cny_rate(self) -> float:
-        """Load EUR→CNY conversion rate from currency config."""
+        """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
+        fetch_script = self.base_dir / "scripts" / "utils" / "fetch-exchange-rate.sh"
+        if fetch_script.exists():
+            try:
+                result = subprocess.run(
+                    [str(fetch_script), "EUR", "CNY"],
+                    capture_output=True, text=True, check=True, timeout=10
+                )
+                rate = float(result.stdout.strip())
+                print(f"Exchange rate (real-time): 1 EUR = {rate} CNY", file=sys.stderr)
+                return rate
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
+                print(f"Warning: Real-time exchange rate fetch failed: {e}, using config fallback", file=sys.stderr)
+
+        # Fallback to config
         config_path = self.base_dir / "config" / "currency-config.json"
         try:
             with open(config_path, 'r') as f:
                 config = json.load(f)
-            # fallback_exchange_rate is CNY→EUR (e.g. 0.128)
-            # We need EUR→CNY, so invert it
             cny_to_eur = config.get("fallback_exchange_rate", 0.128)
-            return 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8
+            rate = 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8
+            print(f"Exchange rate (config fallback): 1 EUR = {rate} CNY", file=sys.stderr)
+            return rate
         except (FileNotFoundError, json.JSONDecodeError):
             return 7.8
 
