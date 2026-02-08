@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "timeline.schema.json",
+  "title": "Timeline Agent Output",
+  "description": "Schema for the timeline/sync agent output. Each day contains a timeline object where keys are activity names and values contain start/end times and optional duration.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "timeline"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete"]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/day_entry"
+          }
+        }
+      },
+      "required": ["days"],
+      "additionalProperties": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": ["agent", "status", "data"],
+  "additionalProperties": true,
+
+  "$defs": {
+    "timeline_activity": {
+      "type": "object",
+      "description": "A single timeline activity entry with start/end times.",
+      "properties": {
+        "start_time": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Activity start time in HH:MM format."
+        },
+        "end_time": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Activity end time in HH:MM format."
+        },
+        "duration_minutes": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Duration in minutes (optional, can be computed from start/end)."
+        }
+      },
+      "required": ["start_time", "end_time"],
+      "additionalProperties": true
+    },
+
+    "day_entry": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Day number in the trip (1-indexed)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format."
+        },
+        "timeline": {
+          "type": "object",
+          "description": "Map of activity name to timeline entry. Keys are human-readable activity names.",
+          "patternProperties": {
+            "^.+$": {
+              "$ref": "#/$defs/timeline_activity"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["day", "timeline"],
+      "additionalProperties": true
+    }
+  }
+}

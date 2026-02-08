@@ -21,6 +21,7 @@ import sys
 import os
 import re
 import subprocess
+import importlib.util
 from pathlib import Path
 from datetime import datetime
 from copy import deepcopy
@@ -84,6 +85,9 @@ class AgentDataSyncer:
         self._sync_entertainment(timeline_by_day)
         self._sync_accommodation(timeline_by_day)
         self._sync_shopping(timeline_by_day)
+
+        # Post-sync schema validation gate (report but don't fail)
+        self._validate_synced_data()
 
         # Print report summary
         self._print_report()
@@ -485,6 +489,66 @@ class AgentDataSyncer:
             self._save_json("shopping.json", data)
         else:
             print("  No changes needed")
+
+    def _validate_synced_data(self):
+        """Validate synced data against JSON schemas (report-only, non-blocking).
+
+        Uses validate-agent-outputs.py's load_schemas/validate_against_schema
+        to catch any schema violations introduced by the sync process.
+        """
+        print("\nValidating synced data against schemas...")
+        try:
+            # Import validate-agent-outputs.py (hyphenated filename requires importlib)
+            validator_path = Path(__file__).parent / "validate-agent-outputs.py"
+            if not validator_path.exists():
+                print("  Skipped (validator script not found)")
+                return
+
+            spec = importlib.util.spec_from_file_location(
+                "validate_agent_outputs", str(validator_path)
+            )
+            validator_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(validator_module)
+
+            schemas, registry = validator_module.load_schemas(self.base_dir)
+
+            validation_errors = []
+            agents_to_check = [
+                "meals", "attractions", "entertainment",
+                "accommodation", "transportation", "timeline", "budget",
+            ]
+
+            for agent_name in agents_to_check:
+                agent_file = self.data_dir / f"{agent_name}.json"
+                if not agent_file.exists():
+                    continue
+                schema = schemas.get(agent_name)
+                if not schema:
+                    continue
+                try:
+                    with open(agent_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    errors = validator_module.validate_against_schema(
+                        data, schema, registry, agent_name
+                    )
+                    validation_errors.extend(errors)
+                except Exception as e:
+                    validation_errors.append(f"[{agent_name}] Load error: {e}")
+
+            if validation_errors:
+                print(f"  WARNING: {len(validation_errors)} schema violation(s) after sync:")
+                for err in validation_errors[:10]:
+                    print(f"    {err}")
+                if len(validation_errors) > 10:
+                    print(f"    ... and {len(validation_errors) - 10} more")
+                self.report["schema_violations"] = validation_errors
+            else:
+                print("  All synced data passes schema validation")
+
+        except Exception as e:
+            # Non-blocking: if validation itself fails, just report and continue
+            print(f"  Schema validation skipped due to error: {e}")
+            self.report["errors"].append(f"Post-sync validation error: {e}")
 
     def _regenerate_html(self):
         """Regenerate HTML output using generate-html-interactive.py."""

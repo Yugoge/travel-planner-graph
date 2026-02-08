@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transportation.schema.json",
+  "title": "Transportation Agent Output",
+  "description": "Schema for the transportation agent output. Each entry represents a day with location changes (inter-city) or intra-city routes. Accepts both 'from'/'to' and 'from_base'/'to_base' naming conventions.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "transportation"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete"]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/day_entry"
+          }
+        }
+      },
+      "required": ["days"],
+      "additionalProperties": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": ["agent", "status", "data"],
+  "additionalProperties": true,
+
+  "$defs": {
+    "location_change": {
+      "type": "object",
+      "description": "A location change (inter-city transportation). Accepts both 'from'/'to' and 'from_base'/'to_base' field naming.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Origin city/location (short form)."
+        },
+        "to": {
+          "type": "string",
+          "description": "Destination city/location (short form)."
+        },
+        "from_base": {
+          "type": "string",
+          "description": "Origin city/location (bilingual base form)."
+        },
+        "to_base": {
+          "type": "string",
+          "description": "Destination city/location (bilingual base form)."
+        },
+        "from_local": {
+          "type": "string",
+          "description": "Origin city/location in local script."
+        },
+        "to_local": {
+          "type": "string",
+          "description": "Destination city/location in local script."
+        },
+        "from_location": {
+          "type": "string",
+          "description": "Detailed origin address."
+        },
+        "to_location": {
+          "type": "string",
+          "description": "Detailed destination address."
+        },
+        "transportation": {
+          "type": "string",
+          "description": "Mode of transportation (e.g., 'High-speed train', 'Flight (ALREADY BOOKED)')."
+        },
+        "departure_time": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Departure time in HH:MM format."
+        },
+        "arrival_time": {
+          "type": "string",
+          "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+          "description": "Arrival time in HH:MM format."
+        },
+        "duration_minutes": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Travel duration in minutes (trains). Flights may use flight_duration_minutes instead."
+        },
+        "flight_duration_minutes": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Flight duration in minutes (flights only)."
+        },
+        "total_journey_minutes": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total journey time including transfers (flights only)."
+        },
+        "cost": {
+          "$ref": "poi-common.schema.json#/$defs/cost_field"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes about the transportation."
+        },
+        "route_details": {
+          "type": "object",
+          "description": "Detailed route information (freeform structure varies by transport type).",
+          "additionalProperties": true
+        },
+        "booking_required": {
+          "type": "boolean",
+          "description": "Whether advance booking is needed."
+        },
+        "booking_status": {
+          "type": "string",
+          "description": "Current booking status."
+        },
+        "booking_urgency": {
+          "type": "string",
+          "description": "Urgency level for booking."
+        },
+        "data_source": {
+          "type": "string",
+          "description": "Source of transportation data (e.g., 'user_verified_12306', 'user_provided')."
+        },
+        "currency": {
+          "$ref": "poi-common.schema.json#/$defs/currency_code"
+        }
+      },
+      "oneOf": [
+        { "required": ["from", "to", "transportation", "departure_time", "arrival_time", "cost"] },
+        { "required": ["from_base", "to_base", "transportation", "departure_time", "arrival_time", "cost"] }
+      ],
+      "additionalProperties": true
+    },
+
+    "day_entry": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Day number in the trip (1-indexed)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format."
+        },
+        "location": {
+          "type": "string",
+          "description": "City or location for this day."
+        },
+        "location_change": {
+          "$ref": "#/$defs/location_change"
+        },
+        "intra_city_routes": {
+          "type": "object",
+          "description": "Intra-city route details for days without location changes. Freeform structure with route_N keys.",
+          "additionalProperties": true
+        }
+      },
+      "required": ["day"],
+      "additionalProperties": true
+    }
+  }
+}

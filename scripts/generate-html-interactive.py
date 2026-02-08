@@ -261,13 +261,16 @@ class InteractiveHTMLGenerator:
             return None
 
         # Transit prefixes to exclude from matching (these are travel segments, not POIs)
+        # Note: "hotel check" intentionally omitted so accommodation can match
+        # "Hotel check-in" entries in timeline. Sync-agent-data.py keeps "hotel check"
+        # in its own list because _sync_accommodation uses direct name lookup instead.
         transit_prefixes = (
             "travel to", "walk to", "drive to", "taxi to", "bus to",
             "train to", "metro to", "subway to", "transfer to",
             "travel from", "walk from", "drive from",
             "travel back", "return to", "board train",
-            "hotel check", "check luggage", "wake up", "arrive ",
-            "return home", "free time",
+            "check luggage", "wake up", "arrive ",
+            "return home", "free time", "settle in",
         )
 
         # Time hint ranges for meal slots
@@ -643,19 +646,16 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
-                # Fix issue #10: Lookup check-in time from timeline instead of hardcode
+                # Fix issue #10 (root cause): Lookup check-in time from timeline.
+                # "hotel check" removed from transit_prefixes so _find_timeline_item()
+                # can now match "Hotel check-in" entries directly (no workaround needed).
                 acc_time = {"start": "15:00", "end": "16:00"}  # default
                 if day_timeline:
-                    # Try accommodation name first (via standard matching)
                     acc_name_for_lookup = acc.get("name_base", acc.get("name", ""))
                     timeline_item_acc = self._find_timeline_item(acc_name_for_lookup, day_timeline)
                     if not timeline_item_acc:
-                        # Direct lookup for check-in entries (bypasses transit filter)
-                        for tl_key, tl_val in day_timeline.items():
-                            if isinstance(tl_val, dict) and "check-in" in tl_key.lower():
-                                if "start_time" in tl_val and "end_time" in tl_val:
-                                    timeline_item_acc = tl_val
-                                    break
+                        # Fallback: search for "Hotel check-in" as a timeline key name
+                        timeline_item_acc = self._find_timeline_item("Hotel check-in", day_timeline)
                     if timeline_item_acc and "start_time" in timeline_item_acc and "end_time" in timeline_item_acc:
                         acc_time = {"start": timeline_item_acc["start_time"], "end": timeline_item_acc["end_time"]}
                 else:

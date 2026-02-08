@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "budget.schema.json",
+  "title": "Budget Agent Output",
+  "description": "Schema for the budget agent output. Each day contains budget breakdowns by category (meals, accommodation, activities, shopping, transportation) and optional detailed breakdowns. Root-level fields include trip totals and overage calculations.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "budget"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete"]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/day_entry"
+          }
+        },
+        "trip_total": {
+          "type": "number",
+          "description": "Total trip cost."
+        },
+        "user_budget": {
+          "type": "number",
+          "description": "User's stated budget."
+        },
+        "overage": {
+          "type": "number",
+          "description": "Amount over budget (can be negative if under budget)."
+        },
+        "overage_percentage": {
+          "type": "number",
+          "description": "Percentage over budget."
+        }
+      },
+      "required": ["days"],
+      "additionalProperties": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": ["agent", "status", "data"],
+  "additionalProperties": true,
+
+  "$defs": {
+    "budget_categories": {
+      "type": "object",
+      "description": "Budget breakdown by spending category.",
+      "properties": {
+        "meals": {
+          "type": "number",
+          "description": "Total meal costs for this day."
+        },
+        "accommodation": {
+          "type": "number",
+          "description": "Accommodation cost for this day."
+        },
+        "activities": {
+          "type": "number",
+          "description": "Activities/attractions costs for this day."
+        },
+        "shopping": {
+          "type": "number",
+          "description": "Shopping costs for this day."
+        },
+        "transportation": {
+          "type": "number",
+          "description": "Transportation costs for this day."
+        },
+        "total": {
+          "type": "number",
+          "description": "Total cost for this day."
+        }
+      },
+      "required": ["meals", "accommodation", "activities", "shopping", "transportation", "total"],
+      "additionalProperties": true
+    },
+
+    "day_entry": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Day number in the trip (1-indexed)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format."
+        },
+        "location": {
+          "type": "string",
+          "description": "City or location for this day."
+        },
+        "budget": {
+          "$ref": "#/$defs/budget_categories"
+        },
+        "breakdown": {
+          "type": "object",
+          "description": "Detailed breakdown of costs within each category. Freeform structure.",
+          "additionalProperties": true
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes about this day's budget."
+        }
+      },
+      "required": ["day", "budget"],
+      "additionalProperties": true
+    }
+  }
+}

@@ -170,6 +170,10 @@ Write(
 )
 ```
 
+**Schema**: `schemas/meals.schema.json` (references `schemas/poi-common.schema.json`)
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `cuisine`
+**Validated by**: `scripts/validate-agent-outputs.py`
+
 **JSON Format**:
 ```json
 {
