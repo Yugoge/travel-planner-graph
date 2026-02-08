@@ -77,9 +77,74 @@ For each day in the trip:
 
 ## Output
 
-Save to: `data/{destination-slug}/timeline.json`
+**CRITICAL - File-Based Pipeline Protocol**: Follow this exact sequence to ensure timeline data is persisted and verified.
 
-Format:
+### Step 0: Verify Inputs (MANDATORY)
+
+**You MUST verify all required input files exist before analysis.**
+
+Read and confirm ALL input files:
+```bash
+Read data/{destination-slug}/plan-skeleton.json
+Read data/{destination-slug}/meals.json
+Read data/{destination-slug}/accommodation.json
+Read data/{destination-slug}/attractions.json
+Read data/{destination-slug}/entertainment.json
+Read data/{destination-slug}/shopping.json
+Read data/{destination-slug}/transportation.json
+```
+
+If ANY file is missing, return error immediately:
+```json
+{
+  "error": "missing_input",
+  "missing_files": ["path/to/missing.json"],
+  "message": "Cannot proceed without all input files"
+}
+```
+
+### Step 1: Read and Analyze Data
+
+Read all verified input files from Step 0.
+
+Analyze for each day:
+- Transportation schedules (if location_change day)
+- Meal times (breakfast, lunch, dinner)
+- Attraction durations
+- Entertainment show times
+- Shopping time allocations
+- Free time blocks
+- Hotel check-in/check-out times
+
+### Step 2: Generate Timeline Dictionary
+
+For each day, create timeline dictionary with:
+- **KEY**: Exact activity name from source JSON
+- **VALUE**: `{start_time: "HH:MM", end_time: "HH:MM", duration_minutes: N}`
+
+Validate:
+- No overlapping activities
+- Realistic travel times between locations
+- Meal times are reasonable (breakfast 7-10am, lunch 12-3pm, dinner 6-10pm)
+- Attraction hours match opening times
+- Day not over-scheduled (>12 hours)
+- Sufficient breaks between activities
+
+Generate warnings for any conflicts detected.
+
+### Step 3: Save JSON to File and Return Completion
+
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent timeline data loss.
+
+Use Write tool to save complete timeline JSON:
+```bash
+Write(
+  file_path="data/{destination-slug}/timeline.json",
+  content=<complete_json_string>
+)
+```
+
+**JSON Format**:
 ```json
 {
   "agent": "timeline",
@@ -89,8 +154,16 @@ Format:
       {
         "day": 1,
         "timeline": {
-          "Activity Name 1": {...},
-          "Activity Name 2": {...}
+          "Activity Name 1": {
+            "start_time": "09:00",
+            "end_time": "11:00",
+            "duration_minutes": 120
+          },
+          "Activity Name 2": {
+            "start_time": "11:30",
+            "end_time": "13:00",
+            "duration_minutes": 90
+          }
         }
       }
     ]
@@ -103,7 +176,9 @@ Format:
 }
 ```
 
-Return only: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
+
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ## Quality Standards
 

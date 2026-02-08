@@ -31,6 +31,7 @@ class BatchImageFetcher:
         self.data_dir = self.base_dir / "data" / destination_slug
         self.cache_file = self.data_dir / "images.json"
         self.venv_python = "/root/.claude/venv/bin/python3"
+        self.force_refresh = False  # Set to True to ignore cache and re-fetch all
 
         # Load cache
         self.cache = self._load_cache()
@@ -265,7 +266,7 @@ class BatchImageFetcher:
 
         fetched = 0
         for city in list(cities)[:limit]:
-            if city in self.cache["city_covers"]:
+            if city in self.cache["city_covers"] and not self.force_refresh:
                 print(f"  ✓ {city} (cached)")
                 continue
 
@@ -499,7 +500,7 @@ class BatchImageFetcher:
                 cache_key = f"gaode_{poi['name']}"
                 service = "Gaode"
 
-            if cache_key in self.cache["pois"]:
+            if cache_key in self.cache["pois"] and not self.force_refresh:
                 print(f"  ✓ {poi['name']} ({poi['type']}, cached, {service})")
                 continue
 
@@ -534,15 +535,29 @@ def main():
         print("Example: python3 fetch-images-batch.py china-exchange-bucket-list-2026 5 10")
         sys.exit(1)
 
-    destination = sys.argv[1]
-    city_limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    poi_limit = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Batch fetch images from Google Maps and Gaode Maps')
+    parser.add_argument('destination', help='Destination slug (e.g., china-feb-15-mar-7-2026-20260202-195429)')
+    parser.add_argument('city_limit', nargs='?', type=int, default=5, help='Max cities to fetch (default: 5)')
+    parser.add_argument('poi_limit', nargs='?', type=int, default=10, help='Max POIs to fetch (default: 10)')
+    parser.add_argument('--force', action='store_true', help='Force re-fetch all images (ignore cache)')
+
+    args = parser.parse_args()
+
+    destination = args.destination
+    city_limit = args.city_limit
+    poi_limit = args.poi_limit
+    force_refresh = args.force
 
     print("="*60)
     print(f"Batch Image Fetcher - {destination}")
+    if force_refresh:
+        print("⚡ FORCE MODE: Re-fetching all images (ignoring cache)")
     print("="*60)
 
     fetcher = BatchImageFetcher(destination)
+    fetcher.force_refresh = force_refresh
     fetcher.fetch_cities(city_limit)
     fetcher.fetch_pois(poi_limit)
 

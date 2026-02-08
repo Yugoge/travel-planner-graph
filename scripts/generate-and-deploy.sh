@@ -42,23 +42,23 @@ echo -e "${GREEN}✓${NC} Plan ID: ${YELLOW}$PLAN_ID${NC}"
 echo -e "${GREEN}✓${NC} Data directory: $DATA_DIR"
 echo ""
 
-# Step 1: Fetch real images from Google Maps and Gaode Maps
-echo -e "${BLUE}[1/5]${NC} Fetching real photos from Google Maps and Gaode Maps..."
+# Step 1: Fetch real images from Google Maps and Gaode Maps (FORCE REFRESH ALL)
+echo -e "${BLUE}[1/5]${NC} Fetching ALL photos from Google Maps and Gaode Maps..."
+echo -e "${YELLOW}⚡${NC} Force mode: Re-fetching all images (ignoring cache)"
 cd "$PROJECT_ROOT"
 
-# Check if images.json exists and has photos
+# Force re-fetch ALL images (no cache, no limit)
+# Max limit: 300 to ensure we get all POIs (attractions + meals + accommodation + entertainment)
+python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 --force || {
+    echo -e "${RED}❌${NC}  Image fetch failed, trying without force..."
+    python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 5 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
+}
+
+# Show cache status
 IMAGES_FILE="$DATA_DIR/images.json"
 if [ -f "$IMAGES_FILE" ]; then
     POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
-    if [ "$POI_COUNT" -gt "0" ]; then
-        echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos"
-    else
-        echo -e "${YELLOW}⚠${NC}  No POI photos cached, fetching 20 POIs..."
-        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 5 20 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using fallback images"
-    fi
-else
-    echo -e "${YELLOW}⚠${NC}  No image cache found, fetching 20 POIs..."
-    python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 5 20 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using fallback images"
+    echo -e "${GREEN}✓${NC} Total cached POI photos: $POI_COUNT"
 fi
 echo ""
 

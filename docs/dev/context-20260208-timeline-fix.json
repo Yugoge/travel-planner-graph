@@ -1,0 +1,173 @@
+{
+  "request_id": "dev-20260208-timeline-fix",
+  "timestamp": "2026-02-08T00:00:00Z",
+  "requirement": {
+    "original": "这是系统性故障，思考agent化的修复方案",
+    "clarified": "修复timeline.json空数据问题，参考multi-asset-portfolio的equity-research纯文件沟通模式，确保每次timeline-agent调用都有对应的文档更新",
+    "what": "修复timeline subagent和orchestrator的文件沟通机制",
+    "why": "timeline.json被清空导致HTML生成器无法使用真实时间数据",
+    "where": [
+      ".claude/agents/timeline.md",
+      ".claude/commands/plan.md",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+    ],
+    "scope": {
+      "included": [
+        "修改timeline.md agent定义，增加明确的Write指令（参考equity-analyst.md）",
+        "修改plan.md orchestrator步骤，增加文件验证（参考equity-research.md）",
+        "添加timeline验证脚本（检查文件存在和内容完整性）",
+        "重新生成所有21天的timeline数据"
+      ],
+      "excluded": [
+        "修改其他agents（meals, attractions等）",
+        "修改HTML生成器逻辑",
+        "修改transportation或budget agents"
+      ]
+    },
+    "success_criteria": [
+      "timeline.json每天的timeline字段都有数据（不是{}）",
+      "timeline.md明确包含Write指令（类似equity-analyst的'Save JSON to:'）",
+      "plan.md orchestrator包含Read验证步骤（类似equity-research的文件验证）",
+      "创建验证脚本validate-timeline.sh或.py",
+      "未来调用timeline-agent时数据能正确保存并被验证",
+      "每次timeline-agent调用都有文档更新（可通过git diff验证）"
+    ],
+    "constraints": [
+      "必须保持file-based pipeline模式（agent返回'complete'，数据通过文件传递）",
+      "必须参考multi-asset-portfolio的模式，不要创新",
+      "timeline.json格式必须保持现有结构（agent/status/data/days）",
+      "不能破坏现有的bilingual annotation要求"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "timeline.json所有days的timeline字段都是空对象{}",
+    "root_cause": "timeline agent定义不够明确，缺少explicit Write指令和orchestrator文件验证步骤",
+    "root_cause_commit": "ef0ed28 - checkpoint: Auto-save at 2026-02-07 12:16:57 (删除了1028行timeline数据)",
+    "why_introduced": "timeline.json被某个操作重新初始化为空框架，可能是/dev修复或HTML生成器调试过程",
+    "why_problematic": "timeline agent定义只说'Save to:'，没有明确Write操作；orchestrator调用后没有Read验证文件是否正确保存",
+    "timeline": "2026-02-07 12:16:57 timeline数据被清空",
+    "affected_files": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+    ],
+    "comparison_with_working_pattern": {
+      "multi_asset_portfolio_equity_analyst": {
+        "agent_definition": "明确指令 'Save JSON to: data/{TICKER}/metrics/revenue_projection.json'",
+        "orchestrator_verification": "Task tool调用后立即 Read data/{TICKER}/metrics/revenue_projection.json 验证",
+        "prompt_structure": "1. FIRST verify inputs exist, 2. Analyze, 3. Save JSON to: <path>, 4. Return only: 'complete'",
+        "file_exists_check": "test -f data/{TICKER}/metrics/revenue_projection.json && echo 'verified'"
+      },
+      "current_timeline_agent": {
+        "agent_definition": "只说 'Save to: data/{destination-slug}/timeline.json'，不够明确",
+        "orchestrator_verification": "plan.md有test -f检查，但在timeline agent调用后没有立即验证",
+        "prompt_structure": "缺少'FIRST verify inputs exist'步骤，缺少'Save JSON to:'明确指令",
+        "file_exists_check": "存在但不在关键位置（Step 4验证所有文件，不是单独验证timeline）"
+      }
+    }
+  },
+  "context": {
+    "codebase_state": "Working directory clean (8 uncommitted files from previous sessions)",
+    "recent_commits": [
+      "dad5682 - cleanup: condense verbose orchestrator prompt enforcement section",
+      "ef0ed28 - checkpoint: Auto-save at 2026-02-07 12:16:57 (TIMELINE DATA DELETED)",
+      "d453036 - checkpoint: Auto-save at 2026-02-05 21:10:12 (timeline data still exists)"
+    ],
+    "file_contents": {
+      ".claude/agents/timeline.md": "126 lines, defines timeline agent but lacks explicit Write instructions",
+      ".claude/commands/plan.md": "1588 lines, orchestrator for /plan command, has file verification at Step 4 but not immediately after timeline agent",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json": "Currently empty (all timeline: {}), was full on 2026-02-05",
+      "/root/multi-asset-portfolio/.claude/agents/equity-analyst.md": "Reference implementation showing proper file-based communication",
+      "/root/multi-asset-portfolio/.claude/commands/equity-research.md": "Reference orchestrator showing proper verification"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x for validation scripts",
+      "packages": "jq for JSON validation, bash for test -f checks"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "data_dir": "/root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429",
+      "config_files": [
+        ".claude/agents/timeline.md",
+        ".claude/commands/plan.md"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "参考multi-asset-portfolio的equity-research模式，修复timeline agent的文件沟通机制",
+    "reference_pattern": "/root/multi-asset-portfolio/.claude/agents/equity-analyst.md 和 /root/multi-asset-portfolio/.claude/commands/equity-research.md",
+    "implementation_steps": [
+      {
+        "step": 1,
+        "task": "修改 .claude/agents/timeline.md",
+        "details": [
+          "在## Output部分添加明确的步骤化指令（参考equity-analyst.md Step 0-3模式）",
+          "添加'Step 0: Verify Inputs (MANDATORY)'部分，要求Read所有输入文件",
+          "添加'Step 1: Read and analyze data'",
+          "添加'Step 2: Generate timeline dictionary'",
+          "添加'Step 3: Save JSON and return completion'",
+          "Step 3明确指令：'Use Write tool: Write(file_path=data/{destination-slug}/timeline.json, content=<json>)'",
+          "添加'Return only: complete'的明确要求"
+        ]
+      },
+      {
+        "step": 2,
+        "task": "修改 .claude/commands/plan.md 的timeline orchestration部分",
+        "details": [
+          "找到timeline agent调用位置（搜索'Task.*timeline'或'subagent.*timeline'）",
+          "在Task调用的prompt中添加明确指令：'Save JSON to: data/{destination-slug}/timeline.json'",
+          "在Task调用后立即添加验证步骤：",
+          "  1. Read data/{destination-slug}/timeline.json",
+          "  2. 验证JSON格式正确",
+          "  3. 验证至少有一天的timeline数据（不是全部{}）",
+          "  4. 如果验证失败，报错并停止workflow"
+        ]
+      },
+      {
+        "step": 3,
+        "task": "创建验证脚本 scripts/validate-timeline-data.py",
+        "details": [
+          "参数：<timeline_json_path>",
+          "功能：",
+          "  1. 读取timeline.json",
+          "  2. 验证JSON格式",
+          "  3. 检查每天的timeline字段",
+          "  4. 报告空timeline的天数",
+          "  5. Exit 0如果至少有50%的天有数据，Exit 1如果大部分都是空的",
+          "输出示例：",
+          "  ✓ Timeline data validation",
+          "  - Days with timeline data: 18/21",
+          "  - Days with empty timeline: 3/21",
+          "  - Status: PASS (>50% coverage)"
+        ]
+      },
+      {
+        "step": 4,
+        "task": "恢复timeline.json数据",
+        "details": [
+          "从git历史恢复：git show d453036:data/china-feb-15-mar-7-2026-20260202-195429/timeline.json > timeline_backup.json",
+          "验证恢复的数据完整性",
+          "替换当前空的timeline.json",
+          "或者：调用修复后的timeline agent重新生成所有21天数据"
+        ]
+      }
+    ],
+    "scripts_to_create": [
+      "scripts/validate-timeline-data.py - 验证timeline.json完整性"
+    ],
+    "files_to_modify": [
+      ".claude/agents/timeline.md - 添加明确的Write指令和步骤化workflow",
+      ".claude/commands/plan.md - 修改orchestrator的timeline调用和验证步骤"
+    ],
+    "validation_approach": "QA subagent将：1. 验证timeline.md包含明确Write指令，2. 验证plan.md包含Read验证步骤，3. 运行validate-timeline-data.py脚本，4. 检查timeline.json不再是全部空{}，5. 验证修改后的模式与equity-research一致"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "file_based_pipeline": true,
+    "explicit_write_instructions": true,
+    "orchestrator_verification": true,
+    "reference_working_pattern": "multi-asset-portfolio equity-research模式"
+  }
+}
