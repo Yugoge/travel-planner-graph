@@ -101,7 +101,7 @@ For each day in the trip:
    - **China**: `"name_base": "Nanshan Night View", "name_local": "南山夜景"`
    - **Japan**: `"name_base": "Kabuki-za Theatre", "name_local": "歌舞伎座"`
    - **Korea**: `"name_base": "Nanta Show", "name_local": "난타"`
-   - **USA/UK**: `"name_base": "Broadway Theater", "name_local": "Broadway Theater"` (same as base)
+   - **USA/UK** (when base_lang=en): `"name_base": "Broadway Theater", "name_local": "Broadway Theater"` (destination lang = base_lang)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this entertainment option

@@ -71,7 +71,7 @@ For each day in the trip:
    - China POI → `name_local` in Chinese (for Gaode search)
    - Japan POI → `name_local` in Japanese (for Google Maps Japan)
    - Korea POI → `name_local` in Korean
-   - If destination language = base_lang → `name_local` same as `name_base`
+   - If destination language = `base_lang` → `name_local` same as `name_base`
 
    ```json
    {
@@ -97,7 +97,7 @@ For each day in the trip:
    - **China**: `"name_base": "Qu Nanshan Night View Hotpot Park", "name_local": "去南山夜景火锅公园"`
    - **Japan**: `"name_base": "Sushi Saito", "name_local": "鮨 さいとう"`
    - **Korea**: `"name_base": "Gwangjang Market", "name_local": "광장시장"`
-   - **USA**: `"name_base": "In-N-Out Burger", "name_local": "In-N-Out Burger"` (same as base)
+   - **USA** (when base_lang=en): `"name_base": "In-N-Out Burger", "name_local": "In-N-Out Burger"` (destination lang = base_lang)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this restaurant

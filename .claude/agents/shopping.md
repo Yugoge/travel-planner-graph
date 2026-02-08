@@ -64,10 +64,14 @@ For each day in the trip:
    **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
    To support native-language image search and prevent information loss, ALL POIs MUST use standardized bilingual fields.
 
+   **Language config**: Read `base_lang` from `requirements-skeleton.json` → `trip_summary.base_lang` (e.g. `"en"`).
+   - `name_base` / `location_base` → written in `base_lang` language
+   - `name_local` / `location_local` → written in destination country's native language
+
    **Required fields**:
-   - `name_base`: Base language name (English for international communication)
+   - `name_base`: Name in `base_lang` (read from requirements-skeleton.json)
    - `name_local`: Native language name (USED FOR MAP SEARCHES)
-   - `location_base`: Base language address
+   - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
 
    ```json
@@ -100,7 +104,7 @@ For each day in the trip:
    - **China**: `"name_base": "Ciqikou Ancient Town", "name_local": "磁器口古镇"`
    - **Japan**: `"name_base": "Takeshita Street", "name_local": "竹下通り"`
    - **Korea**: `"name_base": "Myeongdong Shopping District", "name_local": "명동"`
-   - **USA/UK**: `"name_base": "Fifth Avenue", "name_local": "Fifth Avenue"` (same as base)
+   - **USA/UK** (when base_lang=en): `"name_base": "Fifth Avenue", "name_local": "Fifth Avenue"` (destination lang = base_lang)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this shopping location

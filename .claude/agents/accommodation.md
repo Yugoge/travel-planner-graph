@@ -62,10 +62,14 @@ For each day in the trip:
    **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
    For consistency across all agents, use standardized bilingual fields.
 
+   **Language config**: Read `base_lang` from `requirements-skeleton.json` → `trip_summary.base_lang` (e.g. `"en"`).
+   - `name_base` / `location_base` → written in `base_lang` language
+   - `name_local` / `location_local` → written in destination country's native language
+
    **Required fields**:
-   - `name_base`: Base language name (English for international communication)
+   - `name_base`: Name in `base_lang` (read from requirements-skeleton.json)
    - `name_local`: Native language name (for local context)
-   - `location_base`: Base language address
+   - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
 
    ```json

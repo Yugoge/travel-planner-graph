@@ -116,7 +116,7 @@ For each day in the trip:
    - **China**: `"name_base": "Hongya Cave", "name_local": "洪崖洞"`
    - **Japan**: `"name_base": "Fushimi Inari Shrine", "name_local": "伏見稲荷大社"`
    - **Korea**: `"name_base": "Gyeongbokgung Palace", "name_local": "경복궁"`
-   - **USA/UK**: `"name_base": "Big Ben", "name_local": "Big Ben"` (same as base)
+   - **USA/UK** (when base_lang=en): `"name_base": "Big Ben", "name_local": "Big Ben"` (destination lang = base_lang)
 
    **search_results field**:
    - REQUIRED: Include all skill URLs used to find this attraction

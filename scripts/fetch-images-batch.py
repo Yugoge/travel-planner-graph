@@ -205,6 +205,35 @@ class BatchImageFetcher:
             print(f"  Google Maps error for {poi_name}: {e}")
             return None
 
+    def _gaode_search(self, search_name: str, city: str, typecodes: str) -> Optional[str]:
+        """Execute a single Gaode POI search and return photo URL if found"""
+        try:
+            script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
+            result = subprocess.run(
+                [self.venv_python, str(script_path), "keyword", search_name, city, typecodes],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=script_path.parent
+            )
+
+            if result.returncode != 0:
+                return None
+
+            data = json.loads(result.stdout)
+            if data.get("pois") and len(data["pois"]) > 0:
+                poi = data["pois"][0]
+                photos = poi.get("photos", {})
+                url = photos.get("url")
+                if url and url.startswith("http"):
+                    return url
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception:
+            pass
+
+        return None
+
     def fetch_poi_photo_gaode(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
         """Fetch POI photo using Gaode Maps skill script
 
@@ -215,35 +244,25 @@ class BatchImageFetcher:
         # Fallback to poi_name for backward compatibility with old JSON
         search_name = name_local if name_local else poi_name
 
-        try:
-            script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
-            result = subprocess.run(
-                [self.venv_python, str(script_path), "keyword", search_name, city, "餐饮服务|风景名胜"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                cwd=script_path.parent
-            )
+        # Broad typecodes covering restaurants, attractions, shopping, entertainment, hotels
+        typecodes = "餐饮服务|风景名胜|购物服务|生活服务|体育休闲服务|住宿服务|科教文化服务"
 
-            if result.returncode != 0:
-                return None
+        # Try 1: Search with full name_local
+        url = self._gaode_search(search_name, city, typecodes)
+        if url:
+            return url
 
-            # Parse JSON output
-            try:
-                data = json.loads(result.stdout)
-                if data.get("pois") and len(data["pois"]) > 0:
-                    poi = data["pois"][0]
-                    photos = poi.get("photos", {})
-                    url = photos.get("url")
-                    if url and url.startswith("http"):
+        # Try 2: If name_local is long, try a shorter version (first meaningful segment)
+        # e.g. "来福士购物中心美食广场" → "来福士购物中心" or "来福士"
+        if search_name and len(search_name) > 4:
+            # Try removing common suffixes
+            for suffix in ["美食广场", "美食城", "餐饮区", "美食街", "美食", "广场", "中心"]:
+                if search_name.endswith(suffix) and len(search_name) > len(suffix) + 2:
+                    shorter = search_name[:-len(suffix)]
+                    url = self._gaode_search(shorter, city, typecodes)
+                    if url:
                         return url
-            except:
-                pass
-
-        except subprocess.TimeoutExpired:
-            print(f"  Timeout for {search_name}")
-        except Exception as e:
-            print(f"  Gaode error for {search_name}: {e}")
+                    break  # Only try one suffix removal
 
         return None
 

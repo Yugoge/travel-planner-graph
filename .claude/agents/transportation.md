@@ -71,6 +71,10 @@ For each location change day:
    **CRITICAL - Bilingual Field Format (Root Cause Fix: commit 8f2bddd)**:
    For consistency across all agents, use standardized bilingual fields for city names.
 
+   **Language config**: Read `base_lang` from `requirements-skeleton.json` → `trip_summary.base_lang` (e.g. `"en"`).
+   - `from_base` / `to_base` → written in `base_lang` language
+   - `from_local` / `to_local` → written in destination country's native language
+
    ```json
    {
      "from_base": "Chongqing",

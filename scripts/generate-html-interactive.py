@@ -137,7 +137,7 @@ class InteractiveHTMLGenerator:
         # NO FALLBACK - return empty string if not in cache
         return ""
 
-    def _get_placeholder_image(self, category: str, poi_name: str = "", gaode_id: str = "") -> str:
+    def _get_placeholder_image(self, category: str, poi_name: str = "", gaode_id: str = "", name_base: str = "", name_local: str = "") -> str:
         """Get image from cache ONLY - NO fallbacks allowed"""
         # ONLY return images from cache, never fallback
         if self.images_cache and "pois" in self.images_cache:
@@ -149,17 +149,24 @@ class InteractiveHTMLGenerator:
                 if cache_key in pois:
                     return pois[cache_key]
 
-            # Try google name cache key
-            if poi_name:
-                cache_key = f"google_{poi_name}"
-                if cache_key in pois:
-                    return pois[cache_key]
+            # Try exact match with all name variants
+            for name in [poi_name, name_base, name_local]:
+                if not name:
+                    continue
+                for prefix in ["gaode_", "google_"]:
+                    cache_key = f"{prefix}{name}"
+                    if cache_key in pois:
+                        return pois[cache_key]
 
-            # Try gaode name cache key
-            if poi_name:
-                cache_key = f"gaode_{poi_name}"
-                if cache_key in pois:
-                    return pois[cache_key]
+            # Try substring match: cache key contains name_base or name_local
+            # Handles keys like "gaode_Raffles City Observation Deck (来福士观景台)"
+            # matching name_base="Raffles City Observation Deck" or name_local="来福士观景台"
+            for name in [name_base, name_local, poi_name]:
+                if not name or len(name) < 3:
+                    continue
+                for cache_key, url in pois.items():
+                    if name in cache_key:
+                        return url
 
         # NO FALLBACK - return empty string if not in cache
         return ""
@@ -245,7 +252,7 @@ class InteractiveHTMLGenerator:
                         cost = meal.get("price_range_eur_low", 0) * 7.5  # EUR to CNY conversion
 
                     # Fix #6: Lookup actual time from timeline.json instead of using virtual defaults
-                    meal_name = meal.get("name", "")
+                    meal_name = meal.get("name_base", meal.get("name", ""))
                     timeline_item = self._find_timeline_item(meal_name, day_timeline)
                     if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
                         meal_time = {
@@ -272,7 +279,9 @@ class InteractiveHTMLGenerator:
                         "image": self._get_placeholder_image(
                             "meal",
                             poi_name=name_local if name_local else meal_name,
-                            gaode_id=meal.get("gaode_id", "")
+                            gaode_id=meal.get("gaode_id", ""),
+                            name_base=name_base,
+                            name_local=name_local
                         ),
                         "time": meal_time,
                         "links": meal.get("links", {})
@@ -287,7 +296,7 @@ class InteractiveHTMLGenerator:
                 current_time_minute = 0
                 for attr in day_attrs["attractions"]:
                     # Fix #6: Lookup actual time from timeline.json first
-                    attr_name = attr.get("name", "")
+                    attr_name = attr.get("name_base", attr.get("name", ""))
                     timeline_item = self._find_timeline_item(attr_name, day_timeline)
 
                     if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
@@ -358,7 +367,9 @@ class InteractiveHTMLGenerator:
                         "image": self._get_placeholder_image(
                             "attraction",
                             poi_name=attr_name_local if attr_name_local else attr_name,
-                            gaode_id=attr.get("gaode_id", "")
+                            gaode_id=attr.get("gaode_id", ""),
+                            name_base=attr_name_base,
+                            name_local=attr_name_local
                         ),
                         "highlights": attr.get("highlights", []),
                         "time": attr_time,
@@ -374,7 +385,7 @@ class InteractiveHTMLGenerator:
                 current_time_minute = 0
                 for ent in day_ent["entertainment"]:
                     # Fix #6: Lookup actual time from timeline.json first
-                    ent_name = ent.get("name", "")
+                    ent_name = ent.get("name_base", ent.get("name", ""))
                     timeline_item = self._find_timeline_item(ent_name, day_timeline)
 
                     if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
@@ -436,7 +447,9 @@ class InteractiveHTMLGenerator:
                         "image": self._get_placeholder_image(
                             "entertainment",
                             poi_name=ent_name_local if ent_name_local else ent_name,
-                            gaode_id=ent.get("gaode_id", "")
+                            gaode_id=ent.get("gaode_id", ""),
+                            name_base=ent_name_base,
+                            name_local=ent_name_local
                         ),
                         "time": ent_time,
                         "links": ent.get("links", {})
@@ -453,19 +466,29 @@ class InteractiveHTMLGenerator:
                 if cost == 0 and "price_per_night_eur" in acc:
                     cost = acc.get("price_per_night_eur", 0) * 7.5  # EUR to CNY conversion
 
+                # Root cause fix: Support standardized name_base/name_local fields
+                acc_name_base = acc.get("name_base", acc.get("name", ""))
+                acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
+
                 merged["accommodation"] = {
-                    "name": acc.get("name", ""),
-                    "name_cn": acc.get("name_cn", ""),
+                    "name": acc_name_local if acc_name_local else acc_name_base,
+                    "name_base": acc_name_base,
+                    "name_local": acc_name_local,
+                    "name_cn": acc.get("name_cn", ""),  # backward compat
                     "type": self._format_type(acc.get("type", "hotel")),
-                    "location": acc.get("location", ""),
+                    "location": acc.get("location_local", acc.get("location", "")),
+                    "location_base": acc.get("location_base", acc.get("location", "")),
+                    "location_local": acc.get("location_local", acc.get("location", "")),
                     "cost": cost,
                     "stars": acc.get("stars", 3),
                     "time": acc.get("time", {"start": "15:00", "end": "16:00"}),
                     "links": acc.get("links", {}),
                     "image": self._get_placeholder_image(
                         "accommodation",
-                        poi_name=acc.get("name", ""),
-                        gaode_id=acc.get("gaode_id", "")
+                        poi_name=acc_name_local if acc_name_local else acc_name_base,
+                        gaode_id=acc.get("gaode_id", ""),
+                        name_base=acc_name_base,
+                        name_local=acc_name_local
                     )
                 }
                 merged["budget"]["accommodation"] = cost
@@ -719,16 +742,19 @@ class InteractiveHTMLGenerator:
             if self.attractions and "cities" in self.attractions:
                 city_attractions = next((c for c in self.attractions["cities"] if c.get("city") == city_name), {})
                 for attr in city_attractions.get("attractions", []):
+                    a_name_base = attr.get("name_base", attr.get("name", ""))
+                    a_name_local = attr.get("name_local", attr.get("name_chinese", ""))
                     day["attractions"].append({
-                        "name": attr.get("name", ""),
-                        "name_en": attr.get("name_chinese", ""),
+                        "name": a_name_local if a_name_local else a_name_base,
+                        "name_base": a_name_base,
+                        "name_local": a_name_local,
                         "location": city_name,
                         "type": self._format_type(attr.get("type", "")),
                         "cost": attr.get("ticket_price_eur", 0) * 7.5,  # Convert EUR to CNY approx
                         "cost_eur": attr.get("ticket_price_eur", 0),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
-                        "image": self._get_placeholder_image("attraction", poi_name=attr.get("name", "")),
+                        "image": self._get_placeholder_image("attraction", poi_name=a_name_local if a_name_local else a_name_base, name_base=a_name_base, name_local=a_name_local),
                         "highlights": attr.get("tips", [])[:3],
                         "time": {"start": "10:00", "end": "12:00"},
                         "links": {}
@@ -740,13 +766,16 @@ class InteractiveHTMLGenerator:
                 city_meals = next((c for c in self.meals["cities"] if c.get("city") == city_name), {})
                 for i, meal in enumerate(city_meals.get("meals", [])[:3]):
                     meal_type = ["breakfast", "lunch", "dinner"][i]
+                    m_name_base = meal.get("name_base", meal.get("name", ""))
+                    m_name_local = meal.get("name_local", meal.get("name_chinese", ""))
                     day["meals"][meal_type] = {
-                        "name": meal.get("name", ""),
-                        "name_en": meal.get("name_chinese", ""),
+                        "name": m_name_local if m_name_local else m_name_base,
+                        "name_base": m_name_base,
+                        "name_local": m_name_local,
                         "cost": meal.get("price_range_eur_low", 10) * 7.5,
                         "cuisine": meal.get("cuisine_type", ""),
                         "signature_dishes": meal.get("signature_dish", ""),
-                        "image": self._get_placeholder_image("meal", poi_name=meal.get("name", "")),
+                        "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
                         "time": {"start": "08:00", "end": "09:00"} if meal_type == "breakfast" else
                                 {"start": "12:00", "end": "13:30"} if meal_type == "lunch" else
                                 {"start": "18:30", "end": "20:00"},
