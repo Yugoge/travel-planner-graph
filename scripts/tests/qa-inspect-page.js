@@ -7,9 +7,10 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const TARGET_URL = process.env.GITHUB_PAGES_URL || 'https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-07/';
-const OUTPUT_DIR = path.join(__dirname, '..', 'docs', 'dev', 'playwright-screenshots');
-const REPORT_PATH = path.join(__dirname, '..', 'docs', 'dev', 'qa-report-playwright-20260207.json');
+const OUTPUT_DIR = path.join(PROJECT_ROOT, 'docs', 'dev', 'playwright-screenshots');
+const REPORT_PATH = path.join(PROJECT_ROOT, 'docs', 'dev', 'qa-report-playwright-20260207.json');
 
 async function inspectPage() {
   console.log('Starting Playwright inspection...');

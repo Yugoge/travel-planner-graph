@@ -8,7 +8,7 @@ Exit codes:
 
 Examples:
   python3 generate-booking-checklist.py data/trip/timeline.json data/trip/budget.json
-  python3 generate-booking-checklist.py /root/travel-planner/data/china-feb15/timeline.json /root/travel-planner/data/china-feb15/budget.json
+  python3 generate-booking-checklist.py data/china-feb15/timeline.json data/china-feb15/budget.json
 """
 
 import sys

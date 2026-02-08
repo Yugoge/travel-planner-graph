@@ -72,7 +72,7 @@ def main():
     results['weather_forecast'] = run_test(
         skill_name="Weather - 天气预报",
         description="测试获取纽约未来天气预报",
-        command="python3 /root/travel-planner/.claude/skills/weather/scripts/forecast.py 40.7128 -74.0060",
+        command=f"python3 {PROJECT_ROOT}/.claude/skills/weather/scripts/forecast.py 40.7128 -74.0060",
         expected_patterns=["temperature", "forecast", "weather"]
     )
 
@@ -80,7 +80,7 @@ def main():
     results['weather_location'] = run_test(
         skill_name="Weather - 位置搜索",
         description="测试搜索城市位置",
-        command="python3 /root/travel-planner/.claude/skills/weather/scripts/location.py 'New York'",
+        command=f"python3 {PROJECT_ROOT}/.claude/skills/weather/scripts/location.py 'New York'",
         expected_patterns=["latitude", "longitude", "new york"]
     )
 
@@ -88,7 +88,7 @@ def main():
     results['weather_current'] = run_test(
         skill_name="Weather - 当前天气",
         description="测试获取洛杉矶当前天气",
-        command="python3 /root/travel-planner/.claude/skills/weather/scripts/current.py 34.0522 -118.2437",
+        command=f"python3 {PROJECT_ROOT}/.claude/skills/weather/scripts/current.py 34.0522 -118.2437",
         expected_patterns=["temperature", "weather", "condition"]
     )
 
@@ -96,7 +96,7 @@ def main():
     results['airbnb_search'] = run_test(
         skill_name="Airbnb - 房源搜索",
         description="测试搜索巴黎房源（可能被 robots.txt 阻止）",
-        command="python3 /root/travel-planner/.claude/skills/airbnb/scripts/search.py 'Paris, France' --checkin '2026-03-01' --checkout '2026-03-05'",
+        command=f"python3 {PROJECT_ROOT}/.claude/skills/airbnb/scripts/search.py 'Paris, France' --checkin '2026-03-01' --checkout '2026-03-05'",
         expected_patterns=["listing", "price", "airbnb", "disallowed", "robots"]
     )
 
@@ -104,7 +104,7 @@ def main():
     results['12306_date'] = run_test(
         skill_name="12306 - 获取当前日期",
         description="测试 12306 MCP 服务器连接",
-        command="python3 /root/travel-planner/.claude/skills/12306/scripts/get_current_date.py",
+        command=f"python3 {PROJECT_ROOT}/.claude/skills/12306/scripts/get_current_date.py",
         expected_patterns=["date", "2026"]
     )
 

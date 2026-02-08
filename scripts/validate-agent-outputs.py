@@ -9,7 +9,7 @@ Exit codes:
 
 Examples:
   python3 validate-agent-outputs.py data/china-feb15-mar7-2026
-  python3 validate-agent-outputs.py /root/travel-planner/data/trip
+  python3 validate-agent-outputs.py /path/to/project/data/trip
 """
 
 import sys
