@@ -679,7 +679,6 @@ class InteractiveHTMLGenerator:
                     "location_local": acc.get("location_local", acc.get("location", "")),
                     "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
-                    "cost_eur": cost_eur,
                     "currency": acc_currency,
                     "stars": acc.get("stars", 3),
                     "time": acc_time,
@@ -1556,10 +1555,12 @@ const getDisplayName = (item, lang) => {
 };
 
 // Fix issues #2,3,9: Smart cost formatter - no trailing zeros for integers
-const fmtCost = (c) => {
+// Supports currency parameter: 'EUR' → €, 'CNY'/default → ¥
+const fmtCost = (c, currency) => {
   const n = Number(c);
   if (!n || n === 0) return 'Free';
-  return Number.isInteger(n) ? `¥${n}` : `¥${n.toFixed(1)}`;
+  const sym = currency === 'EUR' ? '€' : '¥';
+  return Number.isInteger(n) ? `${sym}${n}` : `${sym}${n.toFixed(1)}`;
 };
 
 // Fix issues #4,7,12: Language-aware location display
@@ -1838,7 +1839,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                     <PropLine label="Type" value={day.accommodation.type} />
                     <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
                     <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} />} />
-                    <PropLine label="Cost" value={<>{fmtCost(day.accommodation.cost)}{day.accommodation.cost_eur > 0 && ` (€${day.accommodation.cost_eur.toFixed(0)}/night)`}</>} />
+                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost, day.accommodation.currency)} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -1947,7 +1948,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       >
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>{r.l}</span>
-                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k])}</span>
+                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k], r.k === 'accommodation' && day.accommodation ? day.accommodation.currency : undefined)}</span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
