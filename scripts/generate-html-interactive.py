@@ -276,9 +276,17 @@ class InteractiveHTMLGenerator:
         if self.images_cache and "pois" in self.images_cache:
             pois = self.images_cache["pois"]
 
-            # Fix #7: For home locations, try location-based lookup instead of name
+            # Fix #7: For home locations, try name then location-based lookup
             if is_home:
-                # Try address/location-based cache keys for neighborhood imagery
+                # First try name-based cache keys (e.g. "gaode_Family Home")
+                for name in [poi_name, name_base, name_local]:
+                    if not name:
+                        continue
+                    for prefix in ["gaode_", "google_"]:
+                        cache_key = f"{prefix}{name}"
+                        if cache_key in pois:
+                            return pois[cache_key]
+                # Then try address/location-based cache keys for neighborhood imagery
                 for loc in [location_local, location_base]:
                     if not loc or len(loc) < 3:
                         continue
@@ -2244,7 +2252,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
-                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
+                    {day.accommodation.cost > 0 && <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />}
                     <PropLine label="Type" value={getDisplayField(day.accommodation, 'type', lang)} />
                     {day.accommodation.stars > 0 && <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
                     {day.accommodation.check_in && <PropLine label="Check-in" value={day.accommodation.check_in} />}
