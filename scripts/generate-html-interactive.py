@@ -814,8 +814,8 @@ class InteractiveHTMLGenerator:
                     merged["budget"]["entertainment"] += cost
 
         # Merge shopping items into day data and budget
-        if self.shopping and "data" in self.shopping and "days" in self.shopping["data"]:
-            day_shop = next((d for d in self.shopping["data"]["days"] if d.get("day") == day_num), {})
+        if self.shopping and "days" in self.shopping:
+            day_shop = next((d for d in self.shopping["days"] if d.get("day") == day_num), {})
             for shop_item in day_shop.get("shopping", []):
                 cost = shop_item.get("cost", 0)
                 shop_currency = shop_item.get("currency", "CNY")
