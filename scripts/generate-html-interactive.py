@@ -1172,21 +1172,31 @@ class InteractiveHTMLGenerator:
                             if any(kw in dest_name.lower() for kw in ["hotel", "home", "hostel", "inn", "guesthouse", "accommodation"]):
                                 name_local = acc_name_local_for_travel
 
-                        # Build proper bilingual label: "Travel to X" → "前往[X_local]"
-                        travel_verb_map = {
-                            "walk": "步行前往", "drive": "驾车前往", "taxi": "打车前往",
-                            "bus": "乘公交前往", "metro": "乘地铁前往", "subway": "乘地铁前往",
-                            "train": "乘火车前往", "transfer": "换乘前往", "return": "返回",
-                            "travel": "前往"
+                        # Determine transport mode from activity name prefix
+                        mode_map = {
+                            "walk": "walk", "drive": "car", "taxi": "taxi",
+                            "bus": "bus", "metro": "metro", "subway": "metro",
+                            "train": "train", "high-speed train": "train",
+                            "board train": "train", "flight": "flight",
+                            "transfer": "transit", "return": "walk", "travel": "walk",
                         }
+                        mode_local_map = {
+                            "walk": "步行前往", "car": "驾车前往", "taxi": "打车前往",
+                            "bus": "乘公交前往", "metro": "乘地铁前往",
+                            "train": "乘火车前往", "flight": "乘飞机前往",
+                            "transit": "换乘前往",
+                        }
+                        act_lower = activity_name.lower()
+                        mode = "walk"  # default
+                        for prefix, m in mode_map.items():
+                            if act_lower.startswith(prefix):
+                                mode = m
+                                break
+
+                        # Build bilingual label using mode
                         label_local = ""
                         if name_local and name_local != activity_name:
-                            verb_local = "前往"
-                            act_lower = activity_name.lower()
-                            for eng_verb, cn_verb in travel_verb_map.items():
-                                if act_lower.startswith(eng_verb):
-                                    verb_local = cn_verb
-                                    break
+                            verb_local = mode_local_map.get(mode, "前往")
                             label_local = f"{verb_local}{name_local}"
 
                         duration_min = times.get("duration_minutes", 0)
@@ -1194,6 +1204,7 @@ class InteractiveHTMLGenerator:
                             "name": activity_name,
                             "name_base": activity_name,
                             "name_local": label_local if label_local else activity_name,
+                            "mode": mode,
                             "time": {"start": start_time, "end": end_time},
                             "duration": f"{duration_min}min" if duration_min else "",
                             "type": "travel"
@@ -2442,17 +2453,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const getTravelEmoji = (name) => {
-  const n = (name || '').toLowerCase();
-  if (n.includes('taxi') || n.includes('didi') || n.includes('ride')) return '🚕';
-  if (n.includes('bus')) return '🚌';
-  if (n.includes('metro') || n.includes('subway')) return '🚇';
-  if (n.includes('train') || n.includes('high-speed')) return '🚄';
-  if (n.includes('flight') || n.includes('fly')) return '✈️';
-  if (n.includes('drive') || n.includes('car')) return '🚗';
-  if (n.includes('bike') || n.includes('cycle')) return '🚲';
-  return '🚶';
+const TRAVEL_MODE_EMOJI = {
+  walk: '🚶', taxi: '🚕', bus: '🚌', metro: '🚇',
+  train: '🚄', flight: '✈️', car: '🚗', bike: '🚲', transit: '🔄'
 };
+const getTravelEmoji = (entry) => TRAVEL_MODE_EMOJI[entry?.mode] || '🚶';
 
 const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
@@ -2589,7 +2594,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
                       {entry._type === 'transportation' || entry._type === 'travel' ? (
-                        <span>{entry._type === 'transportation' ? entry.icon : getTravelEmoji(entry.name || entry._label)} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
+                        <span>{entry._type === 'transportation' ? entry.icon : getTravelEmoji(entry)} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
                       ) : (
                         <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                       )}
