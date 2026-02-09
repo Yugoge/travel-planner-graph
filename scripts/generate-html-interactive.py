@@ -34,8 +34,9 @@ class InteractiveHTMLGenerator:
         # Load image fetcher for real photos
         self.images_cache = self._load_json("images.json")
 
-        # Load currency config for EUR↔CNY conversion
+        # Load currency config for display
         self._eur_to_cny_rate = self._load_eur_to_cny_rate()
+        self._display_currency, self._display_symbol = self._load_display_currency()
 
     def _load_eur_to_cny_rate(self) -> float:
         """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
@@ -64,13 +65,36 @@ class InteractiveHTMLGenerator:
         except (FileNotFoundError, json.JSONDecodeError):
             return 7.8
 
-    def _eur_to_cny(self, eur_amount: float) -> float:
-        """Convert EUR amount to CNY using configured rate."""
-        return eur_amount * self._eur_to_cny_rate
+    def _load_display_currency(self) -> tuple:
+        """Load display currency from config/currency-config.json."""
+        config_path = self.base_dir / "config" / "currency-config.json"
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            currency = config.get("default_display_currency", "EUR")
+            symbol_map = config.get("currency_symbol_map", {})
+            symbol = symbol_map.get(currency, "€")
+            print(f"Display currency: {currency} ({symbol})", file=sys.stderr)
+            return currency, symbol
+        except (FileNotFoundError, json.JSONDecodeError):
+            return "EUR", "€"
 
-    def _cny_to_eur(self, cny_amount: float) -> float:
-        """Convert CNY amount to EUR using configured rate."""
-        return cny_amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
+    def _to_display_currency(self, amount: float, source_currency: str = "CNY") -> float:
+        """Convert any amount to display currency (EUR).
+
+        For China trips, treats unrecognized currencies (e.g. USD mislabeled
+        by agents) as CNY — the values are clearly in CNY range.
+        """
+        if amount == 0:
+            return 0
+        if source_currency == self._display_currency:
+            return amount
+        # Treat anything non-EUR as CNY for conversion (China trip assumption)
+        if self._display_currency == "EUR":
+            return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
+        if self._display_currency == "CNY":
+            return amount * self._eur_to_cny_rate
+        return amount
 
     def _format_trip_type(self, trip_type: str) -> str:
         """Convert trip_type code to natural language (Fix #1, #3)
@@ -398,10 +422,13 @@ class InteractiveHTMLGenerator:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
                 if meal_type in day_meals:
                     meal = day_meals[meal_type]
-                    # Fix #7: Convert price_range_eur_low to cost (root cause: commit 52d3528)
+                    # Convert cost to display currency (EUR)
                     cost = meal.get("cost", 0)
+                    meal_currency = meal.get("currency", "CNY")
                     if cost == 0 and "price_range_eur_low" in meal:
-                        cost = meal.get("price_range_eur_low", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
+                        cost = meal.get("price_range_eur_low", 0)
+                        meal_currency = "EUR"
+                    cost = self._to_display_currency(cost, meal_currency)
 
                     # Fix #6: Lookup actual time from timeline.json instead of using virtual defaults
                     meal_name = meal.get("name_base", meal.get("name", ""))
@@ -496,12 +523,13 @@ class InteractiveHTMLGenerator:
                     else:
                         attr_time = self._normalize_time(attr.get("time"), default_duration_hours=1.5) or attr.get("time")
 
-                    # Fix #7: Convert ticket_price_eur to cost (root cause: commit 52d3528)
+                    # Convert cost to display currency (EUR)
                     cost = attr.get("cost", 0)
-                    cost_eur = attr.get("cost_eur", 0)
+                    attr_currency = attr.get("currency", "CNY")
                     if cost == 0 and "ticket_price_eur" in attr:
-                        cost_eur = attr.get("ticket_price_eur", 0)
-                        cost = cost_eur * self._eur_to_cny_rate  # EUR to CNY conversion
+                        cost = attr.get("ticket_price_eur", 0)
+                        attr_currency = "EUR"
+                    cost = self._to_display_currency(cost, attr_currency)
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -529,7 +557,6 @@ class InteractiveHTMLGenerator:
                         "coordinates": attr.get("coordinates", {}),
                         "type": self._format_type(attr.get("type", "")),
                         "cost": cost,
-                        "cost_eur": cost_eur,
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
                         "optional": is_optional,
@@ -597,10 +624,13 @@ class InteractiveHTMLGenerator:
                             current_time_hour = end_hour
                             current_time_minute = end_minute
 
-                    # Fix #7: Convert cost_eur to cost (root cause: commit 52d3528)
+                    # Convert cost to display currency (EUR)
                     cost = ent.get("cost", 0)
+                    ent_currency = ent.get("currency", "CNY")
                     if cost == 0 and "cost_eur" in ent:
-                        cost = ent.get("cost_eur", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
+                        cost = ent.get("cost_eur", 0)
+                        ent_currency = "EUR"
+                    cost = self._to_display_currency(cost, ent_currency)
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -637,10 +667,13 @@ class InteractiveHTMLGenerator:
             day_acc = next((d for d in self.accommodation["days"] if d.get("day") == day_num), {})
             if "accommodation" in day_acc:
                 acc = day_acc["accommodation"]
-                # Fix #7: Convert price_per_night_eur to cost (root cause: commit 52d3528)
+                # Convert cost to display currency (EUR)
                 cost = acc.get("cost", 0)
+                acc_currency = acc.get("currency", "CNY")
                 if cost == 0 and "price_per_night_eur" in acc:
-                    cost = acc.get("price_per_night_eur", 0) * self._eur_to_cny_rate  # EUR to CNY conversion
+                    cost = acc.get("price_per_night_eur", 0)
+                    acc_currency = "EUR"
+                cost = self._to_display_currency(cost, acc_currency)
 
                 # Root cause fix: Support standardized name_base/name_local fields
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
@@ -665,9 +698,6 @@ class InteractiveHTMLGenerator:
                         if normalized_acc_time:
                             acc_time = normalized_acc_time
 
-                # Pass currency through so HTML can display in base currency
-                acc_currency = acc.get("currency", "CNY")
-
                 merged["accommodation"] = {
                     "name": acc_name_local if acc_name_local else acc_name_base,
                     "name_base": acc_name_base,
@@ -679,7 +709,6 @@ class InteractiveHTMLGenerator:
                     "location_local": acc.get("location_local", acc.get("location", "")),
                     "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
-                    "currency": acc_currency,
                     "stars": acc.get("stars", 3),
                     "time": acc_time,
                     "links": acc.get("links", {}),
@@ -757,7 +786,7 @@ class InteractiveHTMLGenerator:
                     "icon": icon,
                     "route_number": route_number,
                     "airline": airline,
-                    "cost": loc_change.get("cost", 0),
+                    "cost": self._to_display_currency(loc_change.get("cost", 0), loc_change.get("currency", "CNY")),
                     "booking_status": booking_status,
                     "booking_urgency": loc_change.get("booking_urgency", ""),
                     "notes": loc_change.get("notes", ""),
@@ -812,9 +841,9 @@ class InteractiveHTMLGenerator:
                     if "notes" in option:
                         notes_parts.append(option["notes"])
 
-                    # Extract cost
+                    # Extract cost and convert to display currency
                     cost_cny = option.get("cost_cny", 0)
-                    cost_eur = option.get("cost_eur", self._cny_to_eur(cost_cny) if cost_cny else 0)
+                    cost_eur = option.get("cost_eur", 0)
 
                     # Route info (train number, flight code, etc.)
                     route_number = ""
@@ -832,7 +861,7 @@ class InteractiveHTMLGenerator:
                         "icon": icon,
                         "route_number": route_number,
                         "airline": "",
-                        "cost": cost_cny,
+                        "cost": self._to_display_currency(cost_eur if cost_eur else cost_cny, "EUR" if cost_eur else "CNY"),
                         "booking_status": "RECOMMENDED",
                         "booking_urgency": "",
                         "notes": " | ".join(notes_parts),
@@ -921,7 +950,7 @@ class InteractiveHTMLGenerator:
             "base_location": "",
             "period": "",
             "travelers": "1 adult",
-            "budget_per_trip": "€200-500",
+            "budget_per_trip": f"{self._display_symbol}200-500",
             "preferences": ""
         }
 
@@ -965,8 +994,7 @@ class InteractiveHTMLGenerator:
                         "name_local": a_name_local,
                         "location": city_name,
                         "type": self._format_type(attr.get("type", "")),
-                        "cost": attr.get("ticket_price_eur", 0) * self._eur_to_cny_rate,  # Convert EUR to CNY
-                        "cost_eur": attr.get("ticket_price_eur", 0),
+                        "cost": self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR"),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
                         "image": self._get_placeholder_image("attraction", poi_name=a_name_local if a_name_local else a_name_base, name_base=a_name_base, name_local=a_name_local),
@@ -974,7 +1002,7 @@ class InteractiveHTMLGenerator:
                         "time": {"start": "10:00", "end": "12:00"},
                         "links": {}
                     })
-                    day["budget"]["attractions"] += attr.get("ticket_price_eur", 0) * self._eur_to_cny_rate
+                    day["budget"]["attractions"] += self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR")
 
             # Find meals for this city
             if self.meals and "cities" in self.meals:
@@ -987,7 +1015,7 @@ class InteractiveHTMLGenerator:
                         "name": m_name_local if m_name_local else m_name_base,
                         "name_base": m_name_base,
                         "name_local": m_name_local,
-                        "cost": meal.get("price_range_eur_low", 10) * self._eur_to_cny_rate,
+                        "cost": self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR"),
                         "cuisine": meal.get("cuisine_type", ""),
                         "signature_dishes": meal.get("signature_dish", ""),
                         "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
@@ -996,7 +1024,7 @@ class InteractiveHTMLGenerator:
                                 {"start": "18:30", "end": "20:00"},
                         "links": {}
                     }
-                    day["budget"]["meals"] += meal.get("price_range_eur_low", 10) * self._eur_to_cny_rate
+                    day["budget"]["meals"] += self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR")
 
             # Calculate total
             day["budget"]["total"] = sum([
@@ -1044,7 +1072,7 @@ class InteractiveHTMLGenerator:
             "base_location": skel_summary.get("base_location", ""),
             "period": period,
             "travelers": skel_summary.get("travelers", "1 adult"),
-            "budget_per_trip": skel_summary.get("budget_per_trip", "€500"),
+            "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
             "preferences": prefs_str
         }
 
@@ -1098,6 +1126,7 @@ class InteractiveHTMLGenerator:
   <script type="text/babel">
     // Embedded PLAN_DATA
     const PLAN_DATA = {plan_data_json};
+    const CURRENCY_SYMBOL = "{self._display_symbol}";
 
     {react_template}
 
@@ -1349,8 +1378,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang }) => {
           {item.cost !== undefined && (
             <PropertyRow label="Cost">
               {fmtCost(item.cost)}
-              {item.cost_eur > 0 && ` (€${item.cost_eur.toFixed(0)})`}
-            </PropertyRow>
+                          </PropertyRow>
           )}
           {item.cuisine && <PropertyRow label="Cuisine">{item.cuisine}</PropertyRow>}
           {item.signature_dishes && <PropertyRow label="Signature Dishes">{item.signature_dishes}</PropertyRow>}
@@ -1527,7 +1555,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 fontSize: '16px', fontWeight: '700', color: '#37352f'
               }}>
                 <span>Total</span>
-                <span style={{ color: cfg.color }}>¥{total.toFixed(0)}</span>
+                <span style={{ color: cfg.color }}>{CURRENCY_SYMBOL}{total.toFixed(0)}</span>
               </div>
             </div>
           </div>
@@ -1554,13 +1582,11 @@ const getDisplayName = (item, lang) => {
   return item.name_local || item.name || '';
 };
 
-// Fix issues #2,3,9: Smart cost formatter - no trailing zeros for integers
-// Supports currency parameter: 'EUR' → €, 'CNY'/default → ¥
-const fmtCost = (c, currency) => {
+// All costs are in display currency (from config). Use CURRENCY_SYMBOL.
+const fmtCost = (c) => {
   const n = Number(c);
   if (!n || n === 0) return 'Free';
-  const sym = currency === 'EUR' ? '€' : '¥';
-  return Number.isInteger(n) ? `${sym}${n}` : `${sym}${n.toFixed(1)}`;
+  return Number.isInteger(n) ? `${CURRENCY_SYMBOL}${n}` : `${CURRENCY_SYMBOL}${n.toFixed(1)}`;
 };
 
 // Fix issues #4,7,12: Language-aware location display
@@ -1738,7 +1764,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                         <RedNoteLink name={attr.name_local || attr.name_base} />
                         {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
                       </div>
-                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}{attr.cost_eur > 0 && ` (€${attr.cost_eur.toFixed(0)})`}</>} />
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       <LinksRow links={attr.links} compact />
@@ -1757,7 +1783,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       </div>
                       {(attr.location || attr.location_base || attr.location_local) && <PropLine label="Location" value={<MapLink item={attr} lang={lang} />} />}
                       <PropLine label="Type" value={attr.type} />
-                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}{attr.cost_eur > 0 && ` (€${attr.cost_eur.toFixed(0)})`}</>} />
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
                       <PropLine label="Hours" value={attr.opening_hours} />
                       <PropLine label="Duration" value={attr.recommended_duration} />
                       {attr.highlights && attr.highlights.length > 0 && (
@@ -1839,7 +1865,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                     <PropLine label="Type" value={day.accommodation.type} />
                     <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
                     <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} />} />
-                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost, day.accommodation.currency)} />
+                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -1948,11 +1974,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, onItemClick, onBu
                       >
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
                         <span style={{ flex: 1 }}>{r.l}</span>
-                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k], r.k === 'accommodation' && day.accommodation ? day.accommodation.currency : undefined)}</span>
+                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k])}</span>
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Total</span><span>¥{day.budget.total.toFixed(0)}</span>
+                      <span>Total</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
                     </div>
                   </div>
                 </div>
