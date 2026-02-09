@@ -2556,18 +2556,19 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const st = typeStyle[entry._type] || typeStyle.attraction;
               const t = top(entry.time.start);
               const entryH = hgt(entry.time.start, entry.time.end);
-              const showText = entryH > (sm ? 40 : 48);
-              const showSubtext = entryH > (sm ? 56 : 68);
+              const tooNarrow = entryH < (sm ? 32 : 40);
+              const showText = !tooNarrow && entryH > (sm ? 40 : 48);
+              const showSubtext = !tooNarrow && entryH > (sm ? 56 : 68);
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
               return (
                 <div key={i} style={{
                   position: 'absolute', top: t, left: '10px', right: '10px',
-                  minHeight: entryH - 4,
+                  height: entryH - 4,
                   background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
-                  borderRadius: '6px', padding: sm ? '8px 10px' : '10px 14px',
-                  display: 'flex', gap: '10px', alignItems: 'flex-start',
+                  borderRadius: '6px', padding: tooNarrow ? '0 6px' : (sm ? '8px 10px' : '10px 14px'),
+                  display: 'flex', gap: tooNarrow ? '0' : '10px', alignItems: tooNarrow ? 'center' : 'flex-start',
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
