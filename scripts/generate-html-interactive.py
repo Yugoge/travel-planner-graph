@@ -302,9 +302,9 @@ class InteractiveHTMLGenerator:
         if self.images_cache and "pois" in self.images_cache:
             pois = self.images_cache["pois"]
 
-            # Fix #7: For home locations, try name then location-based lookup
+            # Fix #7: For home locations, try name/location/substring lookup
             if is_home:
-                # First try name-based cache keys (e.g. "gaode_Family Home")
+                # Try exact name-based cache keys
                 for name in [poi_name, name_base, name_local]:
                     if not name:
                         continue
@@ -312,7 +312,7 @@ class InteractiveHTMLGenerator:
                         cache_key = f"{prefix}{name}"
                         if cache_key in pois:
                             return pois[cache_key]
-                # Then try address/location-based cache keys for neighborhood imagery
+                # Try location-based cache keys
                 for loc in [location_local, location_base]:
                     if not loc or len(loc) < 3:
                         continue
@@ -320,9 +320,12 @@ class InteractiveHTMLGenerator:
                         cache_key = f"{prefix}{loc}"
                         if cache_key in pois:
                             return pois[cache_key]
-                    # Substring match on location
-                    for cache_key, url in pois.items():
-                        if loc in cache_key:
+                # Fallback: substring match — find any cache key containing
+                # one of our names, or vice versa
+                search_terms = [n for n in [poi_name, name_base, name_local] if n and len(n) > 2]
+                for cache_key, url in pois.items():
+                    for term in search_terms:
+                        if term in cache_key or cache_key.split("_", 1)[-1] in term:
                             return url
                 # For home locations, return empty rather than a misleading image
                 return ""
@@ -1142,35 +1145,71 @@ class InteractiveHTMLGenerator:
                         )
                         dest_name = dest_match.group(1).strip() if dest_match else activity_name
 
-                        # Try to find local name for the destination from merged POIs
+                        # Try to find local name for the destination from ALL merged POIs
                         name_local = ""
                         all_pois = (
                             merged["attractions"] +
                             merged["entertainment"] +
-                            [m for m in merged["meals"].values() if m]
+                            [m for m in merged["meals"].values() if m] +
+                            merged.get("shopping", []) +
+                            ([merged["accommodation"]] if merged.get("accommodation") else [])
                         )
+                        dest_lower = dest_name.lower()
+                        # Pass 1: exact substring match (either direction)
                         for poi in all_pois:
                             poi_name = poi.get("name_base", "")
-                            if poi_name and poi_name.lower() in dest_name.lower():
+                            if not poi_name:
+                                continue
+                            pn_lower = poi_name.lower()
+                            if pn_lower in dest_lower or dest_lower in pn_lower:
                                 name_local = poi.get("name_local", "")
                                 if name_local:
                                     break
+                        # Pass 2: significant word overlap (>= 2 shared words)
+                        if not name_local:
+                            stop_words = {"to", "the", "a", "at", "in", "on", "for", "and", "or", "of", "from", "back", "near"}
+                            dest_words = set(dest_lower.split()) - stop_words
+                            if len(dest_words) >= 1:
+                                for poi in all_pois:
+                                    poi_name = poi.get("name_base", "")
+                                    if not poi_name:
+                                        continue
+                                    poi_words = set(poi_name.lower().split()) - stop_words
+                                    shared = dest_words & poi_words
+                                    if len(shared) >= min(2, len(dest_words)):
+                                        name_local = poi.get("name_local", "")
+                                        if name_local:
+                                            break
 
                         # Fallback: try CITY_NAMES_LOCAL for city references
                         if not name_local and dest_name:
                             for eng_name, local_name in self.CITY_NAMES_LOCAL.items():
-                                if eng_name.lower() in dest_name.lower():
-                                    # Replace the English city name with local name in the destination
-                                    if eng_name.capitalize() in dest_name or eng_name.title() in dest_name:
-                                        name_local = dest_name.replace(eng_name.capitalize(), local_name, 1) if eng_name.capitalize() in dest_name else dest_name.replace(eng_name.title(), local_name, 1)
-                                    else:
-                                        name_local = local_name
+                                if eng_name.lower() in dest_lower:
+                                    name_local = local_name
                                     break
 
                         # Fallback: use accommodation name_local for hotel/home references
                         if not name_local and acc_name_local_for_travel:
-                            if any(kw in dest_name.lower() for kw in ["hotel", "home", "hostel", "inn", "guesthouse", "accommodation"]):
+                            if any(kw in dest_lower for kw in ["hotel", "home", "hostel", "inn", "guesthouse", "accommodation"]):
                                 name_local = acc_name_local_for_travel
+
+                        # Fallback: translate common generic English destination words
+                        if not name_local and dest_name:
+                            generic_map = {
+                                "lunch restaurant": "午餐餐厅", "dinner restaurant": "晚餐餐厅",
+                                "breakfast restaurant": "早餐餐厅", "restaurant": "餐厅",
+                                "hotpot restaurant": "火锅店", "hotpot": "火锅",
+                                "spa": "温泉/水疗", "shopping area": "购物区",
+                                "shopping mall": "商场", "airport": "机场",
+                                "train station": "火车站", "bus station": "汽车站",
+                                "metro station": "地铁站", "bund": "外滩",
+                                "temple": "寺庙", "park": "公园", "museum": "博物馆",
+                                "market": "市场", "bar": "酒吧", "cafe": "咖啡厅",
+                            }
+                            for eng_phrase, cn_phrase in generic_map.items():
+                                if eng_phrase in dest_lower:
+                                    name_local = cn_phrase
+                                    break
 
                         # Determine transport mode from activity name prefix
                         mode_map = {
@@ -1732,7 +1771,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             </PropertyRow>
           )}
           {/* Category-specific field ordering */}
-          {category === 'accommodation' ? (<>
+          {type === 'accommodation' ? (<>
             {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label="Cost">{fmtCost(item.cost, item.cost_type)}</PropertyRow>}
             {getDisplayField(item, 'type', lang) && <PropertyRow label="Type">{getDisplayField(item, 'type', lang)}</PropertyRow>}
             {item.stars > 0 && <PropertyRow label="Stars"><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
