@@ -1,1213 +1,21 @@
-#!/usr/bin/env python3
-"""
-Interactive React Travel Plan Generator
-Converts skeleton.json + agent outputs → standalone React HTML application
-Generates single-file HTML with embedded React components
-"""
-
-import json
-import sys
-import os
-import subprocess
-from pathlib import Path
-from datetime import datetime
-
-
-class InteractiveHTMLGenerator:
-    """Generate interactive React travel plan from skeleton and agent data"""
-
-    def __init__(self, plan_id: str):
-        self.plan_id = plan_id
-        self.base_dir = Path(__file__).parent.parent
-        self.data_dir = self.base_dir / "data" / plan_id
-
-        # Load all data
-        self.skeleton = self._load_json("plan-skeleton.json")
-        self.attractions = self._load_json("attractions.json")
-        self.meals = self._load_json("meals.json")
-        self.accommodation = self._load_json("accommodation.json")
-        self.entertainment = self._load_json("entertainment.json")
-        self.transportation = self._load_json("transportation.json")
-        self.timeline = self._load_json("timeline.json")
-        self.budget = self._load_json("budget.json")
-
-        # Load image fetcher for real photos
-        self.images_cache = self._load_json("images.json")
-
-        # Load currency config for display
-        self._eur_to_cny_rate = self._load_eur_to_cny_rate()
-        self._display_currency, self._display_symbol = self._load_display_currency()
-
-    def _load_eur_to_cny_rate(self) -> float:
-        """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
-        fetch_script = self.base_dir / "scripts" / "utils" / "fetch-exchange-rate.sh"
-        if fetch_script.exists():
-            try:
-                result = subprocess.run(
-                    [str(fetch_script), "EUR", "CNY"],
-                    capture_output=True, text=True, check=True, timeout=10
-                )
-                rate = float(result.stdout.strip())
-                print(f"Exchange rate (real-time): 1 EUR = {rate} CNY", file=sys.stderr)
-                return rate
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
-                print(f"Warning: Real-time exchange rate fetch failed: {e}, using config fallback", file=sys.stderr)
-
-        # Fallback to config
-        config_path = self.base_dir / "config" / "currency-config.json"
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            cny_to_eur = config.get("fallback_exchange_rate", 0.128)
-            rate = 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8
-            print(f"Exchange rate (config fallback): 1 EUR = {rate} CNY", file=sys.stderr)
-            return rate
-        except (FileNotFoundError, json.JSONDecodeError):
-            return 7.8
-
-    def _load_display_currency(self) -> tuple:
-        """Load display currency from config/currency-config.json."""
-        config_path = self.base_dir / "config" / "currency-config.json"
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            currency = config.get("default_display_currency", "EUR")
-            symbol_map = config.get("currency_symbol_map", {})
-            symbol = symbol_map.get(currency, "€")
-            print(f"Display currency: {currency} ({symbol})", file=sys.stderr)
-            return currency, symbol
-        except (FileNotFoundError, json.JSONDecodeError):
-            return "EUR", "€"
-
-    def _to_display_currency(self, amount: float, source_currency: str = "CNY") -> float:
-        """Convert any amount to display currency (EUR).
-
-        For China trips, treats unrecognized currencies (e.g. USD mislabeled
-        by agents) as CNY — the values are clearly in CNY range.
-        """
-        if amount == 0:
-            return 0
-        if source_currency == self._display_currency:
-            return amount
-        # Treat anything non-EUR as CNY for conversion (China trip assumption)
-        if self._display_currency == "EUR":
-            return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
-        if self._display_currency == "CNY":
-            return amount * self._eur_to_cny_rate
-        return amount
-
-    # Common Chinese city names for bilingual display
-    CITY_NAMES_LOCAL = {
-        "chongqing": "重庆", "bazhong": "巴中", "chengdu": "成都",
-        "shanghai": "上海", "beijing": "北京", "harbin": "哈尔滨",
-        "guangzhou": "广州", "shenzhen": "深圳", "hangzhou": "杭州",
-        "suzhou": "苏州", "nanjing": "南京", "xian": "西安",
-        "guilin": "桂林", "kunming": "昆明", "lijiang": "丽江",
-        "hong kong": "香港", "macau": "澳门", "taipei": "台北",
-        "lhasa": "拉萨", "qingdao": "青岛", "dalian": "大连",
-        "sanya": "三亚", "xiamen": "厦门", "wuhan": "武汉",
-        "changsha": "长沙", "zhangjiajie": "张家界", "chengde": "承德",
-        "tianjin": "天津",
-    }
-
-    def _extract_local_city(self, location_field: str, city_name: str) -> str:
-        """Extract Chinese city name from location field or city name lookup."""
-        # Try to find Chinese characters in the location field
-        import re
-        if location_field:
-            chinese = re.findall(r'[\u4e00-\u9fff]+', location_field)
-            if chinese:
-                return chinese[0]  # First Chinese word group (usually city name)
-        # Fallback to lookup table
-        return self.CITY_NAMES_LOCAL.get(city_name.lower(), "")
-
-    def _format_trip_type(self, trip_type: str) -> str:
-        """Convert trip_type code to natural language (Fix #1, #3)
-        Root cause: commit 52d3528 - no formatting for trip types
-        """
-        type_map = {
-            "bucket_list": "Bucket List",
-            "weekend_extended": "Extended Weekend",
-            "weekend_short": "Short Weekend",
-            "itinerary": "Itinerary",
-            "day_trip": "Day Trip",
-            "week_long": "Week-long Trip"
-        }
-        return type_map.get(trip_type, trip_type.replace("_", " ").title())
-
-    def _format_preferences(self, preferences: dict) -> str:
-        """Format preferences without code prefixes (Fix #2)
-        Root cause: commit 52d3528 - dict keys shown as prefixes
-        """
-        if not isinstance(preferences, dict):
-            return str(preferences)
-
-        # Remove keys like 'trip_style:', just show values
-        formatted = []
-        for key, value in preferences.items():
-            if key == "trip_style":
-                # Skip trip_style entirely as it's redundant with trip_type
-                continue
-            formatted.append(str(value))
-
-        return ", ".join(formatted) if formatted else ""
-
-    def _load_json(self, filename: str) -> dict:
-        """Load JSON file from data directory"""
-        path = self.data_dir / filename
-        if not path.exists():
-            print(f"Warning: {filename} not found, using empty dict")
-            return {}
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-            # Agent files have structure: { agent, status, data: {...} }
-            # Extract actual data from 'data' field if it exists
-            if isinstance(data, dict) and 'data' in data and isinstance(data['data'], dict):
-                return data['data']
-
-            return data
-
-    def _format_type(self, type_code: str) -> str:
-        """Convert type code to natural language (Fix #6)
-        Root cause: commit 123f8df - no formatter for type codes
-        Examples: historical_site → Historical Site, cultural_performance → Cultural Performance
-        """
-        if not type_code:
-            return ""
-
-        # Common type mappings
-        type_map = {
-            "historical_site": "Historical Site",
-            "cultural_district": "Cultural District",
-            "religious_site": "Religious Site",
-            "museum": "Museum",
-            "park": "Park",
-            "cultural_performance": "Cultural Performance",
-            "nightlife": "Nightlife",
-            "spa_wellness": "Spa & Wellness",
-            "shopping": "Shopping",
-            "hotel": "Hotel",
-            "hostel": "Hostel",
-            "guesthouse": "Guesthouse"
-        }
-
-        # Return mapped value or format by replacing underscores and title-casing
-        return type_map.get(type_code, type_code.replace("_", " ").title())
-
-    def _get_cover_image(self, location: str, index: int = 0) -> str:
-        """Get cover image URL for location from images cache or fallback to Unsplash
-        Fix #1: City cover images should use cache, not always fallback to Unsplash
-        Root cause: commit 123f8df - cache lookup logic was incomplete
-        """
-        # Try to get from images cache first
-        if self.images_cache and "city_covers" in self.images_cache:
-            city_covers = self.images_cache["city_covers"]
-            # Try exact match first
-            if location in city_covers:
-                url = city_covers[location]
-                if url and url.startswith("http"):
-                    return url
-
-            # Try case-insensitive match
-            key = location.lower()
-            for city, url in city_covers.items():
-                if city.lower() == key:
-                    if url and url.startswith("http"):
-                        return url
-
-            # Try partial match (for variations like "Xi'an" vs "Xian")
-            for city, url in city_covers.items():
-                if city.lower() in key or key in city.lower():
-                    if url and url.startswith("http"):
-                        return url
-
-        # NO FALLBACK - return empty string if not in cache
-        return ""
-
-    def _get_placeholder_image(self, category: str, poi_name: str = "", gaode_id: str = "", name_base: str = "", name_local: str = "") -> str:
-        """Get image from cache ONLY - NO fallbacks allowed"""
-        # ONLY return images from cache, never fallback
-        if self.images_cache and "pois" in self.images_cache:
-            pois = self.images_cache["pois"]
-
-            # Try gaode_id cache key
-            if gaode_id:
-                cache_key = f"gaode_{gaode_id}"
-                if cache_key in pois:
-                    return pois[cache_key]
-
-            # Try exact match with all name variants
-            for name in [poi_name, name_base, name_local]:
-                if not name:
-                    continue
-                for prefix in ["gaode_", "google_"]:
-                    cache_key = f"{prefix}{name}"
-                    if cache_key in pois:
-                        return pois[cache_key]
-
-            # Try substring match: cache key contains name_base or name_local
-            # Handles keys like "gaode_Raffles City Observation Deck (来福士观景台)"
-            # matching name_base="Raffles City Observation Deck" or name_local="来福士观景台"
-            for name in [name_base, name_local, poi_name]:
-                if not name or len(name) < 3:
-                    continue
-                for cache_key, url in pois.items():
-                    if name in cache_key:
-                        return url
-
-        # NO FALLBACK - return empty string if not in cache
-        return ""
-
-    def _normalize_time(self, time_val, default_duration_hours: float = 1.0) -> dict:
-        """Normalize time values to {start, end} dict format.
-
-        Handles:
-        - dict with start/end: returns as-is
-        - string "HH:MM-HH:MM": splits into start/end
-        - string "HH:MM": uses default_duration_hours to calculate end
-        - None/invalid: returns None
-        """
-        if isinstance(time_val, dict) and time_val.get("start") and time_val.get("end"):
-            return time_val
-        if isinstance(time_val, str):
-            if "-" in time_val and ":" in time_val:
-                # Format: "07:00-08:00"
-                parts = time_val.split("-")
-                if len(parts) == 2:
-                    return {"start": parts[0].strip(), "end": parts[1].strip()}
-            elif ":" in time_val:
-                # Format: "22:00" - single time, add default duration
-                try:
-                    h, m = map(int, time_val.split(":"))
-                    end_h = h + int(default_duration_hours)
-                    end_m = m + int((default_duration_hours % 1) * 60)
-                    if end_m >= 60:
-                        end_h += 1
-                        end_m -= 60
-                    if end_h >= 24:
-                        end_h = 23
-                        end_m = 59
-                    return {"start": time_val, "end": f"{end_h:02d}:{end_m:02d}"}
-                except (ValueError, TypeError):
-                    pass
-        return None
-
-    def _find_timeline_item(self, item_name: str, day_timeline: dict,
-                            time_hint: str = None) -> dict:
-        """Find timeline entry for given item name with precise matching.
-
-        Root cause fix: Previous fuzzy matching matched "Travel to X"/"Walk to X"
-        transit entries instead of actual POI entries. Now excludes transit entries
-        and uses multi-tier matching: exact > base-name exact > substring (POI only).
-
-        When multiple entries match the same name (e.g. "Family Home" appears as
-        both lunch and dinner), uses time_hint to pick the closest match.
-        Args:
-            time_hint: Expected time slot like "breakfast"/"lunch"/"dinner" or "HH:MM"
-        """
-        if not day_timeline or not item_name:
-            return None
-
-        # Transit prefixes to exclude from matching (these are travel segments, not POIs)
-        # Note: "hotel check" intentionally omitted so accommodation can match
-        # "Hotel check-in" entries in timeline. Sync-agent-data.py keeps "hotel check"
-        # in its own list because _sync_accommodation uses direct name lookup instead.
-        transit_prefixes = (
-            "travel to", "walk to", "drive to", "taxi to", "bus to",
-            "train to", "metro to", "subway to", "transfer to",
-            "travel from", "walk from", "drive from",
-            "travel back", "return to", "board train",
-            "check luggage", "wake up", "arrive ",
-            "return home", "free time", "settle in",
-        )
-
-        # Time hint ranges for meal slots
-        hint_ranges = {
-            "breakfast": (5, 10),   # 05:00-10:00
-            "lunch": (10, 15),      # 10:00-15:00
-            "dinner": (17, 23),     # 17:00-23:00
-        }
-
-        def _is_transit(key: str) -> bool:
-            return key.lower().startswith(transit_prefixes)
-
-        def _time_in_range(tl_val: dict, hint: str) -> bool:
-            """Check if timeline entry falls within the hint time range."""
-            if not hint or not tl_val:
-                return True
-            start = tl_val.get("start_time", "")
-            if not start:
-                return True
-            try:
-                h = int(start.split(":")[0])
-            except (ValueError, IndexError):
-                return True
-            if hint in hint_ranges:
-                lo, hi = hint_ranges[hint]
-                return lo <= h < hi
-            # Direct HH:MM hint - match within 2 hours
-            try:
-                hint_h = int(hint.split(":")[0])
-                return abs(h - hint_h) <= 2
-            except (ValueError, IndexError):
-                return True
-
-        def _collect_matches(candidates):
-            """From a list of (key, val) candidates, pick the best one using time_hint."""
-            if not candidates:
-                return None
-            if len(candidates) == 1 or not time_hint:
-                return candidates[0][1]
-            # Multiple candidates: prefer the one matching the time hint
-            for key, val in candidates:
-                if _time_in_range(val, time_hint):
-                    return val
-            return candidates[0][1]
-
-        # Tier 1: Exact match (highest priority)
-        exact = [(k, v) for k, v in day_timeline.items() if k == item_name]
-        if exact:
-            return _collect_matches(exact)
-
-        # Tier 2: Base-name exact match (strip parenthetical Chinese/English suffixes)
-        item_base = item_name.split("(")[0].strip().split("（")[0].strip()
-        tier2 = []
-        for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key):
-                continue
-            timeline_base = timeline_key.split("(")[0].strip().split("（")[0].strip()
-            if item_base.lower() == timeline_base.lower():
-                tier2.append((timeline_key, timeline_val))
-        if tier2:
-            return _collect_matches(tier2)
-
-        # Tier 3: Substring match - POI entries only (exclude transit)
-        tier3 = []
-        for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key):
-                continue
-            if item_base.lower() in timeline_key.lower() or timeline_key.split("(")[0].strip().lower() in item_base.lower():
-                tier3.append((timeline_key, timeline_val))
-        if tier3:
-            return _collect_matches(tier3)
-
-        return None
-
-    def _merge_day_data(self, day_skeleton: dict) -> dict:
-        """Merge skeleton day with agent data
-
-        Fix #6: Use actual times from timeline.json instead of virtual defaults
-        Root cause: timeline.json loaded but never consumed in merge logic
-        """
-        day_num = day_skeleton.get("day", 1)
-        date = day_skeleton.get("date", "")
-        location = day_skeleton.get("location", "Unknown")
-
-        # Fix #6: Get timeline for this day (root cause: timeline data ignored)
-        # Note: _load_json already extracts 'data' field, so timeline has 'days' directly
-        day_timeline = {}
-        if self.timeline and "days" in self.timeline:
-            timeline_day = next(
-                (d for d in self.timeline["days"] if d.get("day") == day_num),
-                None
-            )
-            if timeline_day and "timeline" in timeline_day:
-                day_timeline = timeline_day["timeline"]
-
-        merged = {
-            "day": day_num,
-            "date": date,
-            "location": location,
-            "cover": self._get_cover_image(location, day_num),
-            "user_plans": day_skeleton.get("user_plans", []),
-            "meals": {},
-            "attractions": [],
-            "entertainment": [],
-            "accommodation": None,
-            "transportation": None,
-            "budget": {
-                "meals": 0,
-                "attractions": 0,
-                "entertainment": 0,
-                "accommodation": 0,
-                "total": 0
-            }
-        }
-
-        # Fix #6: Merge meals with actual timeline times instead of virtual defaults
-        # Root cause: hardcoded meal_default_times used instead of reading timeline.json
-        meal_default_times = {
-            "breakfast": {"start": "08:00", "end": "09:00"},
-            "lunch": {"start": "12:00", "end": "13:30"},
-            "dinner": {"start": "18:30", "end": "20:00"}
-        }
-        for meal_type in ["breakfast", "lunch", "dinner"]:
-            if self.meals and "days" in self.meals:
-                day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
-                if meal_type in day_meals:
-                    meal = day_meals[meal_type]
-                    # Convert cost to display currency (EUR)
-                    cost = meal.get("cost", 0)
-                    meal_currency = meal.get("currency", "CNY")
-                    if cost == 0 and "price_range_eur_low" in meal:
-                        cost = meal.get("price_range_eur_low", 0)
-                        meal_currency = "EUR"
-                    cost = self._to_display_currency(cost, meal_currency)
-
-                    # Fix #6: Lookup actual time from timeline.json instead of using virtual defaults
-                    meal_name = meal.get("name_base", meal.get("name", ""))
-                    timeline_item = self._find_timeline_item(meal_name, day_timeline, time_hint=meal_type)
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        meal_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    else:
-                        # Fallback to default times if timeline missing
-                        raw_time = meal.get("time", meal_default_times[meal_type])
-                        meal_time = self._normalize_time(raw_time) or meal_default_times[meal_type]
-
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
-                    name_base = meal.get("name_base", meal_name)
-                    name_local = meal.get("name_local", meal.get("name_en", ""))
-
-                    merged["meals"][meal_type] = {
-                        "name": name_local if name_local else name_base,  # Display local by default
-                        "name_base": name_base,
-                        "name_local": name_local,
-                        "name_en": meal.get("name_en", ""),  # Keep for backward compatibility
-                        "location": meal.get("location_local", meal.get("location", "")),
-                        "location_base": meal.get("location_base", meal.get("location", "")),
-                        "location_local": meal.get("location_local", meal.get("location", "")),
-                        "coordinates": meal.get("coordinates", {}),
-                        "cost": cost,
-                        "cuisine": meal.get("cuisine", ""),
-                        "signature_dishes": meal.get("signature_dishes", ""),
-                        "notes": meal.get("notes", ""),
-                        "image": self._get_placeholder_image(
-                            "meal",
-                            poi_name=name_local if name_local else meal_name,
-                            gaode_id=meal.get("gaode_id", ""),
-                            name_base=name_base,
-                            name_local=name_local
-                        ),
-                        "time": meal_time,
-                        "links": meal.get("links", {})
-                    }
-                    merged["budget"]["meals"] += cost
-
-        # Merge attractions with sequential time allocation
-        if self.attractions and "days" in self.attractions:
-            day_attrs = next((d for d in self.attractions["days"] if d.get("day") == day_num), {})
-            if "attractions" in day_attrs:
-                current_time_hour = 10  # Start attractions at 10:00
-                current_time_minute = 0
-                for attr in day_attrs["attractions"]:
-                    # Fix #6: Lookup actual time from timeline.json first
-                    attr_name = attr.get("name_base", attr.get("name", ""))
-                    timeline_item = self._find_timeline_item(attr_name, day_timeline)
-
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        # Use actual timeline times
-                        attr_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    elif not attr.get("time"):
-                        # Fallback: Calculate virtual time based on recommended duration
-                        duration_str = attr.get("recommended_duration", "2h")
-                        duration_hours = 2.0  # default
-                        if "h" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("h", "").strip())
-                            except:
-                                duration_hours = 2.0
-                        elif "min" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("min", "").strip()) / 60
-                            except:
-                                duration_hours = 2.0
-
-                        start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
-                        end_hour = current_time_hour + int(duration_hours)
-                        end_minute = current_time_minute + int((duration_hours % 1) * 60)
-                        if end_minute >= 60:
-                            end_hour += 1
-                            end_minute -= 60
-                        end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                        attr_time = {"start": start_time, "end": end_time}
-
-                        # Update current time for next attraction (add 30min buffer)
-                        current_time_hour = end_hour
-                        current_time_minute = end_minute + 30
-                        if current_time_minute >= 60:
-                            current_time_hour += 1
-                            current_time_minute -= 60
-                    else:
-                        attr_time = self._normalize_time(attr.get("time"), default_duration_hours=1.5) or attr.get("time")
-
-                    # Convert cost to display currency (EUR)
-                    cost = attr.get("cost", 0)
-                    attr_currency = attr.get("currency", "CNY")
-                    if cost == 0 and "ticket_price_eur" in attr:
-                        cost = attr.get("ticket_price_eur", 0)
-                        attr_currency = "EUR"
-                    cost = self._to_display_currency(cost, attr_currency)
-
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
-                    attr_name_base = attr.get("name_base", attr_name)
-                    attr_name_local = attr.get("name_local", attr.get("name_en", ""))
-
-                    # Fix issue #11: Detect optional items from timeline name or attraction notes
-                    is_optional = False
-                    if day_timeline:
-                        for tl_name in day_timeline:
-                            if attr_name.lower() in tl_name.lower() and "optional" in tl_name.lower():
-                                is_optional = True
-                                break
-                    if "optional" in str(attr.get("notes", "")).lower():
-                        is_optional = True
-
-                    merged["attractions"].append({
-                        "name": attr_name_local if attr_name_local else attr_name_base,  # Display local by default
-                        "name_base": attr_name_base,
-                        "name_local": attr_name_local,
-                        "name_en": attr.get("name_en", ""),  # Keep for backward compatibility
-                        "location": attr.get("location_local", attr.get("location", "")),
-                        "location_base": attr.get("location_base", attr.get("location", "")),
-                        "location_local": attr.get("location_local", attr.get("location", "")),
-                        "coordinates": attr.get("coordinates", {}),
-                        "type": self._format_type(attr.get("type", "")),
-                        "cost": cost,
-                        "opening_hours": attr.get("opening_hours", ""),
-                        "recommended_duration": attr.get("recommended_duration", ""),
-                        "optional": is_optional,
-                        "image": self._get_placeholder_image(
-                            "attraction",
-                            poi_name=attr_name_local if attr_name_local else attr_name,
-                            gaode_id=attr.get("gaode_id", ""),
-                            name_base=attr_name_base,
-                            name_local=attr_name_local
-                        ),
-                        "highlights": attr.get("highlights", []),
-                        "notes": attr.get("notes", ""),
-                        "why_worth_visiting": attr.get("why_worth_visiting", ""),
-                        "best_time_to_visit": attr.get("best_time_to_visit", ""),
-                        "time": attr_time,
-                        "links": attr.get("links", {})
-                    })
-                    merged["budget"]["attractions"] += cost
-
-        # Merge entertainment with sequential evening time allocation
-        if self.entertainment and "days" in self.entertainment:
-            day_ent = next((d for d in self.entertainment["days"] if d.get("day") == day_num), {})
-            if "entertainment" in day_ent:
-                current_time_hour = 19  # Start entertainment at 19:00 (after dinner)
-                current_time_minute = 0
-                for ent in day_ent["entertainment"]:
-                    # Fix #6: Lookup actual time from timeline.json first
-                    ent_name = ent.get("name_base", ent.get("name", ""))
-                    timeline_item = self._find_timeline_item(ent_name, day_timeline)
-
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        # Use actual timeline times
-                        ent_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    else:
-                        # Try to normalize existing time value
-                        normalized = self._normalize_time(ent.get("time"), default_duration_hours=1.0)
-                        if normalized:
-                            ent_time = normalized
-                        else:
-                            # Fallback: Calculate virtual time based on duration
-                            duration_str = ent.get("duration", "2h")
-                            duration_hours = 2.0
-                            if "h" in duration_str:
-                                try:
-                                    duration_hours = float(duration_str.replace("h", "").strip())
-                                except:
-                                    duration_hours = 2.0
-                            elif "min" in duration_str:
-                                try:
-                                    duration_hours = float(duration_str.replace("min", "").strip()) / 60
-                                except:
-                                    duration_hours = 2.0
-
-                            start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
-                            end_hour = current_time_hour + int(duration_hours)
-                            end_minute = current_time_minute + int((duration_hours % 1) * 60)
-                            if end_minute >= 60:
-                                end_hour += 1
-                                end_minute -= 60
-                            end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                            ent_time = {"start": start_time, "end": end_time}
-
-                            # Update current time for next entertainment
-                            current_time_hour = end_hour
-                            current_time_minute = end_minute
-
-                    # Convert cost to display currency (EUR)
-                    cost = ent.get("cost", 0)
-                    ent_currency = ent.get("currency", "CNY")
-                    if cost == 0 and "cost_eur" in ent:
-                        cost = ent.get("cost_eur", 0)
-                        ent_currency = "EUR"
-                    cost = self._to_display_currency(cost, ent_currency)
-
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
-                    ent_name_base = ent.get("name_base", ent_name)
-                    ent_name_local = ent.get("name_local", ent.get("name_en", ""))
-
-                    merged["entertainment"].append({
-                        "name": ent_name_local if ent_name_local else ent_name_base,  # Display local by default
-                        "name_base": ent_name_base,
-                        "name_local": ent_name_local,
-                        "name_en": ent.get("name_en", ""),  # Keep for backward compatibility
-                        "location": ent.get("location_local", ent.get("location", "")),
-                        "location_base": ent.get("location_base", ent.get("location", "")),
-                        "location_local": ent.get("location_local", ent.get("location", "")),
-                        "coordinates": ent.get("coordinates", {}),
-                        "type": self._format_type(ent.get("type", "")),
-                        "cost": cost,
-                        "duration": ent.get("duration", ""),
-                        "note": ent.get("note", ""),
-                        "notes": ent.get("notes", ""),
-                        "image": self._get_placeholder_image(
-                            "entertainment",
-                            poi_name=ent_name_local if ent_name_local else ent_name,
-                            gaode_id=ent.get("gaode_id", ""),
-                            name_base=ent_name_base,
-                            name_local=ent_name_local
-                        ),
-                        "time": ent_time,
-                        "links": ent.get("links", {})
-                    })
-                    merged["budget"]["entertainment"] += cost
-
-        # Merge accommodation
-        if self.accommodation and "days" in self.accommodation:
-            day_acc = next((d for d in self.accommodation["days"] if d.get("day") == day_num), {})
-            if "accommodation" in day_acc:
-                acc = day_acc["accommodation"]
-                # Convert cost to display currency (EUR)
-                cost = acc.get("cost", 0)
-                acc_currency = acc.get("currency", "CNY")
-                if cost == 0 and "price_per_night_eur" in acc:
-                    cost = acc.get("price_per_night_eur", 0)
-                    acc_currency = "EUR"
-                cost = self._to_display_currency(cost, acc_currency)
-
-                # Root cause fix: Support standardized name_base/name_local fields
-                acc_name_base = acc.get("name_base", acc.get("name", ""))
-                acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
-
-                # Fix issue #10 (root cause): Lookup check-in time from timeline.
-                # "hotel check" removed from transit_prefixes so _find_timeline_item()
-                # can now match "Hotel check-in" entries directly (no workaround needed).
-                acc_time = {"start": "15:00", "end": "16:00"}  # default
-                if day_timeline:
-                    acc_name_for_lookup = acc.get("name_base", acc.get("name", ""))
-                    timeline_item_acc = self._find_timeline_item(acc_name_for_lookup, day_timeline)
-                    if not timeline_item_acc:
-                        # Fallback: search for "Hotel check-in" as a timeline key name
-                        timeline_item_acc = self._find_timeline_item("Hotel check-in", day_timeline)
-                    if timeline_item_acc and "start_time" in timeline_item_acc and "end_time" in timeline_item_acc:
-                        acc_time = {"start": timeline_item_acc["start_time"], "end": timeline_item_acc["end_time"]}
-                else:
-                    raw_acc_time = acc.get("time")
-                    if raw_acc_time:
-                        normalized_acc_time = self._normalize_time(raw_acc_time)
-                        if normalized_acc_time:
-                            acc_time = normalized_acc_time
-
-                # Parse rating: handle both numeric "rating" and string "star_rating" (e.g. "4-star")
-                rating = acc.get("rating")
-                if rating is None:
-                    star_rating_str = acc.get("star_rating", "")
-                    if star_rating_str:
-                        import re
-                        m = re.search(r'(\d+)', str(star_rating_str))
-                        rating = float(m.group(1)) if m else None
-
-                # Parse stars: prefer explicit stars, fallback to rating
-                stars = acc.get("stars", 0)
-                if not stars and rating is not None:
-                    stars = int(rating)
-
-                merged["accommodation"] = {
-                    "name": acc_name_local if acc_name_local else acc_name_base,
-                    "name_base": acc_name_base,
-                    "name_local": acc_name_local,
-                    "name_cn": acc.get("name_cn", ""),  # backward compat
-                    "type": self._format_type(acc.get("type", "hotel")),
-                    "location": acc.get("location_local", acc.get("location", "")),
-                    "location_base": acc.get("location_base", acc.get("location", "")),
-                    "location_local": acc.get("location_local", acc.get("location", "")),
-                    "coordinates": acc.get("coordinates", {}),
-                    "cost": cost,
-                    "rating": rating,
-                    "stars": stars if stars else 0,
-                    "amenities": acc.get("amenities", []),
-                    "check_in": acc.get("check_in", ""),
-                    "check_out": acc.get("check_out", ""),
-                    "notes": acc.get("notes", ""),
-                    "time": acc_time,
-                    "links": acc.get("links", {}),
-                    "image": self._get_placeholder_image(
-                        "accommodation",
-                        poi_name=acc_name_local if acc_name_local else acc_name_base,
-                        gaode_id=acc.get("gaode_id", ""),
-                        name_base=acc_name_base,
-                        name_local=acc_name_local
-                    )
-                }
-                merged["budget"]["accommodation"] = cost
-
-        # Merge transportation (Fix Issue #8: transportation missing from HTML)
-        # Root cause: transportation.json loaded but never processed in _merge_day_data
-        # Fix Issue #9: Handle both location_change (itinerary) and from_beijing (bucket-list) formats
-        if self.transportation and "days" in self.transportation:
-            day_trans = next((d for d in self.transportation["days"] if d.get("day") == day_num), {})
-
-            # Support both formats: location_change (itinerary) and from_beijing (bucket-list)
-            loc_change = day_trans.get("location_change")
-            from_beijing = day_trans.get("from_beijing")
-
-            if loc_change:
-                # Itinerary format: location_change with route_details
-                route_details = loc_change.get("route_details", {})
-
-                # Determine transport type and icon
-                transport_type = loc_change.get("transportation", "")
-                if "train" in transport_type.lower():
-                    icon = "🚄"
-                    type_display = "High-speed Train"
-                elif "flight" in transport_type.lower():
-                    icon = "✈️"
-                    type_display = "Flight"
-                else:
-                    icon = "🚌"
-                    type_display = transport_type
-
-                # Extract route info based on transport type
-                if "flight_number" in route_details:
-                    # Flight
-                    departure_point = route_details.get("departure_airport", "")
-                    arrival_point = route_details.get("arrival_airport", "")
-                    route_number = route_details.get("flight_number", "")
-                    airline = route_details.get("airline", "")
-                else:
-                    # Train
-                    departure_point = route_details.get("departure_station", "")
-                    arrival_point = route_details.get("arrival_station", "")
-                    verified = route_details.get("verified_train", {})
-                    route_number = verified.get("train_number", "VERIFIED")
-                    airline = ""
-
-                # Booking status
-                booking_status = loc_change.get("booking_status", "")
-                if not booking_status:
-                    if loc_change.get("booking_required", False):
-                        urgency = loc_change.get("booking_urgency", "")
-                        if "CRITICAL" in urgency or "URGENT" in urgency:
-                            booking_status = "URGENT"
-                        else:
-                            booking_status = "REQUIRED"
-                    else:
-                        booking_status = "VERIFIED"
-
-                # Extract bilingual city names from location fields
-                from_local = self._extract_local_city(loc_change.get("from_location", ""), loc_change.get("from", ""))
-                to_local = self._extract_local_city(loc_change.get("to_location", ""), loc_change.get("to", ""))
-
-                merged["transportation"] = {
-                    "from": loc_change.get("from", ""),
-                    "to": loc_change.get("to", ""),
-                    "from_local": from_local,
-                    "to_local": to_local,
-                    "departure_point": departure_point,
-                    "arrival_point": arrival_point,
-                    "departure_time": loc_change.get("departure_time", ""),
-                    "arrival_time": loc_change.get("arrival_time", ""),
-                    "transport_type": type_display,
-                    "icon": icon,
-                    "route_number": route_number,
-                    "airline": airline,
-                    "cost": self._to_display_currency(loc_change.get("cost", 0), loc_change.get("currency", "CNY")),
-                    "booking_status": booking_status,
-                    "booking_urgency": loc_change.get("booking_urgency", ""),
-                    "notes": loc_change.get("notes", ""),
-                    "time": {
-                        "start": loc_change.get("departure_time", "07:00"),
-                        "end": loc_change.get("arrival_time", "10:00")
-                    }
-                }
-
-            elif from_beijing:
-                # Bucket-list format: from_beijing with options array
-                # Use recommended option
-                recommended_method = from_beijing.get("recommended", "high_speed_train")
-                options = from_beijing.get("options", [])
-
-                # Find recommended option
-                option = next((o for o in options if o.get("method") == recommended_method),
-                             options[0] if options else {})
-
-                if option:
-                    method = option.get("method", "")
-
-                    # Determine transport type and icon
-                    if "flight" in method:
-                        icon = "✈️"
-                        type_display = "Flight"
-                    elif "train" in method:
-                        icon = "🚄"
-                        type_display = option.get("train_type", "High-speed Train")
-                    else:
-                        icon = "🚌"
-                        type_display = method.replace("_", " ").title()
-
-                    # Extract station/airport info
-                    stations = option.get("stations", {})
-                    airports = option.get("airports", {})
-                    departure_point = stations.get("departure", "") or airports.get("departure", "")
-                    arrival_point = stations.get("arrival", "") or airports.get("arrival", "")
-
-                    # Build descriptive notes
-                    notes_parts = []
-                    if "duration_hours" in option:
-                        hours = option["duration_hours"]
-                        notes_parts.append(f"Duration: {hours}h")
-                    elif "duration_minutes" in option:
-                        mins = option["duration_minutes"]
-                        notes_parts.append(f"Duration: {mins} minutes")
-
-                    if "frequency" in option:
-                        notes_parts.append(f"Frequency: {option['frequency']}")
-
-                    if "notes" in option:
-                        notes_parts.append(option["notes"])
-
-                    # Extract cost and convert to display currency
-                    cost_cny = option.get("cost_cny", 0)
-                    cost_eur = option.get("cost_eur", 0)
-
-                    # Route info (train number, flight code, etc.)
-                    route_number = ""
-                    if "fastest_trains" in option and option["fastest_trains"]:
-                        route_number = option["fastest_trains"][0]
-
-                    merged["transportation"] = {
-                        "from": "Beijing",
-                        "to": location,
-                        "departure_point": departure_point,
-                        "arrival_point": arrival_point,
-                        "departure_time": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
-                        "arrival_time": "",  # Not specified in bucket-list format
-                        "transport_type": type_display,
-                        "icon": icon,
-                        "route_number": route_number,
-                        "airline": "",
-                        "cost": self._to_display_currency(cost_eur if cost_eur else cost_cny, "EUR" if cost_eur else "CNY"),
-                        "booking_status": "RECOMMENDED",
-                        "booking_urgency": "",
-                        "notes": " | ".join(notes_parts),
-                        "time": {
-                            "start": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
-                            "end": "12:00"  # Placeholder
-                        }
-                    }
-
-        # Fix issue #6: Merge travel segments from timeline
-        # Fix: Provide bilingual names by looking up destination in merged POIs
-        # Fix: Also capture transit entries that don't start with "travel"
-        # (e.g. "Board train at X", "High-speed train to Y", "Walk to X")
-        travel_prefixes = (
-            "travel", "walk to", "drive to", "taxi to", "bus to",
-            "board train", "high-speed train", "train to", "flight to",
-            "metro to", "subway to", "transfer to", "return to",
-            "travel back", "return home",
-        )
-        # Get transportation time range to avoid duplicate timeline entries
-        transport_start = ""
-        transport_end = ""
-        if merged.get("transportation"):
-            transport_start = merged["transportation"].get("time", {}).get("start", "")
-            transport_end = merged["transportation"].get("time", {}).get("end", "")
-
-        if day_timeline:
-            for activity_name, times in day_timeline.items():
-                if isinstance(times, dict) and any(activity_name.lower().startswith(p) for p in travel_prefixes):
-                    start_time = times.get("start_time", "")
-                    end_time = times.get("end_time", "")
-                    if start_time and end_time:
-                        # Skip segments that overlap with main transportation entry
-                        if transport_start and transport_end:
-                            if start_time >= transport_start and end_time <= transport_end:
-                                continue  # Contained within main transportation
-                        # Try to find Chinese name for the destination
-                        name_local = ""
-                        all_pois = (
-                            merged["attractions"] +
-                            merged["entertainment"] +
-                            [m for m in merged["meals"].values() if m]
-                        )
-                        for poi in all_pois:
-                            poi_name = poi.get("name_base", "")
-                            if poi_name and poi_name.lower() in activity_name.lower():
-                                name_local = poi.get("name_local", "")
-                                if name_local:
-                                    break
-                        duration_min = times.get("duration_minutes", 0)
-                        merged.setdefault("travel_segments", []).append({
-                            "name": activity_name,
-                            "name_base": activity_name,
-                            "name_local": name_local if name_local else activity_name,
-                            "time": {"start": start_time, "end": end_time},
-                            "duration": f"{duration_min}min" if duration_min else "",
-                            "type": "travel"
-                        })
-
-        # Calculate total budget
-        merged["budget"]["total"] = sum([
-            merged["budget"]["meals"],
-            merged["budget"]["attractions"],
-            merged["budget"]["entertainment"],
-            merged["budget"]["accommodation"]
-        ])
-
-        return merged
-
-    def _group_days_by_location(self, days: list) -> list:
-        """Group days by location to create trips"""
-        if not days:
-            return []
-
-        trips = []
-        current_trip = None
-
-        for day in days:
-            location = day.get("location", "Unknown")
-
-            if current_trip is None or current_trip["name"] != location:
-                # Start new trip
-                current_trip = {
-                    "name": location,
-                    "days_label": "1 day",
-                    "cover": day.get("cover", ""),
-                    "days": [day]
-                }
-                trips.append(current_trip)
-            else:
-                # Continue current trip
-                current_trip["days"].append(day)
-                current_trip["days_label"] = f"{len(current_trip['days'])} days"
-
-        return trips
-
-    def generate_plan_data(self) -> dict:
-        """Generate complete PLAN_DATA structure
-
-        Supports both formats:
-        - itinerary: trip_summary + days (multi-day trips)
-        - bucket_list: city_guides (10 destination options)
-        """
-
-        # Check format type
-        is_bucket_list = self.skeleton.get("bucket_list_type") == "city_guides"
-
-        if is_bucket_list:
-            # Bucket list format: city_guides
-            return self._generate_bucket_list_data()
-        else:
-            # Itinerary format: trip_summary + days
-            return self._generate_itinerary_data()
-
-    def _generate_bucket_list_data(self) -> dict:
-        """Generate PLAN_DATA for bucket list (city_guides format)"""
-
-        trip_summary = {
-            "trip_type": "bucket_list",
-            "description": "Destination Options",
-            "base_location": "",
-            "period": "",
-            "travelers": "1 adult",
-            "budget_per_trip": f"{self._display_symbol}200-500",
-            "preferences": ""
-        }
-
-        # Convert each city into a trip
-        trips = []
-        cities = self.skeleton.get("cities", [])
-
-        for city_data in cities:
-            city_name = city_data.get("city", "Unknown")
-
-            # Create a single "day" for this city with all POIs
-            day = {
-                "day": 1,
-                "date": city_data.get("recommended_duration", "1-2 days"),
-                "location": city_name,
-                "cover": self._get_cover_image(city_name, len(trips)),
-                "user_plans": city_data.get("user_requirements", []),
-                "meals": {},
-                "attractions": [],
-                "entertainment": [],
-                "accommodation": None,
-                "budget": {
-                    "meals": 0,
-                    "attractions": 0,
-                    "entertainment": 0,
-                    "accommodation": 0,
-                    "total": 0
-                }
-            }
-
-            # Get POI data from agent files
-            # Find attractions for this city
-            if self.attractions and "cities" in self.attractions:
-                city_attractions = next((c for c in self.attractions["cities"] if c.get("city") == city_name), {})
-                for attr in city_attractions.get("attractions", []):
-                    a_name_base = attr.get("name_base", attr.get("name", ""))
-                    a_name_local = attr.get("name_local", attr.get("name_chinese", ""))
-                    day["attractions"].append({
-                        "name": a_name_local if a_name_local else a_name_base,
-                        "name_base": a_name_base,
-                        "name_local": a_name_local,
-                        "location": city_name,
-                        "type": self._format_type(attr.get("type", "")),
-                        "cost": self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR"),
-                        "opening_hours": attr.get("opening_hours", ""),
-                        "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
-                        "image": self._get_placeholder_image("attraction", poi_name=a_name_local if a_name_local else a_name_base, name_base=a_name_base, name_local=a_name_local),
-                        "highlights": attr.get("tips", [])[:3],
-                        "time": {"start": "10:00", "end": "12:00"},
-                        "links": {}
-                    })
-                    day["budget"]["attractions"] += self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR")
-
-            # Find meals for this city
-            if self.meals and "cities" in self.meals:
-                city_meals = next((c for c in self.meals["cities"] if c.get("city") == city_name), {})
-                for i, meal in enumerate(city_meals.get("meals", [])[:3]):
-                    meal_type = ["breakfast", "lunch", "dinner"][i]
-                    m_name_base = meal.get("name_base", meal.get("name", ""))
-                    m_name_local = meal.get("name_local", meal.get("name_chinese", ""))
-                    day["meals"][meal_type] = {
-                        "name": m_name_local if m_name_local else m_name_base,
-                        "name_base": m_name_base,
-                        "name_local": m_name_local,
-                        "cost": self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR"),
-                        "cuisine": meal.get("cuisine_type", ""),
-                        "signature_dishes": meal.get("signature_dish", ""),
-                        "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
-                        "time": {"start": "08:00", "end": "09:00"} if meal_type == "breakfast" else
-                                {"start": "12:00", "end": "13:30"} if meal_type == "lunch" else
-                                {"start": "18:30", "end": "20:00"},
-                        "links": {}
-                    }
-                    day["budget"]["meals"] += self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR")
-
-            # Calculate total
-            day["budget"]["total"] = sum([
-                day["budget"]["meals"],
-                day["budget"]["attractions"],
-                day["budget"]["entertainment"],
-                day["budget"]["accommodation"]
-            ])
-
-            # Create trip with this single day
-            trip = {
-                "name": city_name,
-                "days_label": city_data.get("recommended_duration", "1-2 days"),
-                "cover": day["cover"],
-                "days": [day]
-            }
-            trips.append(trip)
-
-        return {
-            "trip_summary": trip_summary,
-            "trips": trips
-        }
-
-    def _generate_itinerary_data(self) -> dict:
-        """Generate PLAN_DATA for itinerary (trip_summary + days format)"""
-
-        # Build trip summary from skeleton's trip_summary section
-        skel_summary = self.skeleton.get("trip_summary", {})
-        prefs = skel_summary.get("preferences", {})
-        if isinstance(prefs, dict):
-            # Fix #2: Use formatter to remove code prefixes
-            prefs_str = self._format_preferences(prefs)
-        else:
-            prefs_str = str(prefs)
-
-        # Fix #2: Calculate period from duration_days
-        # Root cause: Missing from original implementation
-        duration_days = skel_summary.get("duration_days", 0)
-        period = f"{duration_days} day{'s' if duration_days != 1 else ''}"
-
-        trip_summary = {
-            # Fix #1, #3: Format trip_type for natural language display
-            "trip_type": self._format_trip_type(skel_summary.get("trip_type", "itinerary")),
-            "description": skel_summary.get("description", "Travel Plan"),
-            "base_location": skel_summary.get("base_location", ""),
-            "period": period,
-            "travelers": skel_summary.get("travelers", "1 adult"),
-            "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
-            "preferences": prefs_str
-        }
-
-        # Merge all days
-        merged_days = []
-        if "days" in self.skeleton:
-            for day_skel in self.skeleton["days"]:
-                merged_day = self._merge_day_data(day_skel)
-                merged_days.append(merged_day)
-
-        # Group days into trips
-        trips = self._group_days_by_location(merged_days)
-
-        return {
-            "trip_summary": trip_summary,
-            "trips": trips
-        }
-
-    def generate_html(self) -> str:
-        """Generate complete HTML with embedded React app"""
-
-        plan_data = self.generate_plan_data()
-        plan_data_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
-
-        # Read React component template
-        react_template = self._read_react_template()
-
-        html = f"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{plan_data['trip_summary']['description']}</title>
+  <title>Travel Plan</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    * {{
+    * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    }}
-    body {{
+    }
+    body {
       overflow-x: hidden;
-    }}
+    }
   </style>
 </head>
 <body>
@@ -1215,24 +23,21 @@ class InteractiveHTMLGenerator:
 
   <script type="text/babel">
     // Embedded PLAN_DATA
-    const PLAN_DATA = {plan_data_json};
-    const CURRENCY_SYMBOL = "{self._display_symbol}";
+    const PLAN_DATA = {
+  "trip_summary": {
+    "trip_type": "Itinerary",
+    "description": "Travel Plan",
+    "base_location": "",
+    "period": "0 days",
+    "travelers": "1 adult",
+    "budget_per_trip": "€500",
+    "preferences": ""
+  },
+  "trips": []
+};
+    const CURRENCY_SYMBOL = "€";
 
-    {react_template}
-
-    // Render app
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<NotionTravelApp />);
-  </script>
-</body>
-</html>"""
-
-        return html
-
-    def _read_react_template(self) -> str:
-        """Read React component template"""
-        # Return the React component code directly
-        return """
+    
 // ============================================================
 // HOOKS
 // ============================================================
@@ -1250,9 +55,6 @@ const useBreakpoint = () => {
   }, []);
   return bp;
 };
-
-// Mobile detection helper (reused by RedNoteLink, MapLink, etc.)
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // ============================================================
 // ATOMS
@@ -1350,8 +152,8 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp }) => {
       {mobile && isOpen && <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 199 }} />}
       <div style={{
         width: W, flexShrink: 0, background: '#fbfbfa', borderRight: '1px solid #f0efed',
-        padding: '14px 8px', overflowY: 'auto', height: mobile ? '100%' : '100vh',
-        position: mobile ? 'fixed' : 'sticky', top: 0, left: 0, bottom: mobile ? 0 : 'auto', zIndex: 200,
+        padding: '14px 8px', overflowY: 'auto', height: '100vh',
+        position: mobile ? 'fixed' : 'sticky', top: 0, left: 0, zIndex: 200,
         transform: mobile && !isOpen ? `translateX(-${W + 10}px)` : 'none',
         transition: 'transform .25s ease',
         boxShadow: mobile && isOpen ? '2px 0 8px rgba(0,0,0,0.06)' : 'none'
@@ -1729,12 +531,10 @@ const MapLink = ({ item, lang, mapProvider = 'gaode' }) => {
     const lat = coords.latitude || coords.lat;
     const lng = coords.longitude || coords.lng;
     googleHref = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    gaodeHref = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}&coordinate=gaode${isMobile ? '&callnative=1' : ''}`;
+    gaodeHref = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}`;
   } else {
     googleHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
-    gaodeHref = isMobile
-      ? `https://m.amap.com/search/mapSearch?query=${encodeURIComponent(loc)}`
-      : `https://www.amap.com/search?query=${encodeURIComponent(loc)}`;
+    gaodeHref = `https://www.amap.com/search?query=${encodeURIComponent(loc)}`;
   }
   const isGaode = mapProvider === 'gaode';
   const href = isGaode ? gaodeHref : googleHref;
@@ -1765,11 +565,9 @@ const XhsLogo = ({ size = 14 }) => (
 );
 const RedNoteLink = ({ name }) => {
   if (!name) return null;
-  const webUrl = `https://www.xiaohongshu.com/search_result/?keyword=${encodeURIComponent(name)}&source=web_explore_feed`;
-  const deepUrl = `xhsdiscover://search/result?keyword=${encodeURIComponent(name)}`;
-  const href = isMobile ? deepUrl : webUrl;
+  const url = `https://www.xiaohongshu.com/search_result/?keyword=${encodeURIComponent(name)}&source=web_explore_feed`;
   return (
-    <a href={href} target={isMobile ? '_self' : '_blank'} rel="noopener noreferrer"
+    <a href={url} target="_blank" rel="noopener noreferrer"
       style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: '6px', padding: '2px 6px', background: '#fff0f0', borderRadius: '4px', textDecoration: 'none', fontSize: '11px', color: '#ff2442', border: '1px solid #ffe0e0', transition: 'all .12s', verticalAlign: 'middle' }}
       title="Search on 小红书"
       onClick={e => e.stopPropagation()}
@@ -1778,29 +576,6 @@ const RedNoteLink = ({ name }) => {
       <XhsLogo size={14} />
       <span style={{ fontWeight: '600' }}>小红书</span>
     </a>
-  );
-};
-
-const ExpandableNotes = ({ text, maxLines = 2 }) => {
-  const [expanded, setExpanded] = useState(false);
-  if (!text) return null;
-  return (
-    <div style={{ marginTop: '6px', fontSize: '12px', color: '#6b6b6b', background: '#fafaf8', padding: '8px 10px', borderRadius: '6px', border: '1px solid #f0efed' }}>
-      <div style={{
-        overflow: expanded ? 'visible' : 'hidden',
-        display: expanded ? 'block' : '-webkit-box',
-        WebkitLineClamp: expanded ? 'unset' : maxLines,
-        WebkitBoxOrient: 'vertical',
-        lineHeight: 1.6,
-        whiteSpace: 'pre-wrap'
-      }}>
-        {text}
-      </div>
-      <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-        style={{ background: 'none', border: 'none', color: '#4a90d9', fontSize: '11px', cursor: 'pointer', padding: '4px 0 0', fontWeight: '500' }}>
-        {expanded ? 'Show less' : 'Show more'}
-      </button>
-    </div>
   );
 };
 
@@ -1836,7 +611,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                 <PropertyRow label="Period">{tripSummary.period}</PropertyRow>
                 <PropertyRow label="Travelers">{tripSummary.travelers}</PropertyRow>
                 <PropertyRow label="Budget / Trip">{tripSummary.budget_per_trip}</PropertyRow>
-                {/* Preferences hidden per user request */}
+                <PropertyRow label="Preferences">{tripSummary.preferences}</PropertyRow>
               </div>
             </>
           ) : (
@@ -1900,7 +675,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {(meal.location || meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>Location</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
                       {meal.signature_dishes && !sm && <div><span style={{ color: '#9b9a97' }}>Signature</span> {meal.signature_dishes}</div>}
                     </div>
-                    <ExpandableNotes text={meal.notes} />
                     <LinksRow links={meal.links} compact={sm} />
                   </div>
                 </div>
@@ -1935,10 +709,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
                       </div>
                       {attr.time && <PropLine label="Time" value={`${attr.time.start} – ${attr.time.end}`} />}
-                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
-                      <PropLine label="Type" value={attr.type} />
                       {(attr.location || attr.location_base || attr.location_local) && <PropLine label="Location" value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} />
+                      <PropLine label="Type" value={attr.type} />
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
+                      <PropLine label="Hours" value={attr.opening_hours} />
+                      <PropLine label="Duration" value={attr.recommended_duration} />
                       <LinksRow links={attr.links} compact />
                     </div>
                   </>
@@ -1954,9 +729,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
                       </div>
                       {attr.time && <PropLine label="Time" value={`${attr.time.start} – ${attr.time.end}`} />}
-                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
-                      <PropLine label="Type" value={attr.type} />
                       {(attr.location || attr.location_base || attr.location_local) && <PropLine label="Location" value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
+                      <PropLine label="Type" value={attr.type} />
+                      <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />
+                      <PropLine label="Hours" value={attr.opening_hours} />
+                      <PropLine label="Duration" value={attr.recommended_duration} />
                       {attr.highlights && attr.highlights.length > 0 && (
                         <div style={{ marginTop: '6px' }}>
                           <span style={{ fontSize: '12px', color: '#9b9a97' }}>Highlights</span>
@@ -1965,7 +742,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           </ul>
                         </div>
                       )}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} />
                       <LinksRow links={attr.links} />
                     </div>
                   </div>
@@ -1998,8 +774,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         <RedNoteLink name={ent.name_local || ent.name_base} />
                       </div>
                       {ent.time && <PropLine label="Time" value={`${ent.time.start} – ${ent.time.end}`} />}
-                      <PropLine label="Cost" value={fmtCost(ent.cost)} />
                       <PropLine label="Type" value={ent.type} />
+                      <PropLine label="Cost" value={fmtCost(ent.cost)} />
                       {(ent.location || ent.location_base || ent.location_local) && <PropLine label="Location" value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
                       {ent.duration && <PropLine label="Duration" value={ent.duration} />}
                       {ent.note && (
@@ -2007,7 +783,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           💡 {ent.note}
                         </div>
                       )}
-                      <ExpandableNotes text={ent.notes} />
                       <LinksRow links={ent.links} compact={sm} />
                     </div>
                   </div>
@@ -2035,13 +810,25 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
-                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
+                    {day.accommodation.name_cn && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '8px' }}>{day.accommodation.name_cn}</div>}
                     <PropLine label="Type" value={day.accommodation.type} />
-                    {day.accommodation.stars > 0 && <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
+                    {day.accommodation.rating !== undefined && day.accommodation.rating !== null && <PropLine label="Rating" value={`${day.accommodation.rating}/5`} />}
+                    <PropLine label="Stars" value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />
+                    <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
+                    <PropLine label="Cost" value={fmtCost(day.accommodation.cost)} />
                     {day.accommodation.check_in && <PropLine label="Check-in" value={day.accommodation.check_in} />}
                     {day.accommodation.check_out && <PropLine label="Check-out" value={day.accommodation.check_out} />}
-                    <PropLine label="Location" value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
-                    <ExpandableNotes text={day.accommodation.notes} />
+                    {day.accommodation.amenities && day.accommodation.amenities.length > 0 && !sm && (
+                      <div style={{ marginTop: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#9b9a97' }}>Amenities</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                          {day.accommodation.amenities.slice(0, 5).map((a, i) => (
+                            <span key={i} style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', borderRadius: '3px', color: '#6b6b6b' }}>{a}</span>
+                          ))}
+                          {day.accommodation.amenities.length > 5 && <span style={{ fontSize: '11px', color: '#9b9a97' }}>+{day.accommodation.amenities.length - 5}</span>}
+                        </div>
+                      </div>
+                    )}
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -2193,10 +980,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   day.entertainment?.forEach(e => add(e, 'entertainment', 'Entertainment'));
   if (day.accommodation) add(day.accommodation, 'accommodation', 'Check-in');
   // Fix issue #6: Add travel segments from timeline
-  day.travel_segments?.forEach(t => {
-    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || t.name || '');
-    add(t, 'travel', label);
-  });
+  day.travel_segments?.forEach(t => add(t, 'travel', t.name));
 
   // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
@@ -2294,7 +1078,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
                     <div style={{
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
-                      whiteSpace: sm ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: sm ? 'unset' : 'ellipsis'
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
                       {entry._type === 'transportation' || entry._type === 'travel' ? (
                         <span>{entry._type === 'transportation' ? entry.icon : '🚶'} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
@@ -2423,7 +1207,7 @@ function NotionTravelApp() {
         <div style={{
           borderBottom: '1px solid #f0efed',
           padding: `0 ${sm ? '12px' : '20px'}`,
-          display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center',
           position: 'sticky', top: 0, background: 'rgba(255,255,255,0.97)',
           backdropFilter: 'blur(8px)', zIndex: 50, gap: '2px'
         }}>
@@ -2444,7 +1228,7 @@ function NotionTravelApp() {
               {m === 'kanban' ? 'Kanban View' : 'Timeline View'}
             </button>
           ))}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: sm ? '6px' : '12px', ...(sm ? { width: '100%', justifyContent: 'flex-end', paddingBottom: '6px' } : {}) }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: sm ? '6px' : '12px' }}>
             {/* Map provider toggle */}
             <div style={{ display: 'flex', gap: '2px', background: '#f5f5f3', borderRadius: '6px', padding: '2px', border: '1px solid #e0e0e0' }}>
               <button onClick={() => setMapProvider('gaode')} style={{
@@ -2553,53 +1337,11 @@ function NotionTravelApp() {
     </div>
   );
 }
-"""
-
-    def generate(self) -> str:
-        """Main generation method"""
-        print(f"Generating Notion-style React HTML for plan: {self.plan_id}")
-        print(f"Data directory: {self.data_dir}")
-
-        # Generate HTML
-        html = self.generate_html()
-
-        # Write output
-        output_dir = self.base_dir / "output"
-        output_dir.mkdir(exist_ok=True)
-        output_file = output_dir / f"travel-plan-{self.plan_id}.html"
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(html)
-
-        print(f"\n✅ Generated: {output_file}")
-        print(f"   File size: {len(html) / 1024:.1f} KB")
-
-        return str(output_file)
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python generate-notion-react.py <plan-id>")
-        print("Example: python generate-notion-react.py beijing-exchange-bucket-list-20260202-232405")
-        sys.exit(1)
-
-    plan_id = sys.argv[1]
-
-    try:
-        generator = InteractiveHTMLGenerator(plan_id)
-        output_file = generator.generate()
-
-        print("\n" + "="*60)
-        print("✅ Notion React HTML generation complete!")
-        print(f"📄 Output: {output_file}")
-        print(f"🌐 Open in browser: file://{output_file}")
-        print("="*60)
-
-    except Exception as e:
-        print(f"❌ Error generating Notion React HTML: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+    // Render app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<NotionTravelApp />);
+  </script>
+</body>
+</html>
