@@ -140,6 +140,32 @@ class InteractiveHTMLGenerator:
                 return (eng, chn)
         return (text, text)
 
+    def _extract_transport_cost_cny(self, loc_change: dict) -> float:
+        """Extract the most accurate CNY cost from transportation data.
+
+        Priority: route_details.verified_train.cost_cny > cost_cny > cost (with currency check)
+        """
+        # Check route_details for verified cost_cny
+        route_details = loc_change.get("route_details", {})
+        verified = route_details.get("verified_train") or route_details.get("verified_flight") or {}
+        if verified.get("cost_cny"):
+            return float(verified["cost_cny"])
+
+        # Check top-level cost_cny
+        if loc_change.get("cost_cny"):
+            return float(loc_change["cost_cny"])
+
+        # Fallback: use cost field with currency awareness
+        cost = loc_change.get("cost", 0)
+        currency = loc_change.get("currency", "CNY")
+        if currency == "CNY":
+            return float(cost)
+        elif currency == "USD":
+            return float(cost) * 7.3  # approximate USD→CNY
+        elif currency == "EUR":
+            return float(cost) * 8.2  # approximate EUR→CNY
+        return float(cost)
+
     def _is_home_location(self, item: dict) -> bool:
         """Check if item represents a home/family location.
 
@@ -977,7 +1003,10 @@ class InteractiveHTMLGenerator:
                     "icon": icon,
                     "route_number": route_number,
                     "airline": airline,
-                    "cost": self._to_display_currency(loc_change.get("cost", 0), loc_change.get("currency", "CNY")),
+                    "cost": self._to_display_currency(
+                        self._extract_transport_cost_cny(loc_change),
+                        "CNY"
+                    ),
                     "cost_type": loc_change.get("cost_type", ""),
                     "booking_status": booking_status,
                     "booking_urgency": loc_change.get("booking_urgency", ""),
@@ -1143,11 +1172,28 @@ class InteractiveHTMLGenerator:
                             if any(kw in dest_name.lower() for kw in ["hotel", "home", "hostel", "inn", "guesthouse", "accommodation"]):
                                 name_local = acc_name_local_for_travel
 
+                        # Build proper bilingual label: "Travel to X" → "前往[X_local]"
+                        travel_verb_map = {
+                            "walk": "步行前往", "drive": "驾车前往", "taxi": "打车前往",
+                            "bus": "乘公交前往", "metro": "乘地铁前往", "subway": "乘地铁前往",
+                            "train": "乘火车前往", "transfer": "换乘前往", "return": "返回",
+                            "travel": "前往"
+                        }
+                        label_local = ""
+                        if name_local and name_local != activity_name:
+                            verb_local = "前往"
+                            act_lower = activity_name.lower()
+                            for eng_verb, cn_verb in travel_verb_map.items():
+                                if act_lower.startswith(eng_verb):
+                                    verb_local = cn_verb
+                                    break
+                            label_local = f"{verb_local}{name_local}"
+
                         duration_min = times.get("duration_minutes", 0)
                         merged.setdefault("travel_segments", []).append({
                             "name": activity_name,
                             "name_base": activity_name,
-                            "name_local": name_local if name_local else activity_name,
+                            "name_local": label_local if label_local else activity_name,
                             "time": {"start": start_time, "end": end_time},
                             "duration": f"{duration_min}min" if duration_min else "",
                             "type": "travel"
@@ -1674,28 +1720,29 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               {item.time.start} – {item.time.end}
             </PropertyRow>
           )}
-          {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && (
-            <PropertyRow label="Cost">
-              {fmtCost(item.cost, item.cost_type)}
-                          </PropertyRow>
-          )}
-          {getDisplayField(item, 'cuisine', lang) && <PropertyRow label="Cuisine">{getDisplayField(item, 'cuisine', lang)}</PropertyRow>}
-          {getDisplayField(item, 'signature_dishes', lang) && <PropertyRow label="Signature Dishes">{getDisplayField(item, 'signature_dishes', lang)}</PropertyRow>}
-          {getDisplayField(item, 'type', lang) && <PropertyRow label="Type">{getDisplayField(item, 'type', lang)}</PropertyRow>}
-          {(item.location || item.location_base || item.location_local) && <PropertyRow label="Location"><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
-          {item.opening_hours && <PropertyRow label="Opening Hours">{item.opening_hours}</PropertyRow>}
-          {item.recommended_duration && <PropertyRow label="Duration">{item.recommended_duration}</PropertyRow>}
-          {item.duration && <PropertyRow label="Duration">{item.duration}</PropertyRow>}
-          {item.rating !== undefined && item.rating !== null && (
-            <PropertyRow label="Rating">{item.rating}/5</PropertyRow>
-          )}
-          {item.stars && (
-            <PropertyRow label="Stars">
-              <span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span>
-            </PropertyRow>
-          )}
-          {item.check_in && <PropertyRow label="Check-in">{item.check_in}</PropertyRow>}
-          {item.check_out && <PropertyRow label="Check-out">{item.check_out}</PropertyRow>}
+          {/* Category-specific field ordering */}
+          {category === 'accommodation' ? (<>
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label="Cost">{fmtCost(item.cost, item.cost_type)}</PropertyRow>}
+            {getDisplayField(item, 'type', lang) && <PropertyRow label="Type">{getDisplayField(item, 'type', lang)}</PropertyRow>}
+            {item.stars > 0 && <PropertyRow label="Stars"><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
+            {item.rating !== undefined && item.rating !== null && <PropertyRow label="Rating">{item.rating}/5</PropertyRow>}
+            {item.check_in && <PropertyRow label="Check-in">{item.check_in}</PropertyRow>}
+            {item.check_out && <PropertyRow label="Check-out">{item.check_out}</PropertyRow>}
+            {(item.location || item.location_base || item.location_local) && <PropertyRow label="Location"><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+          </>) : (<>
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label="Cost">{fmtCost(item.cost, item.cost_type)}</PropertyRow>}
+            {getDisplayField(item, 'cuisine', lang) && <PropertyRow label="Cuisine">{getDisplayField(item, 'cuisine', lang)}</PropertyRow>}
+            {getDisplayField(item, 'signature_dishes', lang) && <PropertyRow label="Signature Dishes">{getDisplayField(item, 'signature_dishes', lang)}</PropertyRow>}
+            {getDisplayField(item, 'type', lang) && <PropertyRow label="Type">{getDisplayField(item, 'type', lang)}</PropertyRow>}
+            {(item.location || item.location_base || item.location_local) && <PropertyRow label="Location"><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+            {item.opening_hours && <PropertyRow label="Opening Hours">{item.opening_hours}</PropertyRow>}
+            {item.recommended_duration && <PropertyRow label="Duration">{item.recommended_duration}</PropertyRow>}
+            {item.duration && <PropertyRow label="Duration">{item.duration}</PropertyRow>}
+            {item.rating !== undefined && item.rating !== null && <PropertyRow label="Rating">{item.rating}/5</PropertyRow>}
+            {item.stars > 0 && <PropertyRow label="Stars"><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
+            {item.check_in && <PropertyRow label="Check-in">{item.check_in}</PropertyRow>}
+            {item.check_out && <PropertyRow label="Check-out">{item.check_out}</PropertyRow>}
+          </>)}
           {item.amenities && item.amenities.length > 0 && (
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>Amenities</div>
@@ -2539,7 +2586,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     {showText && (
                     <div style={{
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
-                      whiteSpace: sm ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: sm ? 'unset' : 'ellipsis'
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
                       {entry._type === 'transportation' || entry._type === 'travel' ? (
                         <span>{entry._type === 'transportation' ? entry.icon : getTravelEmoji(entry.name || entry._label)} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
