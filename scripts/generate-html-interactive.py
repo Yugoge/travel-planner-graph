@@ -1426,7 +1426,7 @@ class InteractiveHTMLGenerator:
             "trip_type": self._format_trip_type(raw_trip_type),
             "trip_type_local": skel_summary.get("trip_type_local", ""),
             "description": skel_summary.get("description", "Travel Plan"),
-            "description_local": skel_summary.get("description_local", ""),
+            "description_local": skel_summary.get("description_local", "") or self.skeleton.get("description_local", ""),
             "base_location": skel_summary.get("base_location", ""),
             "period": period,
             "period_local": period_local,
