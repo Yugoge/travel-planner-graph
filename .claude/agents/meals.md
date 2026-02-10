@@ -83,7 +83,7 @@ For each day in the trip:
      "location_base": "Raffles City Chongqing, Jiesheng Street 8",
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 25,
-     "cost_local": 180,
+
      "cuisine_base": "Sichuan Cuisine",
      "cuisine_local": "川菜",
      "signature_dishes_base": "Mapo Tofu, Kung Pao Chicken",
@@ -194,7 +194,7 @@ Write(
           "location_base": "Raffles City Chongqing, Jiesheng Street 8",
           "location_local": "重庆来福士广场捷盛街8号",
           "cost": 25,
-          "cost_local": 180,
+     
           "cuisine_base": "Italian",
           "cuisine_local": "意大利菜",
           "signature_dishes_base": "Fresh pasta, Tiramisu",

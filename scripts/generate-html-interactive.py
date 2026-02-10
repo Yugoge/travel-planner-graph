@@ -577,7 +577,7 @@ class InteractiveHTMLGenerator:
                     meal = day_meals[meal_type]
                     # Convert cost to display currency (EUR)
                     cost = meal.get("cost", 0)
-                    meal_currency = meal.get("currency", "CNY")
+                    meal_currency = meal.get("currency_local", meal.get("currency", "CNY"))
                     if cost == 0 and "price_range_eur_low" in meal:
                         cost = meal.get("price_range_eur_low", 0)
                         meal_currency = "EUR"
@@ -683,7 +683,7 @@ class InteractiveHTMLGenerator:
 
                     # Convert cost to display currency (EUR)
                     cost = attr.get("cost", 0)
-                    attr_currency = attr.get("currency", "CNY")
+                    attr_currency = attr.get("currency_local", attr.get("currency", "CNY"))
                     if cost == 0 and "ticket_price_eur" in attr:
                         cost = attr.get("ticket_price_eur", 0)
                         attr_currency = "EUR"
@@ -803,7 +803,7 @@ class InteractiveHTMLGenerator:
 
                     # Convert cost to display currency (EUR)
                     cost = ent.get("cost", 0)
-                    ent_currency = ent.get("currency", "CNY")
+                    ent_currency = ent.get("currency_local", ent.get("currency", "CNY"))
                     if cost == 0 and "cost_eur" in ent:
                         cost = ent.get("cost_eur", 0)
                         ent_currency = "EUR"
@@ -849,7 +849,7 @@ class InteractiveHTMLGenerator:
             day_shop = next((d for d in self.shopping["days"] if d.get("day") == day_num), {})
             for shop_item in day_shop.get("shopping", []):
                 cost = shop_item.get("cost", 0)
-                shop_currency = shop_item.get("currency", "CNY")
+                shop_currency = shop_item.get("currency_local", shop_item.get("currency", "CNY"))
                 cost = self._to_display_currency(cost, shop_currency)
 
                 shop_name_base = shop_item.get("name_base", shop_item.get("name", ""))
@@ -885,7 +885,7 @@ class InteractiveHTMLGenerator:
                 acc = day_acc["accommodation"]
                 # Convert cost to display currency (EUR)
                 cost = acc.get("cost", 0)
-                acc_currency = acc.get("currency", "CNY")
+                acc_currency = acc.get("currency_local", acc.get("currency", "CNY"))
                 if cost == 0 and "price_per_night_eur" in acc:
                     cost = acc.get("price_per_night_eur", 0)
                     acc_currency = "EUR"

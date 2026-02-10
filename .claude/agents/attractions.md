@@ -95,7 +95,7 @@ For each day in the trip:
      "location_base": "Raffles City Chongqing, Jiesheng Street 8",
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 15,
-     "cost_local": 108,
+
      "duration_minutes": 120,
      "type_base": "Museum",
      "type_local": "博物馆",
@@ -216,7 +216,7 @@ Write(
             "location_base": "Raffles City Chongqing, Jiesheng Street 8",
             "location_local": "重庆来福士广场捷盛街8号",
             "cost": 15,
-            "cost_local": 108,
+       
             "duration_minutes": 120,
             "type_base": "Museum",
             "type_local": "博物馆",
