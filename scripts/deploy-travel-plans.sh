@@ -33,10 +33,10 @@ FILENAME=$(basename "$INPUT_FILE")
 # Format 3: travel-plan-{destination-slug}.html (bucket list, no specific date)
 # Format 4: Any format with version suffix: travel-plan-{...}-v2.html
 
-# Remove version suffix if present
-BASE_FILENAME="${FILENAME%%-v[0-9]*.html}.html"
+# Strip .html first, then version suffix, then prefix
+BASE_FILENAME="${FILENAME%.html}"
+BASE_FILENAME="${BASE_FILENAME%%-v[0-9]*}"
 BASE_FILENAME="${BASE_FILENAME##travel-plan-}"
-BASE_FILENAME="${BASE_FILENAME%.html}"
 
 # Try to extract date in various formats
 if [[ "$BASE_FILENAME" =~ -([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
@@ -51,7 +51,8 @@ elif [[ "$BASE_FILENAME" =~ -([0-9]{8}-[0-9]{6})$ ]]; then
     MONTH="${TIMESTAMP:4:2}"
     DAY="${TIMESTAMP:6:2}"
     PLAN_DATE="${YEAR}-${MONTH}-${DAY}"
-    DESTINATION_SLUG="${BASE_FILENAME%-*}"
+    # Strip the full -YYYYMMDD-HHMMSS suffix (16 chars including leading dash)
+    DESTINATION_SLUG="${BASE_FILENAME:0:${#BASE_FILENAME}-16}"
 else
     # Format 3: No date (bucket list)
     PLAN_DATE=$(date +%Y-%m-%d)
