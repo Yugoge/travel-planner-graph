@@ -1,20 +1,10 @@
 # Travel Plans
 
-This repository contains auto-generated travel plans from the travel-planner.
+Auto-generated travel plans from travel-planner.
 
-**Live Site:** [https://Yugoge.github.io/travel-planner-graph/](https://Yugoge.github.io/travel-planner-graph/)
+**Live Site:** [https://yugoge.github.io/travel-planner-graph/](https://yugoge.github.io/travel-planner-graph/)
 
-## Travel Plans
+## Plans
 
-- [China Feb 15 Mar 7 2026 20260202 195429.html - 2026-02-09](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-09/)
-- [China Feb 15 Mar 7 2026 20260202 195429.html - 2026-02-08](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-08/)
-- [China Feb 15 Mar 7 2026 20260202 195429.html - 2026-02-07](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026-20260202-195429.html/2026-02-07/)
-- [China Exchange Bucket List 2026.html - 2026-02-08](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-08/)
-- [China Exchange Bucket List 2026.html - 2026-02-07](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-07/)
-- [China Exchange Bucket List 2026.html - 2026-02-06](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list-2026.html/2026-02-06/)
-- [China Exchange - 2026-02-25](https://Yugoge.github.io/travel-planner-graph/china-exchange/2026-02-25/)
-- [Beijing Exchange Bucket List 20260202 232405.html - 2026-02-09](https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202-232405.html/2026-02-09/)
-- [Beijing Exchange Bucket List 20260202 232405.html - 2026-02-08](https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202-232405.html/2026-02-08/)
-- [Beijing Exchange Bucket List 20260202 232405.html - 2026-02-06](https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list-20260202-232405.html/2026-02-06/)
-
-Last updated: 
+- [China Feb 15 - Mar 7, 2026](https://yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026/2026-02-10/)
+- [Beijing Exchange Bucket List](https://yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list/2026-02-10/)
