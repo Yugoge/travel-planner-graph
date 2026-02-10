@@ -45,7 +45,6 @@
         "cost": "Cost",
         "type": "Type",
         "stars": "Stars",
-        "rating": "Rating",
         "checkin": "Check-in",
         "checkout": "Check-out",
         "location": "Location",
@@ -54,8 +53,10 @@
         "opening_hours": "Opening Hours",
         "duration": "Duration",
         "route": "Route",
+        "route_number": "Route Number",
+        "company": "Company",
+        "status": "Status",
         "amenities": "Amenities",
-        "highlights": "Highlights",
         "links": "Links",
         "user_plans": "User Plans",
         "meals": "Meals",
@@ -106,7 +107,8 @@
         "verified": "VERIFIED",
         "recommended": "RECOMMENDED",
         "high_speed_train": "High-speed Train",
-        "flight": "Flight"
+        "flight": "Flight",
+        "booking_required": "Booking Required"
       },
       "local": {}
     }
@@ -352,79 +354,91 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
         )}
 
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#37352f', margin: '0 0 4px' }}>
-          {getDisplayName(item, lang)}
-          <RedNoteLink name={item.name_local || item.name_base} />
+          {type === 'transportation' ? (<>
+            {item.icon} {lang === 'local' && item.from_local ? item.from_local : item.from_base} → {lang === 'local' && item.to_local ? item.to_local : item.to_base}
+          </>) : (<>
+            {getDisplayName(item, lang)}
+            <RedNoteLink name={item.name_local || item.name_base} />
+          </>)}
         </h2>
 
         <div style={{ borderTop: '1px solid #f0efed', paddingTop: '16px' }}>
-          {item.time && (
+          {item.time && type !== 'transportation' && (
             <PropertyRow label={L('time', lang)}>
               {item.time.start} – {item.time.end}
             </PropertyRow>
           )}
           {/* Category-specific field ordering */}
           {type === 'accommodation' ? (<>
-            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type, lang)}</PropertyRow>}
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
-            {item.rating !== undefined && item.rating !== null && <PropertyRow label={L('rating', lang)}>{item.rating}/5</PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
             {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
-            {(item.location || item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+            {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+          </>) : type === 'transportation' ? (<>
+            {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
+            <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>
+            {item.cost != null && (item.cost > 0 || item.cost_type_base === 'prepaid') && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
+            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
+            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
+            {getDisplayField(item, 'company', lang) && <PropertyRow label={L('company', lang)}>{getDisplayField(item, 'company', lang)}</PropertyRow>}
+            {getDisplayField(item, 'status', lang) && (
+              <PropertyRow label={L('status', lang)}>
+                <span style={{
+                  padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: '600',
+                  background: item.status_base?.includes('URGENT') ? '#fff4e6' : item.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                  color: item.status_base?.includes('URGENT') ? '#d97706' : item.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                }}>
+                  {getDisplayField(item, 'status', lang)}
+                </span>
+              </PropertyRow>
+            )}
+            {item.booking_required && (
+              <div style={{ marginTop: '6px' }}>
+                <span style={{ fontSize: '11px', padding: '2px 8px', background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '4px', color: '#e65100', fontWeight: '600' }}>
+                  {L('booking_required', lang)}
+                </span>
+              </div>
+            )}
           </>) : (<>
-            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type, lang)}</PropertyRow>}
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             {getDisplayField(item, 'cuisine', lang) && <PropertyRow label={L('cuisine', lang)}>{getDisplayField(item, 'cuisine', lang)}</PropertyRow>}
             {getDisplayField(item, 'signature_dishes', lang) && <PropertyRow label={L('signature', lang)}>{getDisplayField(item, 'signature_dishes', lang)}</PropertyRow>}
             {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
-            {(item.location || item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+            {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
             {item.opening_hours && <PropertyRow label={L('opening_hours', lang)}>{item.opening_hours}</PropertyRow>}
-            {item.recommended_duration && <PropertyRow label={L('duration', lang)}>{item.recommended_duration}</PropertyRow>}
-            {item.duration && <PropertyRow label={L('duration', lang)}>{item.duration}</PropertyRow>}
-            {item.rating !== undefined && item.rating !== null && <PropertyRow label={L('rating', lang)}>{item.rating}/5</PropertyRow>}
+            {item.optional && <PropertyRow label={L('optional', lang)}><span style={{ padding: '2px 8px', background: '#f5f5f3', borderRadius: '4px', fontSize: '12px', color: '#9b9a97', fontWeight: '600' }}>{L('optional', lang)}</span></PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
             {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
           </>)}
-          {item.amenities && item.amenities.length > 0 && (
+          {((lang === 'local' && item.amenities_local && item.amenities_local.length > 0) ? item.amenities_local : (item.amenities_base && item.amenities_base.length > 0 ? item.amenities_base : null)) && (
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{L('amenities', lang)}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {item.amenities.map((a, i) => (
+                {(lang === 'local' && item.amenities_local && item.amenities_local.length > 0 ? item.amenities_local : item.amenities_base).map((a, i) => (
                   <span key={i} style={{ fontSize: '12px', padding: '3px 8px', background: '#f5f5f3', borderRadius: '4px', color: '#6b6b6b' }}>{a}</span>
                 ))}
               </div>
             </div>
           )}
-          {item.departure_time && item.arrival_time && <PropertyRow label={L('time', lang)}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
-          {item.transport_type && <PropertyRow label={L('type', lang)}>{lang === 'local' && item.transport_type_local ? item.transport_type_local : item.transport_type}</PropertyRow>}
-          {item.departure_point && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
-          {item.transport_type && item.cost != null && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, undefined, lang)}</PropertyRow>}
-          {item.highlights && item.highlights.length > 0 && (
-            <div style={{ marginTop: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
-                {L('highlights', lang)}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: '#37352f' }}>
-                {item.highlights.map((h, i) => <li key={i}>{h}</li>)}
-              </ul>
-            </div>
-          )}
-          {(lang === 'local' && item.note_local ? item.note_local : item.note) && (
+          {(lang === 'local' && item.note_local ? item.note_local : item.note_base) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#fffdf5', borderRadius: '6px',
               border: '1px solid #f5ecd7', fontSize: '13px', color: '#9a6700'
             }}>
-              💡 {lang === 'local' && item.note_local ? item.note_local : item.note}
+              💡 {lang === 'local' && item.note_local ? item.note_local : item.note_base}
             </div>
           )}
-          {(lang === 'local' && item.notes_local ? item.notes_local : item.notes) && (
+          {(lang === 'local' && item.notes_local ? item.notes_local : item.notes_base) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#f5f9fc', borderRadius: '6px',
               border: '1px solid #d9e8f5', fontSize: '13px', color: '#37352f', lineHeight: 1.6
             }}>
-              {lang === 'local' && item.notes_local ? item.notes_local : item.notes}
+              {lang === 'local' && item.notes_local ? item.notes_local : item.notes_base}
             </div>
           )}
           {item.links && Object.keys(item.links).length > 0 && (
@@ -498,7 +512,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
                 marginBottom: '10px'
               }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                  {lang === 'local' && item.name_local ? item.name_local : (item.name_base || item.name)}
+                  {lang === 'local' && item.name_local ? item.name_local : (item.name_base || '')}
                 </div>
                 {lang !== 'local' && item.name_local && (
                   <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_local}</div>
@@ -549,9 +563,9 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
 const getDisplayName = (item, lang) => {
   if (!item) return '';
   if (lang === 'base') {
-    return item.name_base || item.name || '';
+    return item.name_base || '';
   }
-  return item.name_local || item.name || '';
+  return item.name_local || item.name_base || '';
 };
 
 // All costs are in display currency (from config). Use CURRENCY_SYMBOL.
@@ -565,15 +579,15 @@ const fmtCost = (c, costType, lng) => {
 // Fix issues #4,7,12: Language-aware location display
 const getDisplayLocation = (item, lang) => {
   if (!item) return '';
-  if (lang === 'base') return item.location_base || item.location || '';
-  return item.location_local || item.location || '';
+  if (lang === 'base') return item.location_base || '';
+  return item.location_local || item.location_base || '';
 };
 
 // Bilingual field helper: returns local variant when lang='local' and data exists
 const getDisplayField = (item, field, lang) => {
   if (!item) return '';
   if (lang === 'local' && item[field + '_local']) return item[field + '_local'];
-  return item[field + '_base'] || item[field] || '';
+  return item[field + '_base'] || '';
 };
 
 // Data-driven bilingual labels — reads from PLAN_DATA.trip_summary.ui_labels
@@ -833,15 +847,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {lb}: {getDisplayName(meal, lang)}
                       <RedNoteLink name={meal.name_local || meal.name_base} />
                     </div>
-                    {meal.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{meal.name_en}</div>}
                     <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
                       {meal.time && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {meal.time.start} – {meal.time.end}</div>}
                       {meal.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(meal.cost, undefined, lang)}</div>}
                       {getDisplayField(meal, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(meal, 'cuisine', lang)}</div>}
-                      {(meal.location || meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
+                      {(meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
                       {getDisplayField(meal, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(meal, 'signature_dishes', lang)}</div>}
                     </div>
-                    <ExpandableNotes text={meal.notes} textLocal={meal.notes_local} lang={lang} />
+                    <ExpandableNotes text={meal.notes_base} textLocal={meal.notes_local} lang={lang} />
                     <LinksRow links={meal.links} compact={sm} />
                   </div>
                 </div>
@@ -878,8 +891,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location || attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} textLocal={attr.notes_local || attr.why_worth_visiting_local} lang={lang} />
+                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
+                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
                       <LinksRow links={attr.links} compact />
                     </div>
                   </>
@@ -897,16 +910,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location || attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      {attr.highlights && attr.highlights.length > 0 && (
-                        <div style={{ marginTop: '6px' }}>
-                          <span style={{ fontSize: '12px', color: '#9b9a97' }}>{L('highlights', lang)}</span>
-                          <ul style={{ margin: '2px 0 0', paddingLeft: '16px', fontSize: '12px', color: '#37352f', lineHeight: 1.7 }}>
-                            {attr.highlights.map((h, j) => <li key={j}>{h}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} textLocal={attr.notes_local || attr.why_worth_visiting_local} lang={lang} />
+                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
+                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
                       <LinksRow links={attr.links} />
                     </div>
                   </div>
@@ -941,14 +946,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {ent.time && <PropLine label={L('time', lang)} value={`${ent.time.start} – ${ent.time.end}`} />}
                       {ent.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(ent.cost, undefined, lang)} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(ent, 'type', lang)} />
-                      {(ent.location || ent.location_base || ent.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
+                      {(ent.location_base || ent.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
                       {ent.duration && <PropLine label={L('duration', lang)} value={ent.duration} />}
-                      {(lang === 'local' && ent.note_local ? ent.note_local : ent.note) && (
+                      {(lang === 'local' && ent.note_local ? ent.note_local : ent.note_base) && (
                         <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
-                          💡 {lang === 'local' && ent.note_local ? ent.note_local : ent.note}
+                          💡 {lang === 'local' && ent.note_local ? ent.note_local : ent.note_base}
                         </div>
                       )}
-                      <ExpandableNotes text={ent.notes} textLocal={ent.notes_local} lang={lang} />
+                      <ExpandableNotes text={ent.notes_base} textLocal={ent.notes_local} lang={lang} />
                       <LinksRow links={ent.links} compact={sm} />
                     </div>
                   </div>
@@ -976,13 +981,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
+                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
                     {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
                     <PropLine label={L('type', lang)} value={getDisplayField(day.accommodation, 'type', lang)} />
                     {day.accommodation.stars > 0 && <PropLine label={L('stars', lang)} value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
                     {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
                     {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     <PropLine label={L('location', lang)} value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
-                    <ExpandableNotes text={day.accommodation.notes} textLocal={day.accommodation.notes_local} lang={lang} />
+                    <ExpandableNotes text={day.accommodation.notes_base} textLocal={day.accommodation.notes_local} lang={lang} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -1002,16 +1008,35 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {day.transportation.icon}
                       {' '}
-                      {lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from}
+                      {lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base}
                       {' → '}
-                      {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to}
+                      {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base}
                     </div>
-                    <PropLine label={L('time', lang)} value={`${day.transportation.departure_time} – ${day.transportation.arrival_time}`} />
-                    <PropLine label={L('type', lang)} value={lang === 'local' && day.transportation.transport_type_local ? day.transportation.transport_type_local : day.transportation.transport_type} />
-                    {(day.transportation.cost > 0 || day.transportation.cost_type === 'prepaid') && (
-                      <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type, lang)} />
+                    {day.transportation.time && <PropLine label={L('time', lang)} value={`${day.transportation.time.start} – ${day.transportation.time.end}`} />}
+                    <PropLine label={L('type', lang)} value={getDisplayField(day.transportation, 'type', lang)} />
+                    {(day.transportation.cost > 0 || day.transportation.cost_type_base === 'prepaid') && (
+                      <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
                     )}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
+                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
+                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
+                    {getDisplayField(day.transportation, 'company', lang) && <PropLine label={L('company', lang)} value={getDisplayField(day.transportation, 'company', lang)} />}
+                    {getDisplayField(day.transportation, 'status', lang) && (
+                      <div style={{ marginTop: '4px' }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                          background: day.transportation.status_base?.includes('URGENT') ? '#fff4e6' : day.transportation.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                          color: day.transportation.status_base?.includes('URGENT') ? '#d97706' : day.transportation.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                        }}>
+                          {getDisplayField(day.transportation, 'status', lang)}
+                        </span>
+                      </div>
+                    )}
+                    {(lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base) && (
+                      <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
+                        💡 {lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base}
+                      </div>
+                    )}
+                    <ExpandableNotes text={day.transportation.notes_base} textLocal={day.transportation.notes_local} lang={lang} />
                   </div>
                 </div>
               </Section>
@@ -1065,12 +1090,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TRAVEL_MODE_EMOJI = {
-  walk: '🚶', taxi: '🚕', bus: '🚌', metro: '🚇',
-  train: '🚄', flight: '✈️', car: '🚗', bike: '🚲', transit: '🔄'
-};
-const getTravelEmoji = (entry) => TRAVEL_MODE_EMOJI[entry?.mode] || '🚶';
-
 const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
   const [topItemIndex, setTopItemIndex] = useState(null);
@@ -1087,8 +1106,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   };
   // Add transportation if exists (Fix Issue #8, #9: bilingual label respects lang toggle)
   if (day.transportation) {
-    const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from;
-    const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to;
+    const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base;
+    const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
   add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
@@ -1099,7 +1118,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
   // Fix issue #6: Add travel segments from timeline
   day.travel_segments?.forEach(t => {
-    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || t.name || '');
+    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);
   });
 
@@ -1208,7 +1227,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
                       {entry._type === 'transportation' || entry._type === 'travel' ? (
-                        <span>{entry._type === 'transportation' ? entry.icon : getTravelEmoji(entry)} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
+                        <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
                       ) : (
                         <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                       )}
@@ -1219,11 +1238,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     )}
                     {showSubtext && (entry._type === 'transportation' ? (
                       <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
-                        <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point}</div>
+                        <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point_base} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point_base}</div>
                         {entry.route_number && entry.route_number !== 'VERIFIED' && (
-                          <div>{lang === 'local' && entry.transport_type_local ? entry.transport_type_local : entry.transport_type} {entry.route_number}</div>
+                          <div>{lang === 'local' && entry.type_local ? entry.type_local : entry.type_base} {entry.route_number}</div>
                         )}
-                        {entry.booking_status && (
+                        {entry.status_base && (
                           <span style={{
                             display: 'inline-block',
                             marginTop: '2px',
@@ -1231,12 +1250,12 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                             borderRadius: '3px',
                             fontSize: '10px',
                             fontWeight: '600',
-                            background: entry.booking_status.includes('URGENT') ? '#fff4e6' :
-                                       entry.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
-                            color: entry.booking_status.includes('URGENT') ? '#d97706' :
-                                  entry.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                            background: entry.status_base?.includes('URGENT') ? '#fff4e6' :
+                                       entry.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                            color: entry.status_base?.includes('URGENT') ? '#d97706' :
+                                  entry.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
                           }}>
-                            {lang === 'local' && entry.booking_status_local ? entry.booking_status_local : entry.booking_status}
+                            {lang === 'local' && entry.status_local ? entry.status_local : entry.status_base}
                           </span>
                         )}
                       </div>
