@@ -128,7 +128,7 @@ For each day, create timeline dictionary with:
    - `intra_city_routes` (day-level array)
    - `location_change.morning_routes` / `evening_routes`
    - Match each route's destination to the next activity
-   - Use `recommended_transport` field for mode (Metro → "metro", Bus → "bus", Taxi/Didi → "taxi", Walking → "walk")
+   - Use `recommended_transport` field for type_base (Metro → "metro", Bus → "bus", Taxi/Didi → "taxi", Walking → "walk")
 
 2. For gaps without explicit route data, infer mode:
    - ≤ 10 min + ≤ 1km → "walk"
@@ -137,7 +137,9 @@ For each day, create timeline dictionary with:
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
    - `name_local`: Local language — "打车前往[目的地]", "乘地铁前往[目的地]", "步行前往[目的地]"
-   - `mode`: "walk" | "taxi" | "metro" | "bus" | "train" | "car" | "ferry"
+   - `type_base`: "walk" | "taxi" | "metro" | "bus" | "train" | "car" | "ferry"
+   - `type_local`: local language equivalent (e.g., "步行", "出租车", "地铁")
+   - `icon`: emoji icon for display (e.g., "🚶", "🚕", "🚇")
    - `start_time`, `end_time`: HH:MM format
    - `duration_minutes`: integer
 
@@ -202,7 +204,9 @@ Write(
           {
             "name_base": "Taxi to Activity 2",
             "name_local": "打车前往活动2",
-            "mode": "taxi",
+            "type_base": "taxi",
+            "type_local": "出租车",
+            "icon": "🚕",
             "start_time": "11:00",
             "end_time": "11:30",
             "duration_minutes": 30

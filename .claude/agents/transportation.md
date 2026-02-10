@@ -81,12 +81,29 @@ For each location change day:
      "from_local": "重庆",
      "to_base": "Chengdu",
      "to_local": "成都",
-     "transportation": "High-speed train",
+     "name_base": "Chongqing to Chengdu",
+     "name_local": "重庆 → 成都",
+     "type_base": "High-speed train",
+     "type_local": "高铁",
      "departure_time": "08:30",
      "arrival_time": "11:45",
      "duration_minutes": 195,
      "cost": 80,
-     "notes": "Book 2 weeks in advance for discount, luggage included"
+     "cost_local": 553,
+     "currency": "USD",
+     "cost_type_base": "Second class seat",
+     "cost_type_local": "二等座",
+     "company_base": "China Railway",
+     "company_local": "中国铁路",
+     "route_number": "G8601",
+     "departure_point_base": "Chongqing North Station",
+     "departure_point_local": "重庆北站",
+     "arrival_point_base": "Chengdu East Station",
+     "arrival_point_local": "成都东站",
+     "status_base": "Not yet booked",
+     "status_local": "尚未预订",
+     "notes_base": "Book 2 weeks in advance for discount, luggage included",
+     "notes_local": "提前两周预订可享折扣，含行李"
    }
    ```
 
@@ -155,7 +172,7 @@ Write(
 ```
 
 **Schema**: `schemas/transportation.schema.json` (references `schemas/poi-common.schema.json`)
-**Required fields**: `from`/`to` (or `from_base`/`to_base`), `transportation`, `departure_time`, `arrival_time`, `duration_minutes`, `cost`
+**Required fields**: `from_base`, `to_base`, `type_base`, `departure_time`, `arrival_time`, `cost`
 **Validated by**: `scripts/validate-agent-outputs.py`
 
 **JSON Format**:
@@ -172,12 +189,27 @@ Write(
           "from_local": "重庆",
           "to_base": "Chengdu",
           "to_local": "成都",
-          "transportation": "High-speed train",
+          "name_base": "Chongqing to Chengdu",
+          "name_local": "重庆 → 成都",
+          "type_base": "High-speed train",
+          "type_local": "高铁",
           "departure_time": "08:30",
           "arrival_time": "11:45",
           "duration_minutes": 195,
           "cost": 80,
-          "notes": "Book 2 weeks in advance for discount, luggage included"
+          "cost_local": 553,
+          "currency": "USD",
+          "cost_type_base": "Second class seat",
+          "cost_type_local": "二等座",
+          "route_number": "G8601",
+          "departure_point_base": "Chongqing North Station",
+          "departure_point_local": "重庆北站",
+          "arrival_point_base": "Chengdu East Station",
+          "arrival_point_local": "成都东站",
+          "status_base": "Not yet booked",
+          "status_local": "尚未预订",
+          "notes_base": "Book 2 weeks in advance for discount, luggage included",
+          "notes_local": "提前两周预订可享折扣，含行李"
         }
       }
     ]

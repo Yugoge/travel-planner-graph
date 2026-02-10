@@ -84,8 +84,11 @@ For each day in the trip:
      "location_base": "Shapingba District, Chongqing",
      "location_local": "重庆市沙坪坝区磁器口",
      "cost": 100,
-     "type": "Local Market",
-     "notes": "Open 9am-5pm, bargaining expected, famous for textiles",
+     "cost_local": 720,
+     "type_base": "Local Market",
+     "type_local": "本地市场",
+     "notes_base": "Open 9am-5pm, bargaining expected, famous for textiles",
+     "notes_local": "营业时间9:00-17:00，可以讲价，以纺织品闻名",
      "search_results": [
        {
          "skill": "google-maps",
@@ -180,7 +183,7 @@ Write(
 ```
 
 **Schema**: `schemas/shopping.schema.json` (references `schemas/poi-common.schema.json`)
-**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `type`
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `type_base`
 **Validated by**: `scripts/validate-agent-outputs.py`
 
 **JSON Format**:
@@ -199,8 +202,11 @@ Write(
             "location_base": "Shapingba District, Chongqing",
             "location_local": "重庆市沙坪坝区磁器口",
             "cost": 100,
-            "type": "Local Market",
-            "notes": "Open 9am-5pm, bargaining expected, famous for textiles",
+            "cost_local": 720,
+            "type_base": "Local Market",
+            "type_local": "本地市场",
+            "notes_base": "Open 9am-5pm, bargaining expected, famous for textiles",
+            "notes_local": "营业时间9:00-17:00，可以讲价，以纺织品闻名",
             "search_results": [
               {
                 "skill": "google-maps",

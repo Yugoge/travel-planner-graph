@@ -82,9 +82,14 @@ For each day in the trip:
      "location_base": "235 Minquan Road, Yuzhong District",
      "location_local": "重庆市渝中区民权路235号",
      "cost": 120,
-     "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
-     "amenities": ["WiFi", "Breakfast included", "Pool"],
-     "notes": "Near subway station, check-in after 3pm",
+     "cost_local": 860,
+     "type_base": "Hotel",
+     "type_local": "酒店",
+     "amenities_base": ["WiFi", "Breakfast included", "Pool"],
+     "amenities_local": ["无线网络", "含早餐", "泳池"],
+     "stars": 4.5,
+     "notes_base": "Near subway station, check-in after 3pm",
+     "notes_local": "靠近地铁站，下午3点后入住",
      "search_results": [
        {
          "skill": "google-maps",
@@ -110,10 +115,15 @@ For each day in the trip:
      "location_base": "Jiefangbei District, Chongqing",
      "location_local": "重庆市解放碑商圈",
      "cost": 180,
+     "cost_local": 1290,
      "total_cost": 1250,
-     "type": "Vacation Rental (Airbnb)",
-     "amenities": ["Full kitchen", "Washer", "WiFi", "Workspace"],
-     "notes": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm",
+     "type_base": "Vacation Rental (Airbnb)",
+     "type_local": "度假公寓 (Airbnb)",
+     "amenities_base": ["Full kitchen", "Washer", "WiFi", "Workspace"],
+     "amenities_local": ["厨房", "洗衣机", "无线网络", "办公区"],
+     "stars": 4.8,
+     "notes_base": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm",
+     "notes_local": "每晚均价$180 | 6晚总价$1,250（含清洁费）| 超赞房东 | 4.8星（127条评论）| 入住：下午3点",
      "search_results": [
        {
          "skill": "airbnb",
@@ -196,7 +206,7 @@ Write(
 ```
 
 **Schema**: `schemas/accommodation.schema.json` (references `schemas/poi-common.schema.json`)
-**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `type`, `amenities`
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `type_base`, `amenities_base`
 **Validated by**: `scripts/validate-agent-outputs.py`
 
 **JSON Format**:
@@ -214,9 +224,14 @@ Write(
           "location_base": "235 Minquan Road, Yuzhong District",
           "location_local": "重庆市渝中区民权路235号",
           "cost": 120,
-          "type": "Hotel | Vacation Rental (Airbnb) | Hostel | Guesthouse",
-          "amenities": ["WiFi", "Breakfast included", "Pool"],
-          "notes": "Near subway station, check-in after 3pm",
+          "cost_local": 860,
+          "type_base": "Hotel",
+          "type_local": "酒店",
+          "amenities_base": ["WiFi", "Breakfast included", "Pool"],
+          "amenities_local": ["无线网络", "含早餐", "泳池"],
+          "stars": 4.5,
+          "notes_base": "Near subway station, check-in after 3pm",
+          "notes_local": "靠近地铁站，下午3点后入住",
           "search_results": [
             {
               "skill": "google-maps",
