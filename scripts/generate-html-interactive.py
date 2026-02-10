@@ -968,7 +968,9 @@ class InteractiveHTMLGenerator:
                     departure_point = route_details.get("departure_station", "")
                     arrival_point = route_details.get("arrival_station", "")
                     verified = route_details.get("verified_train", {})
-                    route_number = verified.get("train_number", "VERIFIED")
+                    raw_train_num = verified.get("train_number", "")
+                    # Filter out metadata strings - only keep actual train numbers (e.g., D2205, G8051)
+                    route_number = raw_train_num if raw_train_num and not raw_train_num.upper().startswith("VERIFIED") else ""
                     airline = ""
 
                 # Booking status
@@ -1432,7 +1434,8 @@ class InteractiveHTMLGenerator:
     def _generate_itinerary_data(self) -> dict:
         """Generate PLAN_DATA for itinerary (trip_summary + days format)"""
 
-        # Build trip summary from skeleton's trip_summary section
+        # Build trip summary from skeleton + requirements
+        req_summary = self.requirements.get("trip_summary", {}) if isinstance(self.requirements, dict) else {}
         skel_summary = self.skeleton.get("trip_summary", {})
         prefs = skel_summary.get("preferences", {})
         if isinstance(prefs, dict):
@@ -1454,7 +1457,9 @@ class InteractiveHTMLGenerator:
             "period": period,
             "travelers": skel_summary.get("travelers", "1 adult"),
             "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
-            "preferences": prefs_str
+            "preferences": prefs_str,
+            "base_lang": req_summary.get("base_lang", skel_summary.get("base_lang", "en")),
+            "ui_labels": req_summary.get("ui_labels", {})
         }
 
         # Merge all days
@@ -1803,34 +1808,9 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               </div>
             </div>
           )}
-          {item.departure_point && <PropertyRow label="From">{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point}</PropertyRow>}
-          {item.arrival_point && <PropertyRow label="To">{lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
-          {item.transport_type && <PropertyRow label="Type">{item.transport_type}</PropertyRow>}
-          {item.route_number && item.route_number !== 'VERIFIED' && (
-            <PropertyRow label="Route Number">{item.route_number}</PropertyRow>
-          )}
-          {item.airline && <PropertyRow label="Airline">{item.airline}</PropertyRow>}
-          {item.departure_time && <PropertyRow label="Departure">{item.departure_time}</PropertyRow>}
-          {item.arrival_time && <PropertyRow label="Arrival">{item.arrival_time}</PropertyRow>}
-          {item.booking_status && (
-            <PropertyRow label="Booking Status">
-              <span style={{
-                display: 'inline-block',
-                padding: '4px 10px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '600',
-                background: item.booking_status.includes('URGENT') ? '#fff4e6' :
-                           item.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
-                color: item.booking_status.includes('URGENT') ? '#d97706' :
-                      item.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5',
-                border: `1px solid ${item.booking_status.includes('URGENT') ? '#fed7aa' :
-                                    item.booking_status.includes('VERIFIED') ? '#a2d9b1' : '#bdd7f0'}`
-              }}>
-                {item.booking_status}
-              </span>
-            </PropertyRow>
-          )}
+          {item.departure_time && item.arrival_time && <PropertyRow label={lbl('time', lang)}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
+          {item.transport_type && <PropertyRow label={lbl('type', lang)}>{item.transport_type}</PropertyRow>}
+          {item.departure_point && <PropertyRow label={lbl('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
           {item.highlights && item.highlights.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
@@ -1885,20 +1865,20 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
 // ============================================================
 // BUDGET DETAIL SIDEBAR
 // ============================================================
-const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
+const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
   if (!category) return null;
   const sm = bp === 'sm';
   const W = sm ? '85%' : '400px';
 
   const categoryConfig = {
-    meals: { icon: '🍽️', label: 'Meals', color: '#f0b429' },
-    attractions: { icon: '📍', label: 'Attractions', color: '#4a90d9' },
-    entertainment: { icon: '🎭', label: 'Entertainment', color: '#9b6dd7' },
-    accommodation: { icon: '🏨', label: 'Accommodation', color: '#45b26b' },
-    shopping: { icon: '🛍️', label: 'Shopping', color: '#e07c5a' },
-    transportation: { icon: '🚄', label: 'Transport', color: '#0ea5e9' }
+    meals: { icon: '🍽️', label: lbl('meals', lang), color: '#f0b429' },
+    attractions: { icon: '📍', label: lbl('attractions', lang), color: '#4a90d9' },
+    entertainment: { icon: '🎭', label: lbl('entertainment', lang), color: '#9b6dd7' },
+    accommodation: { icon: '🏨', label: lbl('accommodation', lang), color: '#45b26b' },
+    shopping: { icon: '🛍️', label: lbl('shopping', lang), color: '#e07c5a' },
+    transportation: { icon: '🚄', label: lbl('transportation', lang), color: '#0ea5e9' }
   };
-  const cfg = categoryConfig[category] || { icon: '💰', label: 'Budget', color: '#37352f' };
+  const cfg = categoryConfig[category] || { icon: '💰', label: lbl('budget', lang), color: '#37352f' };
 
   return (
     <>
@@ -1939,19 +1919,19 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
                 marginBottom: '10px'
               }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                  {item.name}
+                  {lang === 'local' && item.name_local ? item.name_local : (item.name_base || item.name)}
                 </div>
-                {item.name_en && (
-                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_en}</div>
+                {lang !== 'local' && item.name_local && (
+                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_local}</div>
                 )}
-                {item.name_cn && (
-                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_cn}</div>
+                {lang === 'local' && item.name_base && item.name_base !== item.name_local && (
+                  <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_base}</div>
                 )}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
                   fontSize: '14px', marginTop: '8px'
                 }}>
-                  <span style={{ color: '#9b9a97' }}>Cost</span>
+                  <span style={{ color: '#9b9a97' }}>{lbl('cost', lang)}</span>
                   <span style={{ fontWeight: '600', color: cfg.color }}>
                     {fmtCost(item.cost)}
                   </span>
@@ -1986,6 +1966,10 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp }) => {
 // ============================================================
 // KANBAN VIEW
 // ============================================================
+// UI label helper: reads from PLAN_DATA.trip_summary.ui_labels (data-driven, not hardcoded)
+const _uiLabels = PLAN_DATA.trip_summary.ui_labels || {};
+const lbl = (key, lang) => (lang === 'local' && _uiLabels.local?.[key]) ? _uiLabels.local[key] : (_uiLabels.base?.[key] || key);
+
 // Root cause fix (commit 8f2bddd): Helper to get display name based on language preference
 const getDisplayName = (item, lang) => {
   if (!item) return '';
@@ -2042,12 +2026,10 @@ const MapLink = ({ item, lang, mapProvider = 'gaode' }) => {
     const lat = coords.latitude || coords.lat;
     const lng = coords.longitude || coords.lng;
     googleHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}&center=${lat},${lng}`;
-    gaodeHref = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}&coordinate=gaode${isMobile ? '&callnative=1' : ''}`;
+    gaodeHref = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}&coordinate=gaode&callnative=1`;
   } else {
     googleHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
-    gaodeHref = isMobile
-      ? `https://m.amap.com/search/mapSearch?query=${encodeURIComponent(loc)}`
-      : `https://www.amap.com/search?query=${encodeURIComponent(loc)}`;
+    gaodeHref = `https://uri.amap.com/search?keyword=${encodeURIComponent(loc)}&callnative=1`;
   }
   const isGaode = mapProvider === 'gaode';
   const href = isGaode ? gaodeHref : googleHref;
@@ -2123,7 +2105,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
 
   return (
-    <div style={{ maxWidth: '960px' }}>
+    <div style={{ maxWidth: '960px', margin: '0 auto' }}>
       <div style={{
         width: '100%',
         height: sm ? '120px' : '200px',
@@ -2246,7 +2228,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
                         {getDisplayName(attr, lang)}
                         <RedNoteLink name={attr.name_local || attr.name_base} />
-                        {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
+                        {attr.optional && <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>Optional</span>}
                       </div>
                       {attr.time && <PropLine label="Time" value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />}
@@ -2265,7 +2247,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>
                         {getDisplayName(attr, lang)}
                         <RedNoteLink name={attr.name_local || attr.name_base} />
-                        {attr.optional && <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>}
+                        {attr.optional && <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>Optional</span>}
                       </div>
                       {attr.time && <PropLine label="Time" value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label="Cost" value={<>{fmtCost(attr.cost)}</>} />}
@@ -2379,66 +2361,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {' → '}
                       {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to}
                     </div>
-                    <PropLine label="Route" value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
-                    <PropLine label="Type" value={day.transportation.transport_type} />
-                    {day.transportation.route_number && day.transportation.route_number !== 'VERIFIED' && (
-                      <PropLine label="Route #" value={day.transportation.route_number} />
-                    )}
-                    {day.transportation.airline && (
-                      <PropLine label="Airline" value={day.transportation.airline} />
-                    )}
-                    <PropLine label="Departure" value={day.transportation.departure_time} />
-                    <PropLine label="Arrival" value={day.transportation.arrival_time} />
+                    <PropLine label={lbl('time', lang)} value={`${day.transportation.departure_time} – ${day.transportation.arrival_time}`} />
+                    <PropLine label={lbl('type', lang)} value={day.transportation.transport_type} />
                     {(day.transportation.cost > 0 || day.transportation.cost_type === 'prepaid') && (
-                      <PropLine label="Cost" value={fmtCost(day.transportation.cost, day.transportation.cost_type)} />
+                      <PropLine label={lbl('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type)} />
                     )}
-                    {day.transportation.booking_status && (
-                      <div style={{ marginTop: '8px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          background: day.transportation.booking_status.includes('URGENT') ? '#fff4e6' :
-                                     day.transportation.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
-                          color: day.transportation.booking_status.includes('URGENT') ? '#d97706' :
-                                day.transportation.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5',
-                          border: `1px solid ${day.transportation.booking_status.includes('URGENT') ? '#fed7aa' :
-                                              day.transportation.booking_status.includes('VERIFIED') ? '#a2d9b1' : '#bdd7f0'}`
-                        }}>
-                          {day.transportation.booking_status}
-                        </span>
-                      </div>
-                    )}
-                    {day.transportation.booking_urgency && (
-                      <div style={{
-                        marginTop: '8px',
-                        padding: '10px 12px',
-                        background: '#fff4e6',
-                        borderRadius: '6px',
-                        border: '1px solid #fed7aa',
-                        fontSize: '12px',
-                        color: '#9a6700',
-                        lineHeight: 1.6
-                      }}>
-                        ⚠️ {day.transportation.booking_urgency}
-                      </div>
-                    )}
-                    {day.transportation.notes && !sm && (
-                      <div style={{
-                        marginTop: '8px',
-                        padding: '10px 12px',
-                        background: '#f5f9fc',
-                        borderRadius: '6px',
-                        border: '1px solid #d9e8f5',
-                        fontSize: '12px',
-                        color: '#37352f',
-                        lineHeight: 1.6
-                      }}>
-                        {day.transportation.notes}
-                      </div>
-                    )}
+                    <PropLine label={lbl('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
                   </div>
                 </div>
               </Section>
@@ -2454,12 +2382,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                   <Donut budget={day.budget} size={sm ? 72 : 88} onBudgetClick={onBudgetClick} day={day} />
                   <div style={{ fontSize: '13px', color: '#6b6b6b', lineHeight: 2, flex: 1, width: '100%' }}>
                     {[
-                      { k: 'meals', l: 'Meals', c: '#f0b429' },
-                      { k: 'attractions', l: 'Attractions', c: '#4a90d9' },
-                      { k: 'entertainment', l: 'Entertainment', c: '#9b6dd7' },
-                      { k: 'accommodation', l: 'Accommodation', c: '#45b26b' },
-                      { k: 'shopping', l: 'Shopping', c: '#e07c5a' },
-                      { k: 'transportation', l: 'Transport', c: '#0ea5e9' }
+                      { k: 'meals', l: lbl('meals', lang), c: '#f0b429' },
+                      { k: 'attractions', l: lbl('attractions', lang), c: '#4a90d9' },
+                      { k: 'entertainment', l: lbl('entertainment', lang), c: '#9b6dd7' },
+                      { k: 'accommodation', l: lbl('accommodation', lang), c: '#45b26b' },
+                      { k: 'shopping', l: lbl('shopping', lang), c: '#e07c5a' },
+                      { k: 'transportation', l: lbl('transportation', lang), c: '#0ea5e9' }
                     ].filter(r => day.budget[r.k] > 0).map(r => (
                       <div key={r.k} style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
@@ -2476,7 +2404,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Total</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
+                      <span>{lbl('total', lang)}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
                     </div>
                   </div>
                 </div>
@@ -2549,7 +2477,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   };
 
   const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
-  const hgt = (s, e) => Math.max(top(e) - top(s), sm ? 56 : 64);
+  const rawHgt = (s, e) => top(e) - top(s);
+  const hgt = (s, e) => Math.max(rawHgt(s, e), sm ? 56 : 64);
 
   // Debug: log entries count
   if (entries.length === 0) {
@@ -2595,9 +2524,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const st = typeStyle[entry._type] || typeStyle.attraction;
               const t = top(entry.time.start);
               const entryH = hgt(entry.time.start, entry.time.end);
-              const tooNarrow = entryH < (sm ? 32 : 40);
-              const showText = !tooNarrow && entryH > (sm ? 40 : 48);
-              const showSubtext = !tooNarrow && entryH > (sm ? 56 : 68);
+              const actualH = rawHgt(entry.time.start, entry.time.end);
+              const tooNarrow = actualH < (sm ? 32 : 40);
+              const showText = !tooNarrow && actualH > (sm ? 40 : 48);
+              const showSubtext = !tooNarrow && actualH > (sm ? 56 : 68);
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
@@ -2639,7 +2569,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                       )}
                       {entry.optional && (
-                        <span style={{ fontSize: '10px', padding: '1px 5px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#9b9a97', marginLeft: '4px' }}>Optional</span>
+                        <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>Optional</span>
                       )}
                     </div>
                     )}
@@ -2829,7 +2759,7 @@ function NotionTravelApp() {
                 color: lang === 'local' ? '#45b26b' : '#6b6b6b',
                 cursor: 'pointer', transition: 'all .12s'
               }}>
-                中文
+                {_uiLabels.local_display || 'Local'}
               </button>
               <button onClick={() => setLang('base')} style={{
                 padding: sm ? '8px 10px' : '9px 14px',
@@ -2840,7 +2770,7 @@ function NotionTravelApp() {
                 color: lang === 'base' ? '#45b26b' : '#6b6b6b',
                 cursor: 'pointer', transition: 'all .12s'
               }}>
-                EN
+                {_uiLabels.base_display || 'EN'}
               </button>
             </div>
           </div>
@@ -2891,6 +2821,7 @@ function NotionTravelApp() {
             total={selectedBudgetCat.total}
             onClose={() => setSelectedBudgetCat(null)}
             bp={bp}
+            lang={lang}
           />
         )}
       </div>

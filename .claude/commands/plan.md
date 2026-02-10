@@ -17,6 +17,46 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 /plan [destination]
 ```
 
+## Orchestrator Discipline
+
+**NON-NEGOTIABLE RULES — Zero Exceptions:**
+
+1. **You are an orchestrator. You do NOT execute.**
+   - NEVER use WebSearch, WebFetch, gaode-maps, google-maps, rednote, or any research MCP tool directly
+   - NEVER use Edit/Write tools on data files in `data/{destination-slug}/`
+   - NEVER look up restaurants, attractions, shops, hotels, or transport options yourself
+
+2. **ALL research goes through subagents.**
+   - Need restaurant info? → Dispatch meals-agent via Task tool
+   - Need attraction info? → Dispatch attractions-agent via Task tool
+   - Need shopping/brand info? → Dispatch shopping-agent via Task tool
+   - Need entertainment info? → Dispatch entertainment-agent via Task tool
+   - Need transport info? → Dispatch transportation-agent via Task tool
+   - Need accommodation info? → Dispatch accommodation-agent via Task tool
+   - Need general research? → Dispatch deep-search or Explore agent via Task tool
+
+3. **ALL file modifications go through owning subagents.**
+   - meals.json → meals-agent only
+   - attractions.json → attractions-agent only
+   - entertainment.json → entertainment-agent only
+   - shopping.json → shopping-agent only
+   - accommodation.json → accommodation-agent only
+   - transportation.json → transportation-agent only
+   - timeline.json → timeline-agent only
+   - budget.json → budget-agent only
+
+4. **Your ONLY permitted actions:**
+   - Read files (to coordinate and present to user)
+   - Run validation/generation scripts via Bash
+   - Dispatch subagents via Task tool
+   - Present information to user
+   - Parse user intent and delegate
+
+5. **Self-check before every tool call:**
+   - "Am I about to research something?" → If yes, delegate to subagent
+   - "Am I about to modify a data file?" → If yes, delegate to owning subagent
+   - "Am I using WebSearch/WebFetch/MCP tools?" → If yes, STOP and delegate
+
 ## Subagent Communication Protocol
 
 **CRITICAL ARCHITECTURE PRINCIPLE**: This workflow uses a file-based pipeline pattern where orchestrator coordinates and subagents execute. All data passes through working files, NOT agent responses.
@@ -1630,7 +1670,7 @@ Would you like any further adjustments?
 Major restructures require re-running entire Phase 2-5 workflow.
 
 **Action sequence**:
-1. Update `data/{destination-slug}/requirements-skeleton.json` with new constraints
+1. Delegate update of `data/{destination-slug}/requirements-skeleton.json` to a subagent via Task tool (orchestrator NEVER modifies data files directly)
 2. Return to Step 6 (Initialize Plan Skeleton) with updated requirements
 3. Re-invoke ALL 8 agents (parallel 6, then serial timeline + budget)
 4. Run all validation scripts
@@ -1642,7 +1682,7 @@ Major restructures require re-running entire Phase 2-5 workflow.
 User: "Change Day 3 location from Beijing to Shanghai"
 
 Your action:
-1. Edit requirements-skeleton.json → Day 3 location = "Shanghai"
+1. Delegate requirements-skeleton.json update to subagent via Task tool → Day 3 location = "Shanghai"
 2. Re-run Step 6 (plan skeleton initialization with location detection)
 3. Re-run Step 8 (invoke all 6 parallel agents + timeline + budget)
 4. Re-run Steps 9-13 (validations)
