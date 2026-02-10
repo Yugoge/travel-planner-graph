@@ -610,11 +610,11 @@ class InteractiveHTMLGenerator:
                         "coordinates": meal.get("coordinates", {}),
                         "cost": cost,
                         "cost_local": meal.get("cost", 0),
-                        "cuisine_base": meal.get("cuisine", ""),
+                        "cuisine_base": meal.get("cuisine_base", meal.get("cuisine", "")),
                         "cuisine_local": meal.get("cuisine_local", ""),
-                        "signature_dishes_base": meal.get("signature_dishes", ""),
+                        "signature_dishes_base": meal.get("signature_dishes_base", meal.get("signature_dishes", "")),
                         "signature_dishes_local": meal.get("signature_dishes_local", ""),
-                        "notes_base": meal.get("notes", ""),
+                        "notes_base": meal.get("notes_base", meal.get("notes", "")),
                         "notes_local": meal.get("notes_local", ""),
                         "image": self._get_placeholder_image(
                             "meal",
@@ -706,7 +706,7 @@ class InteractiveHTMLGenerator:
                         is_optional = True
 
                     # Merge why_worth_visiting and best_time_to_visit into notes
-                    attr_notes = attr.get("notes", "")
+                    attr_notes = attr.get("notes_base", attr.get("notes", ""))
                     attr_notes_local = attr.get("notes_local", "")
                     wwv = attr.get("why_worth_visiting", "")
                     wwv_local = attr.get("why_worth_visiting_local", "")
@@ -727,7 +727,7 @@ class InteractiveHTMLGenerator:
                         "location_base": attr.get("location_base", attr.get("location", "")),
                         "location_local": attr.get("location_local", attr.get("location", "")),
                         "coordinates": attr.get("coordinates", {}),
-                        "type_base": self._format_type(attr.get("type", "")),
+                        "type_base": self._format_type(attr.get("type_base", attr.get("type", ""))),
                         "type_local": attr.get("type_local", ""),
                         "cost": cost,
                         "cost_local": attr.get("cost", 0),
@@ -820,13 +820,13 @@ class InteractiveHTMLGenerator:
                         "location_base": ent.get("location_base", ent.get("location", "")),
                         "location_local": ent.get("location_local", ent.get("location", "")),
                         "coordinates": ent.get("coordinates", {}),
-                        "type_base": self._format_type(ent.get("type", "")),
+                        "type_base": self._format_type(ent.get("type_base", ent.get("type", ""))),
                         "type_local": ent.get("type_local", ""),
                         "cost": cost,
                         "cost_local": ent.get("cost", 0),
-                        "note_base": ent.get("note", ""),
+                        "note_base": ent.get("note_base", ent.get("note", "")),
                         "note_local": ent.get("note_local", ""),
-                        "notes_base": ent.get("notes", ""),
+                        "notes_base": ent.get("notes_base", ent.get("notes", "")),
                         "notes_local": ent.get("notes_local", ""),
                         "image": self._get_placeholder_image(
                             "entertainment",
@@ -860,11 +860,11 @@ class InteractiveHTMLGenerator:
                     "location_base": shop_item.get("location_base", ""),
                     "location_local": shop_item.get("location_local", ""),
                     "coordinates": shop_item.get("coordinates", {}),
-                    "type_base": shop_item.get("type", "Shopping"),
+                    "type_base": shop_item.get("type_base", shop_item.get("type", "Shopping")),
                     "type_local": shop_item.get("type_local", ""),
                     "cost": cost,
                     "cost_local": shop_item.get("cost", 0),
-                    "notes_base": shop_item.get("notes", ""),
+                    "notes_base": shop_item.get("notes_base", shop_item.get("notes", "")),
                     "notes_local": shop_item.get("notes_local", ""),
                     "image": self._get_placeholder_image(
                         "attraction",
@@ -919,7 +919,7 @@ class InteractiveHTMLGenerator:
                 merged["accommodation"] = {
                     "name_base": acc_name_base,
                     "name_local": acc_name_local,
-                    "type_base": self._format_type(acc.get("type", "hotel")),
+                    "type_base": self._format_type(acc.get("type_base", acc.get("type", "hotel"))),
                     "type_local": acc.get("type_local", ""),
                     "location_base": acc.get("location_base", acc.get("location", "")),
                     "location_local": acc.get("location_local", acc.get("location", "")),
@@ -927,11 +927,11 @@ class InteractiveHTMLGenerator:
                     "cost": cost,
                     "cost_local": acc.get("cost", 0),
                     "stars": stars if stars else 0,
-                    "amenities_base": acc.get("amenities", []),
+                    "amenities_base": acc.get("amenities_base", acc.get("amenities", [])),
                     "amenities_local": acc.get("amenities_local", []),
                     "check_in": acc.get("check_in", ""),
                     "check_out": acc.get("check_out", ""),
-                    "notes_base": acc.get("notes", ""),
+                    "notes_base": acc.get("notes_base", acc.get("notes", "")),
                     "notes_local": acc.get("notes_local", ""),
                     "time": acc_time,
                     "links": acc.get("links", {}),
@@ -965,29 +965,35 @@ class InteractiveHTMLGenerator:
                 # Determine transport type and icon — local from ui_labels data
                 req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
                 ui_local = req_labels.get("local", {})
-                transport_type = loc_change.get("transportation", "")
+                transport_type = loc_change.get("type_base", loc_change.get("transportation", ""))
                 if "train" in transport_type.lower():
                     icon = "🚄"
-                    type_display = "High-speed Train"
-                    type_display_local = ui_local.get("high_speed_train", "")
+                    type_display = transport_type or "High-speed Train"
+                    type_display_local = loc_change.get("type_local", "") or ui_local.get("high_speed_train", "")
                 elif "flight" in transport_type.lower():
                     icon = "✈️"
-                    type_display = "Flight"
-                    type_display_local = ui_local.get("flight", "")
+                    type_display = transport_type or "Flight"
+                    type_display_local = loc_change.get("type_local", "") or ui_local.get("flight", "")
                 else:
                     icon = "🚌"
                     type_display = transport_type
-                    type_display_local = ""
+                    type_display_local = loc_change.get("type_local", "")
 
-                # Extract route info based on transport type
-                if "flight_number" in route_details:
-                    # Flight
+                # Extract route info — prefer new direct fields, fallback to route_details
+                if loc_change.get("departure_point_base") or loc_change.get("route_number"):
+                    # New schema: fields directly on loc_change
+                    departure_point = loc_change.get("departure_point_base", "")
+                    arrival_point = loc_change.get("arrival_point_base", "")
+                    route_number = loc_change.get("route_number", "")
+                    airline = loc_change.get("company_base", "")
+                elif "flight_number" in route_details:
+                    # Old schema fallback: Flight via route_details
                     departure_point = route_details.get("departure_airport", "")
                     arrival_point = route_details.get("arrival_airport", "")
                     route_number = route_details.get("flight_number", "")
                     airline = route_details.get("airline", "")
                 else:
-                    # Train
+                    # Old schema fallback: Train via route_details
                     departure_point = route_details.get("departure_station", "")
                     arrival_point = route_details.get("arrival_station", "")
                     verified = route_details.get("verified_train", {})
@@ -997,7 +1003,7 @@ class InteractiveHTMLGenerator:
                     airline = ""
 
                 # Booking status — local strings come from ui_labels data
-                booking_status = loc_change.get("booking_status", "")
+                booking_status = loc_change.get("status_base", loc_change.get("booking_status", ""))
                 if not booking_status:
                     if loc_change.get("booking_required", False):
                         urgency = loc_change.get("booking_urgency", "")
@@ -1007,22 +1013,25 @@ class InteractiveHTMLGenerator:
                             booking_status = "REQUIRED"
                     else:
                         booking_status = "VERIFIED"
-                # Resolve local from ui_labels (key = lowercase status)
-                booking_status_local = ui_local.get(booking_status.lower(), "")
+                # Resolve local from ui_labels (key = lowercase status), prefer direct field
+                booking_status_local = loc_change.get("status_local", "") or ui_local.get(booking_status.lower(), "")
 
-                # Extract bilingual city names from location fields
-                from_local = self._extract_local_city(loc_change.get("from_location", ""), loc_change.get("from", ""))
-                to_local = self._extract_local_city(loc_change.get("to_location", ""), loc_change.get("to", ""))
+                # Extract bilingual city names — prefer new from_local/to_local, fallback to old extraction
+                from_local = loc_change.get("from_local", "") or self._extract_local_city(loc_change.get("from_location", ""), loc_change.get("from", ""))
+                to_local = loc_change.get("to_local", "") or self._extract_local_city(loc_change.get("to_location", ""), loc_change.get("to", ""))
 
                 # Fix #9: Split bilingual departure/arrival points
+                # Prefer new direct _local fields, fallback to split_bilingual for old data
                 dep_base, dep_local = self._split_bilingual(departure_point)
+                dep_local = loc_change.get("departure_point_local", "") or dep_local
                 arr_base, arr_local = self._split_bilingual(arrival_point)
+                arr_local = loc_change.get("arrival_point_local", "") or arr_local
 
                 merged["transportation"] = {
-                    "name_base": f"{loc_change.get('from', '')} \u2192 {loc_change.get('to', '')}",
-                    "name_local": f"{from_local} \u2192 {to_local}" if from_local and to_local else "",
-                    "from_base": loc_change.get("from", ""),
-                    "to_base": loc_change.get("to", ""),
+                    "name_base": loc_change.get("name_base", "") or f"{loc_change.get('from_base', loc_change.get('from', ''))} \u2192 {loc_change.get('to_base', loc_change.get('to', ''))}",
+                    "name_local": loc_change.get("name_local", "") or (f"{from_local} \u2192 {to_local}" if from_local and to_local else ""),
+                    "from_base": loc_change.get("from_base", loc_change.get("from", "")),
+                    "to_base": loc_change.get("to_base", loc_change.get("to", "")),
                     "from_local": from_local,
                     "to_local": to_local,
                     "departure_point_base": dep_base,
@@ -1034,17 +1043,17 @@ class InteractiveHTMLGenerator:
                     "icon": icon,
                     "route_number": route_number,
                     "company_base": airline,
-                    "company_local": "",
+                    "company_local": loc_change.get("company_local", ""),
                     "cost": self._to_display_currency(
                         self._extract_transport_cost_cny(loc_change),
                         "CNY"
                     ),
                     "cost_local": self._extract_transport_cost_cny(loc_change),
-                    "cost_type_base": loc_change.get("cost_type", ""),
+                    "cost_type_base": loc_change.get("cost_type_base", loc_change.get("cost_type", "")),
                     "cost_type_local": loc_change.get("cost_type_local", ""),
                     "status_base": booking_status,
                     "status_local": booking_status_local,
-                    "notes_base": loc_change.get("notes", ""),
+                    "notes_base": loc_change.get("notes_base", loc_change.get("notes", "")),
                     "notes_local": loc_change.get("notes_local", ""),
                     "booking_required": loc_change.get("booking_required", False),
                     "time": {
@@ -1783,8 +1792,6 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
             {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
             {item.opening_hours && <PropertyRow label={L('opening_hours', lang)}>{item.opening_hours}</PropertyRow>}
-            {item.recommended_duration && <PropertyRow label={L('duration', lang)}>{item.recommended_duration}</PropertyRow>}
-            {item.duration && <PropertyRow label={L('duration', lang)}>{item.duration}</PropertyRow>}
             {item.optional && <PropertyRow label={L('optional', lang)}><span style={{ padding: '2px 8px', background: '#f5f5f3', borderRadius: '4px', fontSize: '12px', color: '#9b9a97', fontWeight: '600' }}>{L('optional', lang)}</span></PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
