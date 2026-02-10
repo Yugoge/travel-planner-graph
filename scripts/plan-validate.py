@@ -439,6 +439,39 @@ def check_field_format(items: list, agent: str, registry: SchemaRegistry) -> lis
     return issues
 
 
+# Small words that stay lowercase in title case (unless first word of a segment)
+_TITLE_SMALL_WORDS = {"a", "an", "and", "at", "but", "by", "for", "in", "nor",
+                       "of", "on", "or", "so", "the", "to", "up", "yet"}
+
+
+def _smart_title(text: str) -> str:
+    """Apply smart Title Case that preserves acronyms and keeps small words lowercase.
+
+    Splits on ' / ' first (category separators), then applies per-segment:
+      - All-uppercase words (acronyms like UNESCO, AAAA+) stay uppercase
+      - Small words (and, or, of, the, ...) stay lowercase unless first word
+      - Everything else gets standard Title Case
+    """
+    segments = text.split(" / ")
+    result_segments = []
+    for segment in segments:
+        words = segment.split()
+        titled_words = []
+        for idx, word in enumerate(words):
+            # Preserve acronyms: all-uppercase words (allow trailing +)
+            stripped = word.rstrip("+")
+            if stripped.isupper() and len(stripped) > 1:
+                titled_words.append(word)
+            # Small words stay lowercase unless first word of segment
+            elif word.lower() in _TITLE_SMALL_WORDS and idx > 0:
+                titled_words.append(word.lower())
+            # Normal words get title case
+            else:
+                titled_words.append(word.capitalize())
+        result_segments.append(" ".join(titled_words))
+    return " / ".join(result_segments)
+
+
 def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir: Path) -> list:
     """Category 4: Semantic / content checks."""
     issues = []
@@ -459,10 +492,10 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
     if agent == "attractions":
         for ei in items:
             tb = ei.data.get("type_base", "")
-            if isinstance(tb, str) and tb and tb != tb.title():
+            if isinstance(tb, str) and tb and tb != _smart_title(tb):
                 issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
                                     ei.day_num, ei.label, "type_base",
-                                    f"Not Title Case: '{tb}' (expected '{tb.title()}')"))
+                                    f"Not Title Case: '{tb}' (expected '{_smart_title(tb)}')"))
 
     # 4c. Currency-region consistency
     if agent in AGENTS_WITH_LOCAL:
