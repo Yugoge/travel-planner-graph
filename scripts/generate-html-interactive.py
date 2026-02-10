@@ -1434,8 +1434,7 @@ class InteractiveHTMLGenerator:
     def _generate_itinerary_data(self) -> dict:
         """Generate PLAN_DATA for itinerary (trip_summary + days format)"""
 
-        # Build trip summary from skeleton + requirements
-        req_summary = self.requirements.get("trip_summary", {}) if isinstance(self.requirements, dict) else {}
+        # Build trip summary from skeleton's trip_summary section
         skel_summary = self.skeleton.get("trip_summary", {})
         prefs = skel_summary.get("preferences", {})
         if isinstance(prefs, dict):
@@ -1457,9 +1456,7 @@ class InteractiveHTMLGenerator:
             "period": period,
             "travelers": skel_summary.get("travelers", "1 adult"),
             "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
-            "preferences": prefs_str,
-            "base_lang": req_summary.get("base_lang", skel_summary.get("base_lang", "en")),
-            "ui_labels": req_summary.get("ui_labels", {})
+            "preferences": prefs_str
         }
 
         # Merge all days
@@ -1966,10 +1963,6 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
 // ============================================================
 // KANBAN VIEW
 // ============================================================
-// UI label helper: reads from PLAN_DATA.trip_summary.ui_labels (data-driven, not hardcoded)
-const _uiLabels = PLAN_DATA.trip_summary.ui_labels || {};
-const lbl = (key, lang) => (lang === 'local' && _uiLabels.local?.[key]) ? _uiLabels.local[key] : (_uiLabels.base?.[key] || key);
-
 // Root cause fix (commit 8f2bddd): Helper to get display name based on language preference
 const getDisplayName = (item, lang) => {
   if (!item) return '';
