@@ -116,11 +116,34 @@ Analyze for each day:
 - Free time blocks
 - Hotel check-in/check-out times
 
-### Step 2: Generate Timeline Dictionary
+### Step 2: Generate Timeline Dictionary + Travel Segments
 
 For each day, create timeline dictionary with:
 - **KEY**: Exact activity name from source JSON
 - **VALUE**: `{start_time: "HH:MM", end_time: "HH:MM", duration_minutes: N}`
+
+**ALSO generate `travel_segments` array** for each day. For every gap between consecutive activities that involves travel:
+
+1. Read `transportation.json` for intra-city route data:
+   - `intra_city_routes` (day-level array)
+   - `location_change.morning_routes` / `evening_routes`
+   - Match each route's destination to the next activity
+   - Use `recommended_transport` field for mode (Metro → "metro", Bus → "bus", Taxi/Didi → "taxi", Walking → "walk")
+
+2. For gaps without explicit route data, infer mode:
+   - ≤ 10 min + ≤ 1km → "walk"
+   - Default → "taxi"
+
+3. Each travel_segment must have:
+   - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
+   - `name_local`: Local language — "打车前往[目的地]", "乘地铁前往[目的地]", "步行前往[目的地]"
+   - `mode`: "walk" | "taxi" | "metro" | "bus" | "train" | "car" | "ferry"
+   - `start_time`, `end_time`: HH:MM format
+   - `duration_minutes`: integer
+
+**IMPORTANT**: The `name_base` and `name_local` describe the TRANSIT action, not the destination activity. Example:
+- CORRECT: "Taxi to Chongqing North Station" / "打车前往重庆北站"
+- WRONG: "Take train to Chongqing" (confuses transit TO station with the train journey itself)
 
 Validate:
 - No overlapping activities
@@ -157,18 +180,34 @@ Write(
     "days": [
       {
         "day": 1,
+        "date": "2026-02-15",
         "timeline": {
           "Activity Name 1": {
             "start_time": "09:00",
             "end_time": "11:00",
             "duration_minutes": 120
           },
+          "Travel to Activity 2": {
+            "start_time": "11:00",
+            "end_time": "11:30",
+            "duration_minutes": 30
+          },
           "Activity Name 2": {
             "start_time": "11:30",
             "end_time": "13:00",
             "duration_minutes": 90
           }
-        }
+        },
+        "travel_segments": [
+          {
+            "name_base": "Taxi to Activity 2",
+            "name_local": "打车前往活动2",
+            "mode": "taxi",
+            "start_time": "11:00",
+            "end_time": "11:30",
+            "duration_minutes": 30
+          }
+        ]
       }
     ]
   },

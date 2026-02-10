@@ -18,6 +18,10 @@ Operations:
     --update-preferences '{...}'             Update preferences object
     --add-day --day N --date YYYY-MM-DD --location "City" --plans '[...]'
     --remove-day N                            Remove day N, re-number remaining
+    --update-dates "YYYY-MM-DD" "YYYY-MM-DD" Update trip start/end dates
+    --set-note "key" "value"                  Set a supplemental note
+    --remove-note "key"                       Remove a supplemental note
+    --list-notes                              List all supplemental notes
 
 Exit codes:
     0 = success
@@ -29,6 +33,7 @@ import argparse
 import copy
 import json
 import sys
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -435,6 +440,156 @@ def op_update_preferences(
     return changes
 
 
+def parse_date(date_str: str) -> date:
+    """Parse a YYYY-MM-DD date string.
+
+    Args:
+        date_str: Date string in YYYY-MM-DD format
+
+    Returns:
+        Parsed date object
+
+    Raises:
+        ValueError: If date string is not valid YYYY-MM-DD
+    """
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format: '{date_str}'. Expected YYYY-MM-DD."
+        )
+
+
+def op_update_dates(
+    req: Dict[str, Any],
+    plan: Dict[str, Any],
+    start_date_str: str,
+    end_date_str: str
+) -> List[str]:
+    """Update trip dates and recalculate duration in both skeleton files.
+
+    Args:
+        req: Requirements skeleton data
+        plan: Plan skeleton data
+        start_date_str: New start date (YYYY-MM-DD)
+        end_date_str: New end date (YYYY-MM-DD)
+
+    Returns:
+        List of change summary messages
+
+    Raises:
+        ValueError: If dates are invalid or end is before start
+    """
+    start_date = parse_date(start_date_str)
+    end_date = parse_date(end_date_str)
+
+    if end_date < start_date:
+        raise ValueError(
+            f"End date ({end_date_str}) cannot be before "
+            f"start date ({start_date_str})"
+        )
+
+    new_dates_str = f"{start_date_str} to {end_date_str}"
+    # Duration is inclusive of both start and end dates
+    new_duration = (end_date - start_date).days + 1
+
+    changes = []
+
+    # Read old values for reporting
+    old_dates = req.get('trip_summary', {}).get('dates', '')
+    old_duration = req.get('trip_summary', {}).get('duration_days', 0)
+
+    # Update both files
+    req.setdefault('trip_summary', {})['dates'] = new_dates_str
+    req['trip_summary']['duration_days'] = new_duration
+    plan.setdefault('trip_summary', {})['dates'] = new_dates_str
+    plan['trip_summary']['duration_days'] = new_duration
+
+    changes.append(f"Updated dates: \"{old_dates}\" -> \"{new_dates_str}\"")
+    changes.append(
+        f"Updated duration: {old_duration} -> {new_duration} days"
+    )
+
+    return changes
+
+
+def op_set_note(
+    req: Dict[str, Any],
+    key: str,
+    value: str
+) -> List[str]:
+    """Set a supplemental note in requirements-skeleton.json.
+
+    Creates the supplemental_notes dict if it doesn't exist.
+
+    Args:
+        req: Requirements skeleton data
+        key: Note key name
+        value: Note value text
+
+    Returns:
+        List of change summary messages
+    """
+    notes = req.setdefault('supplemental_notes', {})
+    is_update = key in notes
+    old_value = notes.get(key, '')
+    notes[key] = value
+
+    if is_update:
+        return [f"Updated note '{key}': \"{old_value}\" -> \"{value}\""]
+    return [f"Set note '{key}': \"{value}\""]
+
+
+def op_remove_note(
+    req: Dict[str, Any],
+    key: str
+) -> List[str]:
+    """Remove a supplemental note from requirements-skeleton.json.
+
+    Args:
+        req: Requirements skeleton data
+        key: Note key name to remove
+
+    Returns:
+        List of change summary messages
+
+    Raises:
+        ValueError: If key doesn't exist in supplemental_notes
+    """
+    notes = req.get('supplemental_notes', {})
+    if key not in notes:
+        available = list(notes.keys()) if notes else []
+        raise ValueError(
+            f"Note key '{key}' not found in supplemental_notes. "
+            f"Available keys: {available}"
+        )
+
+    removed_value = notes.pop(key)
+    return [f"Removed note '{key}' (was: \"{removed_value}\")"]
+
+
+def op_list_notes(req: Dict[str, Any]) -> List[str]:
+    """List all supplemental notes from requirements-skeleton.json.
+
+    Args:
+        req: Requirements skeleton data
+
+    Returns:
+        List of formatted note entries (or message if none exist)
+    """
+    notes = req.get('supplemental_notes', {})
+    if not notes:
+        return ["No supplemental_notes found"]
+
+    lines = [f"supplemental_notes ({len(notes)} entries):"]
+    for key, value in notes.items():
+        # Truncate long values for display
+        display_value = value if len(value) <= 120 else value[:117] + "..."
+        lines.append(f"  {key}: \"{display_value}\"")
+
+    return lines
+
+
 def make_empty_plan_day(
     day_number: int,
     date: str,
@@ -625,6 +780,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  %(prog)s --destination-slug my-trip --update-day 5 --add-plan 'Visit temple'\n"
             "  %(prog)s --destination-slug my-trip --remove-day 22\n"
             "  %(prog)s --destination-slug my-trip --update-budget '$5000 total'\n"
+            "  %(prog)s --destination-slug my-trip --update-dates 2026-03-01 2026-03-15\n"
+            "  %(prog)s --destination-slug my-trip --set-note diet 'No shellfish'\n"
+            "  %(prog)s --destination-slug my-trip --remove-note diet\n"
+            "  %(prog)s --destination-slug my-trip --list-notes\n"
         )
     )
 
@@ -711,6 +870,32 @@ def build_parser() -> argparse.ArgumentParser:
         help='Day number to remove'
     )
 
+    # Date update operation
+    parser.add_argument(
+        '--update-dates',
+        nargs=2,
+        metavar=('START', 'END'),
+        help='New trip start and end dates (YYYY-MM-DD YYYY-MM-DD)'
+    )
+
+    # Supplemental notes operations (requirements-skeleton.json only)
+    parser.add_argument(
+        '--set-note',
+        nargs=2,
+        metavar=('KEY', 'VALUE'),
+        help='Set a supplemental note (key and value)'
+    )
+    parser.add_argument(
+        '--remove-note',
+        metavar='KEY',
+        help='Remove a supplemental note by key'
+    )
+    parser.add_argument(
+        '--list-notes',
+        action='store_true',
+        help='List all supplemental notes'
+    )
+
     return parser
 
 
@@ -775,14 +960,29 @@ def validate_args(args: argparse.Namespace) -> str:
     if args.remove_day is not None:
         operations.append('remove_day')
 
+    if args.update_dates is not None:
+        operations.append('update_dates')
+
+    if args.set_note is not None:
+        operations.append('set_note')
+    if args.remove_note is not None:
+        operations.append('remove_note')
+    if args.list_notes:
+        operations.append('list_notes')
+
     if len(operations) == 0:
         raise ValueError(
             "No operation specified. Use --update-day, --update-budget, "
-            "--update-travelers, --update-preferences, --add-day, or --remove-day"
+            "--update-travelers, --update-preferences, --add-day, "
+            "--remove-day, --update-dates, --set-note, --remove-note, "
+            "or --list-notes"
         )
 
     # Allow multiple non-conflicting summary updates in one call
-    summary_ops = {'update_budget', 'update_travelers', 'update_preferences'}
+    summary_ops = {
+        'update_budget', 'update_travelers', 'update_preferences',
+        'update_dates'
+    }
     non_summary = [op for op in operations if op not in summary_ops]
     summary = [op for op in operations if op in summary_ops]
 
@@ -891,6 +1091,13 @@ def main() -> int:
                 all_changes.extend(
                     op_update_preferences(req, plan, args.update_preferences)
                 )
+            if args.update_dates is not None:
+                all_changes.extend(
+                    op_update_dates(
+                        req, plan,
+                        args.update_dates[0], args.update_dates[1]
+                    )
+                )
 
         elif operation == 'add_day':
             all_changes = op_add_day(
@@ -901,15 +1108,40 @@ def main() -> int:
         elif operation == 'remove_day':
             all_changes = op_remove_day(req, plan, args.remove_day)
 
-        # Write both files atomically (both or neither)
-        save_json_file(req_path, req)
-        save_json_file(plan_path, plan)
+        elif operation == 'update_dates':
+            all_changes = op_update_dates(
+                req, plan, args.update_dates[0], args.update_dates[1]
+            )
+
+        elif operation == 'set_note':
+            all_changes = op_set_note(req, args.set_note[0], args.set_note[1])
+
+        elif operation == 'remove_note':
+            all_changes = op_remove_note(req, args.remove_note)
+
+        elif operation == 'list_notes':
+            all_changes = op_list_notes(req)
+
+        # Determine which files were modified
+        # Note operations only affect requirements-skeleton.json
+        req_only_ops = {'set_note', 'remove_note'}
+        list_only_ops = {'list_notes'}
+        writes_req = operation not in list_only_ops
+        writes_plan = operation not in req_only_ops and operation not in list_only_ops
+
+        # Write files
+        if writes_req:
+            save_json_file(req_path, req)
+        if writes_plan:
+            save_json_file(plan_path, plan)
 
         # Print change summary
         for change in all_changes:
             print(f"\u2713 {change}")
-        print(f"\u2713 Updated {req_path.name}")
-        print(f"\u2713 Updated {plan_path.name}")
+        if writes_req:
+            print(f"\u2713 Updated {req_path.name}")
+        if writes_plan:
+            print(f"\u2713 Updated {plan_path.name}")
 
         return 0
 

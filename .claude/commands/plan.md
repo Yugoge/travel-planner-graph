@@ -1670,8 +1670,21 @@ Would you like any further adjustments?
 Major restructures require re-running entire Phase 2-5 workflow.
 
 **Action sequence**:
-1. Delegate update of `data/{destination-slug}/requirements-skeleton.json` to a subagent via Task tool (orchestrator NEVER modifies data files directly)
-2. Return to Step 6 (Initialize Plan Skeleton) with updated requirements
+1. Update skeleton files via script (orchestrator NEVER edits data files directly):
+   ```bash
+   source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/update-skeleton.py \
+     --destination-slug {destination-slug} \
+     <operation-flags>
+   ```
+   Supported operations:
+   - `--update-day N --location "City"` — change day location (auto re-detects location_change)
+   - `--update-day N --add-plan "Activity"` — add user plan
+   - `--update-day N --remove-plan "Activity"` — remove user plan (partial match)
+   - `--update-day N --set-plans '["Plan A", "Plan B"]'` — replace all plans
+   - `--update-budget "$2000"` / `--update-travelers "3 adults"` / `--update-preferences '{...}'` — update trip summary
+   - `--add-day --day N --date "YYYY-MM-DD" --location "City" --plans '[...]'` — extend trip
+   - `--remove-day N` — shorten trip (auto re-numbers)
+2. Return to Step 6 (Verify Plan Skeleton) with updated requirements
 3. Re-invoke ALL 8 agents (parallel 6, then serial timeline + budget)
 4. Run all validation scripts
 5. Generate HTML with version suffix
@@ -1682,8 +1695,8 @@ Major restructures require re-running entire Phase 2-5 workflow.
 User: "Change Day 3 location from Beijing to Shanghai"
 
 Your action:
-1. Delegate requirements-skeleton.json update to subagent via Task tool → Day 3 location = "Shanghai"
-2. Re-run Step 6 (plan skeleton initialization with location detection)
+1. python scripts/update-skeleton.py --destination-slug {slug} --update-day 3 --location "Shanghai"
+2. Re-run Step 6 (verify plan skeleton with updated location changes)
 3. Re-run Step 8 (invoke all 6 parallel agents + timeline + budget)
 4. Re-run Steps 9-13 (validations)
 5. Generate HTML v2
