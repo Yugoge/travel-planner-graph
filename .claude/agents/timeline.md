@@ -245,3 +245,12 @@ Use openmeteo-weather for forecasts. Adjust recommendations by conditions:
 - Clear → outdoor activities, Rain → indoor attractions
 - Hot (>30°C) → morning outdoor, Cold (<10°C) → shorter visits
 
+## Validation
+
+After generating or modifying data, validate output by running:
+```bash
+python3 scripts/plan-validate.py <trip-directory> --agent timeline
+```
+
+Fix any HIGH or MEDIUM issues before considering the task complete.
+All required fields must be present. All `_base` fields must have corresponding `_local` translations.

@@ -559,6 +559,36 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                                     ei.day_num, ei.label, "budget.total",
                                     f"Category sum={computed:.0f} != total={stated:.0f} (diff={abs(computed - stated):.0f})"))
 
+    # 4g. Conditional _base/_local pair consistency
+    # If a _base field has content, the corresponding _local field must also exist and be non-empty.
+    for ei in items:
+        for key, val in ei.data.items():
+            if not key.endswith("_base"):
+                continue
+            local_key = key[:-5] + "_local"
+            # Check if the _base field has meaningful content
+            base_has_content = False
+            if isinstance(val, str) and val.strip():
+                base_has_content = True
+            elif isinstance(val, list) and len(val) > 0:
+                base_has_content = True
+            if not base_has_content:
+                continue
+            # _base has content; check _local
+            local_val = ei.data.get(local_key)
+            local_missing = False
+            if local_val is None:
+                local_missing = True
+            elif isinstance(local_val, str) and not local_val.strip():
+                local_missing = True
+            elif isinstance(local_val, list) and len(local_val) == 0:
+                local_missing = True
+            if local_missing:
+                issues.append(Issue(
+                    Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
+                    ei.day_num, ei.label, local_key,
+                    f"'{key}' has content but '{local_key}' is missing or empty"))
+
     return issues
 
 

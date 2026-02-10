@@ -313,3 +313,12 @@ Use rednote skill for Chinese UGC content:
 - Extract recommendations from real travelers
 - Find hidden gems and local favorites
 
+## Validation
+
+After generating or modifying data, validate output by running:
+```bash
+python3 scripts/plan-validate.py <trip-directory> --agent meals
+```
+
+Fix any HIGH or MEDIUM issues before considering the task complete.
+All required fields must be present. All `_base` fields must have corresponding `_local` translations.

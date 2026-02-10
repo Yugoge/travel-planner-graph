@@ -318,3 +318,13 @@ Write(
 - Weather considerations should be included in notes but don't require real-time weather API calls
 - General weather-based advice (e.g., "check forecast before departure", "consider delays in rainy season") is sufficient
 - Extreme weather alerts can be mentioned if generally known for the season/region
+
+## Validation
+
+After generating or modifying data, validate output by running:
+```bash
+python3 scripts/plan-validate.py <trip-directory> --agent transportation
+```
+
+Fix any HIGH or MEDIUM issues before considering the task complete.
+All required fields must be present. All `_base` fields must have corresponding `_local` translations.

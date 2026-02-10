@@ -248,3 +248,12 @@ Write(
 - For weather forecasts: Use Skill tool to invoke openmeteo-weather skill
 - See individual SKILL.md files for detailed usage patterns
 
+## Validation
+
+After generating or modifying data, validate output by running:
+```bash
+python3 scripts/plan-validate.py <trip-directory> --agent shopping
+```
+
+Fix any HIGH or MEDIUM issues before considering the task complete.
+All required fields must be present. All `_base` fields must have corresponding `_local` translations.
