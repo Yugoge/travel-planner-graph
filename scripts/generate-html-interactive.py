@@ -1711,15 +1711,6 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               </ul>
             </div>
           )}
-          {item.booking_urgency && (
-            <div style={{
-              marginTop: '16px', padding: '12px 16px',
-              background: '#fff4e6', borderRadius: '6px',
-              border: '1px solid #fed7aa', fontSize: '13px', color: '#9a6700'
-            }}>
-              ⚠️ {item.booking_urgency}
-            </div>
-          )}
           {(lang === 'local' && item.note_local ? item.note_local : item.note) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
@@ -1902,32 +1893,66 @@ const GaodeLogo = ({ size = 14 }) => (
   </svg>
 );
 
+// Gaode Maps native app deeplink handler for mobile
+// Uses URL scheme (iosamap:// / androidamap://) via hidden iframe,
+// with visibilitychange detection and H5 fallback after 2s timeout
+const openGaodeNative = (gaodeScheme, gaodeH5) => {
+  let opened = false;
+  const onVisChange = () => { if (document.hidden) opened = true; };
+  document.addEventListener('visibilitychange', onVisChange);
+  // Try opening native app via hidden iframe
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = gaodeScheme;
+  document.body.appendChild(iframe);
+  setTimeout(() => {
+    document.removeEventListener('visibilitychange', onVisChange);
+    document.body.removeChild(iframe);
+    if (!opened) window.location.href = gaodeH5;
+  }, 2000);
+};
+
 // Map link component with provider toggle support (Google Maps / Gaode Maps)
 const MapLink = ({ item, lang, mapProvider = 'gaode' }) => {
   const loc = getDisplayLocation(item, lang);
   if (!loc) return null;
   const coords = item.coordinates;
-  let googleHref, gaodeHref;
+  let googleHref, gaodeH5, gaodeScheme;
   if (coords && (coords.latitude || coords.lat)) {
     const lat = coords.latitude || coords.lat;
     const lng = coords.longitude || coords.lng;
     googleHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}&center=${lat},${lng}`;
-    gaodeHref = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}&coordinate=gaode&callnative=1`;
+    gaodeH5 = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(loc)}&coordinate=gaode&callnative=0`;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    gaodeScheme = isIOS
+      ? `iosamap://viewMap?sourceApplication=travel&poiname=${encodeURIComponent(loc)}&lat=${lat}&lon=${lng}&dev=0`
+      : `androidamap://viewMap?sourceApplication=travel&poiname=${encodeURIComponent(loc)}&lat=${lat}&lon=${lng}&dev=0`;
   } else {
     googleHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
-    gaodeHref = `https://uri.amap.com/search?keyword=${encodeURIComponent(loc)}&callnative=1`;
+    gaodeH5 = `https://uri.amap.com/search?keyword=${encodeURIComponent(loc)}&callnative=0`;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    gaodeScheme = isIOS
+      ? `iosamap://poi?sourceApplication=travel&keywords=${encodeURIComponent(loc)}`
+      : `androidamap://poi?sourceApplication=travel&keywords=${encodeURIComponent(loc)}`;
   }
   const isGaode = mapProvider === 'gaode';
-  const href = isGaode ? gaodeHref : googleHref;
   const Logo = isGaode ? GaodeLogo : GoogleMapsLogo;
   const title = isGaode ? 'Open in 高德地图' : 'Open in Google Maps';
   const color = isGaode ? '#0085fe' : '#4285F4';
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (isGaode && isMobile) {
+      e.preventDefault();
+      openGaodeNative(gaodeScheme, gaodeH5);
+    }
+  };
+  const href = isGaode ? gaodeH5 : googleHref;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
       <a href={href} target="_blank" rel="noopener noreferrer"
         style={{ color: color, textDecoration: 'none', borderBottom: `1px dashed ${color}` }}
         title={title}
-        onClick={e => e.stopPropagation()}>
+        onClick={handleClick}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
           <Logo size={14} />
           {loc}

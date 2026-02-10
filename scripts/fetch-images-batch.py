@@ -376,7 +376,8 @@ class BatchImageFetcher:
             ("attractions.json", "attractions", "attraction"),
             ("meals.json", "meals", "meal"),
             ("accommodation.json", "accommodation", "accommodation"),
-            ("entertainment.json", "entertainment", "entertainment")
+            ("entertainment.json", "entertainment", "entertainment"),
+            ("shopping.json", "shopping", "shopping"),
         ]
 
         for filename, field_name, poi_type in agent_files:
@@ -483,6 +484,25 @@ class BatchImageFetcher:
                                 "type": poi_type
                             })
 
+                elif field_name == "shopping":
+                    # Shopping: list of items
+                    for item in day.get("shopping", []):
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
+
+                        if name_base:
+                            pois.append({
+                                "name": name_base,
+                                "name_local": name_local,
+                                "city": location,
+                                "type": poi_type
+                            })
+
             # Process cities format (bucket list)
             for city in cities_data:
                 location = city.get("city", "")
@@ -558,6 +578,24 @@ class BatchImageFetcher:
                         name_local = item.get("name_local", "")
 
                         # Backward compatibility: fallback to old fields
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
+
+                        if name_base:
+                            pois.append({
+                                "name": name_base,
+                                "name_local": name_local,
+                                "city": location,
+                                "type": poi_type
+                            })
+
+                elif field_name == "shopping":
+                    for item in city.get("shopping", []):
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+
                         if not name_base:
                             name_base = item.get("name", "")
                         if not name_local:

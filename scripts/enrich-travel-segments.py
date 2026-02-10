@@ -311,6 +311,130 @@ def build_transport_time_ranges(transport_data: Optional[dict]) -> dict[int, lis
     return ranges
 
 
+def _parse_recommended_transport(recommended: str) -> str:
+    """Convert a recommended_transport string to a mode value."""
+    rt = recommended.lower()
+    if "metro" in rt or "mtr" in rt:
+        return "metro"
+    if "bus" in rt:
+        return "bus"
+    if "walk" in rt:
+        return "walk"
+    if "taxi" in rt or "didi" in rt:
+        return "taxi"
+    if "ferry" in rt:
+        return "transit"
+    if "train" in rt:
+        return "train"
+    return ""
+
+
+def build_intra_city_routes(transport_data: Optional[dict]) -> dict[int, list[dict]]:
+    """Build a mapping of day number to intra-city route details.
+
+    Extracts routes from transportation.json fields:
+    - location_change.morning_routes / evening_routes (Day 4 format)
+    - intra_city_routes (Day 5 format)
+
+    Returns: { day_num: [ { "from": ..., "to": ..., "mode": ..., "start_time": ... }, ... ] }
+    """
+    routes_by_day: dict[int, list[dict]] = {}
+    if not transport_data:
+        return routes_by_day
+
+    raw_data = transport_data.get("data", transport_data)
+    days = raw_data.get("days", [])
+
+    for day_data in days:
+        day_num = day_data.get("day")
+        if day_num is None:
+            continue
+
+        day_routes: list[dict] = []
+
+        # Format 1: morning_routes / evening_routes inside location_change
+        loc_change = day_data.get("location_change", {})
+        for route_group_key in ("morning_routes", "evening_routes", "local_routes"):
+            route_group = loc_change.get(route_group_key, {})
+            if isinstance(route_group, dict):
+                for route_key, route_val in route_group.items():
+                    if not isinstance(route_val, dict):
+                        continue
+                    rec = route_val.get("recommended_transport", "")
+                    mode = _parse_recommended_transport(rec)
+                    if mode:
+                        day_routes.append({
+                            "from": route_val.get("from", ""),
+                            "to": route_val.get("to", ""),
+                            "mode": mode,
+                            "duration_minutes": route_val.get("duration_minutes", 0),
+                        })
+
+        # Format 2: intra_city_routes at day level (Day 5 format)
+        intra_routes = day_data.get("intra_city_routes", {})
+        if isinstance(intra_routes, dict):
+            for route_key, route_val in intra_routes.items():
+                if not isinstance(route_val, dict):
+                    continue
+                rec = route_val.get("recommended_transport", "")
+                mode = _parse_recommended_transport(rec)
+                if mode:
+                    day_routes.append({
+                        "from": route_val.get("from", ""),
+                        "to": route_val.get("to", ""),
+                        "mode": mode,
+                        "duration_minutes": route_val.get("duration_minutes", 0),
+                    })
+
+        if day_routes:
+            routes_by_day[day_num] = day_routes
+
+    return routes_by_day
+
+
+def match_intra_city_route(
+    activity_name: str,
+    destination: str,
+    intra_routes: list[dict],
+) -> str:
+    """Try to match a travel activity to an intra-city route by destination.
+
+    Returns mode string if matched, empty string if no match.
+    """
+    if not intra_routes:
+        return ""
+
+    dest_lower = destination.lower()
+    act_lower = activity_name.lower()
+
+    for route in intra_routes:
+        route_to = route.get("to", "").lower()
+        route_from = route.get("from", "").lower()
+
+        # Match by destination name overlap
+        if dest_lower and route_to:
+            # Check if destination appears in route.to or vice versa
+            if dest_lower in route_to or route_to in dest_lower:
+                return route["mode"]
+            # Word overlap: extract significant words (exclude generic venue types)
+            generic_words = {
+                "to", "the", "a", "at", "in", "and", "of", "(", ")",
+                "restaurant", "hotel", "station", "airport", "road",
+                "street", "area", "center", "mall", "market",
+            }
+            dest_words = set(dest_lower.split()) - generic_words
+            route_words = set(route_to.split()) - generic_words
+            shared = dest_words & route_words
+            if len(shared) >= 1 and dest_words:
+                return route["mode"]
+
+        # Match by activity name containing route destination
+        if route_to and route_to in act_lower:
+            return route["mode"]
+
+    return ""
+
+
 def time_to_minutes(time_str: str) -> int:
     """Convert HH:MM to minutes since midnight."""
     parts = time_str.split(":")
@@ -445,15 +569,23 @@ def determine_mode(
     destination: str,
     duration_minutes: int,
     day_transport_ranges: list[dict],
+    intra_routes: list[dict] | None = None,
 ) -> str:
     """Determine the transport mode for a travel segment.
 
     Priority:
+    0. Intra-city route data from transportation.json (most authoritative)
     1. Explicit mode keywords in name
     2. Station/Airport destination -> taxi
     3. Short walking-distance segments -> walk
     4. Default for urban travel -> taxi
     """
+    # Priority 0: Check intra-city route data from transportation.json
+    if intra_routes:
+        matched = match_intra_city_route(name, destination, intra_routes)
+        if matched:
+            return matched
+
     name_lower = name.lower()
 
     # Check for mode hints in parenthetical notes
@@ -636,11 +768,13 @@ def process_day(
     day: dict,
     transport_ranges: dict[int, list[dict]],
     poi_lookup: dict[str, str],
+    intra_city_routes: dict[int, list[dict]] | None = None,
 ) -> list[dict]:
     """Process a single day's timeline and extract travel segments."""
     day_num = day.get("day")
     timeline = day.get("timeline", {})
     day_transport = transport_ranges.get(day_num, [])
+    day_intra = (intra_city_routes or {}).get(day_num, [])
     segments = []
 
     for activity_name, activity_data in timeline.items():
@@ -674,7 +808,7 @@ def process_day(
         destination = extract_destination(activity_name)
 
         # Determine mode
-        mode = determine_mode(activity_name, destination, duration, day_transport)
+        mode = determine_mode(activity_name, destination, duration, day_transport, day_intra)
 
         # Resolve local destination name
         dest_local = resolve_destination_local(destination, poi_lookup)
@@ -724,6 +858,10 @@ def enrich_timeline(data_dir: str) -> None:
     transport_ranges = build_transport_time_ranges(transport_data)
     print(f"  Loaded transport ranges for {len(transport_ranges)} days")
 
+    # Build intra-city route lookup from transportation.json
+    intra_city_routes = build_intra_city_routes(transport_data)
+    print(f"  Loaded intra-city routes for {len(intra_city_routes)} days")
+
     # Build POI lookup
     poi_lookup = build_poi_lookup(data_dir)
     print(f"  Built POI lookup with {len(poi_lookup)} entries")
@@ -734,7 +872,7 @@ def enrich_timeline(data_dir: str) -> None:
 
     for day in days:
         day_num = day.get("day", "?")
-        segments = process_day(day, transport_ranges, poi_lookup)
+        segments = process_day(day, transport_ranges, poi_lookup, intra_city_routes)
         day["travel_segments"] = segments
         total_segments += len(segments)
         if segments:
