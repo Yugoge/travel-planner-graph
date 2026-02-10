@@ -4826,7 +4826,8 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
           {item.departure_time && item.arrival_time && <PropertyRow label={"Time"}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
           {item.transport_type && <PropertyRow label={"Type"}>{item.transport_type}</PropertyRow>}
           {item.departure_point && <PropertyRow label={"Route"}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
-          {item.highlights && item.highlights.length > 0 && (
+          {item.transport_type && item.cost && <PropertyRow label={"Cost"}>{fmtCost(item.cost)}</PropertyRow>}
+          {!item.transport_type && item.highlights && item.highlights.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
                 Highlights
@@ -4836,7 +4837,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               </ul>
             </div>
           )}
-          {(lang === 'local' && item.note_local ? item.note_local : item.note) && (
+          {!item.transport_type && (lang === 'local' && item.note_local ? item.note_local : item.note) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#fffdf5', borderRadius: '6px',
@@ -4845,7 +4846,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               💡 {lang === 'local' && item.note_local ? item.note_local : item.note}
             </div>
           )}
-          {(lang === 'local' && item.notes_local ? item.notes_local : item.notes) && (
+          {!item.transport_type && (lang === 'local' && item.notes_local ? item.notes_local : item.notes) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#f5f9fc', borderRadius: '6px',
@@ -4854,7 +4855,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               {lang === 'local' && item.notes_local ? item.notes_local : item.notes}
             </div>
           )}
-          {item.links && Object.keys(item.links).length > 0 && (
+          {!item.transport_type && item.links && Object.keys(item.links).length > 0 && (
             <div style={{ marginTop: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
                 Links
@@ -4877,12 +4878,12 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
   const W = sm ? '85%' : '400px';
 
   const categoryConfig = {
-    meals: { icon: '🍽️', label: 'Meals', color: '#f0b429' },
-    attractions: { icon: '📍', label: 'Attractions', color: '#4a90d9' },
-    entertainment: { icon: '🎭', label: 'Entertainment', color: '#9b6dd7' },
-    accommodation: { icon: '🏨', label: 'Accommodation', color: '#45b26b' },
-    shopping: { icon: '🛍️', label: 'Shopping', color: '#e07c5a' },
-    transportation: { icon: '🚄', label: 'Transport', color: '#0ea5e9' }
+    meals: { icon: '🍽️', label: lang === 'local' ? '餐饮' : 'Meals', color: '#f0b429' },
+    attractions: { icon: '📍', label: lang === 'local' ? '景点' : 'Attractions', color: '#4a90d9' },
+    entertainment: { icon: '🎭', label: lang === 'local' ? '娱乐' : 'Entertainment', color: '#9b6dd7' },
+    accommodation: { icon: '🏨', label: lang === 'local' ? '住宿' : 'Accommodation', color: '#45b26b' },
+    shopping: { icon: '🛍️', label: lang === 'local' ? '购物' : 'Shopping', color: '#e07c5a' },
+    transportation: { icon: '🚄', label: lang === 'local' ? '交通' : 'Transport', color: '#0ea5e9' }
   };
   const cfg = categoryConfig[category] || { icon: '💰', label: 'Budget', color: '#37352f' };
 
@@ -4937,7 +4938,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
                   display: 'flex', justifyContent: 'space-between',
                   fontSize: '14px', marginTop: '8px'
                 }}>
-                  <span style={{ color: '#9b9a97' }}>{"Cost"}</span>
+                  <span style={{ color: '#9b9a97' }}>{lang === 'local' ? '费用' : 'Cost'}</span>
                   <span style={{ fontWeight: '600', color: cfg.color }}>
                     {fmtCost(item.cost)}
                   </span>
@@ -5019,22 +5020,26 @@ const GaodeLogo = ({ size = 14 }) => (
 );
 
 // Gaode Maps native app deeplink handler for mobile
-// Uses URL scheme (iosamap:// / androidamap://) via hidden iframe,
-// with visibilitychange detection and H5 fallback after 2s timeout
+// Tries native scheme directly, falls back to H5 after 1.5s timeout
 const openGaodeNative = (gaodeScheme, gaodeH5) => {
-  let opened = false;
-  const onVisChange = () => { if (document.hidden) opened = true; };
+  const start = Date.now();
+  const onVisChange = () => {
+    // If page became hidden within 3s of click, app probably opened
+    if (document.hidden) {
+      document.removeEventListener('visibilitychange', onVisChange);
+      clearTimeout(fallbackTimer);
+    }
+  };
   document.addEventListener('visibilitychange', onVisChange);
-  // Try opening native app via hidden iframe
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = gaodeScheme;
-  document.body.appendChild(iframe);
-  setTimeout(() => {
+  // Try native scheme directly
+  window.location.href = gaodeScheme;
+  // Fallback to H5 if app didn't open
+  const fallbackTimer = setTimeout(() => {
     document.removeEventListener('visibilitychange', onVisChange);
-    document.body.removeChild(iframe);
-    if (!opened) window.location.href = gaodeH5;
-  }, 2000);
+    if (!document.hidden && Date.now() - start < 3000) {
+      window.location.href = gaodeH5;
+    }
+  }, 1500);
 };
 
 // Map link component with provider toggle support (Google Maps / Gaode Maps)
@@ -5522,7 +5527,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   }
 
   return (
-    <div style={{ maxWidth: '900px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{
         width: '100%', height: sm ? '100px' : '160px',
         background: day.cover ? `url(${day.cover})` : '#f5f5f5',
