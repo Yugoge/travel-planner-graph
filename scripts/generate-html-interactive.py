@@ -101,30 +101,52 @@ class InteractiveHTMLGenerator:
                 return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
         return amount
 
-    # Common Chinese city names for bilingual display
-    CITY_NAMES_LOCAL = {
-        "chongqing": "重庆", "bazhong": "巴中", "chengdu": "成都",
-        "shanghai": "上海", "beijing": "北京", "harbin": "哈尔滨",
-        "guangzhou": "广州", "shenzhen": "深圳", "hangzhou": "杭州",
-        "suzhou": "苏州", "nanjing": "南京", "xian": "西安",
-        "guilin": "桂林", "kunming": "昆明", "lijiang": "丽江",
-        "hong kong": "香港", "macau": "澳门", "taipei": "台北",
-        "lhasa": "拉萨", "qingdao": "青岛", "dalian": "大连",
-        "sanya": "三亚", "xiamen": "厦门", "wuhan": "武汉",
-        "changsha": "长沙", "zhangjiajie": "张家界", "chengde": "承德",
-        "tianjin": "天津",
+    # Default UI labels (English only — local translations come from data)
+    # These serve as fallback keys when requirements-skeleton doesn't provide a label.
+    DEFAULT_UI_LABELS_BASE = {
+        "time": "Time", "cost": "Cost", "type": "Type", "stars": "Stars",
+        "rating": "Rating", "checkin": "Check-in", "checkout": "Check-out",
+        "location": "Location", "cuisine": "Cuisine", "signature": "Signature Dishes",
+        "opening_hours": "Opening Hours", "duration": "Duration", "route": "Route",
+        "amenities": "Amenities", "highlights": "Highlights", "links": "Links",
+        "user_plans": "User Plans", "meals": "Meals", "attractions": "Attractions",
+        "entertainment": "Entertainment", "accommodation": "Accommodation",
+        "transportation": "Transportation", "shopping": "Shopping", "budget": "Budget",
+        "transport": "Transport",
+        "trip_type": "Trip Type", "base_location": "Base Location",
+        "period": "Period", "travelers": "Travelers", "budget_trip": "Budget / Trip",
+        "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner",
+        "cat_breakfast": "Breakfast", "cat_lunch": "Lunch", "cat_dinner": "Dinner",
+        "cat_attraction": "Attraction", "cat_entertainment": "Entertainment",
+        "cat_checkin": "Check-in",
+        "kanban_view": "Kanban View", "timeline_view": "Timeline View",
+        "prepaid": "Prepaid", "free": "Free", "optional": "Optional",
+        "show_less": "Show less", "show_more": "Show more",
+        "no_items": "No items in this category",
+        "no_timeline": "No timeline data available",
+        "no_timeline_sub": "This day has no scheduled activities with time information",
+        "coming_soon": "Itinerary coming soon...",
+        "day_prefix": "Day", "day_format": "Day {n}",
+        "days_count": "{n} days", "days_count_1": "1 day", "total": "Total",
+        "google_maps": "Google Maps", "booking_link": "Booking", "link": "Link",
+        "open_google": "Open in Google Maps", "search_rednote": "Search on Xiaohongshu",
+        "urgent": "URGENT", "required": "REQUIRED", "verified": "VERIFIED",
+        "recommended": "RECOMMENDED",
+        "high_speed_train": "High-speed Train", "flight": "Flight",
     }
 
     def _extract_local_city(self, location_field: str, city_name: str) -> str:
-        """Extract Chinese city name from location field or city name lookup."""
-        # Try to find Chinese characters in the location field
+        """Extract Chinese city name from location field data only.
+
+        No hardcoded lookup table — if the data doesn't contain Chinese,
+        return empty string so JSX falls back to base display.
+        """
         import re
         if location_field:
             chinese = re.findall(r'[\u4e00-\u9fff]+', location_field)
             if chinese:
                 return chinese[0]  # First Chinese word group (usually city name)
-        # Fallback to lookup table
-        return self.CITY_NAMES_LOCAL.get(city_name.lower(), "")
+        return ""
 
     def _split_bilingual(self, text: str) -> tuple:
         """Split 'English (Chinese)' format into (base, local) tuple.
@@ -202,18 +224,6 @@ class InteractiveHTMLGenerator:
         }
         return type_map.get(trip_type, trip_type.replace("_", " ").title())
 
-    def _format_trip_type_local(self, trip_type: str) -> str:
-        """Convert trip_type code to Chinese for bilingual display."""
-        type_map = {
-            "bucket_list": "心愿清单",
-            "weekend_extended": "长周末",
-            "weekend_short": "短周末",
-            "itinerary": "行程",
-            "day_trip": "一日游",
-            "week_long": "一周游"
-        }
-        return type_map.get(trip_type, trip_type.replace("_", " ").title())
-
     def _format_preferences(self, preferences: dict) -> str:
         """Format preferences without code prefixes (Fix #2)
         Root cause: commit 52d3528 - dict keys shown as prefixes
@@ -272,26 +282,6 @@ class InteractiveHTMLGenerator:
         }
 
         # Return mapped value or format by replacing underscores and title-casing
-        return type_map.get(type_code, type_code.replace("_", " ").title())
-
-    def _format_type_local(self, type_code: str) -> str:
-        """Convert type code to Chinese for bilingual display."""
-        if not type_code:
-            return ""
-        type_map = {
-            "historical_site": "历史遗址",
-            "cultural_district": "文化区",
-            "religious_site": "宗教场所",
-            "museum": "博物馆",
-            "park": "公园",
-            "cultural_performance": "文化演出",
-            "nightlife": "夜生活",
-            "spa_wellness": "水疗养生",
-            "shopping": "购物",
-            "hotel": "酒店",
-            "hostel": "青旅",
-            "guesthouse": "民宿"
-        }
         return type_map.get(type_code, type_code.replace("_", " ").title())
 
     def _get_cover_image(self, location: str, index: int = 0) -> str:
@@ -725,7 +715,7 @@ class InteractiveHTMLGenerator:
                         "location_local": attr.get("location_local", attr.get("location", "")),
                         "coordinates": attr.get("coordinates", {}),
                         "type": self._format_type(attr.get("type", "")),
-                        "type_local": attr.get("type_local", "") or self._format_type_local(attr.get("type", "")),
+                        "type_local": attr.get("type_local", ""),
                         "cost": cost,
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
@@ -826,7 +816,7 @@ class InteractiveHTMLGenerator:
                         "location_local": ent.get("location_local", ent.get("location", "")),
                         "coordinates": ent.get("coordinates", {}),
                         "type": self._format_type(ent.get("type", "")),
-                        "type_local": ent.get("type_local", "") or self._format_type_local(ent.get("type", "")),
+                        "type_local": ent.get("type_local", ""),
                         "cost": cost,
                         "duration": ent.get("duration", ""),
                         "note": ent.get("note", ""),
@@ -937,7 +927,7 @@ class InteractiveHTMLGenerator:
                     "name_local": acc_name_local,
                     "name_cn": acc.get("name_cn", ""),  # backward compat
                     "type": self._format_type(acc.get("type", "hotel")),
-                    "type_local": acc.get("type_local", "") or self._format_type_local(acc.get("type", "hotel")),
+                    "type_local": acc.get("type_local", ""),
                     "location": acc.get("location_local", acc.get("location", "")),
                     "location_base": acc.get("location_base", acc.get("location", "")),
                     "location_local": acc.get("location_local", acc.get("location", "")),
@@ -979,20 +969,22 @@ class InteractiveHTMLGenerator:
                 # Itinerary format: location_change with route_details
                 route_details = loc_change.get("route_details", {})
 
-                # Determine transport type and icon (bilingual)
+                # Determine transport type and icon — local from ui_labels data
+                req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+                ui_local = req_labels.get("local", {})
                 transport_type = loc_change.get("transportation", "")
                 if "train" in transport_type.lower():
                     icon = "🚄"
                     type_display = "High-speed Train"
-                    type_display_local = "高铁"
+                    type_display_local = ui_local.get("high_speed_train", "")
                 elif "flight" in transport_type.lower():
                     icon = "✈️"
                     type_display = "Flight"
-                    type_display_local = "航班"
+                    type_display_local = ui_local.get("flight", "")
                 else:
                     icon = "🚌"
                     type_display = transport_type
-                    type_display_local = transport_type
+                    type_display_local = ""
 
                 # Extract route info based on transport type
                 if "flight_number" in route_details:
@@ -1011,25 +1003,19 @@ class InteractiveHTMLGenerator:
                     route_number = raw_train_num if raw_train_num and not raw_train_num.upper().startswith("VERIFIED") else ""
                     airline = ""
 
-                # Booking status with bilingual support
+                # Booking status — local strings come from ui_labels data
                 booking_status = loc_change.get("booking_status", "")
-                booking_status_local = ""
                 if not booking_status:
                     if loc_change.get("booking_required", False):
                         urgency = loc_change.get("booking_urgency", "")
                         if "CRITICAL" in urgency or "URGENT" in urgency:
                             booking_status = "URGENT"
-                            booking_status_local = "紧急"
                         else:
                             booking_status = "REQUIRED"
-                            booking_status_local = "需预订"
                     else:
                         booking_status = "VERIFIED"
-                        booking_status_local = "已确认"
-                else:
-                    # Map existing booking_status to local
-                    status_local_map = {"URGENT": "紧急", "REQUIRED": "需预订", "VERIFIED": "已确认", "RECOMMENDED": "推荐"}
-                    booking_status_local = status_local_map.get(booking_status, booking_status)
+                # Resolve local from ui_labels (key = lowercase status)
+                booking_status_local = ui_local.get(booking_status.lower(), "")
 
                 # Extract bilingual city names from location fields
                 from_local = self._extract_local_city(loc_change.get("from_location", ""), loc_change.get("from", ""))
@@ -1084,19 +1070,21 @@ class InteractiveHTMLGenerator:
                 if option:
                     method = option.get("method", "")
 
-                    # Determine transport type and icon (bilingual)
+                    # Determine transport type and icon — local from ui_labels data
+                    bl_req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+                    bl_ui_local = bl_req_labels.get("local", {})
                     if "flight" in method:
                         icon = "✈️"
                         type_display = "Flight"
-                        type_display_local = "航班"
+                        type_display_local = bl_ui_local.get("flight", "")
                     elif "train" in method:
                         icon = "🚄"
                         type_display = option.get("train_type", "High-speed Train")
-                        type_display_local = "高铁"
+                        type_display_local = bl_ui_local.get("high_speed_train", "")
                     else:
                         icon = "🚌"
                         type_display = method.replace("_", " ").title()
-                        type_display_local = type_display
+                        type_display_local = ""
 
                     # Extract station/airport info
                     stations = option.get("stations", {})
@@ -1135,7 +1123,7 @@ class InteractiveHTMLGenerator:
                     merged["transportation"] = {
                         "from": "Beijing",
                         "to": location,
-                        "from_local": self.CITY_NAMES_LOCAL.get("beijing", "北京"),
+                        "from_local": self._extract_local_city("", "Beijing"),
                         "to_local": self._extract_local_city("", location),
                         "departure_point": bl_dep_base,
                         "departure_point_local": bl_dep_local,
@@ -1150,7 +1138,7 @@ class InteractiveHTMLGenerator:
                         "airline": "",
                         "cost": self._to_display_currency(cost_eur if cost_eur else cost_cny, "EUR" if cost_eur else "CNY"),
                         "booking_status": "RECOMMENDED",
-                        "booking_status_local": "推荐",
+                        "booking_status_local": bl_ui_local.get("recommended", ""),
                         "booking_urgency": "",
                         "notes": " | ".join(notes_parts),
                         "time": {
@@ -1215,8 +1203,7 @@ class InteractiveHTMLGenerator:
                 # Start new trip
                 current_trip = {
                     "name": location,
-                    "days_label": "1 day",
-                    "days_label_local": "1天",
+                    "days_count": 1,
                     "cover": day.get("cover", ""),
                     "days": [day]
                 }
@@ -1224,8 +1211,7 @@ class InteractiveHTMLGenerator:
             else:
                 # Continue current trip
                 current_trip["days"].append(day)
-                current_trip["days_label"] = f"{len(current_trip['days'])} days"
-                current_trip["days_label_local"] = f"{len(current_trip['days'])}天"
+                current_trip["days_count"] = len(current_trip["days"])
 
         return trips
 
@@ -1250,23 +1236,33 @@ class InteractiveHTMLGenerator:
     def _generate_bucket_list_data(self) -> dict:
         """Generate PLAN_DATA for bucket list (city_guides format)"""
 
-        # Get toggle display labels from requirements-skeleton ui_labels
-        ui_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+        # Get ui_labels from requirements-skeleton and merge with defaults
+        req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+        base_labels = {**self.DEFAULT_UI_LABELS_BASE, **req_labels.get("base", {})}
+        local_labels = req_labels.get("local", {})  # No defaults for local — all from data
+        ui_labels = {
+            "base_display": req_labels.get("base_display", "EN"),
+            "local_display": req_labels.get("local_display", "Local"),
+            "base": base_labels,
+            "local": local_labels,
+        }
 
+        req_summary = self.requirements.get("trip_summary", {})
         trip_summary = {
             "trip_type": "bucket_list",
-            "trip_type_local": "心愿清单",
-            "description": "Destination Options",
-            "description_local": "目的地选项",
-            "base_location": "",
-            "period": "",
+            "trip_type_local": req_summary.get("trip_type_local", ""),
+            "description": req_summary.get("description", "Destination Options"),
+            "description_local": "",
+            "base_location": req_summary.get("base_location", ""),
+            "period": req_summary.get("period", ""),
             "period_local": "",
-            "travelers": "1 adult",
-            "travelers_local": "1位成人",
-            "budget_per_trip": f"{self._display_symbol}200-500",
+            "travelers": req_summary.get("travelers", "1 adult"),
+            "travelers_local": "",
+            "budget_per_trip": req_summary.get("budget_per_trip", f"{self._display_symbol}200-500"),
             "preferences": "",
             "base_display": ui_labels.get("base_display", "EN"),
-            "local_display": ui_labels.get("local_display", "Local")
+            "local_display": ui_labels.get("local_display", "Local"),
+            "ui_labels": ui_labels,
         }
 
         # Convert each city into a trip
@@ -1312,7 +1308,7 @@ class InteractiveHTMLGenerator:
                         "name_local": a_name_local,
                         "location": city_name,
                         "type": self._format_type(attr.get("type", "")),
-                        "type_local": attr.get("type_local", "") or self._format_type_local(attr.get("type", "")),
+                        "type_local": attr.get("type_local", ""),
                         "cost": self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR"),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
@@ -1391,28 +1387,30 @@ class InteractiveHTMLGenerator:
         # Root cause: Missing from original implementation
         duration_days = skel_summary.get("duration_days", 0)
         period = f"{duration_days} day{'s' if duration_days != 1 else ''}"
-        period_local = f"{duration_days}天"
+        period_local = skel_summary.get("period_local", "")
 
-        # Get toggle display labels from requirements-skeleton ui_labels
-        ui_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+        # Get ui_labels from requirements-skeleton and merge with defaults
+        req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+        base_labels = {**self.DEFAULT_UI_LABELS_BASE, **req_labels.get("base", {})}
+        local_labels = req_labels.get("local", {})  # No defaults for local — all from data
+        ui_labels = {
+            "base_display": req_labels.get("base_display", "EN"),
+            "local_display": req_labels.get("local_display", "Local"),
+            "base": base_labels,
+            "local": local_labels,
+        }
 
         # Bilingual trip type
         raw_trip_type = skel_summary.get("trip_type", "itinerary")
 
-        # Bilingual travelers
+        # Travelers: local comes from data, not hardcoded
         travelers_raw = skel_summary.get("travelers", "1 adult")
-        # Simple heuristic for travelers_local
-        travelers_local = travelers_raw
-        if "adult" in str(travelers_raw).lower():
-            import re
-            m = re.search(r'(\d+)', str(travelers_raw))
-            count = m.group(1) if m else "1"
-            travelers_local = f"{count}位成人"
+        travelers_local = skel_summary.get("travelers_local", "")
 
         trip_summary = {
             # Fix #1, #3: Format trip_type for natural language display
             "trip_type": self._format_trip_type(raw_trip_type),
-            "trip_type_local": self._format_trip_type_local(raw_trip_type),
+            "trip_type_local": skel_summary.get("trip_type_local", ""),
             "description": skel_summary.get("description", "Travel Plan"),
             "base_location": skel_summary.get("base_location", ""),
             "period": period,
@@ -1422,7 +1420,8 @@ class InteractiveHTMLGenerator:
             "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
             "preferences": prefs_str,
             "base_display": ui_labels.get("base_display", "EN"),
-            "local_display": ui_labels.get("local_display", "Local")
+            "local_display": ui_labels.get("local_display", "Local"),
+            "ui_labels": ui_labels,
         }
 
         # Merge all days
@@ -1652,7 +1651,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
               >
                 <span style={{ fontSize: '9px', color: '#b4b4b4', transform: open ? 'rotate(90deg)' : '', transition: 'transform .15s', display: 'inline-block', marginRight: '2px' }}>▶</span>
                 <span style={{ fontWeight: '500', flex: 1 }}>{trip.name}</span>
-                <span style={{ fontSize: '11px', color: '#b4b4b4' }}>({lang === 'local' && trip.days_label_local ? trip.days_label_local : trip.days_label})</span>
+                <span style={{ fontSize: '11px', color: '#b4b4b4' }}>({trip.days_count != null ? ((trip.days_count === 1 ? L('days_count_1', lang) : L('days_count', lang)).replace('{n}', trip.days_count)) : trip.days_label})</span>
               </div>
               {open && has && (
                 <div style={{ marginLeft: '16px' }}>
@@ -1671,7 +1670,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
                         }}
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(55,53,47,0.03)'; }}
                         onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(55,53,47,0.06)' : 'transparent'; }}
-                      >📄 {L('day', lang)} {d.day}</div>
+                      >📄 {dayLabelShort(d.day, lang)}</div>
                     );
                   })}
                 </div>
@@ -1952,87 +1951,37 @@ const getDisplayField = (item, field, lang) => {
   return item[field + '_base'] || item[field] || '';
 };
 
-// Centralized bilingual label dictionary
+// Data-driven bilingual labels — reads from PLAN_DATA.trip_summary.ui_labels
 const L = (key, lng) => {
-  const m = {
-    // PropertyRow / PropLine labels
-    time: ['Time', '时间'],
-    cost: ['Cost', '费用'],
-    type: ['Type', '类型'],
-    stars: ['Stars', '星级'],
-    rating: ['Rating', '评分'],
-    checkin: ['Check-in', '入住'],
-    checkout: ['Check-out', '退房'],
-    location: ['Location', '位置'],
-    cuisine: ['Cuisine', '菜系'],
-    signature: ['Signature Dishes', '招牌菜'],
-    opening_hours: ['Opening Hours', '营业时间'],
-    duration: ['Duration', '时长'],
-    route: ['Route', '路线'],
-    amenities: ['Amenities', '设施'],
-    highlights: ['Highlights', '亮点'],
-    links: ['Links', '链接'],
-    // Section titles
-    user_plans: ['User Plans', '用户计划'],
-    meals: ['Meals', '餐饮'],
-    attractions: ['Attractions', '景点'],
-    entertainment: ['Entertainment', '娱乐'],
-    accommodation: ['Accommodation', '住宿'],
-    transportation: ['Transportation', '交通'],
-    budget: ['Budget', '预算'],
-    // Trip summary
-    trip_type: ['Trip Type', '旅行类型'],
-    base_location: ['Base Location', '出发城市'],
-    period: ['Period', '行程周期'],
-    travelers: ['Travelers', '出行人数'],
-    budget_trip: ['Budget / Trip', '预算/行程'],
-    // Meal types
-    breakfast: ['🌅 Breakfast', '🌅 早餐'],
-    lunch: ['☀️ Lunch', '☀️ 午餐'],
-    dinner: ['🌙 Dinner', '🌙 晚餐'],
-    // Timeline category labels (without emoji)
-    cat_breakfast: ['Breakfast', '早餐'],
-    cat_lunch: ['Lunch', '午餐'],
-    cat_dinner: ['Dinner', '晚餐'],
-    cat_attraction: ['Attraction', '景点'],
-    cat_entertainment: ['Entertainment', '娱乐'],
-    cat_checkin: ['Check-in', '入住'],
-    // View toggles
-    kanban_view: ['Kanban View', '看板视图'],
-    timeline_view: ['Timeline View', '时间线视图'],
-    // Status
-    prepaid: ['Prepaid', '已预付'],
-    free: ['Free', '免费'],
-    optional: ['Optional', '可选'],
-    // Buttons
-    show_less: ['Show less', '收起'],
-    show_more: ['Show more', '展开'],
-    // Empty states
-    no_items: ['No items in this category', '此分类暂无项目'],
-    no_timeline: ['No timeline data available', '暂无时间线数据'],
-    no_timeline_sub: ['This day has no scheduled activities with time information', '当天没有带时间信息的活动安排'],
-    coming_soon: ['Itinerary coming soon...', '行程即将更新...'],
-    // Day prefix
-    day: ['Day', '第'],
-    // Budget
-    total: ['Total', '合计'],
-    shopping: ['Shopping', '购物'],
-    transport: ['Transport', '交通'],
-    // Booking
-    urgent: ['URGENT', '紧急'],
-    required: ['REQUIRED', '需预订'],
-    verified: ['VERIFIED', '已确认'],
-    recommended: ['RECOMMENDED', '推荐'],
-    // Links
-    google_maps: ['Google Maps', 'Google Maps'],
-    booking_link: ['Booking', 'Booking'],
-    link: ['Link', '链接'],
-    open_google: ['Open in Google Maps', '在Google Maps中打开'],
-    search_rednote: ['Search on 小红书', '在小红书搜索']
-  };
-  const pair = m[key] || [key, key];
-  return lng === 'local' ? pair[1] : pair[0];
+  const labels = PLAN_DATA.trip_summary.ui_labels || {};
+  if (lng === 'local' && labels.local && labels.local[key]) {
+    return labels.local[key];
+  }
+  if (labels.base && labels.base[key]) {
+    return labels.base[key];
+  }
+  return key; // ultimate fallback: the key itself
 };
+
+// Day label helper — handles format differences between languages
+// e.g. English: "Day 3 – Chongqing", Chinese: "第3天 – 重庆"
+const dayLabel = (dayNum, location, lng) => {
+  const labels = PLAN_DATA.trip_summary.ui_labels || {};
+  const fmt = (lng === 'local' && labels.local && labels.local.day_format)
+    || (labels.base && labels.base.day_format) || 'Day {n}';
+  return fmt.replace('{n}', dayNum) + (location ? ' – ' + location : '');
+};
+
+// Day label for sidebar nav (no location)
+const dayLabelShort = (dayNum, lng) => {
+  const labels = PLAN_DATA.trip_summary.ui_labels || {};
+  const fmt = (lng === 'local' && labels.local && labels.local.day_format)
+    || (labels.base && labels.base.day_format) || 'Day {n}';
+  return fmt.replace('{n}', dayNum);
+};
+
+// Meal type emoji (kept separate from label text — emoji is decoration, not translation)
+const mealEmoji = { breakfast: '🌅', lunch: '☀️', dinner: '🌙' };
 
 // Google Maps logo (from Simple Icons)
 const GoogleMapsLogo = ({ size = 14 }) => (
@@ -2208,13 +2157,13 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
             </>
           ) : (
             <h1 style={{ fontSize: sm ? '24px' : '36px', fontWeight: '700', color: '#37352f', margin: '0 0 24px', lineHeight: 1.25 }}>
-              {L('day', lang)} {day.day} – {day.location}
+              {dayLabel(day.day, day.location, lang)}
             </h1>
           )}
 
           {showSummary && (
             <h2 style={{ fontSize: sm ? '20px' : '26px', fontWeight: '700', color: '#37352f', margin: '0 0 28px' }}>
-              {L('day', lang)} {day.day} – {day.location}
+              {dayLabel(day.day, day.location, lang)}
             </h2>
           )}
         </div>
@@ -2239,7 +2188,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
             {['breakfast', 'lunch', 'dinner'].map(type => {
               const meal = day.meals[type];
               if (!meal) return null;
-              const lb = { breakfast: L('breakfast', lang), lunch: L('lunch', lang), dinner: L('dinner', lang) }[type];
+              const lb = (mealEmoji[type] || '') + ' ' + L(type, lang);
               return (
                 <div key={type} style={{
                   background: '#fff', borderRadius: '8px',
@@ -2568,7 +2517,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
         <div style={{ marginTop: sm ? '-20px' : '-30px', marginBottom: '24px' }}>
           <div style={{ fontSize: sm ? '36px' : '48px', lineHeight: 1, marginBottom: '6px' }}>📍</div>
           <h2 style={{ fontSize: sm ? '22px' : '28px', fontWeight: '700', color: '#37352f', margin: 0 }}>
-            {L('day', lang)} {day.day} – {day.location}
+            {dayLabel(day.day, day.location, lang)}
           </h2>
         </div>
 
