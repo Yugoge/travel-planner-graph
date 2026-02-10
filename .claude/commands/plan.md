@@ -1216,6 +1216,24 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sy
 
 Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-report.json for any remaining unmatched items.
 
+#### Step 15.6: Plan Validation Gate (MANDATORY)
+
+**CRITICAL**: After all agents complete and data is synced, run the plan validation script as a final quality gate before HTML generation. This ensures all agent outputs meet structural and content requirements.
+
+```bash
+python3 /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug}
+```
+
+**Exit code 0 (PASS)**: Validation passed. Proceed to Step 16 (HTML generation).
+
+**Exit code 1 (FAIL)**: Validation failed. Critical issues found.
+- Read the script output to identify which agents produced invalid data
+- Re-dispatch the failing agent(s) via Task tool with specific fix instructions from the validation errors
+- After agents fix their outputs, re-run the validation script
+- Do NOT proceed to Step 16 until validation passes (exit code 0)
+
+**Loop until exit code 0**: This step is a hard gate. HTML generation must not begin with invalid agent data.
+
 #### Step 16: Generate and Deploy (Atomic Operation)
 
 **IMPORTANT**: Generation and deployment are now a SINGLE atomic operation. Once HTML is generated, it MUST be deployed. There is NO option to skip deployment.

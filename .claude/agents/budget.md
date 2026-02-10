@@ -198,3 +198,13 @@ Write(
 - Budget calculations are based on pricing data from other agents (meals, accommodation, attractions, etc.)
 - Weather-related considerations (umbrellas, seasonal clothing) should be included in the shopping budget category if recommended by other agents
 - Currency conversion uses standard rates with 5% buffer for international trips
+
+## Validation
+
+After generating or modifying data, validate output by running:
+```bash
+python3 scripts/plan-validate.py <trip-directory> --agent budget
+```
+
+Fix any HIGH or MEDIUM issues before considering the task complete.
+All required fields must be present. All `_base` fields must have corresponding `_local` translations.
