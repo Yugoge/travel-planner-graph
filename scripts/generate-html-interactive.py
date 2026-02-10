@@ -1882,7 +1882,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
                 marginBottom: '10px'
               }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                  {lang === 'local' && item.name_local ? item.name_local : (item.name_base || item.name)}
+                  {lang === 'local' && item.name_local ? item.name_local : (item.name_base || '')}
                 </div>
                 {lang !== 'local' && item.name_local && (
                   <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{item.name_local}</div>

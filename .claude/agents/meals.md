@@ -83,8 +83,13 @@ For each day in the trip:
      "location_base": "Raffles City Chongqing, Jiesheng Street 8",
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 25,
-     "cuisine": "Cuisine type",
-     "notes": "Details",
+     "cost_local": 180,
+     "cuisine_base": "Sichuan Cuisine",
+     "cuisine_local": "川菜",
+     "signature_dishes_base": "Mapo Tofu, Kung Pao Chicken",
+     "signature_dishes_local": "麻婆豆腐、宫保鸡丁",
+     "notes_base": "Famous for spicy dishes, reservations recommended",
+     "notes_local": "以辣菜闻名，建议提前预约",
      "search_results": [
        {
          "skill": "gaode-maps",
@@ -171,7 +176,7 @@ Write(
 ```
 
 **Schema**: `schemas/meals.schema.json` (references `schemas/poi-common.schema.json`)
-**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `cuisine`
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `cuisine_base`
 **Validated by**: `scripts/validate-agent-outputs.py`
 
 **JSON Format**:
@@ -189,8 +194,13 @@ Write(
           "location_base": "Raffles City Chongqing, Jiesheng Street 8",
           "location_local": "重庆来福士广场捷盛街8号",
           "cost": 25,
-          "cuisine": "Italian",
-          "notes": "Famous for pasta, reservations recommended",
+          "cost_local": 180,
+          "cuisine_base": "Italian",
+          "cuisine_local": "意大利菜",
+          "signature_dishes_base": "Fresh pasta, Tiramisu",
+          "signature_dishes_local": "手工意面、提拉米苏",
+          "notes_base": "Famous for pasta, reservations recommended",
+          "notes_local": "以意面闻名，建议提前预约",
           "search_results": [
             {
               "skill": "google-maps",

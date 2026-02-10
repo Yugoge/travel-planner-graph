@@ -80,9 +80,15 @@ For each day in the trip:
      "location_base": "Nanshan District, Chongqing",
      "location_local": "重庆市南岸区南山",
      "cost": 50,
+     "cost_local": 360,
      "time": "20:00",
-     "type": "Theater",
-     "notes": "Book tickets in advance, dress code: smart casual",
+     "type_base": "Theater",
+     "type_local": "剧场",
+     "duration": "2 hours",
+     "note_base": "Dress code: smart casual",
+     "note_local": "着装要求：商务休闲",
+     "notes_base": "Book tickets in advance, dress code: smart casual",
+     "notes_local": "建议提前购票，着装要求：商务休闲",
      "search_results": [
        {
          "skill": "google-maps",
