@@ -32,6 +32,9 @@ class InteractiveHTMLGenerator:
         self.timeline = self._load_json("timeline.json")
         self.budget = self._load_json("budget.json")
 
+        # Load requirements-skeleton for ui_labels (toggle display text per trip)
+        self.requirements = self._load_json("requirements-skeleton.json")
+
         # Load image fetcher for real photos
         self.images_cache = self._load_json("images.json")
 
@@ -1106,150 +1109,30 @@ class InteractiveHTMLGenerator:
                         }
                     }
 
-        # Fix issue #6: Merge travel segments from timeline
-        # Fix: Provide bilingual names by looking up destination in merged POIs
-        # Fix: Also capture transit entries that don't start with "travel"
-        # (e.g. "Board train at X", "High-speed train to Y", "Walk to X")
-        travel_prefixes = (
-            "travel", "walk to", "drive to", "taxi to", "bus to",
-            "board train", "high-speed train", "train to", "flight to",
-            "metro to", "subway to", "transfer to", "return to",
-            "travel back", "return home",
-        )
-        # Get transportation time range to avoid duplicate timeline entries
-        transport_start = ""
-        transport_end = ""
-        if merged.get("transportation"):
-            transport_start = merged["transportation"].get("time", {}).get("start", "")
-            transport_end = merged["transportation"].get("time", {}).get("end", "")
-
-        # Build accommodation name_local for hotel/home travel segment lookups
-        acc_name_local_for_travel = ""
-        if merged.get("accommodation"):
-            acc_name_local_for_travel = merged["accommodation"].get("name_local", "")
-
-        if day_timeline:
-            import re as _re
-            for activity_name, times in day_timeline.items():
-                if isinstance(times, dict) and any(activity_name.lower().startswith(p) for p in travel_prefixes):
-                    start_time = times.get("start_time", "")
-                    end_time = times.get("end_time", "")
-                    if start_time and end_time:
-                        # Skip segments that overlap with main transportation entry
-                        if transport_start and transport_end:
-                            if start_time >= transport_start and end_time <= transport_end:
-                                continue  # Contained within main transportation
-
-                        # Fix #6 improved: Extract destination from travel name pattern
-                        dest_match = _re.search(
-                            r'(?:travel|walk|drive|taxi|bus|metro|subway|transfer|return|train)\s+(?:to|back to)\s+(.+)',
-                            activity_name, _re.IGNORECASE
-                        )
-                        dest_name = dest_match.group(1).strip() if dest_match else activity_name
-
-                        # Try to find local name for the destination from ALL merged POIs
-                        name_local = ""
-                        all_pois = (
-                            merged["attractions"] +
-                            merged["entertainment"] +
-                            [m for m in merged["meals"].values() if m] +
-                            merged.get("shopping", []) +
-                            ([merged["accommodation"]] if merged.get("accommodation") else [])
-                        )
-                        dest_lower = dest_name.lower()
-                        # Pass 1: exact substring match (either direction)
-                        for poi in all_pois:
-                            poi_name = poi.get("name_base", "")
-                            if not poi_name:
-                                continue
-                            pn_lower = poi_name.lower()
-                            if pn_lower in dest_lower or dest_lower in pn_lower:
-                                name_local = poi.get("name_local", "")
-                                if name_local:
-                                    break
-                        # Pass 2: significant word overlap (>= 2 shared words)
-                        if not name_local:
-                            stop_words = {"to", "the", "a", "at", "in", "on", "for", "and", "or", "of", "from", "back", "near"}
-                            dest_words = set(dest_lower.split()) - stop_words
-                            if len(dest_words) >= 1:
-                                for poi in all_pois:
-                                    poi_name = poi.get("name_base", "")
-                                    if not poi_name:
-                                        continue
-                                    poi_words = set(poi_name.lower().split()) - stop_words
-                                    shared = dest_words & poi_words
-                                    if len(shared) >= min(2, len(dest_words)):
-                                        name_local = poi.get("name_local", "")
-                                        if name_local:
-                                            break
-
-                        # Fallback: try CITY_NAMES_LOCAL for city references
-                        if not name_local and dest_name:
-                            for eng_name, local_name in self.CITY_NAMES_LOCAL.items():
-                                if eng_name.lower() in dest_lower:
-                                    name_local = local_name
-                                    break
-
-                        # Fallback: use accommodation name_local for hotel/home references
-                        if not name_local and acc_name_local_for_travel:
-                            if any(kw in dest_lower for kw in ["hotel", "home", "hostel", "inn", "guesthouse", "accommodation"]):
-                                name_local = acc_name_local_for_travel
-
-                        # Fallback: translate common generic English destination words
-                        if not name_local and dest_name:
-                            generic_map = {
-                                "lunch restaurant": "午餐餐厅", "dinner restaurant": "晚餐餐厅",
-                                "breakfast restaurant": "早餐餐厅", "restaurant": "餐厅",
-                                "hotpot restaurant": "火锅店", "hotpot": "火锅",
-                                "spa": "温泉/水疗", "shopping area": "购物区",
-                                "shopping mall": "商场", "airport": "机场",
-                                "train station": "火车站", "bus station": "汽车站",
-                                "metro station": "地铁站", "bund": "外滩",
-                                "temple": "寺庙", "park": "公园", "museum": "博物馆",
-                                "market": "市场", "bar": "酒吧", "cafe": "咖啡厅",
-                            }
-                            for eng_phrase, cn_phrase in generic_map.items():
-                                if eng_phrase in dest_lower:
-                                    name_local = cn_phrase
-                                    break
-
-                        # Determine transport mode from activity name prefix
-                        mode_map = {
-                            "walk": "walk", "drive": "car", "taxi": "taxi",
-                            "bus": "bus", "metro": "metro", "subway": "metro",
-                            "train": "train", "high-speed train": "train",
-                            "board train": "train", "flight": "flight",
-                            "transfer": "transit", "return": "walk", "travel": "walk",
-                        }
-                        mode_local_map = {
-                            "walk": "步行前往", "car": "驾车前往", "taxi": "打车前往",
-                            "bus": "乘公交前往", "metro": "乘地铁前往",
-                            "train": "乘火车前往", "flight": "乘飞机前往",
-                            "transit": "换乘前往",
-                        }
-                        act_lower = activity_name.lower()
-                        mode = "walk"  # default
-                        for prefix, m in mode_map.items():
-                            if act_lower.startswith(prefix):
-                                mode = m
-                                break
-
-                        # Build bilingual label using mode
-                        label_local = ""
-                        if name_local and name_local != activity_name:
-                            verb_local = mode_local_map.get(mode, "前往")
-                            label_local = f"{verb_local}{name_local}"
-
-                        duration_min = times.get("duration_minutes", 0)
-                        merged.setdefault("travel_segments", []).append({
-                            "name": activity_name,
-                            "name_base": activity_name,
-                            "name_local": label_local if label_local else activity_name,
-                            "mode": mode,
-                            "time": {"start": start_time, "end": end_time},
-                            "duration": f"{duration_min}min" if duration_min else "",
-                            "type": "travel"
-                        })
+        # Read structured travel_segments from timeline data (produced by enrichment agent)
+        # travel_segments is at the day level (same level as "timeline"), not inside it
+        # Each segment has: name_base, name_local, mode, start_time, end_time, duration_minutes
+        timeline_day_obj = None
+        if self.timeline and "days" in self.timeline:
+            timeline_day_obj = next(
+                (d for d in self.timeline["days"] if d.get("day") == day_num),
+                None
+            )
+        if timeline_day_obj:
+            raw_segments = timeline_day_obj.get("travel_segments", [])
+            for seg in raw_segments:
+                if not seg.get("start_time") or not seg.get("end_time"):
+                    continue
+                duration_min = seg.get("duration_minutes", 0)
+                merged.setdefault("travel_segments", []).append({
+                    "name": seg.get("name_base", ""),
+                    "name_base": seg.get("name_base", ""),
+                    "name_local": seg.get("name_local", ""),
+                    "mode": seg.get("mode", "walk"),
+                    "time": {"start": seg["start_time"], "end": seg["end_time"]},
+                    "duration": f"{duration_min}min" if duration_min else "",
+                    "type": "travel"
+                })
 
         # Add transportation cost to budget (from merged transportation data)
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
@@ -1315,6 +1198,9 @@ class InteractiveHTMLGenerator:
     def _generate_bucket_list_data(self) -> dict:
         """Generate PLAN_DATA for bucket list (city_guides format)"""
 
+        # Get toggle display labels from requirements-skeleton ui_labels
+        ui_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+
         trip_summary = {
             "trip_type": "bucket_list",
             "description": "Destination Options",
@@ -1322,7 +1208,9 @@ class InteractiveHTMLGenerator:
             "period": "",
             "travelers": "1 adult",
             "budget_per_trip": f"{self._display_symbol}200-500",
-            "preferences": ""
+            "preferences": "",
+            "base_display": ui_labels.get("base_display", "EN"),
+            "local_display": ui_labels.get("local_display", "Local")
         }
 
         # Convert each city into a trip
@@ -1448,6 +1336,9 @@ class InteractiveHTMLGenerator:
         duration_days = skel_summary.get("duration_days", 0)
         period = f"{duration_days} day{'s' if duration_days != 1 else ''}"
 
+        # Get toggle display labels from requirements-skeleton ui_labels
+        ui_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
+
         trip_summary = {
             # Fix #1, #3: Format trip_type for natural language display
             "trip_type": self._format_trip_type(skel_summary.get("trip_type", "itinerary")),
@@ -1456,7 +1347,9 @@ class InteractiveHTMLGenerator:
             "period": period,
             "travelers": skel_summary.get("travelers", "1 adult"),
             "budget_per_trip": skel_summary.get("budget_per_trip", f"{self._display_symbol}500"),
-            "preferences": prefs_str
+            "preferences": prefs_str,
+            "base_display": ui_labels.get("base_display", "EN"),
+            "local_display": ui_labels.get("local_display", "Local")
         }
 
         # Merge all days
@@ -1805,9 +1698,9 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               </div>
             </div>
           )}
-          {item.departure_time && item.arrival_time && <PropertyRow label={lbl('time', lang)}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
-          {item.transport_type && <PropertyRow label={lbl('type', lang)}>{item.transport_type}</PropertyRow>}
-          {item.departure_point && <PropertyRow label={lbl('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
+          {item.departure_time && item.arrival_time && <PropertyRow label={"Time"}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
+          {item.transport_type && <PropertyRow label={"Type"}>{item.transport_type}</PropertyRow>}
+          {item.departure_point && <PropertyRow label={"Route"}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
           {item.highlights && item.highlights.length > 0 && (
             <div style={{ marginTop: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
@@ -1868,14 +1761,14 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
   const W = sm ? '85%' : '400px';
 
   const categoryConfig = {
-    meals: { icon: '🍽️', label: lbl('meals', lang), color: '#f0b429' },
-    attractions: { icon: '📍', label: lbl('attractions', lang), color: '#4a90d9' },
-    entertainment: { icon: '🎭', label: lbl('entertainment', lang), color: '#9b6dd7' },
-    accommodation: { icon: '🏨', label: lbl('accommodation', lang), color: '#45b26b' },
-    shopping: { icon: '🛍️', label: lbl('shopping', lang), color: '#e07c5a' },
-    transportation: { icon: '🚄', label: lbl('transportation', lang), color: '#0ea5e9' }
+    meals: { icon: '🍽️', label: 'Meals', color: '#f0b429' },
+    attractions: { icon: '📍', label: 'Attractions', color: '#4a90d9' },
+    entertainment: { icon: '🎭', label: 'Entertainment', color: '#9b6dd7' },
+    accommodation: { icon: '🏨', label: 'Accommodation', color: '#45b26b' },
+    shopping: { icon: '🛍️', label: 'Shopping', color: '#e07c5a' },
+    transportation: { icon: '🚄', label: 'Transport', color: '#0ea5e9' }
   };
-  const cfg = categoryConfig[category] || { icon: '💰', label: lbl('budget', lang), color: '#37352f' };
+  const cfg = categoryConfig[category] || { icon: '💰', label: 'Budget', color: '#37352f' };
 
   return (
     <>
@@ -1928,7 +1821,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
                   display: 'flex', justifyContent: 'space-between',
                   fontSize: '14px', marginTop: '8px'
                 }}>
-                  <span style={{ color: '#9b9a97' }}>{lbl('cost', lang)}</span>
+                  <span style={{ color: '#9b9a97' }}>{"Cost"}</span>
                   <span style={{ fontWeight: '600', color: cfg.color }}>
                     {fmtCost(item.cost)}
                   </span>
@@ -2354,12 +2247,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {' → '}
                       {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to}
                     </div>
-                    <PropLine label={lbl('time', lang)} value={`${day.transportation.departure_time} – ${day.transportation.arrival_time}`} />
-                    <PropLine label={lbl('type', lang)} value={day.transportation.transport_type} />
+                    <PropLine label={"Time"} value={`${day.transportation.departure_time} – ${day.transportation.arrival_time}`} />
+                    <PropLine label={"Type"} value={day.transportation.transport_type} />
                     {(day.transportation.cost > 0 || day.transportation.cost_type === 'prepaid') && (
-                      <PropLine label={lbl('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type)} />
+                      <PropLine label={"Cost"} value={fmtCost(day.transportation.cost, day.transportation.cost_type)} />
                     )}
-                    <PropLine label={lbl('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
+                    <PropLine label={"Route"} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
                   </div>
                 </div>
               </Section>
@@ -2375,12 +2268,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                   <Donut budget={day.budget} size={sm ? 72 : 88} onBudgetClick={onBudgetClick} day={day} />
                   <div style={{ fontSize: '13px', color: '#6b6b6b', lineHeight: 2, flex: 1, width: '100%' }}>
                     {[
-                      { k: 'meals', l: lbl('meals', lang), c: '#f0b429' },
-                      { k: 'attractions', l: lbl('attractions', lang), c: '#4a90d9' },
-                      { k: 'entertainment', l: lbl('entertainment', lang), c: '#9b6dd7' },
-                      { k: 'accommodation', l: lbl('accommodation', lang), c: '#45b26b' },
-                      { k: 'shopping', l: lbl('shopping', lang), c: '#e07c5a' },
-                      { k: 'transportation', l: lbl('transportation', lang), c: '#0ea5e9' }
+                      { k: 'meals', l: 'Meals', c: '#f0b429' },
+                      { k: 'attractions', l: 'Attractions', c: '#4a90d9' },
+                      { k: 'entertainment', l: 'Entertainment', c: '#9b6dd7' },
+                      { k: 'accommodation', l: 'Accommodation', c: '#45b26b' },
+                      { k: 'shopping', l: 'Shopping', c: '#e07c5a' },
+                      { k: 'transportation', l: 'Transport', c: '#0ea5e9' }
                     ].filter(r => day.budget[r.k] > 0).map(r => (
                       <div key={r.k} style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
@@ -2397,7 +2290,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       </div>
                     ))}
                     <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{lbl('total', lang)}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
+                      <span>{"Total"}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
                     </div>
                   </div>
                 </div>
@@ -2752,7 +2645,7 @@ function NotionTravelApp() {
                 color: lang === 'local' ? '#45b26b' : '#6b6b6b',
                 cursor: 'pointer', transition: 'all .12s'
               }}>
-                {_uiLabels.local_display || 'Local'}
+                {PLAN_DATA.trip_summary.local_display || 'Local'}
               </button>
               <button onClick={() => setLang('base')} style={{
                 padding: sm ? '8px 10px' : '9px 14px',
@@ -2763,7 +2656,7 @@ function NotionTravelApp() {
                 color: lang === 'base' ? '#45b26b' : '#6b6b6b',
                 cursor: 'pointer', transition: 'all .12s'
               }}>
-                {_uiLabels.base_display || 'EN'}
+                {PLAN_DATA.trip_summary.base_display || 'EN'}
               </button>
             </div>
           </div>
