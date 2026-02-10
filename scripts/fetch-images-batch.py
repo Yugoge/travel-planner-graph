@@ -259,7 +259,8 @@ class BatchImageFetcher:
                 photos = poi.get("photos", {})
                 url = photos.get("url")
                 if url and url.startswith("http"):
-                    return url
+                    # Ensure HTTPS (Gaode supports it; avoids mixed-content on HTTPS pages)
+                    return url.replace("http://", "https://", 1)
         except subprocess.TimeoutExpired:
             pass
         except Exception:
@@ -306,8 +307,12 @@ class BatchImageFetcher:
                 continue
 
             print(f"  Fetching {city}...", end=" ")
-            # City covers always use Google (better coverage for skyline/cityscape photos)
-            photo_url = self.fetch_city_photo_google(city)
+            # Use configured map service (same as POI photos)
+            service = self.config.get("map_service", "google")
+            if service == "gaode":
+                photo_url = self._gaode_search(f"{city} 景点", city)
+            else:
+                photo_url = self.fetch_city_photo_google(city)
 
             if photo_url:
                 self.cache["city_covers"][city] = photo_url

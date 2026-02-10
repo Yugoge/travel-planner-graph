@@ -78,7 +78,9 @@ def gaode_search(keywords, city="", extensions="all"):
             for poi in data["pois"]:
                 photos = poi.get("photos", [])
                 if photos and photos[0].get("url"):
-                    return photos[0]["url"]
+                    url = photos[0]["url"]
+                    # Ensure HTTPS (Gaode CDN supports it; avoids mixed-content on HTTPS pages)
+                    return url.replace("http://", "https://", 1)
         return None
     except Exception as e:
         print(f"  [ERROR] API call failed: {e}")

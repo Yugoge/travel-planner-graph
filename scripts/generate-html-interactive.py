@@ -1758,11 +1758,11 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
           )}
           {/* Category-specific field ordering */}
           {type === 'accommodation' ? (<>
-            {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
-            {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
             {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
             {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
+            {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
+            {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
             {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
           </>) : type === 'transportation' ? (<>
             {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
@@ -1790,6 +1790,8 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
               </div>
             )}
           </>) : (<>
+            {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
+            {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
             {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             {getDisplayField(item, 'cuisine', lang) && <PropertyRow label={L('cuisine', lang)}>{getDisplayField(item, 'cuisine', lang)}</PropertyRow>}
             {getDisplayField(item, 'signature_dishes', lang) && <PropertyRow label={L('signature', lang)}>{getDisplayField(item, 'signature_dishes', lang)}</PropertyRow>}
@@ -1798,8 +1800,6 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
             {item.optional && <PropertyRow label={L('optional', lang)}><span style={{ padding: '2px 8px', background: '#f5f5f3', borderRadius: '4px', fontSize: '12px', color: '#9b9a97', fontWeight: '600' }}>{L('optional', lang)}</span></PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
-            {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
-            {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
           </>)}
           {((lang === 'local' && item.amenities_local && item.amenities_local.length > 0) ? item.amenities_local : (item.amenities_base && item.amenities_base.length > 0 ? item.amenities_base : null)) && (
             <div style={{ marginTop: '12px' }}>
@@ -2427,9 +2427,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         {getDisplayName(shop, lang)}
                         <RedNoteLink name={shop.name_local || shop.name_base} />
                       </div>
+                      {shop.time && <PropLine label={L('time', lang)} value={`${shop.time.start} – ${shop.time.end}`} />}
                       {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />
-                      {shop.time && <PropLine label={L('time', lang)} value={`${shop.time.start} – ${shop.time.end}`} />}
                       {(shop.location_base || shop.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={shop} lang={lang} mapProvider={mapProvider} />} />}
                       <ExpandableNotes text={shop.notes_base} textLocal={shop.notes_local} lang={lang} />
                     </div>
@@ -2458,12 +2458,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
-                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
+                    {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
+                    {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
                     <PropLine label={L('type', lang)} value={getDisplayField(day.accommodation, 'type', lang)} />
                     {day.accommodation.stars > 0 && <PropLine label={L('stars', lang)} value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
-                    {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
-                    {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     <PropLine label={L('location', lang)} value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
                     <ExpandableNotes text={day.accommodation.notes_base} textLocal={day.accommodation.notes_local} lang={lang} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
