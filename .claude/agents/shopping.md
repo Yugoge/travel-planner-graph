@@ -84,7 +84,7 @@ For each day in the trip:
      "location_base": "Shapingba District, Chongqing",
      "location_local": "重庆市沙坪坝区磁器口",
      "cost": 100,
-     "cost_local": 720,
+
      "type_base": "Local Market",
      "type_local": "本地市场",
      "notes_base": "Open 9am-5pm, bargaining expected, famous for textiles",
@@ -202,7 +202,7 @@ Write(
             "location_base": "Shapingba District, Chongqing",
             "location_local": "重庆市沙坪坝区磁器口",
             "cost": 100,
-            "cost_local": 720,
+       
             "type_base": "Local Market",
             "type_local": "本地市场",
             "notes_base": "Open 9am-5pm, bargaining expected, famous for textiles",

@@ -134,6 +134,7 @@ class InteractiveHTMLGenerator:
         "urgent": "URGENT", "required": "REQUIRED", "verified": "VERIFIED",
         "recommended": "RECOMMENDED",
         "high_speed_train": "High-speed Train", "flight": "Flight",
+        "booking_required": "Booking Required",
     }
 
     def _extract_local_city(self, location_field: str, city_name: str) -> str:
@@ -731,7 +732,6 @@ class InteractiveHTMLGenerator:
                         "cost": cost,
                         "cost_local": attr.get("cost", 0),
                         "opening_hours": attr.get("opening_hours", ""),
-                        "recommended_duration": attr.get("recommended_duration", ""),
                         "optional": is_optional,
                         "image": self._get_placeholder_image(
                             "attraction",
@@ -824,7 +824,6 @@ class InteractiveHTMLGenerator:
                         "type_local": ent.get("type_local", ""),
                         "cost": cost,
                         "cost_local": ent.get("cost", 0),
-                        "duration": ent.get("duration", ""),
                         "note_base": ent.get("note", ""),
                         "note_local": ent.get("note_local", ""),
                         "notes_base": ent.get("notes", ""),
@@ -1047,6 +1046,7 @@ class InteractiveHTMLGenerator:
                     "status_local": booking_status_local,
                     "notes_base": loc_change.get("notes", ""),
                     "notes_local": loc_change.get("notes_local", ""),
+                    "booking_required": loc_change.get("booking_required", False),
                     "time": {
                         "start": loc_change.get("departure_time", "07:00"),
                         "end": loc_change.get("arrival_time", "10:00")
@@ -1768,6 +1768,13 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
                   {getDisplayField(item, 'status', lang)}
                 </span>
               </PropertyRow>
+            )}
+            {item.booking_required && (
+              <div style={{ marginTop: '6px' }}>
+                <span style={{ fontSize: '11px', padding: '2px 8px', background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '4px', color: '#e65100', fontWeight: '600' }}>
+                  {L('booking_required', lang)}
+                </span>
+              </div>
             )}
           </>) : (<>
             {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}

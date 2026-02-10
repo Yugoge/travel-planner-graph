@@ -82,7 +82,7 @@ For each day in the trip:
      "location_base": "235 Minquan Road, Yuzhong District",
      "location_local": "重庆市渝中区民权路235号",
      "cost": 120,
-     "cost_local": 860,
+
      "type_base": "Hotel",
      "type_local": "酒店",
      "amenities_base": ["WiFi", "Breakfast included", "Pool"],
@@ -115,7 +115,7 @@ For each day in the trip:
      "location_base": "Jiefangbei District, Chongqing",
      "location_local": "重庆市解放碑商圈",
      "cost": 180,
-     "cost_local": 1290,
+
      "total_cost": 1250,
      "type_base": "Vacation Rental (Airbnb)",
      "type_local": "度假公寓 (Airbnb)",
@@ -224,7 +224,7 @@ Write(
           "location_base": "235 Minquan Road, Yuzhong District",
           "location_local": "重庆市渝中区民权路235号",
           "cost": 120,
-          "cost_local": 860,
+     
           "type_base": "Hotel",
           "type_local": "酒店",
           "amenities_base": ["WiFi", "Breakfast included", "Pool"],

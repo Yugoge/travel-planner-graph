@@ -87,9 +87,9 @@ For each location change day:
      "type_local": "高铁",
      "departure_time": "08:30",
      "arrival_time": "11:45",
-     "duration_minutes": 195,
+
      "cost": 80,
-     "cost_local": 553,
+
      "currency_local": "CNY",
      "cost_type_base": "Second class seat",
      "cost_type_local": "二等座",
@@ -195,9 +195,9 @@ Write(
           "type_local": "高铁",
           "departure_time": "08:30",
           "arrival_time": "11:45",
-          "duration_minutes": 195,
+     
           "cost": 80,
-          "cost_local": 553,
+     
           "currency_local": "CNY",
           "cost_type_base": "Second class seat",
           "cost_type_local": "二等座",

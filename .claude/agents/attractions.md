@@ -96,13 +96,13 @@ For each day in the trip:
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 15,
 
-     "duration_minutes": 120,
+
      "type_base": "Museum",
      "type_local": "博物馆",
      "notes_base": "Book tickets online, skip-the-line available",
      "notes_local": "可网上购票，有免排队通道",
      "opening_hours": "09:00-17:00",
-     "recommended_duration": "2-3 hours",
+
      "search_results": [
        {
          "skill": "google-maps",
@@ -197,7 +197,7 @@ Write(
 ```
 
 **Schema**: `schemas/attractions.schema.json` (references `schemas/poi-common.schema.json`)
-**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `duration_minutes`, `type_base`
+**Required fields**: `name_base`, `name_local`, `location_base`, `location_local`, `cost`, `currency_local`, `type_base`
 **Validated by**: `scripts/validate-agent-outputs.py`
 
 **JSON Format**:
@@ -217,13 +217,13 @@ Write(
             "location_local": "重庆来福士广场捷盛街8号",
             "cost": 15,
        
-            "duration_minutes": 120,
+       
             "type_base": "Museum",
             "type_local": "博物馆",
             "notes_base": "Book tickets online, skip-the-line available",
             "notes_local": "可网上购票，有免排队通道",
             "opening_hours": "09:00-17:00",
-            "recommended_duration": "2-3 hours",
+       
             "search_results": [
               {
                 "skill": "google-maps",
