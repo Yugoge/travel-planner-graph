@@ -1,0 +1,147 @@
+# Data Schema Refactor Plan
+
+## Summary
+Standardize all POI field names to `field_base`/`field_local` convention, eliminate universal/ambiguous fields, add missing display fields (transport status, route_number, company), and unify travel_segments as POI-style items.
+
+## Architecture Decisions (confirmed by user)
+- **coordinates**: KEEP (all POIs, used by MapLink)
+- **departure_point**: KEEP as `departure_point_base`/`departure_point_local` (station-level, distinct from from/to city-level)
+- **note**: KEEP as `note_base`/`note_local` (separate from notes — short tip vs detailed)
+- **cost_type**: KEEP as `cost_type_base`/`cost_type_local`
+
+## Changes by Element Type
+
+### MEAL
+| Field | Action |
+|-------|--------|
+| `name` | DELETE (keep base/local) |
+| `name_en` | DELETE (data + kanban display) |
+| `cuisine` → `cuisine_base` | RENAME |
+| `signature_dishes` → `signature_dishes_base` | RENAME |
+| `location` | DELETE (keep base/local) |
+| `notes` → `notes_base` | RENAME |
+| `cost_local` | ADD (raw local currency amount) |
+
+### ATTRACTION
+| Field | Action |
+|-------|--------|
+| `name` | DELETE (keep base/local) |
+| `name_en` | DELETE |
+| `type` → `type_base` | RENAME |
+| `location` | DELETE (keep base/local) |
+| `notes` → `notes_base` | RENAME |
+| `cost_local` | ADD |
+| `optional` | ADD to sidebar display |
+| `highlights` | DELETE (agent doesn't produce this field) |
+| `why_worth_visiting` / `_local` | DELETE (merge into notes at merge layer) |
+| `best_time_to_visit` / `_local` | DELETE (merge into notes at merge layer) |
+
+### ENTERTAINMENT
+| Field | Action |
+|-------|--------|
+| `name` | DELETE (keep base/local) |
+| `name_en` | DELETE |
+| `type` → `type_base` | RENAME |
+| `location` | DELETE (keep base/local) |
+| `note` → `note_base` | RENAME (keep separate from notes) |
+| `notes` → `notes_base` | RENAME |
+| `cost_local` | ADD |
+
+### ACCOMMODATION
+| Field | Action |
+|-------|--------|
+| `name`, `name_cn` | DELETE (keep base/local) |
+| `type` → `type_base` | RENAME |
+| `location` | DELETE (keep base/local) |
+| `rating` | DELETE completely |
+| `notes` → `notes_base` | RENAME |
+| `amenities` → `amenities_base` | RENAME, ADD `amenities_local` |
+| `cost_local` | ADD |
+| `time` | ADD to kanban display |
+
+### SHOPPING
+| Field | Action |
+|-------|--------|
+| `name` | DELETE (keep base/local) |
+| `type` → `type_base` | RENAME, ADD `type_local` |
+| `location` | DELETE (keep base/local) |
+| `notes` → `notes_base` | RENAME (agent already has notes_local) |
+| `cost_local` | ADD |
+
+### TRANSPORTATION
+| Field | Action |
+|-------|--------|
+| `from` → `from_base` | RENAME (city-level) |
+| `to` → `to_base` | RENAME (city-level) |
+| `departure_point` → `departure_point_base` | RENAME (station-level) |
+| `arrival_point` → `arrival_point_base` | RENAME (station-level) |
+| `departure_time`, `arrival_time` | DELETE (use unified `time` field) |
+| `transport_type` → `type_base` | RENAME |
+| `transport_type_local` → `type_local` | RENAME |
+| `cost_type` → `cost_type_base` | RENAME, ADD `cost_type_local` |
+| `airline` → `company_base` | RENAME, ADD `company_local` |
+| `booking_status` → `status_base` | RENAME |
+| `booking_status_local` → `status_local` | RENAME |
+| `booking_urgency` | DELETE (merge into notes) |
+| `notes` → `notes_base` | RENAME |
+| `highlights` | DELETE (no agent data) |
+| `cost_local` | ADD |
+| `route_number` | ADD to kanban + sidebar display |
+| `company_base`/`company_local` | ADD to kanban + sidebar display |
+| `status_base`/`status_local` | ADD to kanban + sidebar display |
+| `name_base`/`name_local` | ADD (POI-style: "Chongqing → Bazhong") |
+
+### TRAVEL SEGMENT
+| Field | Action |
+|-------|--------|
+| `name` | DELETE (keep base/local) |
+| `mode` | DELETE |
+| `type` → `type_base` | RENAME, ADD `type_local` |
+
+## Implementation Phases
+
+### Phase 1: Python _merge_day_data (lines 521-1189)
+All field renames and deletions in the merge layer:
+1. Meal section (lines 572-632)
+2. Attraction section (lines 634-743) — includes why_worth_visiting/best_time_to_visit merge
+3. Entertainment section (lines 745-839)
+4. Shopping section (lines 841-872)
+5. Accommodation section (lines 874-956) — remove rating
+6. Transportation section (lines 958-1148) — most complex
+7. Travel segments section (lines 1150-1173)
+
+### Phase 2: Python _generate_bucket_list_data (lines 1236-1372)
+Same renames for bucket-list path.
+
+### Phase 3: React helpers (lines 1929-1957)
+- `getDisplayName`: remove `item.name` fallback
+- `fmtCost`: update cost_type handling to `cost_type_base`
+- `getDisplayLocation`: remove `item.location` fallback
+- `getDisplayField`: remove `item[field]` fallback
+
+### Phase 4: React ItemDetailSidebar (lines 1689-1821)
+- Transport title: use from_base/to_base
+- Transport fields: time.start/end, type_base, departure_point_base, cost_type_base
+- ADD: route_number, company, status display
+- ADD: optional badge for attractions
+- DELETE: rating display for accommodation
+- Update all field references to _base/_local
+
+### Phase 5: React KanbanView (lines 2128-2411)
+- Meal: delete name_en, update field refs
+- Attraction: update highlights, notes refs
+- Entertainment: update note/notes refs
+- Accommodation: add time display, delete stars/rating
+- Transport: rewrite with new field names, add route_number/company/status/notes
+- Shopping: update field refs
+
+### Phase 6: React TimelineView (lines 2458-2662)
+- Remove TRAVEL_MODE_EMOJI (no more mode field)
+- Update transport references
+- Update travel segment rendering
+
+### Phase 7: UI labels + data files
+- Update DEFAULT_UI_LABELS_BASE: add route_number, company, status; remove rating
+- Update requirements-skeleton.json ui_labels for both trips
+
+### Phase 8: Regenerate + deploy + test

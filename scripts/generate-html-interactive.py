@@ -105,10 +105,11 @@ class InteractiveHTMLGenerator:
     # These serve as fallback keys when requirements-skeleton doesn't provide a label.
     DEFAULT_UI_LABELS_BASE = {
         "time": "Time", "cost": "Cost", "type": "Type", "stars": "Stars",
-        "rating": "Rating", "checkin": "Check-in", "checkout": "Check-out",
+        "checkin": "Check-in", "checkout": "Check-out",
         "location": "Location", "cuisine": "Cuisine", "signature": "Signature Dishes",
         "opening_hours": "Opening Hours", "duration": "Duration", "route": "Route",
-        "amenities": "Amenities", "highlights": "Highlights", "links": "Links",
+        "route_number": "Route Number", "company": "Company", "status": "Status",
+        "amenities": "Amenities", "links": "Links",
         "user_plans": "User Plans", "meals": "Meals", "attractions": "Attractions",
         "entertainment": "Entertainment", "accommodation": "Accommodation",
         "transportation": "Transportation", "shopping": "Shopping", "budget": "Budget",
@@ -601,20 +602,18 @@ class InteractiveHTMLGenerator:
                     name_local = meal.get("name_local", meal.get("name_en", ""))
 
                     merged["meals"][meal_type] = {
-                        "name": name_local if name_local else name_base,  # Display local by default
                         "name_base": name_base,
                         "name_local": name_local,
-                        "name_en": meal.get("name_en", ""),  # Keep for backward compatibility
-                        "location": meal.get("location_local", meal.get("location", "")),
                         "location_base": meal.get("location_base", meal.get("location", "")),
                         "location_local": meal.get("location_local", meal.get("location", "")),
                         "coordinates": meal.get("coordinates", {}),
                         "cost": cost,
-                        "cuisine": meal.get("cuisine", ""),
+                        "cost_local": meal.get("cost", 0),
+                        "cuisine_base": meal.get("cuisine", ""),
                         "cuisine_local": meal.get("cuisine_local", ""),
-                        "signature_dishes": meal.get("signature_dishes", ""),
+                        "signature_dishes_base": meal.get("signature_dishes", ""),
                         "signature_dishes_local": meal.get("signature_dishes_local", ""),
-                        "notes": meal.get("notes", ""),
+                        "notes_base": meal.get("notes", ""),
                         "notes_local": meal.get("notes_local", ""),
                         "image": self._get_placeholder_image(
                             "meal",
@@ -705,18 +704,32 @@ class InteractiveHTMLGenerator:
                     if "optional" in str(attr.get("notes", "")).lower():
                         is_optional = True
 
+                    # Merge why_worth_visiting and best_time_to_visit into notes
+                    attr_notes = attr.get("notes", "")
+                    attr_notes_local = attr.get("notes_local", "")
+                    wwv = attr.get("why_worth_visiting", "")
+                    wwv_local = attr.get("why_worth_visiting_local", "")
+                    btv = attr.get("best_time_to_visit", "")
+                    btv_local = attr.get("best_time_to_visit_local", "")
+                    if wwv and wwv not in attr_notes:
+                        attr_notes = f"{attr_notes}. {wwv}" if attr_notes else wwv
+                    if wwv_local and wwv_local not in attr_notes_local:
+                        attr_notes_local = f"{attr_notes_local}\u3002{wwv_local}" if attr_notes_local else wwv_local
+                    if btv and btv not in attr_notes:
+                        attr_notes = f"{attr_notes}. Best time: {btv}" if attr_notes else f"Best time: {btv}"
+                    if btv_local and btv_local not in attr_notes_local:
+                        attr_notes_local = f"{attr_notes_local}\u3002\u6700\u4f73\u65f6\u95f4\uff1a{btv_local}" if attr_notes_local else f"\u6700\u4f73\u65f6\u95f4\uff1a{btv_local}"
+
                     merged["attractions"].append({
-                        "name": attr_name_local if attr_name_local else attr_name_base,  # Display local by default
                         "name_base": attr_name_base,
                         "name_local": attr_name_local,
-                        "name_en": attr.get("name_en", ""),  # Keep for backward compatibility
-                        "location": attr.get("location_local", attr.get("location", "")),
                         "location_base": attr.get("location_base", attr.get("location", "")),
                         "location_local": attr.get("location_local", attr.get("location", "")),
                         "coordinates": attr.get("coordinates", {}),
-                        "type": self._format_type(attr.get("type", "")),
+                        "type_base": self._format_type(attr.get("type", "")),
                         "type_local": attr.get("type_local", ""),
                         "cost": cost,
+                        "cost_local": attr.get("cost", 0),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": attr.get("recommended_duration", ""),
                         "optional": is_optional,
@@ -730,13 +743,8 @@ class InteractiveHTMLGenerator:
                             location_local=attr.get("location_local", attr.get("location", "")),
                             is_home=self._is_home_location(attr)
                         ),
-                        "highlights": attr.get("highlights", []),
-                        "notes": attr.get("notes", ""),
-                        "notes_local": attr.get("notes_local", ""),
-                        "why_worth_visiting": attr.get("why_worth_visiting", ""),
-                        "why_worth_visiting_local": attr.get("why_worth_visiting_local", ""),
-                        "best_time_to_visit": attr.get("best_time_to_visit", ""),
-                        "best_time_to_visit_local": attr.get("best_time_to_visit_local", ""),
+                        "notes_base": attr_notes,
+                        "notes_local": attr_notes_local,
                         "time": attr_time,
                         "links": attr.get("links", {})
                     })
@@ -807,21 +815,19 @@ class InteractiveHTMLGenerator:
                     ent_name_local = ent.get("name_local", ent.get("name_en", ""))
 
                     merged["entertainment"].append({
-                        "name": ent_name_local if ent_name_local else ent_name_base,  # Display local by default
                         "name_base": ent_name_base,
                         "name_local": ent_name_local,
-                        "name_en": ent.get("name_en", ""),  # Keep for backward compatibility
-                        "location": ent.get("location_local", ent.get("location", "")),
                         "location_base": ent.get("location_base", ent.get("location", "")),
                         "location_local": ent.get("location_local", ent.get("location", "")),
                         "coordinates": ent.get("coordinates", {}),
-                        "type": self._format_type(ent.get("type", "")),
+                        "type_base": self._format_type(ent.get("type", "")),
                         "type_local": ent.get("type_local", ""),
                         "cost": cost,
+                        "cost_local": ent.get("cost", 0),
                         "duration": ent.get("duration", ""),
-                        "note": ent.get("note", ""),
+                        "note_base": ent.get("note", ""),
                         "note_local": ent.get("note_local", ""),
-                        "notes": ent.get("notes", ""),
+                        "notes_base": ent.get("notes", ""),
                         "notes_local": ent.get("notes_local", ""),
                         "image": self._get_placeholder_image(
                             "entertainment",
@@ -850,16 +856,17 @@ class InteractiveHTMLGenerator:
                 shop_name_local = shop_item.get("name_local", "")
 
                 merged["shopping"].append({
-                    "name": shop_name_local if shop_name_local else shop_name_base,
                     "name_base": shop_name_base,
                     "name_local": shop_name_local,
-                    "location": shop_item.get("location_local", shop_item.get("location_base", "")),
                     "location_base": shop_item.get("location_base", ""),
                     "location_local": shop_item.get("location_local", ""),
                     "coordinates": shop_item.get("coordinates", {}),
-                    "type": shop_item.get("type", "Shopping"),
+                    "type_base": shop_item.get("type", "Shopping"),
+                    "type_local": shop_item.get("type_local", ""),
                     "cost": cost,
-                    "notes": shop_item.get("notes", ""),
+                    "cost_local": shop_item.get("cost", 0),
+                    "notes_base": shop_item.get("notes", ""),
+                    "notes_local": shop_item.get("notes_local", ""),
                     "image": self._get_placeholder_image(
                         "attraction",
                         poi_name=shop_name_local if shop_name_local else shop_name_base,
@@ -907,38 +914,25 @@ class InteractiveHTMLGenerator:
                         if normalized_acc_time:
                             acc_time = normalized_acc_time
 
-                # Parse rating: handle both numeric "rating" and string "star_rating" (e.g. "4-star")
-                rating = acc.get("rating")
-                if rating is None:
-                    star_rating_str = acc.get("star_rating", "")
-                    if star_rating_str:
-                        import re
-                        m = re.search(r'(\d+)', str(star_rating_str))
-                        rating = float(m.group(1)) if m else None
-
-                # Parse stars: prefer explicit stars, fallback to rating
+                # Parse stars from explicit field
                 stars = acc.get("stars", 0)
-                if not stars and rating is not None:
-                    stars = int(rating)
 
                 merged["accommodation"] = {
-                    "name": acc_name_local if acc_name_local else acc_name_base,
                     "name_base": acc_name_base,
                     "name_local": acc_name_local,
-                    "name_cn": acc.get("name_cn", ""),  # backward compat
-                    "type": self._format_type(acc.get("type", "hotel")),
+                    "type_base": self._format_type(acc.get("type", "hotel")),
                     "type_local": acc.get("type_local", ""),
-                    "location": acc.get("location_local", acc.get("location", "")),
                     "location_base": acc.get("location_base", acc.get("location", "")),
                     "location_local": acc.get("location_local", acc.get("location", "")),
                     "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
-                    "rating": rating,
+                    "cost_local": acc.get("cost", 0),
                     "stars": stars if stars else 0,
-                    "amenities": acc.get("amenities", []),
+                    "amenities_base": acc.get("amenities", []),
+                    "amenities_local": acc.get("amenities_local", []),
                     "check_in": acc.get("check_in", ""),
                     "check_out": acc.get("check_out", ""),
-                    "notes": acc.get("notes", ""),
+                    "notes_base": acc.get("notes", ""),
                     "notes_local": acc.get("notes_local", ""),
                     "time": acc_time,
                     "links": acc.get("links", {}),
@@ -1026,30 +1020,32 @@ class InteractiveHTMLGenerator:
                 arr_base, arr_local = self._split_bilingual(arrival_point)
 
                 merged["transportation"] = {
-                    "from": loc_change.get("from", ""),
-                    "to": loc_change.get("to", ""),
+                    "name_base": f"{loc_change.get('from', '')} \u2192 {loc_change.get('to', '')}",
+                    "name_local": f"{from_local} \u2192 {to_local}" if from_local and to_local else "",
+                    "from_base": loc_change.get("from", ""),
+                    "to_base": loc_change.get("to", ""),
                     "from_local": from_local,
                     "to_local": to_local,
-                    "departure_point": dep_base,
+                    "departure_point_base": dep_base,
                     "departure_point_local": dep_local,
-                    "arrival_point": arr_base,
+                    "arrival_point_base": arr_base,
                     "arrival_point_local": arr_local,
-                    "departure_time": loc_change.get("departure_time", ""),
-                    "arrival_time": loc_change.get("arrival_time", ""),
-                    "transport_type": type_display,
-                    "transport_type_local": type_display_local,
+                    "type_base": type_display,
+                    "type_local": type_display_local,
                     "icon": icon,
                     "route_number": route_number,
-                    "airline": airline,
+                    "company_base": airline,
+                    "company_local": "",
                     "cost": self._to_display_currency(
                         self._extract_transport_cost_cny(loc_change),
                         "CNY"
                     ),
-                    "cost_type": loc_change.get("cost_type", ""),
-                    "booking_status": booking_status,
-                    "booking_status_local": booking_status_local,
-                    "booking_urgency": loc_change.get("booking_urgency", ""),
-                    "notes": loc_change.get("notes", ""),
+                    "cost_local": self._extract_transport_cost_cny(loc_change),
+                    "cost_type_base": loc_change.get("cost_type", ""),
+                    "cost_type_local": loc_change.get("cost_type_local", ""),
+                    "status_base": booking_status,
+                    "status_local": booking_status_local,
+                    "notes_base": loc_change.get("notes", ""),
                     "notes_local": loc_change.get("notes_local", ""),
                     "time": {
                         "start": loc_change.get("departure_time", "07:00"),
@@ -1121,26 +1117,30 @@ class InteractiveHTMLGenerator:
                     bl_arr_base, bl_arr_local = self._split_bilingual(arrival_point)
 
                     merged["transportation"] = {
-                        "from": "Beijing",
-                        "to": location,
+                        "name_base": f"Beijing \u2192 {location}",
+                        "name_local": f"{self._extract_local_city('', 'Beijing')} \u2192 {self._extract_local_city('', location)}" if self._extract_local_city("", "Beijing") else "",
+                        "from_base": "Beijing",
+                        "to_base": location,
                         "from_local": self._extract_local_city("", "Beijing"),
                         "to_local": self._extract_local_city("", location),
-                        "departure_point": bl_dep_base,
+                        "departure_point_base": bl_dep_base,
                         "departure_point_local": bl_dep_local,
-                        "arrival_point": bl_arr_base,
+                        "arrival_point_base": bl_arr_base,
                         "arrival_point_local": bl_arr_local,
-                        "departure_time": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
-                        "arrival_time": "",  # Not specified in bucket-list format
-                        "transport_type": type_display,
-                        "transport_type_local": type_display_local,
+                        "type_base": type_display,
+                        "type_local": type_display_local,
                         "icon": icon,
                         "route_number": route_number,
-                        "airline": "",
+                        "company_base": "",
+                        "company_local": "",
                         "cost": self._to_display_currency(cost_eur if cost_eur else cost_cny, "EUR" if cost_eur else "CNY"),
-                        "booking_status": "RECOMMENDED",
-                        "booking_status_local": bl_ui_local.get("recommended", ""),
-                        "booking_urgency": "",
-                        "notes": " | ".join(notes_parts),
+                        "cost_local": cost_cny if cost_cny else 0,
+                        "cost_type_base": "",
+                        "cost_type_local": "",
+                        "status_base": "RECOMMENDED",
+                        "status_local": bl_ui_local.get("recommended", ""),
+                        "notes_base": " | ".join(notes_parts),
+                        "notes_local": "",
                         "time": {
                             "start": option.get("departure_times", "").split(" - ")[0] if option.get("departure_times") else "09:00",
                             "end": "12:00"  # Placeholder
@@ -1163,13 +1163,13 @@ class InteractiveHTMLGenerator:
                     continue
                 duration_min = seg.get("duration_minutes", 0)
                 merged.setdefault("travel_segments", []).append({
-                    "name": seg.get("name_base", ""),
                     "name_base": seg.get("name_base", ""),
                     "name_local": seg.get("name_local", ""),
-                    "mode": seg.get("mode", "walk"),
                     "time": {"start": seg["start_time"], "end": seg["end_time"]},
                     "duration": f"{duration_min}min" if duration_min else "",
-                    "type": "travel"
+                    "type_base": "travel",
+                    "type_local": seg.get("type_local", ""),
+                    "icon": seg.get("icon", "\U0001f6b6")
                 })
 
         # Add transportation cost to budget (from merged transportation data)
@@ -1303,18 +1303,18 @@ class InteractiveHTMLGenerator:
                     a_name_base = attr.get("name_base", attr.get("name", ""))
                     a_name_local = attr.get("name_local", attr.get("name_chinese", ""))
                     day["attractions"].append({
-                        "name": a_name_local if a_name_local else a_name_base,
                         "name_base": a_name_base,
                         "name_local": a_name_local,
-                        "location": city_name,
-                        "type": self._format_type(attr.get("type", "")),
+                        "location_base": city_name,
+                        "location_local": "",
+                        "type_base": self._format_type(attr.get("type", "")),
                         "type_local": attr.get("type_local", ""),
                         "cost": self._to_display_currency(attr.get("ticket_price_eur", 0), "EUR"),
+                        "cost_local": attr.get("ticket_price_eur", 0),
                         "opening_hours": attr.get("opening_hours", ""),
                         "recommended_duration": f"{attr.get('recommended_duration_hours', 2)}h",
                         "image": self._get_placeholder_image("attraction", poi_name=a_name_local if a_name_local else a_name_base, name_base=a_name_base, name_local=a_name_local),
-                        "highlights": attr.get("tips", [])[:3],
-                        "notes": attr.get("notes", ""),
+                        "notes_base": attr.get("notes", ""),
                         "notes_local": attr.get("notes_local", ""),
                         "time": {"start": "10:00", "end": "12:00"},
                         "links": {}
@@ -1329,15 +1329,17 @@ class InteractiveHTMLGenerator:
                     m_name_base = meal.get("name_base", meal.get("name", ""))
                     m_name_local = meal.get("name_local", meal.get("name_chinese", ""))
                     day["meals"][meal_type] = {
-                        "name": m_name_local if m_name_local else m_name_base,
                         "name_base": m_name_base,
                         "name_local": m_name_local,
+                        "location_base": city_name,
+                        "location_local": "",
                         "cost": self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR"),
-                        "cuisine": meal.get("cuisine_type", ""),
+                        "cost_local": meal.get("price_range_eur_low", 10),
+                        "cuisine_base": meal.get("cuisine_type", ""),
                         "cuisine_local": meal.get("cuisine_local", ""),
-                        "signature_dishes": meal.get("signature_dish", ""),
+                        "signature_dishes_base": meal.get("signature_dish", ""),
                         "signature_dishes_local": meal.get("signature_dishes_local", ""),
-                        "notes": meal.get("notes", ""),
+                        "notes_base": meal.get("notes", ""),
                         "notes_local": meal.get("notes_local", ""),
                         "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
                         "time": {"start": "08:00", "end": "09:00"} if meal_type == "breakfast" else
@@ -1727,82 +1729,89 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
         )}
 
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#37352f', margin: '0 0 4px' }}>
-          {getDisplayName(item, lang)}
-          <RedNoteLink name={item.name_local || item.name_base} />
+          {type === 'transportation' ? (<>
+            {item.icon} {lang === 'local' && item.from_local ? item.from_local : item.from_base} → {lang === 'local' && item.to_local ? item.to_local : item.to_base}
+          </>) : (<>
+            {getDisplayName(item, lang)}
+            <RedNoteLink name={item.name_local || item.name_base} />
+          </>)}
         </h2>
 
         <div style={{ borderTop: '1px solid #f0efed', paddingTop: '16px' }}>
-          {item.time && (
+          {item.time && type !== 'transportation' && (
             <PropertyRow label={L('time', lang)}>
               {item.time.start} – {item.time.end}
             </PropertyRow>
           )}
           {/* Category-specific field ordering */}
           {type === 'accommodation' ? (<>
-            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type, lang)}</PropertyRow>}
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
-            {item.rating !== undefined && item.rating !== null && <PropertyRow label={L('rating', lang)}>{item.rating}/5</PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
             {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
-            {(item.location || item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+            {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+          </>) : type === 'transportation' ? (<>
+            {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
+            <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>
+            {item.cost != null && (item.cost > 0 || item.cost_type_base === 'prepaid') && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
+            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
+            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
+            {getDisplayField(item, 'company', lang) && <PropertyRow label={L('company', lang)}>{getDisplayField(item, 'company', lang)}</PropertyRow>}
+            {getDisplayField(item, 'status', lang) && (
+              <PropertyRow label={L('status', lang)}>
+                <span style={{
+                  padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: '600',
+                  background: item.status_base?.includes('URGENT') ? '#fff4e6' : item.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                  color: item.status_base?.includes('URGENT') ? '#d97706' : item.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                }}>
+                  {getDisplayField(item, 'status', lang)}
+                </span>
+              </PropertyRow>
+            )}
           </>) : (<>
-            {(item.cost !== undefined && (item.cost > 0 || item.cost_type === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type, lang)}</PropertyRow>}
+            {(item.cost !== undefined && (item.cost > 0 || item.cost_type_base === 'prepaid')) && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             {getDisplayField(item, 'cuisine', lang) && <PropertyRow label={L('cuisine', lang)}>{getDisplayField(item, 'cuisine', lang)}</PropertyRow>}
             {getDisplayField(item, 'signature_dishes', lang) && <PropertyRow label={L('signature', lang)}>{getDisplayField(item, 'signature_dishes', lang)}</PropertyRow>}
             {getDisplayField(item, 'type', lang) && <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>}
-            {(item.location || item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
+            {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
             {item.opening_hours && <PropertyRow label={L('opening_hours', lang)}>{item.opening_hours}</PropertyRow>}
             {item.recommended_duration && <PropertyRow label={L('duration', lang)}>{item.recommended_duration}</PropertyRow>}
             {item.duration && <PropertyRow label={L('duration', lang)}>{item.duration}</PropertyRow>}
-            {item.rating !== undefined && item.rating !== null && <PropertyRow label={L('rating', lang)}>{item.rating}/5</PropertyRow>}
+            {item.optional && <PropertyRow label={L('optional', lang)}><span style={{ padding: '2px 8px', background: '#f5f5f3', borderRadius: '4px', fontSize: '12px', color: '#9b9a97', fontWeight: '600' }}>{L('optional', lang)}</span></PropertyRow>}
             {item.stars > 0 && <PropertyRow label={L('stars', lang)}><span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(item.stars)}</span></PropertyRow>}
             {item.check_in && <PropertyRow label={L('checkin', lang)}>{item.check_in}</PropertyRow>}
             {item.check_out && <PropertyRow label={L('checkout', lang)}>{item.check_out}</PropertyRow>}
           </>)}
-          {item.amenities && item.amenities.length > 0 && (
+          {((lang === 'local' && item.amenities_local && item.amenities_local.length > 0) ? item.amenities_local : (item.amenities_base && item.amenities_base.length > 0 ? item.amenities_base : null)) && (
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>{L('amenities', lang)}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {item.amenities.map((a, i) => (
+                {(lang === 'local' && item.amenities_local && item.amenities_local.length > 0 ? item.amenities_local : item.amenities_base).map((a, i) => (
                   <span key={i} style={{ fontSize: '12px', padding: '3px 8px', background: '#f5f5f3', borderRadius: '4px', color: '#6b6b6b' }}>{a}</span>
                 ))}
               </div>
             </div>
           )}
-          {item.departure_time && item.arrival_time && <PropertyRow label={L('time', lang)}>{item.departure_time} – {item.arrival_time}</PropertyRow>}
-          {item.transport_type && <PropertyRow label={L('type', lang)}>{lang === 'local' && item.transport_type_local ? item.transport_type_local : item.transport_type}</PropertyRow>}
-          {item.departure_point && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point}</PropertyRow>}
-          {item.transport_type && item.cost != null && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, undefined, lang)}</PropertyRow>}
-          {!item.transport_type && item.highlights && item.highlights.length > 0 && (
-            <div style={{ marginTop: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
-                {L('highlights', lang)}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: '#37352f' }}>
-                {item.highlights.map((h, i) => <li key={i}>{h}</li>)}
-              </ul>
-            </div>
-          )}
-          {!item.transport_type && (lang === 'local' && item.note_local ? item.note_local : item.note) && (
+          {(lang === 'local' && item.note_local ? item.note_local : item.note_base) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#fffdf5', borderRadius: '6px',
               border: '1px solid #f5ecd7', fontSize: '13px', color: '#9a6700'
             }}>
-              💡 {lang === 'local' && item.note_local ? item.note_local : item.note}
+              💡 {lang === 'local' && item.note_local ? item.note_local : item.note_base}
             </div>
           )}
-          {!item.transport_type && (lang === 'local' && item.notes_local ? item.notes_local : item.notes) && (
+          {(lang === 'local' && item.notes_local ? item.notes_local : item.notes_base) && (
             <div style={{
               marginTop: '16px', padding: '12px 16px',
               background: '#f5f9fc', borderRadius: '6px',
               border: '1px solid #d9e8f5', fontSize: '13px', color: '#37352f', lineHeight: 1.6
             }}>
-              {lang === 'local' && item.notes_local ? item.notes_local : item.notes}
+              {lang === 'local' && item.notes_local ? item.notes_local : item.notes_base}
             </div>
           )}
-          {!item.transport_type && item.links && Object.keys(item.links).length > 0 && (
+          {item.links && Object.keys(item.links).length > 0 && (
             <div style={{ marginTop: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
                 {L('links', lang)}
@@ -1924,9 +1933,9 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
 const getDisplayName = (item, lang) => {
   if (!item) return '';
   if (lang === 'base') {
-    return item.name_base || item.name || '';
+    return item.name_base || '';
   }
-  return item.name_local || item.name || '';
+  return item.name_local || item.name_base || '';
 };
 
 // All costs are in display currency (from config). Use CURRENCY_SYMBOL.
@@ -1940,15 +1949,15 @@ const fmtCost = (c, costType, lng) => {
 // Fix issues #4,7,12: Language-aware location display
 const getDisplayLocation = (item, lang) => {
   if (!item) return '';
-  if (lang === 'base') return item.location_base || item.location || '';
-  return item.location_local || item.location || '';
+  if (lang === 'base') return item.location_base || '';
+  return item.location_local || item.location_base || '';
 };
 
 // Bilingual field helper: returns local variant when lang='local' and data exists
 const getDisplayField = (item, field, lang) => {
   if (!item) return '';
   if (lang === 'local' && item[field + '_local']) return item[field + '_local'];
-  return item[field + '_base'] || item[field] || '';
+  return item[field + '_base'] || '';
 };
 
 // Data-driven bilingual labels — reads from PLAN_DATA.trip_summary.ui_labels
@@ -2208,15 +2217,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {lb}: {getDisplayName(meal, lang)}
                       <RedNoteLink name={meal.name_local || meal.name_base} />
                     </div>
-                    {meal.name_en && <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>{meal.name_en}</div>}
                     <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
                       {meal.time && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {meal.time.start} – {meal.time.end}</div>}
                       {meal.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(meal.cost, undefined, lang)}</div>}
                       {getDisplayField(meal, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(meal, 'cuisine', lang)}</div>}
-                      {(meal.location || meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
+                      {(meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
                       {getDisplayField(meal, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(meal, 'signature_dishes', lang)}</div>}
                     </div>
-                    <ExpandableNotes text={meal.notes} textLocal={meal.notes_local} lang={lang} />
+                    <ExpandableNotes text={meal.notes_base} textLocal={meal.notes_local} lang={lang} />
                     <LinksRow links={meal.links} compact={sm} />
                   </div>
                 </div>
@@ -2253,8 +2261,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location || attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} textLocal={attr.notes_local || attr.why_worth_visiting_local} lang={lang} />
+                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
+                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
                       <LinksRow links={attr.links} compact />
                     </div>
                   </>
@@ -2272,16 +2280,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
                       {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location || attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      {attr.highlights && attr.highlights.length > 0 && (
-                        <div style={{ marginTop: '6px' }}>
-                          <span style={{ fontSize: '12px', color: '#9b9a97' }}>{L('highlights', lang)}</span>
-                          <ul style={{ margin: '2px 0 0', paddingLeft: '16px', fontSize: '12px', color: '#37352f', lineHeight: 1.7 }}>
-                            {attr.highlights.map((h, j) => <li key={j}>{h}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                      <ExpandableNotes text={attr.notes || attr.why_worth_visiting} textLocal={attr.notes_local || attr.why_worth_visiting_local} lang={lang} />
+                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
+                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
                       <LinksRow links={attr.links} />
                     </div>
                   </div>
@@ -2316,14 +2316,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {ent.time && <PropLine label={L('time', lang)} value={`${ent.time.start} – ${ent.time.end}`} />}
                       {ent.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(ent.cost, undefined, lang)} />}
                       <PropLine label={L('type', lang)} value={getDisplayField(ent, 'type', lang)} />
-                      {(ent.location || ent.location_base || ent.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
+                      {(ent.location_base || ent.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
                       {ent.duration && <PropLine label={L('duration', lang)} value={ent.duration} />}
-                      {(lang === 'local' && ent.note_local ? ent.note_local : ent.note) && (
+                      {(lang === 'local' && ent.note_local ? ent.note_local : ent.note_base) && (
                         <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
-                          💡 {lang === 'local' && ent.note_local ? ent.note_local : ent.note}
+                          💡 {lang === 'local' && ent.note_local ? ent.note_local : ent.note_base}
                         </div>
                       )}
-                      <ExpandableNotes text={ent.notes} textLocal={ent.notes_local} lang={lang} />
+                      <ExpandableNotes text={ent.notes_base} textLocal={ent.notes_local} lang={lang} />
                       <LinksRow links={ent.links} compact={sm} />
                     </div>
                   </div>
@@ -2351,13 +2351,14 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
+                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
                     {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
                     <PropLine label={L('type', lang)} value={getDisplayField(day.accommodation, 'type', lang)} />
                     {day.accommodation.stars > 0 && <PropLine label={L('stars', lang)} value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
                     {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
                     {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     <PropLine label={L('location', lang)} value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
-                    <ExpandableNotes text={day.accommodation.notes} textLocal={day.accommodation.notes_local} lang={lang} />
+                    <ExpandableNotes text={day.accommodation.notes_base} textLocal={day.accommodation.notes_local} lang={lang} />
                     <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
@@ -2377,16 +2378,35 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {day.transportation.icon}
                       {' '}
-                      {lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from}
+                      {lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base}
                       {' → '}
-                      {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to}
+                      {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base}
                     </div>
-                    <PropLine label={L('time', lang)} value={`${day.transportation.departure_time} – ${day.transportation.arrival_time}`} />
-                    <PropLine label={L('type', lang)} value={lang === 'local' && day.transportation.transport_type_local ? day.transportation.transport_type_local : day.transportation.transport_type} />
-                    {(day.transportation.cost > 0 || day.transportation.cost_type === 'prepaid') && (
-                      <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type, lang)} />
+                    {day.transportation.time && <PropLine label={L('time', lang)} value={`${day.transportation.time.start} – ${day.transportation.time.end}`} />}
+                    <PropLine label={L('type', lang)} value={getDisplayField(day.transportation, 'type', lang)} />
+                    {(day.transportation.cost > 0 || day.transportation.cost_type_base === 'prepaid') && (
+                      <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
                     )}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point}`} />
+                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
+                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
+                    {getDisplayField(day.transportation, 'company', lang) && <PropLine label={L('company', lang)} value={getDisplayField(day.transportation, 'company', lang)} />}
+                    {getDisplayField(day.transportation, 'status', lang) && (
+                      <div style={{ marginTop: '4px' }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                          background: day.transportation.status_base?.includes('URGENT') ? '#fff4e6' : day.transportation.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                          color: day.transportation.status_base?.includes('URGENT') ? '#d97706' : day.transportation.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                        }}>
+                          {getDisplayField(day.transportation, 'status', lang)}
+                        </span>
+                      </div>
+                    )}
+                    {(lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base) && (
+                      <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
+                        💡 {lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base}
+                      </div>
+                    )}
+                    <ExpandableNotes text={day.transportation.notes_base} textLocal={day.transportation.notes_local} lang={lang} />
                   </div>
                 </div>
               </Section>
@@ -2440,12 +2460,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TRAVEL_MODE_EMOJI = {
-  walk: '🚶', taxi: '🚕', bus: '🚌', metro: '🚇',
-  train: '🚄', flight: '✈️', car: '🚗', bike: '🚲', transit: '🔄'
-};
-const getTravelEmoji = (entry) => TRAVEL_MODE_EMOJI[entry?.mode] || '🚶';
-
 const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
   const [topItemIndex, setTopItemIndex] = useState(null);
@@ -2462,8 +2476,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   };
   // Add transportation if exists (Fix Issue #8, #9: bilingual label respects lang toggle)
   if (day.transportation) {
-    const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from;
-    const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to;
+    const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base;
+    const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
   add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
@@ -2474,7 +2488,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
   // Fix issue #6: Add travel segments from timeline
   day.travel_segments?.forEach(t => {
-    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || t.name || '');
+    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);
   });
 
@@ -2583,7 +2597,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
                       {entry._type === 'transportation' || entry._type === 'travel' ? (
-                        <span>{entry._type === 'transportation' ? entry.icon : getTravelEmoji(entry)} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
+                        <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
                       ) : (
                         <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                       )}
@@ -2594,11 +2608,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     )}
                     {showSubtext && (entry._type === 'transportation' ? (
                       <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
-                        <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point}</div>
+                        <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point_base} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point_base}</div>
                         {entry.route_number && entry.route_number !== 'VERIFIED' && (
-                          <div>{lang === 'local' && entry.transport_type_local ? entry.transport_type_local : entry.transport_type} {entry.route_number}</div>
+                          <div>{lang === 'local' && entry.type_local ? entry.type_local : entry.type_base} {entry.route_number}</div>
                         )}
-                        {entry.booking_status && (
+                        {entry.status_base && (
                           <span style={{
                             display: 'inline-block',
                             marginTop: '2px',
@@ -2606,12 +2620,12 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                             borderRadius: '3px',
                             fontSize: '10px',
                             fontWeight: '600',
-                            background: entry.booking_status.includes('URGENT') ? '#fff4e6' :
-                                       entry.booking_status.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
-                            color: entry.booking_status.includes('URGENT') ? '#d97706' :
-                                  entry.booking_status.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                            background: entry.status_base?.includes('URGENT') ? '#fff4e6' :
+                                       entry.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                            color: entry.status_base?.includes('URGENT') ? '#d97706' :
+                                  entry.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
                           }}>
-                            {lang === 'local' && entry.booking_status_local ? entry.booking_status_local : entry.booking_status}
+                            {lang === 'local' && entry.status_local ? entry.status_local : entry.status_base}
                           </span>
                         )}
                       </div>
