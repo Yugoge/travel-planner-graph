@@ -618,6 +618,7 @@ class InteractiveHTMLGenerator:
                         "signature_dishes_local": meal.get("signature_dishes_local", ""),
                         "notes_base": meal.get("notes_base", meal.get("notes", "")),
                         "notes_local": meal.get("notes_local", ""),
+                        "optional": meal.get("optional", False),
                         "image": self._get_placeholder_image(
                             "meal",
                             poi_name=name_local if name_local else meal_name,
@@ -834,6 +835,7 @@ class InteractiveHTMLGenerator:
                         "note_local": ent.get("note_local", ""),
                         "notes_base": ent.get("notes_base", ent.get("notes", "")),
                         "notes_local": ent.get("notes_local", ""),
+                        "optional": ent.get("optional", False),
                         "image": self._get_placeholder_image(
                             "entertainment",
                             poi_name=ent_name_local if ent_name_local else ent_name,
@@ -872,6 +874,7 @@ class InteractiveHTMLGenerator:
                     "cost_local": shop_item.get("cost", 0),
                     "notes_base": shop_item.get("notes_base", shop_item.get("notes", "")),
                     "notes_local": shop_item.get("notes_local", ""),
+                    "optional": shop_item.get("optional", False),
                     "image": self._get_placeholder_image(
                         "attraction",
                         poi_name=shop_name_local if shop_name_local else shop_name_base,
@@ -939,6 +942,7 @@ class InteractiveHTMLGenerator:
                     "check_out": acc.get("check_out", ""),
                     "notes_base": acc.get("notes_base", acc.get("notes", "")),
                     "notes_local": acc.get("notes_local", ""),
+                    "optional": acc.get("optional", False),
                     "time": acc_time,
                     "links": acc.get("links", {}),
                     "image": self._get_placeholder_image(
