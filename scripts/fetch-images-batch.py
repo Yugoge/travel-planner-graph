@@ -494,6 +494,48 @@ class BatchImageFetcher:
 
         print(f"  Total fetched: {fetched}/{limit}")
 
+    @staticmethod
+    def _parse_day_filter(day_filter: str) -> set:
+        """Parse day filter string into a set of day numbers.
+
+        Supports formats:
+        - "1" → Day 1 only
+        - "1-5" → Days 1, 2, 3, 4, 5
+        - "3,5,7" → Days 3, 5, 7
+        - "1-3,5,7-9" → Days 1, 2, 3, 5, 7, 8, 9
+
+        Args:
+            day_filter: Filter string (e.g., "1", "1-5", "3,5,7")
+
+        Returns:
+            Set of day numbers to include
+        """
+        days = set()
+
+        # Split by comma first (for "1-3,5,7-9" format)
+        parts = day_filter.split(",")
+
+        for part in parts:
+            part = part.strip()
+
+            if "-" in part:
+                # Range format: "1-5"
+                start, end = part.split("-")
+                try:
+                    start_num = int(start.strip())
+                    end_num = int(end.strip())
+                    days.update(range(start_num, end_num + 1))
+                except ValueError:
+                    continue
+            else:
+                # Single day: "1"
+                try:
+                    days.add(int(part))
+                except ValueError:
+                    continue
+
+        return days
+
     def _extract_local_name(self, name: str) -> str:
         """Extract non-Latin local name from bilingual format (backward compat for old JSON).
 
@@ -534,14 +576,23 @@ class BatchImageFetcher:
             # Format: English (LocalName)
             return inside_paren
 
-    def fetch_pois(self, limit: int = 10):
+    def fetch_pois(self, limit: int = 10, day_filter: str = None):
         """Fetch POI photos from all agent files (limited batch).
 
         Map service auto-detected per city via coordinates (CN → Gaode, else → Google).
         Searches with name_local (native language) for accurate results.
         Backward compatible: falls back to _extract_local_name() for old JSON format.
+
+        Args:
+            limit: Maximum number of POIs to fetch
+            day_filter: Optional day filter (e.g., "1", "1-5", "3,5,7")
         """
         print(f"\n📍 Fetching POI photos (max {limit})...")
+        if day_filter:
+            print(f"  Day filter: {day_filter}")
+
+        # Parse day filter
+        filtered_days = self._parse_day_filter(day_filter) if day_filter else None
 
         # Collect POIs from all agent files with metadata
         pois = []
@@ -570,6 +621,12 @@ class BatchImageFetcher:
 
             # Process days format
             for day in days_data:
+                day_num = day.get("day", 0)
+
+                # Skip if day filter is set and this day is not in filter
+                if filtered_days is not None and day_num not in filtered_days:
+                    continue
+
                 location = day.get("location", "")
 
                 if field_name == "attractions":
@@ -857,16 +914,37 @@ class BatchImageFetcher:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 fetch-images-batch.py <destination-slug> [city_limit] [poi_limit]")
-        print("Example: python3 fetch-images-batch.py china-exchange-bucket-list-2026 5 10")
+        print("Usage: python3 fetch-images-batch.py <destination-slug> [city_limit] [poi_limit] [--day FILTER] [--force]")
+        print("Examples:")
+        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 5 10")
+        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1")
+        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1-5")
+        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1,3,5")
+        print("")
+        print("Day filter formats:")
+        print("  --day 1        # Day 1 only")
+        print("  --day 1-5      # Days 1 through 5")
+        print("  --day 1,3,5    # Days 1, 3, and 5")
+        print("  --day 1-3,5,7-9  # Days 1-3, 5, 7-9")
         sys.exit(1)
 
     import argparse
 
-    parser = argparse.ArgumentParser(description='Batch fetch POI images (auto-detects Gaode/Google by city coordinates)')
+    parser = argparse.ArgumentParser(
+        description='Batch fetch POI images (auto-detects Gaode/Google by city coordinates)',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Day filter examples:
+  --day 1          Fetch only Day 1 POIs
+  --day 1-5         Fetch Days 1-5 POIs
+  --day 1,3,5       Fetch Days 1, 3, and 5 POIs
+  --day 1-3,5,7-9   Fetch Days 1-3, 5, 7-9 POIs
+        '''
+    )
     parser.add_argument('destination', help='Destination slug (e.g., china-feb-15-mar-7-2026-20260202-195429)')
     parser.add_argument('city_limit', nargs='?', type=int, default=5, help='Max cities to fetch (default: 5)')
     parser.add_argument('poi_limit', nargs='?', type=int, default=10, help='Max POIs to fetch (default: 10)')
+    parser.add_argument('--day', dest='day_filter', type=str, help='Filter by day number(s) (e.g., "1", "1-5", "3,5,7")')
     parser.add_argument('--force', action='store_true', help='Force re-fetch all images (ignore cache)')
 
     args = parser.parse_args()
@@ -874,18 +952,21 @@ def main():
     destination = args.destination
     city_limit = args.city_limit
     poi_limit = args.poi_limit
+    day_filter = args.day_filter
     force_refresh = args.force
 
     print("="*60)
     print(f"Batch Image Fetcher - {destination}")
     if force_refresh:
         print("⚡ FORCE MODE: Re-fetching all images (ignoring cache)")
+    if day_filter:
+        print(f"📅 DAY FILTER: {day_filter}")
     print("="*60)
 
     fetcher = BatchImageFetcher(destination)
     fetcher.force_refresh = force_refresh
     fetcher.fetch_cities(city_limit)
-    fetcher.fetch_pois(poi_limit)
+    fetcher.fetch_pois(poi_limit, day_filter=day_filter)
 
     print("\n" + "="*60)
     print(f"✅ Batch complete!")
