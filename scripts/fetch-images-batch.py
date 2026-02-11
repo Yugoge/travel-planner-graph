@@ -646,7 +646,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -699,7 +699,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -724,7 +724,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -747,7 +747,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -776,7 +776,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -801,7 +801,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -826,7 +826,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -851,7 +851,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -873,7 +873,7 @@ class BatchImageFetcher:
 
                         if name_base:
                             pois.append({
-                                "name": name_base,
+                                "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
@@ -892,16 +892,16 @@ class BatchImageFetcher:
             if service == "gaode" and poi.get('name_local'):
                 cache_key = f"{service}_{poi['name_local']}"
             else:
-                cache_key = f"{service}_{poi['name']}"
+                cache_key = f"{service}_{poi['name_base']}"
 
             if cache_key in self.cache["pois"] and not self.force_refresh:
-                print(f"  ✓ {poi['name']} ({poi['type']}, cached)")
+                print(f"  ✓ {poi['name_base']} ({poi['type']}, cached)")
                 continue
 
-            print(f"  Fetching {poi['name']} ({poi['type']}, {service})...", end=" ")
+            print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
 
             photo_url = self.fetch_poi_photo(
-                poi['name'],
+                poi['name_base'],
                 poi['city'],
                 name_local=poi.get('name_local'),
                 location_local=poi.get('location_local')
