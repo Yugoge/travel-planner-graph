@@ -278,7 +278,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
                 onMouseLeave={e => { if (selTrip !== ti) e.currentTarget.style.background = 'transparent'; }}
               >
                 <span style={{ fontSize: '9px', color: '#b4b4b4', transform: open ? 'rotate(90deg)' : '', transition: 'transform .15s', display: 'inline-block', marginRight: '2px' }}>▶</span>
-                <span style={{ fontWeight: '500', flex: 1 }}>{trip.name}</span>
+                <span style={{ fontWeight: '500', flex: 1 }}>{(lang === 'local' && trip.name_local) ? trip.name_local : trip.name}</span>
                 <span style={{ fontSize: '11px', color: '#b4b4b4' }}>({trip.days_count != null ? ((trip.days_count === 1 ? L('days_count_1', lang) : L('days_count', lang)).replace('{n}', trip.days_count)) : trip.days_label})</span>
               </div>
               {open && has && (
@@ -298,7 +298,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
                         }}
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(55,53,47,0.03)'; }}
                         onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(55,53,47,0.06)' : 'transparent'; }}
-                      >📄 {dayLabelShort(d, lang)}</div>
+                      >📄 {dayLabelSidebar(d, lang)}</div>
                     );
                   })}
                 </div>
@@ -379,11 +379,10 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
           </>) : type === 'transportation' ? (<>
             {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
-            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
             {item.cost != null && (item.cost > 0 || item.cost_type_base === 'prepaid') && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>
-            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
             {getDisplayField(item, 'company', lang) && <PropertyRow label={L('company', lang)}>{getDisplayField(item, 'company', lang)}</PropertyRow>}
+            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
             {getDisplayField(item, 'status', lang) && (
               <PropertyRow label={L('status', lang)}>
                 <span style={{
@@ -395,6 +394,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
                 </span>
               </PropertyRow>
             )}
+            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
             {item.booking_required && (
               <div style={{ marginTop: '6px' }}>
                 <span style={{ fontSize: '11px', padding: '2px 8px', background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '4px', color: '#e65100', fontWeight: '600' }}>
@@ -636,7 +636,7 @@ const dayLabel = (dayNumOrObj, locationOrLng, lngOpt) => {
     dayNum = day.day;
     date = day.date || '';
     lng = locationOrLng;
-    location = (lng === 'local' && day.location_local) ? day.location_local : day.location;
+    location = (lng === 'local' && day.location_local) ? day.location_local : day.location_base;
   } else {
     // Legacy: dayLabel(dayNum, location, lng)
     dayNum = dayNumOrObj;
@@ -658,7 +658,24 @@ const dayLabel = (dayNumOrObj, locationOrLng, lngOpt) => {
   return prefix + (location ? ' – ' + location : '');
 };
 
-// Day label for sidebar nav (no location)
+// Day label for sidebar nav (shows date only, no city name)
+// Accepts day object or dayNum for backward compat
+const dayLabelSidebar = (dayNumOrObj, lng) => {
+  let dayNum, date;
+  if (typeof dayNumOrObj === 'object' && dayNumOrObj !== null) {
+    const day = dayNumOrObj;
+    dayNum = day.day;
+    date = day.date || '';
+  } else {
+    dayNum = dayNumOrObj;
+    date = '';
+  }
+  // Use real date if available
+  const realDate = date ? formatRealDate(date, lng) : null;
+  return realDate ? realDate : `Day ${dayNum}`;
+};
+
+// Day label for sidebar nav (no location) - deprecated in favor of dayLabelSidebar
 // Accepts day object or dayNum for backward compat
 const dayLabelShort = (dayNumOrObj, lng) => {
   let dayNum, date;
@@ -1071,6 +1088,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
+                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
                     {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
                     {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
@@ -1102,13 +1120,13 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base}
                     </div>
                     {day.transportation.time && <PropLine label={L('time', lang)} value={`${day.transportation.time.start} – ${day.transportation.time.end}`} />}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {(day.transportation.cost > 0 || day.transportation.cost_type_base === 'prepaid') && (
                       <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
                     )}
                     <PropLine label={L('type', lang)} value={getDisplayField(day.transportation, 'type', lang)} />
-                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
                     {getDisplayField(day.transportation, 'company', lang) && <PropLine label={L('company', lang)} value={getDisplayField(day.transportation, 'company', lang)} />}
+                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
+                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {getDisplayField(day.transportation, 'status', lang) && (
                       <div style={{ marginTop: '4px' }}>
                         <span style={{
@@ -1235,7 +1253,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 
   // Debug: log entries count
   if (entries.length === 0) {
-    console.warn('Timeline has no entries for day:', day.day, day.location);
+    console.warn('Timeline has no entries for day:', day.day, day.location_base);
   }
 
   return (

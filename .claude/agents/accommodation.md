@@ -33,6 +33,18 @@ For each day in the trip:
    - Special needs (accessible rooms, pet-friendly)
    - Party size and duration (determines hotel vs rental)
 
+**CRITICAL - POI Classification Note (Root Cause Fix: cross-category duplication)**:
+
+Accommodation is its own category and doesn't overlap with other POI types. However:
+
+**⚠️ Hotel Restaurant/Cafe Classification**:
+- If hotel has a famous restaurant/cafe (e.g., "Raffles Hotel Restaurant") → This belongs in `meals` (if dining) or `attractions` (if it's a historic landmark), NOT in `accommodation`
+- Accommodation data should ONLY include the hotel/lodging itself, not its amenities as separate POIs
+
+**Examples**:
+- ✅ "Marriott Hotel" → ACCOMMODATION (lodging only)
+- ❌ "Marriott Starbucks" → NOT accommodation → This would be `meals` or `entertainment` depending on purpose
+
 2. **Determine accommodation type**:
    - **Vacation Rentals** (use /airbnb skill):
      - Extended stays (5+ nights)

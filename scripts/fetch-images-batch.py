@@ -343,34 +343,69 @@ class BatchImageFetcher:
             return None
 
     def _gaode_search(self, search_name: str, city: str) -> Optional[str]:
-        """Execute a Gaode POI search and return photo URL if found"""
-        try:
-            script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
-            result = subprocess.run(
-                [self.venv_python, str(script_path), "keyword", search_name, city],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                cwd=script_path.parent
-            )
+        """Execute a Gaode POI search and return photo URL if found.
 
-            if result.returncode != 0:
-                return None
+        Fallback strategy: If exact search fails, try simplified keywords.
+        Example: "外滩夜景散步" → "外滩夜景" → "外滩"
+        """
+        import re
 
-            data = json.loads(result.stdout)
-            if data.get("pois") and len(data["pois"]) > 0:
-                poi = data["pois"][0]
-                photos = poi.get("photos", {})
-                url = photos.get("url")
-                if url and url.startswith("http"):
-                    # Ensure HTTPS (Gaode supports it; avoids mixed-content on HTTPS pages)
-                    return url.replace("http://", "https://", 1)
-        except subprocess.TimeoutExpired:
-            pass
-        except Exception:
-            pass
+        # Try exact search first
+        for search_term in self._get_fallback_search_terms(search_name):
+            try:
+                script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
+                result = subprocess.run(
+                    [self.venv_python, str(script_path), "keyword", search_term, city],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    cwd=script_path.parent
+                )
+
+                if result.returncode == 0:
+                    data = json.loads(result.stdout)
+                    if data.get("pois") and len(data["pois"]) > 0:
+                        poi = data["pois"][0]
+                        photos = poi.get("photos", {})
+                        url = photos.get("url")
+                        if url and url.startswith("http"):
+                            # Ensure HTTPS (Gaode supports it; avoids mixed-content on HTTPS pages)
+                            return url.replace("http://", "https://", 1)
+            except subprocess.TimeoutExpired:
+                continue
+            except Exception:
+                continue
 
         return None
+
+    def _get_fallback_search_terms(self, search_name: str) -> list[str]:
+        """Generate fallback search terms for POI photo search.
+
+        Strategy: progressively simplify the search term:
+        1. Original term (e.g., "外滩夜景散步")
+        2. Remove trailing descriptive words (e.g., "外滩夜景")
+        3. Core landmark only (e.g., "外滩")
+        """
+        terms = [search_name]
+
+        # Remove common trailing descriptive phrases
+        for suffix in ["散步", "游览", "观光", "体验", "之旅", "路线", "路径", " walkthrough", " tour", " experience"]:
+            if search_name.endswith(suffix):
+                simplified = search_name[:-len(suffix)].strip()
+                if simplified and len(simplified) >= 2:
+                    terms.append(simplified)
+                break
+
+        # For Chinese, try using just the first 2-4 characters (core name)
+        if len(search_name) >= 4:
+            # Try progressively shorter versions
+            for length in [len(search_name) - 2, len(search_name) - 4, 4, 3, 2]:
+                if length >= 2 and length < len(search_name):
+                    core = search_name[:length]
+                    if core not in terms:
+                        terms.append(core)
+
+        return terms
 
     def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
         """Fetch POI photo using map service determined by city location.
