@@ -298,7 +298,7 @@ Write(
 
 After generating or modifying data, validate output by running:
 ```bash
-python3 scripts/plan-validate.py <trip-directory> --agent entertainment
+source venv/bin/activate || source .venv/bin/activate && python3 scripts/plan-validate.py <trip-directory> --agent entertainment
 ```
 
 Fix any HIGH or MEDIUM issues before considering the task complete.
