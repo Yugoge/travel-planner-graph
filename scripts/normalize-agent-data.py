@@ -105,25 +105,6 @@ def ensure_day_metadata(day: dict, day_num: int):
         day["location"] = DAY_LOCATIONS.get(day_num, "")
 
 
-def normalize_poi_item(item: dict, default_currency: str = "USD") -> dict:
-    """Apply common normalizations to any POI item."""
-    # Coordinates -> {lat, lng}
-    if "coordinates" in item:
-        item["coordinates"] = normalize_coordinates(item["coordinates"])
-        if item["coordinates"] is None:
-            del item["coordinates"]
-
-    # search_results -> standardize format
-    if "search_results" in item:
-        item["search_results"] = normalize_search_results(item["search_results"])
-
-    # Add currency if missing
-    if "cost" in item and "currency" not in item:
-        item["currency"] = default_currency
-
-    return item
-
-
 class DataNormalizer:
     def __init__(self, data_dir: Path, dry_run: bool = False):
         self.data_dir = data_dir

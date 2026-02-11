@@ -1221,7 +1221,7 @@ Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-re
 **CRITICAL**: After all agents complete and data is synced, run the plan validation script as a final quality gate before HTML generation. This ensures all agent outputs meet structural and content requirements.
 
 ```bash
-python3 /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug}
+source venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug}
 ```
 
 **Exit code 0 (PASS)**: Validation passed. Proceed to Step 16 (HTML generation).
