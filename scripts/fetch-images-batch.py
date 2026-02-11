@@ -886,7 +886,13 @@ class BatchImageFetcher:
         fetched = 0
         for poi in pois[:limit]:
             service = self._map_service_for(poi['city'])
-            cache_key = f"{service}_{poi['name']}"
+
+            # CRITICAL FIX: Cache key should use name_local for China (Gaode) searches
+            # to match the actual search term used. This prevents duplicate cache entries.
+            if service == "gaode" and poi.get('name_local'):
+                cache_key = f"{service}_{poi['name_local']}"
+            else:
+                cache_key = f"{service}_{poi['name']}"
 
             if cache_key in self.cache["pois"] and not self.force_refresh:
                 print(f"  ✓ {poi['name']} ({poi['type']}, cached)")
