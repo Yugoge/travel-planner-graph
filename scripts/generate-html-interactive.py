@@ -697,15 +697,19 @@ class InteractiveHTMLGenerator:
                     attr_name_base = attr.get("name_base", attr_name)
                     attr_name_local = attr.get("name_local", attr.get("name_en", ""))
 
-                    # Fix issue #11: Detect optional items from timeline name or attraction notes
-                    is_optional = False
-                    if day_timeline:
-                        for tl_name in day_timeline:
-                            if attr_name.lower() in tl_name.lower() and "optional" in tl_name.lower():
+                    # Check optional field from data (new schema), fallback to detection
+                    is_optional = attr.get("optional", False)
+                    if not is_optional:
+                        # Fallback detection: check timeline and notes
+                        if day_timeline:
+                            for tl_name in day_timeline:
+                                if attr_name.lower() in tl_name.lower() and "optional" in tl_name.lower():
+                                    is_optional = True
+                                    break
+                        if not is_optional:
+                            notes_text = str(attr.get("notes", "")) + " " + str(attr.get("notes_base", ""))
+                            if "optional" in notes_text.lower():
                                 is_optional = True
-                                break
-                    if "optional" in str(attr.get("notes", "")).lower():
-                        is_optional = True
 
                     # Merge why_worth_visiting and best_time_to_visit into notes
                     attr_notes = attr.get("notes_base", attr.get("notes", ""))
@@ -1766,7 +1770,6 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             {(item.location_base || item.location_local) && <PropertyRow label={L('location', lang)}><MapLink item={item} lang={lang} mapProvider={mapProvider} /></PropertyRow>}
           </>) : type === 'transportation' ? (<>
             {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
-            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
             {item.cost != null && (item.cost > 0 || item.cost_type_base === 'prepaid') && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>
             {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
@@ -1782,6 +1785,7 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
                 </span>
               </PropertyRow>
             )}
+            {item.departure_point_base && <PropertyRow label={L('route', lang)}>{lang === 'local' && item.departure_point_local ? item.departure_point_local : item.departure_point_base} → {lang === 'local' && item.arrival_point_local ? item.arrival_point_local : item.arrival_point_base}</PropertyRow>}
             {item.booking_required && (
               <div style={{ marginTop: '6px' }}>
                 <span style={{ fontSize: '11px', padding: '2px 8px', background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '4px', color: '#e65100', fontWeight: '600' }}>
@@ -2458,6 +2462,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {getDisplayName(day.accommodation, lang)}
                       <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
                     </div>
+                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
                     {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
                     {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
                     {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
@@ -2489,7 +2494,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base}
                     </div>
                     {day.transportation.time && <PropLine label={L('time', lang)} value={`${day.transportation.time.start} – ${day.transportation.time.end}`} />}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {(day.transportation.cost > 0 || day.transportation.cost_type_base === 'prepaid') && (
                       <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
                     )}
@@ -2507,6 +2511,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         </span>
                       </div>
                     )}
+                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {(lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base) && (
                       <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
                         💡 {lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base}

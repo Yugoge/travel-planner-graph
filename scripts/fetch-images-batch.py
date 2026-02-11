@@ -53,6 +53,110 @@ class BatchImageFetcher:
                 return str(p)
         return "python3"
 
+    # Cache: city name → ISO2 country code
+    _country_cache: dict = {}
+
+    @staticmethod
+    def _country_for_coord(lng: float, lat: float) -> str:
+        """Return ISO2 country code for a coordinate using geopip.
+
+        Offline reverse geocode via embedded Natural Earth polygons.
+        No API calls, no hardcoded lists, no network needed.
+        """
+        try:
+            import geopip
+            result = geopip.search(lng=lng, lat=lat)
+            return result.get("ISO2", "") if result else ""
+        except ImportError:
+            return ""
+
+    def _resolve_city_coord(self, city: str) -> tuple:
+        """Get (lng, lat) for a city from skeleton POI data or Gaode geocoding."""
+        # 1. Try to find a coordinate from any POI in this city's day
+        skeleton_path = self.data_dir / "plan-skeleton.json"
+        if skeleton_path.exists():
+            with open(skeleton_path, 'r', encoding='utf-8') as f:
+                skeleton = json.load(f)
+
+            # Find day numbers for this city
+            day_nums = [
+                d["day"] for d in skeleton.get("days", [])
+                if d.get("location", "").lower().strip() == city.lower().strip()
+            ]
+
+            if day_nums:
+                for agent_file in ["attractions.json", "meals.json", "entertainment.json"]:
+                    agent_path = self.data_dir / agent_file
+                    if not agent_path.exists():
+                        continue
+                    with open(agent_path, 'r', encoding='utf-8') as f:
+                        agent_data = json.load(f)
+                    for d in agent_data.get("data", agent_data).get("days", []):
+                        if d.get("day") not in day_nums:
+                            continue
+                        # Check list-type items
+                        for key in ["attractions", "entertainment"]:
+                            for item in d.get(key, []):
+                                c = item.get("coordinates", {})
+                                if c.get("lat") and c.get("lng"):
+                                    return (float(c["lng"]), float(c["lat"]))
+                        # Check meal items
+                        for mk in ["breakfast", "lunch", "dinner"]:
+                            meal = d.get(mk, {})
+                            if isinstance(meal, dict):
+                                c = meal.get("coordinates", {})
+                                if c.get("lat") and c.get("lng"):
+                                    return (float(c["lng"]), float(c["lat"]))
+
+            # Check bucket-list cities
+            for city_data in skeleton.get("cities", []):
+                if city_data.get("city", "").lower() == city.lower():
+                    c = city_data.get("coordinates", {})
+                    if c.get("lat") and c.get("lng"):
+                        return (float(c["lng"]), float(c["lat"]))
+
+        # 2. Fallback: Gaode geocoding (single API call)
+        import urllib.request
+        import urllib.parse
+        gaode_key = os.environ.get("GAODE_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")
+        params = urllib.parse.urlencode({"key": gaode_key, "address": city, "output": "json"})
+        try:
+            url = f"https://restapi.amap.com/v3/geocode/geo?{params}"
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                data = json.loads(resp.read())
+            if data.get("geocodes"):
+                loc = data["geocodes"][0].get("location", "")
+                if "," in loc:
+                    lng_s, lat_s = loc.split(",")
+                    return (float(lng_s), float(lat_s))
+        except Exception:
+            pass
+
+        return (0.0, 0.0)
+
+    def _map_service_for(self, city: str) -> str:
+        """Return 'gaode' or 'google' based on coordinate-level country detection.
+
+        Universal rule — no config, no hardcoded city lists:
+          Mainland China (ISO2=CN) → Gaode (高德)
+          Everywhere else (HK, MO, TW, JP, FR, ...) → Google
+
+        Detection: city name → coordinate (from data or geocoding) → geopip → ISO2.
+        Results cached per city per session.
+        """
+        cache_key = city.strip().lower()
+        if cache_key in self._country_cache:
+            return "gaode" if self._country_cache[cache_key] == "CN" else "google"
+
+        lng, lat = self._resolve_city_coord(city)
+        if lng == 0.0 and lat == 0.0:
+            self._country_cache[cache_key] = ""
+            return "google"
+
+        iso2 = self._country_for_coord(lng, lat)
+        self._country_cache[cache_key] = iso2
+        return "gaode" if iso2 == "CN" else "google"
+
     def _load_config(self) -> dict:
         """Load trip config from requirements-skeleton.json"""
         config_path = self.data_dir / "requirements-skeleton.json"
@@ -269,13 +373,14 @@ class BatchImageFetcher:
         return None
 
     def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
-        """Fetch POI photo using configured map service.
+        """Fetch POI photo using map service determined by city location.
 
-        Reads map_service from requirements-skeleton.json config.
+        Mainland China → Gaode Maps (高德)
+        Everywhere else → Google Maps
         Uses name_local for search (native language), falls back to poi_name.
         """
         search_name = name_local if name_local else poi_name
-        service = self.config.get("map_service", "google")
+        service = self._map_service_for(city)
 
         if service == "gaode":
             return self._gaode_search(search_name, city)
@@ -306,9 +411,8 @@ class BatchImageFetcher:
                 print(f"  ✓ {city} (cached)")
                 continue
 
-            print(f"  Fetching {city}...", end=" ")
-            # Use configured map service (same as POI photos)
-            service = self.config.get("map_service", "google")
+            service = self._map_service_for(city)
+            print(f"  Fetching {city} ({service})...", end=" ")
             if service == "gaode":
                 photo_url = self._gaode_search(f"{city} 景点", city)
             else:
@@ -367,7 +471,7 @@ class BatchImageFetcher:
     def fetch_pois(self, limit: int = 10):
         """Fetch POI photos from all agent files (limited batch).
 
-        Uses map_service from requirements-skeleton.json config to choose search engine.
+        Map service auto-detected per city via coordinates (CN → Gaode, else → Google).
         Searches with name_local (native language) for accurate results.
         Backward compatible: falls back to _extract_local_name() for old JSON format.
         """
@@ -616,10 +720,9 @@ class BatchImageFetcher:
 
         print(f"  Found {len(pois)} POIs across all agent files")
 
-        service = self.config.get("map_service", "google")
-
         fetched = 0
         for poi in pois[:limit]:
+            service = self._map_service_for(poi['city'])
             cache_key = f"{service}_{poi['name']}"
 
             if cache_key in self.cache["pois"] and not self.force_refresh:
@@ -653,7 +756,7 @@ def main():
 
     import argparse
 
-    parser = argparse.ArgumentParser(description='Batch fetch POI images using map_service from config')
+    parser = argparse.ArgumentParser(description='Batch fetch POI images (auto-detects Gaode/Google by city coordinates)')
     parser.add_argument('destination', help='Destination slug (e.g., china-feb-15-mar-7-2026-20260202-195429)')
     parser.add_argument('city_limit', nargs='?', type=int, default=5, help='Max cities to fetch (default: 5)')
     parser.add_argument('poi_limit', nargs='?', type=int, default=10, help='Max POIs to fetch (default: 10)')
