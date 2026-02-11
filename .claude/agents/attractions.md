@@ -313,7 +313,7 @@ Write(
 
 After generating or modifying data, validate output by running:
 ```bash
-python3 scripts/plan-validate.py <trip-directory> --agent attractions
+source venv/bin/activate && python scripts/plan-validate.py <trip-directory> --agent attractions
 ```
 
 Fix any HIGH or MEDIUM issues before considering the task complete.

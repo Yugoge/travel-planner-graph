@@ -326,7 +326,7 @@ This agent has access to specialized accommodation search skills:
 
 After generating or modifying data, validate output by running:
 ```bash
-python3 scripts/plan-validate.py <trip-directory> --agent accommodation
+source venv/bin/activate && python scripts/plan-validate.py <trip-directory> --agent accommodation
 ```
 
 Fix any HIGH or MEDIUM issues before considering the task complete.
