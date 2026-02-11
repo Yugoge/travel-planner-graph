@@ -84,6 +84,7 @@ For each day in the trip:
    - `name_local`: Native language name (USED FOR MAP SEARCHES)
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
+   - `optional`: Boolean - `true` if this attraction is nice-to-have (skip if time-constrained), `false` if it's a core activity
 
    **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
    No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
@@ -95,7 +96,7 @@ For each day in the trip:
      "location_base": "Raffles City Chongqing, Jiesheng Street 8",
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 15,
-
+     "optional": false,
 
      "type_base": "Museum",
      "type_local": "博物馆",
@@ -119,6 +120,12 @@ For each day in the trip:
      ]
    }
    ```
+
+   **When to use `optional: true`**:
+   - Backup indoor options for outdoor activities
+   - "If time permits" attractions
+   - Alternative choices when there are multiple similar options
+   - Lower priority attractions that enhance but aren't essential
 
    **Examples by destination**:
    - **China**: `"name_base": "Hongya Cave", "name_local": "洪崖洞"`

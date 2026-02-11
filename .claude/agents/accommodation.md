@@ -71,6 +71,7 @@ For each day in the trip:
    - `name_local`: Native language name (for local context)
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
+   - `optional`: Boolean - Always `false` for accommodation (never optional)
 
    **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
    No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
@@ -82,6 +83,7 @@ For each day in the trip:
      "location_base": "235 Minquan Road, Yuzhong District",
      "location_local": "重庆市渝中区民权路235号",
      "cost": 120,
+     "optional": false,
 
      "type_base": "Hotel",
      "type_local": "酒店",

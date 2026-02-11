@@ -69,6 +69,7 @@ For each day in the trip:
    - `name_local`: Native language name (USED FOR MAP SEARCHES)
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
+   - `optional`: Boolean - `true` if this entertainment is flexible/skippable, `false` if it's a planned evening activity
 
    **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
    No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
@@ -80,6 +81,7 @@ For each day in the trip:
      "location_base": "Nanshan District, Chongqing",
      "location_local": "重庆市南岸区南山",
      "cost": 50,
+     "optional": false,
 
      "time": "20:00",
      "type_base": "Theater",

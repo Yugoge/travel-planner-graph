@@ -66,6 +66,7 @@ For each day in the trip:
    - `name_local`: Native language name (USED FOR MAP SEARCHES)
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
+   - `optional`: Boolean - `true` if this meal is flexible/skippable, `false` if it's a planned meal (most meals should be `false`)
 
    **Rule: name_local = Destination country language**
    - China POI → `name_local` in Chinese (for Gaode search)
@@ -83,6 +84,7 @@ For each day in the trip:
      "location_base": "Raffles City Chongqing, Jiesheng Street 8",
      "location_local": "重庆来福士广场捷盛街8号",
      "cost": 25,
+     "optional": false,
 
      "cuisine_base": "Sichuan Cuisine",
      "cuisine_local": "川菜",

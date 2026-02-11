@@ -73,6 +73,7 @@ For each day in the trip:
    - `name_local`: Native language name (USED FOR MAP SEARCHES)
    - `location_base`: Address in `base_lang`
    - `location_local`: Native language address
+   - `optional`: Boolean - `true` if this shopping is flexible/skippable, `false` if it's a planned shopping stop
 
    **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
    No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
@@ -84,6 +85,7 @@ For each day in the trip:
      "location_base": "Shapingba District, Chongqing",
      "location_local": "重庆市沙坪坝区磁器口",
      "cost": 100,
+     "optional": false,
 
      "type_base": "Local Market",
      "type_local": "本地市场",

@@ -1693,7 +1693,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
                         }}
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(55,53,47,0.03)'; }}
                         onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? 'rgba(55,53,47,0.06)' : 'transparent'; }}
-                      >📄 {dayLabelShort(d, lang)}</div>
+                      >📄 {dayLabelSidebar(d, lang)}</div>
                     );
                   })}
                 </div>
@@ -2053,7 +2053,28 @@ const dayLabel = (dayNumOrObj, locationOrLng, lngOpt) => {
   return prefix + (location ? ' – ' + location : '');
 };
 
-// Day label for sidebar nav (no location)
+// Day label for sidebar nav (with location for better context)
+// Accepts day object or dayNum for backward compat
+const dayLabelSidebar = (dayNumOrObj, lng) => {
+  let dayNum, date, location;
+  if (typeof dayNumOrObj === 'object' && dayNumOrObj !== null) {
+    const day = dayNumOrObj;
+    dayNum = day.day;
+    date = day.date || '';
+    location = (lng === 'local' && day.location_local) ? day.location_local : day.location;
+  } else {
+    dayNum = dayNumOrObj;
+    date = '';
+    location = '';
+  }
+  // Use real date if available
+  const realDate = date ? formatRealDate(date, lng) : null;
+  const prefix = realDate ? realDate : `Day ${dayNum}`;
+  // Add location if available
+  return location ? `${prefix} – ${location}` : prefix;
+};
+
+// Day label for sidebar nav (no location) - deprecated in favor of dayLabelSidebar
 // Accepts day object or dayNum for backward compat
 const dayLabelShort = (dayNumOrObj, lng) => {
   let dayNum, date;
