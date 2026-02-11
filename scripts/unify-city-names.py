@@ -28,7 +28,7 @@ def extract_city_from_location_base(location_base: str) -> str:
     Extract city name from accommodation.location_base field.
 
     Parses the location_base string to find the city name.
-    Looks for patterns like "City, Province" or "City" at the end.
+    Prioritizes city names at the end of the string (after the last comma).
 
     Args:
         location_base: The location_base string from accommodation
@@ -36,33 +36,40 @@ def extract_city_from_location_base(location_base: str) -> str:
     Returns:
         Extracted city name
     """
-    # Common Chinese cities to look for (in order of priority)
+    # Common Chinese cities to look for (longer names first to avoid false matches)
     cities = [
-        'Beijing', 'Shanghai', 'Chongqing', 'Chengdu',
-        'Bazhong', 'Shenzhen', 'Guangzhou', 'Hangzhou',
-        'Nanjing', 'Wuhan', 'Xi\'an'
+        'Chongqing', 'Shanghai', 'Beijing', 'Chengdu',
+        'Shenzhen', 'Guangzhou', 'Hangzhou', 'Nanjing',
+        'Wuhan', 'Bazhong', 'Xi\'an'
     ]
 
-    # Check for known cities
+    # Find the LAST occurrence of each city in the string
+    # and use the one that appears latest (closest to end of string)
+    best_city = None
+    best_position = -1
+
     for city in cities:
-        if city in location_base:
-            return city
+        # Find last occurrence of city
+        pos = location_base.rfind(city)
+        if pos != -1 and pos > best_position:
+            best_city = city
+            best_position = pos
 
-    # Fallback: extract from comma-separated location
-    # Format: "Address, City, Province" or "Address, City"
+    if best_city:
+        return best_city
+
+    # Fallback: split by comma and get last non-empty part
     parts = [p.strip() for p in location_base.split(',')]
-    if len(parts) >= 2:
-        # Second to last part is usually city
-        potential_city = parts[-2]
-        # Remove common suffixes
-        for suffix in [' District', ' Province', ' Area']:
-            if suffix in potential_city:
-                potential_city = potential_city.replace(suffix, '').strip()
-        if potential_city:
-            return potential_city
+    for part in reversed(parts):
+        if part:
+            # Remove common suffixes
+            for suffix in [' District', ' Province', ' Area', ' Region']:
+                if part.endswith(suffix):
+                    part = part[:-len(suffix)].strip()
+            if part:
+                return part
 
-    # Last resort: return last part
-    return parts[-1] if parts else location_base
+    return location_base
 
 
 def extract_city_mapping(accommodation_path: Path) -> Dict[int, str]:
@@ -108,7 +115,7 @@ def update_agent_file(
     Update agent file with unified city names.
 
     Only updates days where current location is composite (has ' / ').
-    Uses city from accommodation.location as the canonical single city.
+    Uses city from accommodation.location_base as the canonical single city.
 
     Args:
         agent_path: Path to agent JSON file
@@ -122,6 +129,7 @@ def update_agent_file(
         data = json.load(f)
 
     days_updated = 0
+    updates_list = []
 
     # Update main location field for each day
     for day_entry in data.get('data', {}).get('days', []):
@@ -132,7 +140,7 @@ def update_agent_file(
         if has_composite_city(current_location):
             canonical_city = city_mapping.get(day_num)
 
-            if canonical_city:
+            if canonical_city and canonical_city != current_location:
                 old_location = day_entry['location']
                 day_entry['location'] = canonical_city
                 days_updated += 1
@@ -141,12 +149,16 @@ def update_agent_file(
                 if 'location_local' in day_entry:
                     day_entry['location_local'] = canonical_city
 
-                print(f"  {agent_name} Day {day_num}: '{old_location}' -> '{canonical_city}'")
+                updates_list.append(f"  {agent_name} Day {day_num}: '{old_location}' -> '{canonical_city}'")
 
     # Write back updated data
     if days_updated > 0:
         with open(agent_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # Print updates
+        for update in updates_list:
+            print(update)
         print(f"  Updated {days_updated} day(s) in {agent_name}")
 
     return days_updated
@@ -176,14 +188,20 @@ def main():
         print(f"Error: accommodation.json not found: {accommodation_path}")
         sys.exit(1)
 
-    print("\nStep 1: Extract city mapping from accommodation.location")
+    print("\nStep 1: Extract city mapping from accommodation.location_base")
     city_mapping = extract_city_mapping(accommodation_path)
 
     # Print composite days that will be updated
     print("\nComposite city days detected:")
-    for day_num, city in sorted(city_mapping.items()):
-        if has_composite_city(city):
-            print(f"  Day {day_num}: accommodation.location = '{city}' (needs unification)")
+    with open(accommodation_path, 'r', encoding='utf-8') as f:
+        accom_data = json.load(f)
+
+    for day_entry in accom_data['data']['days']:
+        day_num = day_entry['day']
+        day_location = day_entry.get('location', '')
+        if has_composite_city(day_location):
+            extracted_city = city_mapping.get(day_num, '')
+            print(f"  Day {day_num}: '{day_location}' -> extracted city: '{extracted_city}'")
 
     # Step 3: Update each agent file
     print("\nStep 2: Update agent files with unified city names")

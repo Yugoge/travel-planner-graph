@@ -1,0 +1,99 @@
+{
+  "request_id": "dev-20260211-084500",
+  "timestamp": "2025-02-11T08:45:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Created unify-city-names.py script",
+        "type": "script",
+        "files_created": [
+          "scripts/unify-city-names.py"
+        ],
+        "rationale": "Root cause: Composite city names (e.g., 'Chengdu / Shanghai') break _map_service_for exact match. Script extracts canonical city from accommodation.location_base and updates all agent files."
+      },
+      {
+        "id": 2,
+        "description": "Updated Day 3 from 'Bazhong / Chengdu' to 'Chengdu'",
+        "type": "data",
+        "files_modified": [
+          "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json"
+        ],
+        "changes": "Day 3 location changed from 'Bazhong / Chengdu' to 'Chengdu' (extracted from accommodation.location_base: 'Jinniu District, Chengdu, Sichuan Province')",
+        "rationale": "Eliminates composite format, uses single accommodation city (Chengdu) where Day 3 lodging is located"
+      },
+      {
+        "id": 3,
+        "description": "Updated Day 4 from 'Chengdu / Shanghai' to 'Shanghai'",
+        "type": "data",
+        "files_modified": [
+          "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json"
+        ],
+        "changes": "Day 4 location changed from 'Chengdu / Shanghai' to 'Shanghai' (extracted from accommodation.location_base: 'Huangpu District, Shanghai')",
+        "rationale": "Eliminates composite format, uses single accommodation city (Shanghai) where Day 4 lodging is located"
+      },
+      {
+        "id": 4,
+        "description": "Updated Day 8 from 'Shanghai / Beijing' to 'Beijing'",
+        "type": "data",
+        "files_modified": [
+          "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+          "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json"
+        ],
+        "changes": "Day 8 location changed from 'Shanghai / Beijing' to 'Beijing' (extracted from accommodation.location_base: 'Haidian District, Beijing')",
+        "rationale": "Eliminates composite format, uses single accommodation city (Beijing) where Day 8 lodging is located"
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/unify-city-names.py",
+        "purpose": "Extract city from accommodation.location_base and update all agent files to use single city name (eliminate composite 'A / B' format)",
+        "parameters": [
+          "destination_slug"
+        ],
+        "usage": "source ~/.claude/venv/bin/activate && python scripts/unify-city-names.py <destination-slug>",
+        "example": "python scripts/unify-city-names.py china-feb-15-mar-7-2026-20260202-195429",
+        "exit_codes": {
+          "0": "Success",
+          "1": "Error (missing arguments, file not found)"
+        }
+      }
+    ],
+    "files_modified": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json"
+    ],
+    "git_rationale": {
+      "root_cause_commit": "Multiple checkpoints - _map_service_for uses exact string match which fails for composite names",
+      "why_issue_occurred": "_resolve_city_coord uses exact string match (==) which fails for composite names like 'Chengdu / Shanghai'. Composite format was introduced to show travel days spanning multiple cities, but breaks service detection.",
+      "how_fix_addresses_root": "Eliminate composite 'A / B' format entirely. Use single city from accommodation.location_base (where lodging is located) as canonical day city. Script extracts city intelligently by finding last occurrence of known city names in location_base string."
+    },
+    "qa_ready": true,
+    "qa_notes": "1) Run unify-city-names.py script to verify it correctly extracts cities from accommodation.location_base\n2) Verify Days 3, 4, 8 now have single city names (Chengdu, Shanghai, Beijing)\n3) Test _map_service_for for Bund Night Walk (Day 4) - should now detect Gaode not Google\n4) Re-fetch Bund Night Walk image and verify Gaode Maps was used\n5) Verify no remaining composite city names in any agent files"
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Run git diff to review all changes before committing",
+    "Test image fetch for Bund Night Walk to confirm Gaode is used",
+    "Consider adding unify-city-names.py to CI/CD pre-commit hooks",
+    "Document city name standard in project README (use accommodation city as canonical)"
+  ],
+  "permissions_to_add": [
+    {
+      "section": "allow",
+      "pattern": "Bash(source ~/.claude/venv/bin/activate && python scripts/unify-city-names.py:*)",
+      "reason": "Allow execution of unify-city-names.py script created by /dev"
+    }
+  ]
+}
