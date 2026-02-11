@@ -342,15 +342,19 @@ class BatchImageFetcher:
             print(f"  Google Maps error for {poi_name}: {e}")
             return None
 
-    def _gaode_search(self, search_name: str, city: str) -> Optional[str]:
+    def _gaode_search(self, search_name: str, city: str, location_local: str = None) -> Optional[str]:
         """Execute a Gaode POI search and return photo URL if found.
 
-        Fallback strategy: If exact search fails, try simplified keywords.
-        Example: "外滩夜景散步" → "外滩夜景" → "外滩"
+        Fallback strategy:
+        1. Try exact name search
+        2. Try simplified keywords (remove trailing descriptive words)
+        3. Try location/address search if provided
+
+        Example: "外滩夜景散步" → "外滩夜景" → "外滩" → "上海市黄浦区中山东一路"
         """
         import re
 
-        # Try exact search first
+        # Try exact name search with keyword fallbacks
         for search_term in self._get_fallback_search_terms(search_name):
             try:
                 script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
@@ -375,6 +379,31 @@ class BatchImageFetcher:
                 continue
             except Exception:
                 continue
+
+        # FINAL FALLBACK: Try location/address search
+        if location_local:
+            try:
+                script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
+                result = subprocess.run(
+                    [self.venv_python, str(script_path), "keyword", location_local, city],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    cwd=script_path.parent
+                )
+
+                if result.returncode == 0:
+                    data = json.loads(result.stdout)
+                    if data.get("pois") and len(data["pois"]) > 0:
+                        poi = data["pois"][0]
+                        photos = poi.get("photos", {})
+                        url = photos.get("url")
+                        if url and url.startswith("http"):
+                            return url.replace("http://", "https://", 1)
+            except subprocess.TimeoutExpired:
+                pass
+            except Exception:
+                pass
 
         return None
 
@@ -407,18 +436,19 @@ class BatchImageFetcher:
 
         return terms
 
-    def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None) -> Optional[str]:
+    def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None, location_local: str = None) -> Optional[str]:
         """Fetch POI photo using map service determined by city location.
 
         Mainland China → Gaode Maps (高德)
         Everywhere else → Google Maps
         Uses name_local for search (native language), falls back to poi_name.
+        FINAL FALLBACK: Uses location_local (address) for search if name fails.
         """
         search_name = name_local if name_local else poi_name
         service = self._map_service_for(city)
 
         if service == "gaode":
-            return self._gaode_search(search_name, city)
+            return self._gaode_search(search_name, city, location_local=location_local)
         else:
             return self.fetch_poi_photo_google(search_name, city)
 
@@ -548,6 +578,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -560,6 +592,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -571,6 +605,8 @@ class BatchImageFetcher:
                             # New format: name_base and name_local
                             name_base = meal.get("name_base", "")
                             name_local = meal.get("name_local", "")
+                            location_base = meal.get("location_base", "")
+                            location_local = meal.get("location_local", "")
 
                             # Backward compatibility: fallback to old fields
                             if not name_base:
@@ -583,6 +619,8 @@ class BatchImageFetcher:
                                     "name": name_base,
                                     "name_local": name_local,
                                     "city": location,
+                                    "location_base": location_base,
+                                    "location_local": location_local,
                                     "type": poi_type
                                 })
 
@@ -593,6 +631,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = acc.get("name_base", "")
                         name_local = acc.get("name_local", "")
+                        location_base = acc.get("location_base", "")
+                        location_local = acc.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -605,6 +645,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -614,6 +656,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -626,6 +670,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -634,6 +680,8 @@ class BatchImageFetcher:
                     for item in day.get("shopping", []):
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         if not name_base:
                             name_base = item.get("name", "")
@@ -645,6 +693,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -658,6 +708,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -670,6 +722,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -679,6 +733,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -691,6 +747,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -700,6 +758,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -712,6 +772,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -721,6 +783,8 @@ class BatchImageFetcher:
                         # New format: name_base and name_local
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         # Backward compatibility: fallback to old fields
                         if not name_base:
@@ -733,6 +797,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -740,6 +806,8 @@ class BatchImageFetcher:
                     for item in city.get("shopping", []):
                         name_base = item.get("name_base", "")
                         name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
 
                         if not name_base:
                             name_base = item.get("name", "")
@@ -751,6 +819,8 @@ class BatchImageFetcher:
                                 "name": name_base,
                                 "name_local": name_local,
                                 "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
                                 "type": poi_type
                             })
 
@@ -770,7 +840,8 @@ class BatchImageFetcher:
             photo_url = self.fetch_poi_photo(
                 poi['name'],
                 poi['city'],
-                name_local=poi.get('name_local')
+                name_local=poi.get('name_local'),
+                location_local=poi.get('location_local')
             )
 
             if photo_url:

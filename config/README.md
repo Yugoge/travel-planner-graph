@@ -1,43 +1,209 @@
 # config
 
-Configuration templates for MCP servers and project settings
+Configuration templates for MCP servers and project settings.
 
 ---
 
 ## Purpose
 
-This folder contains config files organized according to project standards.
+This folder contains template configuration files for MCP (Model Context Protocol) servers and project-level settings. Templates serve as starting points that users customize with their own API keys and preferences.
+
+**Key use case**: Provide ready-to-use configuration templates with clear setup instructions.
 
 ## Allowed File Types
 
-.json files only
+- `.json` files ONLY
+- NO other formats (.md, .yaml, etc.)
+- Exception: This README.md and INDEX.md for documentation
 
 ## Naming Convention
 
-kebab-case with -config suffix
+- **Config files**: kebab-case with `-config.json` suffix
+  - Example: `currency-config.json`, `mcp-config-template.json`
+  - Pattern: `{service}-config.json` or `{purpose}-config.json`
 
 ## Organization Rules
 
-Files in this folder should follow these rules:
+### Configuration Files
 
-1. Use appropriate file extensions
-2. Follow naming conventions
-3. Keep files organized and well-documented
+**currency-config.json** (431 bytes):
+- Currency conversion rates and symbols
+- Contains: USD to CNY rates, currency symbols
+- Used by: Budget agent, HTML generator
+- Update: When rates change significantly
+
+**fallback-images.json** (438 bytes):
+- Default images for POI types
+- Contains: Placeholder URLs for attractions, meals, shopping, etc.
+- Used by: HTML generator when POI has no images
+- Categories: Attractions, entertainment, meals, shopping, accommodation
+
+**mcp-config-template.json** (1.4KB):
+- Template MCP server configuration
+- Contains: Server definitions, environment variable references
+- Used by: Claude Code settings.json
+- Setup: User copies to `.claude/settings.json` and adds API keys
+
+## File Responsibilities
+
+**currency-config.json**:
+```json
+{
+  "cny_to_usd": 0.14,
+  "usd_to_cny": 7.2,
+  "symbols": {
+    "CNY": "¥",
+    "USD": "$"
+  }
+}
+```
+
+**fallback-images.json**:
+```json
+{
+  "attraction": "url/to/default-attraction.jpg",
+  "meal": "url/to/default-meal.jpg",
+  "shopping": "url/to/default-shopping.jpg"
+}
+```
+
+**mcp-config-template.json**:
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "python",
+      "args": ["path/to/server.py"],
+      "env": {
+        "API_KEY": "${API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+## File Creation Patterns
+
+Based on Git history:
+
+**Created by**: Manual setup during project initialization
+**Timeframe**: Feb 8, 2026
+**Automation**: 100% manual (templates require user customization)
+
+**Pattern**:
+1. Project needs new configuration (currency, images, MCP)
+2. Template created with clear structure
+3. Documented with comments/examples
+4. User copies and customizes for their environment
+
+**Recent commits**:
+- 2026-02-08 15:19: "checkpoint: Auto-save" (initial setup)
 
 ## Standards
 
-- Files must be valid format
-- Use descriptive names
-- Document purpose and usage
+### JSON Format
 
----
+1. **Valid JSON**: Must parse without errors
+2. **2-space indentation**: Consistent formatting
+3. **Comments**: NOT supported in JSON (use separate docs)
+4. **UTF-8 encoding**: Support international characters
+
+### Configuration Design
+
+**Templates vs secrets**:
+- Templates in `config/` (committed to git)
+- User secrets in environment variables (NOT committed)
+- Reference pattern: `${VARIABLE_NAME:-default_value}`
+
+**Example from mcp-config-template.json**:
+```json
+{
+  "env": {
+    "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
+    "GOOGLE_MAPS_KEY": "${GOOGLE_MAPS_KEY:-}"
+  }
+}
+```
+
+### Currency Configuration
+
+**Update policy**:
+- Check rates monthly
+- Update if change >5%
+- Document update date in file
+
+**Usage**:
+```bash
+# Get current rate from API
+curl https://api.exchangerate.host/latest
+
+# Update config/json
+# Edit currency-config.json with new rates
+```
+
+### Fallback Images
+
+**Purpose**:
+- Graceful degradation when POI has no images
+- Visual consistency across plan types
+- Better UX than broken image links
+
+**Categories**:
+- `attraction`: Landmark/iconic image
+- `meal`: Restaurant/food image
+- `shopping`: Mall/market image
+- `entertainment`: Event/show image
+- `accommodation`: Hotel/room image
+
+## Integration with Workflow
+
+**Setup workflow**:
+```bash
+# 1. Copy MCP template
+cp config/mcp-config-template.json ~/.claude/settings.json
+
+# 2. Add API keys
+# Edit ~/.claude/settings.json with your keys
+
+# 3. Configure currency
+# Edit config/currency-config.json with current rates
+
+# 4. Test configuration
+# Run MCP server to verify connectivity
+```
+
+**Runtime usage**:
+```python
+# HTML generator loads config
+with open('config/fallback-images.json') as f:
+    fallback_images = json.load(f)
+
+# Use fallback if POI has no images
+if not poi.get('images'):
+    image = fallback_images.get(poi['type'])
+```
+
+## Dependencies
+
+**Used by**:
+- `scripts/generate-html-interactive.py` (currency, fallback images)
+- `.claude/settings.json` (MCP config template)
+- Budget agent (currency conversion)
+
+**Updated by**: Manual user action (API rate changes, new MCP servers)
 
 ## Git Analysis
 
-First created: 2026-02-03
+<!-- AUTO-GENERATED by rule-inspector - DO NOT EDIT -->
+First created: 2026-02-08
+Primary creator: Manual project setup
 Last significant update: 2026-02-08
-Generated: 2026-02-11 08:25:17 UTC
+Total config files: 3 (currency, fallback-images, mcp-template)
+Total commits (config folder): 1
+Recent activity: Initial setup only (stable)
+Stability: High (templates rarely change)
+<!-- END AUTO-GENERATED -->
 
 ---
 
-*This README documents the organization patterns for this folder. Generated by rule-inspector.*
+*This README documents the organization rules for config/. Generated by rule-inspector from git history analysis.*
