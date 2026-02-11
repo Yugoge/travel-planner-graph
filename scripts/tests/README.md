@@ -1,16 +1,16 @@
-# gaode-maps
+# tests
 
-Gaode Maps API integration scripts for China mapping
+Test scripts for validation and QA including Playwright tests
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains tests files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.js,.sh,.py
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
+First created: 2026-02-02
 Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+Generated: 2026-02-11 15:25:11 UTC
 
 ---
 

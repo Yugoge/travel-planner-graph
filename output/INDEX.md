@@ -1,22 +1,23 @@
 # output Index
 
-Auto-generated folder inventory. Last updated: 2026-02-11 08:24:58 UTC
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:04 UTC
 
 ## Structure
 
-Total files: 7
+Total files: 9
 Total subdirectories: 1
 
 ## Contents
 
 - `INDEX.md`
+- `README.md`
 - `travel-plan-beijing-exchange-bucket-list-20260202-232405.html`
 - `travel-plan-china-exchange-bucket-list-2026.html`
 - `travel-plan-china-feb-15-mar-7-2026-20260202-195429.html`
 - `travel-plan-china-feb-15-mar-7-2026.html`
 - `travel-plan-data/beijing-exchange-bucket-list-20260202-232405.html`
 - `travel-plan-data/china-feb-15-mar-7-2026-20260202-195429.html`
-- `travel-plan---plan.html`
+- `travel-plan-data/README.md`
 
 ---
 

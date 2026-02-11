@@ -1,12 +1,12 @@
-# gaode-maps
+# utils
 
-Gaode Maps API integration scripts for China mapping
+Utility scripts for exchange rates and helper functions
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains utils files organized according to project standards.
 
 ## Allowed File Types
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
+First created: 2026-02-03
 Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+Generated: 2026-02-11 15:25:05 UTC
 
 ---
 

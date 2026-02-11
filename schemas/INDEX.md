@@ -1,10 +1,10 @@
 # schemas Index
 
-Auto-generated folder inventory. Last updated: 2026-02-11 08:24:56 UTC
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:06 UTC
 
 ## Structure
 
-Total files: 11
+Total files: 13
 Total subdirectories: 0
 
 ## Contents
@@ -18,6 +18,7 @@ Total subdirectories: 0
 - `naming-convention.md`
 - `poi-common.schema.json`
 - `POI-data-schema.md`
+- `README.md`
 - `shopping.schema.json`
 - `timeline.schema.json`
 - `transportation.schema.json`

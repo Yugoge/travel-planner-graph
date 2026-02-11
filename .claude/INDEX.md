@@ -1,85 +1,121 @@
-# .claude/ Index
+# .claude Index
 
-Auto-generated folder inventory. Last updated: 2026-02-01
-
-## Purpose
-
-Claude Code configuration directory containing skills, agents, commands, and settings.
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:16 UTC
 
 ## Structure
 
-Total subdirectories: 3
-Total files: 1 + skill/agent/command files
+Total files: 107
+Total subdirectories: 26
 
-## Files
+## Contents
 
-### Root Level
-
-- `settings.json` - Claude Code configuration (7.2KB)
-
-## Subdirectories
-
-### agents/
-**8 agent files** - Specialized subagent prompts
-
-Agents:
-- `accommodation.md` - Hotel/lodging planning agent
-- `attractions.md` - Tourist attraction planning agent
-- `budget.md` - Budget calculation agent
-- `entertainment.md` - Entertainment planning agent
-- `meals.md` - Dining planning agent
-- `shopping.md` - Shopping planning agent
-- `timeline.md` - Timeline generation agent
-- `transportation.md` - Transportation planning agent
-
-**Purpose**: Travel planning subagents for multi-agent workflow orchestration
-
-### commands/
-**3 command files** - Slash command definitions
-
-Commands:
-- `plan.md` - Main travel planning orchestrator (16.8KB)
-- `gaode-maps.md` - Gaode Maps command (5.6KB)
-- `test-gaode.md` - Test command for Gaode
-
-**Subdirectory**: `gaode-maps/` (examples/, tools/)
-
-**Purpose**: User-facing entry points for workflows
-
-### skills/
-**7 skill integrations** - External API access
-
-Skills:
-- `airbnb/` - Airbnb property search (MCP via Python)
-- `duffel-flights/` - Flight search (API via Python)
-- `gaode-maps/` - 高德地图 (China maps, API via Python)
-- `google-maps/` - Google Maps (API via Python)
-- `openmeteo-weather/` - Open-Meteo weather (API via Python)
-- `rednote/` - 小红书 RedNote social search (MCP via Python)
-
-**Purpose**: Script-based skill integrations (replaced deprecated MCP servers with Python scripts)
-
-## File Types
-
-- `.json`: 1 file - Claude Code settings
-- `.md`: 11+ files - Agent prompts, command definitions
-- `.py`: 40+ files - MCP scripts (in skills/)
-- `.sh`: 1+ files - Helper scripts (in skills/)
-
-## Organization
-
-**Configuration hierarchy**:
-1. **settings.json** - Global Claude Code config
-2. **skills/** - MCP integrations (external APIs)
-3. **agents/** - Specialized subagents (workflow tasks)
-4. **commands/** - Orchestrator commands (user entry points)
-
-**Workflow pattern**:
-```
-User → Command → Agents → Skills → External APIs
-```
-
-Example: `/plan` command → timeline agent → google-maps skill → Google Maps API
+- `agents/accommodation.md`
+- `agents/attractions.md`
+- `agents/budget.md`
+- `agents/entertainment.md`
+- `agents/meals.md`
+- `agents/README.md`
+- `agents/shopping.md`
+- `agents/timeline.md`
+- `agents/transportation.md`
+- `commands/gaode-maps/CONSOLIDATION-REPORT.md`
+- `commands/gaode-maps/examples/inter-city-route.md`
+- `commands/gaode-maps/examples/README.md`
+- `commands/gaode-maps/examples/script-execution.md`
+- `commands/gaode-maps.md`
+- `commands/gaode-maps/README.md`
+- `commands/gaode-maps/tools/geocoding.md`
+- `commands/gaode-maps/tools/poi-search.md`
+- `commands/gaode-maps/tools/README.md`
+- `commands/gaode-maps/tools/routing.md`
+- `commands/gaode-maps/tools/utilities.md`
+- `commands/plan.md`
+- `commands/README.md`
+- `commands/test-gaode.md`
+- `INDEX.md`
+- `README.md`
+- `settings.json`
+- `skills/airbnb/examples/family-trip.md`
+- `skills/airbnb/examples/README.md`
+- `skills/airbnb/examples/search-example.md`
+- `skills/airbnb/README.md`
+- `skills/airbnb/scripts/details.py`
+- `skills/airbnb/scripts/load_env.py`
+- `skills/airbnb/scripts/mcp_client.py`
+- `skills/airbnb/scripts/README.md`
+- `skills/airbnb/scripts/search.py`
+- `skills/airbnb/SKILL.md`
+- `skills/airbnb/tools/details.md`
+- `skills/airbnb/tools/search.md`
+- `skills/duffel-flights/README.md`
+- `skills/duffel-flights/scripts/get_offer_details.py`
+- `skills/duffel-flights/scripts/list_airlines.py`
+- `skills/duffel-flights/scripts/load_env.py`
+- `skills/duffel-flights/scripts/README.md`
+- `skills/duffel-flights/scripts/search_airports.py`
+- `skills/duffel-flights/scripts/search_flights.py`
+- `skills/duffel-flights/scripts/search_multi_city.py`
+- `skills/duffel-flights/SKILL.md`
+- `skills/gaode-maps/examples/inter-city-route.md`
+- `skills/gaode-maps/examples/README.md`
+- `skills/gaode-maps/README.md`
+- `skills/gaode-maps/scripts/geocoding.py`
+- `skills/gaode-maps/scripts/list_tools.py`
+- `skills/gaode-maps/scripts/load_env.py`
+- `skills/gaode-maps/scripts/mcp_client.py`
+- `skills/gaode-maps/scripts/poi_search.py`
+- `skills/gaode-maps/scripts/README.md`
+- `skills/gaode-maps/scripts/routing.py`
+- `skills/gaode-maps/scripts/utilities.py`
+- `skills/gaode-maps/SKILL.md`
+- `skills/gaode-maps/test-report-20260130.json`
+- `skills/gaode-maps/tools/geocoding.md`
+- `skills/gaode-maps/tools/poi-search.md`
+- `skills/gaode-maps/tools/README.md`
+- `skills/gaode-maps/tools/routing.md`
+- `skills/gaode-maps/tools/utilities.md`
+- `skills/google-maps/examples/place-search.md`
+- `skills/google-maps/examples/places-search-example.md`
+- `skills/google-maps/examples/README.md`
+- `skills/google-maps/examples/route-planning.md`
+- `skills/google-maps/examples/routing-example.md`
+- `skills/google-maps/examples/weather-lookup-example.md`
+- `skills/google-maps/README.md`
+- `skills/google-maps/scripts/distance_matrix.py`
+- `skills/google-maps/scripts/elevation.py`
+- `skills/google-maps/scripts/fetch_place_photos.py`
+- `skills/google-maps/scripts/geocoding.py`
+- `skills/google-maps/scripts/list_tools.py`
+- `skills/google-maps/scripts/load_env.py`
+- `skills/google-maps/scripts/mcp_client.py`
+- `skills/google-maps/scripts/place_details.py`
+- `skills/google-maps/scripts/places.py`
+- `skills/google-maps/scripts/README.md`
+- `skills/google-maps/scripts/routing.py`
+- `skills/google-maps/scripts/verify_coverage.sh`
+- `skills/google-maps/SKILL.md`
+- `skills/google-maps/tools/places.md`
+- `skills/google-maps/tools/README.md`
+- `skills/google-maps/tools/routing.md`
+- `skills/google-maps/tools/weather.md`
+- `skills/INDEX.md`
+- `skills/openmeteo-weather/README.md`
+- `skills/openmeteo-weather/scripts/forecast.py`
+- `skills/openmeteo-weather/scripts/README.md`
+- `skills/openmeteo-weather/SKILL.md`
+- `skills/README.md`
+- `skills/rednote/examples/content-extraction.md`
+- `skills/rednote/examples/README.md`
+- `skills/rednote/examples/search-attractions.md`
+- `skills/rednote/examples/search-restaurants.md`
+- `skills/rednote/README.md`
+- `skills/rednote/scripts/load_env.py`
+- `skills/rednote/scripts/mcp_client.py`
+- `skills/rednote/scripts/README.md`
+- `skills/rednote/scripts/search.py`
+- `skills/rednote/SKILL.md`
+- `skills/rednote/tools/README.md`
+- `skills/rednote/tools/search.md`
 
 ---
 

@@ -1,16 +1,16 @@
-# gaode-maps
+# beijing-exchange-bucket-list-20260202-232405
 
-Gaode Maps API integration scripts for China mapping
+Data for Beijing exchange bucket list trip (generated 2026-02-02)
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains beijing-exchange-bucket-list-20260202-232405 files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.json
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+First created: 2026-02-02
+Last significant update: 2026-02-11
+Generated: 2026-02-11 15:26:14 UTC
 
 ---
 

@@ -1,92 +1,111 @@
-# scripts/ Index
+# scripts Index
 
-Auto-generated folder inventory. Last updated: 2026-02-01
-
-## Purpose
-
-Helper scripts for travel plan validation, HTML generation, and deployment workflows.
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:14 UTC
 
 ## Structure
 
-Total files: 6 shell scripts (.sh), 6 Python scripts (.py)
-Total subdirectories: 2 (todo/, gaode-maps/)
+Total files: 97
+Total subdirectories: 6
 
-## Files
+## Contents
 
-### Root Level
-
-- `check-day-completion.sh` - Verify timeline has plans for all days in trip
-- `check-location-continuity.sh` - Validate location transitions between days
-- `debug-agent-skills.sh` - Debug agent-skill integration issues
-- `deploy-travel-plans.sh` - Deploy generated travel plans to web/execution
-- `detect-location-changes.py` - Detect location changes between consecutive days
-- `generate-travel-html.sh` - Generate interactive HTML views of travel plans
-- `migrate-to-venv.py` - Migrate Python scripts to use project venv
-- `test-agent-skill-enforcement.sh` - Test agent-skill enforcement rules
-- `test-no-api-key-mcps.py` - Test MCP servers without API keys
-- `timeline_agent.py` - Timeline agent implementation
-- `validate-timeline-consistency.sh` - Validate timeline JSON structure and completeness
-
-### todo/
-
-- `todo/plan.py` - Todo checklist for travel planning workflow
-
-### gaode-maps/
-
-- `gaode-maps/parse-transit-routes.py` - Parse Gaode Maps transit route API responses
-- `gaode-maps/recommend-transportation.py` - Compare and recommend best transportation option
-- `gaode-maps/fetch-route-with-retry.py` - Fetch routes with exponential backoff retry logic
-- `gaode-maps/plan-multi-city.py` - Plan transportation for multi-city trips
-- `gaode-maps/transportation-workflow.py` - Complete transportation agent workflow
-- `gaode-maps/README.md` - Documentation for Gaode Maps utility scripts
-
-## File Types
-
-- `.sh`: 5 files - Shell scripts for validation and generation
-- `.py`: 6 files - Python scripts for data processing and workflows
-- `.md`: 1 file - Documentation for script subdirectories
-
-## Organization
-
-**Script categories**:
-
-1. **Validation scripts** (3 scripts):
-   - `check-day-completion.sh`
-   - `check-location-continuity.sh`
-   - `validate-timeline-consistency.sh`
-   - Purpose: Verify data/ JSON files meet quality standards
-
-2. **Generation scripts** (1 script):
-   - `generate-travel-html.sh`
-   - Purpose: Convert JSON data to HTML views
-
-3. **Deployment scripts** (1 script):
-   - `deploy-travel-plans.sh`
-   - Purpose: Deploy plans to execution environment
-
-4. **Workflow scripts** (1 script):
-   - `todo/plan.py`
-   - Purpose: TodoWrite integration for planning workflow
-
-5. **Gaode Maps utilities** (5 Python scripts):
-   - `gaode-maps/parse-transit-routes.py`
-   - `gaode-maps/recommend-transportation.py`
-   - `gaode-maps/fetch-route-with-retry.py`
-   - `gaode-maps/plan-multi-city.py`
-   - `gaode-maps/transportation-workflow.py`
-   - Purpose: Process Gaode Maps API data for transportation planning
-
-6. **Location detection** (1 Python script):
-   - `detect-location-changes.py`
-   - Purpose: Detect location changes in travel plans
-
-**Naming pattern**:
-- Validation: `check-*.sh`, `validate-*.sh`
-- Generation: `generate-*.sh`
-- Deployment: `deploy-*.sh`
-
-**Usage pattern**:
-All scripts accept file/directory paths as arguments (no hardcoded paths).
+- `add-notes-local.py`
+- `add-optional-field.py`
+- `archive/debug-agent-skills.sh`
+- `archive/debug-virtual-times.py`
+- `archive/final-validation-issue-3.py`
+- `archive/generate-travel-html-20260203.sh`
+- `archive/init-plan-skeleton.py`
+- `archive/migrate-city-guides-format.py`
+- `archive/migrate-to-venv.py`
+- `archive/populate-test-images.py`
+- `archive/README.md`
+- `archive/validate-base-location-fix.sh`
+- `archive/validate-chinese-extraction.py`
+- `archive/verify-compound-translation.py`
+- `archive/verify-extraction-on-data.py`
+- `archive/verify-html-rendering.py`
+- `backfill-budget-days.py`
+- `check-budget-overage.py`
+- `check-day-completion.sh`
+- `check-location-continuity.sh`
+- `check-skill-docs-consistency.sh`
+- `deploy-travel-plans.sh`
+- `detect-location-changes.py`
+- `fetch-gaode-images.py`
+- `fetch-images-batch.py`
+- `fill-missing-coordinates.py`
+- `fill-time-fields.py`
+- `fix-accommodation-currency.py`
+- `fix-accommodation-data.py`
+- `fix-all-data-issues.py`
+- `fix-attractions-data.py`
+- `fix-cross-agent-locations.py`
+- `fix-google-photo-urls.py`
+- `fix-meals-data.py`
+- `fix-medium-issues.py`
+- `fix-missing-localization.py`
+- `fix-null-dates.py`
+- `fix-wrong-coordinates.py`
+- `gaode-maps/fetch-route-with-retry.py`
+- `gaode-maps/parse-transit-routes.py`
+- `gaode-maps/plan-multi-city.py`
+- `gaode-maps/README.md`
+- `gaode-maps/recommend-transportation.py`
+- `gaode-maps/transportation-workflow.py`
+- `generate-and-deploy.sh`
+- `generate-booking-checklist.py`
+- `generate-html-interactive.py`
+- `generate-html.sh`
+- `generate-plan-slug.py`
+- `generate-skeletons.py`
+- `INDEX.md`
+- `init-plan-skeleton.sh`
+- `init-requirements-skeleton.sh`
+- `lib/html_generator.py`
+- `lib/image_fetcher.py`
+- `lib/README.md`
+- `migrate-data-to-schema.py`
+- `normalize-agent-data.py`
+- `optimize-route.py`
+- `plan-validate.py`
+- `qa-field-name-diagnostic.py`
+- `qa-final-audit.py`
+- `qa-schema-audit.py`
+- `qa-timeline-segments-check.py`
+- `README.md`
+- `remove-legacy-fields.py`
+- `rename-legacy-fields.py`
+- `sync-agent-data.py`
+- `tests/playwright-github-pages-test.js`
+- `tests/qa-inspect-local-html.js`
+- `tests/qa-inspect-page.js`
+- `tests/README.md`
+- `tests/test-agent-skill-enforcement.sh`
+- `tests/test-category-translation.js`
+- `tests/test-chinese-extraction.py`
+- `tests/test-complete-flow.py`
+- `tests/test-enhanced-extraction.py`
+- `tests/test-formatters.js`
+- `tests/test-html-function.py`
+- `tests/test-html-generation.py`
+- `tests/test-no-api-key-mcps.py`
+- `tests/test-plan-workflow.sh`
+- `tests/test-timeline-fix.py`
+- `timeline-agent.py`
+- `todo/plan.py`
+- `todo/README.md`
+- `unify-city-names.py`
+- `update-skeleton.py`
+- `utils/fetch-exchange-rate.sh`
+- `utils/README.md`
+- `validate-agent-outputs.py`
+- `validate-china-trip-data.py`
+- `validate-plan-workflow.sh`
+- `validate-timeline-conflicts.py`
+- `validate-timeline-consistency.sh`
+- `validate-timeline-data.py`
+- `validate-timeline-fidelity.py`
 
 ---
 

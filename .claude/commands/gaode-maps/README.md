@@ -1,6 +1,6 @@
 # gaode-maps
 
-Gaode Maps API integration scripts for China mapping
+Gaode Maps command-specific resources
 
 ---
 
@@ -10,7 +10,7 @@ This folder contains gaode-maps files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.md,.sh,.py
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+First created: 2026-01-30
+Last significant update: 2026-01-31
+Generated: 2026-02-11 15:26:34 UTC
 
 ---
 

@@ -1,108 +1,54 @@
-# data/ Index
+# data Index
 
-Auto-generated folder inventory. Last updated: 2026-02-01
-
-## Purpose
-
-Travel plan data storage in structured JSON format. Contains trip requirements, itineraries, and planning data for different destinations.
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:02 UTC
 
 ## Structure
 
-Total subdirectories: 1 active, 8 archived
-Total files: 2 (INDEX.md, README.md)
+Total files: 40
+Total subdirectories: 3
 
-## Active Trips
+## Contents
 
-**Status**: No active trips (data/ directory ready for new planning)
-
-## Archived Trips
-
-### archive/2026-01/ (2 trips)
-
-#### china-multi-city-feb15-mar7-2026/ (232 KB)
-**8 JSON files** - Completed multi-city China trip
-- Duration: Feb 15 - Mar 7, 2026 (21 days)
-- Destination: Multiple cities in China
-- Status: Archived (completed)
-
-#### test-trip/ (24 KB)
-**5 JSON files** - Template and test fixtures
-- Purpose: Development templates and validation test cases
-
-### archive/2026-02/ (6 trips)
-
-#### beijing-3day-budget/ (52 KB)
-**11 JSON files** - Budget agent test
-- Duration: 3 days
-- Destination: Beijing
-- Purpose: Budget agent testing
-
-#### beijing-simple-test/ (44 KB)
-**7 JSON files** - Simple agent test
-- Purpose: Basic timeline agent testing
-
-#### beijing-timeline-test/ (40 KB)
-**3 JSON + MD files** - Timeline workflow testing
-- Purpose: Timeline agent validation
-
-#### china-multi-city-feb-mar-2026/ (204 KB)
-**10 JSON files** - Multi-city trip planning test
-- Duration: Feb 15 - Mar 7, 2026
-- Destination: Multiple cities in China
-- Purpose: Agent integration testing
-
-#### shanghai-test/ (32 KB)
-**3 JSON + MD files** - Shanghai entertainment testing
-- Purpose: Entertainment skills testing
-
-#### skill-test/ (184 KB)
-**20+ JSON + MD files** - Skill integration testing
-- Purpose: MCP skills testing, agent capability verification
-
-**Total archived**: 8 trips | 812 KB
-
-## File Types
-
-- `.json`: 15 files - All data stored as JSON
-- **No other file types allowed** (data-only directory)
-
-## Organization
-
-**Structure discovered**:
-1. **Trip-based organization**: Each trip gets its own subdirectory
-2. **Naming convention**: kebab-case for directories, kebab-case for JSON files
-3. **Standard data breakdown**: 10 JSON files per complete trip
-   - requirements (input)
-   - plan (output)
-   - timeline (daily schedule)
-   - 7 category files (transport, accommodation, attractions, meals, entertainment, shopping, budget)
-
-**Skeleton pattern**:
-- Use `*-skeleton.json` suffix for templates
-- Use `*-broken.json` or `*-incomplete.json` for test fixtures
-
-## Data Schema
-
-Each trip follows this data model:
-
-```
-Trip Directory/
-├── requirements-skeleton.json    # Input: What user wants
-├── plan-skeleton.json            # Output: Generated plan
-├── timeline.json                 # Day-by-day schedule
-├── transportation.json           # Inter-city travel
-├── accommodation.json            # Lodging
-├── attractions.json              # Sightseeing
-├── meals.json                    # Dining
-├── entertainment.json            # Events/shows
-├── shopping.json                 # Shopping
-└── budget.json                   # Costs
-```
-
-**File dependencies**:
-1. `requirements-skeleton.json` → Input to planner
-2. `plan-skeleton.json` → Generated from requirements
-3. All other files → Breakdown of plan sections
+- `beijing-exchange-bucket-list-20260202-232405/accommodation.json`
+- `beijing-exchange-bucket-list-20260202-232405/attractions.json`
+- `beijing-exchange-bucket-list-20260202-232405/budget.json`
+- `beijing-exchange-bucket-list-20260202-232405/entertainment.json`
+- `beijing-exchange-bucket-list-20260202-232405/images.json`
+- `beijing-exchange-bucket-list-20260202-232405/meals.json`
+- `beijing-exchange-bucket-list-20260202-232405/plan-skeleton.json`
+- `beijing-exchange-bucket-list-20260202-232405/README.md`
+- `beijing-exchange-bucket-list-20260202-232405/requirements-skeleton.json`
+- `beijing-exchange-bucket-list-20260202-232405/shopping.json`
+- `beijing-exchange-bucket-list-20260202-232405/timeline.json`
+- `beijing-exchange-bucket-list-20260202-232405/transportation.json`
+- `china-exchange-bucket-list-2026/accommodation.json`
+- `china-exchange-bucket-list-2026/attractions.json`
+- `china-exchange-bucket-list-2026/budget.json`
+- `china-exchange-bucket-list-2026/entertainment.json`
+- `china-exchange-bucket-list-2026/images.json`
+- `china-exchange-bucket-list-2026/meals.json`
+- `china-exchange-bucket-list-2026/plan-skeleton.json`
+- `china-exchange-bucket-list-2026/README.md`
+- `china-exchange-bucket-list-2026/requirements-skeleton.json`
+- `china-exchange-bucket-list-2026/shopping.json`
+- `china-exchange-bucket-list-2026/timeline.json`
+- `china-exchange-bucket-list-2026/transportation.json`
+- `china-feb-15-mar-7-2026-20260202-195429/accommodation.json`
+- `china-feb-15-mar-7-2026-20260202-195429/attractions.json`
+- `china-feb-15-mar-7-2026-20260202-195429/budget.json`
+- `china-feb-15-mar-7-2026-20260202-195429/entertainment.json`
+- `china-feb-15-mar-7-2026-20260202-195429/images.json`
+- `china-feb-15-mar-7-2026-20260202-195429/meals.json`
+- `china-feb-15-mar-7-2026-20260202-195429/plan-skeleton.json`
+- `china-feb-15-mar-7-2026-20260202-195429/README.md`
+- `china-feb-15-mar-7-2026-20260202-195429/requirements-skeleton.json`
+- `china-feb-15-mar-7-2026-20260202-195429/route-optimization.json`
+- `china-feb-15-mar-7-2026-20260202-195429/shopping.json`
+- `china-feb-15-mar-7-2026-20260202-195429/sync-report.json`
+- `china-feb-15-mar-7-2026-20260202-195429/timeline.json`
+- `china-feb-15-mar-7-2026-20260202-195429/transportation.json`
+- `INDEX.md`
+- `README.md`
 
 ---
 

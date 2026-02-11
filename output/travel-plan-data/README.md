@@ -1,16 +1,16 @@
-# gaode-maps
+# travel-plan-data
 
-Gaode Maps API integration scripts for China mapping
+Final published travel plan HTML files
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains travel-plan-data files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.html
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+First created: 2026-02-10
+Last significant update: 2026-02-11
+Generated: 2026-02-11 15:26:22 UTC
 
 ---
 

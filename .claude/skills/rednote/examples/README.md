@@ -1,16 +1,16 @@
-# gaode-maps
+# examples
 
-Gaode Maps API integration scripts for China mapping
+Example scripts for RedNote API
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains examples files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.py,.sh
 
 ## Naming Convention
 
@@ -35,8 +35,8 @@ Files in this folder should follow these rules:
 ## Git Analysis
 
 First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+Last significant update: 2026-01-31
+Generated: 2026-02-11 15:27:35 UTC
 
 ---
 

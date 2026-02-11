@@ -1,95 +1,95 @@
-# .claude/skills Index
+# skills Index
 
-Auto-generated folder inventory. Last updated: 2026-01-31
-
-## Purpose
-
-MCP (Model Context Protocol) skill integrations for travel planning functionality. Each skill provides script-based access to external APIs via MCP servers.
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:17 UTC
 
 ## Structure
 
-Total subdirectories: 7
-Total files: 86 (.md, .py, .json, .pyc, .sh)
+Total files: 81
+Total subdirectories: 20
 
-## Skills
+## Contents
 
-### airbnb/
-- **Purpose**: Airbnb property search and details via MCP
-- **Files**: SKILL.md, examples/, scripts/, tools/
-- **API**: Requires Airbnb API key
-- **Key scripts**: search.py, details.py, mcp_client.py
-
-### duffel-flights/
-- **Purpose**: Flight search via Duffel API
-- **Files**: SKILL.md, scripts/
-- **API**: Requires Duffel API key
-- **Key scripts**: search_flights.py, search_airports.py, list_airlines.py
-
-### gaode-maps/
-- **Purpose**: 高德地图 (AutoNavi) maps for China
-- **Files**: SKILL.md, examples/, scripts/, tools/, test-report-20260130.json
-- **API**: Requires Gaode API key
-- **Key scripts**: geocoding.py, poi_search.py, routing.py, utilities.py
-
-### google-maps/
-- **Purpose**: Google Maps integration (places, routing, weather)
-- **Files**: README.md, SKILL.md, examples/, scripts/, tools/
-- **API**: Requires Google Maps API key
-- **Key scripts**: places.py, routing.py, weather.py, mcp_client.py
-
-### rednote/
-- **Purpose**: 小红书 (RedNote/Xiaohongshu) content extraction
-- **Files**: SKILL.md, examples/
-- **API**: No API key required (scraping-based)
-- **Last added**: 2026-01-31 (most recent skill)
-
-### test-mcp/
-- **Purpose**: MCP server testing and validation
-- **Files**: SKILL.md
-- **API**: No API key required
-
-### weather/
-- **Purpose**: Weather.gov API integration
-- **Files**: SKILL.md, scripts/
-- **API**: No API key required (free government API)
-- **Key scripts**: current.py, forecast.py, alerts.py, air_quality.py
-
-## File Types
-
-- `.md`: 29 files - Skill documentation, examples, tool reference
-- `.py`: 39 files - Python scripts for MCP communication
-- `.pyc`: 17 files - Python bytecode (auto-generated, should be .gitignored)
-- `.json`: 1 file - Test reports
-- `.sh`: 1 file - Shell scripts
-
-## Organization Patterns
-
-**Discovered patterns**:
-1. **Standard structure**: Each skill has `SKILL.md` as entry point
-2. **Optional subdirectories**:
-   - `scripts/`: Python MCP client scripts (required for API-based skills)
-   - `examples/`: Usage examples in markdown
-   - `tools/`: MCP tool documentation (reference)
-3. **Naming convention**: kebab-case for directories, snake_case for Python files
-4. **README.md**: Only present in google-maps (comprehensive setup guide)
-
-**Creation pattern**:
-- Skills created manually via checkpoint commits (Jan 30-31, 2026)
-- Most active period: Jan 30, 2026 (6 skills added)
-- Latest addition: rednote (Jan 31, 2026)
-
-## API Key Requirements
-
-**Requires API key** (5 skills):
-- airbnb (Airbnb API)
-- duffel-flights (Duffel API)
-- gaode-maps (Gaode/AutoNavi API)
-- google-maps (Google Maps API)
-- weather (no key required - free API)
-
-**No API key** (2 skills):
-- rednote (scraping-based)
-- test-mcp (testing only)
+- `airbnb/examples/family-trip.md`
+- `airbnb/examples/README.md`
+- `airbnb/examples/search-example.md`
+- `airbnb/README.md`
+- `airbnb/scripts/details.py`
+- `airbnb/scripts/load_env.py`
+- `airbnb/scripts/mcp_client.py`
+- `airbnb/scripts/README.md`
+- `airbnb/scripts/search.py`
+- `airbnb/SKILL.md`
+- `airbnb/tools/details.md`
+- `airbnb/tools/search.md`
+- `duffel-flights/README.md`
+- `duffel-flights/scripts/get_offer_details.py`
+- `duffel-flights/scripts/list_airlines.py`
+- `duffel-flights/scripts/load_env.py`
+- `duffel-flights/scripts/README.md`
+- `duffel-flights/scripts/search_airports.py`
+- `duffel-flights/scripts/search_flights.py`
+- `duffel-flights/scripts/search_multi_city.py`
+- `duffel-flights/SKILL.md`
+- `gaode-maps/examples/inter-city-route.md`
+- `gaode-maps/examples/README.md`
+- `gaode-maps/README.md`
+- `gaode-maps/scripts/geocoding.py`
+- `gaode-maps/scripts/list_tools.py`
+- `gaode-maps/scripts/load_env.py`
+- `gaode-maps/scripts/mcp_client.py`
+- `gaode-maps/scripts/poi_search.py`
+- `gaode-maps/scripts/README.md`
+- `gaode-maps/scripts/routing.py`
+- `gaode-maps/scripts/utilities.py`
+- `gaode-maps/SKILL.md`
+- `gaode-maps/test-report-20260130.json`
+- `gaode-maps/tools/geocoding.md`
+- `gaode-maps/tools/poi-search.md`
+- `gaode-maps/tools/README.md`
+- `gaode-maps/tools/routing.md`
+- `gaode-maps/tools/utilities.md`
+- `google-maps/examples/place-search.md`
+- `google-maps/examples/places-search-example.md`
+- `google-maps/examples/README.md`
+- `google-maps/examples/route-planning.md`
+- `google-maps/examples/routing-example.md`
+- `google-maps/examples/weather-lookup-example.md`
+- `google-maps/README.md`
+- `google-maps/scripts/distance_matrix.py`
+- `google-maps/scripts/elevation.py`
+- `google-maps/scripts/fetch_place_photos.py`
+- `google-maps/scripts/geocoding.py`
+- `google-maps/scripts/list_tools.py`
+- `google-maps/scripts/load_env.py`
+- `google-maps/scripts/mcp_client.py`
+- `google-maps/scripts/place_details.py`
+- `google-maps/scripts/places.py`
+- `google-maps/scripts/README.md`
+- `google-maps/scripts/routing.py`
+- `google-maps/scripts/verify_coverage.sh`
+- `google-maps/SKILL.md`
+- `google-maps/tools/places.md`
+- `google-maps/tools/README.md`
+- `google-maps/tools/routing.md`
+- `google-maps/tools/weather.md`
+- `INDEX.md`
+- `openmeteo-weather/README.md`
+- `openmeteo-weather/scripts/forecast.py`
+- `openmeteo-weather/scripts/README.md`
+- `openmeteo-weather/SKILL.md`
+- `README.md`
+- `rednote/examples/content-extraction.md`
+- `rednote/examples/README.md`
+- `rednote/examples/search-attractions.md`
+- `rednote/examples/search-restaurants.md`
+- `rednote/README.md`
+- `rednote/scripts/load_env.py`
+- `rednote/scripts/mcp_client.py`
+- `rednote/scripts/README.md`
+- `rednote/scripts/search.py`
+- `rednote/SKILL.md`
+- `rednote/tools/README.md`
+- `rednote/tools/search.md`
 
 ---
 

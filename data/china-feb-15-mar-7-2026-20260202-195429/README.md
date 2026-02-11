@@ -1,16 +1,16 @@
-# gaode-maps
+# china-feb-15-mar-7-2026-20260202-195429
 
-Gaode Maps API integration scripts for China mapping
+Data for 21-day China trip (Feb 15 - Mar 7, 2026)
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains china-feb-15-mar-7-2026-20260202-195429 files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.json
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+First created: 2026-02-02
+Last significant update: 2026-02-11
+Generated: 2026-02-11 15:26:19 UTC
 
 ---
 

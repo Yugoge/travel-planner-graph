@@ -1,10 +1,10 @@
 # config Index
 
-Auto-generated folder inventory. Last updated: 2026-02-11 08:24:55 UTC
+Auto-generated folder inventory. Last updated: 2026-02-11 15:28:08 UTC
 
 ## Structure
 
-Total files: 3
+Total files: 5
 Total subdirectories: 0
 
 ## Contents
@@ -13,6 +13,7 @@ Total subdirectories: 0
 - `fallback-images.json`
 - `INDEX.md`
 - `mcp-config-template.json`
+- `README.md`
 
 ---
 

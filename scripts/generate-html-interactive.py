@@ -1136,12 +1136,12 @@ class InteractiveHTMLGenerator:
                     bl_arr_base, bl_arr_local = self._split_bilingual(arrival_point)
 
                     merged["transportation"] = {
-                        "name_base": f"Beijing \u2192 {location}",
-                        "name_local": f"{self._extract_local_city('', 'Beijing')} \u2192 {self._extract_local_city('', location)}" if self._extract_local_city("", "Beijing") else "",
+                        "name_base": f"Beijing \u2192 {location_base}",
+                        "name_local": f"{self._extract_local_city('', 'Beijing')} \u2192 {self._extract_local_city('', location_base)}" if self._extract_local_city("", "Beijing") else "",
                         "from_base": "Beijing",
-                        "to_base": location,
+                        "to_base": location_base,
                         "from_local": self._extract_local_city("", "Beijing"),
-                        "to_local": self._extract_local_city("", location),
+                        "to_local": self._extract_local_city("", location_base),
                         "departure_point_base": bl_dep_base,
                         "departure_point_local": bl_dep_local,
                         "arrival_point_base": bl_arr_base,

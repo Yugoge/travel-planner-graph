@@ -1,20 +1,20 @@
-# gaode-maps
+# lib
 
-Gaode Maps API integration scripts for China mapping
+Core library modules for HTML generation and image fetching
 
 ---
 
 ## Purpose
 
-This folder contains gaode-maps files organized according to project standards.
+This folder contains lib files organized according to project standards.
 
 ## Allowed File Types
 
-.sh,.py
+.py
 
 ## Naming Convention
 
-kebab-case
+snake_case
 
 ## Organization Rules
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-01-31
-Last significant update: 2026-02-08
-Generated: 2026-02-11 15:25:17 UTC
+First created: 2026-02-02
+Last significant update: 2026-02-11
+Generated: 2026-02-11 15:25:00 UTC
 
 ---
 
