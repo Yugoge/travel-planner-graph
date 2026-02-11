@@ -48,7 +48,8 @@ def detect_optional(poi):
 
 def process_attractions(data):
     """Process attractions array."""
-    for day in data.get('days', []):
+    days = data.get('days', data.get('data', {}).get('days', []))
+    for day in days:
         for attraction in day.get('attractions', []):
             if 'optional' not in attraction:
                 attraction['optional'] = detect_optional(attraction)
