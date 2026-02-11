@@ -1,0 +1,81 @@
+{
+  "request_id": "dev-20260211-084500",
+  "timestamp": "2025-02-11T08:45:00Z",
+  "requirement": {
+    "original": "1. 它用了Google而不是高德？这是什么系统性问题，系统性修复 2. 为什么之前的fallback不管用？我之前的fallback不成功提取了半山逸城的地址图片？深度调查之前的修复是失败的还是成功的。我只要成功的fallback",
+    "clarified": "Fix two systematic issues in fetch-images-batch.py: 1) Composite city names (e.g., 'Chengdu / Shanghai') cause incorrect service detection (Google instead of Gaode) 2) Investigate why '半山逸城' fallback worked but Bund Night Walk didn't - keep only successful fallback patterns",
+    "what": "Systematic fixes for image fetch service detection and address fallback",
+    "why": "Bund Night Walk using Google instead of Gaode, causing wrong image to be fetched",
+    "where": [
+      "scripts/fetch-images-batch.py",
+      "data/china-feb-15-mar-7-2026-20260202-195429/plan-skeleton.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json"
+    ],
+    "scope": {
+      "included": [
+        "Fix _map_service_for to handle composite city names",
+        "Verify address fallback works correctly",
+        "Test all affected POIs"
+      ],
+      "excluded": [
+        "Changes to HTML generation logic",
+        "Changes to data structure"
+      ]
+    },
+    "success_criteria": [
+      "Bund Night Walk uses Gaode (not Google)",
+      "Composite city names correctly resolve to China cities",
+      "Address fallback successfully retrieves images when name search fails",
+      "All China POIs use Gaode, non-China POIs use Google"
+    ],
+    "constraints": [
+      "Must use coordinate-based country detection (no hardcoded city lists)",
+      "Must maintain backward compatibility with bucket list format",
+      "Cannot break existing '半山逸城' successful fallback"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Bund Night Walk image fetched via Google Maps instead of Gaode Maps",
+    "root_cause": "Composite city name 'Chengdu / Shanghai' in attractions.json fails to match 'Shanghai' in plan-skeleton.json, causing _resolve_city_coord to return (0,0) and fallback to Google",
+    "root_cause_commit": "Multiple checkpoints - _map_service_for introduced coordinate-based detection but doesn't handle composite names",
+    "why_introduced": "Coordinate-based country detection was added to eliminate hardcoded city lists and make system universal",
+    "why_problematic": "_resolve_city_coord uses exact string match (==) which fails for composite names like 'Chengdu / Shanghai'",
+    "timeline": "Introduced in recent commits, surfaced when Day 4 Bund Night Walk fetched via Google",
+    "affected_files": [
+      "scripts/fetch-images-batch.py (_map_service_for, _resolve_city_coord)",
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json (Day 4 location field)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Multiple uncommitted changes to fetch-images-batch.py and data files",
+    "recent_commits": "cb70c2e - Gaode Maps mobile deeplink + 97 missing POI images",
+    "file_contents": {
+      "plan-skeleton.json Day 4": "location: Shanghai",
+      "attractions.json Day 4": "location: Chengdu / Shanghai",
+      "半山逸城 success": "Day 2 location: Bazhong (not composite), successfully fetched via Gaode with address: 半山逸城A区35幢1902"
+    },
+    "dependencies": {
+      "runtime": "Python 3.12, venv at ~/.claude/venv",
+      "packages": "geopip for country detection, Gaode API, Google Maps API"
+    },
+    "environment": {
+      "venv_path": "~/.claude/venv",
+      "config_files": [
+        "data/china-feb-15-mar-7-2026-20260202-195429/requirements-skeleton.json (map_service: gaode)"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "1) Unified standard: Use accommodation city as day city (eliminates 'A / B' format) 2) Create script to extract city from accommodation.location field 3) Update all agent JSON files to use single city 4) Verify all composite days updated correctly",
+    "scripts_to_create": [
+      "scripts/unify-city-names.py - Extract city from accommodation, update all agent files"
+    ],
+    "files_to_modify": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json - Day 3,4,8",
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json - Day 3,4,8",
+      "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json - Day 3,4,8",
+      "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json - Day 3,4,8"
+    ],
+    "validation_approach": "1) Run unify-city-names.py 2) Verify no composite names remain 3) Test _map_service_for for all cities 4) Re-fetch Bund Night Walk and verify Gaode used 5) Confirm sidebar still works correctly"
+  }
+}
