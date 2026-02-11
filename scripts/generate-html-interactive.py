@@ -2523,8 +2523,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
                     )}
                     <PropLine label={L('type', lang)} value={getDisplayField(day.transportation, 'type', lang)} />
-                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
                     {getDisplayField(day.transportation, 'company', lang) && <PropLine label={L('company', lang)} value={getDisplayField(day.transportation, 'company', lang)} />}
+                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
+                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {getDisplayField(day.transportation, 'status', lang) && (
                       <div style={{ marginTop: '4px' }}>
                         <span style={{
@@ -2536,7 +2537,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         </span>
                       </div>
                     )}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
                     {(lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base) && (
                       <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
                         💡 {lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base}

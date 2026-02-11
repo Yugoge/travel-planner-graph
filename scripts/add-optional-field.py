@@ -58,7 +58,8 @@ def process_attractions(data):
 
 def process_meals(data):
     """Process meals (breakfast/lunch/dinner)."""
-    for day in data.get('days', []):
+    days = data.get('days', data.get('data', {}).get('days', []))
+    for day in days:
         for meal_type in ['breakfast', 'lunch', 'dinner']:
             meal = day.get(meal_type)
             if meal and isinstance(meal, dict):
@@ -69,7 +70,8 @@ def process_meals(data):
 
 def process_entertainment(data):
     """Process entertainment array."""
-    for day in data.get('days', []):
+    days = data.get('days', data.get('data', {}).get('days', []))
+    for day in days:
         for ent in day.get('entertainment', []):
             if 'optional' not in ent:
                 ent['optional'] = detect_optional(ent)
@@ -78,7 +80,8 @@ def process_entertainment(data):
 
 def process_shopping(data):
     """Process shopping array."""
-    for day in data.get('days', []):
+    days = data.get('days', data.get('data', {}).get('days', []))
+    for day in days:
         for shop in day.get('shopping', []):
             if 'optional' not in shop:
                 shop['optional'] = detect_optional(shop)
@@ -87,7 +90,8 @@ def process_shopping(data):
 
 def process_accommodation(data):
     """Process accommodation (single item per day)."""
-    for day in data.get('days', []):
+    days = data.get('days', data.get('data', {}).get('days', []))
+    for day in days:
         acc = day.get('accommodation')
         if acc and isinstance(acc, dict):
             if 'optional' not in acc:
