@@ -49,6 +49,7 @@ LEGACY_FIELD_MAP = {
     "mode": "type_base",
     "from": "from_base",
     "to": "to_base",
+    "name": "name_base",  # DEPRECATED: Use name_base or name_local
 }
 
 CURRENCY_REGION = {
