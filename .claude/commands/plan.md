@@ -1109,7 +1109,7 @@ Verify Day {N} timeline is populated (not empty dictionary).
 
 Run day-scoped validation:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-day-changes.py /root/travel-planner/data/{destination-slug} {day_number}
+source venv/bin/activate || source .venv/bin/activate && python3 /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug} --agent {agent_name}
 ```
 
 **Exit code 0**: Changes valid → Proceed to next substep
@@ -1640,7 +1640,7 @@ Increment version counter (track internally: v2, v3, etc.)
 
 Run generation script:
 ```bash
-bash /root/travel-planner/scripts/generate-travel-html.sh {destination-slug} -v{version}
+bash /root/travel-planner/scripts/generate-html.sh {destination-slug} -v{version}
 ```
 
 **Example**: Second refinement → `travel-plan-{destination-slug}-v2.html`

@@ -1,7 +1,5 @@
 # Gaode Maps - Geocoding Tools
 
-> **Consolidated Documentation**: See [skills/gaode-maps/tools/geocoding.md](../../../skills/gaode-maps/tools/geocoding.md) for complete reference.
-
 ## Quick Reference
 
 Convert between addresses and coordinates for Chinese locations.

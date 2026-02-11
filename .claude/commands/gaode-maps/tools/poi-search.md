@@ -1,7 +1,5 @@
 # Gaode Maps - POI Search Tools
 
-> **Consolidated Documentation**: See [skills/gaode-maps/tools/poi-search.md](../../../skills/gaode-maps/tools/poi-search.md) for complete reference.
-
 ## Quick Reference
 
 Search for Points of Interest (restaurants, hotels, attractions, services) in China.

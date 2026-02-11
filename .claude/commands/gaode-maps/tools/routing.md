@@ -1,7 +1,5 @@
 # Gaode Maps - Routing Tools
 
-> **Consolidated Documentation**: See [skills/gaode-maps/tools/routing.md](../../../skills/gaode-maps/tools/routing.md) for complete reference.
-
 ## Quick Reference
 
 Route planning for all transportation modes in China.

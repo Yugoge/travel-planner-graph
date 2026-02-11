@@ -58,14 +58,14 @@ This skill provides Python scripts for direct execution:
 
 ## Script Execution
 
-All scripts are located in `.claude/commands/gaode-maps/scripts/` and can be executed directly:
+All scripts are located in `.claude/skills/gaode-maps/scripts/` and can be executed directly:
 
 ```bash
 # Full path execution
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source venv/bin/activate || source .venv/bin/activate && python3 .claude/skills/gaode-maps/scripts/geocoding.py geocode "北京市"
 
 # Relative path execution (from project root)
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/routing.py driving "北京" "上海"
+source venv/bin/activate || source .venv/bin/activate && python3 .claude/skills/gaode-maps/scripts/routing.py driving "北京" "上海"
 ```
 
 ## Coordinate System

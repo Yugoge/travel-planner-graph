@@ -110,13 +110,12 @@ const transportationData = {
 
 ### Scenario: API Errors with Retry
 
-The `fetch-route-with-retry.py` script handles transient errors automatically:
+The routing script handles transient errors automatically with built-in retry logic:
 
 ```bash
-# Fetch with retry logic (max 3 attempts, exponential backoff)
-/root/travel-planner/scripts/gaode-maps/fetch-route-with-retry.py \
-  "重庆" "成都" \
-  -t transit \
+# Use routing.py with retry (max 3 attempts, exponential backoff)
+source venv/bin/activate || source .venv/bin/activate
+python3 scripts/gaode-maps/routing.py transit "重庆" "成都" --retry
   -r 3 \
   -d 1.0 \
   -o route.json

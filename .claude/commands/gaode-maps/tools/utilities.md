@@ -1,7 +1,5 @@
 # Gaode Maps - Utility Tools
 
-> **Consolidated Documentation**: See [skills/gaode-maps/tools/utilities.md](../../../skills/gaode-maps/tools/utilities.md) for complete reference.
-
 ## Quick Reference
 
 Supporting tools for distance calculation and weather information.
