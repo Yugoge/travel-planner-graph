@@ -1,6 +1,6 @@
 #!/bin/bash
 # Generate interactive React HTML and deploy to GitHub Pages
-# Usage: bash scripts/generate-and-deploy.sh <plan-id>
+# Usage: bash scripts/generate-and-deploy.sh <plan-id> [--force] [--day FILTER]
 
 set -e
 
@@ -18,12 +18,35 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 # Check argument
 if [ -z "$1" ]; then
     echo -e "${RED}❌ Error: Plan ID required${NC}"
-    echo -e "Usage: bash scripts/generate-and-deploy.sh <plan-id>"
+    echo -e "Usage: bash scripts/generate-and-deploy.sh <plan-id> [--force] [--day FILTER]"
     echo -e "Example: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405"
+    echo -e "Example: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405 --force"
+    echo -e "Example: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405 --day 1-5"
+    echo -e "Example: bash scripts/generate-and-deploy.sh beijing-exchange-bucket-list-20260202-232405 --force --day 1-5"
     exit 1
 fi
 
 PLAN_ID="$1"
+FETCH_FORCE=""
+FETCH_DAY_FILTER=""
+
+# Parse optional arguments
+while [ "$#" -gt 1 ]; do
+    case "$1" in
+        --force)
+            FETCH_FORCE="--force"
+            ;;
+        --day)
+            FETCH_DAY_FILTER="--day $2"
+            shift
+            ;;
+        *)
+            echo -e "${RED}❌ Error: Unknown option '$1'${NC}"
+            exit 1
+            ;;
+    esac
+    shift
+done
 DATA_DIR="$PROJECT_ROOT/data/$PLAN_ID"
 mkdir -p "$PROJECT_ROOT/output"
 OUTPUT_FILE="$PROJECT_ROOT/output/travel-plan-${PLAN_ID}.html"
@@ -62,15 +85,24 @@ cd "$PROJECT_ROOT"
 IMAGES_FILE="$DATA_DIR/images.json"
 if [ -f "$IMAGES_FILE" ]; then
     POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
-    if [ "$POI_COUNT" -gt "50" ]; then
+    if [ "$POI_COUNT" -gt "50" ] && [ -z "$FETCH_FORCE" ]; then
         echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
     else
-        echo -e "${YELLOW}⚠${NC}  Only $POI_COUNT POI photos cached, fetching more (limit 300)..."
-        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
+        if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
+            echo -e "${YELLOW}⚠${NC} Image fetch requested${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}"
+            python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
+        else
+            echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
+        fi
     fi
 else
-    echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 300 POIs..."
-    python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 10 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+    if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
+        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}..."
+        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+    else
+        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs..."
+        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+    fi
 fi
 
 # Show final cache status

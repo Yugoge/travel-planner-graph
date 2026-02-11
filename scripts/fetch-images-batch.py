@@ -187,7 +187,7 @@ class BatchImageFetcher:
         return {
             "destination": self.destination_slug,
             "city_covers": {},
-            "pois": {},
+            "pois": [],
             "fallback_unsplash": self._load_fallback_images()
         }
 
@@ -905,11 +905,154 @@ class BatchImageFetcher:
                 self.cache["pois"][cache_key] = photo_url
                 self._save_cache()
                 print("✓")
+                print(f"  [DEBUG] Saved photo for {cache_key}")
                 fetched += 1
             else:
                 print("✗")
+                print(f"  [DEBUG] No photo URL returned for {cache_key}")
 
         print(f"  Total fetched: {fetched}/{limit}")
+
+        # CRITICAL FIX: Update agent JSON files with image_url fields
+        # This is the root cause fix - photos were cached but never written to agent JSONs
+        print(f"\n📝 Updating agent JSON files with image_url fields...")
+        updated_count = self._update_agent_jsons(filtered_days)
+        print(f"  ✓ Updated {updated_count} POIs with image_url fields")
+
+    def _update_agent_jsons(self, filtered_days=None):
+        """Update agent JSON files (attractions.json, meals.json, etc.) with image_url from cache
+
+        Root cause fix: Photos were fetched and cached but image_url fields were never added
+        to the agent JSON files. This method writes the cached photo URLs back to the source files.
+
+        Args:
+            filtered_days: List of day numbers to process (None = all days)
+
+        Returns:
+            Number of POIs updated with image_url
+        """
+        updated = 0
+        agent_files = [
+            ("attractions.json", "attractions", "attraction"),
+            ("meals.json", "meals", "meal"),
+            ("accommodation.json", "accommodation", "accommodation"),
+            ("entertainment.json", "entertainment", "entertainment"),
+            ("shopping.json", "shopping", "shopping"),
+        ]
+
+        for filename, field_name, poi_type in agent_files:
+            agent_path = self.data_dir / filename
+            if not agent_path.exists():
+                continue
+
+            with open(agent_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Get days structure
+            days_data = data.get("data", {}).get("days", [])
+            if not days_data:
+                continue
+
+            modified = False
+
+            # Process each day
+            for day in days_data:
+                day_num = day.get("day", 0)
+
+                # Skip if day filter is set and this day is not in filter
+                if filtered_days is not None and day_num not in filtered_days:
+                    continue
+
+                location = day.get("location", "")
+                service = self._map_service_for(location)
+
+                # Process attractions
+                if field_name == "attractions":
+                    for item in day.get("attractions", []):
+                        name_base = item.get("name_base") or item.get("name", "")
+                        if not name_base:
+                            continue
+
+                        cache_key = f"{service}_{name_base}"
+
+                        # Add image_url field if photo exists in cache
+                        if cache_key in self.cache["pois"]:
+                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
+                                item["image_url"] = self.cache["pois"][cache_key]
+                                modified = True
+                                updated += 1
+
+                # Process meals
+                elif field_name == "meals":
+                    for meal_type in ["breakfast", "lunch", "dinner"]:
+                        meal = day.get(meal_type)
+                        if meal and isinstance(meal, dict):
+                            name_base = meal.get("name_base") or meal.get("name", "")
+                            if not name_base:
+                                continue
+
+                            cache_key = f"{service}_{name_base}"
+
+                            # Add image_url field if photo exists in cache
+                            if cache_key in self.cache["pois"]:
+                                if "image_url" not in meal or meal.get("image_url") != self.cache["pois"][cache_key]:
+                                    meal["image_url"] = self.cache["pois"][cache_key]
+                                    modified = True
+                                    updated += 1
+
+                # Process accommodation
+                elif field_name == "accommodation":
+                    acc = day.get("accommodation")
+                    if acc and isinstance(acc, dict):
+                        name_base = acc.get("name_base") or acc.get("name", "")
+                        if not name_base:
+                            continue
+
+                        cache_key = f"{service}_{name_base}"
+
+                        if cache_key in self.cache["pois"]:
+                            if "image_url" not in acc or acc.get("image_url") != self.cache["pois"][cache_key]:
+                                acc["image_url"] = self.cache["pois"][cache_key]
+                                modified = True
+                                updated += 1
+
+                # Process entertainment
+                elif field_name == "entertainment":
+                    for item in day.get("entertainment", []):
+                        name_base = item.get("name_base") or item.get("name", "")
+                        if not name_base:
+                            continue
+
+                        cache_key = f"{service}_{name_base}"
+
+                        if cache_key in self.cache["pois"]:
+                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
+                                item["image_url"] = self.cache["pois"][cache_key]
+                                modified = True
+                                updated += 1
+
+                # Process shopping
+                elif field_name == "shopping":
+                    for item in day.get("shopping", []):
+                        name_base = item.get("name_base") or item.get("name", "")
+                        if not name_base:
+                            continue
+
+                        cache_key = f"{service}_{name_base}"
+
+                        if cache_key in self.cache["pois"]:
+                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
+                                item["image_url"] = self.cache["pois"][cache_key]
+                                modified = True
+                                updated += 1
+
+            # Save modified agent file
+            if modified:
+                with open(agent_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"  ✓ Updated {filename}")
+
+        return updated
 
 
 def main():
