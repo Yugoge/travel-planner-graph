@@ -448,7 +448,11 @@ class BatchImageFetcher:
         service = self._map_service_for(city)
 
         if service == "gaode":
-            return self._gaode_search(search_name, city, location_local=location_local)
+            # CRITICAL FIX: Use "城市名 + POI名" format for more precise Gaode search
+            # Example: "重庆来福士观景台" instead of "来福士观景台"
+            # This prevents matching wrong POIs like 洪崖洞 when searching for 来福士
+            search_with_city = f"{city}{search_name}" if search_name else search_name
+            return self._gaode_search(search_with_city, city, location_local=location_local)
         else:
             return self.fetch_poi_photo_google(search_name, city)
 
@@ -899,6 +903,9 @@ class BatchImageFetcher:
                 continue
 
             print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
+            search_term = f"{poi['city']}{poi.get('name_local', '')}" if self._map_service_for(poi['city']) == 'gaode' and poi.get('name_local') else poi['name_base']
+            if search_term != poi['name_base']:
+                print(f"[搜索: {search_term}]", end=" ")
 
             photo_url = self.fetch_poi_photo(
                 poi['name_base'],
