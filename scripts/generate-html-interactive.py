@@ -528,7 +528,7 @@ class InteractiveHTMLGenerator:
         """
         day_num = day_skeleton.get("day", 1)
         date = day_skeleton.get("date", "")
-        location = day_skeleton.get("location", "Unknown")
+        location_base = day_skeleton.get("location", "Unknown")  # Use location_base instead of location
         location_local = day_skeleton.get("location_local", "")
 
         # Fix #6: Get timeline for this day (root cause: timeline data ignored)
@@ -545,9 +545,9 @@ class InteractiveHTMLGenerator:
         merged = {
             "day": day_num,
             "date": date,
-            "location": location,
+            "location_base": location_base,
             "location_local": location_local,
-            "cover": self._get_cover_image(location, day_num),
+            "cover": self._get_cover_image(location_base, day_num),
             "user_plans": day_skeleton.get("user_plans", []),
             "meals": {},
             "attractions": [],
@@ -1216,12 +1216,12 @@ class InteractiveHTMLGenerator:
         current_trip = None
 
         for day in days:
-            location = day.get("location", "Unknown")
+            location_base = day.get("location_base", "Unknown")
 
-            if current_trip is None or current_trip["name"] != location:
+            if current_trip is None or current_trip["name"] != location_base:
                 # Start new trip
                 current_trip = {
-                    "name": location,
+                    "name": location_base,
                     "name_local": day.get("location_local", ""),
                     "days_count": 1,
                     "cover": day.get("cover", ""),
@@ -1673,7 +1673,7 @@ const Sidebar = ({ trips, selTrip, selDay, onSelect, isOpen, onClose, bp, lang }
                 onMouseLeave={e => { if (selTrip !== ti) e.currentTarget.style.background = 'transparent'; }}
               >
                 <span style={{ fontSize: '9px', color: '#b4b4b4', transform: open ? 'rotate(90deg)' : '', transition: 'transform .15s', display: 'inline-block', marginRight: '2px' }}>▶</span>
-                <span style={{ fontWeight: '500', flex: 1 }}>{trip.name}</span>
+                <span style={{ fontWeight: '500', flex: 1 }}>{(lang === 'local' && trip.name_local) ? trip.name_local : trip.name}</span>
                 <span style={{ fontSize: '11px', color: '#b4b4b4' }}>({trip.days_count != null ? ((trip.days_count === 1 ? L('days_count_1', lang) : L('days_count', lang)).replace('{n}', trip.days_count)) : trip.days_label})</span>
               </div>
               {open && has && (
@@ -1776,8 +1776,8 @@ const ItemDetailSidebar = ({ item, type, onClose, bp, lang, mapProvider }) => {
             {item.time && <PropertyRow label={L('time', lang)}>{item.time.start} – {item.time.end}</PropertyRow>}
             {item.cost != null && (item.cost > 0 || item.cost_type_base === 'prepaid') && <PropertyRow label={L('cost', lang)}>{fmtCost(item.cost, item.cost_type_base, lang)}</PropertyRow>}
             <PropertyRow label={L('type', lang)}>{getDisplayField(item, 'type', lang)}</PropertyRow>
-            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
             {getDisplayField(item, 'company', lang) && <PropertyRow label={L('company', lang)}>{getDisplayField(item, 'company', lang)}</PropertyRow>}
+            {item.route_number && <PropertyRow label={L('route_number', lang)}>{item.route_number}</PropertyRow>}
             {getDisplayField(item, 'status', lang) && (
               <PropertyRow label={L('status', lang)}>
                 <span style={{
@@ -2031,7 +2031,7 @@ const dayLabel = (dayNumOrObj, locationOrLng, lngOpt) => {
     dayNum = day.day;
     date = day.date || '';
     lng = locationOrLng;
-    location = (lng === 'local' && day.location_local) ? day.location_local : day.location;
+    location = (lng === 'local' && day.location_local) ? day.location_local : day.location_base;
   } else {
     // Legacy: dayLabel(dayNum, location, lng)
     dayNum = dayNumOrObj;
@@ -2053,25 +2053,21 @@ const dayLabel = (dayNumOrObj, locationOrLng, lngOpt) => {
   return prefix + (location ? ' – ' + location : '');
 };
 
-// Day label for sidebar nav (with location for better context)
+// Day label for sidebar nav (shows date only, no city name)
 // Accepts day object or dayNum for backward compat
 const dayLabelSidebar = (dayNumOrObj, lng) => {
-  let dayNum, date, location;
+  let dayNum, date;
   if (typeof dayNumOrObj === 'object' && dayNumOrObj !== null) {
     const day = dayNumOrObj;
     dayNum = day.day;
     date = day.date || '';
-    location = (lng === 'local' && day.location_local) ? day.location_local : day.location;
   } else {
     dayNum = dayNumOrObj;
     date = '';
-    location = '';
   }
   // Use real date if available
   const realDate = date ? formatRealDate(date, lng) : null;
-  const prefix = realDate ? realDate : `Day ${dayNum}`;
-  // Add location if available
-  return location ? `${prefix} – ${location}` : prefix;
+  return realDate ? realDate : `Day ${dayNum}`;
 };
 
 // Day label for sidebar nav (no location) - deprecated in favor of dayLabelSidebar
@@ -2652,7 +2648,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 
   // Debug: log entries count
   if (entries.length === 0) {
-    console.warn('Timeline has no entries for day:', day.day, day.location);
+    console.warn('Timeline has no entries for day:', day.day, day.location_base);
   }
 
   return (

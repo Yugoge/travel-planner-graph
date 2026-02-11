@@ -414,7 +414,8 @@ class BatchImageFetcher:
             service = self._map_service_for(city)
             print(f"  Fetching {city} ({service})...", end=" ")
             if service == "gaode":
-                photo_url = self._gaode_search(f"{city} 景点", city)
+                # Search for city landmarks/skyline instead of just "景点" (which returns Disney for Shanghai)
+                photo_url = self._gaode_search(f"{city} 地标", city)
             else:
                 photo_url = self.fetch_city_photo_google(city)
 
