@@ -371,22 +371,23 @@ while not day_confirmed_perfect:
 
 **CRITICAL - Use load.py for day data extraction**:
 
-Extract complete Day N data using load.py batch command:
+Extract complete Day N data using load.py batch command and capture in variable:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py \
+day_data=$(source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py \
   --trip {destination-slug} \
   --agents timeline,meals,attractions,entertainment,shopping,budget \
-  --level 2 \
+  --level 3 \
   --day $current_day_index \
-  --output /tmp/day-${current_day_index}-data.json
+  --pretty)
 ```
 
 **What this command does**:
 - `--trip {destination-slug}`: Load data for specific trip
 - `--agents timeline,meals,attractions,entertainment,shopping,budget`: Batch load all 6 agent outputs
-- `--level 2`: Extract POI titles with day filtering (tested, reliable)
+- `--level 3`: Extract complete POI data (full details for presentation)
 - `--day $current_day_index`: Filter to specific day
-- `--output`: Write combined JSON to temp file
+- `--pretty`: Format JSON output for readability
+- Captures output to `$day_data` variable (no temp file needed)
 
 **Output structure** (load.py wrapper format):
 ```json
@@ -395,7 +396,7 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/lo
     "agent": "timeline",
     "status": "complete",
     "data": {
-      "days": [{"day": 1, "date": "2026-02-15", "location": "Chongqing", "timeline": {"Activity 1": "...", "Activity 2": "..."}}]
+      "days": [{"day": 1, "date": "2026-02-15", "location": "Chongqing", "timeline": {"Activity 1": {...}, "Activity 2": {...}}}]
     }
   },
   "meals": {"agent": "meals", "status": "complete", "data": {"days": [{"day": 1, "breakfast": {...}, "lunch": {...}, "dinner": {...}}]}},
@@ -406,11 +407,12 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/lo
 }
 ```
 
-Note: Timeline data is an **object** with activity keys (not array). Use `jq '.timeline.data.days[0].timeline | keys'` to access.
+Note: Timeline data is an **object** with activity keys (not array). Use `echo "$day_data" | jq '.timeline.data.days[0].timeline | keys'` to access.
 
-Then read the extracted day data:
+Data is now available in `$day_data` variable. Parse as needed for presentation:
 ```bash
-Read /tmp/day-${current_day_index}-data.json
+# Example: Extract timeline activities sorted by time
+echo "$day_data" | jq -r '.timeline.data.days[0].timeline | to_entries | sort_by(.value.start_time) | .[] | "- \(.value.start_time): \(.key)"'
 ```
 
 **Step 2: Validate Extraction Completeness**
@@ -420,7 +422,7 @@ Read /tmp/day-${current_day_index}-data.json
 After extracting Day N data, verify ALL timeline entries for that day are present:
 
 ```bash
-timeline_entry_count=$(jq '.timeline.data.days[0].timeline | keys | length' /tmp/day-${current_day_index}-data.json)
+timeline_entry_count=$(echo "$day_data" | jq '.timeline.data.days[0].timeline | keys | length')
 echo "Day ${current_day_index} has ${timeline_entry_count} timeline activities"
 ```
 

@@ -1,0 +1,457 @@
+{
+  "request_id": "dev-20260212-loadpy-integration",
+  "timestamp": "2026-02-12T20:00:00Z",
+  "requirement": {
+    "original": "现在我们已经开发了load.py和save.py实现了对以上内容的全面替代。现在将这两个文件的调用方法加入到review和Plan中彻底替代刚刚的开发。但是在开发之前你需要先调查这两个类型的优劣",
+    "clarified": "Replace the non-functional jq-based day data extraction in review.md (commit 481b4c8, lines 368-466) with tested load.py calls, and fill the critical extraction gap in plan.md line 681. Scope: load.py only (extraction focus), save.py deferred.",
+    "what": "Integrate load.py into review.md and plan.md for day data extraction",
+    "why": "jq-based approach in review.md has incorrect JSON paths (.timeline vs .data.days[].timeline) and fails on real data. Testing confirmed 100% failure rate. plan.md has same extraction gap at line 681 with no implementation.",
+    "where": [
+      ".claude/commands/review.md - Lines 368-466 (Step 14 INNER loop)",
+      ".claude/commands/plan.md - Line 681 (Step 14 INNER loop)"
+    ],
+    "scope": {
+      "included": [
+        "Replace jq commands (lines 374-393) with load.py batch call in review.md",
+        "Update validation (lines 436-466) to use load.py output in review.md",
+        "Remove PROHIBITED section (lines 417-434) - jq-specific, no longer relevant",
+        "Fill extraction gap at plan.md line 681 with load.py implementation",
+        "Update root cause references to mention load.py as tested solution"
+      ],
+      "excluded": [
+        "save.py integration (future work)",
+        "Level 2 optimizations for informational queries",
+        "Changes to load.py or save.py scripts themselves"
+      ]
+    },
+    "success_criteria": [
+      "review.md Step 14 uses load.py instead of jq",
+      "plan.md Step 14 line 681 has explicit load.py extraction implementation",
+      "No jq path errors (correct .data.days[] structure)",
+      "Validation checkpoints use load.py output",
+      "Documentation clearly explains load.py usage with examples",
+      "Test with real data confirms drone show present (no truncation)"
+    ],
+    "constraints": [
+      "Maintain same Step 1-2-3 structure in both files (minimal disruption)",
+      "Preserve file-based pipeline architecture (orchestrator reads, subagents write)",
+      "Keep integer-only step numbering",
+      "No changes to subagent behavior or data file formats"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Drone show (20:30-21:00) omitted from Day 1 review, jq commands in review.md lines 374-393 would fail on execution",
+    "root_cause": "Commit 481b4c8 added jq-based extraction to fix Read limit:100 bug, but used incorrect JSON paths. Testing revealed jq path '.timeline[$day - 1]' is wrong (should be '.data.days[$day - 1].timeline'). plan.md line 681 has same extraction gap with no implementation.",
+    "root_cause_commit": "481b4c8 - fix: Add explicit extraction methodology to /review Step 14 (2026-02-12 19:17:55)",
+    "why_introduced": "Quick fix to address data truncation without testing on real data structure. Assumed JSON structure based on documentation, not actual files.",
+    "why_problematic": "Incorrect paths cause jq to fail with 'Expected JSON value' error. Would cause 100% failure rate on review.md execution. plan.md never had implementation, so AI would default to Read limit:100 (same original bug).",
+    "timeline": "481b4c8 introduced broken jq paths on 2026-02-12 19:17:55. Detected via testing on 2026-02-12 19:45:00.",
+    "affected_files": [
+      ".claude/commands/review.md (lines 368-466)",
+      ".claude/commands/plan.md (line 681 missing implementation)"
+    ]
+  },
+  "context": {
+    "codebase_state": "review.md modified in uncommitted changes, plan.md unmodified",
+    "testing_results": {
+      "jq_approach": "FAILED - jq error on line 1475: Expected JSON value",
+      "loadpy_approach": "SUCCESS - Extracted Day 1 with 23 timeline entries, drone show present"
+    },
+    "file_contents": {
+      "load.py_location": "/root/travel-planner/scripts/load.py (293 lines)",
+      "load.py_features": "Progressive disclosure (Level 1/2/3), batch loading, day filtering, error handling, JSON output",
+      "actual_json_structure": ".data.days[].timeline (not .timeline[])",
+      "test_dataset": "china-feb-15-mar-7-2026-20260202-195429"
+    },
+    "dependencies": {
+      "runtime": "Python 3.12",
+      "packages": "jq (for post-processing load.py output)",
+      "scripts": "load.py, plan-validate.py (called by load.py)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "data_dir": "/root/travel-planner/data/{destination-slug}",
+      "scripts_dir": "/root/travel-planner/scripts"
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace broken jq extraction with tested load.py calls. Maintain same workflow structure (Step 1 extract, Step 2 validate, Step 3 present). Fill plan.md gap with same load.py pattern.",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/commands/review.md (lines 368-466)",
+      ".claude/commands/plan.md (insert after line 681)"
+    ],
+    "validation_approach": "QA will test load.py extraction on real data, verify drone show present, confirm validation logic works, check documentation clarity"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "iteration": 2,
+  "previous_attempts": [
+    {
+      "iteration": 1,
+      "dev": {
+        "status": "completed",
+        "tasks_completed": [
+          {
+            "id": 1,
+            "description": "Replaced jq-based extraction in review.md with load.py batch command",
+            "type": "command_modification",
+            "files_modified": [
+              ".claude/commands/review.md"
+            ],
+            "changes": "Lines 368-466: Replaced broken jq commands (lines 374-393) with single load.py batch call. Updated validation (lines 436-466) to use load.py output. Removed PROHIBITED section (lines 417-434) - jq-specific warnings no longer relevant. Updated root cause reference (line 370) to mention commit 481b4c8 and load.py as tested solution.",
+            "rationale": "Commit 481b4c8 introduced jq with incorrect paths (.timeline vs .data.days[].timeline), causing 100% failure rate. Testing confirmed load.py has correct paths and successfully extracts all 23 timeline entries for Day 1 including drone show."
+          },
+          {
+            "id": 2,
+            "description": "Added load.py extraction implementation in plan.md at line 681",
+            "type": "command_modification",
+            "files_modified": [
+              ".claude/commands/plan.md"
+            ],
+            "changes": "Inserted 79 lines after line 690 with load.py extraction methodology. Added Step 1 (extract using load.py batch command), Step 2 (validate extraction completeness), and error handling. Maintained integer step numbering (1-2-3, no decimals). Added root cause reference mentioning commit 481b4c8 and extraction gap.",
+            "rationale": "plan.md line 681 had no implementation (just 'Extract current day data'), causing AI to default to Read limit:100 (same data truncation bug). load.py provides explicit, tested extraction method."
+          },
+          {
+            "id": 3,
+            "description": "Updated step numbering in plan.md INNER loop",
+            "type": "command_modification",
+            "files_modified": [
+              ".claude/commands/plan.md"
+            ],
+            "changes": "Lines 681-689: Renumbered steps from 1-5 to 1-6 to accommodate new validation step (Step 2). Maintained sequential integer numbering.",
+            "rationale": "Adding validation step required renumbering to maintain sequential order without decimal sub-steps."
+          }
+        ],
+        "scripts_created": [],
+        "files_modified": [
+          {
+            "path": "/root/travel-planner/.claude/commands/review.md",
+            "lines_changed": "368-466 (99 lines)",
+            "summary": "Replaced jq extraction with load.py batch command, updated validation logic, removed jq-specific warnings, updated root cause reference"
+          },
+          {
+            "path": "/root/travel-planner/.claude/commands/plan.md",
+            "lines_changed": "681-689 (step numbering), 691+ (79 new lines inserted)",
+            "summary": "Added complete load.py extraction implementation with validation and error handling, filled critical extraction gap"
+          }
+        ],
+        "git_rationale": {
+          "root_cause_commit": "481b4c8 - fix: Add explicit extraction methodology to /review Step 14",
+          "why_issue_occurred": "Commit 481b4c8 quick-fixed data truncation bug by adding jq-based extraction, but used incorrect JSON paths (.timeline vs .data.days[].timeline) without testing on real data. Assumed JSON structure based on documentation rather than actual file inspection. plan.md never had extraction implementation, so same truncation bug would occur.",
+          "how_fix_addresses_root": "load.py has correct JSON paths (.data.days[].timeline) verified through testing on real data (china-feb-15-mar-7-2026-20260202-195429). Successfully extracted all 23 timeline entries for Day 1 including drone show at 20:30-21:00. Batch command loads all 6 agents (timeline, meals, attractions, entertainment, shopping, budget) in single call with day filtering. Validation checkpoint confirms extraction completeness before presentation."
+        },
+        "implementation_details": {
+          "load_py_syntax": "source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py --trip {destination-slug} --agents timeline,meals,attractions,entertainment,shopping,budget --level 2 --day $current_day_index --output /tmp/day-${current_day_index}-data.json",
+          "validation_syntax": "timeline_entry_count=$(jq '.timeline.timeline | length' /tmp/day-${current_day_index}-data.json)",
+          "parameterization": "Uses {destination-slug} variable and $current_day_index variable (no hardcoded values)",
+          "error_handling": "Exit code check with helpful error messages referencing agent JSON file existence and day index validity"
+        },
+        "testing_evidence": {
+          "test_dataset": "china-feb-15-mar-7-2026-20260202-195429",
+          "test_results": "load.py extracted 23 timeline entries for Day 1, including drone show at 20:30-21:00 (lines 107-111 in original timeline.json)",
+          "jq_comparison": "jq approach failed with 'Expected JSON value' error on line 1475, 0% success rate"
+        },
+        "qa_ready": true,
+        "qa_notes": "Test load.py extraction on real data for multiple days. Verify validation checkpoint catches extraction failures. Confirm documentation clarity for both review.md and plan.md. Check that {destination-slug} and $current_day_index variables are properly documented. Verify error handling provides actionable error messages.",
+        "permissions_to_add": []
+      },
+      "qa": {
+        "status": "fail",
+        "overall_assessment": "Implementation has critical bugs: validation commands use incorrect JSON paths (.timeline.timeline should be .timeline.data.days[0].timeline), timeline data structure is OBJECT not ARRAY as documented, and validation counts object keys incorrectly. Root cause is correctly referenced and load.py extraction works, but post-processing validation will fail 100% on execution.",
+        "success_criteria_results": [
+          {
+            "criterion": "review.md Step 14 uses load.py instead of jq",
+            "verification_method": "Read review.md lines 368-466, verified load.py batch command present at lines 376-382",
+            "result": "pass",
+            "details": "Step 14 now uses load.py batch command with correct parameters: --trip {destination-slug}, --agents timeline,meals,attractions,entertainment,shopping,budget, --level 2, --day $current_day_index",
+            "evidence": [
+              "Line 376: source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py",
+              "Line 377: --trip {destination-slug}",
+              "Line 378: --agents timeline,meals,attractions,entertainment,shopping,budget",
+              "Line 379: --level 2",
+              "Line 380: --day $current_day_index",
+              "Line 381: --output /tmp/day-${current_day_index}-data.json",
+              "Removed jq commands from lines 374-393 (old broken approach)"
+            ]
+          },
+          {
+            "criterion": "plan.md Step 14 line 681 has explicit load.py extraction implementation",
+            "verification_method": "Read plan.md lines 675-775, verified new extraction implementation added after line 690",
+            "result": "pass",
+            "details": "plan.md now has complete load.py extraction implementation with same syntax as review.md. Inserted 79 new lines with Step 1 (extract) and Step 2 (validate). Maintained integer step numbering (renumbered steps 1-6).",
+            "evidence": [
+              "Line 698: load.py batch command added",
+              "Line 732: Validation checkpoint added",
+              "Lines 681-689: Steps renumbered from 1-5 to 1-6",
+              "Line 694: Root cause reference mentions commit 481b4c8 and extraction gap"
+            ]
+          },
+          {
+            "criterion": "No jq path errors (correct .data.days[] structure)",
+            "verification_method": "Tested load.py extraction on real data (china-feb-15-mar-7-2026-20260202-195429 Day 1), analyzed actual output JSON structure, compared with documented validation commands",
+            "result": "fail",
+            "details": "CRITICAL BUG: load.py extraction works correctly and uses correct paths internally, BUT the validation commands in documentation use INCORRECT paths. Actual structure is .timeline.data.days[0].timeline (object with 22 keys), not .timeline.timeline (array). Timeline data is an OBJECT of activity keys, not an ARRAY. Validation command 'jq .timeline.timeline | length' will fail with 'Cannot iterate over null'.",
+            "evidence": [
+              "TESTED: load.py --trip china-feb-15-mar-7-2026-20260202-195429 --day 1 → SUCCESS, exit code 0",
+              "ACTUAL OUTPUT: {\"timeline\": {\"agent\": \"timeline\", \"status\": \"complete\", \"data\": {\"days\": [{\"day\": 1, \"timeline\": {...}}]}}}",
+              "ACTUAL STRUCTURE: .timeline.data.days[0].timeline is OBJECT with 22 keys (activities)",
+              "DOCUMENTED PATH: jq '.timeline.timeline | length' (review.md:415, plan.md:739) - WRONG, will return null",
+              "CORRECT PATH: jq '.timeline.data.days[0].timeline | keys | length' → returns 22",
+              "ERROR WHEN USING DOCUMENTED PATH: 'jq: error (at file:0): Cannot iterate over null (null)'",
+              "DEV CONTEXT MISMATCH: dev.implementation_details.validation_syntax claims '.timeline.timeline | length' but this is incorrect for actual load.py output"
+            ]
+          },
+          {
+            "criterion": "Validation checkpoints use load.py output",
+            "verification_method": "Read validation sections in both files, checked jq command syntax against actual load.py output structure",
+            "result": "fail",
+            "details": "Validation checkpoints exist at correct locations (review.md Step 2 lines 408-437, plan.md Step 2 lines 732-770) and attempt to use load.py output, but jq path is incorrect. Will fail on execution with 'Cannot iterate over null' error.",
+            "evidence": [
+              "review.md:415 validation command: timeline_entry_count=$(jq '.timeline.timeline | length' ...) - WRONG PATH",
+              "plan.md:739 validation command: timeline_entry_count=$(jq '.timeline.timeline | length' ...) - WRONG PATH",
+              "Both files reference /tmp/day-${current_day_index}-data.json (correct file)",
+              "Validation criteria documented (count > 0, typical range 8-23 entries)",
+              "Error handling present (lines 432-437 in review.md, 756-770 in plan.md)"
+            ]
+          },
+          {
+            "criterion": "Documentation clearly explains load.py usage with examples",
+            "verification_method": "Read load.py command documentation and examples in both files",
+            "result": "pass",
+            "details": "Documentation is clear and comprehensive with parameter explanations, output structure examples, and usage notes. However, output structure example (lines 392-401) shows simplified structure that doesn't match actual load.py output wrapper format.",
+            "evidence": [
+              "Lines 384-389 (review.md): Parameter explanations present",
+              "Lines 391-401: Output structure example (simplified, doesn't show agent/status wrapper)",
+              "Line 405: Read command documented",
+              "Lines 698-725 (plan.md): Same comprehensive documentation",
+              "All parameters use variables ({destination-slug}, $current_day_index) - no hardcoding"
+            ]
+          },
+          {
+            "criterion": "Test with real data confirms drone show present (no truncation)",
+            "verification_method": "Executed load.py extraction command on real dataset china-feb-15-mar-7-2026-20260202-195429 Day 1, verified drone show activity present in timeline",
+            "result": "pass",
+            "details": "load.py extraction successful. Drone show ('Chongqing Drone Show') is present in timeline object along with transport segment ('Taxi to Drone Show Venue'). Total 22 timeline activities extracted (documentation claims 23, likely counting difference between object keys vs array entries).",
+            "evidence": [
+              "COMMAND: source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agents timeline,meals,attractions,entertainment,shopping,budget --level 2 --day 1 --output /tmp/qa-test-day-1-data.json",
+              "EXIT CODE: 0 (success)",
+              "OUTPUT FILE: /tmp/qa-test-day-1-data.json created successfully",
+              "TIMELINE KEYS COUNT: 22 (via jq '.timeline.data.days[0].timeline | keys | length')",
+              "DRONE SHOW CONFIRMED: 'Taxi to Drone Show Venue' and 'Chongqing Drone Show' keys present",
+              "ALL 6 AGENTS LOADED: timeline, meals, attractions, entertainment, shopping, budget sections present",
+              "NO TRUNCATION: Complete day data extracted, all activities visible"
+            ]
+          }
+        ],
+        "root_cause_verification": {
+          "addressed": true,
+          "confidence": "high",
+          "rationale": "Root cause (commit 481b4c8 introduced incorrect jq paths, plan.md had no implementation) is correctly identified and load.py extraction replaces the broken approach. load.py uses correct internal paths (.data.days[].timeline) and successfully extracts complete day data including drone show. However, the POST-PROCESSING validation commands still use wrong paths, creating a NEW bug. The extraction itself is fixed, but the validation layer is broken."
+        },
+        "script_quality_results": [],
+        "regression_test_results": [
+          {
+            "test": "load.py extraction functionality",
+            "result": "pass",
+            "details": "load.py successfully extracts Day 1 data from real dataset with correct structure and all 6 agent outputs. No errors during execution."
+          },
+          {
+            "test": "Validation command syntax",
+            "result": "fail",
+            "details": "Validation command will fail with 'Cannot iterate over null' when executed because jq path is incorrect for actual load.py output structure"
+          },
+          {
+            "test": "Git diff scope",
+            "result": "pass",
+            "details": "247 lines changed across 2 files (.claude/commands/review.md and .claude/commands/plan.md). Changes are scoped to Step 14 INNER loop extraction methodology as expected. No unexpected file modifications."
+          }
+        ],
+        "code_quality_findings": [
+          {
+            "severity": "critical",
+            "category": "incorrect-json-path",
+            "location": ".claude/commands/review.md:415",
+            "issue": "Validation command uses incorrect jq path '.timeline.timeline' which doesn't exist in load.py output. Actual structure is '.timeline.data.days[0].timeline'. Will fail with 'Cannot iterate over null (null)' error on execution.",
+            "recommendation": "Change 'jq .timeline.timeline | length' to 'jq .timeline.data.days[0].timeline | keys | length' to count object keys (timeline activities). Also update output structure example (lines 392-401) to show actual load.py wrapper format with agent/status/data fields."
+          },
+          {
+            "severity": "critical",
+            "category": "incorrect-json-path",
+            "location": ".claude/commands/plan.md:739",
+            "issue": "Same validation command bug as review.md. Uses incorrect jq path '.timeline.timeline' instead of '.timeline.data.days[0].timeline'.",
+            "recommendation": "Change 'jq .timeline.timeline | length' to 'jq .timeline.data.days[0].timeline | keys | length'"
+          },
+          {
+            "severity": "critical",
+            "category": "data-structure-mismatch",
+            "location": ".claude/commands/review.md:392-401, .claude/commands/plan.md:715-725",
+            "issue": "Output structure example shows simplified format without agent/status/data wrapper, and claims timeline is an array [...] when it's actually an object {...}. This misleads users about actual load.py output format.",
+            "recommendation": "Update output structure example to match actual load.py format: {\"timeline\": {\"agent\": \"timeline\", \"status\": \"complete\", \"data\": {\"days\": [{\"day\": 1, \"date\": \"...\", \"timeline\": {\"Activity 1\": \"...\", \"Activity 2\": \"...\"}}]}}}"
+          },
+          {
+            "severity": "major",
+            "category": "documentation-inconsistency",
+            "location": ".claude/commands/review.md:370, 423, 427",
+            "issue": "Documentation claims 'Day 1 has 23 timeline entries' but testing shows 22 timeline object keys. Minor counting discrepancy (possibly due to travel_segments array being counted separately).",
+            "recommendation": "Update count reference to '22 timeline activities' or clarify that count includes both timeline object keys (22) and travel_segments array length"
+          },
+          {
+            "severity": "minor",
+            "category": "documentation-clarity",
+            "location": ".claude/commands/review.md:387, .claude/commands/plan.md:711",
+            "issue": "Parameter explanation says '--level 2: Extract POI titles with day filtering (tested, reliable)' but doesn't explain that timeline data is returned as object with placeholder values '...' for detailed content",
+            "recommendation": "Add note: '--level 2 returns POI keys/titles with placeholder values (...) for detailed content. Timeline is object map, not array.'"
+          }
+        ],
+        "permissions_verification": {
+          "status": "pass",
+          "permissions_count": 0,
+          "validated_permissions": [],
+          "issues": [],
+          "note": "No new scripts created, no new permissions needed. load.py already exists and has required permissions."
+        },
+        "all_findings": [
+          {
+            "severity": "critical",
+            "location": ".claude/commands/review.md:415",
+            "issue": "Validation command jq path incorrect: '.timeline.timeline' should be '.timeline.data.days[0].timeline | keys'",
+            "recommendation": "Update jq command to: timeline_entry_count=$(jq '.timeline.data.days[0].timeline | keys | length' /tmp/day-${current_day_index}-data.json)",
+            "blocks_release": true
+          },
+          {
+            "severity": "critical",
+            "location": ".claude/commands/plan.md:739",
+            "issue": "Validation command jq path incorrect: '.timeline.timeline' should be '.timeline.data.days[0].timeline | keys'",
+            "recommendation": "Update jq command to: timeline_entry_count=$(jq '.timeline.data.days[0].timeline | keys | length' /tmp/day-${current_day_index}-data.json)",
+            "blocks_release": true
+          },
+          {
+            "severity": "critical",
+            "location": ".claude/commands/review.md:392-401",
+            "issue": "Output structure example doesn't match actual load.py format (missing agent/status/data wrapper, shows timeline as array when it's object)",
+            "recommendation": "Update example to show actual wrapper structure and clarify timeline is object with activity keys, not array",
+            "blocks_release": true
+          },
+          {
+            "severity": "critical",
+            "location": ".claude/commands/plan.md:715-725",
+            "issue": "Output structure example doesn't match actual load.py format (same as review.md)",
+            "recommendation": "Update example to show actual wrapper structure",
+            "blocks_release": true
+          },
+          {
+            "severity": "major",
+            "location": ".claude/commands/review.md:370, 423, 427",
+            "issue": "Documentation claims 23 timeline entries but testing shows 22",
+            "recommendation": "Update count to 22 or clarify counting methodology",
+            "blocks_release": false
+          },
+          {
+            "severity": "minor",
+            "location": ".claude/commands/review.md:387",
+            "issue": "Level 2 parameter explanation doesn't mention placeholder values or object structure",
+            "recommendation": "Add note about Level 2 returning object with placeholder values",
+            "blocks_release": false
+          }
+        ],
+        "summary": {
+          "critical_issues": 4,
+          "major_issues": 1,
+          "minor_issues": 1,
+          "total_findings": 6,
+          "release_recommendation": "reject"
+        }
+      },
+      "timestamp": "2026-02-12T20:15:00Z"
+    }
+  ],
+  "refined_requirements": {
+    "critical_fixes": [
+      "Change jq validation path in review.md:415 from .timeline.timeline to .timeline.data.days[0].timeline | keys | length",
+      "Change jq validation path in plan.md:739 from .timeline.timeline to .timeline.data.days[0].timeline | keys | length",
+      "Update output structure documentation in review.md:392-401 to show actual load.py wrapper format",
+      "Update output structure documentation in plan.md:715-725 to match reality"
+    ],
+    "validation_test_data": "/tmp/qa-test-day-1-data.json contains actual Day 1 extraction for testing"
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed jq validation path in review.md line 423",
+        "type": "bug_fix",
+        "files_modified": [
+          ".claude/commands/review.md"
+        ],
+        "changes": "Line 423: Changed 'jq .timeline.timeline | length' to 'jq .timeline.data.days[0].timeline | keys | length'. Updated terminology from 'timeline entries' to 'timeline activities' to match object key structure.",
+        "rationale": "QA testing revealed incorrect JSON path. Actual load.py output structure is .timeline.data.days[0].timeline (object with activity keys), not .timeline.timeline. Old path returned null, causing incorrect count of 0 instead of actual 22 activities."
+      },
+      {
+        "id": 2,
+        "description": "Fixed jq validation path in plan.md line 747",
+        "type": "bug_fix",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Line 747: Changed 'jq .timeline.timeline | length' to 'jq .timeline.data.days[0].timeline | keys | length'. Updated terminology to 'timeline activities'.",
+        "rationale": "Same bug as review.md - incorrect JSON path would return null (count 0) instead of actual 22 activities for Day 1 test data."
+      },
+      {
+        "id": 3,
+        "description": "Updated activity count references from 23 to 22",
+        "type": "documentation_correction",
+        "files_modified": [
+          ".claude/commands/review.md",
+          ".claude/commands/plan.md"
+        ],
+        "changes": "review.md line 431, plan.md line 755: Updated count reference from '23 timeline entries' to '22 activities'. Updated example validation output (review.md lines 435-437, plan.md lines 757-759) to show '22 timeline activities' instead of 23.",
+        "rationale": "Testing against actual data (/tmp/qa-test-day-1-data.json) confirmed Day 1 has 22 timeline object keys, not 23 as previously documented. Corrected to match reality."
+      },
+      {
+        "id": 4,
+        "description": "Updated output structure documentation in review.md lines 391-409",
+        "type": "documentation_correction",
+        "files_modified": [
+          ".claude/commands/review.md"
+        ],
+        "changes": "Lines 391-409: Replaced simplified output structure example with actual load.py wrapper format showing agent/status/data fields. Added note clarifying timeline is object with activity keys, not array. Changed title to 'Output structure (load.py wrapper format)'.",
+        "rationale": "Previous documentation showed simplified structure without load.py wrappers and incorrectly represented timeline as array [...]. New documentation matches actual load.py output with agent metadata wrapper and clarifies timeline is object."
+      },
+      {
+        "id": 5,
+        "description": "Updated output structure documentation in plan.md lines 715-733",
+        "type": "documentation_correction",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Lines 715-733: Same update as review.md - replaced simplified structure with actual load.py wrapper format, added note about timeline being object with activity keys.",
+        "rationale": "Maintain consistency with review.md documentation and accurately represent load.py output format."
+      }
+    ],
+    "testing_results": {
+      "test_command": "jq '.timeline.data.days[0].timeline | keys | length' /tmp/qa-test-day-1-data.json",
+      "test_output": "22",
+      "test_status": "pass",
+      "test_verification": "Correct jq path successfully counts 22 timeline activity keys from Day 1 test data. Drone show ('Chongqing Drone Show') confirmed present in output.",
+      "old_command": "jq '.timeline.timeline | length' /tmp/qa-test-day-1-data.json",
+      "old_output": "null (treated as 0)",
+      "comparison": "New command returns actual count (22), old command returned null causing incorrect 0 count"
+    },
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "481b4c8 - fix: Add explicit extraction methodology to /review Step 14",
+      "why_issue_occurred": "Iteration 1 implementation correctly integrated load.py extraction, but validation commands used incorrect JSON paths inherited from initial jq-based approach assumptions. Paths were not tested against actual load.py output structure before documentation.",
+      "how_fix_addresses_root": "All validation commands now use correct JSON path (.timeline.data.days[0].timeline | keys | length) tested against real data. Output structure documentation updated to show actual load.py wrapper format with agent/status/data fields. Activity count corrected to 22 based on testing. All changes verified against /tmp/qa-test-day-1-data.json test file."
+    },
+    "qa_ready": true,
+    "qa_notes": "Test validation commands on real data: Run 'jq .timeline.data.days[0].timeline | keys | length /tmp/qa-test-day-1-data.json' and verify returns 22. Check that documentation matches actual load.py output structure. Verify terminology consistency (activities vs entries). Confirm drone show still detected in timeline.",
+    "permissions_to_add": []
+  }
+}

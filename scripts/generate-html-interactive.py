@@ -2590,6 +2590,71 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 };
 
 // ============================================================
+// TIMELINE OVERLAP DETECTION UTILITIES
+// ============================================================
+
+/**
+ * Convert "HH:MM" to minutes since midnight for comparison
+ */
+const timeToMinutes = (timeStr) => {
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/**
+ * Check if two events overlap in time
+ */
+const eventsOverlap = (event1, event2) => {
+  const start1 = timeToMinutes(event1.time.start);
+  const end1 = timeToMinutes(event1.time.end);
+  const start2 = timeToMinutes(event2.time.start);
+  const end2 = timeToMinutes(event2.time.end);
+  // Events overlap if one starts before the other ends
+  return start1 < end2 && start2 < end1;
+};
+
+/**
+ * Compute column layout for all events (Google Calendar style)
+ * Uses greedy column assignment algorithm
+ */
+const computeColumnLayout = (entries) => {
+  const entriesWithMinutes = entries.map(e => ({
+    ...e,
+    _startMin: timeToMinutes(e.time.start),
+    _endMin: timeToMinutes(e.time.end)
+  }));
+
+  // Check if two events overlap using cached minutes
+  const overlaps = (e1, e2) => {
+    return (e1._startMin < e2._endMin) && (e2._startMin < e1._endMin);
+  };
+
+  // Greedy column assignment
+  const result = [];
+  for (let i = 0; i < entriesWithMinutes.length; i++) {
+    const entry = entriesWithMinutes[i];
+    const conflictingEntries = result.filter(e => overlaps(e, entry));
+    const occupiedCols = new Set(conflictingEntries.map(e => e._column));
+
+    let column = 0;
+    while (occupiedCols.has(column)) column++;
+
+    entry._column = column;
+    result.push(entry);
+  }
+
+  // Calculate maxColumns for each conflict group
+  for (let i = 0; i < result.length; i++) {
+    const entry = result[i];
+    const conflictingEntries = result.filter(e => overlaps(e, entry));
+    const maxCol = Math.max(entry._column, ...conflictingEntries.map(e => e._column));
+    entry._maxColumns = maxCol + 1;
+  }
+
+  return result;
+};
+
+// ============================================================
 // TIMELINE VIEW
 // ============================================================
 const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
@@ -2627,8 +2692,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
 
-  const firstH = entries.length ? parseInt(entries[0].time.start) : 8;
-  const lastH = entries.length ? Math.min(parseInt(entries[entries.length - 1].time.start) + 2, 24) : 20;
+  // Compute column layout for overlapping events
+  const entriesWithLayout = computeColumnLayout(entries);
+
+  const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
+  const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
   const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
 
   const hH = sm ? 68 : 80;
@@ -2689,30 +2757,40 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
           <div style={{ flex: 1, position: 'relative', borderLeft: '1px dashed #e5e4e1', minWidth: 0 }}>
             {hours.map(h => <div key={h} style={{ height: hH, borderBottom: '1px solid #f5f5f3' }} />)}
 
-            {entries.map((entry, i) => {
+            {entriesWithLayout.map((entry, i) => {
               const st = typeStyle[entry._type] || typeStyle.attraction;
               const t = top(entry.time.start);
               const entryH = hgt(entry.time.start, entry.time.end);
-              // Adjusted thresholds for new minimum height (8px instead of 56/64px)
-              // Blocks < 16px: too narrow for any text
-              // Blocks < 24px: hide text, show as colored bar
-              // Blocks >= 24px: show time text
-              // Blocks >= 36px: show main text
-              // Blocks >= 52px: show subtext (details, links)
-              const tooNarrow = entryH < 16;
-              const showTime = entryH >= 24;
-              const showText = entryH >= 36;
-              const showSubtext = entryH >= 52;
+
+              // Column-based positioning for overlapping events
+              const hasColumns = entry._maxColumns > 1;
+              const colWidth = hasColumns ? (100 / entry._maxColumns) : 100;
+              const colLeft = hasColumns ? (entry._column * colWidth) : 0;
+
+              // Text visibility logic based on pixel height (line height = font size × 1.5)
+              const LINE_HEIGHT_PX = sm ? 18 : 21;
+              const hideAllText = entryH < LINE_HEIGHT_PX;           // < ~20px: Icon only
+              const forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;  // 20-35px: Single line
+              const showTime = entryH >= 24;                         // >= 24px: Show time
+              const showText = entryH >= LINE_HEIGHT_PX;             // >= 20px: Show main text
+              const showSubtext = entryH >= 52;                      // >= 52px: Show details
+
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
               return (
                 <div key={i} style={{
-                  position: 'absolute', top: t, left: '10px', right: '10px',
+                  position: 'absolute',
+                  top: t,
+                  left: hasColumns ? `calc(10px + ${colLeft}%)` : '10px',
+                  width: hasColumns ? `calc(${colWidth}% - 12px)` : 'calc(100% - 20px)',
                   height: entryH - 4,
                   background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
-                  borderRadius: '6px', padding: tooNarrow ? '0 6px' : (sm ? '8px 10px' : '10px 14px'),
-                  display: 'flex', gap: tooNarrow ? '0' : '10px', alignItems: tooNarrow ? 'center' : 'flex-start',
+                  borderRadius: '6px',
+                  padding: hideAllText ? '0 6px' : (sm ? '8px 10px' : '10px 14px'),
+                  display: 'flex',
+                  gap: hideAllText ? '0' : '10px',
+                  alignItems: hideAllText ? 'center' : 'flex-start',
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
@@ -2732,8 +2810,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {showTime && <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>}
-                    {showText && (
+                    {!hideAllText && showTime && <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>}
+                    {!hideAllText && showText && (
                     <div style={{
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
@@ -2748,7 +2826,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       )}
                     </div>
                     )}
-                    {showSubtext && (entry._type === 'transportation' ? (
+                    {!hideAllText && showSubtext && (entry._type === 'transportation' ? (
                       <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
                         <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point_base} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point_base}</div>
                         {entry.route_number && entry.route_number !== 'VERIFIED' && (
@@ -2786,7 +2864,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
                       </div>
                     ))}
-                    {showSubtext && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
+                    {!hideAllText && showSubtext && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
                   </div>
                 </div>
               );
