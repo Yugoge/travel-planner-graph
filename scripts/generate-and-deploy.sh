@@ -90,7 +90,7 @@ if [ -f "$IMAGES_FILE" ]; then
     else
         if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
             echo -e "${YELLOW}⚠${NC} Image fetch requested${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}"
-            python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
+            python "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed, using existing cache"
         else
             echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
         fi
@@ -98,10 +98,10 @@ if [ -f "$IMAGES_FILE" ]; then
 else
     if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
         echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}..."
-        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+        python "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
     else
         echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs..."
-        python3 "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
+        python "$SCRIPT_DIR/fetch-images-batch.py" "$PLAN_ID" 100 300 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Image fetch failed"
     fi
 fi
 

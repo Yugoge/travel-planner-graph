@@ -126,7 +126,9 @@ class BatchImageFetcher:
         # 2. Fallback: Gaode geocoding (single API call)
         import urllib.request
         import urllib.parse
-        gaode_key = os.environ.get("GAODE_API_KEY", "99e97af6fd426ce3cfc45d22d26e78e3")
+        gaode_key = os.environ.get("GAODE_API_KEY")
+        if not gaode_key:
+            raise ValueError("GAODE_API_KEY environment variable not set")
         params = urllib.parse.urlencode({"key": gaode_key, "address": city, "output": "json"})
         try:
             url = f"https://restapi.amap.com/v3/geocode/geo?{params}"
@@ -685,7 +687,7 @@ class BatchImageFetcher:
 
                             if name_base:
                                 pois.append({
-                                    "name": name_base,
+                                    "name_base": name_base,
                                     "name_local": name_local,
                                     "city": location,
                                     "location_base": location_base,
