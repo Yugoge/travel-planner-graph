@@ -145,16 +145,31 @@ class BatchImageFetcher:
         # No coordinates found - return (0, 0) which will default to google service
         return (0.0, 0.0)
 
-    def _map_service_for(self, city: str) -> str:
+    def _map_service_for(self, city: str, poi_coordinates: dict = None) -> str:
         """Return 'gaode' or 'google' based on coordinate-level country detection.
+
+        Args:
+            city: City name (may be multi-city like "Shanghai / Beijing")
+            poi_coordinates: Optional POI's own coordinates dict with 'lat' and 'lng'
+                            If provided, will use these instead of city-level coordinates
 
         Universal rule — no config, no hardcoded city lists:
           Mainland China (ISO2=CN) → Gaode (高德)
           Everywhere else (HK, MO, TW, JP, FR, ...) → Google
 
-        Detection: city name → coordinate (from data or geocoding) → geopip → ISO2.
+        Detection: coordinate (POI or city) → geopip → ISO2.
         Results cached per city per session.
         """
+        # If POI has its own coordinates, use them directly (no caching for POI-level detection)
+        if poi_coordinates and 'lat' in poi_coordinates and 'lng' in poi_coordinates:
+            lng = poi_coordinates['lng']
+            lat = poi_coordinates['lat']
+            if lng != 0.0 and lat != 0.0:
+                iso2 = self._country_for_coord(lng, lat)
+                logger.debug(f"Using POI coordinates ({lat}, {lng}) → ISO2={iso2}")
+                return "gaode" if iso2 == "CN" else "google"
+
+        # Fall back to city-based detection
         cache_key = city.strip().lower()
         if cache_key in self._country_cache:
             return "gaode" if self._country_cache[cache_key] == "CN" else "google"
@@ -447,25 +462,94 @@ class BatchImageFetcher:
 
         return terms
 
-    def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None, location_local: str = None) -> Optional[str]:
-        """Fetch POI photo using map service determined by city location.
+    def fetch_poi_photo(self, poi_name: str, city: str, name_local: str = None, location_local: str = None, poi_coordinates: dict = None) -> Optional[str]:
+        """Fetch POI photo using map service determined by city location or POI coordinates.
+
+        Args:
+            poi_name: POI name (English)
+            city: City name (may be multi-city like "Shanghai / Beijing")
+            name_local: Local language POI name
+            location_local: Local language location/address
+            poi_coordinates: POI's own coordinates (overrides city-based detection)
 
         Mainland China → Gaode Maps (高德)
         Everywhere else → Google Maps
         Uses name_local for search (native language), falls back to poi_name.
-        FINAL FALLBACK: Uses location_local (address) for search if name fails.
+        FALLBACK CHAIN:
+        1. Gaode/Google search (based on location)
+        2. Xiaohongshu search (if Gaode/Google fails)
         """
         search_name = name_local if name_local else poi_name
-        service = self._map_service_for(city)
+        service = self._map_service_for(city, poi_coordinates)
+
+        photo_url = None
 
         if service == "gaode":
             # CRITICAL FIX: Use "城市名 + POI名" format for more precise Gaode search
             # Example: "重庆来福士观景台" instead of "来福士观景台"
             # This prevents matching wrong POIs like 洪崖洞 when searching for 来福士
             search_with_city = f"{city}{search_name}" if search_name else search_name
-            return self._gaode_search(search_with_city, city, location_local=location_local)
+            photo_url = self._gaode_search(search_with_city, city, location_local=location_local)
         else:
-            return self.fetch_poi_photo_google(search_name, city)
+            photo_url = self.fetch_poi_photo_google(search_name, city)
+
+        # Xiaohongshu fallback if Gaode/Google failed
+        if not photo_url:
+            logger.info(f"Gaode/Google failed for {poi_name}, trying Xiaohongshu...")
+            photo_url = self._xiaohongshu_search(search_name, city)
+
+        return photo_url
+
+    def _xiaohongshu_search(self, search_name: str, city: str) -> Optional[str]:
+        """Xiaohongshu (小红书) search fallback when Gaode/Google fail.
+
+        Args:
+            search_name: POI name (Chinese preferred)
+            city: City name
+
+        Returns:
+            Image URL from Xiaohongshu note, or None if not found
+        """
+        try:
+            # Use rednote skill to search
+            script_path = self.base_dir / ".claude/skills/rednote/scripts/search.py"
+            if not script_path.exists():
+                logger.warning("Xiaohongshu skill not found at .claude/skills/rednote/scripts/search.py")
+                return None
+
+            # Search for "城市名 + POI名"
+            query = f"{city} {search_name}" if city else search_name
+            logger.debug(f"Xiaohongshu search: {query}")
+
+            result = subprocess.run(
+                [self.venv_python, str(script_path), query, "--limit", "1"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                cwd=script_path.parent
+            )
+
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                # Extract first image URL from search results
+                if data.get("notes") and len(data["notes"]) > 0:
+                    first_note = data["notes"][0]
+                    images = first_note.get("images", [])
+                    if images and len(images) > 0:
+                        image_url = images[0].get("url")
+                        if image_url:
+                            logger.info(f"Found Xiaohongshu image for {search_name}")
+                            return image_url
+
+            logger.debug(f"No Xiaohongshu results for {query}")
+            return None
+
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Xiaohongshu search timeout for {search_name}")
+            return None
+        except Exception as e:
+            logger.warning(f"Xiaohongshu search error for {search_name}: {e}")
+            return None
 
     def fetch_cities(self, limit: int = 5):
         """Fetch city cover photos (limited batch)"""
@@ -660,14 +744,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "meals":
                     # Meals: breakfast/lunch/dinner dict
@@ -687,14 +775,18 @@ class BatchImageFetcher:
                                 name_local = meal.get("name_chinese", "") or self._extract_local_name(name_base)
 
                             if name_base:
-                                pois.append({
+                                poi_dict = {
                                     "name_base": name_base,
                                     "name_local": name_local,
                                     "city": location,
                                     "location_base": location_base,
                                     "location_local": location_local,
                                     "type": poi_type
-                                })
+                                }
+                                # Add POI's own coordinates if available
+                                if meal.get("coordinates"):
+                                    poi_dict["coordinates"] = meal["coordinates"]
+                                pois.append(poi_dict)
 
                 elif field_name == "accommodation":
                     # Accommodation: single dict
@@ -713,14 +805,18 @@ class BatchImageFetcher:
                             name_local = acc.get("name_chinese", acc.get("name_cn", "")) or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available (critical for multi-city days)
+                            if acc.get("coordinates"):
+                                poi_dict["coordinates"] = acc["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "entertainment":
                     # Entertainment: list of items
@@ -738,14 +834,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "shopping":
                     # Shopping: list of items
@@ -761,14 +861,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
             # Process cities format (bucket list)
             for city in cities_data:
@@ -790,14 +894,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "meals":
                     # Meals: list of items
@@ -815,14 +923,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "accommodation":
                     # Accommodation: list of items
@@ -840,14 +952,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", item.get("name_cn", "")) or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "entertainment":
                     # Entertainment: list of items
@@ -865,14 +981,18 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
                 elif field_name == "shopping":
                     for item in city.get("shopping", []):
@@ -887,20 +1007,26 @@ class BatchImageFetcher:
                             name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
 
                         if name_base:
-                            pois.append({
+                            poi_dict = {
                                 "name_base": name_base,
                                 "name_local": name_local,
                                 "city": location,
                                 "location_base": location_base,
                                 "location_local": location_local,
                                 "type": poi_type
-                            })
+                            }
+                            # Add POI's own coordinates if available
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
 
         print(f"  Found {len(pois)} POIs across all agent files")
 
         fetched = 0
         for poi in pois[:limit]:
-            service = self._map_service_for(poi['city'])
+            # Pass POI's own coordinates to service detection (fixes multi-city location bug)
+            poi_coords = poi.get('coordinates')
+            service = self._map_service_for(poi['city'], poi_coords)
 
             # Generate cache key based on service and name format
             # China (Gaode): Use Chinese name_local for accurate search
@@ -916,7 +1042,7 @@ class BatchImageFetcher:
                 continue
 
             print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
-            search_term = f"{poi['city']}{poi.get('name_local', '')}" if self._map_service_for(poi['city']) == 'gaode' and poi.get('name_local') else poi['name_base']
+            search_term = f"{poi['city']}{poi.get('name_local', '')}" if self._map_service_for(poi['city'], poi_coords) == 'gaode' and poi.get('name_local') else poi['name_base']
             if search_term != poi['name_base']:
                 logger.debug(f"Search term: {search_term}")
 
@@ -924,7 +1050,8 @@ class BatchImageFetcher:
                 poi['name_base'],
                 poi['city'],
                 name_local=poi.get('name_local'),
-                location_local=poi.get('location_local')
+                location_local=poi.get('location_local'),
+                poi_coordinates=poi_coords
             )
 
             if photo_url:
