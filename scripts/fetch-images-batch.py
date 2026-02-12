@@ -615,29 +615,32 @@ class BatchImageFetcher:
 
             content = content_data["data"]
 
-            # Convert content to string for regex parsing (handle both text and JSON formats)
-            if isinstance(content, dict):
-                content_str = json.dumps(content)
-            else:
-                content_str = str(content)
-
-            # Step 5: Extract image URLs from CDN patterns
-            # Xiaohongshu CDN patterns: xhscdn.com, ci.xiaohongshu.com, picasso-static.xiaohongshu.com
-            cdn_patterns = [
-                r'(https?://[^"\s]*?xhscdn\.com/[^"\s]+)',
-                r'(https?://[^"\s]*?ci\.xiaohongshu\.com/[^"\s]+)',
-                r'(https?://[^"\s]*?picasso-static\.xiaohongshu\.com/[^"\s]+)',
-            ]
-
+            # Handle different content formats
             image_urls = []
-            for pattern in cdn_patterns:
-                matches = re.findall(pattern, content_str)
-                image_urls.extend(matches)
 
-            # Filter out thumbnails and get full-size images
+            # Format 1: dict with 'images' key (from HTTP scraper)
+            if isinstance(content, dict) and 'images' in content:
+                image_urls = content['images']
+            else:
+                # Format 2: text or JSON string - extract with regex
+                content_str = json.dumps(content) if isinstance(content, dict) else str(content)
+
+                # Xiaohongshu CDN patterns: xhscdn.com, ci.xiaohongshu.com, picasso-static.xiaohongshu.com
+                cdn_patterns = [
+                    r'(https?://[^"\s]*?xhscdn\.com/[^"\s]+)',
+                    r'(https?://[^"\s]*?ci\.xiaohongshu\.com/[^"\s]+)',
+                    r'(https?://[^"\s]*?picasso-static\.xiaohongshu\.com/[^"\s]+)',
+                ]
+
+                for pattern in cdn_patterns:
+                    matches = re.findall(pattern, content_str)
+                    image_urls.extend(matches)
+
+            # Filter out thumbnails, JS, CSS and get actual image files
             full_size_images = [
                 url for url in image_urls
-                if not any(thumb in url for thumb in ['thumbnail', 'thumb', 'avatar'])
+                if not any(thumb in url.lower() for thumb in ['thumbnail', 'thumb', 'avatar', 'user', '.js', '.css'])
+                and any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '/spectrum/'])
             ]
 
             if full_size_images:

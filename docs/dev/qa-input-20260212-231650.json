@@ -1,0 +1,317 @@
+{
+  "request_id": "dev-20260212-231650",
+  "timestamp": "2026-02-12T23:16:50Z",
+  "requirement": {
+    "original": "添加小红书提取图片的功能",
+    "clarified": "实现完整的小红书图片提取功能，使其能在Gaode/Google失败时自动fallback并成功提取图片URL",
+    "what": "完善_xiaohongshu_search()方法，实现search_notes → get_note_content → 提取图片URL的完整流程",
+    "why": "当前Xiaohongshu fallback只有框架，不能实际提取图片。用户需要一个能工作的fallback系统来提高图片覆盖率",
+    "where": [
+      "scripts/fetch-images-batch.py::_xiaohongshu_search()",
+      ".claude/skills/rednote/scripts/search.py",
+      ".claude/skills/rednote/scripts/mcp_client.py"
+    ],
+    "scope": {
+      "included": [
+        "修改_xiaohongshu_search()实现完整的图片提取逻辑",
+        "search_notes获取笔记URL",
+        "get_note_content获取笔记详细内容",
+        "从笔记内容中解析和提取图片URL",
+        "处理超时和错误情况",
+        "支持xvfb headless环境",
+        "添加重试逻辑和超时处理"
+      ],
+      "excluded": [
+        "不修改Gaode/Google主要服务",
+        "不改变POI坐标检测逻辑",
+        "不修改Bing Images fallback",
+        "不改变整体fallback链顺序"
+      ]
+    },
+    "success_criteria": [
+      "_xiaohongshu_search()能成功从search_notes结果中获取笔记URL",
+      "能成功调用get_note_content获取笔记详细内容",
+      "能从笔记内容中提取至少一个有效的图片URL",
+      "处理get_note_content超时情况（增加超时限制或重试）",
+      "在测试POI上验证能返回真实的图片URL而不是None",
+      "保持xvfb支持用于headless环境"
+    ],
+    "constraints": [
+      "必须使用现有的rednote-mcp MCP服务器",
+      "必须使用xvfb-run for headless browser",
+      "get_note_content有30s超时问题，需要增加timeout或重试",
+      "MCP返回的是文本格式，需要解析",
+      "必须保持向后兼容性，不破坏现有Gaode/Google功能"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Xiaohongshu fallback返回None，无法提取图片",
+    "root_cause": "Commit afce9d9只实现了search_notes框架，在line 570返回None，注释说'TODO: Implement web scraping or use different API'。Commit d970fe5文档化了限制但没有实现解决方案",
+    "root_cause_commit": "afce9d9 - fix: Support POI coordinates for service detection + add Xiaohongshu fallback",
+    "why_introduced": "原始实现发现rednote-mcp的search_notes只返回文本元数据（标题、作者、链接），不包含图片URL。作者意识到需要额外的get_note_content调用但没有实现，留下了TODO注释",
+    "why_problematic": "search_notes只返回笔记元数据文本，不包含图片。需要二次调用get_note_content获取完整内容，但这个API调用复杂且有超时问题，所以被跳过了",
+    "timeline": "2026-02-12 22:06 - afce9d9实现框架但返回None；2026-02-12 23:11 - d970fe5文档化限制",
+    "affected_files": [
+      "scripts/fetch-images-batch.py",
+      ".claude/skills/rednote/scripts/search.py",
+      "docs/image-fallback-status.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "Modified: data files (test artifacts), Untracked: test scripts in rednote/scripts/",
+    "recent_commits": [
+      "d970fe5 - docs: Document image fallback limitations + add placeholders",
+      "afce9d9 - fix: Support POI coordinates for service detection + add Xiaohongshu fallback",
+      "92172d4 - cleanup: Execute approved cleanup actions",
+      "c9084ac - fix: Enable airbnb and rednote skills"
+    ],
+    "file_contents": {
+      "scripts/fetch-images-batch.py::_xiaohongshu_search": "Lines 508-580: 实现了search_notes调用和URL提取，但在line 570返回None因为无法提取图片",
+      ".claude/skills/rednote/scripts/mcp_client.py::call_tool": "Lines 127-159: MCP工具调用方法，返回文本或JSON",
+      ".claude/skills/rednote/scripts/search.py": "使用MCPClient调用search_notes工具"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11, Node 20, xvfb (virtual display)",
+      "packages": "rednote-mcp (installed globally), geopip, subprocess, json, re"
+    },
+    "environment": {
+      "venv_path": "/root/travel-planner/venv",
+      "config_files": [
+        "/root/.mcp/rednote/cookies.json (authentication)",
+        ".claude/skills/rednote/ (MCP client scripts)"
+      ],
+      "mcp_server": "rednote-mcp v0.2.3",
+      "mcp_tools": [
+        "search_notes - 搜索笔记（返回元数据文本）",
+        "get_note_content - 获取笔记详细内容（有超时问题）",
+        "get_note_comments - 获取评论",
+        "login - 重新认证"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "修改_xiaohongshu_search()实现完整的search→get_content→extract_images流程，使用MCP客户端直接调用get_note_content工具，增加超时限制和错误处理",
+    "implementation_steps": [
+      "1. 创建辅助脚本get_note_content.py用于获取笔记详细内容（可复用的组件）",
+      "2. 修改_xiaohongshu_search()增加get_note_content调用逻辑",
+      "3. 实现从MCP返回的笔记内容中解析图片URL的逻辑",
+      "4. 增加超时处理：增加timeout到45-60秒或实现重试",
+      "5. 处理MCP返回的各种数据格式（JSON或文本）",
+      "6. 添加详细的日志记录用于调试",
+      "7. 测试完整流程：search→get_content→extract→return URL"
+    ],
+    "scripts_to_create": [
+      ".claude/skills/rednote/scripts/get_note_content.py - 参数化的获取笔记内容脚本"
+    ],
+    "files_to_modify": [
+      "scripts/fetch-images-batch.py::_xiaohongshu_search() - 实现完整图片提取逻辑"
+    ],
+    "validation_approach": "使用真实的小红书搜索测试（如'重庆洪崖洞'）验证能成功提取图片URL"
+  },
+  "technical_details": {
+    "mcp_workflow": {
+      "search_notes": {
+        "input": "keywords, limit",
+        "output": "文本格式的笔记元数据，包含'链接: https://www.xiaohongshu.com/explore/...'",
+        "timeout": "30s (可靠)",
+        "success_rate": "高"
+      },
+      "get_note_content": {
+        "input": "url (笔记链接)",
+        "output": "文本或JSON格式的笔记详细内容，应包含图片信息",
+        "timeout": "30s (经常超时)",
+        "issues": "需要增加timeout到45-60s，或实现重试逻辑",
+        "success_rate": "中等（有超时问题）"
+      }
+    },
+    "image_extraction_strategy": {
+      "approach_1": "解析MCP返回的JSON（如果get_note_content返回结构化数据）",
+      "approach_2": "解析MCP返回的文本（如果是格式化文本输出）",
+      "approach_3": "使用正则表达式从HTML/JSON文本中提取图片CDN URL",
+      "xiaohongshu_cdn_patterns": [
+        "https://sns-webpic-qc.xhscdn.com/...",
+        "https://ci.xiaohongshu.com/...",
+        "https://picasso-static.xiaohongshu.com/..."
+      ]
+    },
+    "error_handling": {
+      "search_notes_fails": "返回None，记录debug日志",
+      "no_urls_found": "返回None，记录debug日志",
+      "get_note_content_timeout": "增加timeout或重试一次，失败返回None",
+      "no_images_in_content": "返回None，记录info日志",
+      "parse_error": "返回None，记录warning日志"
+    }
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "additional_standards": [
+      "所有脚本必须有usage examples",
+      "所有函数必须有docstrings",
+      "使用logger而不是print",
+      "参数化timeout值（不hardcode 30或60）",
+      "提取的辅助函数应该是可复用的"
+    ]
+  },
+  "test_scenarios": [
+    {
+      "name": "Test successful image extraction",
+      "poi": "洪崖洞",
+      "city": "重庆",
+      "expected": "返回小红书CDN图片URL（以https://开头）",
+      "validation": "检查URL格式，验证URL可访问"
+    },
+    {
+      "name": "Test timeout handling",
+      "poi": "测试超时POI",
+      "city": "测试城市",
+      "expected": "超时后返回None，记录warning日志",
+      "validation": "检查日志中有timeout警告"
+    },
+    {
+      "name": "Test no results found",
+      "poi": "不存在的景点12345",
+      "city": "火星",
+      "expected": "返回None，记录debug日志",
+      "validation": "检查日志中有'No Xiaohongshu results'"
+    }
+  ],
+  "dev": {
+    "status": "completed_with_limitations",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Created get_note_content.py script for fetching note content",
+        "type": "script",
+        "files_created": [
+          ".claude/skills/rednote/scripts/get_note_content.py"
+        ],
+        "rationale": "Root cause (afce9d9) was that search_notes only returns metadata. Created reusable script to fetch detailed note content",
+        "status": "completed",
+        "notes": "Implemented HTTP scraping fallback due to MCP timeout issues. Script works but Xiaohongshu requires JavaScript rendering which limits effectiveness."
+      },
+      {
+        "id": 2,
+        "description": "Modified _xiaohongshu_search() to implement complete workflow",
+        "type": "implementation",
+        "files_modified": [
+          "scripts/fetch-images-batch.py"
+        ],
+        "changes": "Implemented complete workflow: search_notes → extract URL → get_note_content → parse images. Added detailed logging, error handling, and timeout management (increased to 60s). Added support for multiple image CDN patterns and filtering logic.",
+        "lines_modified": "508-640",
+        "rationale": "Commit afce9d9 only implemented search_notes with TODO comment. This implements the complete image extraction pipeline.",
+        "status": "completed"
+      },
+      {
+        "id": 3,
+        "description": "Added xvfb support and timeout handling",
+        "type": "enhancement",
+        "files_modified": [
+          "scripts/fetch-images-batch.py"
+        ],
+        "changes": "Added xvfb-run detection and setup, increased timeout from 30s to 60s for get_note_content, added retry-capable error handling",
+        "rationale": "MCP browser automation requires headless display (xvfb) and longer timeouts",
+        "status": "completed"
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": ".claude/skills/rednote/scripts/get_note_content.py",
+        "purpose": "Fetch detailed note content and extract image URLs from Xiaohongshu note",
+        "parameters": [
+          "url - Note URL (required)",
+          "timeout - Timeout in seconds (optional, default: 30)"
+        ],
+        "usage": "python3 get_note_content.py \"https://www.xiaohongshu.com/explore/abc123\" --timeout 30",
+        "exit_codes": {
+          "0": "Success - images extracted",
+          "1": "Error - network failure, timeout, or no images found"
+        },
+        "implementation_notes": "Implemented HTTP scraping fallback due to MCP get_note_content timeout issues. Xiaohongshu pages are JavaScript-rendered which limits effectiveness. May need browser automation or API access for full functionality."
+      }
+    ],
+    "files_modified": [
+      {
+        "path": "scripts/fetch-images-batch.py",
+        "function": "_xiaohongshu_search()",
+        "lines": "508-640",
+        "changes": [
+          "Implemented complete 5-step workflow: search_notes → extract URL → get_note_content → parse content → return image URL",
+          "Added xvfb-run support for headless browser automation",
+          "Increased timeout from 30s to 60s for get_note_content",
+          "Added multiple CDN pattern matching (xhscdn.com, ci.xiaohongshu.com, picasso-static.xiaohongshu.com)",
+          "Added image filtering logic (filter out JS/CSS, thumbnails, avatars)",
+          "Added comprehensive error handling with descriptive logging",
+          "Added support for both dict and text content formats from get_note_content"
+        ]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "afce9d9 - fix: Support POI coordinates for service detection + add Xiaohongshu fallback",
+      "why_issue_occurred": "Original implementation discovered that rednote-mcp's search_notes only returns text metadata (title, author, link), not images. The developer recognized need for get_note_content call but left it unimplemented with TODO comment at line 570.",
+      "how_fix_addresses_root": "Implemented complete workflow with get_note_content call and image URL extraction from note content. However, discovered additional limitation: Xiaohongshu pages are JavaScript-rendered, requiring browser automation which MCP provides but has timeout/selector issues."
+    },
+    "test_results": {
+      "test_poi": "洪崖洞",
+      "test_city": "重庆",
+      "result": "partial_success",
+      "search_notes_status": "success",
+      "note_url_extracted": "https://www.xiaohongshu.com/explore/695bacbc000000000a02f6bb",
+      "get_note_content_status": "timeout/selector_issue",
+      "image_url_extracted": null,
+      "errors_encountered": [
+        "MCP get_note_content selector timeout: page.waitForSelector('.note-container') timeout 30000ms exceeded",
+        "HTTP scraping fallback extracted JS/CSS files instead of images due to JavaScript rendering",
+        "Xiaohongshu requires browser automation or API access for image extraction"
+      ],
+      "workaround_tested": "HTTP scraping with urllib - unsuccessful due to JavaScript rendering"
+    },
+    "qa_ready": false,
+    "blocking_issues": [
+      {
+        "issue": "MCP get_note_content has selector timeout",
+        "severity": "high",
+        "description": "rednote-mcp's get_note_content tool times out waiting for '.note-container' selector. This suggests either: (1) authentication cookie expired, (2) page structure changed, (3) selector is incorrect, or (4) page requires additional wait time.",
+        "potential_fixes": [
+          "Re-authenticate: Run 'npx rednote-mcp init' to refresh cookies",
+          "Update rednote-mcp package: npm update -g rednote-mcp",
+          "Check if page structure changed (Xiaohongshu may have updated their frontend)",
+          "Increase MCP server timeout configuration",
+          "Use alternative: direct Playwright automation instead of MCP wrapper"
+        ]
+      },
+      {
+        "issue": "Xiaohongshu pages are JavaScript-rendered",
+        "severity": "medium",
+        "description": "Simple HTTP requests return static HTML without image URLs. Images are loaded dynamically via JavaScript after page load.",
+        "potential_fixes": [
+          "Use browser automation (Playwright/Puppeteer) - already attempted via MCP",
+          "Use Xiaohongshu API if available (likely requires authentication)",
+          "Accept limitation and document as known issue"
+        ]
+      }
+    ],
+    "recommendations": [
+      "Re-authenticate rednote-mcp: Run 'npx rednote-mcp init' to refresh authentication cookies",
+      "Test get_note_content directly with xvfb: 'xvfb-run -a npx rednote-mcp' to debug selector issue",
+      "Consider alternative: Use Bing Images API as final fallback (already in codebase)",
+      "Document known limitation: Xiaohongshu fallback requires working MCP authentication",
+      "Add health check: Test rednote-mcp connectivity before attempting Xiaohongshu fallback"
+    ],
+    "implementation_quality": {
+      "code_standards": {
+        "no_hardcoded_values": true,
+        "use_source_venv": true,
+        "integer_step_numbering": true,
+        "meaningful_naming": true,
+        "git_root_cause_reference": true,
+        "usage_examples": true,
+        "logger_not_print": true
+      },
+      "notes": "Implementation follows all quality standards. Code is parameterized, well-documented, and references root cause. However, external dependency (rednote-mcp) has issues that prevent full functionality."
+    }
+  }
+}
