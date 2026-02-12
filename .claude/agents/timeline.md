@@ -233,50 +233,35 @@ Write(
 
 **Root Cause Context**: This requirement addresses commit 74e660d0 where manual JSON edits introduced schema violations (meal added to travel_segments array). Centralized validation prevents future ad-hoc modifications.
 
-Replace direct Write tool usage with `scripts/lib/json_io.py`:
+See complete usage example and template: `scripts/save-agent-data-template.py`
 
+**Quick Reference:**
 ```python
-#!/usr/bin/env python3
-import sys
-from pathlib import Path
+from scripts.lib.json_io import save_agent_json, ValidationError
 
-# Add scripts/lib to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "lib"))
-from json_io import save_agent_json, ValidationError
+# Build your timeline_data dictionary
+timeline_data = {"days": [...]}
 
-# Your timeline logic here...
-timeline_data = {
-    "days": [
-        {
-            "day": 1,
-            "date": "2026-02-15",
-            "timeline": {...},
-            "travel_segments": [
-                {
-                    "name_base": "Taxi to Activity",
-                    "type_base": "taxi",  # MUST be transport type only
-                    # ...
-                }
-            ]
-        }
-    ]
-}
+# Save with validation
+save_agent_json(
+    file_path=Path("data/{destination_slug}/timeline.json"),
+    agent_name="timeline",
+    data=timeline_data,
+    validate=True
+)
+```
 
-# Save with automatic validation
-try:
-    save_agent_json(
-        file_path=Path("data/{destination_slug}/timeline.json"),
-        agent_name="timeline",
-        data=timeline_data,
-        validate=True  # Automatic schema validation
-    )
-    print("complete")
+**For complete implementation details**, run:
+```bash
+python3 scripts/save-agent-data-template.py --help
+```
 
-except ValidationError as e:
-    print(f"ERROR: Validation failed with {len(e.high_issues)} HIGH severity issues:")
-    for issue in e.high_issues:
-        print(f"  - Day {issue.day}, {issue.field}: {issue.message}")
-    sys.exit(1)
+**Example execution:**
+```bash
+python3 scripts/save-agent-data-template.py \
+    --agent-name timeline \
+    --data-file data/chongqing-4day/timeline.json \
+    --trip-dir data/chongqing-4day
 ```
 
 **Benefits:**

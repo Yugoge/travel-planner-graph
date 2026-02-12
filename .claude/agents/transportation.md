@@ -238,47 +238,35 @@ Write(
 
 Replace direct Write tool usage with `scripts/lib/json_io.py`:
 
+See complete usage example and template: `scripts/save-agent-data-template.py`
+
+**Quick Reference:**
 ```python
-#!/usr/bin/env python3
-import sys
-from pathlib import Path
+from scripts.lib.json_io import save_agent_json, ValidationError
 
-# Add scripts/lib to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "lib"))
-from json_io import save_agent_json, ValidationError
+# Build your transportation_data dictionary
+transportation_data = {"days": [...]}
 
-# Your transportation logic here...
-transportation_data = {
-    "days": [
-        {
-            "day": 3,
-            "date": "2026-02-17",
-            "location_change": {
-                "from_base": "Chongqing",
-                "from_local": "重庆",
-                "to_base": "Chengdu",
-                "to_local": "成都",
-                # ... all required fields ...
-            }
-        }
-    ]
-}
+# Save with validation
+save_agent_json(
+    file_path=Path("data/{destination_slug}/transportation.json"),
+    agent_name="transportation",
+    data=transportation_data,
+    validate=True
+)
+```
 
-# Save with automatic validation
-try:
-    save_agent_json(
-        file_path=Path("data/{destination_slug}/transportation.json"),
-        agent_name="transportation",
-        data=transportation_data,
-        validate=True  # Automatic schema validation
-    )
-    print("complete")
+**For complete implementation details**, run:
+```bash
+python3 scripts/save-agent-data-template.py --help
+```
 
-except ValidationError as e:
-    print(f"ERROR: Validation failed with {len(e.high_issues)} HIGH severity issues:")
-    for issue in e.high_issues:
-        print(f"  - Day {issue.day}, {issue.field}: {issue.message}")
-    sys.exit(1)
+**Example execution:**
+```bash
+python3 scripts/save-agent-data-template.py \
+    --agent-name transportation \
+    --data-file data/chongqing-4day/transportation.json \
+    --trip-dir data/chongqing-4day
 ```
 
 **Benefits:**

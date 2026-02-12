@@ -242,46 +242,35 @@ Write(
 Replace direct Write tool usage with `scripts/lib/json_io.py`:
 
 ```python
-#!/usr/bin/env python3
-import sys
-from pathlib import Path
+See complete usage example and template: `scripts/save-agent-data-template.py`
 
-# Add scripts/lib to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "lib"))
-from json_io import save_agent_json, ValidationError
+**Quick Reference:**
+```python
+from scripts.lib.json_io import save_agent_json, ValidationError
 
-# Your entertainment logic here...
-entertainment_data = {
-    "days": [
-        {
-            "day": 1,
-            "date": "2026-02-15",
-            "entertainment": [
-                {
-                    "name_base": "Nanshan Night View",
-                    "name_local": "南山夜景",
-                    # ... all required fields ...
-                }
-            ]
-        }
-    ]
-}
+# Build your entertainment_data dictionary
+entertainment_data = {"days": [...]}
 
-# Save with automatic validation
-try:
-    save_agent_json(
-        file_path=Path("data/{destination_slug}/entertainment.json"),
-        agent_name="entertainment",
-        data=entertainment_data,
-        validate=True  # Automatic schema validation
-    )
-    print("complete")
+# Save with validation
+save_agent_json(
+    file_path=Path("data/{destination_slug}/entertainment.json"),
+    agent_name="entertainment",
+    data=entertainment_data,
+    validate=True
+)
+```
 
-except ValidationError as e:
-    print(f"ERROR: Validation failed with {len(e.high_issues)} HIGH severity issues:")
-    for issue in e.high_issues:
-        print(f"  - Day {issue.day}, {issue.field}: {issue.message}")
-    sys.exit(1)
+**For complete implementation details**, run:
+```bash
+python3 scripts/save-agent-data-template.py --help
+```
+
+**Example execution:**
+```bash
+python3 scripts/save-agent-data-template.py \
+    --agent-name entertainment \
+    --data-file data/chongqing-4day/entertainment.json \
+    --trip-dir data/chongqing-4day
 ```
 
 **Benefits:**
