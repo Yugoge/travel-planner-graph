@@ -759,7 +759,7 @@ Step 14 OUTER LOOP:
 
 Root cause reference: Script separation caused workflow interruption where AI subjectively skipped deployment steps, violating the principle that generated plans must be immediately published.
 
-#### Step 15.5: Final Data Sync Before HTML Generation
+#### Step 16: Final Data Sync Before HTML Generation
 
 **MANDATORY**: Run final sync to ensure all agent data is synchronized with timeline before HTML generation. This sync also regenerates the HTML automatically.
 
@@ -769,7 +769,7 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sy
 
 Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-report.json for any remaining unmatched items.
 
-#### Step 15.6: Plan Validation Gate (MANDATORY)
+#### Step 17: Plan Validation Gate (MANDATORY)
 
 **CRITICAL**: After all agents complete and data is synced, run the plan validation script as a final quality gate before HTML generation. This ensures all agent outputs meet structural and content requirements.
 
