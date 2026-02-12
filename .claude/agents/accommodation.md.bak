@@ -209,11 +209,11 @@ Validate:
 
 ### Step 3: Save JSON to File and Return Completion
 
-**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent accommodation data loss.
+**CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent accommodation data loss.
 
-Use scripts/save.py script to save complete accommodation JSON:
+Use Write tool to save complete accommodation JSON:
 ```bash
-save.py(
+Write(
   file_path="data/{destination-slug}/accommodation.json",
   content=<complete_json_string>
 )
@@ -268,15 +268,15 @@ save.py(
 }
 ```
 
-**After scripts/save.py script completes successfully**, return ONLY the word: `complete`
+**After Write tool completes successfully**, return ONLY the word: `complete`
 
-**DO NOT return "complete" unless scripts/save.py script has executed successfully.**
+**DO NOT return "complete" unless Write tool has executed successfully.**
 
 ### JSON I/O Best Practices (REQUIRED)
 
 **CRITICAL: Use centralized JSON I/O library for all JSON writes**
 
-Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
+Replace direct Write tool usage with `scripts/lib/json_io.py`:
 
 See complete usage example and template: `scripts/save-agent-data-template.py`
 
@@ -361,61 +361,3 @@ source venv/bin/activate && python scripts/plan-validate.py <trip-directory> --a
 
 Fix any HIGH or MEDIUM issues before considering the task complete.
 All required fields must be present. All `_base` fields must have corresponding `_local` translations.
-
----
-
-## Unified Data Access Scripts
-
-**CRITICAL: All data access must use unified scripts**
-
-### Loading Data (load.py)
-
-Use `scripts/load.py` for reading agent data with 3-level access:
-
-**Level 1** - Day metadata only:
-```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 1
-```
-
-**Level 2** - POI titles/keys:
-```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 2 --day 3
-```
-
-**Level 3** - Full POI data:
-```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 3 --day 3 --poi POIKEY
-```
-
-### Saving Data (save.py)
-
-Use `scripts/save.py` for writing agent data with mandatory validation:
-
-**Save from file**:
-```bash
-python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input modified_data.json
-```
-
-**Save from stdin**:
-```bash
-cat modified_data.json | python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME
-```
-
-**Features**:
-- ✅ Automatic validation (plan-validate.py)
-- ✅ Atomic writes (.tmp → rename)
-- ✅ Automatic backups (.bak)
-- ✅ HIGH severity issues block saves
-- ✅ Redundant field detection (100% structure validation)
-
-### Write Tool Disabled
-
-**The Write tool is disabled for all agents** to ensure:
-- Data corruption prevention
-- Mandatory validation
-- Atomic operations
-- Backup management
-- 100% structure validation (including redundant field detection)
-
-All agents must use `scripts/save.py` instead of Write tool.
-

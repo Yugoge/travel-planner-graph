@@ -40,6 +40,7 @@ from typing import Any, Optional
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_DIR = PROJECT_ROOT / "schemas"
 DATA_DIR = PROJECT_ROOT / "data"
+CONFIG_FILE = PROJECT_ROOT / "config" / "validation.json"
 
 LEGACY_FIELD_MAP = {
     "currency": "currency_local",
@@ -60,50 +61,40 @@ LEGACY_FIELD_MAP = {
 # pattern to remaining 9 hardcoded issues
 #
 # CONFIGURATION GUIDE:
-# This CONFIG dictionary controls validation behavior without code changes.
-# Modify these values to customize validation for different projects/regions.
+# Settings are loaded from config/validation.json (external file).
+# If config file not found, uses default fallback values below.
 #
-# - english_placeholders: List of strings indicating untranslated content
-#   Default: ["Optional", "Alternative", "TBD", "N/A", "None", "Item "]
-#
-# - currency_region_map: City -> Currency code mapping (DISABLED by default)
-#   Set to {} to skip currency-region validation (recommended)
-#   Populate with {"city_lowercase": "CURRENCY_CODE"} to enable
-#
-# - intentional_overlap_keywords: Keywords indicating expected timeline overlaps
-#   Default: ["optional", "alternative", " or ", "in-park"]
-#
-# - enforce_title_case: Whether to validate Title Case for type_base fields
-#   Default: True (validate), set to False to disable
-#
-# - trip_label_overrides: DEPRECATED - no longer used
-#   Trip labels should come from metadata, not hardcoded patterns
+# To customize validation behavior:
+# 1. Edit config/validation.json (recommended), OR
+# 2. Modify DEFAULT_CONFIG below (not recommended - defeats purpose of external config)
 # ---------------------------------------------------------------------------
 
-CONFIG = {
-    # Fix 1: English placeholders (line 64) - configurable list
-    # Used to detect non-translated content in name_local fields
+DEFAULT_CONFIG = {
     "english_placeholders": ["Optional", "Alternative", "TBD", "N/A", "None", "Item "],
-
-    # Fix 2: Currency-region mapping (line 55) - REMOVED
-    # This check is disabled by default as it duplicates trip metadata
-    # and requires code changes for every new region. Set to {} to disable.
-    # To re-enable, populate with {"city_lowercase": "CURRENCY_CODE"} pairs.
     "currency_region_map": {},
-
-    # Fix 4: Intentional timeline overlap keywords (line 591)
-    # Activities with these keywords are expected to overlap (e.g., "optional tour")
     "intentional_overlap_keywords": ["optional", "alternative", " or ", "in-park"],
-
-    # Fix 6: Title case enforcement (line 571)
-    # Set to False to disable title case validation for type_base fields
     "enforce_title_case": True,
-
-    # Fix 9: Trip-specific labels (line 1015) - REMOVED
-    # Trip labels should be derived from metadata, not hardcoded patterns
-    # This setting is now ignored; all trips use default labeling
-    "trip_label_overrides": {},
 }
+
+def load_config() -> dict:
+    """Load validation configuration from external file or use defaults."""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, encoding="utf-8") as f:
+                config_data = json.load(f)
+                # Extract config values, ignoring _description keys
+                return {
+                    "english_placeholders": config_data.get("english_placeholders", DEFAULT_CONFIG["english_placeholders"]),
+                    "currency_region_map": config_data.get("currency_region_map", DEFAULT_CONFIG["currency_region_map"]),
+                    "intentional_overlap_keywords": config_data.get("intentional_overlap_keywords", DEFAULT_CONFIG["intentional_overlap_keywords"]),
+                    "enforce_title_case": config_data.get("enforce_title_case", DEFAULT_CONFIG["enforce_title_case"]),
+                }
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Warning: Failed to load {CONFIG_FILE}: {e}. Using defaults.", file=sys.stderr)
+            return DEFAULT_CONFIG
+    return DEFAULT_CONFIG
+
+CONFIG = load_config()
 
 # Fix 8: AGENTS_WITH_LOCAL (line 67) - REMOVED, now inferred from schemas
 # This will be populated dynamically by inspecting schema required fields
