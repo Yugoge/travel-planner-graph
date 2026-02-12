@@ -508,6 +508,16 @@ class BatchImageFetcher:
     def _xiaohongshu_search(self, search_name: str, city: str) -> Optional[str]:
         """Xiaohongshu (小红书) search fallback when Gaode/Google fail.
 
+        Root cause (commit afce9d9): search_notes only returns metadata, not images.
+        Fixed by implementing get_note_content call and image URL extraction.
+
+        Workflow:
+        Step 1: Call search_notes to get note URLs
+        Step 2: Extract first note URL from search results
+        Step 3: Call get_note_content to fetch detailed note content
+        Step 4: Parse content to extract image URLs from CDN patterns
+        Step 5: Return first valid image URL
+
         Args:
             search_name: POI name (Chinese preferred)
             city: City name
@@ -516,11 +526,12 @@ class BatchImageFetcher:
             Image URL from Xiaohongshu note, or None if not found
         """
         import os
+        import re
 
         try:
-            # Use rednote skill to search
-            script_path = self.base_dir / ".claude/skills/rednote/scripts/search.py"
-            if not script_path.exists():
+            # Step 1: Search for notes to get note URLs
+            search_script = self.base_dir / ".claude/skills/rednote/scripts/search.py"
+            if not search_script.exists():
                 logger.warning("Xiaohongshu skill not found at .claude/skills/rednote/scripts/search.py")
                 return None
 
@@ -529,15 +540,14 @@ class BatchImageFetcher:
             logger.debug(f"Xiaohongshu search: {query}")
 
             # Use xvfb-run for headless browser support
-            # Check if xvfb-run is available
             xvfb_available = subprocess.run(["which", "xvfb-run"], capture_output=True).returncode == 0
 
             if xvfb_available:
-                cmd = ["xvfb-run", "-a", self.venv_python, str(script_path), query, "--limit", "1"]
+                cmd = ["xvfb-run", "-a", self.venv_python, str(search_script), query, "--limit", "1"]
                 env = os.environ.copy()
                 env["DISPLAY"] = ":99"
             else:
-                cmd = [self.venv_python, str(script_path), query, "--limit", "1"]
+                cmd = [self.venv_python, str(search_script), query, "--limit", "1"]
                 env = os.environ.copy()
 
             result = subprocess.run(
@@ -545,38 +555,107 @@ class BatchImageFetcher:
                 capture_output=True,
                 text=True,
                 timeout=30,
-                cwd=script_path.parent,
+                cwd=search_script.parent,
                 env=env
             )
 
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
+            if result.returncode != 0:
+                logger.debug(f"Xiaohongshu search failed for {query}")
+                return None
 
-                # MCP returns {"status": "success", "data": "formatted text with links..."}
-                # Extract note URLs from the text
-                if data.get("status") == "success" and data.get("data"):
-                    import re
-                    text_data = data["data"]
+            # Step 2: Extract note URL from search results
+            search_data = json.loads(result.stdout)
+            if search_data.get("status") != "success" or not search_data.get("data"):
+                logger.debug(f"No Xiaohongshu results for {query}")
+                return None
 
-                    # Extract Xiaohongshu note links
-                    urls = re.findall(r'链接: (https://www\.xiaohongshu\.com/explore/[a-zA-Z0-9?=&_]+)', text_data)
+            text_data = search_data["data"]
+            urls = re.findall(r'链接: (https://www\.xiaohongshu\.com/explore/[a-zA-Z0-9?=&_]+)', text_data)
 
-                    if urls:
-                        # Return first note URL as placeholder
-                        # (In production, would need to scrape actual images from the page)
-                        logger.info(f"Found Xiaohongshu note (URL only, no direct image): {urls[0][:60]}...")
-                        # Since we can't easily extract images, return None for now
-                        # TODO: Implement web scraping or use different API
-                        return None
+            if not urls:
+                logger.debug(f"No note URLs found in Xiaohongshu search results")
+                return None
 
-            logger.debug(f"No Xiaohongshu results for {query}")
+            note_url = urls[0]
+            logger.debug(f"Found note URL: {note_url[:60]}...")
+
+            # Step 3: Get detailed note content with images (increased timeout for browser automation)
+            content_script = self.base_dir / ".claude/skills/rednote/scripts/get_note_content.py"
+            if not content_script.exists():
+                logger.warning("get_note_content.py not found at .claude/skills/rednote/scripts/")
+                return None
+
+            if xvfb_available:
+                cmd = ["xvfb-run", "-a", self.venv_python, str(content_script), note_url, "--timeout", "60"]
+                env = os.environ.copy()
+                env["DISPLAY"] = ":99"
+            else:
+                cmd = [self.venv_python, str(content_script), note_url, "--timeout", "60"]
+                env = os.environ.copy()
+
+            # Increased timeout to 60s for get_note_content (browser automation is slow)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=content_script.parent,
+                env=env
+            )
+
+            if result.returncode != 0:
+                logger.warning(f"get_note_content failed for {note_url}")
+                return None
+
+            # Step 4: Parse content to extract image URLs
+            content_data = json.loads(result.stdout)
+            if content_data.get("status") != "success" or not content_data.get("data"):
+                logger.warning(f"No content returned from get_note_content")
+                return None
+
+            content = content_data["data"]
+
+            # Convert content to string for regex parsing (handle both text and JSON formats)
+            if isinstance(content, dict):
+                content_str = json.dumps(content)
+            else:
+                content_str = str(content)
+
+            # Step 5: Extract image URLs from CDN patterns
+            # Xiaohongshu CDN patterns: xhscdn.com, ci.xiaohongshu.com, picasso-static.xiaohongshu.com
+            cdn_patterns = [
+                r'(https?://[^"\s]*?xhscdn\.com/[^"\s]+)',
+                r'(https?://[^"\s]*?ci\.xiaohongshu\.com/[^"\s]+)',
+                r'(https?://[^"\s]*?picasso-static\.xiaohongshu\.com/[^"\s]+)',
+            ]
+
+            image_urls = []
+            for pattern in cdn_patterns:
+                matches = re.findall(pattern, content_str)
+                image_urls.extend(matches)
+
+            # Filter out thumbnails and get full-size images
+            full_size_images = [
+                url for url in image_urls
+                if not any(thumb in url for thumb in ['thumbnail', 'thumb', 'avatar'])
+            ]
+
+            if full_size_images:
+                image_url = full_size_images[0]
+                logger.info(f"Extracted Xiaohongshu image: {image_url[:80]}...")
+                return image_url
+
+            logger.info(f"No images found in Xiaohongshu note content")
             return None
 
         except subprocess.TimeoutExpired:
-            logger.warning(f"Xiaohongshu search timeout for {search_name}")
+            logger.warning(f"Xiaohongshu timeout for {search_name} (consider increasing timeout)")
+            return None
+        except json.JSONDecodeError as e:
+            logger.warning(f"Xiaohongshu JSON parse error for {search_name}: {e}")
             return None
         except Exception as e:
-            logger.warning(f"Xiaohongshu search error for {search_name}: {e}")
+            logger.warning(f"Xiaohongshu error for {search_name}: {e}")
             return None
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
