@@ -5,11 +5,19 @@ More reliable than MCP Client for large batch operations.
 """
 
 import json
+import logging
 import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 env_file = Path(__file__).parent.parent / ".env"
@@ -905,7 +913,7 @@ class BatchImageFetcher:
             print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
             search_term = f"{poi['city']}{poi.get('name_local', '')}" if self._map_service_for(poi['city']) == 'gaode' and poi.get('name_local') else poi['name_base']
             if search_term != poi['name_base']:
-                print(f"[搜索: {search_term}]", end=" ")
+                logger.debug(f"Search term: {search_term}")
 
             photo_url = self.fetch_poi_photo(
                 poi['name_base'],
@@ -918,11 +926,11 @@ class BatchImageFetcher:
                 self.cache["pois"][cache_key] = photo_url
                 self._save_cache()
                 print("✓")
-                print(f"  [DEBUG] Saved photo for {cache_key}")
+                logger.debug(f"Saved photo for {cache_key}")
                 fetched += 1
             else:
                 print("✗")
-                print(f"  [DEBUG] No photo URL returned for {cache_key}")
+                logger.debug(f"No photo URL returned for {cache_key}")
 
         print(f"  Total fetched: {fetched}/{limit}")
 
@@ -983,10 +991,16 @@ class BatchImageFetcher:
                 if field_name == "attractions":
                     for item in day.get("attractions", []):
                         name_base = item.get("name_base") or item.get("name", "")
+                        name_local = item.get("name_local")
                         if not name_base:
                             continue
 
-                        cache_key = f"{service}_{name_base}"
+                        # CRITICAL FIX: Match cache key generation from fetch phase
+                        # For Gaode with name_local, use name_local in cache key
+                        if service == "gaode" and name_local:
+                            cache_key = f"{service}_{name_local}"
+                        else:
+                            cache_key = f"{service}_{name_base}"
 
                         # Add image_url field if photo exists in cache
                         if cache_key in self.cache["pois"]:
@@ -1001,10 +1015,15 @@ class BatchImageFetcher:
                         meal = day.get(meal_type)
                         if meal and isinstance(meal, dict):
                             name_base = meal.get("name_base") or meal.get("name", "")
+                            name_local = meal.get("name_local")
                             if not name_base:
                                 continue
 
-                            cache_key = f"{service}_{name_base}"
+                            # CRITICAL FIX: Match cache key generation from fetch phase
+                            if service == "gaode" and name_local:
+                                cache_key = f"{service}_{name_local}"
+                            else:
+                                cache_key = f"{service}_{name_base}"
 
                             # Add image_url field if photo exists in cache
                             if cache_key in self.cache["pois"]:
@@ -1018,10 +1037,15 @@ class BatchImageFetcher:
                     acc = day.get("accommodation")
                     if acc and isinstance(acc, dict):
                         name_base = acc.get("name_base") or acc.get("name", "")
+                        name_local = acc.get("name_local")
                         if not name_base:
                             continue
 
-                        cache_key = f"{service}_{name_base}"
+                        # CRITICAL FIX: Match cache key generation from fetch phase
+                        if service == "gaode" and name_local:
+                            cache_key = f"{service}_{name_local}"
+                        else:
+                            cache_key = f"{service}_{name_base}"
 
                         if cache_key in self.cache["pois"]:
                             if "image_url" not in acc or acc.get("image_url") != self.cache["pois"][cache_key]:
@@ -1033,10 +1057,15 @@ class BatchImageFetcher:
                 elif field_name == "entertainment":
                     for item in day.get("entertainment", []):
                         name_base = item.get("name_base") or item.get("name", "")
+                        name_local = item.get("name_local")
                         if not name_base:
                             continue
 
-                        cache_key = f"{service}_{name_base}"
+                        # CRITICAL FIX: Match cache key generation from fetch phase
+                        if service == "gaode" and name_local:
+                            cache_key = f"{service}_{name_local}"
+                        else:
+                            cache_key = f"{service}_{name_base}"
 
                         if cache_key in self.cache["pois"]:
                             if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
@@ -1048,10 +1077,15 @@ class BatchImageFetcher:
                 elif field_name == "shopping":
                     for item in day.get("shopping", []):
                         name_base = item.get("name_base") or item.get("name", "")
+                        name_local = item.get("name_local")
                         if not name_base:
                             continue
 
-                        cache_key = f"{service}_{name_base}"
+                        # CRITICAL FIX: Match cache key generation from fetch phase
+                        if service == "gaode" and name_local:
+                            cache_key = f"{service}_{name_local}"
+                        else:
+                            cache_key = f"{service}_{name_base}"
 
                         if cache_key in self.cache["pois"]:
                             if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
