@@ -908,8 +908,18 @@ class BatchImageFetcher:
             else:
                 cache_key = f"{service}_{poi['name_base']}"
 
-            if cache_key in self.cache["pois"] and not self.force_refresh:
+            # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+            # This handles legacy cache entries created before the name_local fix (commit d142d28)
+            cache_keys_to_try = [cache_key, f"{service}_{poi['name_base']}"]
+            existing_photo = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
+            if existing_photo and not self.force_refresh:
                 print(f"  ✓ {poi['name_base']} ({poi['type']}, cached)")
+                # Self-healing: Migrate old English key to new Chinese key format
+                if cache_key not in self.cache["pois"]:
+                    self.cache["pois"][cache_key] = existing_photo
+                    self._save_cache()
+                    logger.debug(f"Migrated cache key: {cache_keys_to_try[1]} → {cache_key}")
                 continue
 
             print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
@@ -1004,10 +1014,14 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
+                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
                         # Add image_url field if photo exists in cache
-                        if cache_key in self.cache["pois"]:
-                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
-                                item["image_url"] = self.cache["pois"][cache_key]
+                        if photo_url:
+                            if "image_url" not in item or item.get("image_url") != photo_url:
+                                item["image_url"] = photo_url
                                 modified = True
                                 updated += 1
 
@@ -1027,10 +1041,14 @@ class BatchImageFetcher:
                             else:
                                 cache_key = f"{service}_{name_base}"
 
+                            # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+                            cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                            photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
                             # Add image_url field if photo exists in cache
-                            if cache_key in self.cache["pois"]:
-                                if "image_url" not in meal or meal.get("image_url") != self.cache["pois"][cache_key]:
-                                    meal["image_url"] = self.cache["pois"][cache_key]
+                            if photo_url:
+                                if "image_url" not in meal or meal.get("image_url") != photo_url:
+                                    meal["image_url"] = photo_url
                                     modified = True
                                     updated += 1
 
@@ -1049,9 +1067,13 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        if cache_key in self.cache["pois"]:
-                            if "image_url" not in acc or acc.get("image_url") != self.cache["pois"][cache_key]:
-                                acc["image_url"] = self.cache["pois"][cache_key]
+                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
+                        if photo_url:
+                            if "image_url" not in acc or acc.get("image_url") != photo_url:
+                                acc["image_url"] = photo_url
                                 modified = True
                                 updated += 1
 
@@ -1069,9 +1091,13 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        if cache_key in self.cache["pois"]:
-                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
-                                item["image_url"] = self.cache["pois"][cache_key]
+                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
+                        if photo_url:
+                            if "image_url" not in item or item.get("image_url") != photo_url:
+                                item["image_url"] = photo_url
                                 modified = True
                                 updated += 1
 
@@ -1089,9 +1115,13 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        if cache_key in self.cache["pois"]:
-                            if "image_url" not in item or item.get("image_url") != self.cache["pois"][cache_key]:
-                                item["image_url"] = self.cache["pois"][cache_key]
+                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
+                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
+                        if photo_url:
+                            if "image_url" not in item or item.get("image_url") != photo_url:
+                                item["image_url"] = photo_url
                                 modified = True
                                 updated += 1
 
