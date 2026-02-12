@@ -908,9 +908,21 @@ class BatchImageFetcher:
             else:
                 cache_key = f"{service}_{poi['name_base']}"
 
-            # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-            # This handles legacy cache entries created before the name_local fix (commit d142d28)
-            cache_keys_to_try = [cache_key, f"{service}_{poi['name_base']}"]
+            # FALLBACK FIX: Try multiple cache keys for maximum backward compatibility
+            # This handles:
+            # 1. Legacy English-keyed entries (pre-d142d28)
+            # 2. Cross-service lookups (gaode/google service detection changes)
+            # 3. Name format variations (name_local vs name_base)
+            cache_keys_to_try = [
+                cache_key,  # Primary: current service + appropriate name
+                f"{service}_{poi['name_base']}",  # Same service, English name
+            ]
+            # Cross-service fallback (try the other service)
+            other_service = "google" if service == "gaode" else "gaode"
+            if poi.get('name_local'):
+                cache_keys_to_try.append(f"{other_service}_{poi['name_local']}")
+            cache_keys_to_try.append(f"{other_service}_{poi['name_base']}")
+
             existing_photo = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
             if existing_photo and not self.force_refresh:

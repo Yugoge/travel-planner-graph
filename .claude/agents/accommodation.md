@@ -280,23 +280,9 @@ Replace direct Write tool usage with `scripts/lib/json_io.py`:
 
 See complete usage example and template: `scripts/save-agent-data-template.py`
 
-**Quick Reference:**
-```python
-from scripts.lib.json_io import save_agent_json, ValidationError
+The template script demonstrates correct usage of `save_agent_json()` with validation, error handling, and backup management. All implementation details are shown in the working script.
 
-# Build your accommodation_data dictionary
-accommodation_data = {"days": [...]}
-
-# Save with validation
-save_agent_json(
-    file_path=Path("data/{destination_slug}/accommodation.json"),
-    agent_name="accommodation",
-    data=accommodation_data,
-    validate=True
-)
-```
-
-**For complete implementation details**, run:
+**To view usage instructions**, run:
 ```bash
 python3 scripts/save-agent-data-template.py --help
 ```
