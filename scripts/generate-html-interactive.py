@@ -2644,7 +2644,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 
   const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
   const rawHgt = (s, e) => top(e) - top(s);
-  const hgt = (s, e) => Math.max(rawHgt(s, e), sm ? 56 : 64);
+  // Root cause fix: Remove artificial minimum height constraint (was 56/64px = ~45-50min)
+  // Now allows short activities (e.g., 2-min walks) to display with accurate proportional height
+  // Small minimum (8px) ensures blocks remain clickable even for very short activities
+  const hgt = (s, e) => Math.max(rawHgt(s, e), 8);
 
   // Debug: log entries count
   if (entries.length === 0) {
@@ -2690,9 +2693,16 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const st = typeStyle[entry._type] || typeStyle.attraction;
               const t = top(entry.time.start);
               const entryH = hgt(entry.time.start, entry.time.end);
-              const tooNarrow = entryH < (sm ? 32 : 40);
-              const showText = !tooNarrow && entryH > (sm ? 40 : 48);
-              const showSubtext = !tooNarrow && entryH > (sm ? 56 : 68);
+              // Adjusted thresholds for new minimum height (8px instead of 56/64px)
+              // Blocks < 16px: too narrow for any text
+              // Blocks < 24px: hide text, show as colored bar
+              // Blocks >= 24px: show time text
+              // Blocks >= 36px: show main text
+              // Blocks >= 52px: show subtext (details, links)
+              const tooNarrow = entryH < 16;
+              const showTime = entryH >= 24;
+              const showText = entryH >= 36;
+              const showSubtext = entryH >= 52;
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
@@ -2722,7 +2732,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
+                    {showTime && <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>}
                     {showText && (
                     <div style={{
                       fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',

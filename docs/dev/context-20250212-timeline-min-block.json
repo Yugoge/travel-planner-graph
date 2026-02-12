@@ -1,0 +1,128 @@
+{
+  "request_id": "dev-20250212-timeline-min-block",
+  "timestamp": "2025-02-12T12:00:00Z",
+  "requirement": {
+    "original": "现在的html生成器中生成timeline的时候，如果一个行程太短的话，达到极限之后就不会进一步压缩了。找到根本原因。比如我步行到某一个地方实际的时间是2分钟，但是timeline中的最小的block大概是50分钟，根本就挤不下",
+    "clarified": "Remove minimum block height constraint from timeline visualization so that short activities (e.g., 2-minute walks) can be displayed with accurate proportional heights instead of being forced to a minimum of ~50 minutes",
+    "what": "Remove/fix the minimum height constraint that prevents short timeline activities from being displayed accurately",
+    "why": "Current implementation enforces a minimum block height of 56px (mobile) or 64px (desktop), which equals ~45-50 minutes of timeline height. This makes it impossible to accurately represent short activities like a 2-minute walk.",
+    "where": [
+      "scripts/generate-html-interactive.py:2647"
+    ],
+    "scope": {
+      "included": [
+        "Remove minimum height constraint from hgt() function",
+        "Ensure text visibility logic still works for very short blocks",
+        "Maintain clickability for small blocks"
+      ],
+      "excluded": [
+        "Changing overall timeline hour height (hH = 68/80px per hour)",
+        "Modifying color schemes or other visual styles",
+        "Changing data structures"
+      ]
+    },
+    "success_criteria": [
+      "Short activities (2-5 minutes) display with accurate proportional heights",
+      "Timeline blocks can be smaller than 56px/64px",
+      "Text and content remain readable for short blocks (may need truncation/hiding)",
+      "Blocks remain clickable even at very small sizes"
+    ],
+    "constraints": [
+      "Must maintain clickability/tappability of timeline blocks",
+      "Must handle text visibility gracefully for very short blocks",
+      "Should not break existing functionality for normal-sized blocks"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline blocks have a minimum size of ~50 minutes regardless of actual activity duration. A 2-minute walk displays as if it takes 50 minutes.",
+    "root_cause": "Hard-coded minimum height constraint in hgt() function: Math.max(rawHgt(s, e), sm ? 56 : 64)",
+    "root_cause_commit": "bf3d869 - feat: add Notion-style React travel plan generator",
+    "why_introduced": "The minimum height was likely added to ensure: (1) blocks are large enough to click/tap, (2) text can fit inside blocks, (3) visual clarity with padding",
+    "why_problematic": "The minimum of 56-64px equals 45-50 minutes of timeline height (at 68-80px per hour). This prevents accurate representation of short activities and causes timeline over-expansion when many short activities exist.",
+    "timeline": "Present since initial implementation in commit bf3d869",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "code_context": {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 2647,
+      "function": "hgt() - calculates height of timeline activity blocks",
+      "current_code": "const hgt = (s, e) => Math.max(rawHgt(s, e), sm ? 56 : 64);",
+      "variables": {
+        "rawHgt": "Function that calculates actual height based on time duration",
+        "sm": "Boolean flag for mobile/small breakpoint",
+        "56": "Minimum height in pixels for mobile view",
+        "64": "Minimum height in pixels for desktop view"
+      },
+      "related_logic": {
+        "tooNarrow": "entryH < (sm ? 32 : 40) - determines if block is too narrow for full content",
+        "showText": "!tooNarrow && entryH > (sm ? 40 : 48) - determines if text should be shown",
+        "showSubtext": "!tooNarrow && entryH > (sm ? 56 : 68) - determines if subtext should be shown",
+        "hH": "sm ? 68 : 80 - pixels per hour in timeline"
+      }
+    }
+  },
+  "context": {
+    "codebase_state": "Clean working tree",
+    "recent_commits": "Recent commits related to timeline visualization and data structure improvements",
+    "file_contents": {
+      "scripts/generate-html-interactive.py": {
+        "relevant_section": "Timeline day rendering function (lines ~2600-2800)",
+        "key_functions": [
+          "top(t) - converts time to Y position",
+          "rawHgt(s, e) - calculates raw height from duration",
+          "hgt(s, e) - applies minimum height constraint"
+        ],
+        "related_variables": [
+          "hH - pixels per hour (68 mobile, 80 desktop)",
+          "tooNarrow, showText, showSubtext - visibility thresholds"
+        ]
+      }
+    },
+    "dependencies": {
+      "runtime": "Python 3.12+",
+      "packages": "React (inline in generated HTML)",
+      "data_format": "Timeline JSON with start/end times for each activity"
+    },
+    "environment": {
+      "python_version": "3.12",
+      "generator": "generate-html-interactive.py generates standalone HTML with inline React"
+    }
+  },
+  "development_approach": {
+    "strategy": "Remove the Math.max() minimum constraint and let blocks render at their actual proportional heights. Adjust visibility thresholds (tooNarrow, showText, showSubtext) to handle very small blocks gracefully.",
+    "potential_solutions": [
+      {
+        "option": "Remove minimum entirely",
+        "pros": "Most accurate representation, simplest fix",
+        "cons": "Very short blocks (1-2px) may be hard to click, text won't fit",
+        "implementation": "Change to: const hgt = (s, e) => rawHgt(s, e);"
+      },
+      {
+        "option": "Set very small minimum (e.g., 4-8px)",
+        "pros": "Ensures clickability while being much more accurate",
+        "cons": "Still not perfectly accurate for 1-minute activities",
+        "implementation": "Change to: const hgt = (s, e) => Math.max(rawHgt(s, e), 4);"
+      },
+      {
+        "option": "Dynamic minimum based on content",
+        "pros": "Smart adaptation - only enforce minimum if block has text/image",
+        "cons": "More complex logic, may have edge cases",
+        "implementation": "Calculate minimum based on whether entry has displayable content"
+      }
+    ],
+    "recommended_approach": "Use a very small minimum (4-8px) to ensure clickability while being much more accurate than current 56-64px. Adjust tooNarrow threshold downward to handle small blocks.",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Generate HTML with a timeline containing short activities (2-5 minute walks) and verify: (1) blocks render with small accurate heights, (2) timeline total height is realistic, (3) blocks are still clickable"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": "Avoid hardcoding pixel values that create artificial constraints. If minimum is needed, make it configurable or very small.",
+    "use_source_venv": "N/A - not a Python script execution task",
+    "integer_step_numbering": "N/A",
+    "meaningful_naming": "N/A - existing variable names are fine",
+    "git_root_cause_reference": "Must reference commit bf3d869 and explain why the minimum was originally added"
+  }
+}
