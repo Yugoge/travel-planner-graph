@@ -283,7 +283,25 @@ mkdir -p "$TARGET_DIR"
 # Copy the HTML file to target directory
 cp "$INPUT_FILE" "${TARGET_DIR}/index.html"
 
-echo "✓ Copied to: /${DESTINATION_SLUG}/${PLAN_DATE}/index.html"
+# Validate deployed file
+FILE_SIZE=$(wc -c < "${TARGET_DIR}/index.html")
+if [ "$FILE_SIZE" -lt 100000 ]; then
+    echo "❌ Error: Deployed file too small ($FILE_SIZE bytes)"
+    echo "  Expected at least 100KB for a valid travel plan"
+    exit 1
+fi
+
+if ! grep -q "const PLAN_DATA" "${TARGET_DIR}/index.html"; then
+    echo "❌ Error: Deployed file missing PLAN_DATA"
+    exit 1
+fi
+
+if ! grep -q "React" "${TARGET_DIR}/index.html"; then
+    echo "❌ Error: Deployed file missing React"
+    exit 1
+fi
+
+echo "✓ Copied to: /${DESTINATION_SLUG}/${PLAN_DATE}/index.html (${FILE_SIZE} bytes)"
 
 # Create .nojekyll to disable Jekyll processing
 touch "${DEPLOY_DIR}/.nojekyll"
