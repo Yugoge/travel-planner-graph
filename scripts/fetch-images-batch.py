@@ -1026,8 +1026,16 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        # FALLBACK FIX: Try multiple cache keys including cross-service
+                        cache_keys_to_try = [
+                            cache_key,
+                            f"{service}_{name_base}",
+                        ]
+                        other_service = "google" if service == "gaode" else "gaode"
+                        if name_local:
+                            cache_keys_to_try.append(f"{other_service}_{name_local}")
+                        cache_keys_to_try.append(f"{other_service}_{name_base}")
+
                         photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
                         # Add image_url field if photo exists in cache
@@ -1053,8 +1061,16 @@ class BatchImageFetcher:
                             else:
                                 cache_key = f"{service}_{name_base}"
 
-                            # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-                            cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                            # FALLBACK FIX: Try multiple cache keys including cross-service
+                            cache_keys_to_try = [
+                                cache_key,
+                                f"{service}_{name_base}",
+                            ]
+                            other_service = "google" if service == "gaode" else "gaode"
+                            if name_local:
+                                cache_keys_to_try.append(f"{other_service}_{name_local}")
+                            cache_keys_to_try.append(f"{other_service}_{name_base}")
+
                             photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
                             # Add image_url field if photo exists in cache
@@ -1079,8 +1095,16 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        # FALLBACK FIX: Try multiple cache keys including cross-service
+                        cache_keys_to_try = [
+                            cache_key,
+                            f"{service}_{name_base}",
+                        ]
+                        other_service = "google" if service == "gaode" else "gaode"
+                        if name_local:
+                            cache_keys_to_try.append(f"{other_service}_{name_local}")
+                        cache_keys_to_try.append(f"{other_service}_{name_base}")
+
                         photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
                         if photo_url:
@@ -1103,8 +1127,16 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        # FALLBACK FIX: Try multiple cache keys including cross-service
+                        cache_keys_to_try = [
+                            cache_key,
+                            f"{service}_{name_base}",
+                        ]
+                        other_service = "google" if service == "gaode" else "gaode"
+                        if name_local:
+                            cache_keys_to_try.append(f"{other_service}_{name_local}")
+                        cache_keys_to_try.append(f"{other_service}_{name_base}")
+
                         photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
                         if photo_url:
@@ -1127,8 +1159,16 @@ class BatchImageFetcher:
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        # FALLBACK FIX: Try both Chinese and English keys for backward compatibility
-                        cache_keys_to_try = [cache_key, f"{service}_{name_base}"]
+                        # FALLBACK FIX: Try multiple cache keys including cross-service
+                        cache_keys_to_try = [
+                            cache_key,
+                            f"{service}_{name_base}",
+                        ]
+                        other_service = "google" if service == "gaode" else "gaode"
+                        if name_local:
+                            cache_keys_to_try.append(f"{other_service}_{name_local}")
+                        cache_keys_to_try.append(f"{other_service}_{name_base}")
+
                         photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
 
                         if photo_url:
