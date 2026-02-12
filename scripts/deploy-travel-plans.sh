@@ -402,6 +402,8 @@ if [ -n "$PLAN_DIRS" ]; then
     done
 fi
 
+CURRENT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
 cat >> "${DEPLOY_DIR}/README.md" << EOF
 
 Last updated: $CURRENT_TIME

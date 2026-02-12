@@ -84,7 +84,7 @@ cd "$PROJECT_ROOT"
 # Check if images.json exists and has photos
 IMAGES_FILE="$DATA_DIR/images.json"
 if [ -f "$IMAGES_FILE" ]; then
-    POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
+    POI_COUNT=$(python -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
     if [ "$POI_COUNT" -gt "50" ] && [ -z "$FETCH_FORCE" ]; then
         echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
     else
@@ -107,7 +107,7 @@ fi
 
 # Show final cache status
 if [ -f "$IMAGES_FILE" ]; then
-    POI_COUNT=$(python3 -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
+    POI_COUNT=$(python -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
     echo -e "${GREEN}✓${NC} Total cached POI photos: $POI_COUNT"
 fi
 echo ""
@@ -115,7 +115,7 @@ echo ""
 # Step 2: Generate interactive React HTML
 echo -e "${BLUE}[2/5]${NC} Generating interactive React HTML..."
 cd "$PROJECT_ROOT"
-python3 "$SCRIPT_DIR/generate-html-interactive.py" "$PLAN_ID"
+python "$SCRIPT_DIR/generate-html-interactive.py" "$PLAN_ID"
 
 if [ ! -f "$OUTPUT_FILE" ]; then
     echo -e "${RED}❌ Error: HTML generation failed${NC}"

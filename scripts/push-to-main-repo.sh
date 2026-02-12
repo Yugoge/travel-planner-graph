@@ -16,9 +16,10 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Repository name for source code (private)
-MAIN_REPO_NAME="travel-planner"
-MAIN_REPO_URL="git@github.com:Yugoge/${MAIN_REPO_NAME}.git"
+# Repository configuration (with defaults)
+MAIN_REPO_USER="${1:-Yugoge}"
+MAIN_REPO_NAME="${2:-travel-planner}"
+MAIN_REPO_URL="git@github.com:${MAIN_REPO_USER}/${MAIN_REPO_NAME}.git"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}📦 Pushing Source Code to Main Repository${NC}"
