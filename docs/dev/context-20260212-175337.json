@@ -1,0 +1,188 @@
+{
+  "request_id": "dev-20260212-175337",
+  "timestamp": "2026-02-12T17:53:37Z",
+  "requirement": {
+    "original": "Fix all 9 remaining hardcoded validation issues in scripts/plan-validate.py to make validation schema-driven and configuration-based instead of hardcoded",
+    "clarified": "Refactor scripts/plan-validate.py to eliminate 9 hardcoded validation patterns by moving hardcoded values to configuration structures (dictionaries, config files, or schema-driven approaches). Make validation logic flexible and maintainable.",
+    "what": "Replace hardcoded validation logic with configuration-based validation",
+    "why": "Current hardcoded approach causes false positives (like restaurant transit names), is inflexible for different projects/regions, and violates DRY principles. Configuration-based validation is maintainable and extensible.",
+    "where": [
+      "scripts/plan-validate.py"
+    ],
+    "scope": {
+      "included": [
+        "Fix 1: English placeholders (line 64) - move to config",
+        "Fix 2: Currency-region mapping (line 55) - move to config file or infer from data",
+        "Fix 3: Base/local pair enforcement (line 645) - schema-driven",
+        "Fix 4: Intentional overlap keywords (line 591) - move to config",
+        "Fix 5: Budget category hardcoding (lines 620, 630) - schema-driven from budget schema",
+        "Fix 6: Title case enforcement (line 571) - make configurable",
+        "Fix 7: Invalid transport types (line 136) - already uses VALID_TRANSPORT_TYPES constant, validate it's schema-driven",
+        "Fix 8: AGENTS_WITH_LOCAL whitelist (line 67) - infer from schema or config",
+        "Fix 9: Trip label hardcoding (line 1015) - make dynamic or remove"
+      ],
+      "excluded": [
+        "Changing validation schemas themselves",
+        "Modifying agent data files",
+        "Changing HTML generation logic"
+      ]
+    },
+    "success_criteria": [
+      "All 9 hardcoded patterns eliminated or moved to configuration",
+      "Validation script runs successfully on existing data without new false positives",
+      "Configuration is documented and easy to modify",
+      "No hardcoded city names, currency codes, or keyword lists in validation logic",
+      "Validation logic references schemas where possible instead of hardcoding rules",
+      "Zero HIGH severity false positives on test data"
+    ],
+    "constraints": [
+      "Must maintain backward compatibility with existing data",
+      "Must not break existing validation that correctly catches real issues",
+      "Configuration must be easily maintainable by non-developers",
+      "Performance must not degrade significantly"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Hardcoded validation logic causes false positives (e.g., 'Walk to Restaurant' flagged as meal) and requires code changes for new regions/currencies",
+    "root_cause": "plan-validate.py was created (commit f0cc710, 2026-02-10) with hardcoded constants for quick implementation. The script embedded domain knowledge (city-currency mappings, keyword lists) directly in code instead of extracting from schemas or configuration.",
+    "root_cause_commit": "f0cc710 - checkpoint: Auto-save at 2026-02-10 18:31:24 (initial creation)",
+    "why_introduced": "Initial implementation prioritized working validation over flexible architecture. Hardcoded values were expedient for single-use case (China trip validation).",
+    "why_problematic": "Hardcoded approach doesn't scale: (1) false positives like restaurant transit names, (2) requires code changes for new regions, (3) duplicates schema information, (4) violates DRY principle",
+    "timeline": "Created 2026-02-10, first fix for false positive 2026-02-12 (commit 2e14cfa removed meal keyword check)",
+    "affected_files": [
+      "scripts/plan-validate.py"
+    ],
+    "previous_fix": "Commit 2e14cfa removed hardcoded meal keyword validation (line 529) that caused false positives - this is the pattern we need to apply to remaining 9 issues"
+  },
+  "context": {
+    "codebase_state": "M .claude/settings.json\n?? docs/dev/completion-20260212-162955.md\n?? docs/dev/qa-report-iter2-20260212-162955.json",
+    "recent_commits": [
+      "2e14cfa fix: Remove hardcoded meal keyword validation causing false positives in travel_segments",
+      "a790e72 checkpoint: Auto-save at 2026-02-12 16:30:30",
+      "ac963d8 feat: Add 'name' to legacy field map for validation"
+    ],
+    "file_contents": {
+      "scripts/plan-validate.py": "See lines 55-67 (hardcoded constants), 136-140 (transport types), 571-576 (currency check), 591-603 (overlap keywords), 620-630 (budget categories), 645-659 (base/local pair), 1015-1017 (trip label)"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "json, jsonschema (for schema validation)"
+    },
+    "environment": {
+      "venv_path": "venv/",
+      "schemas_dir": "schemas/",
+      "data_dir": "data/"
+    },
+    "schemas_available": [
+      "schemas/meals.json",
+      "schemas/attractions.json",
+      "schemas/entertainment.json",
+      "schemas/accommodation.json",
+      "schemas/shopping.json",
+      "schemas/transportation.json",
+      "schemas/budget.json",
+      "schemas/timeline.json"
+    ]
+  },
+  "development_approach": {
+    "strategy": "Move hardcoded values to configuration structures and schema-driven inference. Pattern: (1) Extract hardcoded constants to top-level CONFIG dict, (2) Infer validation rules from schemas where possible, (3) Document configuration clearly.",
+    "priority_order": [
+      "HIGH: Currency-region (line 55) - move to config or remove if not essential",
+      "HIGH: AGENTS_WITH_LOCAL (line 67) - infer from schemas",
+      "HIGH: Base/local pair (line 645) - already schema-driven, verify correctness",
+      "MEDIUM: English placeholders (line 64) - move to CONFIG",
+      "MEDIUM: Intentional overlap keywords (line 591) - move to CONFIG",
+      "MEDIUM: Budget categories (lines 620, 630) - extract from budget schema",
+      "MEDIUM: Title case (line 571) - make configurable or remove",
+      "LOW: Invalid transport types (line 136) - verify it's schema-driven",
+      "LOW: Trip label (line 1015) - remove or make dynamic"
+    ],
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/plan-validate.py"
+    ],
+    "validation_approach": "Run plan-validate.py on test data (china-feb-15-mar-7-2026-20260202-195429) before and after changes. Ensure: (1) No new false positives, (2) No regressions (existing issues still caught), (3) All 9 hardcoded patterns eliminated"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "documentation": "Add CONFIG section comment explaining each configuration option"
+  },
+  "detailed_issues": [
+    {
+      "id": 1,
+      "line": 64,
+      "severity": "MEDIUM-HIGH",
+      "issue": "ENGLISH_PLACEHOLDERS = ['Optional', 'Alternative', 'TBD', 'N/A', 'None', 'Item ']",
+      "problem": "Hardcoded list, may need adjustment for different projects",
+      "fix": "Move to CONFIG dict at top with clear documentation"
+    },
+    {
+      "id": 2,
+      "line": 55,
+      "severity": "MEDIUM-HIGH",
+      "issue": "CURRENCY_REGION dict with 19 hardcoded city-currency mappings",
+      "problem": "Requires code changes for new regions, duplicates data that could be in trip metadata",
+      "fix": "Move to external config file (e.g., config/currency-region-map.json) OR remove check if trip metadata already has this info"
+    },
+    {
+      "id": 3,
+      "line": 645,
+      "severity": "MEDIUM-HIGH",
+      "issue": "Base/local pair consistency enforcement",
+      "problem": "Logic checks if _base has content then _local must exist - this is actually schema-driven and correct, verify it works as intended",
+      "fix": "Review logic, add comments explaining schema requirement, no code change likely needed"
+    },
+    {
+      "id": 4,
+      "line": 591,
+      "severity": "MEDIUM",
+      "issue": "intentional_kw = ['optional', 'alternative', ' or ', 'in-park']",
+      "problem": "Hardcoded keywords for timeline overlap detection",
+      "fix": "Move to CONFIG dict with clear documentation"
+    },
+    {
+      "id": 5,
+      "lines": [620, 630],
+      "severity": "MEDIUM",
+      "issue": "cats = ['meals', 'accommodation', 'activities', 'shopping', 'transportation']",
+      "problem": "Budget categories hardcoded instead of reading from budget schema",
+      "fix": "Extract categories from schemas/budget.json $defs/budget_categories/properties"
+    },
+    {
+      "id": 6,
+      "line": 571,
+      "severity": "MEDIUM",
+      "issue": "Title case enforcement on type_base field",
+      "problem": "Hardcoded assumption that type_base should be Title Case",
+      "fix": "Make configurable via CONFIG['enforce_title_case'] = True, or remove check if not essential"
+    },
+    {
+      "id": 7,
+      "line": 136,
+      "severity": "MEDIUM",
+      "issue": "INVALID_TRANSPORT_TYPES = {'meal', 'breakfast', ...}",
+      "problem": "Hardcoded list, though VALID_TRANSPORT_TYPES is already correct",
+      "fix": "Verify VALID_TRANSPORT_TYPES comes from schema, remove INVALID_TRANSPORT_TYPES if redundant"
+    },
+    {
+      "id": 8,
+      "line": 67,
+      "severity": "MEDIUM",
+      "issue": "AGENTS_WITH_LOCAL = {'meals', 'attractions', 'entertainment', 'accommodation', 'shopping'}",
+      "problem": "Hardcoded whitelist instead of inferring from schemas",
+      "fix": "Infer by checking if schema $defs/<agent>_item has name_local in required fields"
+    },
+    {
+      "id": 9,
+      "line": 1015,
+      "severity": "LOW",
+      "issue": "if 'china-feb' in trip.lower(): return 'itinerary'",
+      "problem": "Hardcoded trip-specific logic",
+      "fix": "Remove special-casing or make trip label configurable in trip metadata"
+    }
+  ]
+}

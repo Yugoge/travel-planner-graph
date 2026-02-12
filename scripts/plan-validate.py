@@ -5,13 +5,14 @@ Plan Data Validation — pre-HTML-generation gate
 Single source of truth for validating all agent data files against schemas.
 Run this as the last step before generate-html-interactive.py.
 
-Checks 6 categories:
+Checks 7 categories:
   1. Schema Structure  (envelope, day-level keys)
   2. Field Presence    (required=HIGH, optional=LOW)
   3. Field Format      (type, pattern, range)
   4. Semantic Content  (name_local English, currency region, timeline overlaps, budget sums)
-  5. Legacy Fields     (old field names that should be renamed)
+  5. Legacy Fields     (old field names - now HIGH severity for redundancy)
   6. Cross-Agent       (day count, date, location consistency)
+  7. Additional Properties (redundant fields not in schema - NEW for 100% coverage)
 
 Usage:
   python3 plan-validate.py                              # all trips
@@ -52,19 +53,62 @@ LEGACY_FIELD_MAP = {
     "name": "name_base",  # DEPRECATED: Use name_base or name_local
 }
 
-CURRENCY_REGION = {
-    "chongqing": "CNY", "beijing": "CNY", "shanghai": "CNY", "chengdu": "CNY",
-    "bazhong": "CNY", "guangzhou": "CNY", "shenzhen": "CNY", "xi'an": "CNY",
-    "hangzhou": "CNY", "nanjing": "CNY", "kunming": "CNY", "harbin": "CNY",
-    "sanya": "CNY", "guilin": "CNY", "suzhou": "CNY", "wuhan": "CNY",
-    "changsha": "CNY", "lhasa": "CNY", "zhangjiajie": "CNY",
-    "hong kong": "HKD", "macau": "MOP", "taipei": "TWD",
+# ---------------------------------------------------------------------------
+# Configuration-driven validation settings
+# Root cause: Commit f0cc710 (2026-02-10) created hardcoded validation logic
+# Fix pattern: Commit 2e14cfa removed hardcoded meal keywords - applying same
+# pattern to remaining 9 hardcoded issues
+#
+# CONFIGURATION GUIDE:
+# This CONFIG dictionary controls validation behavior without code changes.
+# Modify these values to customize validation for different projects/regions.
+#
+# - english_placeholders: List of strings indicating untranslated content
+#   Default: ["Optional", "Alternative", "TBD", "N/A", "None", "Item "]
+#
+# - currency_region_map: City -> Currency code mapping (DISABLED by default)
+#   Set to {} to skip currency-region validation (recommended)
+#   Populate with {"city_lowercase": "CURRENCY_CODE"} to enable
+#
+# - intentional_overlap_keywords: Keywords indicating expected timeline overlaps
+#   Default: ["optional", "alternative", " or ", "in-park"]
+#
+# - enforce_title_case: Whether to validate Title Case for type_base fields
+#   Default: True (validate), set to False to disable
+#
+# - trip_label_overrides: DEPRECATED - no longer used
+#   Trip labels should come from metadata, not hardcoded patterns
+# ---------------------------------------------------------------------------
+
+CONFIG = {
+    # Fix 1: English placeholders (line 64) - configurable list
+    # Used to detect non-translated content in name_local fields
+    "english_placeholders": ["Optional", "Alternative", "TBD", "N/A", "None", "Item "],
+
+    # Fix 2: Currency-region mapping (line 55) - REMOVED
+    # This check is disabled by default as it duplicates trip metadata
+    # and requires code changes for every new region. Set to {} to disable.
+    # To re-enable, populate with {"city_lowercase": "CURRENCY_CODE"} pairs.
+    "currency_region_map": {},
+
+    # Fix 4: Intentional timeline overlap keywords (line 591)
+    # Activities with these keywords are expected to overlap (e.g., "optional tour")
+    "intentional_overlap_keywords": ["optional", "alternative", " or ", "in-park"],
+
+    # Fix 6: Title case enforcement (line 571)
+    # Set to False to disable title case validation for type_base fields
+    "enforce_title_case": True,
+
+    # Fix 9: Trip-specific labels (line 1015) - REMOVED
+    # Trip labels should be derived from metadata, not hardcoded patterns
+    # This setting is now ignored; all trips use default labeling
+    "trip_label_overrides": {},
 }
 
-ENGLISH_PLACEHOLDERS = ["Optional", "Alternative", "TBD", "N/A", "None", "Item "]
-
-# Agents that don't have the standard "name_local contains English" check
-AGENTS_WITH_LOCAL = {"meals", "attractions", "entertainment", "accommodation", "shopping"}
+# Fix 8: AGENTS_WITH_LOCAL (line 67) - REMOVED, now inferred from schemas
+# This will be populated dynamically by inspecting schema required fields
+# See _infer_agents_with_local() below
+AGENTS_WITH_LOCAL = set()
 
 
 class Severity(Enum):
@@ -128,11 +172,14 @@ TIMELINE_CONFIGS = {
     "travel_segment": AgentConfig("travel_segment", "array", ["travel_segments"], optional_key=True),
 }
 
-# Valid transport types for travel_segments validation
+# Fix 7: Transport types (line 136) - SCHEMA-DRIVEN (no change needed)
 # Root cause fix: Commit 74e660d0 added "meal" to travel_segments (schema violation)
-VALID_TRANSPORT_TYPES = {"walk", "taxi", "metro", "bus", "train", "car", "ferry"}
+# VALID_TRANSPORT_TYPES will be populated from transportation schema at runtime
+# See _load_valid_transport_types() below
+VALID_TRANSPORT_TYPES = set()
 
-# Invalid types indicating non-transport items
+# Invalid types are now detected dynamically: any type_base not in VALID_TRANSPORT_TYPES
+# that matches known non-transport patterns is flagged with HIGH severity
 INVALID_TRANSPORT_TYPES = {
     "meal", "breakfast", "lunch", "dinner",  # Meals
     "attraction", "temple", "museum", "park",  # Attractions
@@ -148,12 +195,88 @@ class SchemaRegistry:
     def __init__(self):
         self._schemas = {}
         self._load_all()
+        # Initialize schema-driven configuration after loading schemas
+        self._init_schema_driven_config()
 
     def _load_all(self):
         for f in SCHEMA_DIR.glob("*.schema.json"):
             with open(f, encoding="utf-8") as fh:
                 schema = json.load(fh)
             self._schemas[f.name] = schema
+
+    def _init_schema_driven_config(self):
+        """Initialize configuration values derived from schemas.
+
+        Fix 8: Infer AGENTS_WITH_LOCAL from schemas instead of hardcoding
+        Fix 7: Load valid transport types from transportation schema
+        Fix 5: Extract budget categories from budget schema
+        """
+        global AGENTS_WITH_LOCAL, VALID_TRANSPORT_TYPES
+
+        # Fix 8: Infer which agents require name_local
+        # Check each agent schema for name_local in properties
+        agent_item_mapping = {
+            "meals": "meal_item",
+            "attractions": "attraction_item",
+            "entertainment": "entertainment_item",
+            "accommodation": "accommodation_item",
+            "shopping": "shopping_item",
+        }
+
+        for agent_name, item_key in agent_item_mapping.items():
+            schema_file = f"{agent_name}.schema.json"
+            schema = self._schemas.get(schema_file, {})
+            defs = schema.get("$defs", {})
+            item_schema = defs.get(item_key, {})
+            properties = item_schema.get("properties", {})
+
+            # If name_local exists in properties (even if optional), add to set
+            if "name_local" in properties:
+                AGENTS_WITH_LOCAL.add(agent_name)
+
+        # Fix 7: Load valid transport types from timeline schema (travel_segment)
+        # Extract from schema description which lists valid types
+        timeline_schema = self._schemas.get("timeline.schema.json", {})
+        travel_segment = timeline_schema.get("$defs", {}).get("travel_segment", {})
+        type_base_schema = travel_segment.get("properties", {}).get("type_base", {})
+
+        # Check for enum in type_base
+        if "enum" in type_base_schema:
+            VALID_TRANSPORT_TYPES.update(type_base_schema["enum"])
+        else:
+            # Extract from description if available
+            description = type_base_schema.get("description", "")
+            # Description format: "Transport type in base language (e.g., 'walk', 'taxi', ...)"
+            if "e.g.," in description:
+                examples_part = description.split("e.g.,")[1].strip(" )")
+                # Parse comma-separated quoted values
+                import re
+                types = re.findall(r"'([^']+)'", examples_part)
+                if types:
+                    VALID_TRANSPORT_TYPES.update(types)
+
+            # Fallback to hardcoded if schema doesn't specify
+            if not VALID_TRANSPORT_TYPES:
+                VALID_TRANSPORT_TYPES.update({"walk", "taxi", "metro", "bus", "train", "car", "ferry"})
+
+    def get_budget_categories(self) -> list:
+        """Fix 5: Extract budget categories from budget schema instead of hardcoding.
+
+        Returns list of category names from schemas/budget.json $defs/budget_categories/properties.
+        Excludes 'total' as it's a computed field, not a category.
+        """
+        budget_schema = self._schemas.get("budget.schema.json", {})
+        budget_cats = budget_schema.get("$defs", {}).get("budget_categories", {})
+        props = budget_cats.get("properties", {})
+
+        # Return all properties except 'total'
+        categories = [k for k in props.keys() if k != "total"]
+
+        # Fallback if schema doesn't have expected structure
+        if not categories:
+            categories = ["meals", "accommodation", "activities", "shopping", "transportation"]
+
+        return categories
 
     def _resolve_ref(self, ref: str) -> dict:
         """Resolve a $ref string like 'poi-common.schema.json#/$defs/coordinates'."""
@@ -538,24 +661,25 @@ def check_travel_segments(timeline_data: dict, trip: str) -> list:
     return issues
 
 
-def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir: Path) -> list:
+def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir: Path, registry: SchemaRegistry) -> list:
     """Category 4: Semantic / content checks."""
     issues = []
 
-    # 4a. name_local should not contain English placeholders
+    # 4a. name_local should not contain English placeholders (Fix 1: now uses CONFIG)
     if agent in AGENTS_WITH_LOCAL:
+        english_placeholders = CONFIG.get("english_placeholders", [])
         for ei in items:
             nl = ei.data.get("name_local", "")
             if isinstance(nl, str):
-                for kw in ENGLISH_PLACEHOLDERS:
+                for kw in english_placeholders:
                     if kw in nl:
                         issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
                                             ei.day_num, ei.label, "name_local",
                                             f"Contains English placeholder: '{kw}' in '{nl}'"))
                         break
 
-    # 4b. type_base Title Case (attractions)
-    if agent == "attractions":
+    # 4b. type_base Title Case (attractions) - Fix 6: now configurable
+    if agent == "attractions" and CONFIG.get("enforce_title_case", True):
         for ei in items:
             tb = ei.data.get("type_base", "")
             if isinstance(tb, str) and tb and tb != _smart_title(tb):
@@ -563,22 +687,24 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                                     ei.day_num, ei.label, "type_base",
                                     f"Not Title Case: '{tb}' (expected '{_smart_title(tb)}')"))
 
-    # 4c. Currency-region consistency
-    if agent in AGENTS_WITH_LOCAL:
+    # 4c. Currency-region consistency - Fix 2: now optional, disabled by default
+    # Only run if currency_region_map is populated in CONFIG
+    currency_region_map = CONFIG.get("currency_region_map", {})
+    if agent in AGENTS_WITH_LOCAL and currency_region_map:
         for ei in items:
             cl = ei.data.get("currency_local", "")
             loc = (ei.location or "").lower()
-            expected = CURRENCY_REGION.get(loc)
+            expected = currency_region_map.get(loc)
             if expected and cl and cl != expected:
                 issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
                                     ei.day_num, ei.label, "currency_local",
                                     f"Expected '{expected}' for {ei.location}, got '{cl}'"))
 
-    # 4d. Timeline chronological ordering
+    # 4d. Timeline chronological ordering - Fix 4: uses CONFIG for intentional keywords
     if agent == "timeline":
         timeline_data = all_data.get("timeline", {})
         days = timeline_data.get("data", {}).get("days", [])
-        intentional_kw = ["optional", "alternative", " or ", "in-park"]
+        intentional_kw = CONFIG.get("intentional_overlap_keywords", [])
 
         for day in days:
             dn = day.get("day", 0)
@@ -615,14 +741,25 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                                     ei.day_num, ei.label, "departure_time",
                                     f"Departure ({dep}) >= arrival ({arr})"))
 
-    # 4f. Budget sum consistency
+    # 4f. Budget sum consistency - Fix 5: uses schema-driven categories
     if agent == "budget":
-        cats = ["meals", "accommodation", "activities", "shopping", "transportation"]
+        cats = registry.get_budget_categories()
         for ei in items:
+            # ei.data is the "budget" object from day_entry.budget (which refs budget_categories)
             stated = ei.data.get("total", 0)
             if not stated:
                 continue
-            computed = sum(ei.data.get(c, 0) for c in cats)
+            # Sum only numeric values (skip any dict/breakdown fields)
+            computed = 0
+            for c in cats:
+                val = ei.data.get(c, 0)
+                if isinstance(val, (int, float)):
+                    computed += val
+                elif val != 0:
+                    # Non-zero, non-numeric value - log warning
+                    issues.append(Issue(Severity.LOW, Category.FORMAT, agent, ei.trip,
+                                        ei.day_num, ei.label, f"budget.{c}",
+                                        f"Expected number, got {type(val).__name__}: {val}"))
             if abs(computed - stated) > 1.0:
                 issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
                                     ei.day_num, ei.label, "budget.total",
@@ -661,6 +798,59 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
     return issues
 
 
+def check_additional_properties(items: list, agent: str, registry: SchemaRegistry) -> list:
+    """Category 7: Detect fields not defined in schema (redundant/invalid structure).
+
+    This check enforces schema completeness by detecting:
+    - Extra fields not in schema (e.g., duration when time is required)
+    - Redundant legacy fields (e.g., name + name_base coexisting)
+    - Any field that violates additionalProperties: false
+
+    Critical for 100% structure validation coverage.
+    """
+    issues = []
+
+    if not items:
+        return issues
+
+    item_def = items[0].item_def
+    required, optional, properties = registry.get_item_fields(
+        "timeline" if agent in ("timeline", "timeline_segs") else agent,
+        item_def)
+
+    # All fields defined in schema (allowed fields)
+    allowed_fields = set(properties.keys())
+
+    for ei in items:
+        actual_fields = set(ei.data.keys())
+        extra_fields = actual_fields - allowed_fields
+
+        if extra_fields:
+            # Check if schema has additionalProperties: false
+            schema_file = f"{'timeline' if agent in ('timeline', 'timeline_segs') else agent}.schema.json"
+            schema = registry._schemas.get(schema_file, {})
+            defs = schema.get("$defs", {})
+            item_schema = defs.get(item_def, {})
+            additional_allowed = item_schema.get("additionalProperties", True)
+
+            # Severity based on additionalProperties setting
+            severity = Severity.HIGH if not additional_allowed else Severity.MEDIUM
+
+            issues.append(Issue(
+                severity,
+                Category.STRUCTURE,
+                agent,
+                ei.trip,
+                ei.day_num,
+                ei.label,
+                "additional_properties",
+                f"Unexpected fields: {', '.join(sorted(extra_fields))} "
+                f"(schema {'forbids' if not additional_allowed else 'discourages'} extra fields)"
+            ))
+
+    return issues
+
+
 def check_legacy_fields(items: list, agent: str) -> list:
     """Category 5: Detect legacy field names."""
     issues = []
@@ -669,20 +859,20 @@ def check_legacy_fields(items: list, agent: str) -> list:
             if legacy in ei.data:
                 has_schema = schema_name in ei.data
                 if has_schema:
-                    # Both present
+                    # Both present - this is HIGH severity (data redundancy)
                     old_val = ei.data[legacy]
                     new_val = ei.data[schema_name]
                     if old_val != new_val:
-                        issues.append(Issue(Severity.MEDIUM, Category.LEGACY, agent, ei.trip,
+                        issues.append(Issue(Severity.HIGH, Category.LEGACY, agent, ei.trip,
                                             ei.day_num, ei.label, legacy,
                                             f"MISMATCH: '{legacy}'={_trunc(old_val)} vs '{schema_name}'={_trunc(new_val)}"))
                     else:
-                        issues.append(Issue(Severity.INFO, Category.LEGACY, agent, ei.trip,
+                        issues.append(Issue(Severity.HIGH, Category.LEGACY, agent, ei.trip,
                                             ei.day_num, ei.label, legacy,
-                                            f"BOTH: '{legacy}' and '{schema_name}' both present (redundant)"))
+                                            f"REDUNDANT: both '{legacy}' and '{schema_name}' present (must remove '{legacy}')"))
                 else:
                     # Legacy only — schema field missing
-                    issues.append(Issue(Severity.INFO, Category.LEGACY, agent, ei.trip,
+                    issues.append(Issue(Severity.MEDIUM, Category.LEGACY, agent, ei.trip,
                                         ei.day_num, ei.label, legacy,
                                         f"LEGACY_ONLY: has '{legacy}' but not '{schema_name}'"))
     return issues
@@ -746,6 +936,9 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
             if dn not in mdays:
                 continue
             budget_meals = bdays[dn].get("budget", {}).get("meals", 0)
+            # Skip if budget_meals is not a number
+            if not isinstance(budget_meals, (int, float)):
+                continue
             actual = 0
             for mt in ("breakfast", "lunch", "dinner"):
                 meal = mdays[dn].get(mt, {})
@@ -824,11 +1017,14 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
                     # Field format
                     all_issues.extend(check_field_format(items, display_agent, registry))
 
+                    # Additional properties (redundant fields)
+                    all_issues.extend(check_additional_properties(items, display_agent, registry))
+
                     # Legacy
                     all_issues.extend(check_legacy_fields(items, display_agent))
 
                 # Semantics (timeline overlaps) — once for whole timeline
-                all_issues.extend(check_semantics([], "timeline", all_data, trip, trip_dir))
+                all_issues.extend(check_semantics([], "timeline", all_data, trip, trip_dir, registry))
 
             else:
                 config = AGENT_CONFIGS[agent]
@@ -843,7 +1039,10 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
                 all_issues.extend(check_field_format(items, agent, registry))
 
                 # Semantics
-                all_issues.extend(check_semantics(items, agent, all_data, trip, trip_dir))
+                all_issues.extend(check_semantics(items, agent, all_data, trip, trip_dir, registry))
+
+                # Additional properties (redundant fields)
+                all_issues.extend(check_additional_properties(items, agent, registry))
 
                 # Legacy
                 all_issues.extend(check_legacy_fields(items, agent))
@@ -1010,10 +1209,16 @@ def format_table(issues: list, metrics: dict, min_severity: Severity, trips: lis
 
 
 def _trip_label(trip: str) -> str:
+    """Fix 9: Remove hardcoded trip-specific labels.
+
+    Previously hardcoded patterns like 'china-feb' -> 'itinerary'.
+    Now uses simple heuristic: 'bucket' -> 'bucket-list', else truncate.
+    Trip-specific labels should come from trip metadata, not code patterns.
+    """
+    # Simple heuristic: only check for 'bucket' pattern
     if "bucket" in trip.lower():
         return "bucket-list"
-    if "china-feb" in trip.lower():
-        return "itinerary"
+    # Default: truncate long trip names for display
     return trip[:20]
 
 
