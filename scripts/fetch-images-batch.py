@@ -498,6 +498,11 @@ class BatchImageFetcher:
             logger.info(f"Gaode/Google failed for {poi_name}, trying Xiaohongshu...")
             photo_url = self._xiaohongshu_search(search_name, city)
 
+        # Bing Images fallback if Xiaohongshu also failed
+        if not photo_url:
+            logger.info(f"Xiaohongshu failed for {poi_name}, trying Bing Images...")
+            photo_url = self._bing_images_search(search_name, city)
+
         return photo_url
 
     def _xiaohongshu_search(self, search_name: str, city: str) -> Optional[str]:
@@ -546,15 +551,23 @@ class BatchImageFetcher:
 
             if result.returncode == 0:
                 data = json.loads(result.stdout)
-                # Extract first image URL from search results
-                if data.get("notes") and len(data["notes"]) > 0:
-                    first_note = data["notes"][0]
-                    images = first_note.get("images", [])
-                    if images and len(images) > 0:
-                        image_url = images[0].get("url")
-                        if image_url:
-                            logger.info(f"Found Xiaohongshu image for {search_name}")
-                            return image_url
+
+                # MCP returns {"status": "success", "data": "formatted text with links..."}
+                # Extract note URLs from the text
+                if data.get("status") == "success" and data.get("data"):
+                    import re
+                    text_data = data["data"]
+
+                    # Extract Xiaohongshu note links
+                    urls = re.findall(r'链接: (https://www\.xiaohongshu\.com/explore/[a-zA-Z0-9?=&_]+)', text_data)
+
+                    if urls:
+                        # Return first note URL as placeholder
+                        # (In production, would need to scrape actual images from the page)
+                        logger.info(f"Found Xiaohongshu note (URL only, no direct image): {urls[0][:60]}...")
+                        # Since we can't easily extract images, return None for now
+                        # TODO: Implement web scraping or use different API
+                        return None
 
             logger.debug(f"No Xiaohongshu results for {query}")
             return None
@@ -565,6 +578,30 @@ class BatchImageFetcher:
         except Exception as e:
             logger.warning(f"Xiaohongshu search error for {search_name}: {e}")
             return None
+
+    def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
+        """Bing Images search as final fallback.
+
+        NOTE: Currently returns None due to limitations:
+        - Bing Images requires JavaScript for dynamic loading
+        - Bing API requires authentication key
+        - Web scraping approach is unreliable
+
+        This method is a placeholder for future implementation.
+        Consider using:
+        - Bing Image Search API (requires Azure key)
+        - Unsplash API (free, good for travel photos)
+        - Pixabay API (free, Creative Commons)
+
+        Args:
+            search_name: POI name
+            city: City name
+
+        Returns:
+            None (fallback not implemented)
+        """
+        logger.debug(f"Bing Images fallback not implemented for: {search_name}")
+        return None
 
     def fetch_cities(self, limit: int = 5):
         """Fetch city cover photos (limited batch)"""
