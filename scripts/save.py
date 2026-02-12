@@ -70,12 +70,14 @@ def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
 
     # Use json_io validation which calls plan-validate.py
     try:
-        validate_agent_data(
-            trip_slug=trip_slug,
-            agent_name=agent,
-            data=data,
-            allow_high_severity=allow_high
-        )
+        trip_dir = DATA_DIR / trip_slug
+        issues, metrics = validate_agent_data(agent, data, trip_dir)
+
+        # Check for HIGH severity issues
+        high_issues = [i for i in issues if (i.severity.value == "HIGH" if hasattr(i.severity, 'value') else i.severity == "HIGH")]
+        if high_issues and not allow_high:
+            raise ValidationError(issues, metrics)
+
         return True, [], {}
 
     except ValidationError as e:

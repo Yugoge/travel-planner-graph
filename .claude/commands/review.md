@@ -354,15 +354,116 @@ while current_day_index <= total_days:
 day_confirmed_perfect = false
 
 while not day_confirmed_perfect:
-    1. Extract current day data from all agent JSONs
-    2. Present COMPLETE day plan (MANDATORY format below)
-    3. Offer user options (see below)
-    4. Process user choice:
+    1. Extract current day data from all agent JSONs (see extraction method below)
+    2. Validate extraction completeness (see validation below)
+    3. Present COMPLETE day plan (MANDATORY format below)
+    4. Offer user options (see below)
+    5. Process user choice:
        - "This day is perfect" → Set day_confirmed_perfect = true, exit INNER loop
        - "Make changes to Day N" → Re-invoke agents (Step 15), stay in INNER loop
        - "Accept all remaining" → Exit both loops, proceed to Phase 5
-    5. If changes made: Re-present Day N (loop continues)
+    6. If changes made: Re-present Day N (loop continues)
 ```
+
+**Step 1: Extract Current Day Data from Agent JSONs**
+
+**Root Cause Reference**: Line 357 lacked extraction method specification, causing AI to default to Read with limit:100, truncating structured JSON day data beyond line 100. This caused critical omissions (drone show at lines 107-111) and complete data loss for Day 2-21.
+
+**CRITICAL - Data Extraction Method**: You MUST use ONE of these two approaches to extract complete day data:
+
+**Approach 1 - jq-based extraction (RECOMMENDED for large files)**:
+```bash
+# Extract Day N timeline data
+jq --arg day "$current_day_index" '.timeline[$day | tonumber - 1]' /root/travel-planner/data/{destination-slug}/timeline.json > /tmp/day-${current_day_index}-timeline.json
+
+# Extract Day N meals data
+jq --arg day "$current_day_index" '.days[$day | tonumber - 1].meals' /root/travel-planner/data/{destination-slug}/meals.json > /tmp/day-${current_day_index}-meals.json
+
+# Extract Day N attractions data
+jq --arg day "$current_day_index" '.days[$day | tonumber - 1].attractions' /root/travel-planner/data/{destination-slug}/attractions.json > /tmp/day-${current_day_index}-attractions.json
+
+# Extract Day N entertainment data
+jq --arg day "$current_day_index" '.days[$day | tonumber - 1].entertainment' /root/travel-planner/data/{destination-slug}/entertainment.json > /tmp/day-${current_day_index}-entertainment.json
+
+# Extract Day N shopping data
+jq --arg day "$current_day_index" '.days[$day | tonumber - 1].shopping' /root/travel-planner/data/{destination-slug}/shopping.json > /tmp/day-${current_day_index}-shopping.json
+
+# Extract Day N budget data
+jq --arg day "$current_day_index" '.days[$day | tonumber - 1]' /root/travel-planner/data/{destination-slug}/budget.json > /tmp/day-${current_day_index}-budget.json
+```
+
+Then read the extracted day-specific JSON files:
+```bash
+Read /tmp/day-${current_day_index}-timeline.json  # Complete day data, no limit
+Read /tmp/day-${current_day_index}-meals.json
+Read /tmp/day-${current_day_index}-attractions.json
+Read /tmp/day-${current_day_index}-entertainment.json
+Read /tmp/day-${current_day_index}-shopping.json
+Read /tmp/day-${current_day_index}-budget.json
+```
+
+**Approach 2 - Read complete file without limit**:
+```bash
+Read /root/travel-planner/data/{destination-slug}/timeline.json  # NO limit parameter
+Read /root/travel-planner/data/{destination-slug}/meals.json     # NO limit parameter
+Read /root/travel-planner/data/{destination-slug}/attractions.json
+Read /root/travel-planner/data/{destination-slug}/entertainment.json
+Read /root/travel-planner/data/{destination-slug}/shopping.json
+Read /root/travel-planner/data/{destination-slug}/budget.json
+```
+
+Then manually extract Day N data from the complete JSON.
+
+**PROHIBITED - Do NOT use these patterns**:
+```bash
+# ❌ WRONG - Truncates at line 100, causes data loss
+Read /root/travel-planner/data/{destination-slug}/timeline.json offset:0 limit:100
+
+# ❌ WRONG - Arbitrary limit truncates structured JSON
+Read /root/travel-planner/data/{destination-slug}/timeline.json limit:200
+
+# ❌ WRONG - Any Read with limit for day extraction
+Read /root/travel-planner/data/{destination-slug}/timeline.json limit:N
+```
+
+**Why limit is prohibited for structured JSON day extraction**:
+- Agent JSONs contain 21 days of data (1475+ lines for timeline.json)
+- Day 1 data may span lines 10-122 (drone show at 107-111)
+- Day 2 starts around line 150 (BEYOND limit:100)
+- Using limit:100 completely omits Day 1 drone show and ALL of Day 2-21
+- Structured JSON requires complete object extraction, not arbitrary line truncation
+
+**Step 2: Validate Extraction Completeness**
+
+**CRITICAL - Validation checkpoint before presentation**:
+
+After extracting Day N data, verify ALL timeline entries for that day are present:
+
+```bash
+# Count timeline entries for Day N
+timeline_entry_count=$(jq --arg day "$current_day_index" '.timeline[$day | tonumber - 1] | length' /root/travel-planner/data/{destination-slug}/timeline.json)
+
+echo "Day ${current_day_index} has ${timeline_entry_count} timeline entries"
+```
+
+**Validation criteria**:
+- Timeline entry count MUST be > 0
+- If timeline_entry_count == 0: Extraction failed, debug and retry
+- Typical day has 8-12 timeline entries (meals + attractions + entertainment + travel segments)
+- If count seems low (< 5): Manually verify extraction captured all activities
+
+**Example validation output**:
+```
+Day 1 has 11 timeline entries  ✓ PASS
+Day 2 has 0 timeline entries   ✗ FAIL - Extraction error, re-extract
+Day 3 has 9 timeline entries   ✓ PASS
+```
+
+**If validation fails**:
+1. Check jq filter syntax
+2. Verify day index (1-indexed in UI, 0-indexed in JSON arrays)
+3. Read complete timeline.json without limit to inspect structure
+4. Do NOT proceed to presentation until validation passes
 
 ---
 
