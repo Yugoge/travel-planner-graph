@@ -1186,7 +1186,7 @@ class InteractiveHTMLGenerator:
                     "name_local": seg.get("name_local", ""),
                     "time": {"start": seg["start_time"], "end": seg["end_time"]},
                     "duration": f"{duration_min}min" if duration_min else "",
-                    "type_base": "travel",
+                    "type_base": seg.get("type_base", "travel"),
                     "type_local": seg.get("type_local", ""),
                     "icon": seg.get("icon", "\U0001f6b6")
                 })
