@@ -2616,29 +2616,62 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   const timeW = sm ? '48px' : '62px';
 
   const entries = [];
-  const add = (item, type, label) => {
-    // Only add if item has valid time with start and end
-    if (item?.time?.start && item?.time?.end) {
-      entries.push({ ...item, _type: type, _label: label });
+
+  // Root cause fix: Use day.timeline as primary data source instead of aggregating from meals/attractions
+  // Previous approach missed all intra-city transportation from timeline.json
+  if (day.timeline && Object.keys(day.timeline).length > 0) {
+    // Build entries from complete timeline data
+    Object.entries(day.timeline).forEach(([activityName, timeData]) => {
+      if (timeData.start && timeData.end) {
+        // Determine activity type from name
+        const nameLower = activityName.toLowerCase();
+        let type = 'attraction';  // default
+        let label = activityName;
+
+        if (nameLower.includes('travel') || nameLower.includes('taxi') || nameLower.includes('walk') ||
+            nameLower.includes('metro') || nameLower.includes('bus') || nameLower.includes('train') ||
+            nameLower.includes('board') || nameLower.includes('乘') || nameLower.includes('步行')) {
+          type = 'travel';
+        } else if (nameLower.includes('breakfast') || nameLower.includes('lunch') || nameLower.includes('dinner') ||
+                   nameLower.includes('早餐') || nameLower.includes('午餐') || nameLower.includes('晚餐')) {
+          type = 'meal';
+        } else if (nameLower.includes('check') || nameLower.includes('hotel') || nameLower.includes('酒店')) {
+          type = 'accommodation';
+        } else if (nameLower.includes('show') || nameLower.includes('表演')) {
+          type = 'entertainment';
+        }
+
+        entries.push({
+          name_base: activityName,
+          time: { start: timeData.start, end: timeData.end },
+          _type: type,
+          _label: activityName
+        });
+      }
+    });
+  } else {
+    // Fallback to old approach if no timeline data
+    const add = (item, type, label) => {
+      if (item?.time?.start && item?.time?.end) {
+        entries.push({ ...item, _type: type, _label: label });
+      }
+    };
+    if (day.transportation) {
+      const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base;
+      const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
+      add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
     }
-  };
-  // Add transportation if exists (Fix Issue #8, #9: bilingual label respects lang toggle)
-  if (day.transportation) {
-    const tFrom = lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base;
-    const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
-    add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
+    add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
+    add(day.meals.lunch, 'meal', L('cat_lunch', lang));
+    add(day.meals.dinner, 'meal', L('cat_dinner', lang));
+    day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
+    day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
+    if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
+    day.travel_segments?.forEach(t => {
+      const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
+      add(t, 'travel', label);
+    });
   }
-  add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
-  add(day.meals.lunch, 'meal', L('cat_lunch', lang));
-  add(day.meals.dinner, 'meal', L('cat_dinner', lang));
-  day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
-  day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
-  if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
-  // Fix issue #6: Add travel segments from timeline
-  day.travel_segments?.forEach(t => {
-    const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
-    add(t, 'travel', label);
-  });
 
   // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
