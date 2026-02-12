@@ -261,10 +261,10 @@ All subagent invocation prompts in this file explicitly require bilingual annota
 
 ### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -275,10 +275,10 @@ Use output to create TodoWrite with all workflow steps.
 
 ### Step 1: Parse Starting Day### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -293,10 +293,10 @@ Use output to create TodoWrite with all workflow steps.
    - If `--day N` provided: start from day N
    - If no `--day`: start from day 1### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -316,10 +316,10 @@ Use output to create TodoWrite with all workflow steps.
 \`\`\`
 `### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -334,10 +334,10 @@ Use output to create TodoWrite with all workflow steps.
 
 ### Step 2: Load Plan Data### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -365,10 +365,10 @@ test -f data/\{destination-slug\}/accommodation\.json && echo "accommodation\.js
    - All required files must exist before proceeding
    - If any file missing: Error and exit### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
@@ -383,10 +383,10 @@ Use output to create TodoWrite with all workflow steps.
 
 ### Phase 4: Validation and Conflict Review### Step 0: Initialize Workflow
 
-Load todos from: `scripts/todo/plan.py`
+Load todos from: `scripts/todo/review.py`
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
 Use output to create TodoWrite with all workflow steps.
