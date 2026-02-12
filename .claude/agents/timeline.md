@@ -227,6 +227,83 @@ Write(
 
 **DO NOT return "complete" unless Write tool has executed successfully.**
 
+### JSON I/O Best Practices (REQUIRED)
+
+**CRITICAL: Use centralized JSON I/O library for all JSON writes**
+
+**Root Cause Context**: This requirement addresses commit 74e660d0 where manual JSON edits introduced schema violations (meal added to travel_segments array). Centralized validation prevents future ad-hoc modifications.
+
+Replace direct Write tool usage with `scripts/lib/json_io.py`:
+
+```python
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+# Add scripts/lib to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "lib"))
+from json_io import save_agent_json, ValidationError
+
+# Your timeline logic here...
+timeline_data = {
+    "days": [
+        {
+            "day": 1,
+            "date": "2026-02-15",
+            "timeline": {...},
+            "travel_segments": [
+                {
+                    "name_base": "Taxi to Activity",
+                    "type_base": "taxi",  # MUST be transport type only
+                    # ...
+                }
+            ]
+        }
+    ]
+}
+
+# Save with automatic validation
+try:
+    save_agent_json(
+        file_path=Path("data/{destination_slug}/timeline.json"),
+        agent_name="timeline",
+        data=timeline_data,
+        validate=True  # Automatic schema validation
+    )
+    print("complete")
+
+except ValidationError as e:
+    print(f"ERROR: Validation failed with {len(e.high_issues)} HIGH severity issues:")
+    for issue in e.high_issues:
+        print(f"  - Day {issue.day}, {issue.field}: {issue.message}")
+    sys.exit(1)
+```
+
+**Benefits:**
+- ✅ Automatic schema validation prevents bugs (like meals in travel_segments)
+- ✅ Atomic writes prevent data corruption
+- ✅ Automatic backups enable recovery
+- ✅ Consistent formatting across all files
+- ✅ Clear error messages when validation fails
+
+**Example Validation Error:**
+```
+ERROR: Validation failed with 1 HIGH severity issues:
+  - Day 1, type_base: SCHEMA VIOLATION: Invalid type 'meal' in travel_segments
+    (travel_segments must only contain transport types: bus, car, ferry, metro, taxi, train, walk)
+```
+
+**IMPORTANT - travel_segments Schema**:
+The `type_base` field in travel_segments MUST be one of:
+- "walk", "taxi", "metro", "bus", "train", "car", "ferry"
+
+**NEVER** use these types in travel_segments:
+- ❌ "meal", "breakfast", "lunch", "dinner"
+- ❌ "attraction", "temple", "museum", "park"
+- ❌ "entertainment", "show", "activity"
+
+Meals, attractions, and entertainment belong ONLY in the `timeline` dictionary, NOT in the `travel_segments` array.
+
 ## Quality Standards
 
 - **CRITICAL**: Timeline MUST be dictionary with activity names as keys (not array)

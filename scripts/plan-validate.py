@@ -128,6 +128,17 @@ TIMELINE_CONFIGS = {
     "travel_segment": AgentConfig("travel_segment", "array", ["travel_segments"], optional_key=True),
 }
 
+# Valid transport types for travel_segments validation
+# Root cause fix: Commit 74e660d0 added "meal" to travel_segments (schema violation)
+VALID_TRANSPORT_TYPES = {"walk", "taxi", "metro", "bus", "train", "car", "ferry"}
+
+# Invalid types indicating non-transport items
+INVALID_TRANSPORT_TYPES = {
+    "meal", "breakfast", "lunch", "dinner",  # Meals
+    "attraction", "temple", "museum", "park",  # Attractions
+    "entertainment", "show", "activity"  # Entertainment
+}
+
 
 # ---------------------------------------------------------------------------
 # Schema registry
@@ -473,6 +484,70 @@ def _smart_title(text: str) -> str:
     return " / ".join(result_segments)
 
 
+def check_travel_segments(timeline_data: dict, trip: str) -> list:
+    """Category 4d: Validate travel_segments for invalid content.
+
+    BUG FIX: Prevents meals/attractions in travel_segments array.
+    Root cause reference: Commit 74e660d0 manual merge error added "meal" to travel_segments.
+
+    Schema specification: travel_segments should ONLY contain intra-city transportation.
+    Valid types: walk, taxi, metro, bus, train, car, ferry
+    Invalid: meal, breakfast, lunch, dinner, attraction, entertainment, etc.
+    """
+    issues = []
+    days = timeline_data.get("data", {}).get("days", [])
+
+    for day in days:
+        dn = day.get("day", 0)
+        segments = day.get("travel_segments", [])
+
+        for idx, segment in enumerate(segments):
+            if not isinstance(segment, dict):
+                continue
+
+            seg_name = segment.get("name_base", f"segment-{idx}")
+            seg_type = segment.get("type_base", "").lower()
+
+            # Check 1: Invalid transport type
+            if seg_type and seg_type not in VALID_TRANSPORT_TYPES:
+                if seg_type in INVALID_TRANSPORT_TYPES:
+                    issues.append(Issue(
+                        Severity.HIGH, Category.SEMANTIC, "timeline", trip, dn,
+                        f"Day {dn} travel_segments[{idx}]", "type_base",
+                        f"SCHEMA VIOLATION: Invalid type '{seg_type}' in travel_segments "
+                        f"(travel_segments must only contain transport types: "
+                        f"{', '.join(sorted(VALID_TRANSPORT_TYPES))})"
+                    ))
+                else:
+                    issues.append(Issue(
+                        Severity.MEDIUM, Category.SEMANTIC, "timeline", trip, dn,
+                        f"Day {dn} travel_segments[{idx}]", "type_base",
+                        f"Unknown transport type '{seg_type}' (expected: {', '.join(sorted(VALID_TRANSPORT_TYPES))})"
+                    ))
+
+            # Check 2: Meal indicators in name
+            meal_keywords = ["breakfast", "lunch", "dinner", "meal", "restaurant", "cafe", "food court"]
+            if any(kw in seg_name.lower() for kw in meal_keywords):
+                issues.append(Issue(
+                    Severity.HIGH, Category.SEMANTIC, "timeline", trip, dn,
+                    f"Day {dn} travel_segments[{idx}]", "name_base",
+                    f"SCHEMA VIOLATION: Meal activity '{seg_name}' found in travel_segments "
+                    f"(meals should only appear in timeline dict, not travel_segments array)"
+                ))
+
+            # Check 3: Required fields
+            required = ["name_base", "name_local", "type_base", "start_time", "end_time"]
+            for field in required:
+                if field not in segment or not segment[field]:
+                    issues.append(Issue(
+                        Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
+                        f"Day {dn} travel_segments[{idx}]", field,
+                        f"Required field '{field}' missing in travel_segment"
+                    ))
+
+    return issues
+
+
 def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir: Path) -> list:
     """Category 4: Semantic / content checks."""
     issues = []
@@ -536,6 +611,9 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                                         f"Day {dn}", "timeline",
                                         f"'{cn}' ({cs}-{ce}) overlaps '{nn}' ({ns}-{ne})"
                                         + (" [intentional]" if intentional else "")))
+
+        # 4d-2. Travel segments validation (NEW - prevents breakfast-in-travel_segments bug)
+        issues.extend(check_travel_segments(timeline_data, trip))
 
     # 4e. Transportation departure < arrival
     if agent == "transportation":

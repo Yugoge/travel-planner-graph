@@ -256,6 +256,62 @@ Write(
 
 **DO NOT return "complete" unless Write tool has executed successfully.**
 
+### JSON I/O Best Practices (REQUIRED)
+
+**CRITICAL: Use centralized JSON I/O library for all JSON writes**
+
+Replace direct Write tool usage with `scripts/lib/json_io.py`:
+
+```python
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+# Add scripts/lib to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts" / "lib"))
+from json_io import save_agent_json, ValidationError
+
+# Your attractions logic here...
+attractions_data = {
+    "days": [
+        {
+            "day": 1,
+            "date": "2026-02-15",
+            "attractions": [
+                {
+                    "name_base": "Raffles City Observation Deck",
+                    "name_local": "来福士观景台",
+                    # ... all required fields ...
+                }
+            ]
+        }
+    ]
+}
+
+# Save with automatic validation
+try:
+    save_agent_json(
+        file_path=Path("data/{destination_slug}/attractions.json"),
+        agent_name="attractions",
+        data=attractions_data,
+        validate=True  # Automatic schema validation
+    )
+    print("complete")
+
+except ValidationError as e:
+    print(f"ERROR: Validation failed with {len(e.high_issues)} HIGH severity issues:")
+    for issue in e.high_issues:
+        print(f"  - Day {issue.day}, {issue.field}: {issue.message}")
+    sys.exit(1)
+```
+
+**Benefits:**
+- ✅ Automatic schema validation prevents bugs
+- ✅ Atomic writes prevent data corruption
+- ✅ Automatic backups enable recovery
+- ✅ Consistent formatting across all files
+- ✅ Clear error messages when validation fails
+
 ## Quality Standards
 
 - All attractions must be real and currently open
