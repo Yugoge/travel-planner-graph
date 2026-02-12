@@ -510,6 +510,8 @@ class BatchImageFetcher:
         Returns:
             Image URL from Xiaohongshu note, or None if not found
         """
+        import os
+
         try:
             # Use rednote skill to search
             script_path = self.base_dir / ".claude/skills/rednote/scripts/search.py"
@@ -521,12 +523,25 @@ class BatchImageFetcher:
             query = f"{city} {search_name}" if city else search_name
             logger.debug(f"Xiaohongshu search: {query}")
 
+            # Use xvfb-run for headless browser support
+            # Check if xvfb-run is available
+            xvfb_available = subprocess.run(["which", "xvfb-run"], capture_output=True).returncode == 0
+
+            if xvfb_available:
+                cmd = ["xvfb-run", "-a", self.venv_python, str(script_path), query, "--limit", "1"]
+                env = os.environ.copy()
+                env["DISPLAY"] = ":99"
+            else:
+                cmd = [self.venv_python, str(script_path), query, "--limit", "1"]
+                env = os.environ.copy()
+
             result = subprocess.run(
-                [self.venv_python, str(script_path), query, "--limit", "1"],
+                cmd,
                 capture_output=True,
                 text=True,
-                timeout=20,
-                cwd=script_path.parent
+                timeout=30,
+                cwd=script_path.parent,
+                env=env
             )
 
             if result.returncode == 0:

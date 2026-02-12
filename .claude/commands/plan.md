@@ -746,7 +746,7 @@ echo "$day_data" | jq -r '.timeline.data.days[0].timeline | to_entries | sort_by
 After extracting Day N data, verify ALL timeline entries for that day are present:
 
 ```bash
-timeline_entry_count=$(jq '.timeline.data.days[0].timeline | keys | length' /tmp/day-${current_day_index}-data.json)
+timeline_entry_count=$(echo "$day_data" | jq '.timeline.data.days[0].timeline | keys | length')
 echo "Day ${current_day_index} has ${timeline_entry_count} timeline activities"
 ```
 
