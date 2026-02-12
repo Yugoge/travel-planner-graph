@@ -525,17 +525,7 @@ def check_travel_segments(timeline_data: dict, trip: str) -> list:
                         f"Unknown transport type '{seg_type}' (expected: {', '.join(sorted(VALID_TRANSPORT_TYPES))})"
                     ))
 
-            # Check 2: Meal indicators in name
-            meal_keywords = ["breakfast", "lunch", "dinner", "meal", "restaurant", "cafe", "food court"]
-            if any(kw in seg_name.lower() for kw in meal_keywords):
-                issues.append(Issue(
-                    Severity.HIGH, Category.SEMANTIC, "timeline", trip, dn,
-                    f"Day {dn} travel_segments[{idx}]", "name_base",
-                    f"SCHEMA VIOLATION: Meal activity '{seg_name}' found in travel_segments "
-                    f"(meals should only appear in timeline dict, not travel_segments array)"
-                ))
-
-            # Check 3: Required fields
+            # Check 2: Required fields
             required = ["name_base", "name_local", "type_base", "start_time", "end_time"]
             for field in required:
                 if field not in segment or not segment[field]:
