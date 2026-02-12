@@ -74,7 +74,10 @@ def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
         issues, metrics = validate_agent_data(agent, data, trip_dir)
 
         # Check for HIGH severity issues
-        high_issues = [i for i in issues if (i.severity.value == "HIGH" if hasattr(i.severity, 'value') else i.severity == "HIGH")]
+        high_issues = [
+            i for i in issues
+            if (i.severity.value if hasattr(i.severity, 'value') else i.severity) == "HIGH"
+        ]
         if high_issues and not allow_high:
             raise ValidationError(issues, metrics)
 

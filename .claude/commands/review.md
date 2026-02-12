@@ -467,7 +467,7 @@ Day 3 has 9 timeline entries   ✓ PASS
 
 ---
 
-**MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
+**Step 3: MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
 
 **CRITICAL**: ALWAYS present complete day details regardless of budget status. Never omit content due to budget overage.
 
@@ -525,7 +525,7 @@ Please choose an option or describe specific changes you'd like.
 
 ---
 
-**STATE TRACKING**:
+**Step 4-6: STATE TRACKING AND USER CHOICE PROCESSING**:
 - `current_day_index`: Which day in sequence (1 to total_days)
 - `day_confirmed_perfect`: Boolean flag for INNER loop exit
 - `iteration_count_per_day`: Limit 5 iterations per day before suggesting acceptance
