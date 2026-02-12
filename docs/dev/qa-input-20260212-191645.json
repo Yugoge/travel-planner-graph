@@ -1,0 +1,164 @@
+{
+  "request_id": "dev-20260212-review-data-truncation",
+  "timestamp": "2026-02-12T19:30:00Z",
+  "requirement": {
+    "original": "为什么在timeline中你却没有读？这是什么系统性错误",
+    "clarified": "Fix systematic data truncation issue in /review command where agent JSON files are read with limit:100, causing Day data beyond line 100 to be completely omitted from review presentation",
+    "what": "Add explicit data extraction methodology to /review command Step 14",
+    "why": "AI reads agent JSONs with arbitrary limit:100, truncating data for days that span beyond 100 lines. This causes critical omissions (e.g., drone show at lines 107-111) and complete data loss for Day 2-21.",
+    "where": [
+      ".claude/commands/review.md - Step 14 (INNER LOOP line 357)",
+      "AI execution pattern when reading JSON files"
+    ],
+    "scope": {
+      "included": [
+        "Add explicit jq-based day extraction method to review.md Step 14",
+        "Document correct Read tool usage for structured JSON (no limit for complete file OR jq filter)",
+        "Add validation requirement to ensure complete day data extraction"
+      ],
+      "excluded": [
+        "Fixing /plan command (separate issue)",
+        "Creating automated scripts (this is workflow documentation fix)",
+        "Modifying agent JSON structure"
+      ]
+    },
+    "success_criteria": [
+      "/review command Step 14 explicitly specifies: Use jq to extract Day N data OR read complete JSON file",
+      "Documentation warns against using Read with limit for structured JSON day extraction",
+      "Validation step added to verify all timeline entries for Day N are extracted"
+    ],
+    "constraints": [
+      "Must preserve existing workflow structure",
+      "Solution should be simple enough for AI to execute without scripts",
+      "Must work for all 21 days regardless of file size"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Drone show (20:30-21:00) omitted from Day 1 review presentation despite existing in timeline.json lines 107-111",
+    "root_cause": "/review command Step 14 line 357 says 'Extract current day data from all agent JSONs' but does NOT specify HOW to extract, leading AI to use Read tool with arbitrary limit:100",
+    "root_cause_commit": "No specific commit - design flaw present since review.md creation",
+    "why_introduced": "Command documentation assumed AI would know how to extract day-scoped data from multi-day JSON files",
+    "why_problematic": "AI defaults to limit:100 for large files to avoid context overflow, but this truncates structured JSON data at arbitrary point, causing data loss",
+    "timeline": "Present since review.md creation (commit aee7664)",
+    "affected_files": [
+      ".claude/commands/review.md",
+      "data/*/timeline.json (1475 lines)",
+      "data/*/attractions.json (1052 lines)",
+      "data/*/entertainment.json (868 lines)",
+      "data/*/meals.json",
+      "data/*/budget.json"
+    ]
+  },
+  "context": {
+    "file_sizes": {
+      "timeline.json": "1475 lines",
+      "attractions.json": "1052 lines",
+      "entertainment.json": "868 lines"
+    },
+    "current_read_pattern": "Read with offset:0, limit:100 - truncates at line 99",
+    "data_location_example": {
+      "day_1_timeline_start": "line 10",
+      "day_1_timeline_end": "line 122 (drone show at 107-111)",
+      "day_2_timeline_start": "~line 150 (BEYOND limit:100)"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add explicit jq-based extraction instructions to review.md Step 14 INNER LOOP",
+    "files_to_modify": [
+      ".claude/commands/review.md - Insert after line 357"
+    ],
+    "validation_approach": "QA will verify documentation explicitly prevents limit usage and mandates jq extraction"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added explicit jq-based day data extraction method to review.md Step 14 INNER loop",
+        "type": "documentation",
+        "files_modified": [
+          "/root/travel-planner/.claude/commands/review.md"
+        ],
+        "changes": "Inserted 98 lines after line 357 specifying TWO valid extraction approaches: (1) jq-based extraction to /tmp files, (2) Read complete file without limit parameter",
+        "rationale": "Root cause at line 357 was ambiguous 'Extract current day data' instruction without methodology, causing AI to default to Read with limit:100 which truncates structured JSON at arbitrary point"
+      },
+      {
+        "id": 2,
+        "description": "Added validation substep to verify complete day data extraction before presentation",
+        "type": "documentation",
+        "files_modified": [
+          "/root/travel-planner/.claude/commands/review.md"
+        ],
+        "changes": "Added Step 2 validation checkpoint using jq to count timeline entries and verify extraction completeness (lines 436-466)",
+        "rationale": "Prevents AI from proceeding to day presentation with incomplete/truncated data, ensuring all timeline entries (including drone show at lines 107-111) are extracted"
+      },
+      {
+        "id": 3,
+        "description": "Documented prohibited Read patterns with explicit warnings",
+        "type": "documentation",
+        "files_modified": [
+          "/root/travel-planner/.claude/commands/review.md"
+        ],
+        "changes": "Added PROHIBITED section (lines 417-434) with examples of incorrect Read usage (limit:100, limit:200, limit:N) and explanation of why limit breaks structured JSON extraction",
+        "rationale": "Prevents recurrence by explicitly forbidding the pattern that caused drone show omission and Day 2-21 data loss"
+      },
+      {
+        "id": 4,
+        "description": "Updated INNER loop step numbering from 5 steps to 6 steps (integer sequence)",
+        "type": "documentation",
+        "files_modified": [
+          "/root/travel-planner/.claude/commands/review.md"
+        ],
+        "changes": "Changed loop steps from 1-5 to 1-6 to accommodate new extraction and validation steps, maintained integer-only numbering (no decimals)",
+        "rationale": "Quality standard requires sequential integer step numbering (no 1.1, 1.2 patterns)"
+      },
+      {
+        "id": 5,
+        "description": "Added explicit Step headers (Step 1-3) to structure extraction, validation, and presentation phases",
+        "type": "documentation",
+        "files_modified": [
+          "/root/travel-planner/.claude/commands/review.md"
+        ],
+        "changes": "Converted inline instructions to explicit Step 1 (Extract), Step 2 (Validate), Step 3 (Present) headers for clarity",
+        "rationale": "Clear step delineation prevents AI from skipping validation and proceeding directly to presentation with truncated data"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause": "review.md line 357 lacked extraction method specification",
+      "root_cause_commit": "No specific commit - design flaw present since review.md creation (commit aee7664)",
+      "why_issue_occurred": "Command documentation assumed AI would know how to extract day-scoped data from multi-day JSON files. AI defaulted to Read with arbitrary limit:100 to avoid context overflow, but this truncates structured JSON data at arbitrary line boundaries, causing complete data loss for entries beyond line 100 (drone show at 107-111, all of Day 2-21 beyond line 150)",
+      "how_fix_addresses_root": "Added explicit extraction methodology specification with TWO approved approaches (jq-based filtering OR complete file read without limit) and PROHIBITED patterns (any Read with limit for structured JSON). Added mandatory validation checkpoint to verify extraction completeness before day presentation. This eliminates ambiguity and prevents AI from using truncation-causing patterns."
+    },
+    "implementation_details": {
+      "extraction_approaches": [
+        {
+          "approach": "jq-based extraction (RECOMMENDED)",
+          "method": "Use jq to extract day N data from agent JSONs into /tmp/day-N-*.json files, then Read those day-specific files without limit",
+          "rationale": "Works for arbitrarily large files (1475+ lines), extracts only relevant day data, prevents context overflow"
+        },
+        {
+          "approach": "Read complete file without limit",
+          "method": "Read entire agent JSON files without limit parameter, then manually extract day N data from complete structure",
+          "rationale": "Simple approach for smaller files, guarantees no truncation"
+        }
+      ],
+      "prohibited_patterns": [
+        "Read with limit:100 (truncates at line 99)",
+        "Read with any limit:N for structured JSON day extraction",
+        "Any offset/limit pattern for extracting complete day data"
+      ],
+      "validation_method": "Use jq to count timeline entries for Day N, verify count > 0 and reasonable (8-12 typical), fail extraction if count is 0 or suspiciously low"
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should verify:\n1. review.md Step 14 INNER loop now has 6 steps (not 5)\n2. Step 1 specifies TWO valid extraction approaches with complete bash examples\n3. Step 2 requires validation checkpoint before proceeding to presentation\n4. PROHIBITED section explicitly forbids Read with limit for structured JSON\n5. All step numbering uses integers (1, 2, 3, etc.) with no decimals\n6. Root cause reference present in Step 1 documentation (line 370)\n7. Explanatory text describes WHY limit breaks structured JSON extraction (lines 429-434)",
+    "permissions_to_add": []
+  }
+}
