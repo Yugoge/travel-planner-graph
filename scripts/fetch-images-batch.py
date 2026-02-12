@@ -901,37 +901,17 @@ class BatchImageFetcher:
         for poi in pois[:limit]:
             service = self._map_service_for(poi['city'])
 
-            # CRITICAL FIX: Cache key should use name_local for China (Gaode) searches
-            # to match the actual search term used. This prevents duplicate cache entries.
+            # Generate cache key based on service and name format
+            # China (Gaode): Use Chinese name_local for accurate search
+            # International (Google): Use English name_base
             if service == "gaode" and poi.get('name_local'):
                 cache_key = f"{service}_{poi['name_local']}"
             else:
                 cache_key = f"{service}_{poi['name_base']}"
 
-            # FALLBACK FIX: Try multiple cache keys for maximum backward compatibility
-            # This handles:
-            # 1. Legacy English-keyed entries (pre-d142d28)
-            # 2. Cross-service lookups (gaode/google service detection changes)
-            # 3. Name format variations (name_local vs name_base)
-            cache_keys_to_try = [
-                cache_key,  # Primary: current service + appropriate name
-                f"{service}_{poi['name_base']}",  # Same service, English name
-            ]
-            # Cross-service fallback (try the other service)
-            other_service = "google" if service == "gaode" else "gaode"
-            if poi.get('name_local'):
-                cache_keys_to_try.append(f"{other_service}_{poi['name_local']}")
-            cache_keys_to_try.append(f"{other_service}_{poi['name_base']}")
-
-            existing_photo = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
-
-            if existing_photo and not self.force_refresh:
+            # Check cache (strict service matching - no cross-service lookup)
+            if cache_key in self.cache["pois"] and not self.force_refresh:
                 print(f"  ✓ {poi['name_base']} ({poi['type']}, cached)")
-                # Self-healing: Migrate old English key to new Chinese key format
-                if cache_key not in self.cache["pois"]:
-                    self.cache["pois"][cache_key] = existing_photo
-                    self._save_cache()
-                    logger.debug(f"Migrated cache key: {cache_keys_to_try[1]} → {cache_key}")
                 continue
 
             print(f"  Fetching {poi['name_base']} ({poi['type']}, {service})...", end=" ")
@@ -1019,24 +999,14 @@ class BatchImageFetcher:
                         if not name_base:
                             continue
 
-                        # CRITICAL FIX: Match cache key generation from fetch phase
-                        # For Gaode with name_local, use name_local in cache key
+                        # Generate cache key matching fetch phase logic
                         if service == "gaode" and name_local:
                             cache_key = f"{service}_{name_local}"
                         else:
                             cache_key = f"{service}_{name_base}"
 
-                        # FALLBACK FIX: Try multiple cache keys including cross-service
-                        cache_keys_to_try = [
-                            cache_key,
-                            f"{service}_{name_base}",
-                        ]
-                        other_service = "google" if service == "gaode" else "gaode"
-                        if name_local:
-                            cache_keys_to_try.append(f"{other_service}_{name_local}")
-                        cache_keys_to_try.append(f"{other_service}_{name_base}")
-
-                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+                        # Direct cache lookup (strict service matching)
+                        photo_url = self.cache["pois"].get(cache_key)
 
                         # Add image_url field if photo exists in cache
                         if photo_url:
@@ -1055,23 +1025,14 @@ class BatchImageFetcher:
                             if not name_base:
                                 continue
 
-                            # CRITICAL FIX: Match cache key generation from fetch phase
+                            # Generate cache key matching fetch phase logic
                             if service == "gaode" and name_local:
                                 cache_key = f"{service}_{name_local}"
                             else:
                                 cache_key = f"{service}_{name_base}"
 
-                            # FALLBACK FIX: Try multiple cache keys including cross-service
-                            cache_keys_to_try = [
-                                cache_key,
-                                f"{service}_{name_base}",
-                            ]
-                            other_service = "google" if service == "gaode" else "gaode"
-                            if name_local:
-                                cache_keys_to_try.append(f"{other_service}_{name_local}")
-                            cache_keys_to_try.append(f"{other_service}_{name_base}")
-
-                            photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+                            # Direct cache lookup (strict service matching)
+                            photo_url = self.cache["pois"].get(cache_key)
 
                             # Add image_url field if photo exists in cache
                             if photo_url:
