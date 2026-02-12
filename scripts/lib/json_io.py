@@ -28,9 +28,20 @@ from typing import Dict, List, Tuple, Any, Optional
 SCRIPTS_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+# Use importlib to import plan-validate.py (hyphenated filename)
 try:
-    from plan_validate import SchemaRegistry, run_pipeline, Severity, Issue
-except ImportError as e:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'plan_validate',
+        SCRIPTS_DIR / 'plan-validate.py'
+    )
+    plan_validate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(plan_validate)
+    SchemaRegistry = plan_validate.SchemaRegistry
+    run_pipeline = plan_validate.run_pipeline
+    Severity = plan_validate.Severity
+    Issue = plan_validate.Issue
+except (ImportError, AttributeError, FileNotFoundError) as e:
     print(f"Warning: Could not import plan_validate: {e}", file=sys.stderr)
     # Define fallback types
     class Severity:
