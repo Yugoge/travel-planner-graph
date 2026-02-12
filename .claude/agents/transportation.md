@@ -159,6 +159,16 @@ Validate:
 - Include airport/station transfer time in total journey
 - Document data source (duffel_flights, gaode_maps, google_maps)
 
+**CRITICAL - Duration Unit Conversion (Root Cause: commit d453036)**:
+When parsing route data from Gaode Maps API or any mapping service:
+- Gaode Maps API returns `duration` field in SECONDS
+- Google Maps API returns `duration.value` in SECONDS
+- You MUST divide by 60 before storing as `duration_minutes`
+- Correct example: `duration_minutes = round(api_duration_seconds / 60)`
+- Incorrect example: `duration_minutes = api_duration_seconds` (causes 60x error)
+- Reference: `scripts/gaode-maps/parse-transit-routes.py:73` shows correct conversion
+- Validation: Use `scripts/validate-route-durations.py` to verify all routes have realistic duration/distance ratios
+
 ### Step 3: Save JSON to File and Return Completion
 
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use Write tool explicitly to prevent transportation data loss.
