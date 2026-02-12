@@ -80,10 +80,12 @@ def run_plan_validate(trip_slug: str, agent: str = None) -> dict:
                 label = issue.get("label", "")
 
                 # Extract POI key from label
-                # Format: "Day N (date) poi_key: name"
+                # Format: "Day N (date) poi_key: name" or "Day N (date) poi_key[index]: name"
                 poi_match = re.search(r"\) ([^:]+):", label)
                 if poi_match:
-                    poi_key = poi_match.group(1).strip()
+                    poi_key_raw = poi_match.group(1).strip()
+                    # Strip array index if present (e.g., "attractions[0]" → "attractions")
+                    poi_key = re.sub(r'\[\d+\]$', '', poi_key_raw)
                     redundant_map[agent_name][day_num][poi_key].update(redundant_fields)
 
     return redundant_map
