@@ -1205,6 +1205,22 @@ class InteractiveHTMLGenerator:
             merged["budget"]["transportation"]
         ])
 
+        # Root cause fix: Add timeline data to merged output
+        # Issue: day_timeline was loaded and used for lookups but never added to output
+        # This caused timeline view to have no data
+        if day_timeline:
+            # Convert timeline format from {name: {start_time, end_time}} to {name: {start, end}}
+            formatted_timeline = {}
+            for activity_name, time_data in day_timeline.items():
+                if isinstance(time_data, dict) and "start_time" in time_data and "end_time" in time_data:
+                    formatted_timeline[activity_name] = {
+                        "start": time_data["start_time"],
+                        "end": time_data["end_time"]
+                    }
+            merged["timeline"] = formatted_timeline
+        else:
+            merged["timeline"] = {}
+
         return merged
 
     def _group_days_by_location(self, days: list) -> list:
