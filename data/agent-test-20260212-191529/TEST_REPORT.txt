@@ -1,0 +1,183 @@
+================================================================================
+UNIFIED SCRIPTS ARCHITECTURE TEST REPORT
+================================================================================
+Test Directory: /root/travel-planner/data/agent-test-20260212-191529
+Test Date: 2026-02-12 19:17-19:18 UTC
+Agent: attractions
+Days: 2 (2026-02-20 to 2026-02-21)
+POIs Created: 5 total (2 on Day 1, 3 on Day 2)
+
+================================================================================
+✅ WHAT WORKED
+================================================================================
+
+1. Data Creation
+   ✅ Created minimal but valid attractions.json with all required fields
+   ✅ Included bilingual fields (name_base/name_local, location_base/location_local)
+   ✅ Added array-based POI structure (5 attractions across 2 days)
+   ✅ Included all mandatory fields: cost, currency_local, type_base, search_results
+
+2. Save Workflow (scripts/save.py)
+   ✅ Successfully saved attractions.json using unified save script
+   ✅ Automatic backup creation (.json.bak) before modification
+   ✅ Atomic write operation (verified no corruption)
+   ✅ --no-validate flag works for bypassing validation
+   ✅ Backup preserves original data (cost: 15 in backup vs cost: 12 in current)
+
+3. Level 1 Loading (Day Metadata)
+   ✅ Correctly exposes only: day, date, location_base, location_local
+   ✅ Hides all POI details (attractions array completely hidden)
+   ✅ Perfect for day-level planning without POI exposure
+
+4. Level 2 Loading (POI Titles)
+   ✅ Shows POI names (name_base, name_local)
+   ✅ Shows POI types (type_base, type_local)
+   ✅ Shows POI locations (location_base, location_local)
+   ✅ Hides sensitive details: cost, duration, notes, opening_hours, search_results, optional
+   ✅ Day filtering works (--day 1 returns only Day 1 data)
+   ✅ Perfect for discovering what POIs exist without full details
+
+5. Level 3 Loading (Full Data)
+   ✅ Returns complete POI data with all fields
+   ✅ Day filtering works (--day 1)
+   ✅ POI index filtering works (--poi attractions --poi-index 0)
+   ✅ Perfect for targeted read/write operations on specific POIs
+
+6. Modification Workflow
+   ✅ Load → Modify → Save pipeline works end-to-end
+   ✅ Changed Central Museum cost from $15 to $12
+   ✅ Modified notes_base and notes_local fields
+   ✅ Changes persisted correctly after save
+   ✅ Backup preserved original state
+
+7. Progressive Disclosure Principle
+   ✅ Level 1: Minimal metadata (4 fields per day)
+   ✅ Level 2: Titles only (6 fields per POI)
+   ✅ Level 3: Full access (all 13 fields per POI)
+   ✅ Each level builds on previous level's fields
+
+================================================================================
+❌ WHAT FAILED
+================================================================================
+
+1. Validation Integration Bug (CRITICAL)
+   ❌ scripts/save.py calls validate_agent_data() with wrong parameters
+   ❌ Expected: validate_agent_data(agent_name, json_data, trip_dir)
+   ❌ Actual: validate_agent_data(trip_slug, agent, data, allow_high_severity)
+   ❌ TypeError: unexpected keyword argument 'trip_slug'
+   
+   Impact: Cannot use validation without --no-validate flag
+   Location: scripts/save.py:73 (validate_data function)
+   
+   Fix Required: Update function call to match lib/json_io.py signature
+   
+2. Python Module Import Warning
+   ⚠️  "Warning: Could not import plan_validate: No module named 'plan_validate'"
+   
+   Impact: Non-fatal but indicates missing module setup
+   Location: scripts/lib/json_io.py import statement
+   
+   Note: Validation still works via subprocess call to plan-validate.py
+
+================================================================================
+📝 DOCUMENTATION CLARITY ISSUES
+================================================================================
+
+1. Parameter Mismatch Documentation
+   Issue: save.py internal docs don't match actual lib/json_io.py API
+   Recommendation: Add explicit API contract documentation in lib/json_io.py
+   
+2. Level 2 Field List Clarity
+   Issue: LEVEL_2_FIELDS includes cuisine_base/cuisine_local but not used in attractions
+   Recommendation: Document that field list is union across all agents
+   
+3. Modification Workflow Not Explicit
+   Issue: No example showing full Load → Modify → Save cycle in help text
+   Recommendation: Add workflow example to scripts/load.py epilog
+   
+4. Backup Behavior Not Documented
+   Issue: Users might not know .bak files are automatically created
+   Recommendation: Add "Creates .bak backup before overwrite" to save.py help
+
+================================================================================
+TESTED WORKFLOWS
+================================================================================
+
+Workflow 1: Create New Data
+  1. Create JSON structure manually or via agent
+  2. python3 scripts/save.py --trip SLUG --agent attractions --input data.json --no-validate
+  3. File saved to data/SLUG/attractions.json
+  
+Workflow 2: Browse Day Metadata (Level 1)
+  python3 scripts/load.py --trip SLUG --agent attractions --level 1 --pretty
+  Returns: day, date, location_base, location_local only
+  
+Workflow 3: Browse POI Titles (Level 2)
+  python3 scripts/load.py --trip SLUG --agent attractions --level 2 --pretty
+  Returns: Level 1 + name_base, name_local, type_base, location_base/local
+  
+Workflow 4: Load Specific POI (Level 3)
+  python3 scripts/load.py --trip SLUG --agent attractions --level 3 --day 1 --poi attractions --poi-index 0
+  Returns: Complete POI data for Central Museum
+  
+Workflow 5: Modify and Save
+  # Load full data
+  python3 scripts/load.py --trip SLUG --agent attractions --level 3 > /tmp/data.json
+  
+  # Modify in Python/jq/etc
+  # Change data['data']['days'][0]['attractions'][0]['cost'] = 12
+  
+  # Save back
+  python3 scripts/save.py --trip SLUG --agent attractions --input /tmp/data.json --no-validate
+  
+  # Backup created automatically at attractions.json.bak
+
+================================================================================
+ARCHITECTURAL VALIDATION
+================================================================================
+
+✅ Single Entry Point: scripts/save.py and scripts/load.py work as unified interfaces
+✅ Progressive Disclosure: 3-level hierarchy successfully limits context exposure
+✅ Atomic Operations: Save uses .tmp → rename pattern (verified in json_io.py)
+✅ Backup Safety: Automatic .bak creation prevents data loss
+✅ Type Safety: All POI arrays handled correctly (attractions, entertainment, shopping)
+✅ Bilingual Support: All _base/_local pairs preserved through load/save cycle
+✅ Day Filtering: Both Level 2 and Level 3 support --day parameter
+✅ POI Indexing: Level 3 supports --poi-index for array POIs
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+1. CRITICAL: Fix validate_agent_data() parameter mismatch in scripts/save.py
+   
+2. Add integration test that validates WITH validation enabled
+   
+3. Document backup rotation policy (how many .bak files to keep?)
+   
+4. Consider adding --dry-run flag to save.py for preview before write
+   
+5. Add validation cache to avoid re-validating unchanged data
+   
+6. Document field inheritance: Level N includes all Level N-1 fields
+
+7. Consider adding "last modified timestamp" to envelope for cache invalidation
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Overall Assessment: SUCCESSFUL ✅
+
+The unified scripts architecture is fundamentally sound and operational:
+- Progressive disclosure works exactly as designed
+- Atomic writes and backups provide safety
+- Hierarchical loading reduces context size effectively
+- Modification workflow is functional end-to-end
+
+Critical Bug: Parameter mismatch in validate_agent_data() call must be fixed
+before production use with validation enabled.
+
+All other components (save, load Level 1/2/3, backup, filtering) work correctly.
+
+================================================================================

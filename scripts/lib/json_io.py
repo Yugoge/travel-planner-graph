@@ -261,11 +261,18 @@ def validate_agent_data(
     """
     trip_dir = Path(trip_dir)
 
-    # Write temp file for validation
-    temp_file = trip_dir / f".tmp_{agent_name}_validate.json"
+    # Write to actual agent file location for validation
+    # plan-validate.py expects files to exist at <trip_dir>/<agent>.json
+    agent_file = trip_dir / f"{agent_name}.json"
+    backup_existed = agent_file.exists()
+    backup_content = None
+
+    if backup_existed:
+        backup_content = agent_file.read_text(encoding='utf-8')
 
     try:
-        temp_file.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding='utf-8')
+        # Write file temporarily for validation
+        agent_file.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding='utf-8')
 
         # Try to use plan-validate.py
         try:
@@ -282,8 +289,11 @@ def validate_agent_data(
             return [], {}
 
     finally:
-        if temp_file.exists():
-            temp_file.unlink()
+        # Restore original file or delete temp file
+        if backup_existed and backup_content is not None:
+            agent_file.write_text(backup_content, encoding='utf-8')
+        elif not backup_existed and agent_file.exists():
+            agent_file.unlink()
 
 
 # ============================================================
