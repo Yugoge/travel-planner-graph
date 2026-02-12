@@ -244,13 +244,18 @@ if [ "$REPO_EXISTS" = true ]; then
     # Try to clone gh-pages branch if it exists
     if git ls-remote --heads "$REPO_URL" "$BRANCH" 2>/dev/null | grep -q "$BRANCH"; then
         echo "  Cloning existing gh-pages branch..."
-        git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$DEPLOY_DIR" 2>/dev/null || {
-            echo "  Creating new gh-pages branch..."
-            mkdir -p "$DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
-            git init
-            git checkout -b "$BRANCH"
-        }
+        if ! git clone --branch "$BRANCH" --single-branch --depth=1 "$REPO_URL" "$DEPLOY_DIR" 2>&1; then
+            echo "❌ Error: Failed to clone gh-pages branch"
+            echo "  Repository: $REPO_URL"
+            echo "  Branch: $BRANCH"
+            exit 1
+        fi
+
+        # Verify clone succeeded
+        if [ ! -d "$DEPLOY_DIR/.git" ]; then
+            echo "❌ Error: Clone succeeded but .git directory missing"
+            exit 1
+        fi
     else
         echo "  Creating new gh-pages branch..."
         mkdir -p "$DEPLOY_DIR"
