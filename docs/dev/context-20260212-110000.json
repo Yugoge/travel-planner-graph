@@ -1,0 +1,164 @@
+{
+  "request_id": "dev-20260212-110000",
+  "timestamp": "2026-02-12T11:00:00Z",
+  "requirement": {
+    "original": "/dev 先系统性修复这个问题。不要hardcode。",
+    "clarified": "Fix systematic transportation duration calculation error where Gaode Maps API duration field (in seconds) is being used directly as minutes, causing walk times to be severely underestimated (e.g., 3.8km showing as 10-12 minutes instead of 50+ minutes)",
+    "what": "Fix unit conversion bug in transportation duration calculations from Gaode Maps API responses",
+    "why": "User discovered that walking routes show impossible durations (3.8km in 10 minutes instead of 50 minutes), causing incorrect travel planning and timeline generation",
+    "where": [
+      "Transportation agent (wherever it writes to transportation.json)",
+      "Any code that parses Gaode Maps walking/cycling/driving route responses",
+      "Intra-city route generation code"
+    ],
+    "scope": {
+      "included": [
+        "Fix duration field conversion from seconds to minutes for all route types (walking, cycling, driving, transit)",
+        "Create validation script to check duration vs distance consistency",
+        "Audit existing transportation.json entries for this error",
+        "Fix affected entries in transportation.json for China trip Day 3",
+        "Document correct API response format and required conversions"
+      ],
+      "excluded": [
+        "Changing Gaode Maps API itself",
+        "Modifying distance calculations (those appear correct)",
+        "Changing cost calculations",
+        "Rewriting entire transportation agent architecture"
+      ]
+    },
+    "success_criteria": [
+      "Walking route duration calculations use formula: distance_meters / walking_speed (assuming ~1.2 m/s or ~4.3 km/h)",
+      "API duration field (in seconds) is divided by 60 before storing as duration_minutes",
+      "Validation script confirms all routes have realistic duration/distance ratios",
+      "Day 3 Jinli route shows correct 50-minute walk time (or taxi alternative with correct 12-minute duration)",
+      "No hardcoded values - all calculations use parameterized formulas"
+    ],
+    "constraints": [
+      "Must preserve existing transportation.json structure",
+      "Cannot break timeline.json generation which depends on duration_minutes field",
+      "Must handle all transportation modes (walking, cycling, driving, transit)",
+      "Solution must be systematic and not mode-specific"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Walking routes show impossibly short durations - 3.8km walk shown as 10 minutes instead of ~50 minutes",
+    "root_cause": "Gaode Maps API returns duration in SECONDS, but code directly uses this value as MINUTES without conversion. When API returns duration=600 (seconds) for a walk, it's being stored as duration_minutes=600 instead of duration_minutes=10.",
+    "root_cause_commit": "d453036 - checkpoint: Auto-save at 2026-02-05 21:10:12 (first appearance of intra_city_routes with incorrect durations)",
+    "why_introduced": "Transportation agent or orchestrator code that generates intra_city_routes entries parsed Gaode Maps API responses but failed to convert the duration field from seconds to minutes",
+    "why_problematic": "Without proper unit conversion, all duration calculations are off by 60x. Short walks appear instantaneous, longer walks appear as a few minutes. This cascades into timeline generation, making schedules impossible and misleading users.",
+    "timeline": "Bug introduced ~2026-02-05 when intra_city_routes were first added to transportation.json. Partially corrected in notes on 2026-02-12 for Day 3 Jinli route, but underlying systematic issue remains.",
+    "affected_files": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/transportation.json - contains incorrect duration_minutes values",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json - generated from incorrect durations",
+      "scripts/gaode-maps/*.py - potential parsing code that handles route responses",
+      ".claude/agents/transportation.md - transportation agent specification"
+    ],
+    "evidence": {
+      "test_result": {
+        "route": "Jinli Ancient Street to Taikoo Li",
+        "api_response": {
+          "distance": "4010 meters (4.01 km)",
+          "duration": "3208 seconds (53.47 minutes)"
+        },
+        "expected_duration_minutes": 53,
+        "actual_in_transportation_json": 10,
+        "error_factor": "5.3x underestimation (used seconds as minutes)"
+      },
+      "walking_speed_standard": "Gaode Maps uses ~1.2 m/s walking speed (line 84 of .claude/skills/gaode-maps/tools/routing.md)",
+      "correct_parser_example": "scripts/gaode-maps/parse-transit-routes.py line 73 correctly does 'duration_minutes': round(duration / 60)"
+    }
+  },
+  "context": {
+    "codebase_state": {
+      "git_status": "Modified: data/.../timeline.json, data/.../transportation.json. Untracked: docs/clean/*.json",
+      "current_branch": "master"
+    },
+    "recent_commits": [
+      "528bb7c - checkpoint: Auto-save at 2026-02-12 11:03:28",
+      "6a49f20 - fix: Add timeline data to merged day output",
+      "b3eccde - fix: Restore complete timeline.json with 21 days",
+      "317d2ff - checkpoint: Auto-save at 2026-02-12 09:04:54"
+    ],
+    "file_contents": {
+      "transportation_json_structure": {
+        "path": "data/china-feb-15-mar-7-2026-20260202-195429/transportation.json",
+        "intra_city_routes_fields": [
+          "from_base / from_local",
+          "to_base / to_local",
+          "from_coordinates",
+          "to_coordinates",
+          "distance_meters",
+          "distance_km",
+          "duration_minutes (BUG: not converted from seconds)",
+          "recommended_transport",
+          "route_base / route_local",
+          "cost_cny / cost_usd",
+          "departure_time",
+          "arrival_time",
+          "notes_base / notes_local",
+          "data_source"
+        ]
+      },
+      "gaode_api_response_format": {
+        "walking_route": {
+          "distance": "meters (integer)",
+          "duration": "seconds (integer) ⚠️ MUST DIVIDE BY 60 FOR MINUTES"
+        }
+      },
+      "correct_parser_example": {
+        "file": "scripts/gaode-maps/parse-transit-routes.py",
+        "line": 73,
+        "code": "'duration_minutes': round(duration / 60)"
+      }
+    },
+    "dependencies": {
+      "runtime": "Python 3.11",
+      "api": "Gaode Maps MCP Server (@amap/amap-maps-mcp-server)",
+      "tools": "MCP Client, routing.py, geocoding.py"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "api_key_env": "AMAP_MAPS_API_KEY",
+      "data_dir": "/root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429"
+    }
+  },
+  "development_approach": {
+    "strategy": "Create systematic validation and correction workflow - first validate to find all affected entries, then create conversion utility to fix them, finally update any code that generates routes to prevent future occurrences",
+    "scripts_to_create": [
+      {
+        "name": "validate-route-durations.py",
+        "purpose": "Validate duration/distance consistency across all routes in transportation.json",
+        "parameters": [
+          "transportation_json_path (required)",
+          "--mode-speeds (optional JSON dict of mode→speed mappings)",
+          "--tolerance (optional float for acceptable deviation)"
+        ],
+        "output": "JSON report of suspicious entries with expected vs actual durations"
+      },
+      {
+        "name": "fix-duration-units.py",
+        "purpose": "Correct duration_minutes field by detecting likely unit errors",
+        "parameters": [
+          "transportation_json_path (required)",
+          "--dry-run (optional boolean)",
+          "--backup (optional boolean)"
+        ],
+        "logic": "For each route: calculate expected_duration = distance_meters / mode_speed. If actual_duration matches expected_duration/60 (seconds interpretation), divide by 60.",
+        "output": "Fixed transportation.json with corrected duration_minutes"
+      }
+    ],
+    "files_to_modify": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/transportation.json - fix all affected duration_minutes fields",
+      ".claude/agents/transportation.md - add explicit documentation about duration unit conversion requirement"
+    ],
+    "validation_approach": "QA will run validate-route-durations.py on corrected transportation.json to confirm all durations are realistic. Will also manually test a few sample routes with Gaode Maps API to verify conversions are correct."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "notes": "All speed values must be parameterized. All mode-to-speed mappings must be in config/constants, not hardcoded in scripts."
+  }
+}
