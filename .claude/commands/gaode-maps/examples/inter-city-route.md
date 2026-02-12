@@ -18,6 +18,8 @@ This loads the `transit_route` and `driving_route` tools.
 
 ### Step 2: Plan Transit Route
 
+### Example:
+
 ```javascript
 const transitResult = await transit_route({
   origin: "重庆", destination: "成都", cityd: "成都", strategy: 0
@@ -55,6 +57,8 @@ echo "$transitResult" > transit-response.json
 **Script details:** `/root/travel-planner/scripts/gaode-maps/README.md`
 
 ### Step 4: Compare with Driving Option (Optional)
+
+### Example:
 
 ```javascript
 const drivingResult = await driving_route({

@@ -11,6 +11,8 @@ Supporting tools for distance calculation and weather information.
 
 ### Usage
 
+### Example:
+
 ```javascript
 // Calculate driving distance
 distance_measure({
