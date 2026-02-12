@@ -679,13 +679,101 @@ day_confirmed_perfect = false
 
 while not day_confirmed_perfect:
     1. Extract current day data from all agent JSONs
-    2. Present COMPLETE day plan (MANDATORY format below)
-    3. Offer user options (see below)
-    4. Process user choice:
+    2. Validate extraction completeness
+    3. Present COMPLETE day plan (MANDATORY format below)
+    4. Offer user options (see below)
+    5. Process user choice:
        - "This day is perfect" → Set day_confirmed_perfect = true, exit INNER loop
        - "Make changes to Day N" → Re-invoke agents (Step 15), stay in INNER loop
        - "Accept all remaining" → Exit both loops, proceed to Phase 5
-    5. If changes made: Re-present Day N (loop continues)
+    6. If changes made: Re-present Day N (loop continues)
+```
+
+**Step 1: Extract Current Day Data from Agent JSONs**
+
+**Root Cause Reference**: Commit 481b4c8 introduced jq-based extraction with incorrect JSON paths in /review command. Same extraction gap existed here at line 681 with no implementation, causing AI to default to Read limit:100 (data truncation bug). load.py provides tested solution with correct paths.
+
+**CRITICAL - Use load.py for day data extraction**:
+
+Extract complete Day N data using load.py batch command:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py \
+  --trip {destination-slug} \
+  --agents timeline,meals,attractions,entertainment,shopping,budget \
+  --level 2 \
+  --day $current_day_index \
+  --output /tmp/day-${current_day_index}-data.json
+```
+
+**What this command does**:
+- `--trip {destination-slug}`: Load data for specific trip
+- `--agents timeline,meals,attractions,entertainment,shopping,budget`: Batch load all 6 agent outputs
+- `--level 2`: Extract POI titles with day filtering (tested, reliable)
+- `--day $current_day_index`: Filter to specific day
+- `--output`: Write combined JSON to temp file
+
+**Output structure** (load.py wrapper format):
+```json
+{
+  "timeline": {
+    "agent": "timeline",
+    "status": "complete",
+    "data": {
+      "days": [{"day": 1, "date": "2026-02-15", "location": "Chongqing", "timeline": {"Activity 1": "...", "Activity 2": "..."}}]
+    }
+  },
+  "meals": {"agent": "meals", "status": "complete", "data": {"days": [{"day": 1, "breakfast": {...}, "lunch": {...}, "dinner": {...}}]}},
+  "attractions": {"agent": "attractions", "status": "complete", "data": {"days": [{"day": 1, "attractions": [...]}]}},
+  "entertainment": {"agent": "entertainment", "status": "complete", "data": {"days": [{"day": 1, "entertainment": [...]}]}},
+  "shopping": {"agent": "shopping", "status": "complete", "data": {"days": [{"day": 1, "shopping": [...]}]}},
+  "budget": {"agent": "budget", "status": "complete", "data": {"days": [{"day": 1, "budget": {"total": "..."}}]}}
+}
+```
+
+Note: Timeline data is an **object** with activity keys (not array). Use `jq '.timeline.data.days[0].timeline | keys'` to access.
+
+Then read the extracted day data:
+```bash
+Read /tmp/day-${current_day_index}-data.json
+```
+
+**Step 2: Validate Extraction Completeness**
+
+**CRITICAL - Validation checkpoint before presentation**:
+
+After extracting Day N data, verify ALL timeline entries for that day are present:
+
+```bash
+timeline_entry_count=$(jq '.timeline.data.days[0].timeline | keys | length' /tmp/day-${current_day_index}-data.json)
+echo "Day ${current_day_index} has ${timeline_entry_count} timeline activities"
+```
+
+**Validation criteria**:
+- Timeline activity count MUST be > 0
+- If timeline_entry_count == 0: Extraction failed, debug and retry
+- Typical day has 8-23 timeline activities (meals + attractions + entertainment + travel segments)
+- Day 1 test case has 22 activities including drone show (20:30-21:00)
+
+**Example validation output**:
+```
+Day 1 has 22 timeline activities  ✓ PASS (drone show present)
+Day 2 has 0 timeline activities   ✗ FAIL - Extraction error, re-extract
+Day 3 has 12 timeline activities  ✓ PASS
+```
+
+**If validation fails**:
+1. Check load.py exit code and error message
+2. Verify day index is valid (1 to total_days)
+3. Verify agent JSON files exist in data/{destination-slug}/
+4. Do NOT proceed to presentation until validation passes
+
+**Error handling**:
+```bash
+if [ $? -ne 0 ]; then
+  echo "Error: load.py failed to extract Day ${current_day_index} data"
+  echo "Check agent JSON files exist and day index is valid"
+  exit 1
+fi
 ```
 
 ---

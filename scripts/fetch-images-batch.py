@@ -124,24 +124,25 @@ class BatchImageFetcher:
                         return (float(c["lng"]), float(c["lat"]))
 
         # 2. Fallback: Gaode geocoding (single API call)
+        # Only attempt if GAODE_API_KEY is available
         import urllib.request
         import urllib.parse
         gaode_key = os.environ.get("GAODE_API_KEY")
-        if not gaode_key:
-            raise ValueError("GAODE_API_KEY environment variable not set")
-        params = urllib.parse.urlencode({"key": gaode_key, "address": city, "output": "json"})
-        try:
-            url = f"https://restapi.amap.com/v3/geocode/geo?{params}"
-            with urllib.request.urlopen(url, timeout=5) as resp:
-                data = json.loads(resp.read())
-            if data.get("geocodes"):
-                loc = data["geocodes"][0].get("location", "")
-                if "," in loc:
-                    lng_s, lat_s = loc.split(",")
-                    return (float(lng_s), float(lat_s))
-        except Exception:
-            pass
+        if gaode_key:
+            params = urllib.parse.urlencode({"key": gaode_key, "address": city, "output": "json"})
+            try:
+                url = f"https://restapi.amap.com/v3/geocode/geo?{params}"
+                with urllib.request.urlopen(url, timeout=5) as resp:
+                    data = json.loads(resp.read())
+                if data.get("geocodes"):
+                    loc = data["geocodes"][0].get("location", "")
+                    if "," in loc:
+                        lng_s, lat_s = loc.split(",")
+                        return (float(lng_s), float(lat_s))
+            except Exception:
+                pass
 
+        # No coordinates found - return (0, 0) which will default to google service
         return (0.0, 0.0)
 
     def _map_service_for(self, city: str) -> str:

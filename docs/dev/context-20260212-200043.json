@@ -1,0 +1,93 @@
+{
+  "request_id": "dev-20260212-loadpy-integration",
+  "timestamp": "2026-02-12T20:00:00Z",
+  "requirement": {
+    "original": "现在我们已经开发了load.py和save.py实现了对以上内容的全面替代。现在将这两个文件的调用方法加入到review和Plan中彻底替代刚刚的开发。但是在开发之前你需要先调查这两个类型的优劣",
+    "clarified": "Replace the non-functional jq-based day data extraction in review.md (commit 481b4c8, lines 368-466) with tested load.py calls, and fill the critical extraction gap in plan.md line 681. Scope: load.py only (extraction focus), save.py deferred.",
+    "what": "Integrate load.py into review.md and plan.md for day data extraction",
+    "why": "jq-based approach in review.md has incorrect JSON paths (.timeline vs .data.days[].timeline) and fails on real data. Testing confirmed 100% failure rate. plan.md has same extraction gap at line 681 with no implementation.",
+    "where": [
+      ".claude/commands/review.md - Lines 368-466 (Step 14 INNER loop)",
+      ".claude/commands/plan.md - Line 681 (Step 14 INNER loop)"
+    ],
+    "scope": {
+      "included": [
+        "Replace jq commands (lines 374-393) with load.py batch call in review.md",
+        "Update validation (lines 436-466) to use load.py output in review.md",
+        "Remove PROHIBITED section (lines 417-434) - jq-specific, no longer relevant",
+        "Fill extraction gap at plan.md line 681 with load.py implementation",
+        "Update root cause references to mention load.py as tested solution"
+      ],
+      "excluded": [
+        "save.py integration (future work)",
+        "Level 2 optimizations for informational queries",
+        "Changes to load.py or save.py scripts themselves"
+      ]
+    },
+    "success_criteria": [
+      "review.md Step 14 uses load.py instead of jq",
+      "plan.md Step 14 line 681 has explicit load.py extraction implementation",
+      "No jq path errors (correct .data.days[] structure)",
+      "Validation checkpoints use load.py output",
+      "Documentation clearly explains load.py usage with examples",
+      "Test with real data confirms drone show present (no truncation)"
+    ],
+    "constraints": [
+      "Maintain same Step 1-2-3 structure in both files (minimal disruption)",
+      "Preserve file-based pipeline architecture (orchestrator reads, subagents write)",
+      "Keep integer-only step numbering",
+      "No changes to subagent behavior or data file formats"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Drone show (20:30-21:00) omitted from Day 1 review, jq commands in review.md lines 374-393 would fail on execution",
+    "root_cause": "Commit 481b4c8 added jq-based extraction to fix Read limit:100 bug, but used incorrect JSON paths. Testing revealed jq path '.timeline[$day - 1]' is wrong (should be '.data.days[$day - 1].timeline'). plan.md line 681 has same extraction gap with no implementation.",
+    "root_cause_commit": "481b4c8 - fix: Add explicit extraction methodology to /review Step 14 (2026-02-12 19:17:55)",
+    "why_introduced": "Quick fix to address data truncation without testing on real data structure. Assumed JSON structure based on documentation, not actual files.",
+    "why_problematic": "Incorrect paths cause jq to fail with 'Expected JSON value' error. Would cause 100% failure rate on review.md execution. plan.md never had implementation, so AI would default to Read limit:100 (same original bug).",
+    "timeline": "481b4c8 introduced broken jq paths on 2026-02-12 19:17:55. Detected via testing on 2026-02-12 19:45:00.",
+    "affected_files": [
+      ".claude/commands/review.md (lines 368-466)",
+      ".claude/commands/plan.md (line 681 missing implementation)"
+    ]
+  },
+  "context": {
+    "codebase_state": "review.md modified in uncommitted changes, plan.md unmodified",
+    "testing_results": {
+      "jq_approach": "FAILED - jq error on line 1475: Expected JSON value",
+      "loadpy_approach": "SUCCESS - Extracted Day 1 with 23 timeline entries, drone show present"
+    },
+    "file_contents": {
+      "load.py_location": "/root/travel-planner/scripts/load.py (293 lines)",
+      "load.py_features": "Progressive disclosure (Level 1/2/3), batch loading, day filtering, error handling, JSON output",
+      "actual_json_structure": ".data.days[].timeline (not .timeline[])",
+      "test_dataset": "china-feb-15-mar-7-2026-20260202-195429"
+    },
+    "dependencies": {
+      "runtime": "Python 3.12",
+      "packages": "jq (for post-processing load.py output)",
+      "scripts": "load.py, plan-validate.py (called by load.py)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "data_dir": "/root/travel-planner/data/{destination-slug}",
+      "scripts_dir": "/root/travel-planner/scripts"
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace broken jq extraction with tested load.py calls. Maintain same workflow structure (Step 1 extract, Step 2 validate, Step 3 present). Fill plan.md gap with same load.py pattern.",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/commands/review.md (lines 368-466)",
+      ".claude/commands/plan.md (insert after line 681)"
+    ],
+    "validation_approach": "QA will test load.py extraction on real data, verify drone show present, confirm validation logic works, check documentation clarity"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
