@@ -17,88 +17,17 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 /plan [destination]
 ```
 
-## Orchestrator Discipline
+## Orchestrator Rules
 
 **NON-NEGOTIABLE RULES — Zero Exceptions:**
 
-1. **You are an orchestrator. You do NOT execute.**
-   - NEVER use WebSearch, WebFetch, gaode-maps, google-maps, rednote, or any research MCP tool directly
-   - NEVER use Edit/Write tools on data files in `data/{destination-slug}/`
-   - NEVER look up restaurants, attractions, shops, hotels, or transport options yourself
+- Rule: Orchestrator does NOT execute tasks directly
+- Rule: Delegate all research to specialized subagents via Task tool
+- Rule: Delegate all data file modifications to owning subagents
+- Rule: Permitted actions: Read files, run validation scripts, dispatch subagents, present to user
+- Rule: Self-check before every tool call: "Research? File mod? WebSearch/WebFetch?" → If yes, delegate
 
-2. **ALL research goes through subagents.**
-   - Need restaurant info? → Dispatch meals-agent via Task tool
-   - Need attraction info? → Dispatch attractions-agent via Task tool
-   - Need shopping/brand info? → Dispatch shopping-agent via Task tool
-   - Need entertainment info? → Dispatch entertainment-agent via Task tool
-   - Need transport info? → Dispatch transportation-agent via Task tool
-   - Need accommodation info? → Dispatch accommodation-agent via Task tool
-   - Need general research? → Dispatch deep-search or Explore agent via Task tool
-
-3. **ALL file modifications go through owning subagents.**
-   - meals.json → meals-agent only
-   - attractions.json → attractions-agent only
-   - entertainment.json → entertainment-agent only
-   - shopping.json → shopping-agent only
-   - accommodation.json → accommodation-agent only
-   - transportation.json → transportation-agent only
-   - timeline.json → timeline-agent only
-   - budget.json → budget-agent only
-
-4. **Your ONLY permitted actions:**
-   - Read files (to coordinate and present to user)
-   - Run validation/generation scripts via Bash
-   - Dispatch subagents via Task tool
-   - Present information to user
-   - Parse user intent and delegate
-
-5. **Self-check before every tool call:**
-   - "Am I about to research something?" → If yes, delegate to subagent
-   - "Am I about to modify a data file?" → If yes, delegate to owning subagent
-   - "Am I using WebSearch/WebFetch/MCP tools?" → If yes, STOP and delegate
-
-## Subagent Communication Protocol
-
-**CRITICAL ARCHITECTURE PRINCIPLE**: This workflow uses a file-based pipeline pattern where orchestrator coordinates and subagents execute. All data passes through working files, NOT agent responses.
-
-### Response Modes
-
-Subagents operate in two response modes:
-
-**Mode 1: Normal Operations** (default)
-- Subagent returns ONLY the string: `"complete"`
-- NO data, NO summaries, NO explanations in response
-- All output written to designated working file
-- Orchestrator verifies file exists with `test -f` before proceeding
-- Orchestrator reads working file for data presentation
-
-**Mode 2: Refine Operations** (optimization loops)
-- Subagent returns JSON with changes diff
-- Used in Day optimization loops (Step 14-15) and refinement iterations (Step 20)
-- Format:
-```json
-{
-  "status": "complete",
-  "modified_data": "Complete data matching working file structure",
-  "changes": [
-    {
-      "location": "JSONPath to changed field (e.g., days[2].entertainment[0].name)",
-      "action": "added|modified|deleted",
-      "before": "Previous value (if modified/deleted)",
-      "after": "New value (if added/modified)",
-      "reason": "Explanation of why this change was made"
-    }
-  ],
-  "summary": {
-    "total_changes": 5,
-    "items_added": 2,
-    "items_modified": 2,
-    "items_deleted": 1
-  }
-}
-```
-
-### File-Based Pipeline Rules
+## File-Based Pipeline Rules
 
 1. **Orchestrator reads, subagents write**: Orchestrator uses Read tool for coordination, NEVER modifies working files directly
 2. **Pass file paths, not content**: Agent prompts specify file paths to read, not data content
@@ -168,65 +97,13 @@ Step 5: Orchestrator reads both files to present results
 
 ## Bilingual Annotation Requirement
 
-**CRITICAL ARCHITECTURE PRINCIPLE**: All location-based subagents (meals, attractions, entertainment, shopping) MUST output proper nouns with bilingual annotations to prevent information loss.
+**RULE**: All proper nouns must have bilingual annotations (format: `"English (原文)"` for Chinese).
 
-### Why This Is Required
+**Examples**: `"Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"`, `"Fushimi Inari Shrine (伏見稲荷大社)"`
 
-**Root Cause**: Chinese restaurant names get corrupted when subagents translate them to romanized English for JSON output. For example, '夜景' (Night View) was incorrectly written as '野青' (Wild Youth) because romanization loses tonal and character information.
+**When**: Restaurant, attraction, entertainment, shopping location names. NOT common nouns or standardized place names.
 
-**Data Flow Path Where Loss Occurs**:
-```
-User requirement (中文)
-  → Orchestrator prompt (English)
-  → Subagent searches Gaode Maps (中文输入/输出)
-  → Subagent outputs JSON with romanized name ONLY
-  → Information loss occurs here (homophones indistinguishable)
-```
-
-**Problem**: Chinese proper nouns lose semantic information when romanized. Homophones (同音字) cannot be distinguished without character annotations:
-- '夜景' (yèjǐng) = "night view"
-- '野青' (yěqīng) = "wild youth"
-Both romanize to similar "Yeqing" but mean completely different things.
-
-**Solution**: Require format: `"Romanized Name (原文字)"` or `"English Translation (Foreign Language)"`
-
-This preserves original information alongside romanization, preventing homophone confusion and character loss during orchestrator-subagent communication.
-
-### Annotation Format Specification
-
-**Format**: `"Romanized/Translated Name (Original Script)"`
-
-**Examples by Language**:
-- Chinese: `"Qu Nanshan Yeqing Huoguo Gongyuan (去南山夜景火锅公园)"`
-- Japanese: `"Fushimi Inari Shrine (伏見稲荷大社)"`
-- Korean: `"Gyeongbokgung Palace (경복궁)"`
-- Arabic: `"Khan el-Khalili (خان الخليلي)"`
-- Thai: `"Som Tam Nua (ส้มตำนัว)"`
-- Russian: `"Red Square (Красная площадь)"`
-
-**When to Apply**:
-- Restaurant names
-- Attraction names
-- Entertainment venue names
-- Shopping location names
-- Street/area names (if not standard romanization)
-
-**What NOT to annotate**:
-- Common nouns (e.g., "hotpot", "museum", "market")
-- Already-standardized place names (e.g., "Beijing", "Tokyo")
-- English brand names (e.g., "Starbucks", "McDonald's")
-
-### Enforcement in Orchestrator Prompts
-
-All subagent invocation prompts in this file explicitly require bilingual annotation format. If a subagent returns JSON without proper annotations, the orchestrator MUST flag this as a validation error and re-invoke the agent with specific feedback.
-
-### Orchestrator Prompt Enforcement
-
-**RULE**: ALL location-based subagent prompts MUST include bilingual annotation template from lines 156-177. Copy exactly, no abbreviations.
-
-**VALIDATION**: After subagent completion, verify all proper nouns have bilingual annotations (format: "Name (原文)"). Missing annotations → re-invoke agent with validation error.
-
-**REFERENCE**: See lines 159-165 for format examples.
+**Enforcement**: ALL location-based subagent prompts must require annotations. Verify after completion; re-invoke if missing.
 
 ---
 

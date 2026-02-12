@@ -273,127 +273,44 @@ Use output to create TodoWrite with all workflow steps.
 
 ---
 
-### Step 1: Parse Starting Day### Step 0: Initialize Workflow
+### Step 1: Parse Starting Day
 
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
-
-
-
-**Extract from `\$ARGUMENTS`\*\*:
+**Extract from `$ARGUMENTS`**:
    - If `--day N` provided: start from day N
-   - If no `--day`: start from day 1### Step 0: Initialize Workflow
+   - If no `--day`: start from day 1
 
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
+**Example**:
 ```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
-
-
-
-\*\*Example\*\*:
-\`\`\`
 # User: "/review china-trip --day 5"
 # → Start reviewing from Day 5
 # User: "/review china-trip"
 # → Start reviewing from Day 1
-\`\`\`
-`### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
 ```
 
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
 ---
 
-
-
----
-
-### Step 2: Load Plan Data### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
-
-
+### Step 2: Load Plan Data
 
 Read existing plan:
-\`\`\`bash
+```bash
 # Read plan skeleton
-test -f data/\{destination-slug\}/plan-skeleton\.json && echo "verified" \|\| echo "missing"
+test -f data/{destination-slug}/plan-skeleton.json && echo "verified" || echo "missing"
 
 # Read all agent outputs
-test -f data/\{destination-slug\}/meals\.json && echo "meals\.json verified" \|\| echo "meals\.json missing"
-test -f data/\{destination-slug\}/attractions\.json && echo "attractions\.json verified" \|\| echo "attractions\.json missing"
-test -f data/\{destination-slug\}/entertainment\.json && echo "entertainment\.json verified" \|\| echo "entertainment\.json missing"
-test -f data/\{destination-slug\}/shopping\.json && echo "shopping\.json verified" \|\| echo "shopping\.json missing"
-test -f data/\{destination-slug\}/accommodation\.json && echo "accommodation\.json verified" \|\| echo "accommodation\.json missing"
-\`\`\`
+test -f data/{destination-slug}/meals.json && echo "meals.json verified" || echo "meals.json missing"
+test -f data/{destination-slug}/attractions.json && echo "attractions.json verified" || echo "attractions.json missing"
+test -f data/{destination-slug}/entertainment.json && echo "entertainment.json verified" || echo "entertainment.json missing"
+test -f data/{destination-slug}/shopping.json && echo "shopping.json verified" || echo "shopping.json missing"
+test -f data/{destination-slug}/accommodation.json && echo "accommodation.json verified" || echo "accommodation.json missing"
+```
 
-\*\*Verification\*\*:
+**Verification**:
    - All required files must exist before proceeding
-   - If any file missing: Error and exit### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
+   - If any file missing: Error and exit
 
 ---
 
-
-
----
-
-### Phase 4: Validation and Conflict Review### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
+### Phase 4: Validation and Conflict Review
 
 
 
