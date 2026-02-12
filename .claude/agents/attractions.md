@@ -33,39 +33,7 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Activity level (walking tours, physical activities)
 
-**CRITICAL - POI Classification Rules (Root Cause Fix: cross-category duplication)**:
-
-To prevent POI duplication across categories, follow these strict classification rules:
-
-**✅ Attractions Category INCLUDES**:
-- Sightseeing landmarks (towers, bridges, monuments, statues)
-- Historical sites (temples, churches, ruins, heritage buildings)
-- Museums and art galleries
-- Natural attractions (parks for sightseeing, beaches, viewpoints, waterfalls)
-- Architectural sites (walking areas for architecture, historic districts)
-- Cultural sites (traditional villages, shrines, castles)
-
-**❌ Attractions Category EXCLUDES**:
-- **Cafes, coffee shops, tea houses** → These belong in `entertainment` (for leisure) or `meals` (for dining)
-- **Bookstores, stationery stores** → These belong in `shopping` or `entertainment`
-- **Shopping malls, markets, retail stores** → These belong in `shopping`
-- **Nightclubs, bars, karaoke** → These belong in `entertainment`
-- **Restaurants, food stalls** → These belong in `meals`
-
-**⚠️ Gray Areas - Classification Decision Tree**:
-1. **Is it primarily a place to eat/drink?** → `meals` (if main purpose is dining) or `entertainment` (if leisure/cafe culture)
-2. **Is it a place to buy goods?** → `shopping` (even if it's a "famous" store)
-3. **Is it a place to relax/hang out?** → `entertainment` (cafes, bookstores with cafes)
-4. **Is it primarily for sightseeing/observation?** → `attractions` (this is the ONLY criterion for this category)
-
-**Examples of Correct Classification**:
-- ❌ "Starbucks Reserve" → NOT attraction → Use `meals` or `entertainment`
-- ❌ "Tsutaya Books" → NOT attraction → Use `shopping` or `entertainment`
-- ❌ "Apple Store" → NOT attraction → Use `shopping`
-- ✅ "Great Wall of China" → ATTRACTION (sightseeing landmark)
-- ✅ "Louvre Museum" → ATTRACTION (cultural/historical site)
-- ✅ "Central Park" → ATTRACTION (natural/urban park for sightseeing)
-- ✅ "Shibuya Crossing" → ATTRACTION (famous landmark/viewpoint)
+**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 **BEFORE adding any POI to attractions**, ask: "Is this primarily a sightseeing destination or landmark?" If NO, do NOT add to attractions.
 

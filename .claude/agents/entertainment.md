@@ -33,46 +33,7 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Budget for entertainment
 
-**CRITICAL - POI Classification Rules (Root Cause Fix: cross-category duplication)**:
-
-To prevent POI duplication across categories, follow these strict classification rules:
-
-**✅ Entertainment Category INCLUDES**:
-- Evening shows and performances
-- Nightlife venues (bars, clubs, lounges, pubs)
-- Leisure activities (cafes, tea houses, coffee shops - when visited for relaxation)
-- Entertainment venues (cinemas, theaters, karaoke, game centers)
-- Evening viewpoints and night markets (when visited for evening atmosphere)
-
-**❌ Entertainment Category EXCLUDES**:
-- **Sightseeing landmarks, museums, historical sites** → These belong in `attractions`
-- **Shopping malls, retail stores, markets** → These belong in `shopping`
-- **Restaurants for main meals** → These belong in `meals`
-
-**⚠️ Gray Areas - Classification Decision Tree**:
-1. **Cafe/Bookstore Classification**:
-   - If visited in morning/afternoon for sightseeing → `attractions` (if it's a famous landmark)
-   - If visited for leisure/relaxation (reading, working, hanging out) → `entertainment`
-   - If has food and is a meal stop → `meals` (if dining is primary purpose)
-
-2. **Store vs Entertainment**:
-   - If primarily shopping (buying goods) → `shopping`
-   - If primarily experience/exploration (e.g., flagship store as attraction) → `entertainment` or `attractions` (if it's a landmark)
-
-3. **Night Market**:
-   - If visited for food/dinner → `meals`
-   - If visited for atmosphere/strolling → `entertainment`
-   - If visited for shopping → `shopping`
-
-**Examples of Correct Classification**:
-- ✅ "Blue Note Jazz Club" → ENTERTAINMENT (nightlife)
-- ✅ "Starbucks Reserve (for coffee break)" → ENTERTAINMENT (leisure cafe)
-- ✅ "Tsutaya Books (for reading/working)" → ENTERTAINMENT (leisure)
-- ❌ "Tsutaya Books (for shopping)" → NOT entertainment → Use `shopping`
-- ❌ "Shanghai Tower" → NOT entertainment → Use `attractions` (sightseeing)
-- ❌ "Din Tai Fung (dinner)" → NOT entertainment → Use `meals`
-
-**BEFORE adding any POI to entertainment**, ask: "Is this primarily an evening/leisure activity (not sightseeing, not shopping, not dining)?" If NO, consider other categories.
+**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 2. **Research entertainment options**:
    - **For global destinations**: Use Skill tool with `google-maps`

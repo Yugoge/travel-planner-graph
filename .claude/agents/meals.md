@@ -30,42 +30,7 @@ For each day in the trip:
    - Budget constraints for meals
    - Special occasions (celebration dinner, romantic meal)
 
-**CRITICAL - POI Classification Rules (Root Cause Fix: cross-category duplication)**:
-
-To prevent POI duplication across categories, follow these strict classification rules:
-
-**✅ Meals Category INCLUDES**:
-- Breakfast, lunch, and dinner restaurants
-- Cafes when visited for a meal (brunch, lunch, light dinner)
-- Food stalls and street food (when it's a meal)
-- Tea houses when visited for dining/refreshments
-- Night markets when visited for dinner/food
-
-**❌ Meals Category EXCLUDES**:
-- **Sightseeing landmarks, museums, historical sites** → These belong in `attractions`
-- **Shopping malls, stores** → These belong in `shopping`
-- **Theaters, shows, nightlife venues** → These belong in `entertainment`
-
-**⚠️ Gray Areas - Classification Decision Tree**:
-1. **Cafe/Tea House Classification**:
-   - If visited for a meal (breakfast, lunch, brunch, dinner) → `meals`
-   - If visited for leisure/relaxation (not a mealtime) → `entertainment`
-   - When in doubt, check if it's replacing a traditional meal → If yes, use `meals`
-
-2. **Night Market**:
-   - If visited for dinner/food as main meal → `meals`
-   - If visited for snacking/strolling → `entertainment`
-   - If visited for shopping → `shopping`
-
-**Examples of Correct Classification**:
-- ✅ "Din Tai Fung (dinner)" → MEALS (main meal)
-- ✅ "Starbucks (breakfast)" → MEALS (breakfast meal)
-- ✅ "Night market (dinner)" → MEALS (main dining)
-- ❌ "Starbucks (afternoon coffee break)" → NOT meals → Use `entertainment` (leisure)
-- ❌ "H&M Flagship" → NOT meals → Use `shopping`
-- ❌ "Forbidden City" → NOT meals → Use `attractions`
-
-**BEFORE adding any POI to meals**, ask: "Is this a main meal (breakfast/lunch/dinner) replacement?" If NO, consider other categories.
+**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 2. **Research local restaurants** using available skills:
    - **For global destinations**: Use Skill tool with `google-maps`

@@ -33,44 +33,7 @@ For each day in the trip:
    - Mall shopping vs boutique stores
    - Budget allocation for shopping
 
-**CRITICAL - POI Classification Rules (Root Cause Fix: cross-category duplication)**:
-
-To prevent POI duplication across categories, follow these strict classification rules:
-
-**✅ Shopping Category INCLUDES**:
-- Shopping malls and department stores
-- Markets (night markets, flea markets, craft markets) - when visited for shopping
-- Flagship stores and brand boutiques
-- Souvenir shops and specialty stores
-- Bookstores and stationery stores (when shopping is primary purpose)
-- Duty-free shops and airport shopping
-
-**❌ Shopping Category EXCLUDES**:
-- **Sightseeing landmarks, museums, historical sites** → These belong in `attractions`
-- **Nightlife venues, shows, performances** → These belong in `entertainment`
-- **Restaurants for main meals** → These belong in `meals`
-
-**⚠️ Gray Areas - Classification Decision Tree**:
-1. **Flagship Store / Famous Store**:
-   - If visiting to buy goods → `shopping`
-   - If visiting for experience/exploration (like a museum) → `entertainment` or `attractions` (if it's a landmark)
-
-2. **Night Market**:
-   - If visited for shopping (souvenirs, crafts, clothes) → `shopping`
-   - If visited for dinner/food → `meals`
-   - If visited for atmosphere/strolling → `entertainment`
-
-3. **Bookstore**:
-   - If visiting to buy books/stationery → `shopping`
-   - If visiting for reading/working/cafe atmosphere → `entertainment`
-
-**Examples of Correct Classification**:
-- ✅ "Apple Store (buying products)" → SHOPPING (shopping purpose)
-- ✅ "Tsutaya Books (buying books)" → SHOPPING (shopping purpose)
-- ✅ "Night market (souvenir shopping)" → SHOPPING (shopping purpose)
-- ❌ "Apple Store (browsing landmark store)" → NOT shopping → Use `entertainment` or `attractions` (if it's a famous landmark)
-- ❌ "Forbidden City" → NOT shopping → Use `attractions` (sightseeing)
-- ❌ "Din Tai Fung (dinner)" → NOT shopping → Use `meals` (dining)
+**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 **BEFORE adding any POI to shopping**, ask: "Is the primary purpose to buy goods?" If NO, consider other categories.
 
