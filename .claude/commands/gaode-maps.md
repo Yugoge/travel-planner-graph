@@ -104,7 +104,7 @@ Scripts implement automatic retry logic with exponential backoff.
 
 Scripts use environment variable `AMAP_MAPS_API_KEY` (defaults to project key if not set).
 
-**Current project key**: `99e97af6fd426ce3cfc45d22d26e78e3`
+**Current project key**: `your_api_key_here` (set via `AMAP_MAPS_API_KEY` environment variable)
 
 **To use your own key**:
 ```bash
