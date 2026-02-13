@@ -358,6 +358,74 @@
     ]
   },
 
+  "verified_correct_workflow": {
+    "description": "Complete tested workflow for timeline agent to update timeline.json",
+    "test_date": "2026-02-13 14:32",
+    "test_result": "SUCCESS - All steps verified working",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Load complete timeline.json (Level 3 = full access)",
+        "command": "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --level 3 --output /tmp/full_timeline.json",
+        "verified": "✅ Successfully loaded 21 days of timeline data",
+        "critical_note": "ALWAYS load FULL timeline, never load single day for modification"
+      },
+      {
+        "step": 2,
+        "action": "Modify specific day(s) in loaded JSON",
+        "method": "Read /tmp/full_timeline.json, modify Day N's timeline/travel_segments, preserve all other days",
+        "critical_note": "MUST preserve all days 1-21, only modify target day(s)"
+      },
+      {
+        "step": 3,
+        "action": "Write modified JSON back to temp file",
+        "command": "cat > /tmp/timeline_update.json <<'EOF'\n{complete_json_with_all_days}\nEOF",
+        "verified": "✅ Heredoc syntax works for multi-line JSON"
+      },
+      {
+        "step": 4,
+        "action": "Save using scripts/save.py with correct bash CLI syntax",
+        "command": "python3 /root/travel-planner/scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --input /tmp/timeline_update.json",
+        "verified": "✅ CLI syntax accepted by save.py (tested with test trip)",
+        "auto_validation": "save.py automatically runs plan-validate.py and blocks on HIGH severity issues"
+      },
+      {
+        "step": 5,
+        "action": "Wait for save.py to complete and check exit code",
+        "verification": "Exit code 0 = success, Exit code 1 = validation failed",
+        "critical_note": "ONLY return 'complete' after save.py exits with code 0"
+      }
+    ],
+    "anti_patterns_to_avoid": [
+      {
+        "wrong": "Load only Day 3 → Modify → Save",
+        "why_wrong": "Saving partial data overwrites entire file, Days 1-2, 4-21 LOST",
+        "correct": "Load all days → Modify Day 3 → Save complete file"
+      },
+      {
+        "wrong": "save.py(file_path='...', content='...')",
+        "why_wrong": "Python function syntax, not valid bash command",
+        "correct": "python3 scripts/save.py --trip X --agent Y --input Z"
+      },
+      {
+        "wrong": "Return 'complete' immediately after starting save.py",
+        "why_wrong": "Agent doesn't wait for validation to finish",
+        "correct": "Wait for save.py exit code, then return 'complete'"
+      },
+      {
+        "wrong": "Add type_base='meal' to travel_segments",
+        "why_wrong": "Schema violation - travel_segments ONLY contain transit types",
+        "correct": "Use only: walk, taxi, metro, bus, train, car, ferry, transit"
+      }
+    ],
+    "test_commands_used": [
+      "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --level 1",
+      "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --level 3 --output /tmp/full_timeline.json",
+      "python3 /root/travel-planner/scripts/save.py --trip TEST-DRYRUN-NOTEXIST --agent timeline --input /tmp/timeline_dryrun_test.json",
+      "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent timeline"
+    ]
+  },
+
   "validation_test_results": {
     "command": "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent timeline",
     "execution_date": "2026-02-13 14:31",

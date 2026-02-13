@@ -2815,7 +2815,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       whiteSpace: 'nowrap',
                       pointerEvents: 'none'  // Don't intercept click events
                     }}>
-                      {entry.icon || '📍'} {getDisplayName(entry, lang)}
+                      {entry.icon || '📍'} {entry._type === 'transportation' || entry._type === 'travel' ? entry._label : getDisplayName(entry, lang)}
                     </div>
                   )}
                 <div style={{

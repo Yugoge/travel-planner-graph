@@ -248,33 +248,25 @@ echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
 
 ### JSON I/O Best Practices (REQUIRED)
 
-**CRITICAL: Use centralized JSON I/O library for all JSON writes**
+**CRITICAL: Use centralized JSON I/O via scripts/save.py**
 
 **Root Cause Context**: This requirement addresses commit 74e660d0 where manual JSON edits introduced schema violations (meal added to travel_segments array). Centralized validation prevents future ad-hoc modifications.
 
-See complete usage example and template: `scripts/save-agent-data-template.py`
-
-The template script demonstrates correct usage of `save_agent_json()` with validation, error handling, and backup management. All implementation details are shown in the working script.
-
-**To view usage instructions**, run:
-```bash
-python3 scripts/save-agent-data-template.py --help
-```
-
-**Example execution:**
-```bash
-python3 scripts/save-agent-data-template.py \
-    --agent-name timeline \
-    --data-file data/chongqing-4day/timeline.json \
-    --trip-dir data/chongqing-4day
-```
-
-**Benefits:**
+**All data saves MUST use `scripts/save.py`** which provides:
 - ✅ Automatic schema validation prevents bugs (like meals in travel_segments)
 - ✅ Atomic writes prevent data corruption
 - ✅ Automatic backups enable recovery
 - ✅ Consistent formatting across all files
 - ✅ Clear error messages when validation fails
+
+**Usage**:
+```bash
+# Save from file
+python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input data.json
+
+# Save from stdin
+cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent timeline
+```
 
 **Example Validation Error:**
 ```

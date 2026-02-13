@@ -49,6 +49,9 @@ For each location change day:
    **For China Domestic Routes** (road/transit alternatives):
    - Use Gaode Maps routing for driving and transit routes
    - Parse JSON output: distance, duration, cost, schedules
+   - ⚠️ **CRITICAL**: Gaode Maps returns durations in SECONDS (not minutes)
+   - ⚠️ **YOU MUST divide by 60** to convert to minutes for timeline
+   - ⚠️ Failure to convert causes 60x errors in timeline planning
    - Supports both English and Chinese location names
    - See `.claude/skills/gaode-maps/SKILL.md` for usage
 
