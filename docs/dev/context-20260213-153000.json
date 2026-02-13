@@ -1,0 +1,43 @@
+{
+  "request_id": "dev-20260213-153000",
+  "timestamp": "2026-02-13T15:30:00Z",
+  "requirement": {
+    "original": "1. 你刚刚restore的data是什么？你为什么restore了全部的json？？？你是否确认了哪些json是没有被破坏的？是不是最新的有21天的timeline？请你将最新的day 2加到最新的timeline\n\n2. 为什么每一次每一次每一次每一次timeline agent都会write掉整个timeline.json？为什么！我已经修复了无数次了！这里有明显的证据，第一个agent说：I see - the template script doesn't exist. Based on the instructions, I should use scripts/lib/json_io.py directly. However, given that the current transportation.json already has the family pickup marked as selected, and the user is asking to confirm this arrangement, let me verify what exactly needs to be changed.\n请你深度调查到底是怎么回事\n\n3. 你刚刚执行完day 2之后为什么没有按照review的要求重新提取图片fetch-image？？？什么系统性原因导致了这个问题",
+    "clarified": "Three distinct technical issues requiring investigation and fixes",
+    "issues": [
+      {
+        "id": "issue-1-data-restore",
+        "what": "Data restore process lost Day 2 review session changes",
+        "why": "Timeline agent failed to save Day 2 updates, orchestrator restored from old git commit, losing work",
+        "where": ["data/china-feb-15-mar-7-2026-20260202-195429/timeline.json", "data/china-feb-15-mar-7-2026-20260202-195429/meals.json", "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json"],
+        "success_criteria": [
+          "Day 2 review changes are restored (Train Breakfast, Family pickup, Binhe Road)",
+          "Merge mechanism prevents data loss during partial updates"
+        ]
+      },
+      {
+        "id": "issue-2-timeline-agent-overwrites",
+        "what": "Timeline agent repeatedly overwrites entire timeline.json instead of merging day-specific updates",
+        "why": "Agent documentation has incorrect save.py syntax (function call instead of bash CLI)",
+        "where": [".claude/agents/timeline.md", ".claude/agents/meals.md", ".claude/agents/attractions.md", ".claude/agents/entertainment.md", ".claude/agents/shopping.md", ".claude/agents/accommodation.md", ".claude/agents/transportation.md", ".claude/agents/budget.md"],
+        "root_cause_commit": "b057f26 - checkpoint: Auto-save at 2026-02-12 18:58:20",
+        "root_cause": "Changed from Write() to save.py() but kept function call syntax instead of bash CLI: 'save.py(file_path=..., content=...)' instead of 'python3 scripts/save.py --trip TRIP --agent AGENT --input FILE'",
+        "success_criteria": [
+          "All agent .md files use correct bash CLI syntax for save.py",
+          "Timeline agent successfully merges day-specific updates without overwriting other days",
+          "Documentation explicitly shows the correct command with parameters"
+        ]
+      },
+      {
+        "id": "issue-3-missing-image-fetch",
+        "what": "Image fetch step (Step 3a in review.md) was skipped after Day 2 confirmation",
+        "why": "Workflow interruption due to timeline data loss - orchestrator detected empty timeline and attempted restore, breaking normal flow",
+        "where": [".claude/commands/review.md"],
+        "success_criteria": [
+          "Identify why Step 3a was not executed",
+          "Ensure review workflow enforces image fetch gate after day confirmation"
+        ]
+      }
+    ]
+  }
+}

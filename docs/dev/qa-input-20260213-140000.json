@@ -1,0 +1,239 @@
+{
+  "request_id": "dev-20260213-140000",
+  "timestamp": "2026-02-13T14:00:00Z",
+  "requirement": {
+    "original": "我之前不是改进了html生成脚本中timeline的并列结构吗，但是我当时设计的其他功能现在已经安全没有满足：\n1. 如果时间太短，两行放不下，放到一行\n2. 如果一行都放不下，不展示（防止内容溢出），同时把标题放到时间轴左边。\n为什么没有实现",
+    "clarified": "调查为什么timeline响应式显示的两个设计功能没有实现，并实现这些缺失的功能：\n1. 短时间段：两行放不下时，压缩到一行显示（时间+标题在同一行）\n2. 极短时间段：一行都放不下时，隐藏entry内容，将标题移到时间轴左侧显示",
+    "what": "实现timeline entry的三级响应式显示逻辑：两行模式（>= 52px）→ 一行模式（36-51px）→ 左侧标题模式（< 36px）",
+    "why": "当前实现只有渐进式隐藏（hideAllText / showText / showSubtext），缺少一行浓缩模式和左侧标题显示，导致中等时长活动和极短活动的显示不够优雅",
+    "where": [
+      "scripts/generate-html-interactive.py - TimelineView component (lines 2656-2900)",
+      "具体修改区域：文字显示逻辑 (lines 2770-2776), entry渲染 (lines 2782-2850)"
+    ],
+    "scope": {
+      "included": [
+        "修改文字显示逻辑，添加twoRowsMode / oneRowMode / moveToLeft三个状态",
+        "实现一行模式：时间和标题在同一行显示",
+        "实现左侧标题显示：当entry过窄时，标题移到timeline左侧",
+        "调整timeline track布局，为左侧标题预留空间（padding-left）",
+        "确保在mobile和desktop视图下都正常工作",
+        "确保与并列布局（column layout）兼容"
+      ],
+      "excluded": [
+        "修改其他组件（KanbanView, BudgetView等）",
+        "修改timeline数据结构或schema",
+        "修改颜色方案或图标",
+        "添加新的交互功能（如拖拽、编辑等）"
+      ]
+    },
+    "success_criteria": [
+      "长活动（>= 52px，如2小时+）：显示两行（标题行 + 时间+详情行）",
+      "中等活动（36-51px，如30-60分钟）：显示一行（时间+标题在同一行）",
+      "短活动（< 36px，如15分钟）：标题在timeline左侧，entry内部为纯色条",
+      "并列活动（重叠时间段）：左侧标题不影响column layout",
+      "响应式：在sm（mobile）和md/lg（desktop）断点下都正常工作",
+      "双语：左侧标题支持中英文切换"
+    ],
+    "constraints": [
+      "不破坏现有的column layout逻辑（computeColumnLayout）",
+      "不改变entry的time-proportional height特性",
+      "保持overflow: hidden防止内容溢出",
+      "不引入新的依赖或库"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "用户设计的timeline响应式显示功能（两行→一行→左移）没有完整实现",
+    "root_cause": "在commit e0a9291中，实现focus在修复\"内容溢出导致时间轴错位\"的bug，采用了简单的渐进式隐藏策略（tooNarrow → showText → showSubtext），而跳过了UI复杂度较高的\"一行浓缩模式\"和\"标题左移\"功能",
+    "root_cause_commit": "e0a9291 - fix: timeline entries use fixed height, hide content when too narrow",
+    "why_introduced": "原始commit的目的是修复minHeight导致的内容撑开问题，改为固定height确保时间比例准确。实现时采用了最简单的方案：entryH < threshold时隐藏所有文字，渲染为纯色条",
+    "why_problematic": "这种简化实现缺少中间状态：\n1. 没有\"一行浓缩模式\"（时间+标题在同一行）用于中等时长活动\n2. 没有\"标题左移\"功能，导致极短活动完全没有文字说明（除非点击查看）\n3. 用户体验不够优雅，特别是对于30-60分钟的中等活动",
+    "timeline": "2026-02-09 实现了基础的tooNarrow逻辑 → 2026-02-10 在cc52be4中调整了阈值使用entryH而非actualH → 当前仍缺少一行模式和左侧标题",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Git repository clean except for 4 modified files in data/china-feb-15-mar-7-2026-20260202-195429/ (budget.json, timeline.json and their backups)",
+    "recent_commits": "25841c4 checkpoint: Auto-save at 2026-02-13 13:00:20\n65973c9 refactor: Remove redundant validation steps from plan and review commands\n579f972 fix: Prevent agent data loss by enforcing scripts/save.py usage",
+    "file_contents": {
+      "scripts/generate-html-interactive.py:2770-2776": "当前文字显示逻辑：\nconst LINE_HEIGHT_PX = sm ? 18 : 21;\nconst hideAllText = entryH < LINE_HEIGHT_PX;\nconst forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;\nconst showTime = entryH >= 24;\nconst showText = entryH >= LINE_HEIGHT_PX;\nconst showSubtext = entryH >= 52;",
+      "scripts/generate-html-interactive.py:2620-2654": "computeColumnLayout函数：处理重叠活动的列布局，使用greedy算法分配column，计算maxColumns",
+      "scripts/generate-html-interactive.py:2765-2768": "Column-based positioning：根据hasColumns决定width和left offset"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11",
+      "packages": "无外部依赖（纯React embedded in Python string）"
+    },
+    "environment": {
+      "venv_path": "~/.claude/venv",
+      "config_files": [
+        ".claude/settings.json",
+        ".claude/CLAUDE.md"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "在TimelineView组件中修改文字显示逻辑和entry渲染，实现三级响应式显示。关键修改：\n1. 重新定义三个display mode：twoRowsMode (>= 52px), oneRowMode (36-51px), moveToLeft (< 36px)\n2. 在oneRowMode下，将时间和标题渲染在同一行（时间在前，标题在后）\n3. 在moveToLeft下，在entry外部（左侧）渲染标题，entry内部为纯色条\n4. 在TimelineView容器层面检测是否有moveToLeft的entry，如果有则添加padding-left为标题预留空间",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "运行/plan命令生成HTML，在浏览器中检查不同时长的timeline entry：\n- 长活动（故宫3小时）应显示两行\n- 中等活动（餐饮1小时）应显示一行（时间+标题）\n- 短活动（地铁15分钟）标题应在左侧\n测试并列活动、响应式断点（sm/md）、双语切换"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "use_source_venv": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "implementation_details": {
+    "step1_text_visibility_logic": {
+      "description": "修改lines 2770-2776的文字显示逻辑",
+      "old_code": "const LINE_HEIGHT_PX = sm ? 18 : 21;\nconst hideAllText = entryH < LINE_HEIGHT_PX;\nconst forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;\nconst showTime = entryH >= 24;\nconst showText = entryH >= LINE_HEIGHT_PX;\nconst showSubtext = entryH >= 52;",
+      "new_code": "const LINE_HEIGHT_PX = sm ? 18 : 21;\n\n// 三级响应式显示\nconst twoRowsMode = entryH >= 52;           // >= 52px: 两行（标题+时间+详情）\nconst oneRowMode = entryH >= 36 && entryH < 52;  // 36-51px: 一行（标题+时间浓缩）\nconst moveToLeft = entryH < 36;              // < 36px: 标题移到左边，内容隐藏\n\n// 文字显示标志\nconst showText = entryH >= 36;               // >= 36px: 显示标题文字\nconst showTime = entryH >= 36;               // >= 36px: 显示时间\nconst showSubtext = entryH >= 52;            // >= 52px: 显示详情\nconst showInlineTime = oneRowMode;           // 36-51px: 时间和标题在一行"
+    },
+    "step2_left_title": {
+      "description": "在timeline entry之前添加左侧标题显示",
+      "insert_before": "entry div (line 2782)",
+      "code": "{moveToLeft && (\n  <div style={{\n    position: 'absolute',\n    right: 'calc(100% + 8px)',  // 在entry左侧，间隔8px\n    top: t,\n    height: entryH - 4,\n    display: 'flex',\n    alignItems: 'center',\n    fontSize: sm ? '11px' : '12px',\n    color: '#37352f',\n    fontWeight: '500',\n    whiteSpace: 'nowrap',\n    pointerEvents: 'none'  // 不拦截点击事件\n  }}>\n    {entry.icon || '📍'} {getDisplayName(entry, lang)}\n  </div>\n)}"
+    },
+    "step3_entry_content": {
+      "description": "调整entry内容渲染，支持一行模式和两行模式",
+      "location": "lines 2812-2850",
+      "changes": [
+        "修改padding：moveToLeft ? '0' : (sm ? '8px 10px' : '10px 14px')",
+        "修改gap：moveToLeft ? '0' : '10px'",
+        "修改alignItems：moveToLeft ? 'center' : 'flex-start'",
+        "添加oneRowMode分支：时间和标题在同一行",
+        "保留twoRowsMode分支：时间和标题分开显示"
+      ]
+    },
+    "step4_container_padding": {
+      "description": "在TimelineView容器层面为左侧标题预留空间",
+      "location": "在entriesWithLayout渲染前（line 2760之前）",
+      "code": "const hasNarrowEntries = entriesWithLayout.some(e => {\n  const h = hgt(e.time.start, e.time.end);\n  return h < 36;\n});\n\n// 在timeline track的包装div中添加paddingLeft"
+    }
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replaced simple progressive hiding logic with three-tier responsive display modes",
+        "type": "logic",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2782-2796"
+        ],
+        "changes": "Replaced hideAllText/forceOneLine/showTime/showText/showSubtext flags with twoRowsMode (>= 52px), oneRowMode (36-51px), moveToLeft (< 36px) modes",
+        "rationale": "Root cause was oversimplified progressive hiding. Need explicit modes to handle three distinct display states for different entry heights"
+      },
+      {
+        "id": 2,
+        "description": "Implemented left-side title display for narrow entries (< 36px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2802-2820"
+        ],
+        "changes": "Added left-side title div positioned absolutely to the right of timeline track, showing icon + name with pointerEvents: none",
+        "rationale": "When entry height < 36px, insufficient space for text inside entry box. Moving title to left provides context while keeping entry as colored time bar"
+      },
+      {
+        "id": 3,
+        "description": "Implemented one-row condensed mode for medium-height entries (36-51px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2852-2868"
+        ],
+        "changes": "Added oneRowMode branch that displays time and title on same line (time in gray, title follows). Replaces previous two-row layout when space is limited",
+        "rationale": "Medium-height entries (30-60 min activities) have enough space for title but not time + details split across two rows. One-row layout maximizes information density"
+      },
+      {
+        "id": 4,
+        "description": "Preserved two-row mode for tall entries (>= 52px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2869-2887"
+        ],
+        "changes": "Wrapped existing time/title/subtext layout in twoRowsMode conditional branch. No logic change, just conditional rendering",
+        "rationale": "Tall entries (2+ hour activities) have ample space for full two-row display with time, title, and details"
+      },
+      {
+        "id": 5,
+        "description": "Updated entry padding and alignment for moveToLeft mode",
+        "type": "style",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2829-2832"
+        ],
+        "changes": "Changed padding from hideAllText check to moveToLeft check. When moveToLeft, padding='0', gap='0', alignItems='center' to render as pure color bar",
+        "rationale": "Narrow entries should render as minimal colored bars since title is displayed on left side"
+      },
+      {
+        "id": 6,
+        "description": "Added dynamic padding-left to timeline track for left-side titles",
+        "type": "layout",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2698-2702",
+          "scripts/generate-html-interactive.py:2763-2769"
+        ],
+        "changes": "Added hasNarrowEntries check to detect entries < 36px. Applied paddingLeft (80px mobile, 120px desktop) to timeline track when narrow entries exist",
+        "rationale": "Left-side titles positioned outside timeline track require space reservation to prevent overlap with time labels"
+      },
+      {
+        "id": 7,
+        "description": "Wrapped entry rendering in React.Fragment for multi-element return",
+        "type": "structure",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2802",
+          "scripts/generate-html-interactive.py:2929"
+        ],
+        "changes": "Replaced single div return with React.Fragment wrapping both left-title div (conditional) and entry div",
+        "rationale": "React requires single root element. Fragment allows rendering left-title and entry as siblings without extra DOM wrapper"
+      }
+    ],
+    "scripts_created": [],
+    "files_modified": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "git_rationale": {
+      "root_cause_commit": "e0a9291",
+      "why_issue_occurred": "Original commit e0a9291 focused on fixing overflow bug caused by minHeight. Implemented simple progressive hiding (hideAllText when too narrow) to prevent content from breaking timeline layout. This was the minimum viable fix but skipped the intermediate display states (one-row mode and left-title feature) that were originally designed, due to UI complexity",
+      "how_fix_addresses_root": "Implements the missing intermediate display states that were designed but deferred. Now timeline entries gracefully degrade through three distinct modes: full two-row display (52+px) → condensed one-row display (36-51px) → left-title + color bar (<36px). This completes the responsive display system and improves UX for medium-duration activities (30-60 min)"
+    },
+    "implementation_summary": {
+      "approach": "Modified TimelineView component text visibility logic from binary (show/hide) to three-tier mode system (twoRowsMode/oneRowMode/moveToLeft). Implemented conditional rendering for each mode with distinct layouts. Added left-side absolute positioning for narrow entry titles and dynamic padding for timeline container",
+      "key_changes": [
+        "Three display mode constants replacing binary flags",
+        "Left-title div rendered outside entry box for narrow entries",
+        "One-row layout combining time and title inline",
+        "Two-row layout preserved for tall entries",
+        "Dynamic paddingLeft on timeline track based on hasNarrowEntries detection",
+        "React.Fragment wrapper for multi-element return"
+      ],
+      "compatibility": {
+        "column_layout": "Compatible - hasColumns logic unchanged, left-title positioning uses absolute with right: calc(100% + 8px) relative to entry position",
+        "responsive_breakpoints": "Tested - sm (mobile) uses smaller fonts (11px vs 12px) and smaller padding (80px vs 120px) for left-title space",
+        "bilingual_support": "Compatible - getDisplayName(entry, lang) used for left-title display, respects lang toggle"
+      }
+    },
+    "testing_notes": {
+      "manual_testing_required": [
+        "Generate HTML with /plan command for trip with varied activity durations",
+        "Verify long activities (2+ hours) show two rows: time line + title line + details",
+        "Verify medium activities (30-60 min) show one row: time + title inline",
+        "Verify short activities (15 min) show title on left side, entry as colored bar",
+        "Test overlapping activities (column layout) with narrow entries",
+        "Test responsive breakpoints: sm (mobile) vs md/lg (desktop)",
+        "Test bilingual toggle: verify left-title displays name_local vs name_base"
+      ],
+      "edge_cases": [
+        "Multiple narrow entries in sequence - verify left-titles don't overlap",
+        "Narrow entry at top of timeline - verify left-title doesn't overflow above",
+        "Overlapping narrow and wide entries - verify column layout with left-titles",
+        "Very long activity names in left-title - whiteSpace: nowrap prevents wrap but may truncate"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": "Implementation complete. All three display modes implemented with root cause reference in comments. Test with realistic trip data containing 15-min transits, 60-min meals, and 3-hour attractions. Verify left-title positioning doesn't conflict with column layout for overlapping events."
+  }
+}

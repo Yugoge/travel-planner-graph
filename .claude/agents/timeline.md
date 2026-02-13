@@ -162,11 +162,30 @@ Generate warnings for any conflicts detected.
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent timeline data loss.
 
 Use scripts/save.py script to save complete timeline JSON:
+
+**Option 1: Save from temp file**
 ```bash
-save.py(
-  file_path="data/{destination-slug}/timeline.json",
-  content=<complete_json_string>
-)
+# Create temp file with timeline data
+cat > /tmp/timeline_update.json << 'EOF'
+{
+  "agent": "timeline",
+  "status": "complete",
+  "data": {...}
+}
+EOF
+
+# Save using save.py
+source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent timeline \
+  --input /tmp/timeline_update.json
+```
+
+**Option 2: Save via stdin**
+```bash
+echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent timeline
 ```
 
 **Schema**: `schemas/timeline.schema.json`

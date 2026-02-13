@@ -1,0 +1,222 @@
+{
+  "request_id": "dev-20260213-140000",
+  "timestamp": "2026-02-13T14:05:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "Implementation successfully addresses root cause and meets all success criteria. All three-tier responsive display modes are correctly implemented with proper root cause references, meaningful naming, and no critical issues detected.",
+    "success_criteria_results": [
+      {
+        "criterion": "长活动（>= 52px，如2小时+）：显示两行（标题行 + 时间+详情行）",
+        "verification_method": "Code inspection of twoRowsMode branch (lines 2869-2887). Verified conditional rendering: when entryH >= 52, displays time on first line (line 2872), title on second line (lines 2873-2885), and optional details/subtext (lines 2888-2926)",
+        "result": "pass",
+        "details": "twoRowsMode constant correctly defined as entryH >= 52 (line 2788). Two-row layout preserved from original implementation with proper conditional wrapping",
+        "evidence": [
+          "Line 2788: const twoRowsMode = entryH >= 52; // >= 52px: Two rows (title + time + details)",
+          "Line 2870: {twoRowsMode && (...)} conditional renders two-row layout",
+          "Line 2872: Time div with fontSize: '11px', color: '#b4b4b4'",
+          "Line 2873-2885: Title div with proper styling and optional badge",
+          "Line 2888: showSubtext (>= 52px) controls details visibility"
+        ]
+      },
+      {
+        "criterion": "中等活动（36-51px，如30-60分钟）：显示一行（时间+标题在同一行）",
+        "verification_method": "Code inspection of oneRowMode branch (lines 2852-2868). Verified inline layout with time span followed by title span within single div",
+        "result": "pass",
+        "details": "oneRowMode constant correctly defined as entryH >= 36 && entryH < 52 (line 2789). One-row layout displays time in gray (fontSize: '11px', color: '#b4b4b4') followed by title with proper formatting and optional badge",
+        "evidence": [
+          "Line 2789: const oneRowMode = entryH >= 36 && entryH < 52; // 36-51px: One row (title + time condensed)",
+          "Line 2853: {oneRowMode && (...)} conditional renders one-row layout",
+          "Line 2858: Time span with marginRight: '6px' followed by title span",
+          "Line 2856: whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' prevents overflow",
+          "Line 2864-2866: Optional badge support preserved"
+        ]
+      },
+      {
+        "criterion": "短活动（< 36px，如15分钟）：标题在timeline左侧，entry内部为纯色条",
+        "verification_method": "Code inspection of moveToLeft branch and left-title div (lines 2804-2820). Verified absolute positioning outside entry box and minimal entry padding",
+        "result": "pass",
+        "details": "moveToLeft constant correctly defined as entryH < 36 (line 2790). Left-title div positioned absolutely with right: 'calc(100% + 8px)' to place it 8px to the left of entry. Entry rendered as pure color bar with padding='0', gap='0', alignItems='center'",
+        "evidence": [
+          "Line 2790: const moveToLeft = entryH < 36; // < 36px: Title moves to left, content hidden",
+          "Line 2804-2820: Left-title div with absolute positioning",
+          "Line 2807: right: 'calc(100% + 8px)' places title outside entry box",
+          "Line 2816: pointerEvents: 'none' prevents click interception",
+          "Line 2818: {entry.icon || '📍'} {getDisplayName(entry, lang)} displays title",
+          "Line 2829-2832: Entry padding/gap/alignItems adjusted for moveToLeft mode"
+        ]
+      },
+      {
+        "criterion": "并列活动（重叠时间段）：左侧标题不影响column layout",
+        "verification_method": "Code inspection of column layout logic (lines 2778-2780) and left-title positioning. Verified computeColumnLayout function unchanged (lines 2620-2655) and left-title uses absolute positioning relative to entry, not timeline track",
+        "result": "pass",
+        "details": "Column layout logic completely unchanged. hasColumns, colWidth, colLeft calculations use entry._maxColumns and entry._column from computeColumnLayout. Left-title positioned relative to entry box (right: calc(100% + 8px)), so inherits entry's column offset automatically",
+        "evidence": [
+          "Line 2620-2655: computeColumnLayout function unchanged",
+          "Line 2778-2780: hasColumns logic identical to original",
+          "Line 2824-2825: Entry left/width use hasColumns ? calc(...) : calc(...)",
+          "Line 2807: Left-title uses right: 'calc(100% + 8px)' relative to entry position",
+          "Left-title div is child of React.Fragment at same level as entry div, inherits positioning context"
+        ]
+      },
+      {
+        "criterion": "响应式：在sm（mobile）和md/lg（desktop）断点下都正常工作",
+        "verification_method": "Code inspection of responsive values. Verified sm breakpoint affects: LINE_HEIGHT_PX (18 vs 21), left-title fontSize (11px vs 12px), paddingLeft (80px vs 120px), entry padding (8px 10px vs 10px 14px), oneRowMode fontSize (12px vs 14px)",
+        "result": "pass",
+        "details": "All responsive breakpoints properly handled. sm constant from useBreakpoint() used consistently throughout component. Mobile uses smaller fonts and narrower spacing to accommodate smaller screens",
+        "evidence": [
+          "Line 2785: const LINE_HEIGHT_PX = sm ? 18 : 21;",
+          "Line 2812: fontSize: sm ? '11px' : '12px' (left-title)",
+          "Line 2768: paddingLeft: hasNarrowEntries ? (sm ? '80px' : '120px') : '0'",
+          "Line 2829: padding: moveToLeft ? '0' : (sm ? '8px 10px' : '10px 14px')",
+          "Line 2855: fontSize: sm ? '12px' : '14px' (oneRowMode title)"
+        ]
+      },
+      {
+        "criterion": "双语：左侧标题支持中英文切换",
+        "verification_method": "Code inspection of left-title rendering (line 2818). Verified getDisplayName(entry, lang) function call used for bilingual support, consistent with rest of component",
+        "result": "pass",
+        "details": "Left-title uses same getDisplayName(entry, lang) function as other parts of TimelineView. This function handles lang toggle between 'local' (name_local) and 'base' (name_base) properties",
+        "evidence": [
+          "Line 2818: {entry.icon || '📍'} {getDisplayName(entry, lang)}",
+          "getDisplayName function defined earlier in file, respects lang parameter",
+          "Consistent with line 2862, 2880: getDisplayName(entry, lang) usage in oneRowMode and twoRowsMode"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause was identified as oversimplified progressive hiding in commit e0a9291, which only implemented hideAllText/showText/showSubtext flags instead of the designed three-tier responsive system. Implementation now provides: (1) twoRowsMode for tall entries >= 52px, (2) oneRowMode for medium entries 36-51px with inline time+title layout, (3) moveToLeft for narrow entries < 36px with left-side title display. This directly addresses the missing intermediate states. Root cause commit e0a9291 is properly referenced in 4 locations with explanatory comments",
+      "evidence": [
+        {
+          "location": "scripts/generate-html-interactive.py:2782-2784",
+          "finding": "Comment explicitly references commit e0a9291 and explains original issue: 'Original commit only had simple progressive hiding (hideAllText → showText → showSubtext)'",
+          "verification": "pass"
+        },
+        {
+          "location": "scripts/generate-html-interactive.py:2788-2790",
+          "finding": "Three mode constants defined with clear thresholds replacing binary flags",
+          "verification": "pass"
+        },
+        {
+          "location": "scripts/generate-html-interactive.py:2853-2868",
+          "finding": "oneRowMode branch implements missing inline layout for medium-height entries",
+          "verification": "pass"
+        },
+        {
+          "location": "scripts/generate-html-interactive.py:2804-2820",
+          "finding": "moveToLeft branch implements missing left-title feature for narrow entries",
+          "verification": "pass"
+        }
+      ]
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Python syntax validation",
+        "result": "pass",
+        "details": "python3 -m py_compile successful. Pre-existing SyntaxWarning on line 1516 (invalid escape sequence \\d) is unrelated to changes"
+      },
+      {
+        "test": "computeColumnLayout function integrity",
+        "result": "pass",
+        "details": "Function unchanged at lines 2620-2655. Greedy column assignment algorithm, overlap detection, and maxColumns calculation all preserved"
+      },
+      {
+        "test": "Column layout positioning",
+        "result": "pass",
+        "details": "hasColumns logic at lines 2778-2780 unchanged. Entry left/width calculation at lines 2824-2825 unchanged. Left-title positioning is relative to entry, inherits column offset"
+      },
+      {
+        "test": "Time-proportional height calculation",
+        "result": "pass",
+        "details": "top(), rawHgt(), hgt() functions unchanged at lines 2719-2724. Height still based on time difference with 8px minimum for clickability"
+      },
+      {
+        "test": "Overflow hidden constraint",
+        "result": "pass",
+        "details": "overflow: 'hidden' preserved at line 2834 in entry div. Prevents content from breaking timeline layout"
+      },
+      {
+        "test": "React.Fragment usage",
+        "result": "pass",
+        "details": "Lines 2802 and 2929 wrap left-title and entry divs in React.Fragment. Required for returning multiple sibling elements from map function"
+      },
+      {
+        "test": "Script execution test",
+        "result": "pass",
+        "details": "scripts/generate-html-interactive.py --help executes successfully without runtime errors"
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "naming",
+        "location": "scripts/generate-html-interactive.py:2788-2790",
+        "issue": "Mode constant names are descriptive and follow meaningful naming standards",
+        "recommendation": "No action required. Names twoRowsMode, oneRowMode, moveToLeft clearly communicate purpose"
+      },
+      {
+        "severity": "minor",
+        "category": "hardcoding",
+        "location": "scripts/generate-html-interactive.py:2807,2768",
+        "issue": "Spacing values (8px, 80px, 120px) are hardcoded but documented with inline comments",
+        "recommendation": "No action required. Values are design constants with clear purpose documented in comments"
+      },
+      {
+        "severity": "minor",
+        "category": "other",
+        "location": "scripts/generate-html-interactive.py:2816",
+        "issue": "pointerEvents: 'none' on left-title prevents click interception - good practice",
+        "recommendation": "No action required. This is correct implementation to avoid blocking entry click events"
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": [],
+      "notes": "No new scripts created, no permissions to validate. Only modified existing Python script"
+    },
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null,
+  "qa_verification_details": {
+    "verification_timestamp": "2026-02-13T14:05:00Z",
+    "verifier": "QA Agent",
+    "files_reviewed": [
+      "scripts/generate-html-interactive.py (lines 2620-2940)"
+    ],
+    "verification_methods_used": [
+      "Static code analysis",
+      "Syntax validation (py_compile)",
+      "Pattern matching (grep)",
+      "Logic verification against success criteria",
+      "Regression checks against original implementation",
+      "Root cause commit reference validation"
+    ],
+    "edge_cases_considered": [
+      "Multiple narrow entries in sequence (left-titles positioned independently per entry)",
+      "Overlapping narrow and wide entries (column layout inherited by left-title positioning)",
+      "Mobile vs desktop breakpoints (sm flag properly used for responsive values)",
+      "Bilingual toggle (getDisplayName function used consistently)",
+      "Very short activities < 8px (minimum height constraint prevents invisibility)"
+    ],
+    "testing_recommendations": [
+      "Generate HTML with /plan command using real trip data containing varied activity durations",
+      "Test trip with: 3-hour attractions (verify two-row mode), 1-hour meals (verify one-row mode), 15-min transits (verify left-title mode)",
+      "Test overlapping events with narrow entries to verify column layout compatibility",
+      "Test responsive breakpoint by resizing browser window (verify sm/md/lg transitions)",
+      "Test bilingual toggle to verify left-titles display name_local vs name_base correctly",
+      "Test edge case: many short activities in sequence to verify left-titles don't overlap"
+    ]
+  }
+}

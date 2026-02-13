@@ -1,0 +1,90 @@
+{
+  "request_id": "dev-20260213-160000",
+  "timestamp": "2026-02-13T16:00:00Z",
+  "requirement": {
+    "original": "彻底修复全部8个agent的save.py语法，永久禁止Write工具，强制使用python脚本",
+    "clarified": "Fix incorrect save.py syntax in all 8 agent documentation files and enforce script-only data saving",
+    "what": "Replace incorrect save.py() function call syntax with correct bash CLI syntax in all agent .md files",
+    "why": "Agents are confused by Python function syntax in bash code blocks, causing them to overwrite entire files instead of merging updates",
+    "where": [
+      ".claude/agents/timeline.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md"
+    ],
+    "scope": {
+      "included": [
+        "Replace save.py(file_path=..., content=...) with correct CLI syntax",
+        "Add explicit prohibition of Write tool",
+        "Provide clear usage examples with stdin/file options",
+        "Ensure all 8 agent files have consistent documentation"
+      ],
+      "excluded": [
+        "Changes to actual save.py script",
+        "Changes to agent logic/behavior",
+        "Changes to validation scripts"
+      ]
+    },
+    "success_criteria": [
+      "All 8 agent .md files use correct bash CLI syntax: python3 scripts/save.py --trip TRIP --agent AGENT --input FILE",
+      "No Python function call syntax (save.py(...)) remains in any bash code block",
+      "Write tool explicitly disabled/prohibited in all agent docs",
+      "Clear usage examples provided in each agent file",
+      "All changes verified with diff output"
+    ],
+    "constraints": [
+      "Must preserve existing commit references (ef0ed28, etc)",
+      "Must maintain existing documentation structure",
+      "Must keep Chinese/English bilingual annotations"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline agent and other agents overwrite entire JSON files instead of merging day-specific updates",
+    "root_cause": "Agent documentation shows Python function call syntax save.py(file_path=..., content=...) in bash code blocks, confusing agents",
+    "root_cause_commit": "b057f26 - checkpoint: Auto-save at 2026-02-12 18:58:20",
+    "why_introduced": "Someone changed from Write() to save.py() but kept the Write tool's function call syntax instead of bash CLI",
+    "why_problematic": "Agents see function call syntax and get confused - no save.py() function exists, so they fall back to Write tool or fail",
+    "timeline": "Introduced on 2026-02-12, causing repeated data loss since then",
+    "affected_files": [
+      ".claude/agents/timeline.md (line 166-169)",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md", 
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md"
+    ]
+  },
+  "correct_syntax": {
+    "current_wrong": "save.py(\n  file_path=\"data/{destination-slug}/timeline.json\",\n  content=<complete_json_string>\n)",
+    "should_be": "source venv/bin/activate && python3 scripts/save.py \\\n  --trip {destination-slug} \\\n  --agent timeline \\\n  --input /tmp/timeline_update.json\n\n# Or via stdin:\ncat /tmp/timeline_update.json | python3 scripts/save.py \\\n  --trip {destination-slug} \\\n  --agent timeline"
+  },
+  "context": {
+    "codebase_state": "git working tree has 12 uncommitted changes",
+    "recent_commits": "dad5f19 (restored), 39e7a37, 25841c4",
+    "save_py_help_output": "usage: save.py [-h] --trip TRIP [--agent AGENT] [--input INPUT] [--batch BATCH] [--no-validate] [--allow-high] [--no-backup]",
+    "environment": {
+      "venv_path": "venv/",
+      "python_version": "3.x"
+    }
+  },
+  "development_approach": {
+    "strategy": "Search and replace incorrect syntax in all 8 agent files, add Write tool prohibition, provide clear examples",
+    "files_to_modify": [
+      ".claude/agents/timeline.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md"
+    ],
+    "validation_approach": "Generate diff for each file showing exact changes, verify no function call syntax remains"
+  }
+}
