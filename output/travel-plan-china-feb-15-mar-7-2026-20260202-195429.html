@@ -608,7 +608,7 @@
               "image": "https://aos-comment.amap.com/B0JKJRMBC8/comment/fc6b36564454bf2d7ab5a05045dfe768_2048_2048_80.jpg",
               "time": {
                 "start": "14:30",
-                "end": "16:00"
+                "end": "15:30"
               },
               "links": {}
             },
@@ -1224,7 +1224,7 @@
               "notes_base": "MATURE SICHUAN RESTAURANT near Jinli Ancient Street. Established restaurant with authentic Chengdu flavors. Open during Spring Festival (11:00-21:30). Reservations recommended. Famous for fish-flavored shredded pork (鱼香肉丝), kung pao chicken, and seasonal bamboo shoots. Walking distance from Jinli. Phone: 028-8505-3333. Verified via Google Maps (rating 4.4).",
               "notes_local": "锦里古街附近的老牌川菜馆。正宗成都味道。春节期间营业（11:00-21:30）。建议预约。招牌菜：鱼香肉丝、宫保鸡丁、时令竹笋。步行可达锦里。电话：028-8505-3333。评分4.4。",
               "optional": false,
-              "image": "https://store.is.autonavi.com/showpic/f1f9dd4537bc0b5e8849ff064abe93ed",
+              "image": "https://store.is.autonavi.com/showpic/742833292d4243695ba12eeaddff0d2c",
               "time": {
                 "start": "18:00",
                 "end": "19:30"
@@ -1398,8 +1398,8 @@
               "optional": true,
               "image": "https://store.is.autonavi.com/showpic/4E377E858534426097901E10EEAFCD8E",
               "time": {
-                "start": "19:00",
-                "end": "20:30"
+                "start": "19:30",
+                "end": "21:00"
               },
               "links": {}
             }
@@ -6971,12 +6971,6 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Compute column layout for overlapping events
   const entriesWithLayout = computeColumnLayout(entries);
 
-  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
-  const hasNarrowEntries = entriesWithLayout.some(e => {
-    const h = hgt(e.time.start, e.time.end);
-    return h < 36;
-  });
-
   const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
   const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
   const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
@@ -6998,6 +6992,13 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Now allows short activities (e.g., 2-min walks) to display with accurate proportional height
   // Small minimum (8px) ensures blocks remain clickable even for very short activities
   const hgt = (s, e) => Math.max(rawHgt(s, e), 8);
+
+  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
+  // IMPORTANT: Must be AFTER hgt() definition to avoid "hgt is not a function" error
+  const hasNarrowEntries = entriesWithLayout.some(e => {
+    const h = hgt(e.time.start, e.time.end);
+    return h < 36;
+  });
 
   // Debug: log entries count
   if (entries.length === 0) {
@@ -7119,13 +7120,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     background: st.dot, border: '2px solid #fff'
                   }} />
 
-                  {entry.image && !sm && showText && (
-                    <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                    </div>
-                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Root cause fix (commit e0a9291): One-row mode for medium-height entries (36-51px) */}
+                    {/* Root cause fix (commit 8e4e711): One-row mode for medium-height entries (36-51px) */}
+                    {/* Issue: oneRowMode was missing cost display, making condensed view less informative */}
                     {oneRowMode && (
                       <div style={{
                         fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
@@ -7140,11 +7137,26 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         {entry.optional && (
                           <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
                         )}
+                        {entry.cost !== undefined && Number(entry.cost) > 0 && (
+                          <span style={{
+                            fontSize: '11px', padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
+                            background: '#f5f5f3', color: '#37352f', marginLeft: '6px', verticalAlign: 'middle'
+                          }}>
+                            {fmtCost(entry.cost, undefined, lang)}
+                          </span>
+                        )}
                       </div>
                     )}
                     {/* Two-row mode for tall entries (>= 52px) - original layout */}
+                    {/* Root cause fix (commit 8e4e711): Image was rendering outside mode conditionals */}
+                    {/* Issue: 50x50px image cannot fit in oneRowMode (36-51px height) causing layout break */}
                     {twoRowsMode && (
                       <>
+                        {entry.image && !sm && (
+                          <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, marginBottom: '4px' }}>
+                            <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                          </div>
+                        )}
                         <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
                         <div style={{
                           fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
