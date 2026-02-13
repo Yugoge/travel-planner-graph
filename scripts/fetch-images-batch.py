@@ -536,11 +536,15 @@ class BatchImageFetcher:
         with open(skeleton_path, 'r', encoding='utf-8') as f:
             skeleton = json.load(f)
 
-        cities = set()
+        # Build city mapping: English name -> local name
+        city_local_map = {}
         for day in skeleton.get("days", []):
             loc = day.get("location")
-            if loc:
-                cities.add(loc)
+            loc_local = day.get("location_local")
+            if loc and loc_local:
+                city_local_map[loc] = loc_local
+
+        cities = set(city_local_map.keys())
 
         fetched = 0
         for city in list(cities)[:limit]:
@@ -548,11 +552,17 @@ class BatchImageFetcher:
                 print(f"  ✓ {city} (cached)")
                 continue
 
+            # Use local name for Gaode search (critical fix for bug in commit 8c08757)
+            # English city names (e.g., "Shanghai") match commercial POIs (restaurants, hotels)
+            # Chinese city names (e.g., "上海") correctly return city-level POIs with landmarks
+            city_local = city_local_map.get(city, city)
             service = self._map_service_for(city)
             print(f"  Fetching {city} ({service})...", end=" ")
             if service == "gaode":
-                # Search for city landmarks/skyline instead of just "景点" (which returns Disney for Shanghai)
-                photo_url = self._gaode_search(f"{city} 地标", city)
+                # CRITICAL: Use location_local (Chinese name) for Gaode search
+                # English names return wrong POIs: "Shanghai" → "SWIRL SHANGHAI" (restaurant)
+                # Chinese names return correct POIs: "上海" → "上海市" (city with 外滩 photo)
+                photo_url = self._gaode_search(city_local, city_local)
             else:
                 photo_url = self.fetch_city_photo_google(city)
 

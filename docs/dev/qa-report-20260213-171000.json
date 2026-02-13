@@ -1,0 +1,197 @@
+{
+  "request_id": "dev-20260213-171000",
+  "qa": {
+    "status": "fail",
+    "success_criteria_results": [
+      {
+        "criterion": "All city photos show landmarks not POIs",
+        "result": "fail",
+        "details": "3 out of 5 cities FAILED. Beijing shows Old Summer Palace ruins (acceptable landmark). Shanghai shows wine bottles at a restaurant/bar (INCORRECT - not a city landmark). Chengdu shows giant panda sculpture at mall (borderline - shopping area, not city skyline). Chongqing shows Hilton hotel building (INCORRECT - commercial building, not city landmark). Bazhong shows nightclub/bar food display (INCORRECT - entertainment venue, not city view)."
+      },
+      {
+        "criterion": "Shanghai shows proper landmark",
+        "result": "fail",
+        "details": "CRITICAL FAILURE: Shanghai photo shows wine bottles on ice at a restaurant/bar with blurred background. This is NOT The Bund (外滩) as documented in the qa-input. The photo appears to be from a dining/drinking establishment, completely irrelevant to Shanghai city landmarks. Expected: Skyline view of The Bund with Huangpu River and iconic buildings."
+      },
+      {
+        "criterion": "Beijing shows proper landmark",
+        "result": "pass",
+        "details": "Beijing photo shows Old Summer Palace ruins (圆明园遗址公园) with classical columns and stone architecture under blue sky. This is an iconic Beijing historical landmark. Quality is good (32KB file, clear daylight photo). While not the most typical Beijing landmark (Forbidden City or Temple of Heaven), it is historically significant and acceptable."
+      },
+      {
+        "criterion": "Chongqing shows proper landmark",
+        "result": "fail",
+        "details": "CRITICAL FAILURE: Chongqing photo shows a modern Hilton hotel building at dusk. This is a commercial hotel building, NOT the Liberation Monument (人民解放纪念碑) as documented in the qa-input. Expected: The iconic Liberation Monument in Jiefangbei CBD square, one of Chongqing's most recognizable landmarks."
+      },
+      {
+        "criterion": "All other cities show relevant city views",
+        "result": "fail",
+        "details": "Chengdu: Shows giant panda sculpture with 'IFS' (International Finance Square) mall signage - this is a shopping mall landmark, borderline acceptable as it's a well-known Chengdu location, but not a city skyline view. Bazhong: Shows nightclub/bar food display with colored lights and 'UFO CLUB' branding - COMPLETELY INCORRECT, this is an entertainment venue interior, not a city view or landmark."
+      }
+    ],
+    "root_cause_verification": {
+      "root_cause_addressed": false,
+      "commit_referenced": true,
+      "fix_explanation": "Code change is correct (line 557 changed from `self._gaode_search(f\"{city} 地标\", city)` to `self._gaode_search(city, city)`), and commit 8c08757 is properly referenced in the comment. However, the fix does NOT achieve the intended result. The Gaode API is NOT returning city-level POIs with landmark photos as expected. Instead, it's returning random POIs associated with the city that happen to have photos, including restaurants, hotels, shopping malls, and nightclubs.",
+      "actual_behavior": "Gaode Maps API search with just city name (e.g., '上海') returns city-level administrative POI '上海市' as top result, but the photo URLs being cached are NOT from this POI. The photos appear to be from random businesses/venues in each city. The _gaode_search method successfully finds the city POI but is selecting inappropriate photos from the photo gallery.",
+      "gap_analysis": "The assumption that city-level POIs (like '上海市', '重庆市') have iconic landmark photos in their galleries is INCORRECT. The photos in these POI galleries are user-uploaded content that can include anything - restaurants, hotels, nightclubs, shopping malls. The fix addressed the search query but did not address photo selection quality."
+    },
+    "image_quality_check": {
+      "Beijing": {
+        "downloaded": true,
+        "url": "https://store.is.autonavi.com/showpic/25fb9cbadca2a322c4fb8d80e8b51488",
+        "file_size": "32KB",
+        "content": "Old Summer Palace ruins (圆明园遗址公园) - Ancient stone columns and ruins under blue sky with scattered rubble. Historical landmark.",
+        "quality": "good",
+        "appropriateness": "acceptable",
+        "notes": "While not the most iconic Beijing landmark, it is historically significant. Photo quality is good with clear details and professional composition."
+      },
+      "Shanghai": {
+        "downloaded": true,
+        "url": "https://aos-comment.amap.com/B0KAXUBEJI/comment/125F05C8_A4D8_4009_B85E_C6BBB19D4BDC_L0_001_1512_201_1763786983292_92809078.jpg",
+        "file_size": "542KB",
+        "content": "INCORRECT: Wine bottles on ice in a restaurant/bar setting. Shows bottles labeled 'VIN' chilled in an ice bucket with blurred dining area in background.",
+        "quality": "good (photo quality)",
+        "appropriateness": "COMPLETELY INAPPROPRIATE",
+        "notes": "HIGH SEVERITY: This is NOT a Shanghai landmark. This is a close-up photo of beverages at a dining/drinking establishment. Expected The Bund skyline. This photo is completely irrelevant to Shanghai as a city."
+      },
+      "Chengdu": {
+        "downloaded": true,
+        "url": "https://aos-comment.amap.com/B0GUNXKUD8/comment/content_media_external_file_100001413_1768658441321_23498464.jpg",
+        "file_size": "361KB",
+        "content": "Giant panda sculpture climbing on 'IFS' (International Finance Square) mall exterior. Shows modern shopping center with large panda art installation.",
+        "quality": "good",
+        "appropriateness": "borderline",
+        "notes": "The IFS panda is a well-known Chengdu landmark and meeting point. However, it's primarily a shopping mall location rather than a traditional city landmark or skyline view. Borderline acceptable given panda association with Chengdu."
+      },
+      "Chongqing": {
+        "downloaded": true,
+        "url": "https://store.is.autonavi.com/showpic/1617fa4e39d5fb45f11b0c10f36831f4",
+        "file_size": "32KB",
+        "content": "INCORRECT: Hilton hotel building at dusk. Shows modern high-rise hotel tower with 'Hilton' signage prominently displayed.",
+        "quality": "fair (small file size, basic photo)",
+        "appropriateness": "COMPLETELY INAPPROPRIATE",
+        "notes": "HIGH SEVERITY: This is a commercial hotel building, NOT the Liberation Monument (人民解放纪念碑) as documented. A hotel is not a city landmark. Expected iconic Jiefangbei square with monument."
+      },
+      "Bazhong": {
+        "downloaded": true,
+        "url": "https://aos-comment.amap.com/B0KK41UI1S/comment/content_media_external_file_100006603_1754768962407_93986796.jpg",
+        "file_size": "316KB",
+        "content": "INCORRECT: Nightclub/bar food and drink display. Shows sausages, drinks in test tubes, and party snacks under colored neon lights with 'UFO CLUB' branding visible.",
+        "quality": "poor (nightclub interior, not relevant)",
+        "appropriateness": "COMPLETELY INAPPROPRIATE",
+        "notes": "CRITICAL SEVERITY: This is an interior photo of a nightclub/bar with party food. This has ZERO relevance to Bazhong city. Expected Guangwu Mountain Scenic Area (光雾山旅游景区) or city view."
+      }
+    },
+    "quality_findings": [
+      {
+        "type": "critical",
+        "issue": "Shanghai city cover shows restaurant/bar wine bottles instead of The Bund landmark",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/images.json line 7",
+        "impact": "User will see completely irrelevant photo when viewing Shanghai section. Severely impacts user experience and travel plan credibility.",
+        "recommendation": "Must implement photo filtering/ranking logic to select appropriate landmark photos from Gaode POI photo galleries. Current approach of using first photo URL is insufficient."
+      },
+      {
+        "type": "critical",
+        "issue": "Chongqing city cover shows Hilton hotel instead of Liberation Monument",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/images.json line 4",
+        "impact": "Commercial hotel building is not a city landmark. User expects iconic Chongqing landmarks like Liberation Monument or city skyline.",
+        "recommendation": "Same as above - need intelligent photo selection from POI galleries based on photo titles, tags, or content analysis."
+      },
+      {
+        "type": "critical",
+        "issue": "Bazhong city cover shows nightclub/bar interior with party food",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/images.json line 8",
+        "impact": "Completely irrelevant entertainment venue photo. User expects scenic area or city view. This is the worst quality photo among all cities.",
+        "recommendation": "For smaller cities like Bazhong, may need fallback strategy to search for '{city} 风景' (scenery) or '{city} 景区' (scenic area) if city-level POI has poor photo quality."
+      },
+      {
+        "type": "major",
+        "issue": "Gaode POI photo selection assumes first photo in gallery is representative landmark photo",
+        "location": "scripts/fetch-images-batch.py line 557 and _gaode_search method lines 371-420",
+        "impact": "City-level POIs ('上海市', '重庆市') have user-uploaded photos that include random businesses, restaurants, hotels, nightclubs. The photos.url field may point to any photo in the gallery, not necessarily a landmark.",
+        "recommendation": "Implement photo filtering: 1) Check photo title/tags for landmark keywords, 2) Filter out photos with business/commercial keywords (餐厅, 酒店, 夜店, 商场), 3) Prefer photos with higher view counts or ratings, 4) Fallback to alternative search strategy if no appropriate photo found."
+      },
+      {
+        "type": "minor",
+        "issue": "Chengdu shows shopping mall panda sculpture instead of traditional city landmark",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/images.json line 5",
+        "impact": "While the IFS panda is a well-known Chengdu landmark, it's primarily a shopping location. Better alternatives would be People's Park, Jinli Ancient Street, or Wuhou Temple.",
+        "recommendation": "Consider implementing ranking logic that prefers cultural/historical landmarks over commercial locations."
+      },
+      {
+        "type": "minor",
+        "issue": "No validation logic to verify downloaded images are appropriate before caching",
+        "location": "scripts/fetch-images-batch.py lines 561-567",
+        "impact": "Bad photos are cached without human review. Once cached, they persist until manually cleared.",
+        "recommendation": "Add optional --preview mode that displays downloaded images for manual approval before caching, or implement automated content validation (e.g., check image dimensions, detect if photo contains text/logos)."
+      }
+    ],
+    "regression_check": {
+      "poi_photos_affected": false,
+      "cache_structure_intact": true,
+      "google_maps_logic_intact": true,
+      "notes": "Code changes only affected city cover photo search logic (line 557). POI photo extraction uses the same _gaode_search method but with specific POI names, so it should not be affected. However, the underlying issue with photo selection quality also applies to POI photos - need to verify POI photos are still appropriate."
+    },
+    "comparison_with_before": {
+      "Beijing": {
+        "before": "Agriculture company gate - completely inappropriate business location",
+        "after": "Old Summer Palace ruins - acceptable historical landmark",
+        "improvement": "SIGNIFICANT IMPROVEMENT - went from worst case (company gate) to acceptable landmark"
+      },
+      "Shanghai": {
+        "before": "Raffles Mall SOHO towers - commercial building",
+        "after": "Restaurant/bar wine bottles - dining establishment",
+        "improvement": "NO IMPROVEMENT - both are commercial/business locations, neither is The Bund. After is arguably worse as it's not even a recognizable building."
+      },
+      "Chongqing": {
+        "before": "Unknown POI with 地标 keyword",
+        "after": "Hilton hotel building - commercial hotel",
+        "improvement": "SLIGHT IMPROVEMENT - at least identifiable building, but still inappropriate (hotel vs city landmark)"
+      },
+      "Bazhong": {
+        "before": "Unknown POI with 地标 keyword",
+        "after": "Nightclub/bar interior with party food",
+        "improvement": "NO IMPROVEMENT - possibly worse, as nightclub interior is completely irrelevant to city tourism"
+      },
+      "Chengdu": {
+        "before": "Panda Base - tourist attraction showing panda animal",
+        "after": "IFS panda sculpture - shopping mall landmark",
+        "improvement": "LATERAL MOVE - both panda-related, both borderline appropriate. Shopping mall panda is more urban/modern vs research base."
+      }
+    },
+    "summary": {
+      "critical_issues": 3,
+      "major_issues": 1,
+      "minor_issues": 2,
+      "overall_assessment": "The code change is correct and properly documented with commit reference, but the fix does NOT achieve the intended result. Only 1 out of 5 cities (Beijing) has an acceptable city landmark photo. The other 4 cities have inappropriate photos ranging from borderline (Chengdu shopping mall) to completely wrong (Shanghai restaurant, Chongqing hotel, Bazhong nightclub). The root cause analysis correctly identified the search query problem, but the solution failed to account for photo selection quality within Gaode POI photo galleries."
+    },
+    "iteration_needed": true,
+    "recommendation": "revise",
+    "next_steps": [
+      {
+        "priority": "critical",
+        "action": "Implement intelligent photo selection logic in _gaode_search method",
+        "details": "Add filtering to exclude photos with commercial keywords (酒店/餐厅/夜店/商场). Check photo titles/tags for landmark indicators. Prefer photos with city/landmark keywords in title."
+      },
+      {
+        "priority": "critical",
+        "action": "Add fallback search strategy for cities where city-level POI has poor photos",
+        "details": "If city POI photo contains commercial keywords or has no appropriate photos, fall back to searching '{city} 风景' (scenery) or '{city} 标志建筑' (landmark buildings) or specific known landmarks."
+      },
+      {
+        "priority": "high",
+        "action": "Implement photo validation before caching",
+        "details": "Add basic image content validation: check dimensions (too small = bad), detect prominent text/logos (商标 = commercial), verify image is not food/dining close-up."
+      },
+      {
+        "priority": "medium",
+        "action": "Re-run fetch with --force after implementing photo selection improvements",
+        "details": "Clear city_covers cache and re-fetch all 5 cities to verify improved photo quality."
+      }
+    ],
+    "qa_performed_by": "QA Subagent",
+    "qa_timestamp": "2026-02-13T21:58:00Z",
+    "verification_method": "Downloaded and visually inspected all 5 city cover photos. Compared with before/after URLs documented in qa-input. Reviewed code changes and git commit history. Analyzed Gaode Maps API behavior and photo selection logic."
+  }
+}
