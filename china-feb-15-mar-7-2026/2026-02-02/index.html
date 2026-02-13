@@ -266,8 +266,8 @@
               "optional": false,
               "image": "https://aos-comment.amap.com/B0LAUH75WM/comment/content_media_external_file_100001606_1759293152711_30424956.jpg",
               "time": {
-                "start": "18:05",
-                "end": "19:30"
+                "start": "17:30",
+                "end": "19:00"
               },
               "links": {}
             }
@@ -364,8 +364,8 @@
               "notes_base": "Afternoon visit. Historic riverside neighborhood with cafes, bookstores, and unique boutiques. Free entry, great for photography and leisurely strolling. Rating 4.8/5. Adjacent areas within walking distance. Recommended duration: 1.5-2 hours.",
               "notes_local": "下午参观。历史江边街区，有咖啡馆、书店和特色小店。免费入场，适合拍照和悠闲漫步。评分4.8。相邻区域步行可达。建议游览1.5-2小时。",
               "time": {
-                "start": "15:30",
-                "end": "16:00"
+                "start": "14:50",
+                "end": "15:15"
               },
               "links": {}
             },
@@ -388,8 +388,8 @@
               "notes_base": "Afternoon visit. Historic Taoist temple on Nanshan hillside with panoramic views of Chongqing rivers. Rating 4.7/5. Open daily 08:00-17:00. Ticket ~10 CNY. Recommended duration: 1 hour.",
               "notes_local": "下午游览。历史悠久的道教道观，位于南山半山腰。可俯瞰重庆江景。评分4.7。周一至周日08:00-17:00营业。门票约10元。建议游览1小时。",
               "time": {
-                "start": "17:00",
-                "end": "17:45"
+                "start": "15:50",
+                "end": "16:30"
               },
               "links": {}
             },
@@ -533,7 +533,7 @@
               "notes_base": "HIGHEST RATED ALTERNATIVE (165 likes, 7 comments on RedNote, 4.7 Gaode rating). Cheaper than competitor Gold Impression. 80min basic service. Can stay overnight as budget accommodation. Great food options: beef noodle, Chongqing xiaomian, chicken offal. Self-serve buffet 11:30-14:00 & 17:30-21:00 (+59 RMB). Clean environment, updated movies/TV shows. Holiday note: Book ahead or arrive early. Gaode verified cost: 182 RMB avg.",
               "notes_local": "最高评分替代选择（小红书165赞、7评论，高德评分4.7）。比竞品金印象便宜。80分钟基础服务。可过夜当经济住宿。餐食不错：牛肉面、重庆小面、鸡杂。自助餐11:30-14:00和17:30-21:00（加59元）。环境干净。节假日建议提前预订。人均182元。",
               "optional": false,
-              "image": "https://store.is.autonavi.com/showpic/3507637608136eb5a4a9268c4277b589",
+              "image": "https://aos-comment.amap.com/B0FFIP1E57/comment/30FEA19F_F862_4033_B686_425532DC02A1_L0_001_2000_1500_1763968648178_22046799.jpg",
               "time": {
                 "start": "21:45",
                 "end": "23:30"
@@ -607,8 +607,8 @@
               "optional": false,
               "image": "https://aos-comment.amap.com/B0JKJRMBC8/comment/fc6b36564454bf2d7ab5a05045dfe768_2048_2048_80.jpg",
               "time": {
-                "start": "14:30",
-                "end": "15:30"
+                "start": "14:05",
+                "end": "14:50"
               },
               "links": {}
             },
@@ -686,8 +686,8 @@
               "name_base": "Walk to Laojun Dong Temple",
               "name_local": "步行前往老君洞",
               "time": {
-                "start": "16:00",
-                "end": "16:34"
+                "start": "15:15",
+                "end": "15:49"
               },
               "duration": "34min",
               "type_base": "walk",
@@ -698,8 +698,8 @@
               "name_base": "Walk to Taoyuan Hotpot",
               "name_local": "步行前往桃园火锅",
               "time": {
-                "start": "17:45",
-                "end": "18:05"
+                "start": "16:30",
+                "end": "16:50"
               },
               "duration": "20min",
               "type_base": "walk",
@@ -6988,17 +6988,37 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 
   const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
   const rawHgt = (s, e) => top(e) - top(s);
-  // Root cause fix: Remove artificial minimum height constraint (was 56/64px = ~45-50min)
-  // Now allows short activities (e.g., 2-min walks) to display with accurate proportional height
-  // Small minimum (8px) ensures blocks remain clickable even for very short activities
-  const hgt = (s, e) => Math.max(rawHgt(s, e), 8);
 
-  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
-  // IMPORTANT: Must be AFTER hgt() definition to avoid "hgt is not a function" error
-  const hasNarrowEntries = entriesWithLayout.some(e => {
-    const h = hgt(e.time.start, e.time.end);
-    return h < 36;
-  });
+  // Apple Calendar style: 10-minute minimum height for clickability
+  // Activities < 10 min get fixed 24px height (clickable), >= 10 min scale proportionally
+  const hgt = (s, e) => {
+    const raw = rawHgt(s, e);
+    const durationMin = (raw / hH) * 60;  // Convert to minutes
+
+    // < 10 minutes: fixed minimum clickable height
+    if (durationMin < 10) {
+      return 24;  // Minimum clickable height (≈ 2 small text lines)
+    }
+
+    // >= 10 minutes: proportional height, but not smaller than 24px
+    return Math.max(raw, 24);
+  };
+
+  // Apple Calendar style: Font scaling calculation
+  const calculateFontScale = (height) => {
+    const fullSizeThreshold = 52;  // Height for full two-row display
+
+    if (height >= fullSizeThreshold) {
+      return 1.0;  // 100% standard font
+    }
+
+    // Linear scaling: smooth transition from 52px to 24px
+    const minHeight = 24;
+    const scale = (height - 8) / (fullSizeThreshold - 8);  // 8px for padding
+
+    // Minimum scale 0.57 (14px * 0.57 ≈ 8px, still readable)
+    return Math.max(scale, 0.57);
+  };
 
   // Debug: log entries count
   if (entries.length === 0) {
@@ -7041,8 +7061,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
             flex: 1,
             position: 'relative',
             borderLeft: '1px dashed #e5e4e1',
-            minWidth: 0,
-            paddingLeft: hasNarrowEntries ? (sm ? '80px' : '120px') : '0'  // Space for left-side titles
+            minWidth: 0
           }}>
             {hours.map(h => <div key={h} style={{ height: hH, borderBottom: '1px solid #f5f5f3' }} />)}
 
@@ -7056,46 +7075,26 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const colWidth = hasColumns ? (100 / entry._maxColumns) : 100;
               const colLeft = hasColumns ? (entry._column * colWidth) : 0;
 
-              // Root cause fix (commit e0a9291): Implement three-tier responsive display
-              // Original commit only had simple progressive hiding (hideAllText → showText → showSubtext)
-              // Now implementing: two-row mode (>= 52px) → one-row mode (36-51px) → left-title mode (< 36px)
-              const LINE_HEIGHT_PX = sm ? 18 : 21;
+              // Apple Calendar style: Calculate adaptive font scaling
+              const fontScale = calculateFontScale(entryH);
+              const baseTitleSize = sm ? 12 : 14;
+              const baseTimeSize = 11;
+              const baseDetailSize = 11;
 
-              // Three-tier responsive display modes
-              const twoRowsMode = entryH >= 52;           // >= 52px: Two rows (title + time + details)
-              const oneRowMode = entryH >= 36 && entryH < 52;  // 36-51px: One row (title + time condensed)
-              const moveToLeft = entryH < 36;              // < 36px: Title moves to left, content hidden
+              const titleFontSize = `${baseTitleSize * fontScale}px`;
+              const timeFontSize = `${baseTimeSize * fontScale}px`;
+              const detailFontSize = `${baseDetailSize * fontScale}px`;
 
-              // Text visibility flags
-              const showText = entryH >= 36;               // >= 36px: Show title text
-              const showTime = entryH >= 36;               // >= 36px: Show time
-              const showSubtext = entryH >= 52;            // >= 52px: Show details
-              const showInlineTime = oneRowMode;           // 36-51px: Time and title on same line
+              // Content display thresholds (based on scaled font)
+              const showTitle = entryH >= 14;   // At least one line of title (14px * 0.57 ≈ 8px)
+              const showTime = entryH >= 24;    // At least title + time (two lines)
+              const showDetails = entryH >= 52; // Full height for details
 
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
               return (
-                <React.Fragment key={i}>
-                  {/* Root cause fix (commit e0a9291): Left-title display for narrow entries (< 36px) */}
-                  {moveToLeft && (
-                    <div style={{
-                      position: 'absolute',
-                      right: 'calc(100% + 8px)',  // 8px gap from entry left edge
-                      top: t,
-                      height: entryH - 4,
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: sm ? '11px' : '12px',
-                      color: '#37352f',
-                      fontWeight: '500',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none'  // Don't intercept click events
-                    }}>
-                      {entry.icon || '📍'} {getDisplayName(entry, lang)}
-                    </div>
-                  )}
-                <div style={{
+                <div key={i} style={{
                   position: 'absolute',
                   top: t,
                   left: hasColumns ? `calc(10px + ${colLeft}%)` : '10px',
@@ -7103,10 +7102,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                   height: entryH - 4,
                   background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
                   borderRadius: '6px',
-                  padding: moveToLeft ? '0' : (sm ? '8px 10px' : '10px 14px'),
+                  padding: sm ? '4px 6px' : '6px 8px',  // Smaller padding for scaled fonts
                   display: 'flex',
-                  gap: moveToLeft ? '0' : '10px',
-                  alignItems: moveToLeft ? 'center' : 'flex-start',
+                  gap: '6px',
+                  alignItems: 'flex-start',
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
@@ -7120,61 +7119,56 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     background: st.dot, border: '2px solid #fff'
                   }} />
 
+                  {/* Apple Calendar style: Image only for full-height entries */}
+                  {entry.image && !sm && showDetails && (
+                    <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                    </div>
+                  )}
+
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Root cause fix (commit 8e4e711): One-row mode for medium-height entries (36-51px) */}
-                    {/* Issue: oneRowMode was missing cost display, making condensed view less informative */}
-                    {oneRowMode && (
+                    {/* Time row (>= 24px) */}
+                    {showTime && (
+                      <div style={{ fontSize: timeFontSize, color: '#b4b4b4', lineHeight: 1.2 }}>
+                        {entry.time.start} – {entry.time.end}
+                      </div>
+                    )}
+
+                    {/* Title row (>= 14px) */}
+                    {showTitle && (
                       <div style={{
-                        fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        fontSize: titleFontSize,
+                        fontWeight: '600',
+                        color: '#37352f',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2
                       }}>
-                        <span style={{ fontSize: '11px', color: '#b4b4b4', marginRight: '6px' }}>{entry.time.start} – {entry.time.end}</span>
                         {entry._type === 'transportation' || entry._type === 'travel' ? (
                           <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
                         ) : (
                           <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                         )}
-                        {entry.optional && (
-                          <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
-                        )}
-                        {entry.cost !== undefined && Number(entry.cost) > 0 && (
+                        {entry.optional && showDetails && (
                           <span style={{
-                            fontSize: '11px', padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
-                            background: '#f5f5f3', color: '#37352f', marginLeft: '6px', verticalAlign: 'middle'
+                            fontSize: `${9 * fontScale}px`,
+                            padding: '1px 4px',
+                            background: '#f5f5f3',
+                            borderRadius: '3px',
+                            color: '#9b9a97',
+                            marginLeft: '4px',
+                            verticalAlign: 'middle'
                           }}>
-                            {fmtCost(entry.cost, undefined, lang)}
+                            {L('optional', lang)}
                           </span>
                         )}
                       </div>
                     )}
-                    {/* Two-row mode for tall entries (>= 52px) - original layout */}
-                    {/* Root cause fix (commit 8e4e711): Image was rendering outside mode conditionals */}
-                    {/* Issue: 50x50px image cannot fit in oneRowMode (36-51px height) causing layout break */}
-                    {twoRowsMode && (
-                      <>
-                        {entry.image && !sm && (
-                          <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, marginBottom: '4px' }}>
-                            <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                          </div>
-                        )}
-                        <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
-                        <div style={{
-                          fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                        }}>
-                          {entry._type === 'transportation' || entry._type === 'travel' ? (
-                            <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
-                          ) : (
-                            <span>{entry._label}: {getDisplayName(entry, lang)}</span>
-                          )}
-                          {entry.optional && (
-                            <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    {showSubtext && (entry._type === 'transportation' ? (
-                      <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
+
+                    {/* Details row (>= 52px) */}
+                    {showDetails && (entry._type === 'transportation' ? (
+                      <div style={{ fontSize: detailFontSize, color: '#9b9a97', marginTop: '2px', lineHeight: 1.3 }}>
                         <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point_base} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point_base}</div>
                         {entry.route_number && entry.route_number !== 'VERIFIED' && (
                           <div>{lang === 'local' && entry.type_local ? entry.type_local : entry.type_base} {entry.route_number}</div>
@@ -7183,9 +7177,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                           <span style={{
                             display: 'inline-block',
                             marginTop: '2px',
-                            padding: '2px 6px',
+                            padding: '2px 4px',
                             borderRadius: '3px',
-                            fontSize: '10px',
+                            fontSize: `${9 * fontScale}px`,
                             fontWeight: '600',
                             background: entry.status_base?.includes('URGENT') ? '#fff4e6' :
                                        entry.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
@@ -7197,11 +7191,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         )}
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#9b9a97', flexWrap: 'wrap', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: detailFontSize, color: '#9b9a97', flexWrap: 'wrap', marginTop: '2px', lineHeight: 1.3 }}>
                         {entry.recommended_duration && <span>⏱ {entry.recommended_duration}</span>}
                         {entry.cost !== undefined && Number(entry.cost) > 0 && (
                           <span style={{
-                            padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
+                            padding: '1px 4px', borderRadius: '3px', fontWeight: '600',
                             background: '#f5f5f3',
                             color: '#37352f'
                           }}>
@@ -7211,10 +7205,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
                       </div>
                     ))}
-                    {showSubtext && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
+                    {showDetails && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
                   </div>
                 </div>
-                </React.Fragment>
               );
             })}
           </div>
