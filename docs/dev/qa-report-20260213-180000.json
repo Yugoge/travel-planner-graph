@@ -1,0 +1,198 @@
+{
+  "request_id": "dev-20260213-180000",
+  "timestamp": "2026-02-13T18:10:00Z",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "Code implementation is correct and addresses root cause, but HTML file was not regenerated after changes. Python script contains all required fixes (image moved to twoRowsMode, cost added to oneRowMode, root cause comments added), but output HTML still contains old version from commit 8e4e711.",
+    "success_criteria_results": [
+      {
+        "criterion": "oneRowMode (36-51px): displays time + title + cost (if present) in single row",
+        "verification_method": "Code inspection of scripts/generate-html-interactive.py lines 2850-2873 and HTML output verification",
+        "result": "fail",
+        "details": "Python script correctly implements cost display in oneRowMode (lines 2864-2871) with proper conditional rendering (entry.cost !== undefined && Number(entry.cost) > 0) and matching styling (11px font, #f5f5f3 background, vertically aligned). However, output HTML file (output/travel-plan-china-feb-15-mar-7-2026-20260202-195429.html) was not regenerated and still contains old oneRowMode code without cost display.",
+        "evidence": [
+          "Python script lines 2864-2871: Cost badge with fmtCost() function call and proper styling",
+          "HTML file timestamp: Feb 13 16:56 (before final commit e79eff8 at 17:02)",
+          "HTML oneRowMode block: Missing cost display logic, only shows time + title + optional badge",
+          "grep verification: HTML contains 'entry.image && !sm && showText' (old image condition) instead of new twoRowsMode-scoped image"
+        ]
+      },
+      {
+        "criterion": "twoRowsMode (>= 52px): displays time row + title row + full details + image",
+        "verification_method": "Code inspection of scripts/generate-html-interactive.py lines 2877-2899 and regression testing",
+        "result": "pass",
+        "details": "Python script correctly maintains twoRowsMode full details display. Time row at line 2884, title row at lines 2885-2897, full details in showSubtext block at lines 2900-2937. twoRowsMode logic unchanged except for image relocation.",
+        "evidence": [
+          "twoRowsMode block structure preserved (time + title + optional badge)",
+          "showSubtext details rendering intact (cost, duration, stars at lines 2924-2936)",
+          "No regression in git diff for twoRowsMode display elements"
+        ]
+      },
+      {
+        "criterion": "Images only render in twoRowsMode (not in oneRowMode)",
+        "verification_method": "Code diff analysis between commits 8e4e711 and e79eff8, line-by-line comparison",
+        "result": "pass",
+        "details": "Image rendering successfully moved from outside mode conditionals (old line 2847: 'entry.image && !sm && showText') to inside twoRowsMode block (new lines 2879-2883: 'entry.image && !sm'). Image div now only renders when twoRowsMode condition (entryH >= 52) is true. Removed redundant showText condition since twoRowsMode implies showText=true.",
+        "evidence": [
+          "Old version (8e4e711): Image at line 2847 outside mode conditionals with condition 'entry.image && !sm && showText'",
+          "New version (e79eff8): Image at lines 2879-2883 inside twoRowsMode block with condition 'entry.image && !sm'",
+          "oneRowMode block (lines 2850-2873): No image rendering code present",
+          "Added marginBottom: '4px' to image div for proper spacing within twoRowsMode"
+        ]
+      },
+      {
+        "criterion": "moveToLeft (< 36px): displays left-side title with colored bar",
+        "verification_method": "Git diff regression check and code inspection of lines 2805-2821",
+        "result": "pass",
+        "details": "moveToLeft logic completely unchanged. No modifications in git diff between 8e4e711 and e79eff8 for moveToLeft block. Conditional rendering (line 2805: 'moveToLeft &&'), positioning (right: 'calc(100% + 8px)'), and display logic remain intact.",
+        "evidence": [
+          "git diff shows no changes to moveToLeft block (lines 2805-2821)",
+          "moveToLeft variable definition unchanged (line 2791: 'entryH < 36')",
+          "Left-side title rendering logic preserved (icon + getDisplayName)",
+          "pointerEvents: 'none' attribute maintained"
+        ]
+      },
+      {
+        "criterion": "Timeline is visible on live GitHub Pages deployment",
+        "verification_method": "Not performed - HTML file not regenerated",
+        "result": "fail",
+        "details": "Cannot verify live deployment because HTML file was not regenerated after code changes. Output file timestamp (Feb 13 16:56) predates final commit (e79eff8 at 17:02). Live deployment would show old version without oneRowMode cost display and with incorrect image scoping.",
+        "evidence": [
+          "HTML file modified time: Feb 13 16:56",
+          "Latest commit time: Feb 13 17:02 (6 minutes after HTML generation)",
+          "Success criterion requires regenerating HTML with: source venv/bin/activate && python scripts/generate-html-interactive.py"
+        ]
+      },
+      {
+        "criterion": "Playwright agent confirms timeline entries render correctly",
+        "verification_method": "Not performed - prerequisite failed",
+        "result": "fail",
+        "details": "Cannot deploy Playwright agent verification because HTML file is out of date. Playwright would verify old version (8e4e711) instead of fixed version (e79eff8). Must regenerate HTML before Playwright verification can proceed.",
+        "evidence": [
+          "HTML regeneration is prerequisite for Playwright verification",
+          "QA note in dev report: 'Regenerate HTML with source venv/bin/activate && python scripts/generate-html-interactive.py'",
+          "Current HTML contains old code confirmed by grep searches"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Python script changes directly address both root cause issues from commit 8e4e711: (1) Image rendering moved from outside mode conditionals (old condition 'entry.image && !sm && showText' at line 2847) to inside twoRowsMode block (new lines 2879-2883), preventing 50x50px images from rendering in oneRowMode (36-51px height) where they cannot fit. (2) Cost display added to oneRowMode (lines 2864-2871) using same fmtCost() helper and badge styling as twoRowsMode, making condensed view more informative. Root cause comments added at lines 2848-2849 and 2875-2876 explicitly reference commit 8e4e711 and explain why changes were necessary. Implementation maintains three-tier architecture integrity (moveToLeft < 36px, oneRowMode 36-51px, twoRowsMode >= 52px) without breaking existing functionality."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Python syntax validation",
+        "result": "pass",
+        "details": "Python compilation succeeds with 'python3 -m py_compile scripts/generate-html-interactive.py'. One SyntaxWarning at line 1516 for invalid escape sequence '\\d' exists but is pre-existing (not introduced by changes) and does not affect execution."
+      },
+      {
+        "test": "twoRowsMode full details display",
+        "result": "pass",
+        "details": "twoRowsMode block (lines 2877-2899) maintains all original functionality. Time row (line 2884), title row (lines 2885-2897), and full details in showSubtext block (lines 2900-2937) are unchanged. Only modification is adding image div inside twoRowsMode (lines 2879-2883) which was previously outside conditionals."
+      },
+      {
+        "test": "moveToLeft logic unchanged",
+        "result": "pass",
+        "details": "git diff between 8e4e711 and e79eff8 shows zero changes to moveToLeft block (lines 2805-2821). Variable definition (line 2791: 'entryH < 36'), conditional rendering, positioning, and display logic completely preserved."
+      },
+      {
+        "test": "Column layout compatibility",
+        "result": "pass",
+        "details": "Column layout calculations (lines 2780-2781: colWidth, colLeft) and rendering (lines 2824-2826: position, left, width) unchanged. Changes to oneRowMode and twoRowsMode are within content div (line 2847 onwards) and do not affect column positioning logic."
+      },
+      {
+        "test": "Three-tier responsive breakpoints",
+        "result": "pass",
+        "details": "Responsive mode definitions unchanged (lines 2789-2791: twoRowsMode >= 52, oneRowMode 36-51, moveToLeft < 36). Visibility flags unchanged (lines 2794-2797: showText >= 36, showTime >= 36, showSubtext >= 52, showInlineTime = oneRowMode). Changes only affect content rendering within each mode, not mode logic itself."
+      },
+      {
+        "test": "HTML regeneration",
+        "result": "fail",
+        "details": "HTML file (output/travel-plan-china-feb-15-mar-7-2026-20260202-195429.html) timestamp Feb 13 16:56 predates final commit e79eff8 at 17:02. grep verification confirms HTML contains old code: 'entry.image && !sm && showText' (image outside conditionals) and oneRowMode without cost display. HTML must be regenerated to reflect Python script changes."
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "naming",
+        "location": "scripts/generate-html-interactive.py:2848",
+        "issue": "Comment references 'commit 8e4e711' but earlier comment at line 2783 references 'commit e0a9291'. Inconsistent commit references in same file section.",
+        "recommendation": "Verify which commit introduced three-tier display (likely e0a9291) and which commit had incomplete implementation (8e4e711). Update comments to accurately reflect history."
+      },
+      {
+        "severity": "minor",
+        "category": "documentation",
+        "location": "scripts/generate-html-interactive.py:2864",
+        "issue": "Cost display logic duplicated between oneRowMode (lines 2864-2871) and twoRowsMode showSubtext (lines 2926-2934). Same conditional, styling, and fmtCost() call.",
+        "recommendation": "Consider extracting cost badge rendering into reusable const CostBadge component to reduce duplication and ensure consistency."
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "output/travel-plan-china-feb-15-mar-7-2026-20260202-195429.html",
+        "issue": "HTML file not regenerated after Python script changes. File timestamp (Feb 13 16:56) predates final commit (e79eff8 at 17:02). HTML contains old version from commit 8e4e711 without oneRowMode cost display and with incorrect image scoping.",
+        "recommendation": "Regenerate HTML immediately with: source venv/bin/activate && python scripts/generate-html-interactive.py. Verify timestamp updates and grep for new code ('Root cause fix (commit 8e4e711)' comments, cost badge in oneRowMode, image inside twoRowsMode).",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "Success criterion 5: Timeline visibility on live deployment",
+        "issue": "Cannot verify live GitHub Pages deployment because HTML file is outdated. Live site would show broken version without fixes.",
+        "recommendation": "After regenerating HTML, deploy to GitHub Pages and use Playwright agent to verify timeline rendering. Check oneRowMode entries show cost badges and twoRowsMode entries show images.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "Success criterion 6: Playwright agent verification",
+        "issue": "Cannot perform Playwright verification with outdated HTML. Prerequisite (HTML regeneration) not completed.",
+        "recommendation": "Regenerate HTML, deploy to GitHub Pages, then invoke Playwright agent with task: 'Navigate to https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026/2026-02-02/, click Timeline view, verify entries render with responsive display (cost in oneRowMode, images in twoRowsMode)'.",
+        "blocks_release": true
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:2848",
+        "issue": "Inconsistent commit references in comments (e0a9291 vs 8e4e711)",
+        "recommendation": "Verify and standardize commit references for historical accuracy",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:2864-2934",
+        "issue": "Cost badge rendering logic duplicated between oneRowMode and twoRowsMode",
+        "recommendation": "Consider extracting into reusable CostBadge component",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 3,
+      "major_issues": 0,
+      "minor_issues": 2,
+      "total_findings": 5,
+      "release_recommendation": "reject"
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "Success criterion 1: oneRowMode cost display - Code correct but HTML not regenerated",
+      "Success criterion 5: Timeline visibility on live deployment - Cannot verify with outdated HTML",
+      "Success criterion 6: Playwright agent verification - Blocked by HTML regeneration"
+    ],
+    "critical_issues": [
+      "HTML file (output/travel-plan-china-feb-15-mar-7-2026-20260202-195429.html) contains old version from commit 8e4e711. File timestamp Feb 13 16:56 predates final commit e79eff8 at 17:02.",
+      "Live GitHub Pages deployment would show broken version without oneRowMode cost display and with incorrect image scoping.",
+      "Playwright agent verification cannot proceed until HTML is regenerated and deployed."
+    ],
+    "recommended_approach": "The Python script implementation is correct and fully addresses root cause. The ONLY blocking issue is HTML regeneration. Next iteration must: (1) Regenerate HTML with 'source venv/bin/activate && python scripts/generate-html-interactive.py'. (2) Verify HTML contains new code by grepping for 'Root cause fix (commit 8e4e711)' and cost badge in oneRowMode. (3) Deploy HTML to GitHub Pages. (4) Invoke Playwright agent to verify timeline responsive display at multiple viewport heights.",
+    "additional_context": "Code quality is high. Changes are minimal, focused, and well-commented. Root cause analysis is thorough and accurate. The only failure is operational (forgetting to run regeneration script), not implementation. Once HTML is regenerated, all success criteria should pass."
+  }
+}
