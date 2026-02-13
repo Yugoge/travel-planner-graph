@@ -512,8 +512,8 @@ Use Task tool with:
   3. Detect conflicts: overlapping times, unrealistic travel, tight schedules
 
   4. **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
-     Use Write tool explicitly (see timeline.md Step 3 for details).
-     Root Cause Reference (commit ef0ed28): Explicit Write instruction prevents timeline data loss.
+     Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data.
+     Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates.
 
   **IMPORTANT**:
   - If any locations lack GPS coordinates, optimize only locations with valid coordinates
@@ -733,54 +733,13 @@ day_data=$(source /root/.claude/venv/bin/activate && python /root/travel-planner
 
 Note: Timeline data is an **object** with activity keys (not array). Use `echo "$day_data" | jq '.timeline.data.days[0].timeline | keys'` to access.
 
-Data is now available in `$day_data` variable. Parse as needed for presentation:
-```bash
-# Example: Extract timeline activities sorted by time
-echo "$day_data" | jq -r '.timeline.data.days[0].timeline | to_entries | sort_by(.value.start_time) | .[] | "- \(.value.start_time): \(.key)"'
-```
+Note: Timeline data is an **object** with activity keys (not array).
 
-**Step 2: Validate Extraction Completeness**
-
-**CRITICAL - Validation checkpoint before presentation**:
-
-After extracting Day N data, verify ALL timeline entries for that day are present:
-
-```bash
-timeline_entry_count=$(echo "$day_data" | jq '.timeline.data.days[0].timeline | keys | length')
-echo "Day ${current_day_index} has ${timeline_entry_count} timeline activities"
-```
-
-**Validation criteria**:
-- Timeline activity count MUST be > 0
-- If timeline_entry_count == 0: Extraction failed, debug and retry
-- Typical day has 8-23 timeline activities (meals + attractions + entertainment + travel segments)
-- Day 1 test case has 22 activities including drone show (20:30-21:00)
-
-**Example validation output**:
-```
-Day 1 has 22 timeline activities  ✓ PASS (drone show present)
-Day 2 has 0 timeline activities   ✗ FAIL - Extraction error, re-extract
-Day 3 has 12 timeline activities  ✓ PASS
-```
-
-**If validation fails**:
-1. Check load.py exit code and error message
-2. Verify day index is valid (1 to total_days)
-3. Verify agent JSON files exist in data/{destination-slug}/
-4. Do NOT proceed to presentation until validation passes
-
-**Error handling**:
-```bash
-if [ $? -ne 0 ]; then
-  echo "Error: load.py failed to extract Day ${current_day_index} data"
-  echo "Check agent JSON files exist and day index is valid"
-  exit 1
-fi
-```
+Data is now available in `$day_data` variable. Use it directly for presentation (load.py already validated completeness).
 
 ---
 
-**MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
+**Step 2: MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
 
 **CRITICAL**: ALWAYS present complete day details regardless of budget status. Never omit content due to budget overage.
 
@@ -1147,8 +1106,8 @@ Use Task tool with:
   Recalculate timeline ONLY for Day {N}.
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json** (Day {N} section only).
-  Use Write tool explicitly (see timeline.md Step 3).
-  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
+  Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data.
+  Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates.
 
   Detect any new conflicts.
 
@@ -1679,8 +1638,8 @@ Use Task tool with:
   Recalculate timeline for Day {N} only (or all days if multiple domains affected).
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
-  Use Write tool explicitly (see timeline.md Step 3).
-  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
+  Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data.
+  Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates.
 
   After completing all tasks, return ONLY the word 'complete'.
   "

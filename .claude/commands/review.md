@@ -407,47 +407,13 @@ day_data=$(source /root/.claude/venv/bin/activate && python /root/travel-planner
 }
 ```
 
-Note: Timeline data is an **object** with activity keys (not array). Use `echo "$day_data" | jq '.timeline.data.days[0].timeline | keys'` to access.
+Note: Timeline data is an **object** with activity keys (not array).
 
-Data is now available in `$day_data` variable. Parse as needed for presentation:
-```bash
-# Example: Extract timeline activities sorted by time
-echo "$day_data" | jq -r '.timeline.data.days[0].timeline | to_entries | sort_by(.value.start_time) | .[] | "- \(.value.start_time): \(.key)"'
-```
-
-**Step 2: Validate Extraction Completeness**
-
-**CRITICAL - Validation checkpoint before presentation**:
-
-After extracting Day N data, verify ALL timeline entries for that day are present:
-
-```bash
-timeline_entry_count=$(echo "$day_data" | jq '.timeline.data.days[0].timeline | keys | length')
-echo "Day ${current_day_index} has ${timeline_entry_count} timeline activities"
-```
-
-**Validation criteria**:
-- Timeline activity count MUST be > 0
-- If timeline_entry_count == 0: Extraction failed, debug and retry
-- Typical day has 8-23 timeline activities (meals + attractions + entertainment + travel segments)
-- Day 1 test case has 22 activities including drone show (20:30-21:00)
-
-**Example validation output**:
-```
-Day 1 has 22 timeline activities  ✓ PASS (drone show present)
-Day 2 has 0 timeline activities   ✗ FAIL - Extraction error, re-extract
-Day 3 has 12 timeline activities  ✓ PASS
-```
-
-**If validation fails**:
-1. Check load.py exit code and error message
-2. Verify day index is valid (1 to total_days)
-3. Verify agent JSON files exist in data/{destination-slug}/
-4. Do NOT proceed to presentation until validation passes
+Data is now available in `$day_data` variable. Use it directly for presentation (load.py already validated completeness).
 
 ---
 
-**Step 3: MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
+**Step 2: MANDATORY COMPLETE DAY PRESENTATION FORMAT**:
 
 **CRITICAL**: ALWAYS present complete day details regardless of budget status. Never omit content due to budget overage.
 
@@ -505,7 +471,7 @@ Please choose an option or describe specific changes you'd like.
 
 ---
 
-**Step 4-6: STATE TRACKING AND USER CHOICE PROCESSING**:
+**Step 3-5: STATE TRACKING AND USER CHOICE PROCESSING**:
 - `current_day_index`: Which day in sequence (1 to total_days)
 - `day_confirmed_perfect`: Boolean flag for INNER loop exit
 - `iteration_count_per_day`: Limit 5 iterations per day before suggesting acceptance
@@ -524,7 +490,7 @@ Please choose an option or describe specific changes you'd like.
 
 ---
 
-#### Step 4a: Fetch Images for Confirmed Day
+#### Step 3a: Fetch Images for Confirmed Day
 
 **TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
 
@@ -621,7 +587,7 @@ Please enter your choice (1, 2, or 3):
   - Add day to `days_missing_images` list
   - Proceed to Substep 4
 
-**Substep 4: Success Confirmation**
+**Substep 4: Success Confirmation and Exit INNER Loop**
 
 Print success message:
 
@@ -635,6 +601,8 @@ Proceeding to Day ${current_day_index + 1}...
 - Reset `retry_count_per_day[current_day_index]` to 0
 - Set `day_confirmed_perfect = true`
 - Exit INNER loop (workflow proceeds to increment `current_day_index`)
+
+**This completes Step 3a. Return to Step 3-5 USER CHOICE PROCESSING to continue OUTER loop.**
 
 ---
 
