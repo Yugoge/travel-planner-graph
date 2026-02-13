@@ -1,0 +1,371 @@
+{
+  "agent": "budget",
+  "test_date": "2026-02-13T14:30:00Z",
+  "test_trip": "china-feb-15-mar-7-2026-20260202-195429",
+  "test_status": "PASS",
+  "summary": {
+    "workflow_complete": true,
+    "critical_issues": 0,
+    "high_severity_issues": 0,
+    "medium_severity_issues": 0,
+    "low_severity_issues": 0,
+    "recommendations": 3
+  },
+  "test_results": {
+    "step_1_documentation": {
+      "status": "PASS",
+      "location": "System prompt contains budget agent instructions",
+      "schema_file": "/root/travel-planner/schemas/budget.schema.json",
+      "schema_valid": true,
+      "notes": "Agent instructions embedded in system prompt. No separate .claude/agents/budget.md file found."
+    },
+    "step_2_workflow_test": {
+      "status": "PASS",
+      "input_files_required": [
+        "requirements-skeleton.json",
+        "plan-skeleton.json",
+        "meals.json",
+        "accommodation.json",
+        "attractions.json",
+        "entertainment.json",
+        "shopping.json",
+        "transportation.json",
+        "timeline.json"
+      ],
+      "input_files_verification": {
+        "requirements-skeleton.json": {
+          "exists": true,
+          "readable": true,
+          "budget_field": "€1,000 total (excluding purchased flights and shopping)",
+          "notes": "Budget specified in EUR, needs conversion consideration"
+        },
+        "meals.json": {
+          "exists": true,
+          "readable": true,
+          "test_load": "SUCCESS - Level 3 load day 1 verified"
+        },
+        "accommodation.json": {
+          "exists": true,
+          "readable": true
+        },
+        "attractions.json": {
+          "exists": true,
+          "readable": true
+        },
+        "entertainment.json": {
+          "exists": true,
+          "readable": true
+        },
+        "shopping.json": {
+          "exists": true,
+          "readable": true
+        },
+        "transportation.json": {
+          "exists": true,
+          "readable": true
+        },
+        "timeline.json": {
+          "exists": true,
+          "readable": true
+        }
+      },
+      "workflow_steps": {
+        "step_0_verify_inputs": "PASS - All 9 required input files exist and readable",
+        "step_1_read_and_analyze": "PASS - load.py supports all agent types with level 1/2/3 access",
+        "step_2_generate_budget": "PASS - Schema requires: meals, accommodation, activities, shopping, transportation, total per day",
+        "step_3_save_and_validate": "PASS - save.py with validation verified"
+      }
+    },
+    "step_3_script_verification": {
+      "status": "PASS",
+      "load_script": {
+        "path": "/root/travel-planner/scripts/load.py",
+        "executable": true,
+        "supports_budget_agent": true,
+        "test_results": {
+          "level_1": "PASS - Returns day metadata only (day, date, location)",
+          "level_3": "PASS - Returns full budget breakdown for day 1"
+        }
+      },
+      "save_script": {
+        "path": "/root/travel-planner/scripts/save.py",
+        "executable": true,
+        "uses_json_io_lib": true,
+        "atomic_writes": true,
+        "automatic_backup": true,
+        "validation_integrated": true,
+        "test_results": {
+          "dry_run_no_validate": "PASS - Successfully saved test JSON to budget.json",
+          "backup_created": "VERIFIED - .bak file exists",
+          "restoration": "PASS - Original budget.json restored from backup"
+        }
+      },
+      "validation_script": {
+        "path": "/root/travel-planner/scripts/plan-validate.py",
+        "executable": true,
+        "test_results": {
+          "current_budget_json": "PASS - 6/6 required fields (100.0%), 0 HIGH issues, VERDICT: PASS"
+        }
+      }
+    },
+    "step_4_issue_detection": {
+      "status": "PASS",
+      "critical_issues": [],
+      "high_severity_issues": [],
+      "medium_severity_issues": [],
+      "low_severity_issues": [],
+      "observations": [
+        {
+          "category": "schema_completeness",
+          "severity": "info",
+          "description": "Schema requires trip_total, user_budget, overage, overage_percentage at root level",
+          "recommendation": "Agent must calculate these fields from all days combined"
+        },
+        {
+          "category": "budget_structure",
+          "severity": "info",
+          "description": "Budget breakdown requires 6 fields per day: meals, accommodation, activities, shopping, transportation, total",
+          "recommendation": "Agent must sum breakfast+lunch+dinner from meals.json, add attraction costs from attractions.json and entertainment.json"
+        },
+        {
+          "category": "currency_handling",
+          "severity": "info",
+          "description": "User budget in EUR (€1,000), but all agent data in CNY",
+          "recommendation": "Agent should note currency mismatch and suggest conversion or clarification"
+        }
+      ]
+    },
+    "step_5_dry_run": {
+      "status": "PASS",
+      "test_file": "/tmp/budget-test-dry-run.json",
+      "test_json_valid": true,
+      "save_command": "python3 scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent budget --input /tmp/budget-test-dry-run.json --no-validate",
+      "save_result": "SUCCESS - ✅ Saved: /root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429/budget.json",
+      "validation_command": "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent budget",
+      "validation_result": "PASS - 6/6 required fields (100.0%), 0 HIGH issues",
+      "restoration": "SUCCESS - Original budget.json restored from .bak"
+    }
+  },
+  "workflow_documentation": {
+    "step_0_verify_inputs": {
+      "description": "MANDATORY: Verify all 9 required input files exist before analysis",
+      "required_files": [
+        "requirements-skeleton.json (user budget)",
+        "plan-skeleton.json (day structure)",
+        "meals.json (meal costs)",
+        "accommodation.json (hotel costs)",
+        "attractions.json (attraction costs)",
+        "entertainment.json (entertainment costs)",
+        "shopping.json (shopping budgets)",
+        "transportation.json (travel costs)",
+        "timeline.json (verify all activities accounted)"
+      ],
+      "bash_command": "for agent in requirements-skeleton plan-skeleton meals accommodation attractions entertainment shopping transportation timeline; do\n  ls -la data/{trip-slug}/$agent.json || echo \"MISSING: $agent.json\"\ndone",
+      "error_handling": "If ANY file missing, return error immediately with list of missing files"
+    },
+    "step_1_read_and_analyze": {
+      "description": "Load all verified input files and analyze costs",
+      "load_commands": {
+        "requirements": "python3 scripts/load.py --trip {trip-slug} --agent requirements-skeleton --level 1",
+        "plan": "python3 scripts/load.py --trip {trip-slug} --agent plan-skeleton --level 1",
+        "meals_day_X": "python3 scripts/load.py --trip {trip-slug} --agent meals --level 3 --day X",
+        "accommodation_day_X": "python3 scripts/load.py --trip {trip-slug} --agent accommodation --level 3 --day X",
+        "attractions_day_X": "python3 scripts/load.py --trip {trip-slug} --agent attractions --level 3 --day X",
+        "entertainment_day_X": "python3 scripts/load.py --trip {trip-slug} --agent entertainment --level 3 --day X",
+        "shopping_day_X": "python3 scripts/load.py --trip {trip-slug} --agent shopping --level 3 --day X",
+        "transportation_day_X": "python3 scripts/load.py --trip {trip-slug} --agent transportation --level 3 --day X"
+      },
+      "analysis_tasks": [
+        "Sum breakfast + lunch + dinner costs from meals.json",
+        "Get accommodation cost from accommodation.json",
+        "Sum attraction costs from attractions.json (array of POIs)",
+        "Sum entertainment costs from entertainment.json (array of POIs)",
+        "Combine attractions + entertainment into 'activities' category",
+        "Get shopping budget from shopping.json (array of POIs)",
+        "Get transportation costs from transportation.json (location_change if present)",
+        "Calculate daily total: meals + accommodation + activities + shopping + transportation"
+      ]
+    },
+    "step_2_generate_budget": {
+      "description": "Calculate budget breakdown for each day and trip totals",
+      "required_fields_per_day": {
+        "day": "integer (1-indexed)",
+        "date": "string (YYYY-MM-DD)",
+        "location": "string (city name)",
+        "budget": {
+          "meals": "number (breakfast + lunch + dinner)",
+          "accommodation": "number (per night)",
+          "activities": "number (attractions + entertainment)",
+          "shopping": "number (allocated budget)",
+          "transportation": "number (inter-city travel if location_change)",
+          "total": "number (sum of all categories)"
+        }
+      },
+      "required_root_level_fields": {
+        "trip_total": "number (sum of all daily totals)",
+        "user_budget": "number (from requirements-skeleton.json)",
+        "overage": "number (trip_total - user_budget, can be negative)",
+        "overage_percentage": "number ((overage / user_budget) * 100)"
+      },
+      "warnings_generation": [
+        "Day X exceeds daily budget by $Y (category too expensive)",
+        "Total trip: Z% over/under budget"
+      ],
+      "recommendations_generation": [
+        "Day X: Switch [meal] to [cheaper alternative] to save $Y",
+        "Day X: Skip [paid attraction] or choose free alternative",
+        "Day X: Under-budget by $Y - opportunity to upgrade or add activity"
+      ],
+      "validation_rules": [
+        "All calculations must sum correctly",
+        "Cross-verify with source JSONs",
+        "Identify specific days and categories causing overage",
+        "Recommendations must be actionable (specific alternatives)",
+        "Consider currency exchange buffer (5% for international trips)"
+      ]
+    },
+    "step_3_save_and_validate": {
+      "description": "Use scripts/save.py to write budget.json with mandatory validation",
+      "save_method_option_1": {
+        "description": "Save from temp file (RECOMMENDED for complex JSON)",
+        "bash_command": "cat > /tmp/budget_update.json << 'EOF'\n{\n  \"agent\": \"budget\",\n  \"status\": \"complete\",\n  \"data\": {...}\n}\nEOF\n\npython3 scripts/save.py \\\n  --trip {trip-slug} \\\n  --agent budget \\\n  --input /tmp/budget_update.json"
+      },
+      "save_method_option_2": {
+        "description": "Save from stdin (for small JSON)",
+        "bash_command": "echo '{...json...}' | python3 scripts/save.py \\\n  --trip {trip-slug} \\\n  --agent budget"
+      },
+      "validation": {
+        "automatic": true,
+        "schema_file": "schemas/budget.schema.json",
+        "validator_script": "scripts/plan-validate.py",
+        "blocks_on_high_severity": true,
+        "required_fields": [
+          "agent",
+          "status",
+          "data.days[].day",
+          "data.days[].budget.meals",
+          "data.days[].budget.accommodation",
+          "data.days[].budget.activities",
+          "data.days[].budget.shopping",
+          "data.days[].budget.transportation",
+          "data.days[].budget.total"
+        ]
+      },
+      "error_handling": {
+        "validation_failure": "Fix HIGH severity issues and retry save",
+        "json_syntax_error": "Validate JSON before passing to save.py",
+        "missing_required_fields": "Add all required fields per schema"
+      },
+      "success_criteria": {
+        "file_saved": "budget.json created/updated in data/{trip-slug}/",
+        "backup_created": "budget.json.bak exists",
+        "validation_passed": "0 HIGH severity issues",
+        "return_value": "ONLY return 'complete' after save.py succeeds"
+      }
+    }
+  },
+  "critical_json_validation": {
+    "root_cause_reference": "commit ef0ed28 - Budget data loss incident",
+    "common_pitfalls": [
+      {
+        "issue": "Array ending with } instead of ]",
+        "example": "\"recommendations\": [\"item1\", \"item2\"}",
+        "correct": "\"recommendations\": [\"item1\", \"item2\"]",
+        "impact": "JSON parse error, entire save fails"
+      },
+      {
+        "issue": "Trailing comma after last array element",
+        "example": "\"warnings\": [\"warn1\", \"warn2\",]",
+        "correct": "\"warnings\": [\"warn1\", \"warn2\"]",
+        "impact": "JSON parse error in strict parsers"
+      },
+      {
+        "issue": "Missing comma between array elements",
+        "example": "[\"item1\" \"item2\"]",
+        "correct": "[\"item1\", \"item2\"]",
+        "impact": "JSON parse error"
+      }
+    ],
+    "validation_checklist": [
+      "✓ Verify 'recommendations' is array ending with ]",
+      "✓ Check all array elements are comma-separated",
+      "✓ Ensure no trailing commas after last element",
+      "✓ Validate all brackets match: { with }, [ with ]",
+      "✓ Test JSON with python3 -m json.tool before save"
+    ],
+    "pre_save_validation": "cat /tmp/budget_update.json | python3 -m json.tool > /dev/null && echo 'JSON valid' || echo 'JSON INVALID'"
+  },
+  "discovered_issues": [],
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "workflow_clarity",
+      "description": "Ensure budget agent clearly documents currency handling",
+      "rationale": "User budget in EUR (€1,000) but all source data in CNY. Agent should note this and provide conversion or clarification.",
+      "action": "Add currency mismatch warning in output if detected"
+    },
+    {
+      "priority": "medium",
+      "category": "validation_improvement",
+      "description": "Add pre-save JSON syntax validation",
+      "rationale": "Prevent JSON syntax errors from reaching save.py",
+      "action": "Use 'python3 -m json.tool' to validate JSON before save.py"
+    },
+    {
+      "priority": "low",
+      "category": "documentation",
+      "description": "Consider adding budget agent instructions to standalone file",
+      "rationale": "Currently embedded in system prompt, could be clearer as separate .claude/agents/budget.md",
+      "action": "Optional - extract to standalone file for easier reference"
+    }
+  ],
+  "test_commands_reference": {
+    "load_level_1": "python3 scripts/load.py --trip {trip-slug} --agent budget --level 1",
+    "load_level_3": "python3 scripts/load.py --trip {trip-slug} --agent budget --level 3 --day 1",
+    "validate_json": "python3 -m json.tool < /tmp/budget_update.json",
+    "save_from_file": "python3 scripts/save.py --trip {trip-slug} --agent budget --input /tmp/budget_update.json",
+    "save_from_stdin": "cat /tmp/budget_update.json | python3 scripts/save.py --trip {trip-slug} --agent budget",
+    "validate_output": "python3 scripts/plan-validate.py {trip-slug} --agent budget",
+    "restore_backup": "cp data/{trip-slug}/budget.json.bak data/{trip-slug}/budget.json"
+  },
+  "agent_specific_notes": {
+    "dependencies": [
+      "Budget agent runs SERIALLY after timeline agent completes",
+      "Depends on 8 other agents' output files (meals, accommodation, attractions, entertainment, shopping, transportation, requirements-skeleton, plan-skeleton)"
+    ],
+    "data_flow": [
+      "Input: requirements-skeleton.json (user budget) → Extract total budget",
+      "Input: plan-skeleton.json → Get day structure and dates",
+      "Input: meals.json → Sum breakfast + lunch + dinner per day",
+      "Input: accommodation.json → Get per-night hotel cost",
+      "Input: attractions.json + entertainment.json → Sum for 'activities' category",
+      "Input: shopping.json → Get shopping budget allocation",
+      "Input: transportation.json → Get inter-city travel costs (if location_change)",
+      "Input: timeline.json → Verify all activities are accounted for",
+      "Output: budget.json → Daily breakdown + trip totals + warnings + recommendations"
+    ],
+    "calculation_logic": {
+      "meals": "breakfast_cost + lunch_cost + dinner_cost (from meals.json)",
+      "accommodation": "accommodation.cost (from accommodation.json)",
+      "activities": "sum(attractions[].cost) + sum(entertainment[].cost)",
+      "shopping": "sum(shopping[].cost) (allocated budget, not necessarily spent)",
+      "transportation": "location_change.cost if present else 0 (from transportation.json)",
+      "total": "meals + accommodation + activities + shopping + transportation"
+    },
+    "special_considerations": [
+      "Currency mismatch detection (user budget EUR vs agent data CNY)",
+      "Exchange rate buffer (add 5% for international trips)",
+      "Tight budget warning (less than 10% buffer)",
+      "Outlier day detection (much higher/lower than average)",
+      "Weather-related costs (umbrellas, seasonal clothing) included in shopping category"
+    ]
+  },
+  "verdict": {
+    "overall_status": "PASS",
+    "workflow_complete": true,
+    "scripts_functional": true,
+    "validation_working": true,
+    "ready_for_production": true,
+    "confidence_level": "HIGH"
+  }
+}

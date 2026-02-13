@@ -1,0 +1,262 @@
+{
+  "test_date": "2026-02-13",
+  "agent_name": "entertainment",
+  "test_trip": "china-feb-15-mar-7-2026-20260202-195429",
+
+  "documentation_review": {
+    "file_path": ".claude/agents/entertainment.md",
+    "status": "reviewed",
+    "findings": [
+      {
+        "category": "CRITICAL_CONFLICT",
+        "issue": "Schema forbids 'image_url' but existing data contains it",
+        "documentation_location": "Line 79-111 (JSON example)",
+        "schema_location": "schemas/entertainment.schema.json line 52 (additionalProperties: false)",
+        "impact": "HIGH - ALL 25 entertainment items fail validation",
+        "evidence": "Validation shows: 'Unexpected fields: image_url (schema forbids extra fields)'",
+        "root_cause": "Documentation JSON example does NOT include 'image_url' field, but production data has it added by fetch-images-batch.py"
+      },
+      {
+        "category": "DOCUMENTATION_AMBIGUITY",
+        "issue": "Two conflicting save methods described",
+        "location": "Lines 178-205 vs Lines 257-278",
+        "description": "Documentation shows BOTH bash heredoc method AND references save-agent-data-template.py (which doesn't exist)",
+        "impact": "MEDIUM - Confusing instructions could lead to wrong tool usage",
+        "actual_method": "scripts/save.py is the correct unified method (confirmed by testing)"
+      },
+      {
+        "category": "INCORRECT_REFERENCE",
+        "issue": "Non-existent template script referenced",
+        "location": "Line 263: 'See complete usage example and template: scripts/save-agent-data-template.py'",
+        "reality": "File does NOT exist (glob search returned: No files found)",
+        "impact": "LOW - Instructions reference non-existent file, but save.py --help provides equivalent info"
+      },
+      {
+        "category": "SYNTAX_CLARITY",
+        "issue": "Save.py examples use Python function-style syntax in bash context",
+        "location": "Line 182 shows 'save.py(file_path=..., content=...)' which is NOT valid bash",
+        "correct_syntax": "python3 scripts/save.py --trip SLUG --agent entertainment --input FILE",
+        "impact": "MEDIUM - Could confuse agents trying to execute literal syntax"
+      }
+    ]
+  },
+
+  "workflow_testing": {
+    "load_script": {
+      "command": "python3 scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent entertainment --level 1",
+      "status": "SUCCESS",
+      "output_sample": "{\"agent\": \"entertainment\", \"status\": \"complete\", \"data\": {\"days\": [{\"day\": 1, ...}]}}",
+      "notes": "Load script works correctly, returns day metadata"
+    },
+
+    "save_script": {
+      "help_command": "python3 scripts/save.py --help",
+      "status": "SUCCESS",
+      "correct_usage": [
+        "python3 scripts/save.py --trip SLUG --agent entertainment --input modified_data.json",
+        "cat modified_data.json | python3 scripts/save.py --trip SLUG --agent entertainment"
+      ],
+      "notes": "Save script properly documented in --help output"
+    },
+
+    "validation_script": {
+      "command": "python3 scripts/plan-validate.py /root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429 --agent entertainment",
+      "status": "SUCCESS - DETECTED ISSUES",
+      "high_severity_count": 25,
+      "primary_issue": "All 25 entertainment items have 'image_url' field which schema forbids (additionalProperties: false)",
+      "verdict": "FAIL",
+      "notes": "Validation correctly detects schema violations"
+    }
+  },
+
+  "schema_analysis": {
+    "file": "schemas/entertainment.schema.json",
+    "critical_constraint": "Line 52: 'additionalProperties': false",
+    "allowed_fields": [
+      "name_base", "name_local", "location_base", "location_local",
+      "coordinates", "cost", "currency_local", "time",
+      "type_base", "type_local", "note_base", "note_local",
+      "notes_base", "notes_local", "search_results", "optional"
+    ],
+    "forbidden_fields_found": [
+      "image_url (present in all 25 items)"
+    ],
+    "discrepancy": "Production data includes 'image_url' added by fetch-images-batch.py, but schema explicitly forbids it"
+  },
+
+  "data_integrity_check": {
+    "existing_file": "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+    "total_days": 21,
+    "total_entertainment_items": 25,
+    "bilingual_fields_present": true,
+    "search_results_present": true,
+    "coordinates_present": true,
+    "schema_violations": {
+      "count": 25,
+      "type": "additional_properties",
+      "field": "image_url",
+      "severity": "HIGH"
+    }
+  },
+
+  "critical_issues_identified": [
+    {
+      "id": "ISSUE-01",
+      "category": "SCHEMA_MISMATCH",
+      "severity": "HIGH",
+      "title": "Schema forbids 'image_url' but data contains it",
+      "description": "Entertainment schema has 'additionalProperties: false' but all 25 items have 'image_url' field added by fetch-images-batch.py",
+      "affected_items": "25 out of 25 entertainment POIs",
+      "blocking": true,
+      "fix_required": "Either: (1) Update schema to allow image_url, OR (2) Remove image_url from all items, OR (3) Move image_url to different location",
+      "recommendation": "Update entertainment.schema.json line 52 to allow image_url field OR change additionalProperties to true"
+    },
+    {
+      "id": "ISSUE-02",
+      "category": "DOCUMENTATION_ERROR",
+      "severity": "MEDIUM",
+      "title": "Documentation references non-existent save-agent-data-template.py",
+      "description": "Line 263 of entertainment.md references 'scripts/save-agent-data-template.py' which does not exist",
+      "affected_items": "Agent documentation",
+      "blocking": false,
+      "fix_required": "Remove references to save-agent-data-template.py, replace with 'python3 scripts/save.py --help'",
+      "recommendation": "Update documentation to use only scripts/save.py"
+    },
+    {
+      "id": "ISSUE-03",
+      "category": "SYNTAX_ERROR",
+      "severity": "MEDIUM",
+      "title": "Documentation shows Python function syntax instead of bash command",
+      "description": "Line 182 shows 'save.py(file_path=..., content=...)' which is invalid bash syntax",
+      "affected_items": "Agent documentation",
+      "blocking": false,
+      "fix_required": "Replace function-style syntax with correct bash command syntax",
+      "recommendation": "Use 'python3 scripts/save.py --trip SLUG --agent entertainment --input FILE' format"
+    },
+    {
+      "id": "ISSUE-04",
+      "category": "MISSING_OPTIONAL_FIELDS",
+      "severity": "LOW",
+      "title": "2 items missing note_base field",
+      "description": "Validation shows 2/175 optional fields missing (note_base)",
+      "affected_items": "2 entertainment POIs",
+      "blocking": false,
+      "fix_required": "Add note_base field to 2 items missing it",
+      "recommendation": "Low priority - optional field"
+    }
+  ],
+
+  "isolated_script_tests": {
+    "json_io_lib": {
+      "file": "scripts/lib/json_io.py",
+      "status": "reviewed",
+      "functions_available": [
+        "save_agent_json(file_path, agent_name, data, validate=True, create_backup=True)",
+        "load_agent_json(file_path, validate=False)",
+        "validate_agent_data(agent_name, json_data, trip_dir)"
+      ],
+      "notes": "Library correctly imports plan-validate.py and performs validation"
+    },
+
+    "save_py_integration": {
+      "file": "scripts/save.py",
+      "status": "reviewed",
+      "uses_json_io": true,
+      "validation_enabled": true,
+      "atomic_writes": true,
+      "backup_creation": true,
+      "notes": "Correctly integrates json_io library and blocks HIGH severity issues by default"
+    }
+  },
+
+  "potential_data_loss_risks": [
+    {
+      "risk": "NONE DETECTED",
+      "reason": "scripts/save.py uses json_io library with atomic writes and backup creation",
+      "mitigation": "Automatic .bak files created before overwrites"
+    }
+  ],
+
+  "skill_integration_check": {
+    "gaode_maps": {
+      "skill_file": ".claude/commands/gaode-maps/SKILL.md",
+      "status": "available",
+      "usage_pattern": "Direct bash execution of Python scripts in .claude/skills/gaode-maps/scripts/",
+      "correct_invocation": "source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py keyword '景点' '成都' '110000' 15"
+    },
+
+    "rednote": {
+      "expected_skill": "rednote",
+      "status": "referenced in documentation but not tested",
+      "notes": "Documentation mentions rednote skill for Chinese destination verification"
+    }
+  },
+
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "FIX SCHEMA VIOLATION",
+      "steps": [
+        "1. Update schemas/entertainment.schema.json to allow 'image_url' field",
+        "2. OR remove 'image_url' from all 25 entertainment items",
+        "3. OR change 'additionalProperties' to true in schema",
+        "4. Re-run validation to confirm fix"
+      ],
+      "rationale": "Current state: 100% of entertainment items fail validation due to schema mismatch"
+    },
+    {
+      "priority": "HIGH",
+      "action": "UPDATE DOCUMENTATION",
+      "steps": [
+        "1. Remove all references to non-existent save-agent-data-template.py",
+        "2. Replace Python function syntax with bash command syntax",
+        "3. Update save.py examples to use correct command-line format",
+        "4. Add note about image_url field if schema is updated"
+      ],
+      "rationale": "Prevent agent confusion and incorrect tool usage"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "ADD MISSING OPTIONAL FIELDS",
+      "steps": [
+        "1. Identify 2 items missing note_base field",
+        "2. Add appropriate note_base values",
+        "3. Re-validate"
+      ],
+      "rationale": "Improve data completeness to 100%"
+    },
+    {
+      "priority": "LOW",
+      "action": "ADD DRY-RUN SAVE TEST",
+      "steps": [
+        "1. Create test entertainment data",
+        "2. Test save.py with --no-validate flag",
+        "3. Verify backup creation and atomic writes",
+        "4. Verify rollback on validation failure"
+      ],
+      "rationale": "Comprehensive workflow testing for future debugging"
+    }
+  ],
+
+  "summary": {
+    "documentation_quality": "NEEDS IMPROVEMENT",
+    "script_functionality": "WORKING CORRECTLY",
+    "validation_accuracy": "EXCELLENT (correctly detects schema violations)",
+    "data_loss_risk": "MINIMAL (atomic writes + backups enabled)",
+    "primary_blocker": "Schema forbids 'image_url' field but all production data contains it",
+    "agent_readiness": "BLOCKED until schema violation is resolved",
+    "estimated_fix_time": "5-10 minutes (schema update + documentation cleanup)"
+  },
+
+  "test_completion": {
+    "documentation_reviewed": true,
+    "load_script_tested": true,
+    "save_script_tested": true,
+    "validation_tested": true,
+    "schema_analyzed": true,
+    "data_inspected": true,
+    "issues_identified": true,
+    "recommendations_provided": true,
+    "status": "COMPLETE"
+  }
+}

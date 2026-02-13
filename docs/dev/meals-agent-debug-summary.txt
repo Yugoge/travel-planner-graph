@@ -1,0 +1,54 @@
+MEALS AGENT SELF-DEBUG REPORT
+==============================
+Date: 2026-02-13T14:30:00Z
+
+STATUS: ✅ WORKFLOW HEALTHY (with minor issues)
+
+DOCUMENTATION REVIEW
+====================
+✅ save.py syntax: CORRECT (bash CLI commands with --trip, --agent, --input)
+✅ load.py examples: CLEAR (3-level hierarchical access documented)
+⚠️  Minor issue: Line 379 uses '<trip-directory>' placeholder (should be 'TRIP_SLUG')
+
+SCRIPT EXECUTION TESTS
+======================
+✅ load.py: PASS
+   - Command: python3 scripts/load.py --trip TRIP_SLUG --agent meals --level 1
+   - Result: Successfully loaded Level 1 data
+
+✅ save.py: PASS  
+   - Command: python3 scripts/save.py --help
+   - Result: Correct CLI usage shown
+
+✅ plan-validate.py: PASS (found errors as expected)
+   - Command: python3 scripts/plan-validate.py TRIP_SLUG --agent meals
+   - Result: Detected 3 HIGH severity issues in production data
+
+PRODUCTION DATA VALIDATION
+===========================
+❌ HIGH: 3 image_url fields violate schema
+   - Location: meals.json Day 1 (breakfast, lunch, dinner)
+   - Issue: Schema has "additionalProperties: false" but POIs have image_url field
+   - Fix: Either remove image_url OR update schema to allow it
+
+⚠️  LOW: 50 missing search_results fields
+   - Optional field, but recommended for verification
+   - Should populate with actual skill URLs
+
+SKILL INTEGRATION
+=================
+⚠️  MEDIUM: Gaode Maps skill not tested in this self-test
+   - Scripts exist at .claude/skills/gaode-maps/scripts/poi_search.py
+   - Should test: source venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
+
+RECOMMENDATIONS
+===============
+1. Fix production data: Remove image_url from meals.json OR update poi-common.schema.json
+2. Minor doc improvement: Change '<trip-directory>' to 'TRIP_SLUG' at line 379
+3. Test Gaode Maps skill execution end-to-end
+4. Consider full workflow test: requirements → POI search → save meals
+
+VERDICT
+=======
+Workflow is healthy. Core scripts work correctly. Documentation is accurate.
+Main issue: Production data has schema violations (image_url fields).

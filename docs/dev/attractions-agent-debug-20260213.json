@@ -1,0 +1,255 @@
+{
+  "agent": "attractions",
+  "status": "issues_found",
+  "test_date": "2026-02-13",
+  "documentation_review": {
+    "file": ".claude/agents/attractions.md",
+    "completeness": "comprehensive",
+    "issues": [
+      {
+        "severity": "CRITICAL",
+        "type": "conflicting_instructions",
+        "location": "Lines 200-227 (Step 3) vs Lines 278-306 (JSON I/O Best Practices)",
+        "description": "Documentation gives two contradictory save methods",
+        "conflict_details": {
+          "step_3_says": "Use scripts/save.py script to save complete attractions JSON (lines 202, 216-219, 224-227)",
+          "json_io_section_says": "Replace direct scripts/save.py script usage with scripts/lib/json_io.py (line 282)",
+          "confusion": "Agent doesn't know which method takes precedence"
+        },
+        "impact": "HIGH - Agent may use wrong method or get confused and fail to save data",
+        "evidence": "Line 282 explicitly says 'Replace direct scripts/save.py script usage' which contradicts Step 3"
+      },
+      {
+        "severity": "HIGH",
+        "type": "misleading_reference",
+        "location": "Lines 282-299",
+        "description": "References scripts/save-agent-data-template.py which is just an example, not the actual save method",
+        "confusion": "Section titled 'JSON I/O Best Practices (REQUIRED)' suggests using template.py, but template.py is just a demonstration script",
+        "actual_method": "scripts/save.py is the correct unified save script (as shown in Step 3)",
+        "recommendation": "Clarify that template.py is for reference only, and save.py is the actual implementation"
+      },
+      {
+        "severity": "MEDIUM",
+        "type": "incomplete_example",
+        "location": "Lines 204-227",
+        "description": "Save examples use 'cat > /tmp/file.json' with heredoc but don't show complete JSON structure",
+        "missing": "Full working example with real JSON content showing bilingual fields"
+      },
+      {
+        "severity": "LOW",
+        "type": "deprecated_reference",
+        "location": "Line 282",
+        "description": "References scripts/lib/json_io.py which is indirect - actual usage is via scripts/save.py",
+        "note": "Not incorrect, but could be clearer about abstraction layers"
+      }
+    ],
+    "strengths": [
+      "Comprehensive bilingual field documentation (lines 79-144)",
+      "Clear POI classification rules reference (line 36)",
+      "Mandatory RedNote verification for Chinese destinations (lines 63-68)",
+      "Good validation instructions (lines 330-337)",
+      "Clear skill integration notes (lines 322-327)"
+    ]
+  },
+  "workflow_test": {
+    "trip_slug": "china-feb-15-mar-7-2026-20260202-195429",
+    "input_files_verified": true,
+    "required_inputs": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/requirements-skeleton.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/plan-skeleton.json"
+    ],
+    "existing_data": {
+      "file": "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+      "status": "complete",
+      "total_days": 21,
+      "total_attractions": 36,
+      "validation_result": {
+        "required_fields": "324/324 (100.0%)",
+        "optional_fields": "201/216 (93.1%)",
+        "high_severity": 0,
+        "medium_severity": 0,
+        "low_severity": 15,
+        "verdict": "PASS"
+      },
+      "sample_structure_correct": true,
+      "bilingual_fields_present": true
+    },
+    "save_script_test": {
+      "script_location": "/root/travel-planner/scripts/save.py",
+      "exists": true,
+      "correct_usage": "python3 scripts/save.py --trip TRIP_SLUG --agent attractions --input modified_data.json",
+      "alternative_usage": "cat modified_data.json | python3 scripts/save.py --trip TRIP_SLUG --agent attractions",
+      "features": [
+        "Automatic validation via plan-validate.py",
+        "Atomic writes (.tmp → rename)",
+        "Automatic backups (.bak)",
+        "HIGH severity issues block saves",
+        "Redundant field detection"
+      ]
+    },
+    "load_script_test": {
+      "script_location": "/root/travel-planner/scripts/load.py",
+      "exists": true,
+      "usage_levels": {
+        "level_1": "Day metadata only (day, date, location)",
+        "level_2": "POI titles/keys (name_base, name_local, type_base)",
+        "level_3": "Full POI data (all fields)"
+      },
+      "correct_usage": "python3 scripts/load.py --trip TRIP_SLUG --agent attractions --level 3 --day 1"
+    },
+    "validation_script_test": {
+      "script_location": "/root/travel-planner/scripts/plan-validate.py",
+      "exists": true,
+      "tested_on_existing_data": true,
+      "result": "PASS - 100% required fields, 93.1% optional fields"
+    },
+    "skill_integration_test": {
+      "gaode_maps": {
+        "script_location": "/root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py",
+        "exists": true,
+        "correct_usage": "source venv/bin/activate && python3 .claude/skills/gaode-maps/scripts/poi_search.py keyword '景点' '重庆'",
+        "note": "Script does not accept --help flag, uses positional arguments"
+      },
+      "rednote": {
+        "mentioned_in_docs": true,
+        "usage": "Use Skill tool to invoke rednote skill",
+        "mandatory_for_china": true
+      }
+    }
+  },
+  "potential_risks": [
+    {
+      "risk": "Data loss due to using wrong save method",
+      "severity": "HIGH",
+      "scenario": "Agent reads 'Replace direct scripts/save.py script usage' (line 282) and tries to use scripts/save-agent-data-template.py instead of scripts/save.py",
+      "mitigation": "Clarify that template.py is example only, save.py is the actual method",
+      "probability": "MEDIUM - depends on which section agent reads more carefully"
+    },
+    {
+      "risk": "Confusion between two save methods",
+      "severity": "HIGH",
+      "scenario": "Agent sees both scripts/save.py (line 216) and scripts/save-agent-data-template.py (line 294) and doesn't know which to use",
+      "mitigation": "Clarify that save.py is the primary method, template.py is just an example",
+      "probability": "MEDIUM - depends on agent's reading comprehension"
+    },
+    {
+      "risk": "Missing RedNote verification",
+      "severity": "MEDIUM",
+      "scenario": "Agent forgets mandatory RedNote verification for Chinese destinations (lines 63-68)",
+      "mitigation": "Already documented as REQUIRED, but could add enforcement check",
+      "probability": "LOW - clearly marked as mandatory"
+    },
+    {
+      "risk": "Over-scheduling attractions",
+      "severity": "LOW",
+      "scenario": "Agent adds too many attractions per day (>4 major attractions)",
+      "mitigation": "Already documented: 'Limit to 2-4 major attractions per day' (line 71)",
+      "probability": "LOW - clear guidance provided"
+    },
+    {
+      "risk": "Skill invocation failure",
+      "severity": "LOW",
+      "scenario": "Agent uses WebSearch instead of gaode-maps/rednote skills when skills fail",
+      "mitigation": "Documentation explicitly forbids WebSearch fallback (line 317)",
+      "probability": "LOW - clear prohibition stated"
+    }
+  ],
+  "critical_fixes_needed": [
+    {
+      "priority": 1,
+      "location": ".claude/agents/attractions.md lines 203-227",
+      "fix": "Replace Python function syntax with correct bash command",
+      "before": "Line 282: 'Replace direct scripts/save.py script usage with scripts/lib/json_io.py'",
+      "after": "Line 282: 'scripts/save.py internally uses scripts/lib/json_io.py for validation. Use save.py as shown in Step 3.'"
+    },
+    {
+      "priority": 1.5,
+      "location": ".claude/agents/attractions.md lines 284-299",
+      "fix": "Add clarification that save-agent-data-template.py is example only",
+      "before": "See complete usage example and template: scripts/save-agent-data-template.py",
+      "after": "NOTE: scripts/save-agent-data-template.py is a reference implementation example demonstrating how save.py works internally. For actual saves, use scripts/save.py as shown in Step 3 above."
+    },
+    {
+      "priority": 2,
+      "location": ".claude/agents/attractions.md lines 278-306",
+      "fix": "Clarify relationship between save.py and save-agent-data-template.py",
+      "recommendation": "Add note: 'save-agent-data-template.py is a reference implementation example. For actual saves, use scripts/save.py as shown in Step 3.'"
+    },
+    {
+      "priority": 3,
+      "location": ".claude/agents/attractions.md lines 234-272",
+      "fix": "Add complete working JSON example in Step 3",
+      "recommendation": "Show full heredoc with real bilingual data for at least one attraction"
+    }
+  ],
+  "workflow_dry_run": {
+    "description": "Simulated save operation test",
+    "test_scenario": "Update Day 1 attractions with new POI",
+    "test_json_structure": {
+      "agent": "attractions",
+      "status": "complete",
+      "data": {
+        "days": [
+          {
+            "day": 1,
+            "attractions": [
+              {
+                "name_base": "Test Attraction",
+                "name_local": "测试景点",
+                "location_base": "Test Location",
+                "location_local": "测试地点",
+                "cost": 100,
+                "currency_local": "CNY",
+                "type_base": "Museum",
+                "type_local": "博物馆",
+                "opening_hours": "09:00-17:00",
+                "optional": false,
+                "search_results": [
+                  {
+                    "skill": "gaode-maps",
+                    "type": "poi_search",
+                    "url": "https://example.com",
+                    "display_text": "高德地图"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "notes": ""
+    },
+    "correct_save_command": "cat /tmp/test_attractions.json | python3 scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent attractions",
+    "documented_command_correct": true,
+    "confusion_source": "Lines 282-299 suggest using scripts/save-agent-data-template.py which contradicts Step 3's scripts/save.py",
+    "actual_issue": "Conflicting instructions between Step 3 and JSON I/O Best Practices section, not a syntax error"
+  },
+  "summary": {
+    "overall_status": "issues_found",
+    "critical_issues_count": 1,
+    "high_issues_count": 1,
+    "medium_issues_count": 1,
+    "low_issues_count": 2,
+    "data_loss_risk": "MEDIUM - conflicting instructions may cause confusion but both methods work",
+    "workflow_functional": true,
+    "existing_data_valid": true,
+    "scripts_working": true,
+    "documentation_quality": "comprehensive but contains conflicting save method instructions",
+    "recommendation": "HIGH PRIORITY: Clarify relationship between save.py and save-agent-data-template.py to prevent confusion",
+    "positive_findings": [
+      "All validation scripts working correctly",
+      "Existing attractions.json data is 100% valid",
+      "Bilingual field structure is correctly documented",
+      "POI classification rules are clear",
+      "Skill integration is well-documented",
+      "save.py and load.py scripts are robust and feature-complete"
+    ],
+    "action_required": [
+      "Clarify line 282 in .claude/agents/attractions.md: change 'Replace direct scripts/save.py' to 'scripts/save.py uses scripts/lib/json_io.py internally'",
+      "Add note in lines 284-299 that save-agent-data-template.py is example only, not the actual save method",
+      "Consider removing or relocating 'JSON I/O Best Practices' section to avoid confusion with Step 3",
+      "Add complete working JSON example to Step 3 documentation",
+      "Test updated documentation with actual agent run"
+    ]
+  }
+}

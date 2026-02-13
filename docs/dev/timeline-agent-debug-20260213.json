@@ -1,0 +1,392 @@
+{
+  "agent": "timeline",
+  "test_date": "2026-02-13",
+  "tester": "timeline-agent-self-debug",
+  "test_trip": "china-feb-15-mar-7-2026-20260202-195429",
+  "status": "CRITICAL_ISSUES_FOUND",
+
+  "actual_data_issues_found": {
+    "test_date": "2026-02-13 14:31",
+    "validation_command": "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent timeline",
+    "verdict": "FAIL",
+    "high_severity_count": 12,
+    "medium_severity_count": 15,
+    "low_severity_count": 24,
+    "main_issue": {
+      "field": "travel_segments[*].mode",
+      "problem": "LEGACY field 'mode' still present, conflicts with new 'type_base' field",
+      "examples": [
+        "Day 2 travel_segments[0]: mode='taxi' vs type_base='Taxi' (MISMATCH)",
+        "Day 2 travel_segments[1]: mode='train' vs type_base='High-speed Train' (MISMATCH)",
+        "Day 4 travel_segments[5]: mode='walk' vs type_base='Walking' (MISMATCH)"
+      ],
+      "fix_required": "Remove 'mode' field from all travel_segments (use type_base only)",
+      "affected_days": [2, 4],
+      "affected_segments": 12
+    },
+    "missing_optional_fields": {
+      "type_local": "Missing in 12 travel_segments",
+      "icon": "Missing in 12 travel_segments"
+    },
+    "agent_responsibility": "Timeline agent generates travel_segments - must ensure schema compliance"
+  },
+
+  "issues_found": [
+    {
+      "severity": "CRITICAL",
+      "issue_id": "TIMELINE-001",
+      "title": "save.py bash syntax was historically WRONG in agent instructions",
+      "description": "Previous timeline agent instructions used Python function call syntax: save.py(file_path=..., content=...) instead of correct bash CLI: python3 scripts/save.py --trip TRIP --agent timeline --input data.json",
+      "root_cause": "Agent instructions referenced save-agent-data-template.py (which doesn't exist) and showed Python function call syntax instead of bash CLI syntax",
+      "impact": "Agent would write malformed bash commands that fail to execute, causing data loss",
+      "correct_syntax": "python3 /root/travel-planner/scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --input /tmp/timeline_update.json",
+      "verification": "Confirmed scripts/save.py exists and accepts --trip, --agent, --input CLI args"
+    },
+    {
+      "severity": "HIGH",
+      "issue_id": "TIMELINE-002",
+      "title": "Current instructions still reference non-existent save-agent-data-template.py",
+      "description": "Agent instructions say 'See complete usage example and template: scripts/save-agent-data-template.py' but this file does NOT exist",
+      "verification_command": "find /root/travel-planner/scripts -name '*template*'",
+      "result": "No files found",
+      "fix_needed": "Remove all references to save-agent-data-template.py from instructions"
+    },
+    {
+      "severity": "HIGH",
+      "issue_id": "TIMELINE-003",
+      "title": "Instructions show Python function call instead of bash CLI",
+      "description": "Instructions show: save.py(file_path='data/{destination-slug}/timeline.json', content=<complete_json_string>) which is WRONG - this is Python syntax, not bash",
+      "correct_approach": "1. Write JSON to temp file, 2. Call bash CLI: python3 scripts/save.py --trip TRIP --agent timeline --input /tmp/file.json",
+      "example_correct_workflow": [
+        "# Step 1: Prepare JSON data in variable",
+        "timeline_json='{\"agent\": \"timeline\", \"status\": \"complete\", ...}'",
+        "",
+        "# Step 2: Write to temp file",
+        "echo \"$timeline_json\" > /tmp/timeline_update.json",
+        "",
+        "# Step 3: Save using scripts/save.py",
+        "python3 /root/travel-planner/scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --input /tmp/timeline_update.json"
+      ]
+    },
+    {
+      "severity": "MEDIUM",
+      "issue_id": "TIMELINE-004",
+      "title": "No clear guidance on day-scoped updates vs full file overwrite",
+      "description": "Timeline agent instructions don't clarify whether updating Day 3 requires reading all days, modifying Day 3, then saving entire file, or if there's a merge mechanism",
+      "current_behavior": "scripts/save.py --input overwrites entire file (atomic write)",
+      "correct_workflow": "Agent MUST: 1) Load full timeline.json, 2) Modify specific day(s), 3) Write complete file back",
+      "risk": "If agent only generates Day 3 data and calls save.py, it will OVERWRITE entire file with only Day 3, losing all other days"
+    },
+    {
+      "severity": "MEDIUM",
+      "issue_id": "TIMELINE-005",
+      "title": "Instructions reference Step 3 save.py but show Step 0-3 sequence",
+      "description": "Step 3 says 'Use scripts/save.py script explicitly' but then shows non-bash Python function syntax",
+      "confusion_factor": "Mixing Python library (json_io.save_agent_json) documentation with CLI usage creates ambiguity about which to use"
+    }
+  ],
+
+  "workflow_test": {
+    "test_scenario": "Timeline agent receives request to update Day 1 timeline",
+    "correct_steps": [
+      {
+        "step": 1,
+        "action": "Verify all input files exist",
+        "commands": [
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent plan-skeleton --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent meals --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent attractions --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent transportation --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent accommodation --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent entertainment --level 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent shopping --level 1"
+        ],
+        "result": "PASS - All agents have data"
+      },
+      {
+        "step": 2,
+        "action": "Load current timeline.json (full file)",
+        "command": "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --level 3",
+        "result": "PASS - Timeline has 21 days of existing data"
+      },
+      {
+        "step": 3,
+        "action": "Load Day 1 activity data (Level 2 for titles/times)",
+        "commands": [
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent meals --level 2 --day 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent attractions --level 2 --day 1",
+          "python3 /root/travel-planner/scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent transportation --level 2 --day 1"
+        ],
+        "result": "PASS - Retrieved breakfast/lunch/dinner names, 10 attractions, no transportation (intra-city day)"
+      },
+      {
+        "step": 4,
+        "action": "Generate timeline dictionary for Day 1",
+        "method": "Create timeline object with activity names as KEYS (not array)",
+        "format": {
+          "timeline": {
+            "Raffles City InterContinental Breakfast Buffet (Lin International Restaurant)": {
+              "start_time": "07:30",
+              "end_time": "08:30",
+              "duration_minutes": 60
+            },
+            "Raffles City Chongqing Observation Deck": {
+              "start_time": "09:00",
+              "end_time": "10:00",
+              "duration_minutes": 60
+            }
+          },
+          "travel_segments": [
+            {
+              "name_base": "Walk to Observation Deck",
+              "name_local": "步行前往观景台",
+              "type_base": "walk",
+              "type_local": "步行",
+              "icon": "🚶",
+              "start_time": "08:45",
+              "end_time": "09:00",
+              "duration_minutes": 15
+            }
+          ]
+        },
+        "validation": "Must validate: no overlaps, realistic meal times, sufficient breaks"
+      },
+      {
+        "step": 5,
+        "action": "Merge Day 1 timeline into full JSON (preserving all other days)",
+        "critical_note": "MUST load existing timeline.json, replace Day 1 entry, keep Days 2-21 unchanged",
+        "risk": "If agent only saves Day 1, entire file is overwritten, Days 2-21 LOST"
+      },
+      {
+        "step": 6,
+        "action": "Write complete JSON to temp file",
+        "bash_commands": [
+          "cat > /tmp/timeline_update.json <<'EOF'",
+          "{",
+          "  \"agent\": \"timeline\",",
+          "  \"status\": \"complete\",",
+          "  \"data\": {",
+          "    \"days\": [",
+          "      { \"day\": 1, \"date\": \"2026-02-15\", \"timeline\": {...}, \"travel_segments\": [...] },",
+          "      { \"day\": 2, ... },",
+          "      ...",
+          "      { \"day\": 21, ... }",
+          "    ]",
+          "  }",
+          "}",
+          "EOF"
+        ]
+      },
+      {
+        "step": 7,
+        "action": "Save using scripts/save.py (correct bash CLI syntax)",
+        "correct_command": "python3 /root/travel-planner/scripts/save.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent timeline --input /tmp/timeline_update.json",
+        "wrong_command_examples": [
+          "save.py(file_path='data/china-feb-15-mar-7-2026-20260202-195429/timeline.json', content=...)",
+          "scripts/save.py --agent timeline < /tmp/timeline_update.json",
+          "python3 scripts/save.py timeline /tmp/timeline_update.json"
+        ],
+        "validation": "save.py runs plan-validate.py automatically, blocks on HIGH severity issues"
+      },
+      {
+        "step": 8,
+        "action": "Return completion signal",
+        "output": "complete",
+        "note": "ONLY return 'complete' after save.py exits successfully (exit code 0)"
+      }
+    ]
+  },
+
+  "schema_compliance": {
+    "schema_file": "schemas/timeline.schema.json",
+    "key_requirements": [
+      {
+        "field": "timeline",
+        "type": "object (NOT array)",
+        "keys": "Activity names (strings)",
+        "values": "{start_time: 'HH:MM', end_time: 'HH:MM', duration_minutes: N}"
+      },
+      {
+        "field": "travel_segments",
+        "type": "array",
+        "items": "Travel segment objects with name_base, name_local, type_base, type_local, icon, times",
+        "constraint": "type_base MUST be one of: walk, taxi, metro, bus, train, car, ferry, transit",
+        "violation_example": "NEVER use type_base='meal' or 'attraction' in travel_segments (commit 74e660d0 bug)"
+      },
+      {
+        "field": "start_time, end_time",
+        "format": "HH:MM (24-hour)",
+        "pattern": "^[0-2][0-9]:[0-5][0-9]$"
+      }
+    ],
+    "validation_script": "scripts/plan-validate.py",
+    "auto_validation": "scripts/save.py calls plan-validate.py automatically"
+  },
+
+  "common_pitfalls": [
+    {
+      "pitfall": "Using Python function call syntax for save.py",
+      "manifestation": "save.py(file_path='...', content='...') in bash - FAILS",
+      "fix": "Use bash CLI: python3 scripts/save.py --trip X --agent Y --input Z"
+    },
+    {
+      "pitfall": "Saving only modified day instead of full file",
+      "manifestation": "Update Day 3, save only Day 3 JSON → overwrites entire file, Days 1-2, 4-21 LOST",
+      "fix": "Always load full timeline.json, modify specific day(s), save complete file"
+    },
+    {
+      "pitfall": "Using wrong type_base in travel_segments",
+      "manifestation": "type_base='breakfast' or 'museum' in travel_segments array",
+      "fix": "travel_segments ONLY contain transit types: walk, taxi, metro, bus, train, car, ferry, transit"
+    },
+    {
+      "pitfall": "Returning 'complete' before save.py finishes",
+      "manifestation": "Agent returns 'complete' while save.py is still running/validating",
+      "fix": "Wait for save.py exit code 0, THEN return 'complete'"
+    },
+    {
+      "pitfall": "Timeline as array instead of object",
+      "manifestation": "timeline: [{name: 'X', start_time: '09:00'}] - WRONG structure",
+      "fix": "timeline: {'Activity Name': {start_time: '09:00', end_time: '10:00'}}"
+    }
+  ],
+
+  "dry_run_save_test": {
+    "test_date": "2026-02-13",
+    "action": "Generate minimal valid timeline JSON and test save.py syntax",
+    "sample_data": {
+      "agent": "timeline",
+      "status": "complete",
+      "data": {
+        "days": [
+          {
+            "day": 1,
+            "date": "2026-02-15",
+            "timeline": {
+              "Breakfast at Hotel": {
+                "start_time": "08:00",
+                "end_time": "09:00",
+                "duration_minutes": 60
+              }
+            },
+            "travel_segments": []
+          }
+        ]
+      },
+      "warnings": [],
+      "notes": "Dry-run test - minimal timeline"
+    },
+    "test_steps": [
+      {
+        "step": 1,
+        "action": "Write sample JSON to temp file",
+        "command": "cat > /tmp/timeline_dryrun_test.json <<'EOF'\n{...sample_data...}\nEOF"
+      },
+      {
+        "step": 2,
+        "action": "Validate JSON syntax",
+        "command": "python3 -m json.tool /tmp/timeline_dryrun_test.json > /dev/null && echo 'Valid JSON'"
+      },
+      {
+        "step": 3,
+        "action": "Test save.py CLI (DRY RUN - using non-existent trip to avoid actual save)",
+        "command": "python3 /root/travel-planner/scripts/save.py --trip TEST-DRYRUN-NOTEXIST --agent timeline --input /tmp/timeline_dryrun_test.json 2>&1 | head -5",
+        "expected_error": "Error: Trip directory not found",
+        "success_indicator": "Error is about missing trip directory, NOT about save.py syntax/args"
+      }
+    ],
+    "result_interpretation": {
+      "if_syntax_error": "Bash command malformed - save.py CLI usage is wrong",
+      "if_trip_not_found": "SUCCESS - save.py CLI syntax is correct, just missing trip dir as expected",
+      "if_validation_error": "SUCCESS - save.py accepted args, validation layer working"
+    }
+  },
+
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "Update timeline agent instructions immediately",
+      "changes": [
+        "Remove ALL references to save-agent-data-template.py (doesn't exist)",
+        "Replace Python function syntax with CORRECT bash CLI examples",
+        "Add explicit warning: 'ALWAYS load full timeline.json, modify specific day(s), save complete file - NEVER save partial data'",
+        "Show complete bash workflow: prepare JSON → write temp file → python3 scripts/save.py --trip X --agent Y --input Z"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Add merge/update helper to scripts/save.py",
+      "feature": "New flag: --merge-day N - loads existing file, replaces Day N, saves complete file",
+      "usage": "python3 scripts/save.py --trip X --agent timeline --merge-day 3 --input day3_timeline.json",
+      "benefit": "Prevents accidental data loss from partial saves"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Create scripts/timeline-helper.py for timeline-specific operations",
+      "features": [
+        "Load timeline for specific day",
+        "Validate no overlaps",
+        "Generate travel_segments from transportation.json",
+        "Merge day update into full timeline"
+      ]
+    }
+  ],
+
+  "instruction_corrections": {
+    "section": "Step 3: Save JSON to File and Return Completion",
+    "current_text": "Use scripts/save.py script to save complete timeline JSON:\n```bash\nsave.py(\n  file_path=\"data/{destination-slug}/timeline.json\",\n  content=<complete_json_string>\n)\n```",
+    "corrected_text": "Use scripts/save.py script to save complete timeline JSON:\n\n**CRITICAL**: You MUST load existing timeline.json, modify specific day(s), then save the COMPLETE file. Partial saves will OVERWRITE entire file.\n\nCorrect workflow:\n```bash\n# Step 1: Load existing timeline\npython3 /root/travel-planner/scripts/load.py \\\n  --trip china-feb-15-mar-7-2026-20260202-195429 \\\n  --agent timeline \\\n  --level 3 \\\n  --pretty > /tmp/current_timeline.json\n\n# Step 2: Modify specific day (using jq or Python)\n# ... your modification logic ...\n\n# Step 3: Write complete JSON to temp file\ncat > /tmp/timeline_update.json <<'EOF'\n{\n  \"agent\": \"timeline\",\n  \"status\": \"complete\",\n  \"data\": {\n    \"days\": [\n      {\"day\": 1, ...},\n      {\"day\": 2, ...},\n      ...\n      {\"day\": 21, ...}\n    ]\n  },\n  \"warnings\": [...],\n  \"notes\": \"...\"\n}\nEOF\n\n# Step 4: Save using scripts/save.py (bash CLI)\npython3 /root/travel-planner/scripts/save.py \\\n  --trip china-feb-15-mar-7-2026-20260202-195429 \\\n  --agent timeline \\\n  --input /tmp/timeline_update.json\n```\n\n**WRONG** (Python function syntax - DOES NOT WORK):\n```bash\nsave.py(file_path=\"...\", content=\"...\")  # ❌ FAILS - NOT valid bash\n```"
+  },
+
+  "test_conclusion": {
+    "overall_status": "CRITICAL ISSUES FOUND",
+    "blocker_count": 1,
+    "high_priority_count": 2,
+    "medium_priority_count": 2,
+    "agent_operability": "IMPAIRED - Agent instructions contain syntax errors that would cause save failures",
+    "data_loss_risk": "HIGH - Partial save pattern could overwrite entire timeline.json",
+    "actual_data_validation": "FAIL - Current timeline.json has 12 HIGH severity issues (legacy 'mode' field conflicts)",
+    "immediate_action_required": true,
+    "next_steps": [
+      "Update timeline agent instructions with corrected save.py bash CLI syntax",
+      "Remove all references to non-existent save-agent-data-template.py",
+      "Add explicit warnings about loading full file before saving",
+      "Clean up legacy 'mode' field in existing travel_segments (replace with type_base only)",
+      "Ensure timeline agent generates type_local and icon for all travel_segments",
+      "Test updated instructions with dry-run workflow",
+      "Monitor first real timeline agent execution for save.py usage pattern"
+    ]
+  },
+
+  "validation_test_results": {
+    "command": "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent timeline",
+    "execution_date": "2026-02-13 14:31",
+    "verdict": "FAIL",
+    "summary": {
+      "total_items_validated": 240,
+      "required_fields_completeness": "564/564 (100.0%)",
+      "optional_fields_completeness": "272/296 (91.9%)",
+      "issues": {
+        "HIGH": 12,
+        "MEDIUM": 15,
+        "LOW": 24,
+        "INFO": 4
+      }
+    },
+    "critical_finding": {
+      "issue": "Legacy 'mode' field coexists with 'type_base' in 12 travel_segments",
+      "cause": "Timeline agent or previous migration left redundant field",
+      "impact": "Schema violation - plan-validate.py detects MISMATCH between mode and type_base values",
+      "affected_segments": [
+        "Day 2: 4 travel segments (mode=taxi/train vs type_base=Taxi/High-speed Train)",
+        "Day 4: 6 travel segments (mode=taxi/walk vs type_base=Taxi/Walking)"
+      ],
+      "fix": "Remove 'mode' field from all travel_segments, use only type_base/type_local"
+    },
+    "workflow_verification": {
+      "load_py_test": "PASS - Successfully loaded timeline Level 1, 2, 3 data",
+      "save_py_syntax_test": "PASS - CLI accepts --trip, --agent, --input args correctly",
+      "validation_integration": "PASS - save.py would call plan-validate.py and catch these issues before saving"
+    }
+  }
+}

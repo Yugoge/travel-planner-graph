@@ -111,13 +111,15 @@ def filter_level_1(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def filter_level_2(data: Dict[str, Any], agent: str, day_num: Optional[int] = None) -> Dict[str, Any]:
+def filter_level_2(data: Dict[str, Any], agent: str, day_num: Optional[int] = None, date_str: Optional[str] = None) -> Dict[str, Any]:
     """Level 2: POI titles/keys only (no detailed content)."""
     filtered_days = []
     poi_keys = AGENT_POI_KEYS.get(agent, [])
 
     for day in data.get("data", {}).get("days", []):
         if day_num is not None and day.get("day") != day_num:
+            continue
+        if date_str is not None and day.get("date") != date_str:
             continue
 
         # Start with Level 1 fields
@@ -162,16 +164,19 @@ def filter_level_2(data: Dict[str, Any], agent: str, day_num: Optional[int] = No
 
 
 def filter_level_3(data: Dict[str, Any], agent: str, day_num: Optional[int] = None,
-                   poi_key: Optional[str] = None, poi_index: Optional[int] = None) -> Dict[str, Any]:
+                   poi_key: Optional[str] = None, poi_index: Optional[int] = None,
+                   date_str: Optional[str] = None) -> Dict[str, Any]:
     """Level 3: Full POI data (complete read/write access)."""
-    if day_num is None:
+    if day_num is None and date_str is None:
         # Return full data for all days
         return data
 
     # Filter to specific day
     filtered_days = []
     for day in data.get("data", {}).get("days", []):
-        if day.get("day") != day_num:
+        if day_num is not None and day.get("day") != day_num:
+            continue
+        if date_str is not None and day.get("date") != date_str:
             continue
 
         if poi_key is None:
@@ -233,6 +238,7 @@ Examples:
     parser.add_argument("--level", type=int, choices=[1, 2, 3], required=True,
                         help="Access level (1=day metadata, 2=POI titles, 3=full data)")
     parser.add_argument("--day", type=int, help="Filter to specific day number (Level 2/3)")
+    parser.add_argument("--date", help="Filter to specific date YYYY-MM-DD (Level 2/3)")
     parser.add_argument("--poi", help="POI key (breakfast/lunch/dinner/attractions/etc.) (Level 3)")
     parser.add_argument("--poi-index", type=int, help="POI array index (Level 3, for arrays)")
     parser.add_argument("--output", help="Output JSON file (default: stdout)")
@@ -257,6 +263,10 @@ Examples:
         print("Error: --poi-index requires --poi", file=sys.stderr)
         sys.exit(1)
 
+    if args.day and args.date:
+        print("Error: Cannot specify both --day and --date", file=sys.stderr)
+        sys.exit(1)
+
     # Determine agents to load
     agents = args.agents.split(",") if args.agents else [args.agent]
 
@@ -273,9 +283,9 @@ Examples:
         if args.level == 1:
             filtered = filter_level_1(data)
         elif args.level == 2:
-            filtered = filter_level_2(data, agent, args.day)
+            filtered = filter_level_2(data, agent, args.day, args.date)
         else:  # level 3
-            filtered = filter_level_3(data, agent, args.day, args.poi, args.poi_index)
+            filtered = filter_level_3(data, agent, args.day, args.poi, args.poi_index, args.date)
 
         results[agent] = filtered
 

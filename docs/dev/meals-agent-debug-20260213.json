@@ -1,0 +1,123 @@
+{
+  "agent": "meals",
+  "debug_timestamp": "2026-02-13T14:30:00Z",
+  "status": "issues_found",
+  "documentation_review": {
+    "save_py_syntax_correct": true,
+    "instructions_clear": true,
+    "issues_found": [
+      {
+        "issue": "Validation path format inconsistency",
+        "severity": "low",
+        "location": ".claude/agents/meals.md:379",
+        "description": "Documentation shows 'python3 scripts/plan-validate.py <trip-directory> --agent meals' which could be misinterpreted as 'data/TRIP_SLUG'. The script expects just TRIP_SLUG without 'data/' prefix (DATA_DIR is added internally).",
+        "recommendation": "Change '<trip-directory>' to '<TRIP_SLUG>' or 'TRIP_SLUG' to clarify format. Example: 'python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent meals'"
+      }
+    ],
+    "correct_patterns_found": [
+      {
+        "pattern": "save.py CLI usage with --trip, --agent, --input flags",
+        "location": ".claude/agents/meals.md:176-199",
+        "description": "Documentation correctly shows bash command syntax for save.py with heredoc and flag-based invocation. No Python function-style confusion found."
+      },
+      {
+        "pattern": "load.py 3-level access documentation",
+        "location": ".claude/agents/meals.md:391-408",
+        "description": "Clear examples of Level 1/2/3 hierarchical data access with correct command syntax"
+      }
+    ]
+  },
+  "workflow_test": {
+    "can_read_own_data": true,
+    "validation_works": true,
+    "save_syntax_executable": true,
+    "issues_found": [
+      {
+        "issue": "Existing meals.json has HIGH severity validation errors",
+        "severity": "high",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+        "description": "3 HIGH severity issues detected: Day 1 breakfast/lunch/dinner have unexpected 'image_url' field. Schema forbids additional properties.",
+        "validation_output": "Day 1 (2026-02-15) breakfast: additional_properties — Unexpected fields: image_url (schema forbids extra fields)",
+        "recommendation": "Remove all 'image_url' fields from meals.json or update schema to allow them. Current schema has 'additionalProperties: false' which blocks any fields not explicitly defined."
+      },
+      {
+        "issue": "50 missing search_results fields (optional, LOW severity)",
+        "severity": "low",
+        "location": "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+        "description": "50 POIs missing optional 'search_results' field. While optional, this field is important for verification and should be populated.",
+        "recommendation": "Populate search_results arrays for all POIs with actual skill URLs used during research."
+      }
+    ]
+  },
+  "potential_risks": [
+    {
+      "risk": "Validation command documentation could be clearer about path format",
+      "severity": "low",
+      "location": ".claude/agents/meals.md:379",
+      "recommendation": "Change '<trip-directory>' to 'TRIP_SLUG' to clarify that it's just the directory name, not a full path"
+    },
+    {
+      "risk": "Schema violation in production data (image_url field)",
+      "severity": "high",
+      "location": "data/china-feb-15-mar-7-2026-20260202-195429/meals.json:40,72,104",
+      "recommendation": "Either remove image_url fields or update schemas/poi-common.schema.json to allow 'image_url' as optional field"
+    },
+    {
+      "risk": "No Gaode Maps skill execution test",
+      "severity": "medium",
+      "location": "Self-test incomplete",
+      "recommendation": "Should test actual Gaode Maps POI search execution to verify skill integration works: 'source venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py keyword \"火锅\" \"重庆\"'"
+    }
+  ],
+  "script_tests": {
+    "load_py": {
+      "status": "pass",
+      "test_command": "python3 scripts/load.py --trip china-feb-15-mar-7-2026-20260202-195429 --agent meals --level 1 --pretty",
+      "result": "Successfully loaded Level 1 data (day metadata only)",
+      "notes": "Script works correctly with --trip TRIP_SLUG format (no data/ prefix needed)"
+    },
+    "save_py": {
+      "status": "pass",
+      "test_command": "python3 scripts/save.py --help",
+      "result": "Help text shows correct CLI usage with --trip, --agent, --input flags",
+      "notes": "Documentation in meals.md correctly shows bash CLI commands with heredoc and flag-based invocation. No syntax issues found."
+    },
+    "plan_validate_py": {
+      "status": "pass_with_errors",
+      "test_command": "python3 scripts/plan-validate.py china-feb-15-mar-7-2026-20260202-195429 --agent meals",
+      "result": "Validation executed successfully, found 3 HIGH severity issues (image_url fields)",
+      "notes": "Correct usage: 'python3 scripts/plan-validate.py TRIP_SLUG --agent meals' (without data/ prefix)"
+    }
+  },
+  "gaode_maps_skill": {
+    "status": "not_tested",
+    "script_location": ".claude/skills/gaode-maps/scripts/poi_search.py",
+    "usage_example": "source venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py keyword \"火锅\" \"重庆\"",
+    "notes": "Skill scripts exist and are documented in gaode-maps SKILL.md. Should be tested in isolation before assuming workflow works."
+  },
+  "summary": {
+    "total_issues": 3,
+    "critical_issues": 0,
+    "high_issues": 1,
+    "medium_issues": 1,
+    "low_issues": 1,
+    "workflow_healthy": true,
+    "primary_concerns": [
+      "Production meals.json has 3 HIGH severity validation errors (image_url fields forbidden by schema)",
+      "Gaode Maps skill integration not tested in this self-test",
+      "Minor documentation clarity issue: validation command uses '<trip-directory>' placeholder"
+    ],
+    "positive_findings": [
+      "save.py documentation is correct and uses proper bash CLI syntax",
+      "load.py documentation clearly explains 3-level hierarchical access",
+      "All core scripts (save.py, load.py, plan-validate.py) are executable and working",
+      "Validation system correctly detects schema violations (image_url field issue)"
+    ],
+    "recommendations": [
+      "Fix production data: Remove image_url fields from meals.json OR update schemas/poi-common.schema.json to allow 'image_url' as optional field",
+      "Minor doc fix: Change '.claude/agents/meals.md line 379 from '<trip-directory>' to 'TRIP_SLUG' for clarity",
+      "Add Gaode Maps skill execution test to verify POI search works end-to-end",
+      "Consider testing full workflow: load requirements → search POIs → save meals data"
+    ]
+  }
+}
