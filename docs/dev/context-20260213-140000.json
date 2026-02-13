@@ -1,0 +1,118 @@
+{
+  "request_id": "dev-20260213-140000",
+  "timestamp": "2026-02-13T14:00:00Z",
+  "requirement": {
+    "original": "我之前不是改进了html生成脚本中timeline的并列结构吗，但是我当时设计的其他功能现在已经安全没有满足：\n1. 如果时间太短，两行放不下，放到一行\n2. 如果一行都放不下，不展示（防止内容溢出），同时把标题放到时间轴左边。\n为什么没有实现",
+    "clarified": "调查为什么timeline响应式显示的两个设计功能没有实现，并实现这些缺失的功能：\n1. 短时间段：两行放不下时，压缩到一行显示（时间+标题在同一行）\n2. 极短时间段：一行都放不下时，隐藏entry内容，将标题移到时间轴左侧显示",
+    "what": "实现timeline entry的三级响应式显示逻辑：两行模式（>= 52px）→ 一行模式（36-51px）→ 左侧标题模式（< 36px）",
+    "why": "当前实现只有渐进式隐藏（hideAllText / showText / showSubtext），缺少一行浓缩模式和左侧标题显示，导致中等时长活动和极短活动的显示不够优雅",
+    "where": [
+      "scripts/generate-html-interactive.py - TimelineView component (lines 2656-2900)",
+      "具体修改区域：文字显示逻辑 (lines 2770-2776), entry渲染 (lines 2782-2850)"
+    ],
+    "scope": {
+      "included": [
+        "修改文字显示逻辑，添加twoRowsMode / oneRowMode / moveToLeft三个状态",
+        "实现一行模式：时间和标题在同一行显示",
+        "实现左侧标题显示：当entry过窄时，标题移到timeline左侧",
+        "调整timeline track布局，为左侧标题预留空间（padding-left）",
+        "确保在mobile和desktop视图下都正常工作",
+        "确保与并列布局（column layout）兼容"
+      ],
+      "excluded": [
+        "修改其他组件（KanbanView, BudgetView等）",
+        "修改timeline数据结构或schema",
+        "修改颜色方案或图标",
+        "添加新的交互功能（如拖拽、编辑等）"
+      ]
+    },
+    "success_criteria": [
+      "长活动（>= 52px，如2小时+）：显示两行（标题行 + 时间+详情行）",
+      "中等活动（36-51px，如30-60分钟）：显示一行（时间+标题在同一行）",
+      "短活动（< 36px，如15分钟）：标题在timeline左侧，entry内部为纯色条",
+      "并列活动（重叠时间段）：左侧标题不影响column layout",
+      "响应式：在sm（mobile）和md/lg（desktop）断点下都正常工作",
+      "双语：左侧标题支持中英文切换"
+    ],
+    "constraints": [
+      "不破坏现有的column layout逻辑（computeColumnLayout）",
+      "不改变entry的time-proportional height特性",
+      "保持overflow: hidden防止内容溢出",
+      "不引入新的依赖或库"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "用户设计的timeline响应式显示功能（两行→一行→左移）没有完整实现",
+    "root_cause": "在commit e0a9291中，实现focus在修复\"内容溢出导致时间轴错位\"的bug，采用了简单的渐进式隐藏策略（tooNarrow → showText → showSubtext），而跳过了UI复杂度较高的\"一行浓缩模式\"和\"标题左移\"功能",
+    "root_cause_commit": "e0a9291 - fix: timeline entries use fixed height, hide content when too narrow",
+    "why_introduced": "原始commit的目的是修复minHeight导致的内容撑开问题，改为固定height确保时间比例准确。实现时采用了最简单的方案：entryH < threshold时隐藏所有文字，渲染为纯色条",
+    "why_problematic": "这种简化实现缺少中间状态：\n1. 没有\"一行浓缩模式\"（时间+标题在同一行）用于中等时长活动\n2. 没有\"标题左移\"功能，导致极短活动完全没有文字说明（除非点击查看）\n3. 用户体验不够优雅，特别是对于30-60分钟的中等活动",
+    "timeline": "2026-02-09 实现了基础的tooNarrow逻辑 → 2026-02-10 在cc52be4中调整了阈值使用entryH而非actualH → 当前仍缺少一行模式和左侧标题",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Git repository clean except for 4 modified files in data/china-feb-15-mar-7-2026-20260202-195429/ (budget.json, timeline.json and their backups)",
+    "recent_commits": "25841c4 checkpoint: Auto-save at 2026-02-13 13:00:20\n65973c9 refactor: Remove redundant validation steps from plan and review commands\n579f972 fix: Prevent agent data loss by enforcing scripts/save.py usage",
+    "file_contents": {
+      "scripts/generate-html-interactive.py:2770-2776": "当前文字显示逻辑：\nconst LINE_HEIGHT_PX = sm ? 18 : 21;\nconst hideAllText = entryH < LINE_HEIGHT_PX;\nconst forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;\nconst showTime = entryH >= 24;\nconst showText = entryH >= LINE_HEIGHT_PX;\nconst showSubtext = entryH >= 52;",
+      "scripts/generate-html-interactive.py:2620-2654": "computeColumnLayout函数：处理重叠活动的列布局，使用greedy算法分配column，计算maxColumns",
+      "scripts/generate-html-interactive.py:2765-2768": "Column-based positioning：根据hasColumns决定width和left offset"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11",
+      "packages": "无外部依赖（纯React embedded in Python string）"
+    },
+    "environment": {
+      "venv_path": "~/.claude/venv",
+      "config_files": [
+        ".claude/settings.json",
+        ".claude/CLAUDE.md"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "在TimelineView组件中修改文字显示逻辑和entry渲染，实现三级响应式显示。关键修改：\n1. 重新定义三个display mode：twoRowsMode (>= 52px), oneRowMode (36-51px), moveToLeft (< 36px)\n2. 在oneRowMode下，将时间和标题渲染在同一行（时间在前，标题在后）\n3. 在moveToLeft下，在entry外部（左侧）渲染标题，entry内部为纯色条\n4. 在TimelineView容器层面检测是否有moveToLeft的entry，如果有则添加padding-left为标题预留空间",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "运行/plan命令生成HTML，在浏览器中检查不同时长的timeline entry：\n- 长活动（故宫3小时）应显示两行\n- 中等活动（餐饮1小时）应显示一行（时间+标题）\n- 短活动（地铁15分钟）标题应在左侧\n测试并列活动、响应式断点（sm/md）、双语切换"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "use_source_venv": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "implementation_details": {
+    "step1_text_visibility_logic": {
+      "description": "修改lines 2770-2776的文字显示逻辑",
+      "old_code": "const LINE_HEIGHT_PX = sm ? 18 : 21;\nconst hideAllText = entryH < LINE_HEIGHT_PX;\nconst forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;\nconst showTime = entryH >= 24;\nconst showText = entryH >= LINE_HEIGHT_PX;\nconst showSubtext = entryH >= 52;",
+      "new_code": "const LINE_HEIGHT_PX = sm ? 18 : 21;\n\n// 三级响应式显示\nconst twoRowsMode = entryH >= 52;           // >= 52px: 两行（标题+时间+详情）\nconst oneRowMode = entryH >= 36 && entryH < 52;  // 36-51px: 一行（标题+时间浓缩）\nconst moveToLeft = entryH < 36;              // < 36px: 标题移到左边，内容隐藏\n\n// 文字显示标志\nconst showText = entryH >= 36;               // >= 36px: 显示标题文字\nconst showTime = entryH >= 36;               // >= 36px: 显示时间\nconst showSubtext = entryH >= 52;            // >= 52px: 显示详情\nconst showInlineTime = oneRowMode;           // 36-51px: 时间和标题在一行"
+    },
+    "step2_left_title": {
+      "description": "在timeline entry之前添加左侧标题显示",
+      "insert_before": "entry div (line 2782)",
+      "code": "{moveToLeft && (\n  <div style={{\n    position: 'absolute',\n    right: 'calc(100% + 8px)',  // 在entry左侧，间隔8px\n    top: t,\n    height: entryH - 4,\n    display: 'flex',\n    alignItems: 'center',\n    fontSize: sm ? '11px' : '12px',\n    color: '#37352f',\n    fontWeight: '500',\n    whiteSpace: 'nowrap',\n    pointerEvents: 'none'  // 不拦截点击事件\n  }}>\n    {entry.icon || '📍'} {getDisplayName(entry, lang)}\n  </div>\n)}"
+    },
+    "step3_entry_content": {
+      "description": "调整entry内容渲染，支持一行模式和两行模式",
+      "location": "lines 2812-2850",
+      "changes": [
+        "修改padding：moveToLeft ? '0' : (sm ? '8px 10px' : '10px 14px')",
+        "修改gap：moveToLeft ? '0' : '10px'",
+        "修改alignItems：moveToLeft ? 'center' : 'flex-start'",
+        "添加oneRowMode分支：时间和标题在同一行",
+        "保留twoRowsMode分支：时间和标题分开显示"
+      ]
+    },
+    "step4_container_padding": {
+      "description": "在TimelineView容器层面为左侧标题预留空间",
+      "location": "在entriesWithLayout渲染前（line 2760之前）",
+      "code": "const hasNarrowEntries = entriesWithLayout.some(e => {\n  const h = hgt(e.time.start, e.time.end);\n  return h < 36;\n});\n\n// 在timeline track的包装div中添加paddingLeft"
+    }
+  }
+}

@@ -2767,13 +2767,21 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const colWidth = hasColumns ? (100 / entry._maxColumns) : 100;
               const colLeft = hasColumns ? (entry._column * colWidth) : 0;
 
-              // Text visibility logic based on pixel height (line height = font size × 1.5)
+              // Root cause fix (commit e0a9291): Implement three-tier responsive display
+              // Original commit only had simple progressive hiding (hideAllText → showText → showSubtext)
+              // Now implementing: two-row mode (>= 52px) → one-row mode (36-51px) → left-title mode (< 36px)
               const LINE_HEIGHT_PX = sm ? 18 : 21;
-              const hideAllText = entryH < LINE_HEIGHT_PX;           // < ~20px: Icon only
-              const forceOneLine = entryH >= LINE_HEIGHT_PX && entryH < 36;  // 20-35px: Single line
-              const showTime = entryH >= 24;                         // >= 24px: Show time
-              const showText = entryH >= LINE_HEIGHT_PX;             // >= 20px: Show main text
-              const showSubtext = entryH >= 52;                      // >= 52px: Show details
+
+              // Three-tier responsive display modes
+              const twoRowsMode = entryH >= 52;           // >= 52px: Two rows (title + time + details)
+              const oneRowMode = entryH >= 36 && entryH < 52;  // 36-51px: One row (title + time condensed)
+              const moveToLeft = entryH < 36;              // < 36px: Title moves to left, content hidden
+
+              // Text visibility flags
+              const showText = entryH >= 36;               // >= 36px: Show title text
+              const showTime = entryH >= 36;               // >= 36px: Show time
+              const showSubtext = entryH >= 52;            // >= 52px: Show details
+              const showInlineTime = oneRowMode;           // 36-51px: Time and title on same line
 
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
