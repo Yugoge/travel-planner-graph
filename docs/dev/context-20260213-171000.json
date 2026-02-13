@@ -1,0 +1,100 @@
+{
+  "request_id": "dev-20260213-171000",
+  "timestamp": "2026-02-13T17:10:00Z",
+  "requirement": {
+    "original": "为什么fetch-image脚本提取的城市图片都不太对？深度调查",
+    "clarified": "All city cover photos are incorrect - showing wrong POIs (Beijing shows an agriculture company gate, Shanghai shows Raffles Mall, Chengdu shows Panda Base). Image quality is also poor. Need to fix the city photo search logic.",
+    "what": "Fix city cover photo extraction in fetch-images-batch.py",
+    "why": "City cover photos are showing irrelevant POIs instead of city landmarks/skylines due to incorrect search query",
+    "where": [
+      "scripts/fetch-images-batch.py:555"
+    ],
+    "scope": {
+      "included": [
+        "Fix city photo search query (remove '地标' keyword)",
+        "Re-fetch all city cover photos with correct search",
+        "Verify image quality and relevance"
+      ],
+      "excluded": [
+        "POI photo extraction (working correctly)",
+        "Google Maps city photo logic (not affected)",
+        "Image caching mechanism (working correctly)"
+      ]
+    },
+    "success_criteria": [
+      "All city cover photos show appropriate city landmarks/skylines",
+      "No city shows POI photos (malls, companies, specific attractions)",
+      "Shanghai shows 外滩 (The Bund) or similar iconic view",
+      "Chongqing shows 解放碑 (Liberation Monument) or similar",
+      "Beijing shows city landmark, not agriculture company",
+      "All other cities show relevant city views"
+    ],
+    "constraints": [
+      "Must use Gaode Maps API for China cities",
+      "Must preserve existing POI photo logic",
+      "Must maintain backward compatibility with cache structure",
+      "No hardcoded city-to-landmark mappings"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "All city cover photos show incorrect POIs - Beijing shows agriculture company gate, Shanghai shows Raffles Mall, Chengdu shows Panda Base. User reports poor image quality.",
+    "root_cause": "Line 555 in fetch-images-batch.py uses search query '{city} 地标' which returns irrelevant POIs. The search term '地标' (landmark) is too ambiguous and matches business names, company names, and random POIs instead of actual city landmarks.",
+    "root_cause_commit": "8c08757 - checkpoint: Auto-save at 2026-02-11 08:01:36",
+    "why_introduced": "Original code used '{city} 景点' (attractions) which returned Shanghai Disney as top result. Commit 8c08757 changed to '{city} 地标' (landmarks) to avoid tourist attractions, but this made it worse.",
+    "why_problematic": "Search term '地标' matches: '北京大国地标农业科技有限公司' (company with '地标' in name), commercial buildings, random POIs with '地标' in metadata. It does NOT return actual city landmarks or skylines.",
+    "timeline": "Bug introduced on 2026-02-11 08:01:36",
+    "affected_files": [
+      "scripts/fetch-images-batch.py (line 555)",
+      "data/china-feb-15-mar-7-2026-20260202-195429/images.json (all city_covers entries)"
+    ],
+    "evidence": {
+      "beijing_search_result": {
+        "query": "北京 地标",
+        "top_result": "北京大国地标农业科技有限公司 (agriculture company)",
+        "photo_url": "c3fbe16e72a0d1a2f6affaf7cad9d4c4",
+        "photo_content": "Agriculture company gate (verified)"
+      },
+      "correct_search_result": {
+        "query": "上海 (just city name)",
+        "top_result": "上海市",
+        "photo_title": "外滩 (The Bund)",
+        "photo_url": "6600beb22c7586b57d9261d01347afe7"
+      }
+    }
+  },
+  "context": {
+    "codebase_state": "10 uncommitted files in china-feb-15-mar-7-2026-20260202-195429 data directory",
+    "recent_commits": [
+      "10fd835 feat: Implement Apple Calendar adaptive font scaling for timeline entries",
+      "2a18c72 checkpoint: Auto-save at 2026-02-13 17:42:13",
+      "205af02 fix: CRITICAL - Resolve JavaScript hoisting bug causing blank timeline"
+    ],
+    "file_contents": {
+      "scripts/fetch-images-batch.py:527-568": "def fetch_cities(self, limit: int = 5):\n    ... line 555: photo_url = self._gaode_search(f\"{city} 地标\", city)"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "geopip (for coordinate-based country detection), requests (for API calls)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "gaode_api_key": "Available in .env",
+      "gaode_scripts": "/root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py"
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace '{city} 地标' search query with just '{city}' to let Gaode API return the most relevant city-level POI (which is typically the city itself with iconic photo)",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/fetch-images-batch.py (line 555 and comment)"
+    ],
+    "validation_approach": "Re-fetch city cover photos with --force flag, verify each city shows appropriate landmark/skyline, compare before/after photo URLs"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
