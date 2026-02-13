@@ -2677,9 +2677,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
-  add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
-  add(day.meals.lunch, 'meal', L('cat_lunch', lang));
-  add(day.meals.dinner, 'meal', L('cat_dinner', lang));
+  add(day.meals?.breakfast, 'meal', L('cat_breakfast', lang));
+  add(day.meals?.lunch, 'meal', L('cat_lunch', lang));
+  add(day.meals?.dinner, 'meal', L('cat_dinner', lang));
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
@@ -2815,7 +2815,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                       whiteSpace: 'nowrap',
                       pointerEvents: 'none'  // Don't intercept click events
                     }}>
-                      {entry.icon || '📍'} {entry._type === 'transportation' || entry._type === 'travel' ? entry._label : getDisplayName(entry, lang)}
+                      {entry.icon || '📍'} {getDisplayName(entry, lang)}
                     </div>
                   )}
                 <div style={{
