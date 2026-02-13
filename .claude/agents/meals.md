@@ -172,11 +172,30 @@ Validate:
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent meals data loss.
 
 Use scripts/save.py script to save complete meals JSON:
+
+**Option 1: Save from temp file**
 ```bash
-save.py(
-  file_path="data/{destination-slug}/meals.json",
-  content=<complete_json_string>
-)
+# Create temp file with meals data
+cat > /tmp/meals_update.json << 'EOF'
+{
+  "agent": "meals",
+  "status": "complete",
+  "data": {...}
+}
+EOF
+
+# Save using save.py
+source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent meals \
+  --input /tmp/meals_update.json
+```
+
+**Option 2: Save via stdin**
+```bash
+echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent meals
 ```
 
 **Schema**: `schemas/meals.schema.json` (references `schemas/poi-common.schema.json`)

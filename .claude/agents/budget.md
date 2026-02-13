@@ -129,11 +129,30 @@ Before Step 3, validate the JSON structure:
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent budget data loss.
 
 Use scripts/save.py script to save complete budget JSON:
+
+**Option 1: Save from temp file**
 ```bash
-save.py(
-  file_path="data/{destination-slug}/budget.json",
-  content=<complete_json_string>
-)
+# Create temp file with budget data
+cat > /tmp/budget_update.json << 'EOF'
+{
+  "agent": "budget",
+  "status": "complete",
+  "data": {...}
+}
+EOF
+
+# Save using save.py
+source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent budget \
+  --input /tmp/budget_update.json
+```
+
+**Option 2: Save via stdin**
+```bash
+echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent budget
 ```
 
 **Schema**: `schemas/budget.schema.json`

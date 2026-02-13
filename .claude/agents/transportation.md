@@ -174,11 +174,30 @@ When parsing route data from Gaode Maps API or any mapping service:
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent transportation data loss.
 
 Use scripts/save.py script to save complete transportation JSON:
+
+**Option 1: Save from temp file**
 ```bash
-save.py(
-  file_path="data/{destination-slug}/transportation.json",
-  content=<complete_json_string>
-)
+# Create temp file with transportation data
+cat > /tmp/transportation_update.json << 'EOF'
+{
+  "agent": "transportation",
+  "status": "complete",
+  "data": {...}
+}
+EOF
+
+# Save using save.py
+source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent transportation \
+  --input /tmp/transportation_update.json
+```
+
+**Option 2: Save via stdin**
+```bash
+echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent transportation
 ```
 
 **Schema**: `schemas/transportation.schema.json` (references `schemas/poi-common.schema.json`)

@@ -178,11 +178,30 @@ Validate:
 **CRITICAL - Root Cause Reference (commit ef0ed28)**: This step MUST use scripts/save.py script explicitly to prevent entertainment data loss.
 
 Use scripts/save.py script to save complete entertainment JSON:
+
+**Option 1: Save from temp file**
 ```bash
-save.py(
-  file_path="data/{destination-slug}/entertainment.json",
-  content=<complete_json_string>
-)
+# Create temp file with entertainment data
+cat > /tmp/entertainment_update.json << 'EOF'
+{
+  "agent": "entertainment",
+  "status": "complete",
+  "data": {...}
+}
+EOF
+
+# Save using save.py
+source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent entertainment \
+  --input /tmp/entertainment_update.json
+```
+
+**Option 2: Save via stdin**
+```bash
+echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
+  --trip {destination-slug} \
+  --agent entertainment
 ```
 
 **Schema**: `schemas/entertainment.schema.json` (references `schemas/poi-common.schema.json`)
