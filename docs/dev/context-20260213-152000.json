@@ -1,0 +1,98 @@
+{
+  "request_id": "dev-20260213-152000",
+  "timestamp": "2026-02-13T15:20:00Z",
+  "requirement": {
+    "original": "为什么出现了这么多脚本错误？深度研究并系统性修复脚本错误脚本缺失脚本不足",
+    "clarified": "系统性修复脚本使用问题：orchestrator在/review命令中使用临时bash命令而非load.py脚本读取数据，导致JSON解析错误。用户要求：1) 深度研究load.py是否满足所有需求，2) 不满足则改进，3) 更新到2个command(/plan, /review)和8个agent中，4) 确保以后只用脚本不用临时bash命令",
+    "what": "修复plan.md中Write tool vs save.py的矛盾，确保所有commands和agents统一使用脚本（load.py/save.py）而非临时bash命令或Write tool",
+    "why": "临时bash命令容易出错、不可复用、难维护；save.py提供验证、原子写入、部分更新功能，而Write tool会覆盖整个文件导致数据丢失",
+    "where": [
+      ".claude/commands/plan.md (Step 10行515, Step 15行1150, Step 20行1682)",
+      ".claude/commands/review.md (验证已正确使用save.py)",
+      ".claude/agents/timeline.md (已正确要求save.py)",
+      "其他7个agents/*.md (已正确使用save.py)"
+    ],
+    "scope": {
+      "included": [
+        "修改plan.md中3处Write tool指令改为save.py",
+        "验证review.md是否正确使用",
+        "验证所有8个agents是否统一",
+        "可选：评估是否需要扩展load.py功能（减少jq后处理）"
+      ],
+      "excluded": [
+        "修改load.py或save.py核心功能（已验证完备）",
+        "重构整个脚本架构（已在commit 9a742cb完成）",
+        "修改agents具体实现逻辑"
+      ]
+    },
+    "success_criteria": [
+      "plan.md中3处Write tool指令全部改为save.py（与review.md/timeline.md一致）",
+      "所有commands和agents统一使用load.py读取、save.py写入",
+      "消除Write tool直接写入timeline.json的风险（防止多日数据覆盖）",
+      "文档中明确说明为什么用save.py而不是Write tool（引用commit ef0ed28）",
+      "验证：全文搜索plan.md/review.md确认无临时JSON解析bash命令用于主数据流"
+    ],
+    "constraints": [
+      "不改变load.py和save.py的核心功能（已验证完备）",
+      "保持与commit 9a742cb统一脚本架构一致",
+      "保留jq后处理命令（用于展示和验证，非主数据流）",
+      "所有修改必须引用root cause commits（ef0ed28, f9634dc）"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "orchestrator在/review命令中尝试用临时bash命令验证JSON数据提取，导致JSON解析错误；plan.md指令矛盾（要求Write tool而非save.py）",
+    "root_cause": "plan.md Step 10/15/20中错误指示'Use Write tool explicitly'，与timeline.md、review.md的正确指令（'Use scripts/save.py'）不一致，导致数据覆盖风险",
+    "root_cause_commit": "ef0ed28 - 修复timeline数据丢失问题，要求使用save.py进行部分更新",
+    "why_introduced": "commit ef0ed28修复了Write tool覆盖问题，但plan.md中的旧指令未同步更新，仍保留'Use Write tool explicitly'",
+    "why_problematic": "Write tool覆盖整个文件，在多日行程中修改Day N会丢失其他天数据；save.py通过merge机制避免此问题",
+    "timeline": "commit ef0ed28修复后，review.md和timeline.md已更新，但plan.md遗留3处旧指令",
+    "affected_files": [
+      ".claude/commands/plan.md (3处需修复)",
+      ".claude/commands/review.md (已正确)",
+      ".claude/agents/timeline.md (已正确)"
+    ]
+  },
+  "context": {
+    "codebase_state": "Modified: .claude/commands/review.md, .claude/settings.json, data/china-feb-15-mar-7-2026-20260202-195429/timeline.json, plus dev docs",
+    "recent_commits": "407fdd2 remove Xiaohongshu, 94bca5f feat image fetching, 9a742cb feat unified scripts",
+    "file_contents": {
+      "scripts/load.py": "完整的3级数据加载脚本，支持批量、按day过滤、按POI过滤",
+      "scripts/save.py": "带验证的原子写入脚本，支持部分更新、自动备份、HIGH severity阻止",
+      ".claude/agents/timeline.md": "正确要求使用save.py（第162-170行）",
+      ".claude/commands/review.md": "正确使用save.py（第817、1349行）",
+      ".claude/commands/plan.md": "错误指令：第515、1150、1682行仍要求Write tool"
+    },
+    "dependencies": {
+      "runtime": "Python 3.12",
+      "packages": "jq (for post-processing), json, argparse, pathlib"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "config_files": [".claude/settings.json", ".claude/commands/*.md", ".claude/agents/*.md"]
+    }
+  },
+  "development_approach": {
+    "strategy": "修复plan.md中3处矛盾指令，将'Use Write tool explicitly'改为'Use scripts/save.py as specified in timeline.md Step 3'，与review.md保持一致",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      ".claude/commands/plan.md (行515, 1150, 1682)"
+    ],
+    "validation_approach": "1. 全文搜索plan.md确认所有Write tool指令已替换；2. grep验证save.py被正确引用；3. 对比review.md确保一致性；4. 检查commit引用完整性"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "unified_scripts_usage": true,
+    "save_py_not_write_tool": true
+  },
+  "explore_agent_findings": {
+    "load_py_usage": "plan.md Step 14和review.md Step 14已正确使用load.py批量加载",
+    "save_py_inconsistency": "plan.md第515/1150/1682行错误要求Write tool，与review.md第817/1349行（正确使用save.py）矛盾",
+    "all_8_agents_correct": "所有agents/*.md已正确配置save.py",
+    "jq_commands_acceptable": "6条jq命令用于后处理和展示，非主数据流，可接受",
+    "priority_fix": "修改plan.md 3处Write tool指令为最高优先级"
+  }
+}

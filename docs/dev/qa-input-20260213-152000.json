@@ -1,0 +1,100 @@
+{
+  "request_id": "dev-20260213-152000",
+  "timestamp": "2026-02-13T15:20:00Z",
+  "qa_input": {
+    "implementation_summary": "Fixed 3 contradictory instructions in plan.md (lines 515, 1150, 1682) that incorrectly specified 'Use Write tool explicitly' instead of 'Use scripts/save.py'. Updated commit references from 'ef0ed28' to 'ef0ed28, f9634dc' to match review.md standard.",
+    "files_modified": [
+      {
+        "path": ".claude/commands/plan.md",
+        "lines_changed": [515, 516, 1150, 1151, 1682, 1683],
+        "change_type": "instruction_correction",
+        "risk_level": "low",
+        "description": "Replaced 'Use Write tool explicitly' with 'Use scripts/save.py as specified in timeline.md Step 3' at 3 locations"
+      }
+    ],
+    "validation_commands": [
+      {
+        "command": "grep -n 'Use scripts/save.py' .claude/commands/plan.md",
+        "expected_output": "3 lines (515, 1150, 1682)",
+        "purpose": "Verify all save.py references present"
+      },
+      {
+        "command": "grep -n 'Use Write tool' .claude/commands/plan.md",
+        "expected_output": "No output (all replaced)",
+        "purpose": "Verify no Write tool references remain"
+      },
+      {
+        "command": "grep -c 'Root Cause Reference (commits ef0ed28, f9634dc)' .claude/commands/plan.md",
+        "expected_output": "3",
+        "purpose": "Verify commit reference format"
+      },
+      {
+        "command": "diff <(sed -n '515,516p' .claude/commands/plan.md | sed 's/^[ ]*//' ) <(sed -n '817,818p' .claude/commands/review.md | sed 's/^[ ]*//')",
+        "expected_output": "No differences",
+        "purpose": "Verify pattern consistency with review.md"
+      }
+    ],
+    "test_scenarios": [
+      {
+        "scenario": "Verify plan.md Step 10 instruction",
+        "test_steps": [
+          "Read .claude/commands/plan.md lines 514-517",
+          "Verify line 515 says 'Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data'",
+          "Verify line 516 says 'Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates'"
+        ],
+        "expected_result": "Matches review.md line 817 pattern",
+        "criticality": "HIGH"
+      },
+      {
+        "scenario": "Verify plan.md Step 15 instruction",
+        "test_steps": [
+          "Read .claude/commands/plan.md lines 1149-1152",
+          "Verify line 1150 says 'Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data'",
+          "Verify line 1151 says 'Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates'"
+        ],
+        "expected_result": "Matches review.md line 817 pattern",
+        "criticality": "HIGH"
+      },
+      {
+        "scenario": "Verify plan.md Step 20 instruction",
+        "test_steps": [
+          "Read .claude/commands/plan.md lines 1681-1684",
+          "Verify line 1682 says 'Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data'",
+          "Verify line 1683 says 'Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates'"
+        ],
+        "expected_result": "Matches review.md line 1349 pattern",
+        "criticality": "HIGH"
+      },
+      {
+        "scenario": "Verify no Write tool regressions",
+        "test_steps": [
+          "Run: grep -i 'use write tool' .claude/commands/plan.md",
+          "Verify no matches found"
+        ],
+        "expected_result": "No Write tool references exist",
+        "criticality": "CRITICAL"
+      }
+    ],
+    "success_criteria": [
+      "All 3 Write tool instructions replaced with save.py",
+      "Commit references updated to include both ef0ed28 and f9634dc",
+      "Pattern matches review.md exactly (lines 817 and 1349)",
+      "No other Write tool references in plan.md",
+      "All validation commands pass"
+    ],
+    "regression_checks": [
+      "Verify no other command files (.claude/commands/*.md) have similar issues",
+      "Verify agent files (.claude/agents/*.md) consistently use save.py",
+      "Check timeline.md Step 3 still specifies save.py correctly"
+    ],
+    "root_cause_verification": {
+      "commits_to_review": ["ef0ed28", "f9634dc"],
+      "files_to_compare": [
+        ".claude/commands/plan.md (lines 515, 1150, 1682)",
+        ".claude/commands/review.md (lines 817, 1349)",
+        ".claude/agents/timeline.md (Step 3 reference)"
+      ],
+      "verify_save_py_exists": "scripts/save.py must exist and provide merge functionality"
+    }
+  }
+}
