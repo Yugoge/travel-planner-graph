@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-20260213-141500",
+  "timestamp": "2026-02-13T14:15:00Z",
+  "requirement": {
+    "original": "集中修复7个agent，取消全部write权限和相关的要求！强制只能使用脚本",
+    "clarified": "Remove all Write tool permissions from 7 travel planning agents, enforce script-only usage (scripts/save.py)",
+    "what": "Fix contradictory instructions in review.md that tell agents to use Write tool",
+    "why": "Prevent data loss - timeline Day 2-21 was deleted twice because Write tool overwrites entire files",
+    "where": [
+      ".claude/commands/review.md (3 agent invocation locations)",
+      "7 agent .md files already correctly prohibit Write tool"
+    ],
+    "scope": {
+      "included": [
+        "Update review.md to pass scripts/save.py instruction to agents",
+        "Remove 'Use Write tool explicitly' from review.md",
+        "Verify all 7 agents already have 'Write Tool Disabled' section"
+      ],
+      "excluded": [
+        "Modifying agent .md files (already correct)",
+        "Changing scripts/save.py itself",
+        "Restoring lost Day 2-21 data (separate task)"
+      ]
+    },
+    "success_criteria": [
+      "review.md no longer instructs agents to use Write tool",
+      "review.md passes 'use scripts/save.py' instruction to agents",
+      "No contradictory instructions between review.md and agent .md files",
+      "All 3 agent invocation locations in review.md updated consistently"
+    ],
+    "constraints": [
+      "Must preserve existing review.md workflow and structure",
+      "Must maintain day-scoped refinement pattern",
+      "Must keep orchestrator-subagent delegation pattern intact"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline Day 2-21 data deleted in commits ef0ed28 and f9634dc",
+    "root_cause": "review.md instructs agents to 'Use Write tool explicitly' which contradicts agent specs requiring scripts/save.py",
+    "root_cause_commit": "ef0ed28 (first occurrence), f9634dc (second occurrence)",
+    "why_introduced": "Attempt to fix data loss by enforcing explicit tool usage, but chose wrong tool",
+    "why_problematic": "Write tool overwrites entire file; scripts/save.py merges updates preserving multi-day data",
+    "timeline": "First failure Feb 7, second failure Feb 12 - fix was never applied to review.md",
+    "affected_files": [
+      ".claude/commands/review.md",
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+    ]
+  },
+  "context": {
+    "agents_with_write_disabled": [
+      "accommodation.md:411-420",
+      "attractions.md:366-375",
+      "budget.md:292-301",
+      "entertainment.md:344-353",
+      "meals.md:412-421",
+      "shopping.md:343-352",
+      "timeline.md:352-361"
+    ],
+    "review_md_problematic_lines": [
+      "Line 817: 'Use Write tool explicitly (see timeline.md Step 3)'",
+      "Line 818: 'Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss'",
+      "Similar patterns at lines ~750-774 (generic agent template), ~1337 (timeline), ~1359 (budget)"
+    ],
+    "correct_instruction_from_agent_specs": "Use scripts/save.py script to save complete JSON (see timeline.md:164-169)"
+  },
+  "development_approach": {
+    "strategy": "Update review.md to align with agent specs - replace 'Use Write tool' with 'Use scripts/save.py'",
+    "files_to_modify": [
+      ".claude/commands/review.md (lines 816-818, plus 2 similar locations)"
+    ],
+    "validation_approach": "Grep for 'Write tool' in review.md should return zero results; verify scripts/save.py mentioned instead"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

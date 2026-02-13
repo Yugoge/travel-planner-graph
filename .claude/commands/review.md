@@ -814,8 +814,8 @@ Use Task tool with:
   Recalculate timeline ONLY for Day {N}.
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json** (Day {N} section only).
-  Use Write tool explicitly (see timeline.md Step 3).
-  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
+  Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data.
+  Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates.
 
   Detect any new conflicts.
 
@@ -1346,8 +1346,8 @@ Use Task tool with:
   Recalculate timeline for Day {N} only (or all days if multiple domains affected).
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
-  Use Write tool explicitly (see timeline.md Step 3).
-  Root Cause Reference (commit ef0ed28): Explicit Write prevents timeline data loss.
+  Use scripts/save.py as specified in timeline.md Step 3 to preserve multi-day data.
+  Root Cause Reference (commits ef0ed28, f9634dc): Write tool overwrites entire file; scripts/save.py merges updates.
 
   After completing all tasks, return ONLY the word 'complete'.
   "
