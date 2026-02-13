@@ -2844,13 +2844,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     background: st.dot, border: '2px solid #fff'
                   }} />
 
-                  {entry.image && !sm && showText && (
-                    <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                    </div>
-                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Root cause fix (commit e0a9291): One-row mode for medium-height entries (36-51px) */}
+                    {/* Root cause fix (commit 8e4e711): One-row mode for medium-height entries (36-51px) */}
+                    {/* Issue: oneRowMode was missing cost display, making condensed view less informative */}
                     {oneRowMode && (
                       <div style={{
                         fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
@@ -2865,11 +2861,26 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         {entry.optional && (
                           <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
                         )}
+                        {entry.cost !== undefined && Number(entry.cost) > 0 && (
+                          <span style={{
+                            fontSize: '11px', padding: '1px 6px', borderRadius: '3px', fontWeight: '600',
+                            background: '#f5f5f3', color: '#37352f', marginLeft: '6px', verticalAlign: 'middle'
+                          }}>
+                            {fmtCost(entry.cost, undefined, lang)}
+                          </span>
+                        )}
                       </div>
                     )}
                     {/* Two-row mode for tall entries (>= 52px) - original layout */}
+                    {/* Root cause fix (commit 8e4e711): Image was rendering outside mode conditionals */}
+                    {/* Issue: 50x50px image cannot fit in oneRowMode (36-51px height) causing layout break */}
                     {twoRowsMode && (
                       <>
+                        {entry.image && !sm && (
+                          <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, marginBottom: '4px' }}>
+                            <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                          </div>
+                        )}
                         <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
                         <div style={{
                           fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
