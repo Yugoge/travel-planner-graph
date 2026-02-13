@@ -162,15 +162,22 @@ Validate:
 - Include airport/station transfer time in total journey
 - Document data source (duffel_flights, gaode_maps, google_maps)
 
-**CRITICAL - Duration Unit Conversion (Root Cause: commit d453036)**:
+⚠️ **CRITICAL - Duration Unit Conversion (Root Cause: commit d453036)** ⚠️
+
+**MOST COMMON ERROR**: Forgetting to convert seconds to minutes causes 60x timeline errors.
+
 When parsing route data from Gaode Maps API or any mapping service:
-- Gaode Maps API returns `duration` field in SECONDS
-- Google Maps API returns `duration.value` in SECONDS
-- You MUST divide by 60 before storing as `duration_minutes`
-- Correct example: `duration_minutes = round(api_duration_seconds / 60)`
-- Incorrect example: `duration_minutes = api_duration_seconds` (causes 60x error)
+- ⚠️ **Gaode Maps API returns `duration` field in SECONDS** (not minutes)
+- ⚠️ **Google Maps API returns `duration.value` in SECONDS** (not minutes)
+- ⚠️ **You MUST divide by 60 before storing as `duration_minutes`**
+- ✅ Correct example: `duration_minutes = round(api_duration_seconds / 60)`
+- ❌ Incorrect example: `duration_minutes = api_duration_seconds` (causes 60x error)
 - Reference: `scripts/gaode-maps/parse-transit-routes.py:73` shows correct conversion
 - Validation: Use `scripts/validate-route-durations.py` to verify all routes have realistic duration/distance ratios
+
+**EXAMPLE**: If Gaode Maps returns `duration: 1800` (30 minutes in seconds):
+- ✅ CORRECT: Store as `duration_minutes: 30` (1800 / 60)
+- ❌ WRONG: Store as `duration_minutes: 1800` (causes timeline to show 30-hour trip)
 
 ### Step 3: Save JSON to File and Return Completion
 
@@ -260,19 +267,20 @@ echo '{...json...}' | source venv/bin/activate && python3 scripts/save.py \
 
 Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
 
-See complete usage example and template: `scripts/save-agent-data-template.py`
+**All data saves MUST use `scripts/save.py`** which provides:
+- ✅ Automatic schema validation prevents bugs
+- ✅ Atomic writes prevent data corruption
+- ✅ Automatic backups enable recovery
+- ✅ Consistent formatting across all files
+- ✅ Clear error messages when validation fails
 
-The template script demonstrates correct usage of `save_agent_json()` with validation, error handling, and backup management. All implementation details are shown in the working script.
-
-**To view usage instructions**, run:
+**Usage**:
 ```bash
-python3 scripts/save-agent-data-template.py --help
-```
+# Save from file
+python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input data.json
 
-**Example execution:**
-```bash
-python3 scripts/save-agent-data-template.py \
-    --agent-name transportation \
+# Save from stdin
+cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent transportation \
     --data-file data/chongqing-4day/transportation.json \
     --trip-dir data/chongqing-4day
 ```

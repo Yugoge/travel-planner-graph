@@ -1,0 +1,117 @@
+{
+  "request_id": "dev-agent-fixes-20260213-163000",
+  "timestamp": "2026-02-13T16:39:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Removed legacy 'mode' field from timeline.json travel_segments",
+        "type": "data_migration",
+        "files_modified": ["data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"],
+        "changes": "Removed 'mode' field from 12 travel segments in Day 2 and Day 4",
+        "rationale": "Schema evolved to use type_base/type_local/icon fields. Legacy 'mode' field caused schema validation conflicts."
+      },
+      {
+        "id": 2,
+        "description": "Fixed image_url schema issue in meals.json",
+        "type": "schema_update",
+        "files_modified": [
+          "schemas/poi-common.schema.json",
+          "schemas/meals.schema.json"
+        ],
+        "changes": "Added image_url as optional field in poi-common schema and referenced it in meals schema",
+        "rationale": "Image URLs provide valuable visual information for meals. Schema should allow optional image_url field rather than rejecting useful data."
+      },
+      {
+        "id": 3,
+        "description": "Removed all references to non-existent save-agent-data-template.py",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/agents/timeline.md",
+          ".claude/agents/budget.md",
+          ".claude/agents/accommodation.md",
+          ".claude/agents/attractions.md",
+          ".claude/agents/meals.md",
+          ".claude/agents/entertainment.md",
+          ".claude/agents/shopping.md",
+          ".claude/agents/transportation.md"
+        ],
+        "changes": "Replaced references to non-existent template script with correct scripts/save.py usage documentation",
+        "rationale": "File save-agent-data-template.py does not exist. All agents should use scripts/save.py for data persistence."
+      },
+      {
+        "id": 4,
+        "description": "Added prominent duration conversion warnings to transportation.md",
+        "type": "documentation",
+        "files_modified": [".claude/agents/transportation.md"],
+        "changes": "Added multiple clear warnings about Gaode Maps returning durations in SECONDS (not minutes) with examples showing correct conversion",
+        "rationale": "Most common error: forgetting to divide by 60 causes 60x timeline errors. Made warnings highly visible with emoji markers and concrete examples."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause": "Schema evolution without data migration + stale documentation referencing removed files",
+      "root_cause_commits": [
+        "Schema evolution introduced type_base/type_local/icon but didn't migrate existing 'mode' field",
+        "save-agent-data-template.py was removed but documentation not updated",
+        "Image URL feature added to data but schema not updated to allow it"
+      ],
+      "how_fix_addresses_root": "1) Migrated timeline data to remove legacy mode field. 2) Updated schema to allow image_url field. 3) Updated all agent documentation to reference correct scripts/save.py. 4) Added prominent warnings to prevent future duration conversion errors."
+    },
+    "validation_results": {
+      "timeline_validation": {
+        "status": "PASS",
+        "exit_code": 0,
+        "high_severity_issues": 0,
+        "medium_severity_issues": 3,
+        "low_severity_issues": 0,
+        "required_fields": "564/564 (100.0%)",
+        "optional_fields": "272/296 (91.9%)"
+      },
+      "meals_validation": {
+        "status": "PASS",
+        "exit_code": 0,
+        "high_severity_issues": 0,
+        "medium_severity_issues": 0,
+        "low_severity_issues": 110,
+        "required_fields": "567/567 (100.0%)",
+        "optional_fields": "394/504 (78.2%)"
+      },
+      "grep_check": {
+        "status": "PASS",
+        "matches_found": 0,
+        "description": "No references to save-agent-data-template.py in active agent documentation files"
+      }
+    },
+    "files_modified_summary": {
+      "data_files": [
+        "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json"
+      ],
+      "schema_files": [
+        "schemas/poi-common.schema.json",
+        "schemas/meals.schema.json"
+      ],
+      "documentation_files": [
+        ".claude/agents/timeline.md",
+        ".claude/agents/budget.md",
+        ".claude/agents/accommodation.md",
+        ".claude/agents/attractions.md",
+        ".claude/agents/meals.md",
+        ".claude/agents/entertainment.md",
+        ".claude/agents/shopping.md",
+        ".claude/agents/transportation.md"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": "All CRITICAL and HIGH severity issues fixed. Both timeline and meals validation pass with 0 HIGH severity errors. Documentation updated to remove stale references and add critical warnings. Data migration completed successfully using scripts/save.py with automatic validation.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Run full agent self-debug again to verify MEDIUM severity issues are addressed",
+    "Consider adding automated check to detect stale file references in documentation",
+    "Add CI validation to catch schema evolution without data migration",
+    "Document schema evolution process to prevent future legacy field conflicts"
+  ]
+}
