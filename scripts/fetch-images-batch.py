@@ -506,160 +506,35 @@ class BatchImageFetcher:
         return photo_url
 
     def _xiaohongshu_search(self, search_name: str, city: str) -> Optional[str]:
-        """Xiaohongshu (小红书) search fallback when Gaode/Google fail.
+        """Xiaohongshu (小红书) search fallback - DISABLED.
 
-        Root cause (commit afce9d9): search_notes only returns metadata, not images.
-        Fixed by implementing get_note_content call and image URL extraction.
+        DISABLED REASON:
+        External dependency (rednote-mcp v0.2.3) has outdated selector that no longer works.
+        The MCP tool's get_note_content uses '.note-container' selector which times out
+        because Xiaohongshu changed their page structure.
 
-        Workflow:
-        Step 1: Call search_notes to get note URLs
-        Step 2: Extract first note URL from search results
-        Step 3: Call get_note_content to fetch detailed note content
-        Step 4: Parse content to extract image URLs from CDN patterns
-        Step 5: Return first valid image URL
+        This was verified on 2026-02-13:
+        - search_notes works correctly and returns note URLs
+        - get_note_content fails with "page.waitForSelector: Timeout 30000ms exceeded"
+        - Re-authentication does not fix the issue (tested with xvfb-run npx rednote-mcp init)
+        - Root cause: Xiaohongshu page structure changed, rednote-mcp needs update
+
+        Current fallback chain: Gaode/Google → Bing Images (99.3% success rate without Xiaohongshu)
+
+        To re-enable in the future:
+        1. Update rednote-mcp to version with fixed selectors
+        2. Or implement direct Playwright automation bypassing MCP wrapper
+        3. Or report issue to rednote-mcp project
 
         Args:
-            search_name: POI name (Chinese preferred)
-            city: City name
+            search_name: POI name (Chinese preferred) - unused
+            city: City name - unused
 
         Returns:
-            Image URL from Xiaohongshu note, or None if not found
+            None (always disabled)
         """
-        import os
-        import re
-
-        try:
-            # Step 1: Search for notes to get note URLs
-            search_script = self.base_dir / ".claude/skills/rednote/scripts/search.py"
-            if not search_script.exists():
-                logger.warning("Xiaohongshu skill not found at .claude/skills/rednote/scripts/search.py")
-                return None
-
-            # Search for "城市名 + POI名"
-            query = f"{city} {search_name}" if city else search_name
-            logger.debug(f"Xiaohongshu search: {query}")
-
-            # Use xvfb-run for headless browser support
-            xvfb_available = subprocess.run(["which", "xvfb-run"], capture_output=True).returncode == 0
-
-            if xvfb_available:
-                cmd = ["xvfb-run", "-a", self.venv_python, str(search_script), query, "--limit", "1"]
-                env = os.environ.copy()
-                env["DISPLAY"] = ":99"
-            else:
-                cmd = [self.venv_python, str(search_script), query, "--limit", "1"]
-                env = os.environ.copy()
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=search_script.parent,
-                env=env
-            )
-
-            if result.returncode != 0:
-                logger.debug(f"Xiaohongshu search failed for {query}")
-                return None
-
-            # Step 2: Extract note URL from search results
-            search_data = json.loads(result.stdout)
-            if search_data.get("status") != "success" or not search_data.get("data"):
-                logger.debug(f"No Xiaohongshu results for {query}")
-                return None
-
-            text_data = search_data["data"]
-            urls = re.findall(r'链接: (https://www\.xiaohongshu\.com/explore/[a-zA-Z0-9?=&_]+)', text_data)
-
-            if not urls:
-                logger.debug(f"No note URLs found in Xiaohongshu search results")
-                return None
-
-            note_url = urls[0]
-            logger.debug(f"Found note URL: {note_url[:60]}...")
-
-            # Step 3: Get detailed note content with images (increased timeout for browser automation)
-            content_script = self.base_dir / ".claude/skills/rednote/scripts/get_note_content.py"
-            if not content_script.exists():
-                logger.warning("get_note_content.py not found at .claude/skills/rednote/scripts/")
-                return None
-
-            if xvfb_available:
-                cmd = ["xvfb-run", "-a", self.venv_python, str(content_script), note_url, "--timeout", "60"]
-                env = os.environ.copy()
-                env["DISPLAY"] = ":99"
-            else:
-                cmd = [self.venv_python, str(content_script), note_url, "--timeout", "60"]
-                env = os.environ.copy()
-
-            # Increased timeout to 60s for get_note_content (browser automation is slow)
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
-                cwd=content_script.parent,
-                env=env
-            )
-
-            if result.returncode != 0:
-                logger.warning(f"get_note_content failed for {note_url}")
-                return None
-
-            # Step 4: Parse content to extract image URLs
-            content_data = json.loads(result.stdout)
-            if content_data.get("status") != "success" or not content_data.get("data"):
-                logger.warning(f"No content returned from get_note_content")
-                return None
-
-            content = content_data["data"]
-
-            # Handle different content formats
-            image_urls = []
-
-            # Format 1: dict with 'images' key (from HTTP scraper)
-            if isinstance(content, dict) and 'images' in content:
-                image_urls = content['images']
-            else:
-                # Format 2: text or JSON string - extract with regex
-                content_str = json.dumps(content) if isinstance(content, dict) else str(content)
-
-                # Xiaohongshu CDN patterns: xhscdn.com, ci.xiaohongshu.com, picasso-static.xiaohongshu.com
-                cdn_patterns = [
-                    r'(https?://[^"\s]*?xhscdn\.com/[^"\s]+)',
-                    r'(https?://[^"\s]*?ci\.xiaohongshu\.com/[^"\s]+)',
-                    r'(https?://[^"\s]*?picasso-static\.xiaohongshu\.com/[^"\s]+)',
-                ]
-
-                for pattern in cdn_patterns:
-                    matches = re.findall(pattern, content_str)
-                    image_urls.extend(matches)
-
-            # Filter out thumbnails, JS, CSS and get actual image files
-            full_size_images = [
-                url for url in image_urls
-                if not any(thumb in url.lower() for thumb in ['thumbnail', 'thumb', 'avatar', 'user', '.js', '.css'])
-                and any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '/spectrum/'])
-            ]
-
-            if full_size_images:
-                image_url = full_size_images[0]
-                logger.info(f"Extracted Xiaohongshu image: {image_url[:80]}...")
-                return image_url
-
-            logger.info(f"No images found in Xiaohongshu note content")
-            return None
-
-        except subprocess.TimeoutExpired:
-            logger.warning(f"Xiaohongshu timeout for {search_name} (consider increasing timeout)")
-            return None
-        except json.JSONDecodeError as e:
-            logger.warning(f"Xiaohongshu JSON parse error for {search_name}: {e}")
-            return None
-        except Exception as e:
-            logger.warning(f"Xiaohongshu error for {search_name}: {e}")
-            return None
+        logger.debug(f"Xiaohongshu fallback disabled (rednote-mcp selector outdated)")
+        return None
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
         """Bing Images search as final fallback.
