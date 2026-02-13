@@ -85,8 +85,15 @@ def load_agent_file(trip_slug: str, agent: str) -> Dict[str, Any]:
         print(f"Error: {agent_file} not found", file=sys.stderr)
         sys.exit(1)
 
-    with open(agent_file, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(agent_file, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error: Malformed JSON in {agent_file}: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: Failed to load {agent_file}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def filter_level_1(data: Dict[str, Any]) -> Dict[str, Any]:

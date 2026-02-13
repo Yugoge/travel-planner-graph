@@ -37,11 +37,12 @@ run_test() {
   local expected_exit_code="${3:-0}"
   local validation="${4:-}"
 
-  TOTAL_TESTS=$((TOTAL_TESTS + 1))
-  echo "[TEST $TOTAL_TESTS] $test_name"
+  echo "[TEST $((TOTAL_TESTS + 1))] $test_name"
 
   local output_file="$TEST_OUTPUT_DIR/test-$TOTAL_TESTS.json"
   local stderr_file="$TEST_OUTPUT_DIR/test-$TOTAL_TESTS.stderr"
+
+  TOTAL_TESTS=$((TOTAL_TESTS + 1))
   local exit_code=0
 
   # Run command
