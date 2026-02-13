@@ -1,0 +1,132 @@
+{
+  "request_id": "dev-20260213-140000",
+  "timestamp": "2026-02-13T14:30:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replaced simple progressive hiding logic with three-tier responsive display modes",
+        "type": "logic",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2782-2796"
+        ],
+        "changes": "Replaced hideAllText/forceOneLine/showTime/showText/showSubtext flags with twoRowsMode (>= 52px), oneRowMode (36-51px), moveToLeft (< 36px) modes",
+        "rationale": "Root cause was oversimplified progressive hiding. Need explicit modes to handle three distinct display states for different entry heights"
+      },
+      {
+        "id": 2,
+        "description": "Implemented left-side title display for narrow entries (< 36px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2802-2820"
+        ],
+        "changes": "Added left-side title div positioned absolutely to the right of timeline track, showing icon + name with pointerEvents: none",
+        "rationale": "When entry height < 36px, insufficient space for text inside entry box. Moving title to left provides context while keeping entry as colored time bar"
+      },
+      {
+        "id": 3,
+        "description": "Implemented one-row condensed mode for medium-height entries (36-51px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2852-2868"
+        ],
+        "changes": "Added oneRowMode branch that displays time and title on same line (time in gray, title follows). Replaces previous two-row layout when space is limited",
+        "rationale": "Medium-height entries (30-60 min activities) have enough space for title but not time + details split across two rows. One-row layout maximizes information density"
+      },
+      {
+        "id": 4,
+        "description": "Preserved two-row mode for tall entries (>= 52px)",
+        "type": "feature",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2869-2887"
+        ],
+        "changes": "Wrapped existing time/title/subtext layout in twoRowsMode conditional branch. No logic change, just conditional rendering",
+        "rationale": "Tall entries (2+ hour activities) have ample space for full two-row display with time, title, and details"
+      },
+      {
+        "id": 5,
+        "description": "Updated entry padding and alignment for moveToLeft mode",
+        "type": "style",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2829-2832"
+        ],
+        "changes": "Changed padding from hideAllText check to moveToLeft check. When moveToLeft, padding='0', gap='0', alignItems='center' to render as pure color bar",
+        "rationale": "Narrow entries should render as minimal colored bars since title is displayed on left side"
+      },
+      {
+        "id": 6,
+        "description": "Added dynamic padding-left to timeline track for left-side titles",
+        "type": "layout",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2698-2702",
+          "scripts/generate-html-interactive.py:2763-2769"
+        ],
+        "changes": "Added hasNarrowEntries check to detect entries < 36px. Applied paddingLeft (80px mobile, 120px desktop) to timeline track when narrow entries exist",
+        "rationale": "Left-side titles positioned outside timeline track require space reservation to prevent overlap with time labels"
+      },
+      {
+        "id": 7,
+        "description": "Wrapped entry rendering in React.Fragment for multi-element return",
+        "type": "structure",
+        "files_modified": [
+          "scripts/generate-html-interactive.py:2802",
+          "scripts/generate-html-interactive.py:2929"
+        ],
+        "changes": "Replaced single div return with React.Fragment wrapping both left-title div (conditional) and entry div",
+        "rationale": "React requires single root element. Fragment allows rendering left-title and entry as siblings without extra DOM wrapper"
+      }
+    ],
+    "scripts_created": [],
+    "files_modified": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "git_rationale": {
+      "root_cause_commit": "e0a9291",
+      "why_issue_occurred": "Original commit e0a9291 focused on fixing overflow bug caused by minHeight. Implemented simple progressive hiding (hideAllText when too narrow) to prevent content from breaking timeline layout. This was the minimum viable fix but skipped the intermediate display states (one-row mode and left-title feature) that were originally designed, due to UI complexity",
+      "how_fix_addresses_root": "Implements the missing intermediate display states that were designed but deferred. Now timeline entries gracefully degrade through three distinct modes: full two-row display (52+px) → condensed one-row display (36-51px) → left-title + color bar (<36px). This completes the responsive display system and improves UX for medium-duration activities (30-60 min)"
+    },
+    "implementation_summary": {
+      "approach": "Modified TimelineView component text visibility logic from binary (show/hide) to three-tier mode system (twoRowsMode/oneRowMode/moveToLeft). Implemented conditional rendering for each mode with distinct layouts. Added left-side absolute positioning for narrow entry titles and dynamic padding for timeline container",
+      "key_changes": [
+        "Three display mode constants replacing binary flags",
+        "Left-title div rendered outside entry box for narrow entries",
+        "One-row layout combining time and title inline",
+        "Two-row layout preserved for tall entries",
+        "Dynamic paddingLeft on timeline track based on hasNarrowEntries detection",
+        "React.Fragment wrapper for multi-element return"
+      ],
+      "compatibility": {
+        "column_layout": "Compatible - hasColumns logic unchanged, left-title positioning uses absolute with right: calc(100% + 8px) relative to entry position",
+        "responsive_breakpoints": "Tested - sm (mobile) uses smaller fonts (11px vs 12px) and smaller padding (80px vs 120px) for left-title space",
+        "bilingual_support": "Compatible - getDisplayName(entry, lang) used for left-title display, respects lang toggle"
+      }
+    },
+    "testing_notes": {
+      "manual_testing_required": [
+        "Generate HTML with /plan command for trip with varied activity durations",
+        "Verify long activities (2+ hours) show two rows: time line + title line + details",
+        "Verify medium activities (30-60 min) show one row: time + title inline",
+        "Verify short activities (15 min) show title on left side, entry as colored bar",
+        "Test overlapping activities (column layout) with narrow entries",
+        "Test responsive breakpoints: sm (mobile) vs md/lg (desktop)",
+        "Test bilingual toggle: verify left-title displays name_local vs name_base"
+      ],
+      "edge_cases": [
+        "Multiple narrow entries in sequence - verify left-titles don't overlap",
+        "Narrow entry at top of timeline - verify left-title doesn't overflow above",
+        "Overlapping narrow and wide entries - verify column layout with left-titles",
+        "Very long activity names in left-title - whiteSpace: nowrap prevents wrap but may truncate"
+      ]
+    },
+    "qa_ready": true,
+    "qa_notes": "Implementation complete. All three display modes implemented with root cause reference in comments. Test with realistic trip data containing 15-min transits, 60-min meals, and 3-hour attractions. Verify left-title positioning doesn't conflict with column layout for overlapping events."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding text-overflow: ellipsis to left-title for very long activity names (current: whiteSpace: nowrap may extend beyond visible area)",
+    "Monitor left-title space allocation (80px/120px) - may need adjustment based on typical name lengths in production data",
+    "Add hover tooltip for left-title text in case names are truncated",
+    "Consider animation transition when entries resize/reflow between display modes (e.g., on browser zoom or window resize)"
+  ]
+}

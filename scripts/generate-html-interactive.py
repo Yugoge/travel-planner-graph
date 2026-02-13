@@ -2695,6 +2695,12 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Compute column layout for overlapping events
   const entriesWithLayout = computeColumnLayout(entries);
 
+  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
+  const hasNarrowEntries = entriesWithLayout.some(e => {
+    const h = hgt(e.time.start, e.time.end);
+    return h < 36;
+  });
+
   const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
   const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
   const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
@@ -2754,7 +2760,13 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
             ))}
           </div>
 
-          <div style={{ flex: 1, position: 'relative', borderLeft: '1px dashed #e5e4e1', minWidth: 0 }}>
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            borderLeft: '1px dashed #e5e4e1',
+            minWidth: 0,
+            paddingLeft: hasNarrowEntries ? (sm ? '80px' : '120px') : '0'  // Space for left-side titles
+          }}>
             {hours.map(h => <div key={h} style={{ height: hH, borderBottom: '1px solid #f5f5f3' }} />)}
 
             {entriesWithLayout.map((entry, i) => {
@@ -2787,7 +2799,26 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
               return (
-                <div key={i} style={{
+                <React.Fragment key={i}>
+                  {/* Root cause fix (commit e0a9291): Left-title display for narrow entries (< 36px) */}
+                  {moveToLeft && (
+                    <div style={{
+                      position: 'absolute',
+                      right: 'calc(100% + 8px)',  // 8px gap from entry left edge
+                      top: t,
+                      height: entryH - 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: sm ? '11px' : '12px',
+                      color: '#37352f',
+                      fontWeight: '500',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none'  // Don't intercept click events
+                    }}>
+                      {entry.icon || '📍'} {getDisplayName(entry, lang)}
+                    </div>
+                  )}
+                <div style={{
                   position: 'absolute',
                   top: t,
                   left: hasColumns ? `calc(10px + ${colLeft}%)` : '10px',
@@ -2795,10 +2826,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                   height: entryH - 4,
                   background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
                   borderRadius: '6px',
-                  padding: hideAllText ? '0 6px' : (sm ? '8px 10px' : '10px 14px'),
+                  padding: moveToLeft ? '0' : (sm ? '8px 10px' : '10px 14px'),
                   display: 'flex',
-                  gap: hideAllText ? '0' : '10px',
-                  alignItems: hideAllText ? 'center' : 'flex-start',
+                  gap: moveToLeft ? '0' : '10px',
+                  alignItems: moveToLeft ? 'center' : 'flex-start',
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
@@ -2818,23 +2849,43 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {!hideAllText && showTime && <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>}
-                    {!hideAllText && showText && (
-                    <div style={{
-                      fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                    }}>
-                      {entry._type === 'transportation' || entry._type === 'travel' ? (
-                        <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
-                      ) : (
-                        <span>{entry._label}: {getDisplayName(entry, lang)}</span>
-                      )}
-                      {entry.optional && (
-                        <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
-                      )}
-                    </div>
+                    {/* Root cause fix (commit e0a9291): One-row mode for medium-height entries (36-51px) */}
+                    {oneRowMode && (
+                      <div style={{
+                        fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                      }}>
+                        <span style={{ fontSize: '11px', color: '#b4b4b4', marginRight: '6px' }}>{entry.time.start} – {entry.time.end}</span>
+                        {entry._type === 'transportation' || entry._type === 'travel' ? (
+                          <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
+                        ) : (
+                          <span>{entry._label}: {getDisplayName(entry, lang)}</span>
+                        )}
+                        {entry.optional && (
+                          <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
+                        )}
+                      </div>
                     )}
-                    {!hideAllText && showSubtext && (entry._type === 'transportation' ? (
+                    {/* Two-row mode for tall entries (>= 52px) - original layout */}
+                    {twoRowsMode && (
+                      <>
+                        <div style={{ fontSize: '11px', color: '#b4b4b4' }}>{entry.time.start} – {entry.time.end}</div>
+                        <div style={{
+                          fontSize: sm ? '12px' : '14px', fontWeight: '600', color: '#37352f',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}>
+                          {entry._type === 'transportation' || entry._type === 'travel' ? (
+                            <span>{entry._type === 'transportation' ? entry.icon : (entry.icon || '🚶')} {entry._label}{entry.duration ? ` (${entry.duration})` : ''}</span>
+                          ) : (
+                            <span>{entry._label}: {getDisplayName(entry, lang)}</span>
+                          )}
+                          {entry.optional && (
+                            <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    {showSubtext && (entry._type === 'transportation' ? (
                       <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '2px', lineHeight: 1.5 }}>
                         <div>{lang === 'local' && entry.departure_point_local ? entry.departure_point_local : entry.departure_point_base} → {lang === 'local' && entry.arrival_point_local ? entry.arrival_point_local : entry.arrival_point_base}</div>
                         {entry.route_number && entry.route_number !== 'VERIFIED' && (
@@ -2872,9 +2923,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
                       </div>
                     ))}
-                    {!hideAllText && showSubtext && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
+                    {showSubtext && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
                   </div>
                 </div>
+                </React.Fragment>
               );
             })}
           </div>
