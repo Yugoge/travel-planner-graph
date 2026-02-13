@@ -6971,12 +6971,6 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Compute column layout for overlapping events
   const entriesWithLayout = computeColumnLayout(entries);
 
-  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
-  const hasNarrowEntries = entriesWithLayout.some(e => {
-    const h = hgt(e.time.start, e.time.end);
-    return h < 36;
-  });
-
   const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
   const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
   const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
@@ -6998,6 +6992,13 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Now allows short activities (e.g., 2-min walks) to display with accurate proportional height
   // Small minimum (8px) ensures blocks remain clickable even for very short activities
   const hgt = (s, e) => Math.max(rawHgt(s, e), 8);
+
+  // Root cause fix (commit e0a9291): Check if any entries need left-side title display
+  // IMPORTANT: Must be AFTER hgt() definition to avoid "hgt is not a function" error
+  const hasNarrowEntries = entriesWithLayout.some(e => {
+    const h = hgt(e.time.start, e.time.end);
+    return h < 36;
+  });
 
   // Debug: log entries count
   if (entries.length === 0) {
