@@ -843,14 +843,133 @@ Please choose an option or describe specific changes you'd like.
 - `day_confirmed_perfect`: Boolean flag for INNER loop exit
 - `iteration_count_per_day`: Limit 5 iterations per day before suggesting acceptance
 - `days_with_warnings`: Initial list of days requiring review
+- `retry_count_per_day`: Dict tracking fetch retry attempts {day_num: count}
+- `days_missing_images`: List of days confirmed without images
 
 **USER CHOICE PROCESSING**:
 
 **Option 1 - "This day is perfect"**:
-- Set `day_confirmed_perfect = true`
+- Execute Step 14a (image fetching gate) - see below
+- Set `day_confirmed_perfect = true` (done in Step 14a Substep 4)
 - Exit INNER loop
 - OUTER loop increments `current_day_index += 1`
 - Present next day (if exists)
+
+---
+
+#### Step 14a: Fetch Images for Confirmed Day
+
+**TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
+
+**PURPOSE**: Ensure all POIs for Day N have images before presenting next day
+
+**Substep 1: Execute Batch Image Fetch**
+
+Run fetch-images-batch.py with day-level force mode:
+
+```bash
+cd /root/travel-planner && \
+source venv/bin/activate && \
+python3 scripts/fetch-images-batch.py \
+  ${PLAN_ID} \
+  0 \
+  999 \
+  --day ${current_day_index} \
+  --force
+```
+
+**Parameters Explanation**:
+- `${PLAN_ID}`: Current trip identifier (destination-slug)
+- `0`: Skip city covers (already fetched in Phase 3)
+- `999`: High POI limit (fetch all POIs for this day)
+- `--day ${current_day_index}`: Target only the confirmed day
+- `--force`: Ignore cache, re-fetch all (captures modifications from Step 15)
+
+**Expected Output**:
+- Updates `data/${PLAN_ID}/images.json` cache
+- Injects `image_url` fields into POIs in meals.json, attractions.json, entertainment.json, shopping.json
+- Prints progress: "✓ POI Name (type, service)" or "✗" for failures
+
+**Substep 2: Verify Exit Code**
+
+```bash
+fetch_exit_code=$?
+
+if [ "$fetch_exit_code" -ne 0 ]; then
+  # BLOCK: Jump to Substep 3 (Error Handling)
+else
+  # SUCCESS: Jump to Substep 4 (Confirm and Continue)
+fi
+```
+
+**Exit Codes**:
+- `0`: Success (all POIs processed)
+- `1`: Critical failure (usage error, file not found, invalid arguments)
+
+**Substep 3: Error Handling (Blocking Gate)**
+
+If `fetch_exit_code != 0`, BLOCK workflow and present options:
+
+```
+═══════════════════════════════════════════════
+❌ IMAGE FETCHING FAILED - Day ${current_day_index}
+═══════════════════════════════════════════════
+
+Error occurred while fetching images for POIs on Day ${current_day_index}.
+
+**Last 20 Lines of Output**:
+{Show tail -20 of script output}
+
+**Common Causes**:
+- API rate limits exceeded (Gaode/Google Maps) - wait 5-10 minutes
+- Invalid POI coordinates or names in agent JSONs
+- Network connectivity issues
+- Missing API keys in environment or skills
+
+**YOUR OPTIONS**:
+
+1. 🔄 **RETRY** - Re-run image fetch for this day
+2. 🔍 **REVIEW AND FIX** - Inspect agent JSONs, fix invalid data, then retry
+3. ⚠️  **CONTINUE WITHOUT IMAGES** (not recommended - images will be missing from HTML)
+
+**Retry Attempts**: ${retry_count_for_current_day}/3 for Day ${current_day_index}
+
+Please enter your choice (1, 2, or 3):
+```
+
+**Option Processing**:
+
+- **Option 1 (Retry)**:
+  - Increment `retry_count_per_day[current_day_index]`
+  - If `retry_count > 3`: Force Option 3 (continue without images)
+  - Otherwise: Return to Substep 1
+
+- **Option 2 (Review and Fix)**:
+  - Present instructions: "Check `data/${PLAN_ID}/*.json` for invalid POI data"
+  - Suggest common fixes: missing coordinates, invalid Chinese characters, duplicate names
+  - After user confirms fixes, return to Substep 1
+
+- **Option 3 (Continue Without Images)**:
+  - Log warning: "⚠️  Day ${current_day_index} confirmed without images. Run fetch-images-batch.py manually to retry."
+  - Add day to `days_missing_images` list
+  - Proceed to Substep 4
+
+**Substep 4: Success Confirmation**
+
+Print success message:
+
+```
+✅ Fetched images for Day ${current_day_index} ({count} POIs updated)
+
+Proceeding to Day ${current_day_index + 1}...
+```
+
+**State Updates**:
+- Reset `retry_count_per_day[current_day_index]` to 0
+- Set `day_confirmed_perfect = true`
+- Exit INNER loop (workflow proceeds to increment `current_day_index`)
+
+---
 
 **Option 2 - "Make changes to Day N"**:
 - Parse user's change request (identify affected domain and instruction)
