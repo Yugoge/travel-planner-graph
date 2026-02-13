@@ -477,7 +477,7 @@ class BatchImageFetcher:
         Uses name_local for search (native language), falls back to poi_name.
         FALLBACK CHAIN:
         1. Gaode/Google search (based on location)
-        2. Xiaohongshu search (if Gaode/Google fails)
+        2. Bing Images search (if Gaode/Google fails)
         """
         search_name = name_local if name_local else poi_name
         service = self._map_service_for(city, poi_coordinates)
@@ -493,48 +493,12 @@ class BatchImageFetcher:
         else:
             photo_url = self.fetch_poi_photo_google(search_name, city)
 
-        # Xiaohongshu fallback if Gaode/Google failed
+        # Bing Images fallback if Gaode/Google failed
         if not photo_url:
-            logger.info(f"Gaode/Google failed for {poi_name}, trying Xiaohongshu...")
-            photo_url = self._xiaohongshu_search(search_name, city)
-
-        # Bing Images fallback if Xiaohongshu also failed
-        if not photo_url:
-            logger.info(f"Xiaohongshu failed for {poi_name}, trying Bing Images...")
+            logger.info(f"Gaode/Google failed for {poi_name}, trying Bing Images...")
             photo_url = self._bing_images_search(search_name, city)
 
         return photo_url
-
-    def _xiaohongshu_search(self, search_name: str, city: str) -> Optional[str]:
-        """Xiaohongshu (小红书) search fallback - DISABLED.
-
-        DISABLED REASON:
-        External dependency (rednote-mcp v0.2.3) has outdated selector that no longer works.
-        The MCP tool's get_note_content uses '.note-container' selector which times out
-        because Xiaohongshu changed their page structure.
-
-        This was verified on 2026-02-13:
-        - search_notes works correctly and returns note URLs
-        - get_note_content fails with "page.waitForSelector: Timeout 30000ms exceeded"
-        - Re-authentication does not fix the issue (tested with xvfb-run npx rednote-mcp init)
-        - Root cause: Xiaohongshu page structure changed, rednote-mcp needs update
-
-        Current fallback chain: Gaode/Google → Bing Images (99.3% success rate without Xiaohongshu)
-
-        To re-enable in the future:
-        1. Update rednote-mcp to version with fixed selectors
-        2. Or implement direct Playwright automation bypassing MCP wrapper
-        3. Or report issue to rednote-mcp project
-
-        Args:
-            search_name: POI name (Chinese preferred) - unused
-            city: City name - unused
-
-        Returns:
-            None (always disabled)
-        """
-        logger.debug(f"Xiaohongshu fallback disabled (rednote-mcp selector outdated)")
-        return None
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
         """Bing Images search as final fallback.
