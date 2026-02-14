@@ -235,7 +235,29 @@ When parsing route data from Gaode Maps API or any mapping service:
    EOF
    ```
 
-3. **Save using scripts/save.py**:
+3. **Create modification log entry** (MANDATORY - Root cause: ef0ed28, f9634dc):
+   ```bash
+   python scripts/log-modification.py \
+     --trip {destination-slug} \
+     --agent transportation \
+     --file transportation.json \
+     --action update \
+     --description "Describe what changed and why" \
+     --fields "days[X].location_change,days[X].intra_city_routes"
+   ```
+
+   **Why this is required**:
+   - Commits ef0ed28, f9634dc: Timeline data lost without tracking who made changes
+   - modification-log.json provides audit trail of all agent modifications
+   - Enables rollback and accountability
+
+   **What to log**:
+   - `--description`: Concise summary of what changed (e.g., "Updated train times for Day 10 travel")
+   - `--fields`: JSON paths modified (e.g., "days[9].location_change.morning_routes")
+
+   Exit code 0 = log entry created successfully. If this fails, STOP and report error.
+
+4. **Save using scripts/save.py**:
    ```bash
    python3 scripts/save.py \
      --trip {destination-slug} \
@@ -243,7 +265,7 @@ When parsing route data from Gaode Maps API or any mapping service:
      --input /tmp/transportation_update.json
    ```
 
-4. **Verify save succeeded** (MANDATORY):
+5. **Verify save succeeded** (MANDATORY):
    Check exit code:
    - Exit code 0 = success → proceed
    - Exit code 1 = validation failed → REPORT ERROR (see Failure Modes)
@@ -251,7 +273,7 @@ When parsing route data from Gaode Maps API or any mapping service:
 
    If exit code is NOT 0, you MUST stop and report error to user.
 
-5. **Return completion status**:
+6. **Return completion status**:
    Only after exit code 0, return:
    ```json
    {

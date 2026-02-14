@@ -180,7 +180,29 @@ Before Step 3, validate the JSON structure:
    EOF
    ```
 
-3. **Save using scripts/save.py**:
+3. **Create modification log entry** (MANDATORY - Root cause: ef0ed28, f9634dc):
+   ```bash
+   python scripts/log-modification.py \
+     --trip {destination-slug} \
+     --agent budget \
+     --file budget.json \
+     --action update \
+     --description "Describe what changed and why" \
+     --fields "categories,totals"
+   ```
+
+   **Why this is required**:
+   - Commits ef0ed28, f9634dc: Timeline data lost without tracking who made changes
+   - modification-log.json provides audit trail of all agent modifications
+   - Enables rollback and accountability
+
+   **What to log**:
+   - `--description`: Concise summary of what changed (e.g., "Updated accommodation costs after hotel changes")
+   - `--fields`: JSON paths modified (e.g., "categories.accommodation,totals")
+
+   Exit code 0 = log entry created successfully. If this fails, STOP and report error.
+
+4. **Save using scripts/save.py**:
    ```bash
    python3 scripts/save.py \
      --trip {destination-slug} \
@@ -188,7 +210,7 @@ Before Step 3, validate the JSON structure:
      --input /tmp/budget_update.json
    ```
 
-4. **Verify save succeeded** (MANDATORY):
+5. **Verify save succeeded** (MANDATORY):
    Check exit code:
    - Exit code 0 = success → proceed
    - Exit code 1 = validation failed → REPORT ERROR (see Failure Modes)
@@ -196,7 +218,7 @@ Before Step 3, validate the JSON structure:
 
    If exit code is NOT 0, you MUST stop and report error to user.
 
-5. **Return completion status**:
+6. **Return completion status**:
    Only after exit code 0, return:
    ```json
    {

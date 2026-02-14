@@ -293,7 +293,7 @@ Validate:
      --input /tmp/accommodation_update.json
    ```
 
-4. **Verify save succeeded** (MANDATORY):
+5. **Verify save succeeded** (MANDATORY):
    Check exit code:
    - Exit code 0 = success → proceed
    - Exit code 1 = validation failed → REPORT ERROR (see Failure Modes)
@@ -301,7 +301,7 @@ Validate:
 
    If exit code is NOT 0, you MUST stop and report error to user.
 
-5. **Return completion status**:
+6. **Return completion status**:
    Only after exit code 0, return:
    ```json
    {
