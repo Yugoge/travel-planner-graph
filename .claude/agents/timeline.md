@@ -244,7 +244,7 @@ source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
 - Exit code 1: Missing coordinates (non-blocking), continue with note in warnings
 - Exit code 2: File read errors, report error to user
 
-### Step 3: Save JSON to File and Return Completion
+### Step 4: Save JSON to File and Return Completion
 
 **NUMBERED CHECKLIST - Follow in Strict Sequential Order**:
 
@@ -265,7 +265,29 @@ source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
    EOF
    ```
 
-3. **Save using scripts/save.py**:
+3. **Create modification log entry** (MANDATORY - Root cause: ef0ed28, f9634dc):
+   ```bash
+   python scripts/log-modification.py \
+     --trip {destination-slug} \
+     --agent timeline \
+     --file timeline.json \
+     --action update \
+     --description "Describe what changed and why" \
+     --fields "days[X].timeline,days[X].warnings"
+   ```
+
+   **Why this is required**:
+   - Commits ef0ed28, f9634dc: Timeline data lost without tracking who made changes
+   - modification-log.json provides audit trail of all agent modifications
+   - Enables rollback and accountability
+
+   **What to log**:
+   - `--description`: Concise summary of what changed (e.g., "Fixed Day 3 overlapping activities")
+   - `--fields`: JSON paths modified (e.g., "days[2].timeline,days[2].travel_segments")
+
+   Exit code 0 = log entry created successfully. If this fails, STOP and report error.
+
+4. **Save using scripts/save.py**:
    ```bash
    python3 scripts/save.py \
      --trip {destination-slug} \
@@ -273,7 +295,7 @@ source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
      --input /tmp/timeline_update.json
    ```
 
-4. **Verify save succeeded** (MANDATORY):
+5. **Verify save succeeded** (MANDATORY):
    Check exit code:
    - Exit code 0 = success → proceed
    - Exit code 1 = validation failed → REPORT ERROR (see Failure Modes)
@@ -281,7 +303,7 @@ source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
 
    If exit code is NOT 0, you MUST stop and report error to user.
 
-5. **Return completion status**:
+6. **Return completion status**:
    Only after exit code 0, return:
    ```json
    {

@@ -77,13 +77,17 @@ def extract_locations_for_day(day: int, agent_data: Dict) -> List[Dict]:
                 item = day_data[key]
                 if isinstance(item, dict) and "coordinates" in item:
                     coords = item["coordinates"]
-                    if isinstance(coords, dict) and "latitude" in coords and "longitude" in coords:
-                        locations.append({
-                            "name": item.get("name", key.capitalize()),
-                            "category": "meal",
-                            "subcategory": key,
-                            "coordinates": coords
-                        })
+                    # Support both formats: {lat, lng} and {latitude, longitude}
+                    if isinstance(coords, dict):
+                        lat = coords.get("lat") or coords.get("latitude")
+                        lng = coords.get("lng") or coords.get("longitude")
+                        if lat is not None and lng is not None:
+                            locations.append({
+                                "name": item.get("name_base") or item.get("name") or key.capitalize(),
+                                "category": "meal",
+                                "subcategory": key,
+                                "coordinates": {"latitude": lat, "longitude": lng}
+                            })
 
         # Attractions, entertainment, shopping
         for category in ["attractions", "entertainment", "shopping"]:
@@ -91,12 +95,16 @@ def extract_locations_for_day(day: int, agent_data: Dict) -> List[Dict]:
                 for item in day_data[category]:
                     if isinstance(item, dict) and "coordinates" in item:
                         coords = item["coordinates"]
-                        if isinstance(coords, dict) and "latitude" in coords and "longitude" in coords:
-                            locations.append({
-                                "name": item.get("name", "Unknown"),
-                                "category": category[:-1] if category != "shopping" else "shopping",
-                                "coordinates": coords
-                            })
+                        # Support both formats: {lat, lng} and {latitude, longitude}
+                        if isinstance(coords, dict):
+                            lat = coords.get("lat") or coords.get("latitude")
+                            lng = coords.get("lng") or coords.get("longitude")
+                            if lat is not None and lng is not None:
+                                locations.append({
+                                    "name": item.get("name_base") or item.get("name") or "Unknown",
+                                    "category": category[:-1] if category != "shopping" else "shopping",
+                                    "coordinates": {"latitude": lat, "longitude": lng}
+                                })
 
     return locations
 

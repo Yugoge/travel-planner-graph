@@ -263,7 +263,29 @@ Validate:
    EOF
    ```
 
-3. **Save using scripts/save.py**:
+3. **Create modification log entry** (MANDATORY - Root cause: ef0ed28, f9634dc):
+   ```bash
+   python scripts/log-modification.py \
+     --trip {destination-slug} \
+     --agent accommodation \
+     --file accommodation.json \
+     --action update \
+     --description "Describe what changed and why" \
+     --fields "days[X].accommodation"
+   ```
+
+   **Why this is required**:
+   - Commits ef0ed28, f9634dc: Timeline data lost without tracking who made changes
+   - modification-log.json provides audit trail of all agent modifications
+   - Enables rollback and accountability
+
+   **What to log**:
+   - `--description`: Concise summary of what changed (e.g., "Added Airbnb for Days 3-7")
+   - `--fields`: JSON paths modified (e.g., "days[2].accommodation,days[3].accommodation")
+
+   Exit code 0 = log entry created successfully. If this fails, STOP and report error.
+
+4. **Save using scripts/save.py**:
    ```bash
    python3 scripts/save.py \
      --trip {destination-slug} \
