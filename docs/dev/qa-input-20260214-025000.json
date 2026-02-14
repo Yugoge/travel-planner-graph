@@ -1,0 +1,136 @@
+{
+  "request_id": "dev-20260214-025000",
+  "timestamp": "2026-02-14T02:50:00Z",
+  "requirement": {
+    "original": "交通规划师已经彻底损坏了。完全不使用坐标计算总路程是否有可优化空间。我之前的设计一点都不做，我已经彻底失望。请你好好检查",
+    "clarified": "Integrate optimize-route.py script into timeline-agent to calculate total route distance using GPS coordinates and provide route optimization suggestions",
+    "what": "Add route optimization capability to timeline-agent using existing optimize-route.py script",
+    "why": "timeline-agent currently passively arranges timeline without analyzing route efficiency. User expects coordinate-based distance calculation and A→B→A pattern detection.",
+    "where": [
+      ".claude/agents/timeline.md",
+      "scripts/archive/optimize-route.py"
+    ],
+    "scope": {
+      "included": [
+        "Move optimize-route.py from archive to active scripts directory",
+        "Update timeline.md to call optimize-route.py after generating timeline",
+        "Add route optimization warnings to timeline output",
+        "Document usage in timeline.md"
+      ],
+      "excluded": [
+        "Auto-reordering POIs (only provide suggestions)",
+        "Modifying other agents",
+        "Changing optimize-route.py algorithm"
+      ]
+    },
+    "success_criteria": [
+      "optimize-route.py moved from scripts/archive/ to scripts/",
+      "timeline.md updated with route optimization step",
+      "timeline-agent calls optimize-route.py after timeline generation",
+      "Route optimization warnings appear in timeline.json warnings array",
+      "Script execution validated on Day 1 data"
+    ],
+    "constraints": [
+      "Must use scripts/save.py for all JSON writes (no Write tool)",
+      "Must preserve existing timeline functionality",
+      "Must handle missing coordinates gracefully"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "timeline-agent does not use coordinates to calculate route distance or optimize routes",
+    "root_cause": "optimize-route.py exists in scripts/archive/ but timeline.md has no instructions to use it",
+    "root_cause_commit": "62a7577 - checkpoint auto-save (script always in archive, never integrated)",
+    "why_introduced": "Script was created but never integrated into timeline-agent workflow",
+    "why_problematic": "timeline-agent cannot provide route optimization feedback that user expects",
+    "timeline": "Script existed since Feb 2, 2026 but never used by timeline-agent",
+    "affected_files": [
+      ".claude/agents/timeline.md",
+      "scripts/archive/optimize-route.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working directory clean, timeline-agent functional but missing route optimization",
+    "file_contents": {
+      "timeline.md": "Loaded, no route optimization step",
+      "optimize-route.py": "Loaded from archive, functional script with haversine distance and TSP optimization"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "Standard library only (math, json, pathlib)"
+    },
+    "environment": {
+      "venv_path": "venv/bin/activate",
+      "script_location": "scripts/archive/optimize-route.py → scripts/optimize-route.py"
+    }
+  },
+  "development_approach": {
+    "strategy": "Move script from archive, add optimization step to timeline.md after Step 2 (Generate Timeline), integrate warnings into timeline.json output",
+    "scripts_to_modify": [
+      "scripts/archive/optimize-route.py → scripts/optimize-route.py"
+    ],
+    "files_to_modify": [
+      ".claude/agents/timeline.md"
+    ],
+    "validation_approach": "Run optimize-route.py on Day 1 data, verify warnings appear in timeline.json"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Moved optimize-route.py from archive to active scripts directory",
+        "type": "file_operation",
+        "files_modified": [
+          "scripts/optimize-route.py"
+        ],
+        "rationale": "Script existed in archive since Feb 2 but was never accessible to timeline-agent workflow. Moving to active scripts/ directory enables integration."
+      },
+      {
+        "id": 2,
+        "description": "Added Step 2.5 to timeline.md for route optimization integration",
+        "type": "documentation",
+        "files_modified": [
+          ".claude/agents/timeline.md"
+        ],
+        "changes": "Inserted Step 2.5 after Step 2 (Generate Timeline Dictionary + Travel Segments) with complete instructions for calling optimize-route.py, reading output, extracting warnings, and appending to timeline warnings array",
+        "rationale": "timeline-agent had no instructions to use optimize-route.py. Step 2.5 provides complete workflow: run script, read route-optimization.json, extract warnings, integrate into timeline.json warnings array"
+      }
+    ],
+    "scripts_created": [],
+    "scripts_modified": [],
+    "files_modified": [
+      {
+        "path": ".claude/agents/timeline.md",
+        "change_type": "documentation_update",
+        "lines_added": 57,
+        "description": "Added Step 2.5: Optimize Route and Integrate Warnings with complete workflow instructions"
+      },
+      {
+        "path": "scripts/optimize-route.py",
+        "change_type": "file_move",
+        "previous_location": "scripts/archive/optimize-route.py",
+        "description": "Moved from archive to active scripts directory"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "62a7577 (checkpoint auto-save - script created but always remained in archive)",
+      "why_issue_occurred": "optimize-route.py was created on Feb 2, 2026 and placed in scripts/archive/ but timeline.md never had instructions to call it. The script existed but was completely disconnected from the timeline-agent workflow.",
+      "how_fix_addresses_root": "Moving script to scripts/ makes it accessible. Adding Step 2.5 to timeline.md provides explicit instructions for timeline-agent to: (1) run optimize-route.py after generating timeline, (2) read route-optimization.json output, (3) extract optimization warnings, (4) append warnings to timeline.json warnings array for each day. This completes the integration that was never done when the script was created."
+    },
+    "implementation_details": {
+      "step_numbering": "Used Step 2.5 (not Step 2a or Step 3) to insert route optimization between timeline generation and final save",
+      "integration_approach": "Non-blocking append-only - optimization warnings are added to existing timeline warnings array without modifying timeline structure",
+      "error_handling": "Exit code 1 (missing coordinates) is non-blocking - timeline-agent continues with note in warnings",
+      "data_flow": "optimize-route.py → route-optimization.json → timeline-agent reads → extracts warnings → appends to timeline.json warnings array → saves via save.py"
+    },
+    "qa_ready": true,
+    "qa_notes": "To validate: (1) Run timeline-agent on existing destination-slug, (2) Verify Step 2.5 executes optimize-route.py, (3) Verify route-optimization.json is created, (4) Verify optimization warnings appear in timeline.json warnings array, (5) Test with Day 1 data (china-feb-15-mar-7-2026-20260202-195429) to ensure GPS coordinates are read correctly"
+  }
+}

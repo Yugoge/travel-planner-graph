@@ -192,6 +192,58 @@ Validate:
 
 Generate warnings for any conflicts detected.
 
+### Step 3: Optimize Route and Integrate Warnings
+
+**CRITICAL: Run route optimization to calculate total route distance and detect inefficiencies.**
+
+After generating timeline dictionary and travel_segments, run route optimization:
+
+```bash
+source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
+```
+
+**What optimize-route.py does**:
+- Reads GPS coordinates from meals.json, attractions.json, entertainment.json, shopping.json
+- Calculates haversine distances between all locations
+- Detects A→B→A inefficiency patterns (visiting nearby locations with far travel in between)
+- Optimizes activity order using greedy nearest-neighbor TSP approximation
+- Outputs route-optimization.json with distance comparison and warnings
+
+**Integration requirements**:
+
+1. **Read route-optimization.json** after script completes:
+   ```bash
+   Read data/{destination-slug}/route-optimization.json
+   ```
+
+2. **Extract optimization warnings** for each day:
+   - Distance savings warnings (e.g., "Route optimization reduced travel distance by 3.2km (15.4%)")
+   - A→B→A pattern warnings (e.g., "Visit Temple A, travel far away, then return to nearby Temple B (0.8km apart)")
+   - Missing coordinates warnings (e.g., "Insufficient locations with GPS coordinates for optimization")
+
+3. **Append to timeline warnings array** for corresponding day:
+   ```json
+   {
+     "day": 1,
+     "timeline": {...},
+     "travel_segments": [...],
+     "warnings": [
+       "Day 1: Schedule too tight - only 30min between activities",
+       "Route optimization reduced travel distance by 3.2km (15.4%)",
+       "A→B→A pattern detected: Visit Ciqikou Ancient Town, then travel far away, then return to nearby Hongyadong (0.8km apart)"
+     ]
+   }
+   ```
+
+4. **Handle missing coordinates gracefully**:
+   - If optimize-route.py exits with code 1 (missing coordinates), continue with empty optimization warnings
+   - Do NOT fail timeline generation due to missing GPS data
+
+**Exit code handling**:
+- Exit code 0: Optimization successful, read and integrate warnings
+- Exit code 1: Missing coordinates (non-blocking), continue with note in warnings
+- Exit code 2: File read errors, report error to user
+
 ### Step 3: Save JSON to File and Return Completion
 
 **NUMBERED CHECKLIST - Follow in Strict Sequential Order**:
