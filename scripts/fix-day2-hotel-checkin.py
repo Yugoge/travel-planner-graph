@@ -18,6 +18,7 @@ Design:
 import sys
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Tuple, List
 
@@ -26,6 +27,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 SAVE_PY = SCRIPTS_DIR / "save.py"
+
+# i18n constants
+CHECKIN_TEXT_ZH = "办理入住"
 
 
 def time_to_minutes(time_str: str) -> int:
@@ -46,7 +50,9 @@ def load_json(filepath: Path) -> Dict[str, Any]:
 
 def save_timeline_with_savepy(trip_slug: str, timeline_data: Dict[str, Any]) -> bool:
     """Save timeline using scripts/save.py."""
-    temp_file = Path("/tmp/fix_day2_hotel_update.json")
+    # Use tempfile to avoid collision risks
+    temp_fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="fix_day2_hotel_")
+    temp_file = Path(temp_path)
 
     try:
         with open(temp_file, 'w', encoding='utf-8') as f:
@@ -61,7 +67,7 @@ def save_timeline_with_savepy(trip_slug: str, timeline_data: Dict[str, Any]) -> 
         print(f"❌ Virtual environment not found at {venv_activate}", file=sys.stderr)
         return False
 
-    cmd = f"source {venv_activate} && python3 {SAVE_PY} --trip {trip_slug} --agent timeline --input {temp_file}"
+    cmd = f"source {venv_activate} && python {SAVE_PY} --trip {trip_slug} --agent timeline --input {temp_file}"
 
     try:
         result = subprocess.run(
@@ -154,7 +160,7 @@ def main():
     }
 
     if hotel_name_local:
-        activity_data['name_local'] = f"{hotel_name_local}办理入住"
+        activity_data['name_local'] = f"{hotel_name_local}{CHECKIN_TEXT_ZH}"
 
     print(f"\n➕ Adding: {activity_name} at {check_in_time}", file=sys.stderr)
 

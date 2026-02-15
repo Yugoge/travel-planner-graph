@@ -30,6 +30,7 @@ Design:
 import sys
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
@@ -237,7 +238,7 @@ def save_timeline_with_savepy(trip_slug: str, timeline_data: Dict[str, Any]) -> 
         print(f"❌ Virtual environment not found at {venv_activate}", file=sys.stderr)
         return False
 
-    cmd = f"source {venv_activate} && python3 {SAVE_PY} --trip {trip_slug} --agent timeline --input {temp_file}"
+    cmd = f"source {venv_activate} && python {SAVE_PY} --trip {trip_slug} --agent timeline --input {temp_file}"
 
     try:
         result = subprocess.run(

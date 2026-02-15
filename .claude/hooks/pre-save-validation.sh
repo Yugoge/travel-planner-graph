@@ -45,7 +45,9 @@ FIVE_MINUTES_AGO=$((CURRENT_TIME - 300))
 
 # Extract last modification entry for this agent+file
 # Note: This is a simple check, not foolproof. Agents should still create log entries.
-RECENT_ENTRY_COUNT=$(echo "$LOG_DATA" | python3 -c "
+# Activate venv if available, fallback to python3
+source "${PROJECT_ROOT}/venv/bin/activate" 2>/dev/null || true
+RECENT_ENTRY_COUNT=$(echo "$LOG_DATA" | python -c "
 import json
 import sys
 from datetime import datetime, timezone

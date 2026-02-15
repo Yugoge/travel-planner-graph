@@ -1,0 +1,212 @@
+{
+  "request_id": "dev-20260215-021118",
+  "timestamp": "2026-02-15T02:11:18Z",
+  "requirement": {
+    "original": "系统性修复和重构任务：\n1. 修复style-inspector发现的violations\n2. 学习knowledge-system的ask/analyst JSON对话模式，应用到travel-planner",
+    "clarified": "Two-part systematic fix and refactor: (A) Fix 11 style violations from style-inspector report, (B) Refactor review/plan commands to use JSON dialogue with 8 subagents following knowledge-system ask/analyst pattern",
+    "what": "Fix code quality violations + Implement JSON-based agent communication architecture",
+    "why": "Part A: Ensure code meets development standards. Part B: Improve maintainability and enable structured agent-to-orchestrator communication",
+    "where": [
+      "scripts/fix-day2-hotel-checkin.py",
+      "scripts/merge-timeline-day1.py",
+      "scripts/update-agent-prompts.py",
+      ".claude/hooks/pre-save-validation.sh",
+      "docs/dev/completion-20260214-203515.md",
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md"
+    ],
+    "scope": {
+      "included": [
+        "Fix 3 venv violations (python3 → python after venv activation)",
+        "Fix 5 hardcoded values (use tempfile, extract Chinese constants)",
+        "Fix 3 English-only violations (extract Chinese strings)",
+        "Remove 1 dead code function (replace_section)",
+        "Study knowledge-system ask/analyst JSON pattern",
+        "Modify 8 agent outputs to return structured JSON",
+        "Refactor review.md to parse JSON from agents",
+        "Refactor plan.md to parse JSON from agents",
+        "Maintain user-facing output quality (friendly Markdown presentation)"
+      ],
+      "excluded": [
+        "Changing agent functional logic (only output format)",
+        "Modifying other commands beyond review/plan",
+        "Changing data schemas or file structures",
+        "Altering user-visible behavior"
+      ]
+    },
+    "success_criteria": [
+      "All 11 style violations fixed and verified",
+      "8 agents return valid JSON (not Markdown)",
+      "review command successfully parses agent JSON responses",
+      "plan command successfully parses agent JSON responses",
+      "User sees same friendly output as before (no regression)",
+      "QA verification passes",
+      "Complete documentation of JSON schemas"
+    ],
+    "constraints": [
+      "Must maintain backward compatibility",
+      "Cannot break existing workflows",
+      "Must follow development standards (no new violations)",
+      "JSON schemas must be well-documented"
+    ]
+  },
+  "root_cause_analysis": {
+    "part_a_violations": {
+      "symptom": "Style-inspector found 11 violations in recent code",
+      "root_cause_commits": "921f855, 2a7bf2c - scripts created during emergency fixes without full standards review",
+      "why_introduced": "Emergency fixes for timeline issues prioritized speed over standards compliance",
+      "why_problematic": "Violates development standards, creates technical debt, inconsistent codebase",
+      "affected_files": [
+        "scripts/fix-day2-hotel-checkin.py:49,64,157",
+        "scripts/merge-timeline-day1.py:44-63,174,224,240",
+        ".claude/hooks/pre-save-validation.sh:48",
+        "scripts/update-agent-prompts.py:332",
+        "docs/dev/completion-20260214-203515.md:13-14"
+      ]
+    },
+    "part_b_architecture": {
+      "symptom": "Agents return natural language Markdown, orchestrator must parse text",
+      "root_cause": "Original architecture didn't prioritize structured communication",
+      "why_problematic": "Text parsing is brittle, hard to validate, error-prone",
+      "reference_solution": "knowledge-system ask/analyst uses JSON for consultant-to-orchestrator communication",
+      "affected_components": [
+        "review.md (1464 lines)",
+        "plan.md (1788 lines)",
+        "8 agent files (timeline, accommodation, attractions, budget, entertainment, meals, shopping, transportation)"
+      ]
+    }
+  },
+  "context": {
+    "codebase_state": "11 uncommitted files (timeline.json, modification-log.json, backups)",
+    "recent_commits": [
+      "a1bd93c - docs: Add modification log system QA report and completion documentation",
+      "14b9eb6 - checkpoint: Auto-save (8 agent prompts updated)",
+      "921f855 - checkpoint: Auto-save (log-modification.py, pre-save-validation.sh created)"
+    ],
+    "knowledge_system_pattern": {
+      "location": "/root/knowledge-system/.claude/commands/ask.md",
+      "key_insights": {
+        "analyst_role": "Backend JSON consultant, user never sees response",
+        "output_format": "Pure JSON (no markdown, no code blocks)",
+        "required_fields": ["strategy", "content", "sources", "confidence", "anticipated_follow_ups"],
+        "validation": "Main agent parses and validates JSON before proceeding",
+        "error_handling": "Graceful degradation if analyst returns invalid format",
+        "model_choice": "Uses haiku for fast JSON consultation"
+      },
+      "critical_requirements": [
+        "Return ONLY valid JSON (no ```json wrapper)",
+        "NO explanatory text before/after JSON",
+        "Include validation in orchestrator",
+        "Handle parse failures gracefully"
+      ]
+    },
+    "dependencies": {
+      "runtime": "Python 3.x with venv",
+      "packages": "tempfile (stdlib), json (stdlib)"
+    },
+    "environment": {
+      "venv_path": "venv/",
+      "project_root": "/root/travel-planner"
+    }
+  },
+  "development_approach": {
+    "strategy": "Two-phase implementation: (1) Fix violations first (simpler), (2) Then JSON refactor (complex)",
+    "phase_1_violations": {
+      "venv_fixes": [
+        "scripts/fix-day2-hotel-checkin.py:64 - Change python3 to python",
+        "scripts/merge-timeline-day1.py:240 - Change python3 to python",
+        ".claude/hooks/pre-save-validation.sh:48 - Change python3 to python"
+      ],
+      "hardcoded_fixes": [
+        "scripts/fix-day2-hotel-checkin.py:49 - Use tempfile.NamedTemporaryFile",
+        "scripts/fix-day2-hotel-checkin.py:157 - Extract CHECKIN_TEXT_ZH constant",
+        "scripts/merge-timeline-day1.py:174 - Extract CHECKIN_TEXT_ZH constant",
+        "scripts/merge-timeline-day1.py:224 - Use tempfile.NamedTemporaryFile",
+        "scripts/merge-timeline-day1.py:44-63 - Extract MISSING_SEGMENTS to config or keep (one-time script)"
+      ],
+      "english_fixes": [
+        "scripts/fix-day2-hotel-checkin.py:157 - Extract Chinese to constants",
+        "scripts/merge-timeline-day1.py:174 - Extract Chinese to constants",
+        "docs/dev/completion-20260214-203515.md:13-14 - Mark as quoted input"
+      ],
+      "dead_code_fix": [
+        "scripts/update-agent-prompts.py:332 - Remove unused replace_section function"
+      ]
+    },
+    "phase_2_json_refactor": {
+      "agent_output_schema": {
+        "description": "Standard JSON schema for all 8 agents",
+        "schema": {
+          "agent": "agent_name",
+          "status": "complete|blocked|error",
+          "data": "agent-specific data structure",
+          "issues": ["array of detected issues"],
+          "recommendations": ["array of recommendations"],
+          "confidence": 85,
+          "metadata": {
+            "processing_time": "duration",
+            "data_quality": "quality metrics"
+          }
+        }
+      },
+      "orchestrator_changes": {
+        "review_md": [
+          "Add JSON validation after agent invocation",
+          "Parse JSON response instead of text",
+          "Generate user-friendly Markdown from JSON",
+          "Handle parse failures gracefully"
+        ],
+        "plan_md": [
+          "Add JSON validation after agent invocation",
+          "Parse JSON response instead of text",
+          "Generate user-friendly Markdown from JSON",
+          "Handle parse failures gracefully"
+        ]
+      },
+      "agent_changes": {
+        "all_8_agents": [
+          "Add JSON output instructions to prompt",
+          "Define agent-specific JSON schema",
+          "Add examples of valid JSON output",
+          "Emphasize NO markdown wrapping"
+        ]
+      }
+    },
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/fix-day2-hotel-checkin.py",
+      "scripts/merge-timeline-day1.py",
+      "scripts/update-agent-prompts.py",
+      ".claude/hooks/pre-save-validation.sh",
+      "docs/dev/completion-20260214-203515.md",
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md"
+    ],
+    "validation_approach": "QA will: (1) Verify all violations fixed with style-inspector, (2) Test agent JSON output with sample invocations, (3) Test review/plan commands with JSON parsing, (4) Verify user output unchanged"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "english_only_code": true,
+    "no_dead_code": true
+  }
+}
