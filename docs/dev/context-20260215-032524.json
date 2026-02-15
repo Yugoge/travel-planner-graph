@@ -1,0 +1,355 @@
+{
+  "request_id": "dev-20260215-032524",
+  "timestamp": "2026-02-15T03:25:24Z",
+  "phase": "Phase 2: JSON Dialogue Refactor",
+  "prerequisite": {
+    "phase_1_status": "completed",
+    "phase_1_request_id": "dev-20260215-021118",
+    "phase_1_completion": "All 11 style violations fixed and QA verified"
+  },
+  "requirement": {
+    "original": "继续phase 2 - 学习knowledge-system的ask/analyst JSON对话模式，应用到travel-planner",
+    "clarified": "Refactor 8 travel-planner agents to return structured JSON responses (following knowledge-system ask/analyst pattern), while maintaining file-based pipeline architecture. Orchestrator will parse JSON for quick insights and still read files for complete data.",
+    "what": "Implement JSON-based agent communication for 8 specialist agents",
+    "why": "Enable structured agent-to-orchestrator communication, improve error detection, provide quick summaries without parsing entire JSON files",
+    "where": [
+      ".claude/agents/timeline.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md"
+    ],
+    "scope": {
+      "included": [
+        "Add JSON response format to all 8 agent prompts",
+        "Define unified JSON schema with agent-specific summary fields",
+        "Update review.md to parse agent JSON responses",
+        "Update plan.md to parse agent JSON responses",
+        "Add JSON validation logic in orchestrator",
+        "Maintain file-based pipeline (agents still write files)",
+        "Graceful fallback if JSON parsing fails",
+        "Document JSON schema in agent prompts"
+      ],
+      "excluded": [
+        "Removing file-based pipeline (keep dual mode: JSON response + file write)",
+        "Changing agent functional logic beyond output format",
+        "Modifying data file schemas",
+        "Breaking existing workflows",
+        "Changing user-visible behavior"
+      ]
+    },
+    "success_criteria": [
+      "All 8 agents return valid JSON matching unified schema",
+      "Agents continue to write files (file-based pipeline preserved)",
+      "review.md successfully parses agent JSON responses",
+      "plan.md successfully parses agent JSON responses",
+      "Orchestrator gracefully handles JSON parse failures",
+      "User sees same quality output (no regression)",
+      "QA verification passes with 0 critical issues",
+      "JSON schema fully documented in all agent prompts"
+    ],
+    "constraints": [
+      "Must NOT break file-based pipeline architecture",
+      "Must follow all development standards (no hardcoded values, source venv, etc.)",
+      "Must maintain backward compatibility",
+      "JSON must be pure (no markdown code blocks)",
+      "Agent prompts must clearly document JSON format"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Orchestrator must read entire JSON files to extract simple summaries (e.g., 'how many items added?', 'any errors?')",
+    "root_cause": "Original architecture used 'complete' string response, forcing orchestrator to read files for all information",
+    "root_cause_commits": "Initial review.md/plan.md design in early commits",
+    "why_introduced": "File-based pipeline was prioritized for data persistence, response format not considered",
+    "why_problematic": "Inefficient (must Read large files), no structured error reporting, hard to detect warnings",
+    "reference_solution": "knowledge-system ask/analyst returns structured JSON for quick insights",
+    "key_difference": "travel-planner needs BOTH JSON (quick summary) AND files (complete data)",
+    "timeline": "Since project inception"
+  },
+  "context": {
+    "codebase_state": "Phase 1 completed, 5 uncommitted files (timeline.json, modification-log.json, etc.)",
+    "recent_commits": [
+      "4e8a837 - checkpoint: Auto-save at 2026-02-15 02:20:10",
+      "a1bd93c - docs: Add modification log system QA report and completion documentation",
+      "14b9eb6 - checkpoint: Auto-save (8 agent prompts updated)"
+    ],
+    "knowledge_system_reference": {
+      "location": "/root/knowledge-system/.claude/commands/ask.md",
+      "key_pattern": "Analyst returns pure JSON (no markdown) → Main agent parses → Presents naturally to user",
+      "critical_requirements": [
+        "Return ONLY valid JSON (no ```json wrapper)",
+        "NO explanatory text before/after JSON",
+        "Include validation in orchestrator",
+        "Handle parse failures gracefully"
+      ],
+      "json_structure": {
+        "strategy": "Teaching approach",
+        "content": "Key concepts and examples",
+        "sources": "URLs array",
+        "confidence": "0-100",
+        "anticipated_follow_ups": "Prepared responses array"
+      }
+    },
+    "travel_planner_current_architecture": {
+      "file_based_pipeline": "Agents write to data/{slug}/*.json files",
+      "current_response_mode_1": "Agent returns 'complete' string only",
+      "current_response_mode_2": "Agent returns JSON with changes diff (only in refine operations)",
+      "orchestrator_reads_files": "Uses Read tool to get data from files, not from agent responses",
+      "why_keep_files": "Files are source of truth, enable data persistence, allow direct inspection"
+    },
+    "proposed_architecture": {
+      "dual_mode": "Agent returns JSON summary AND writes file",
+      "json_purpose": "Quick insights (items_added, errors, warnings) without reading entire file",
+      "file_purpose": "Complete data for presentation to user",
+      "orchestrator_workflow": "1. Invoke agent → 2. Parse JSON summary → 3. Read file for details → 4. Present to user",
+      "error_handling": "If JSON parse fails, fall back to reading file only (no hard failure)"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x with venv, Bash",
+      "existing_scripts": "scripts/save.py, scripts/log-modification.py",
+      "validation": "scripts/plan-validate.py for data validation"
+    },
+    "environment": {
+      "venv_path": "venv/",
+      "project_root": "/root/travel-planner",
+      "data_directory": "data/china-feb-15-mar-7-2026-20260202-195429/"
+    }
+  },
+  "unified_json_schema": {
+    "description": "Unified JSON schema for all 8 travel-planner agents",
+    "required_fields": [
+      "agent",
+      "status",
+      "file_updated",
+      "summary"
+    ],
+    "optional_fields": [
+      "warnings",
+      "errors"
+    ],
+    "schema": {
+      "agent": "Agent name (timeline|accommodation|attractions|budget|entertainment|meals|shopping|transportation)",
+      "status": "complete|blocked|error",
+      "file_updated": "Path to file written (e.g., data/{slug}/meals.json) or null if no file written",
+      "summary": {
+        "description": "Agent-specific summary of what was done",
+        "common_fields": {
+          "items_added": "Number of items added (integer)",
+          "items_modified": "Number of items modified (integer)",
+          "items_deleted": "Number of items deleted (integer)",
+          "key_changes": "Array of human-readable change descriptions"
+        },
+        "agent_specific_examples": {
+          "meals": "Array of restaurants added/modified",
+          "timeline": "Days processed, timeline entries created",
+          "budget": "Total cost calculated, budget breakdown",
+          "transportation": "Routes calculated, travel time estimates"
+        }
+      },
+      "warnings": "Array of warning messages (e.g., conflicts, data quality issues)",
+      "errors": "Array of error messages (empty if status=complete)"
+    },
+    "example_timeline_agent": {
+      "agent": "timeline",
+      "status": "complete",
+      "file_updated": "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json",
+      "summary": {
+        "items_added": 0,
+        "items_modified": 1,
+        "items_deleted": 0,
+        "days_processed": [1, 2, 3],
+        "timeline_entries_per_day": {"1": 15, "2": 12, "3": 14},
+        "key_changes": [
+          "Updated Day 1 timeline with route optimization warnings",
+          "Integrated route-optimization.json warnings into timeline"
+        ]
+      },
+      "warnings": [
+        "Day 1: Route optimization reduced travel distance by 3.2km (15.4%)",
+        "Day 2: Schedule tight - only 30min buffer between activities"
+      ],
+      "errors": []
+    },
+    "example_meals_agent": {
+      "agent": "meals",
+      "status": "complete",
+      "file_updated": "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+      "summary": {
+        "items_added": 3,
+        "items_modified": 1,
+        "items_deleted": 0,
+        "key_changes": [
+          "Added 3 restaurants for Day 1: Restaurant A, Restaurant B, Restaurant C",
+          "Modified Restaurant D opening hours to 11:00-22:00"
+        ]
+      },
+      "warnings": [
+        "Restaurant A closes at 14:00, may conflict with timeline lunch at 13:30"
+      ],
+      "errors": []
+    },
+    "example_error_case": {
+      "agent": "budget",
+      "status": "error",
+      "file_updated": null,
+      "summary": {
+        "items_added": 0,
+        "items_modified": 0,
+        "items_deleted": 0,
+        "key_changes": []
+      },
+      "warnings": [],
+      "errors": [
+        "Failed to calculate budget: meals.json missing price data for 5 restaurants",
+        "accommodation.json Day 3 hotel has no price information"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Modify all 8 agent prompts to include JSON response section, update review.md and plan.md to parse JSON, add validation logic",
+    "implementation_phases": [
+      "Phase 2.1: Define unified JSON schema and document in all 8 agent prompts",
+      "Phase 2.2: Update review.md to parse and validate agent JSON responses",
+      "Phase 2.3: Update plan.md to parse and validate agent JSON responses",
+      "Phase 2.4: Add graceful fallback for JSON parse failures",
+      "Phase 2.5: Test all 8 agents with sample invocations"
+    ],
+    "files_to_modify": [
+      ".claude/agents/timeline.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md"
+    ],
+    "scripts_to_create": [],
+    "validation_approach": "QA will test each agent with sample data, verify JSON validity, test orchestrator parsing in review/plan commands, verify no regression in user output"
+  },
+  "agent_modification_strategy": {
+    "location": "Add new section 'JSON Response Format' after existing 'Step 4: Save JSON to File' section",
+    "content_to_add": {
+      "section_title": "## JSON Response Format",
+      "description": "After completing all steps (including save.py), return structured JSON summary",
+      "critical_requirements": [
+        "Return ONLY valid JSON (no markdown ```json wrapper)",
+        "NO explanatory text before or after JSON",
+        "Include all required fields: agent, status, file_updated, summary",
+        "If errors occur, set status=error and populate errors array"
+      ],
+      "schema_documentation": "Include unified JSON schema with agent-specific summary examples",
+      "fallback_note": "If unable to generate JSON, return 'complete' string (orchestrator will fall back to file reading)"
+    },
+    "marker_for_insertion": "Look for 'Step 4: Save JSON to File and Return Completion' or similar final step section"
+  },
+  "orchestrator_modification_strategy": {
+    "review_md_changes": [
+      "After Task tool invocation, add JSON parsing logic",
+      "Try to parse agent response as JSON",
+      "If valid JSON: extract summary, warnings, errors for quick display",
+      "If parse fails: fall back to current behavior (read file only)",
+      "Display warnings/errors prominently to user",
+      "Continue reading files for complete data presentation"
+    ],
+    "plan_md_changes": [
+      "Same JSON parsing logic as review.md",
+      "Add validation: check status field, report errors immediately",
+      "Use summary.key_changes for progress updates to user",
+      "Graceful degradation if JSON invalid"
+    ],
+    "validation_logic": {
+      "required_fields_check": "Verify agent, status, file_updated, summary fields present",
+      "status_check": "If status=error, read errors array and report to user",
+      "file_existence_check": "Verify file_updated path exists with test -f",
+      "json_validity": "Try JSON.parse equivalent, catch exceptions"
+    }
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "english_only_code": true,
+    "no_dead_code": true,
+    "pure_json_output": true,
+    "no_markdown_wrappers": true,
+    "graceful_error_handling": true
+  },
+  "qa_test_cases": [
+    {
+      "test_id": "QA-JSON-001",
+      "description": "Verify timeline agent returns valid JSON",
+      "steps": [
+        "Invoke timeline agent with test data",
+        "Parse response as JSON",
+        "Validate all required fields present",
+        "Check summary contains expected fields (days_processed, timeline_entries_per_day)"
+      ],
+      "expected_result": "Valid JSON with status=complete, no parse errors"
+    },
+    {
+      "test_id": "QA-JSON-002",
+      "description": "Verify orchestrator gracefully handles invalid JSON",
+      "steps": [
+        "Mock agent response with invalid JSON (e.g., missing closing brace)",
+        "Invoke orchestrator parsing logic",
+        "Verify no crash or exception propagation",
+        "Verify fallback to file reading occurs"
+      ],
+      "expected_result": "Orchestrator falls back to file reading, user sees expected output"
+    },
+    {
+      "test_id": "QA-JSON-003",
+      "description": "Verify error status propagates to user",
+      "steps": [
+        "Mock agent response with status=error and errors array",
+        "Invoke orchestrator",
+        "Verify errors displayed to user",
+        "Verify workflow halts or retries appropriately"
+      ],
+      "expected_result": "User sees clear error messages, workflow handles error gracefully"
+    },
+    {
+      "test_id": "QA-JSON-004",
+      "description": "Verify all 8 agents conform to unified schema",
+      "steps": [
+        "Test each agent individually",
+        "Parse JSON response",
+        "Validate schema conformance (required fields, types)"
+      ],
+      "expected_result": "All 8 agents return JSON matching unified schema"
+    },
+    {
+      "test_id": "QA-JSON-005",
+      "description": "Verify file-based pipeline still works",
+      "steps": [
+        "Invoke agent",
+        "Verify file written to data/{slug}/*.json",
+        "Verify file contents match expected data",
+        "Verify orchestrator can read file successfully"
+      ],
+      "expected_result": "Files written correctly, orchestrator reads files successfully"
+    }
+  ],
+  "backward_compatibility": {
+    "existing_workflows": "All existing /review and /plan workflows must continue to work",
+    "file_format": "No changes to JSON file schemas in data/ directory",
+    "agent_behavior": "Agents continue to write files (dual mode: JSON response + file write)",
+    "fallback_mechanism": "If JSON parsing fails, orchestrator falls back to file-only mode (same as Phase 1 behavior)"
+  },
+  "documentation_requirements": {
+    "agent_prompts": "Each agent must document JSON response format with schema and examples",
+    "review_md": "Document JSON parsing logic and fallback behavior",
+    "plan_md": "Document JSON parsing logic and fallback behavior",
+    "completion_report": "Include JSON schema documentation and test results"
+  }
+}

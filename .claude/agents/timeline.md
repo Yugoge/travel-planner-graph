@@ -521,6 +521,121 @@ All agents must use `scripts/save.py` instead of Write tool.
 
 
 
+## JSON Response Format
+
+**CRITICAL: After completing Step 4 (save.py with exit code 0), return structured JSON summary.**
+
+**Root Cause Context**: This addresses the inefficiency where orchestrator must read entire timeline.json files to extract simple summaries (e.g., "how many items added?", "any errors?"). Agents now return JSON summary for quick insights while maintaining file-based pipeline for complete data.
+
+### Required JSON Structure
+
+Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
+
+```json
+{
+  "agent": "timeline",
+  "status": "complete|blocked|error",
+  "file_updated": "data/{slug}/timeline.json",
+  "summary": {
+    "items_added": 0,
+    "items_modified": 1,
+    "items_deleted": 0,
+    "days_processed": [1, 2, 3],
+    "timeline_entries_per_day": {"1": 15, "2": 12, "3": 14},
+    "key_changes": [
+      "Updated Day 1 timeline with route optimization warnings",
+      "Integrated route-optimization.json warnings into timeline"
+    ]
+  },
+  "warnings": [
+    "Day 1: Route optimization reduced travel distance by 3.2km (15.4%)",
+    "Day 2: Schedule tight - only 30min buffer between activities"
+  ],
+  "errors": []
+}
+```
+
+### Field Requirements
+
+**Required fields**:
+- `agent`: Always "timeline"
+- `status`: "complete" (if save.py exit code 0), "error" (if save.py failed), "blocked" (if cannot proceed)
+- `file_updated`: Full path to updated file, or `null` if no file written
+- `summary`: Object with agent-specific summary fields
+
+**Optional fields**:
+- `warnings`: Array of warning messages (conflicts, data quality issues)
+- `errors`: Array of error messages (empty if status=complete)
+
+### Timeline Agent Summary Fields
+
+**Required in `summary` object**:
+- `items_added`: Number of new timeline entries (integer)
+- `items_modified`: Number of modified timeline entries (integer)
+- `items_deleted`: Number of deleted timeline entries (integer)
+- `days_processed`: Array of day numbers processed (e.g., [1, 2, 3])
+- `timeline_entries_per_day`: Object mapping day number to entry count (e.g., {"1": 15, "2": 12})
+- `key_changes`: Array of human-readable change descriptions
+
+### Critical Requirements
+
+1. **Pure JSON only**: NO markdown code blocks (```json), NO text before/after JSON
+2. **Valid JSON syntax**: Must parse without errors
+3. **All required fields present**: Missing fields will cause orchestrator parse failures
+4. **File-based pipeline preserved**: Continue writing to timeline.json via save.py
+5. **Graceful degradation**: If you cannot generate JSON for any reason, return the string "complete" (orchestrator will fall back to file reading)
+
+### Example Success Response
+
+```json
+{
+  "agent": "timeline",
+  "status": "complete",
+  "file_updated": "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json",
+  "summary": {
+    "items_added": 0,
+    "items_modified": 1,
+    "items_deleted": 0,
+    "days_processed": [1, 2, 3],
+    "timeline_entries_per_day": {"1": 15, "2": 12, "3": 14},
+    "key_changes": [
+      "Updated Day 1 timeline with route optimization warnings",
+      "Integrated route-optimization.json warnings into timeline"
+    ]
+  },
+  "warnings": [
+    "Day 1: Route optimization reduced travel distance by 3.2km (15.4%)",
+    "Day 2: Schedule tight - only 30min buffer between activities"
+  ],
+  "errors": []
+}
+```
+
+### Example Error Response
+
+```json
+{
+  "agent": "timeline",
+  "status": "error",
+  "file_updated": null,
+  "summary": {
+    "items_added": 0,
+    "items_modified": 0,
+    "items_deleted": 0,
+    "days_processed": [],
+    "timeline_entries_per_day": {},
+    "key_changes": []
+  },
+  "warnings": [],
+  "errors": [
+    "Failed to calculate timeline: meals.json missing time data for 5 restaurants",
+    "attractions.json Day 3 has no duration information"
+  ]
+}
+```
+
+---
+
 ## Self-Verification Checkpoints
 
 **Before invoking ANY tool, run this mental checklist**:
@@ -546,16 +661,20 @@ All agents must use `scripts/save.py` instead of Write tool.
 □ Am I returning status: "complete"?
   → If YES: Verify save.py actually succeeded (exit code 0).
   → If save failed: Return error JSON instead.
+
+□ Did I return structured JSON summary after save.py succeeded?
+  → If NO: Return JSON with all required fields (agent, status, file_updated, summary)
 ```
 
 **After completing each day/task, verify**:
 - Temp file was created successfully
 - save.py command included correct --trip and --agent flags
 - Exit code was checked before continuing
-- Only returned "complete" after successful save
+- Only returned JSON with status="complete" after successful save
+- JSON includes all required fields and is valid syntax
 
 **On encountering errors**:
 - Read full stderr output from save.py
 - Match error to one of 5 Failure Modes above
-- Return appropriate error JSON format
+- Return appropriate error JSON format with status="error"
 - DO NOT continue processing
