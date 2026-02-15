@@ -1358,6 +1358,16 @@ Use Task tool with:
 
 **Wait for both agents to return "complete"**.
 
+**Parse timeline agent JSON response** (non-blocking):
+```bash
+echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
+**Parse budget agent JSON response** (non-blocking):
+```bash
+echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
 
 **Step 1**: Confirm files exist:

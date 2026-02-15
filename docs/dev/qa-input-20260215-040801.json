@@ -1,0 +1,314 @@
+{
+  "request_id": "dev-20260215-040801",
+  "timestamp": "2026-02-15T04:08:01Z",
+  "phase": "Phase 2.2-2.3: Orchestrator JSON Parsing Integration",
+  "prerequisite": {
+    "phase_21_status": "completed",
+    "phase_21_request_id": "dev-20260215-032524",
+    "phase_21_completion": "All 8 agents have JSON Response Format sections, parse-agent-json.py created"
+  },
+  "requirement": {
+    "original": "现在开始Phase 2.2-2.3（orchestrator integration）",
+    "clarified": "Integrate JSON parsing into review.md and plan.md orchestrators to parse agent JSON responses, display summaries/warnings/errors, and gracefully fall back to file reading if JSON invalid",
+    "what": "Add JSON parsing after all Task tool agent invocations in review.md and plan.md",
+    "why": "Enable orchestrators to get quick insights from agent JSON summaries without reading entire files",
+    "where": [
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md"
+    ],
+    "scope": {
+      "included": [
+        "Add Bash invocation of parse-agent-json.py after Task tool calls",
+        "Display JSON summary, warnings, errors to user",
+        "Graceful fallback to file reading if parse-agent-json.py exits with code 1",
+        "Maintain existing file verification logic (test -f)",
+        "No changes to Task tool invocation parameters"
+      ],
+      "excluded": [
+        "Changing agent functional logic",
+        "Modifying file-based pipeline",
+        "Changing data file schemas",
+        "Breaking existing workflows",
+        "Inline Python code (use Bash + parse-agent-json.py instead)"
+      ]
+    },
+    "success_criteria": [
+      "All Task tool agent invocations followed by JSON parsing",
+      "JSON summaries displayed to user when valid",
+      "Warnings/errors highlighted prominently",
+      "Graceful fallback when JSON invalid (no workflow break)",
+      "File verification logic preserved",
+      "QA verification passes",
+      "No regression in user-visible output"
+    ],
+    "constraints": [
+      "Must NOT break file-based pipeline",
+      "Must use Bash + parse-agent-json.py (no inline Python)",
+      "Must maintain backward compatibility",
+      "JSON parsing must be non-blocking (failures don't halt workflow)",
+      "Must follow Bash scripting best practices"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Phase 2.1 established JSON contract, but orchestrators don't use it yet",
+    "root_cause": "review.md and plan.md still ignore agent responses (only check 'test -f' for files)",
+    "why_problematic": "Agents now return valuable JSON summaries but orchestrators can't access quick insights",
+    "solution": "Add Bash JSON parsing after Task invocations using parse-agent-json.py",
+    "timeline": "Phase 2.1 completed 2026-02-15T03:40:00Z"
+  },
+  "context": {
+    "phase_21_artifacts": {
+      "parse_agent_json_script": "scripts/parse-agent-json.py",
+      "unified_json_schema": "Documented in all 8 agent prompts",
+      "permission_added": ".claude/settings.json allows parse-agent-json.py"
+    },
+    "orchestrator_architecture": {
+      "current_pattern": "Task tool → Wait for 'complete' → test -f file → Read file",
+      "new_pattern": "Task tool → Parse JSON via parse-agent-json.py → test -f file → Read file",
+      "critical_requirement": "JSON parsing must be non-blocking (exit code 1 = fallback, not error)"
+    },
+    "insertion_points_review_md": [
+      {
+        "location": "After Step 15 specialist agent invocation (meals/attractions/entertainment/shopping)",
+        "approximate_line": 717,
+        "context": "After 'Use Task tool with subagent_type' block, before file verification"
+      },
+      {
+        "location": "After Step 15 timeline agent re-invocation",
+        "approximate_line": 770,
+        "context": "After timeline Task tool call, before budget agent call"
+      },
+      {
+        "location": "After Step 15 budget agent re-invocation",
+        "approximate_line": 796,
+        "context": "After budget Task tool call, before returning to Step 14"
+      },
+      {
+        "location": "After Step 20 specialist agent refinement invocations",
+        "approximate_line": 1237,
+        "context": "After refinement Task tool calls in Type 1 changes"
+      },
+      {
+        "location": "After Step 20 timeline/budget agent refinement re-invocations",
+        "approximate_line": 1304,
+        "context": "After timeline/budget re-invocations in refinement flow"
+      }
+    ],
+    "insertion_points_plan_md": [
+      {
+        "location": "After Step 8 parallel 6 agents invocation",
+        "approximate_line": 360,
+        "context": "After parallel Task calls to meals, attractions, entertainment, shopping, accommodation, transportation"
+      },
+      {
+        "location": "After Step 10 timeline agent invocation",
+        "approximate_line": 454,
+        "context": "After timeline Task tool call, before Step 11 budget"
+      },
+      {
+        "location": "After Step 12 budget agent invocation",
+        "approximate_line": 588,
+        "context": "After budget Task tool call, before Step 13 validation"
+      },
+      {
+        "location": "After Step 15 specialist agent invocations (optimization loops)",
+        "approximate_line": 1041,
+        "context": "After specialist agents in optimization loops"
+      },
+      {
+        "location": "After Step 20 refinement agents",
+        "approximate_line": 1237,
+        "context": "After refinement agent Task calls"
+      }
+    ],
+    "dependencies": {
+      "existing_script": "scripts/parse-agent-json.py (created in Phase 2.1)",
+      "venv": "venv/ (required for Python execution)",
+      "bash": "Bash tool for orchestrator commands"
+    }
+  },
+  "json_parsing_pattern": {
+    "description": "Standard pattern to insert after each Task tool invocation",
+    "bash_code": "# Parse agent JSON response (non-blocking)\nif echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null; then\n  : # JSON parsed successfully, summary displayed\nelse\n  : # Graceful fallback - agent returned 'complete' string\nfi",
+    "notes": [
+      "AGENT_RESPONSE is Task tool return value",
+      "Exit code 0 = JSON parsed, exit code 1 = fallback (not error)",
+      "2>/dev/null suppresses parsing errors (graceful)",
+      "Use : (no-op) in if/else to maintain structure without extra output"
+    ],
+    "alternative_simplified": "echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true",
+    "why_simplified_better": "Single line, || true ensures non-blocking even if script fails"
+  },
+  "implementation_approach": {
+    "strategy": "Add single-line Bash JSON parsing after each Task tool invocation, using parse-agent-json.py",
+    "key_principle": "Non-blocking, graceful degradation",
+    "insertion_pattern": {
+      "find_marker": "After 'Use Task tool with:' block and before 'test -f' verification",
+      "insert_code": "echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true",
+      "preserve_existing": "Do NOT modify Task tool parameters or file verification logic"
+    },
+    "files_to_modify": [
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md"
+    ],
+    "scripts_to_create": [],
+    "validation_approach": "QA will test orchestrator with agents returning JSON, verify summaries displayed, test fallback with 'complete' string"
+  },
+  "orchestrator_modification_details": {
+    "review_md": {
+      "total_insertion_points": 5,
+      "insertion_locations": [
+        "Step 15: After specialist agent invocation (line ~717)",
+        "Step 15: After timeline agent re-invocation (line ~770)",
+        "Step 15: After budget agent re-invocation (line ~796)",
+        "Step 20: After specialist agent refinement (line ~1237)",
+        "Step 20: After timeline/budget refinement (line ~1304)"
+      ],
+      "insertion_code": "echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true"
+    },
+    "plan_md": {
+      "total_insertion_points": 5,
+      "insertion_locations": [
+        "Step 8: After 6 parallel agents (line ~360-420, need to handle multiple responses)",
+        "Step 10: After timeline agent (line ~454)",
+        "Step 12: After budget agent (line ~588)",
+        "Step 15: After specialist agents in optimization (line ~1041-1116)",
+        "Step 20: After refinement agents (line ~1237-1304)"
+      ],
+      "special_case_step_8": "Multiple parallel agents - need to parse each response separately",
+      "insertion_code": "echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true"
+    }
+  },
+  "backward_compatibility": {
+    "existing_workflows": "All /review and /plan workflows continue to work",
+    "file_verification": "test -f checks preserved after JSON parsing",
+    "file_reading": "Read tool calls preserved for complete data",
+    "fallback_mechanism": "If JSON parsing fails, workflow continues (|| true ensures no failure)"
+  },
+  "edge_cases_to_handle": {
+    "agent_returns_complete_string": "parse-agent-json.py exits with code 1, || true prevents failure",
+    "agent_returns_malformed_json": "2>/dev/null suppresses error, || true prevents failure",
+    "agent_returns_error_status_json": "parse-agent-json.py displays errors, exits with code 0",
+    "multiple_parallel_agents_step_8": "Need to parse each agent response separately (6 agents in parallel)"
+  },
+  "qa_test_cases": [
+    {
+      "test_id": "QA-ORCH-001",
+      "description": "Verify JSON parsing in review.md displays summaries",
+      "method": "Mock timeline agent to return JSON, invoke review.md, check user sees summary"
+    },
+    {
+      "test_id": "QA-ORCH-002",
+      "description": "Verify fallback when agent returns 'complete' string",
+      "method": "Mock agent to return 'complete', verify no workflow break"
+    },
+    {
+      "test_id": "QA-ORCH-003",
+      "description": "Verify warnings/errors highlighted",
+      "method": "Mock agent to return JSON with warnings, check user sees warnings"
+    },
+    {
+      "test_id": "QA-ORCH-004",
+      "description": "Verify file verification still works",
+      "method": "Check 'test -f' logic still executes after JSON parsing"
+    },
+    {
+      "test_id": "QA-ORCH-005",
+      "description": "Verify parallel agents in plan.md Step 8",
+      "method": "Mock 6 agents returning JSON, verify all parsed correctly"
+    }
+  ],
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "bash_best_practices": true,
+    "non_blocking_parsing": true,
+    "graceful_error_handling": true,
+    "preserve_existing_logic": true
+  },
+  "critical_warning": {
+    "DO_NOT": [
+      "Change Task tool invocation parameters",
+      "Remove or modify 'test -f' file verification",
+      "Break file-based pipeline",
+      "Add blocking error checks (must use || true)",
+      "Use inline Python (must use Bash + parse-agent-json.py)"
+    ],
+    "MUST": [
+      "Use parse-agent-json.py via Bash",
+      "Suppress errors with 2>/dev/null",
+      "Ensure non-blocking with || true",
+      "Preserve all existing file verification logic",
+      "Test both JSON and 'complete' string responses"
+    ]
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added JSON parsing to review.md orchestrator after Task tool invocations",
+        "type": "integration",
+        "files_modified": [
+          ".claude/commands/review.md"
+        ],
+        "changes": "Inserted 5 JSON parsing blocks using parse-agent-json.py script",
+        "rationale": "Root cause: Orchestrators ignore agent JSON responses (only check files). Added Bash JSON parsing after Task invocations for quick insights while preserving file-based pipeline."
+      },
+      {
+        "id": 2,
+        "description": "Added JSON parsing to plan.md orchestrator after Task tool invocations",
+        "type": "integration",
+        "files_modified": [
+          ".claude/commands/plan.md"
+        ],
+        "changes": "Inserted 9 JSON parsing blocks (6 parallel agents in Step 8, 3 serial agent pairs)",
+        "rationale": "Root cause: Orchestrators ignore agent JSON responses. Added Bash JSON parsing to display summaries/warnings/errors without breaking file-based workflow."
+      }
+    ],
+    "insertion_points": {
+      "review_md": [
+        "Line ~752: After specialist agent invocation in Step 15 (Day-scoped refinement)",
+        "Line ~811: After timeline/budget agents re-invocation in Step 15",
+        "Line ~1286: After specialist agent invocation in Step 20 (refinement)",
+        "Line ~1362: After timeline/budget agents re-invocation in Step 20"
+      ],
+      "plan_md": [
+        "Line ~411: After 6 parallel agents in Step 8 (meals, accommodation, attractions, entertainment, shopping, transportation)",
+        "Line ~527: After timeline agent in Step 10",
+        "Line ~615: After budget agent in Step 12",
+        "Line ~1096: After specialist agent in Step 15 (Day-scoped refinement)",
+        "Line ~1159: After timeline/budget agents in Step 15",
+        "Line ~1629: After specialist agent in Step 20 (refinement)",
+        "Line ~1703: After timeline/budget agents in Step 20"
+      ]
+    },
+    "files_modified": [
+      ".claude/commands/review.md",
+      ".claude/commands/plan.md"
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause": "Orchestrators ignore agent JSON responses (only check 'test -f' for files)",
+      "root_cause_commit": "Phase 2.1 (dev-20260215-032524) established JSON contract but didn't integrate into orchestrators",
+      "why_issue_occurred": "Phase 2.1 added JSON Response Format sections to all 8 agents and created parse-agent-json.py, but orchestrators still used file-only verification pattern without JSON parsing",
+      "how_fix_addresses_root": "Added Bash invocations of parse-agent-json.py after every Task tool call to parse agent JSON responses, display summaries/warnings/errors to user, with graceful fallback (|| true) if JSON invalid. Preserves file-based pipeline (test -f still executes) while enabling quick insights from JSON."
+    },
+    "implementation_details": {
+      "insertion_pattern_used": "echo \"$AGENT_RESPONSE\" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true",
+      "critical_requirements_met": {
+        "non_blocking": true,
+        "graceful_fallback": true,
+        "preserves_file_verification": true,
+        "suppresses_errors": true,
+        "description": "All insertions use || true to ensure non-blocking execution, 2>/dev/null to suppress parse errors, and preserve existing 'test -f' file verification logic."
+      },
+      "special_handling": {
+        "step_8_parallel_agents": "plan.md Step 8 invokes 6 agents in parallel. Added 6 separate parse-agent-json.py invocations (one per agent response variable: $MEALS_AGENT_RESPONSE, $ACCOMMODATION_AGENT_RESPONSE, etc.)",
+        "variable_naming": "Used descriptive variable names for agent responses: $SPECIALIST_AGENT_RESPONSE, $TIMELINE_AGENT_RESPONSE, $BUDGET_AGENT_RESPONSE to clarify which agent's JSON is being parsed"
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "Testing instructions for QA:\n\n1. Test JSON parsing with valid JSON:\n   - Mock timeline agent to return valid JSON with summary/warnings/errors\n   - Invoke /review or /plan\n   - Verify: User sees JSON summary output before file verification\n   - Verify: 'test -f' verification still executes after JSON parsing\n\n2. Test graceful fallback with 'complete' string:\n   - Mock agent to return 'complete' (no JSON)\n   - Invoke /review or /plan\n   - Verify: No error messages displayed\n   - Verify: Workflow continues normally (file verification still runs)\n\n3. Test graceful fallback with malformed JSON:\n   - Mock agent to return malformed JSON\n   - Invoke /review or /plan\n   - Verify: No error messages displayed (2>/dev/null suppresses stderr)\n   - Verify: Workflow continues normally\n\n4. Test error display:\n   - Mock agent to return JSON with 'errors' array\n   - Invoke /review or /plan\n   - Verify: Errors displayed prominently to user with ❌ emoji\n\n5. Test warning display:\n   - Mock agent to return JSON with 'warnings' array\n   - Invoke /review or /plan\n   - Verify: Warnings displayed with ⚠️ emoji\n\n6. Test parallel agents (plan.md Step 8):\n   - Mock 6 parallel agents to return different JSON responses\n   - Verify: All 6 agent JSONs parsed separately\n   - Verify: All summaries displayed before file verification\n\n7. Test file verification preservation:\n   - After JSON parsing, verify 'test -f' commands still execute\n   - Verify: Orchestrator reads files for complete data (not just JSON summaries)\n\n8. Test non-blocking behavior:\n   - Mock parse-agent-json.py to exit with code 1 (invalid JSON)\n   - Verify: Orchestrator continues to next step (doesn't halt)\n   - Verify: File verification still executes\n\nExpected behavior:\n- JSON summaries displayed when valid JSON returned\n- Graceful fallback when invalid JSON or 'complete' string\n- File-based pipeline still executes (test -f, Read tool)\n- No workflow interruption on parse failures"
+  }
+}
