@@ -548,6 +548,67 @@ All agents must use `scripts/save.py` instead of Write tool.
 
 
 
+## JSON Response Format
+
+**CRITICAL: After completing Step 3 (save.py with exit code 0), return structured JSON summary.**
+
+**Root Cause Context**: This addresses the inefficiency where orchestrator must read entire meals.json files to extract simple summaries. Agents now return JSON summary for quick insights while maintaining file-based pipeline for complete data.
+
+### Required JSON Structure
+
+Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
+
+```json
+{
+  "agent": "meals",
+  "status": "complete|blocked|error",
+  "file_updated": "data/{slug}/meals.json",
+  "summary": {
+    "items_added": 3,
+    "items_modified": 1,
+    "items_deleted": 0,
+    "key_changes": [
+      "Added 3 restaurants for Day 1: Restaurant A, Restaurant B, Restaurant C",
+      "Modified Restaurant D opening hours to 11:00-22:00"
+    ]
+  },
+  "warnings": [
+    "Restaurant A closes at 14:00, may conflict with timeline lunch at 13:30"
+  ],
+  "errors": []
+}
+```
+
+### Field Requirements
+
+**Required fields**:
+- `agent`: Always "meals"
+- `status`: "complete" (if save.py exit code 0), "error" (if save.py failed), "blocked" (if cannot proceed)
+- `file_updated`: Full path to updated file, or `null` if no file written
+- `summary`: Object with counts and key changes
+
+**Optional fields**:
+- `warnings`: Array of warning messages (price alerts, timing conflicts)
+- `errors`: Array of error messages (empty if status=complete)
+
+### Meals Agent Summary Fields
+
+**Required in `summary` object**:
+- `items_added`: Number of new meal entries (integer)
+- `items_modified`: Number of modified meal entries (integer)
+- `items_deleted`: Number of deleted meal entries (integer)
+- `key_changes`: Array of human-readable change descriptions
+
+### Critical Requirements
+
+1. **Pure JSON only**: NO markdown code blocks (```json), NO text before/after JSON
+2. **Valid JSON syntax**: Must parse without errors
+3. **All required fields present**: Missing fields will cause orchestrator parse failures
+4. **File-based pipeline preserved**: Continue writing to meals.json via save.py
+5. **Graceful degradation**: If you cannot generate JSON for any reason, return the string "complete" (orchestrator will fall back to file reading)
+
+---
+
 ## Self-Verification Checkpoints
 
 **Before invoking ANY tool, run this mental checklist**:
@@ -570,19 +631,19 @@ All agents must use `scripts/save.py` instead of Write tool.
   → If NO: STOP. Report error using Failure Mode formats above.
   → If UNKNOWN: CHECK exit code with $? before proceeding.
 
-□ Am I returning status: "complete"?
-  → If YES: Verify save.py actually succeeded (exit code 0).
-  → If save failed: Return error JSON instead.
+□ Am I returning structured JSON summary?
+  → If NO: Return JSON with all required fields (agent, status, file_updated, summary)
 ```
 
 **After completing each day/task, verify**:
 - Temp file was created successfully
 - save.py command included correct --trip and --agent flags
 - Exit code was checked before continuing
-- Only returned "complete" after successful save
+- Only returned JSON with status="complete" after successful save
+- JSON includes all required fields and is valid syntax
 
 **On encountering errors**:
 - Read full stderr output from save.py
 - Match error to one of 5 Failure Modes above
-- Return appropriate error JSON format
+- Return appropriate error JSON format with status="error"
 - DO NOT continue processing

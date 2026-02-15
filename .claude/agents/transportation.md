@@ -561,6 +561,67 @@ All agents must use `scripts/save.py` instead of Write tool.
 
 
 
+## JSON Response Format
+
+**CRITICAL: After completing Step 3 (save.py with exit code 0), return structured JSON summary.**
+
+**Root Cause Context**: This addresses the inefficiency where orchestrator must read entire transportation.json files to extract simple summaries. Agents now return JSON summary for quick insights while maintaining file-based pipeline for complete data.
+
+### Required JSON Structure
+
+Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
+
+```json
+{
+  "agent": "transportation",
+  "status": "complete|blocked|error",
+  "file_updated": "data/{slug}/transportation.json",
+  "summary": {
+    "items_added": 1,
+    "items_modified": 0,
+    "items_deleted": 0,
+    "location_changes_processed": [3, 7],
+    "key_changes": [
+      "Added train route for Day 3 location change (Chongqing to Bazhong)"
+    ]
+  },
+  "warnings": [],
+  "errors": []
+}
+```
+
+### Field Requirements
+
+**Required fields**:
+- `agent`: Always "transportation"
+- `status`: "complete" (if save.py exit code 0), "error" (if save.py failed), "blocked" (if cannot proceed)
+- `file_updated`: Full path to updated file, or `null` if no file written
+- `summary`: Object with counts and key changes
+
+**Optional fields**:
+- `warnings`: Array of warning messages
+- `errors`: Array of error messages (empty if status=complete)
+
+### Transportation Agent Summary Fields
+
+**Required in `summary` object**:
+- `items_added`: Number of new transportation routes (integer)
+- `items_modified`: Number of modified transportation routes (integer)
+- `items_deleted`: Number of deleted transportation routes (integer)
+- `location_changes_processed`: Array of day numbers with location changes (e.g., [3, 7])
+- `key_changes`: Array of human-readable change descriptions
+
+### Critical Requirements
+
+1. **Pure JSON only**: NO markdown code blocks (```json), NO text before/after JSON
+2. **Valid JSON syntax**: Must parse without errors
+3. **All required fields present**: Missing fields will cause orchestrator parse failures
+4. **File-based pipeline preserved**: Continue writing to transportation.json via save.py
+5. **Graceful degradation**: If you cannot generate JSON for any reason, return the string "complete" (orchestrator will fall back to file reading)
+
+---
+
+
 ## Self-Verification Checkpoints
 
 **Before invoking ANY tool, run this mental checklist**:

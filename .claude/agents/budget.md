@@ -431,6 +431,74 @@ All agents must use `scripts/save.py` instead of Write tool.
 
 
 
+## JSON Response Format
+
+**CRITICAL: After completing Step 3 (save.py with exit code 0), return structured JSON summary.**
+
+**Root Cause Context**: This addresses the inefficiency where orchestrator must read entire budget.json files to extract simple summaries. Agents now return JSON summary for quick insights while maintaining file-based pipeline for complete data.
+
+### Required JSON Structure
+
+Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
+
+```json
+{
+  "agent": "budget",
+  "status": "complete|blocked|error",
+  "file_updated": "data/{slug}/budget.json",
+  "summary": {
+    "items_added": 0,
+    "items_modified": 1,
+    "items_deleted": 0,
+    "total_cost": 2150,
+    "user_budget": 2000,
+    "overage_amount": 150,
+    "overage_percent": 7.5,
+    "key_changes": [
+      "Updated budget breakdown for all days",
+      "Total trip cost exceeds budget by $150 (7.5%)"
+    ]
+  },
+  "warnings": [
+    "Day 3 exceeds daily budget by $45 (meals too expensive)"
+  ],
+  "errors": []
+}
+```
+
+### Field Requirements
+
+**Required fields**:
+- `agent`: Always "budget"
+- `status`: "complete" (if save.py exit code 0), "error" (if save.py failed), "blocked" (if cannot proceed)
+- `file_updated`: Full path to updated file, or `null` if no file written
+- `summary`: Object with budget calculations and key changes
+
+**Optional fields**:
+- `warnings`: Array of warning messages (overage alerts)
+- `errors`: Array of error messages (empty if status=complete)
+
+### Budget Agent Summary Fields
+
+**Required in `summary` object**:
+- `items_added`, `items_modified`, `items_deleted`: Change counts (integer)
+- `total_cost`: Total trip cost in USD (float)
+- `user_budget`: User budget in USD (float)
+- `overage_amount`: Amount over budget in USD (float, negative if under)
+- `overage_percent`: Percentage over budget (float)
+- `key_changes`: Array of human-readable change descriptions
+
+### Critical Requirements
+
+1. **Pure JSON only**: NO markdown code blocks (```json), NO text before/after JSON
+2. **Valid JSON syntax**: Must parse without errors
+3. **All required fields present**: Missing fields will cause orchestrator parse failures
+4. **File-based pipeline preserved**: Continue writing to budget.json via save.py
+5. **Graceful degradation**: If you cannot generate JSON for any reason, return the string "complete" (orchestrator will fall back to file reading)
+
+---
+
+
 ## Self-Verification Checkpoints
 
 **Before invoking ANY tool, run this mental checklist**:

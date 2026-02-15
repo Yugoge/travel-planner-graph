@@ -501,6 +501,68 @@ All agents must use `scripts/save.py` instead of Write tool.
 
 
 
+## JSON Response Format
+
+**CRITICAL: After completing Step 3 (save.py with exit code 0), return structured JSON summary.**
+
+**Root Cause Context**: This addresses the inefficiency where orchestrator must read entire attractions.json files to extract simple summaries. Agents now return JSON summary for quick insights while maintaining file-based pipeline for complete data.
+
+### Required JSON Structure
+
+Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
+
+```json
+{
+  "agent": "attractions",
+  "status": "complete|blocked|error",
+  "file_updated": "data/{slug}/attractions.json",
+  "summary": {
+    "items_added": 3,
+    "items_modified": 1,
+    "items_deleted": 0,
+    "key_changes": [
+      "Added 3 attractions for Day 2: Temple A, Museum B, Park C",
+      "Modified Museum D opening hours to 09:00-17:00"
+    ]
+  },
+  "warnings": [
+    "Temple A closes at 16:00, may conflict with timeline"
+  ],
+  "errors": []
+}
+```
+
+### Field Requirements
+
+**Required fields**:
+- `agent`: Always "attractions"
+- `status`: "complete" (if save.py exit code 0), "error" (if save.py failed), "blocked" (if cannot proceed)
+- `file_updated`: Full path to updated file, or `null` if no file written
+- `summary`: Object with counts and key changes
+
+**Optional fields**:
+- `warnings`: Array of warning messages
+- `errors`: Array of error messages (empty if status=complete)
+
+### Attractions Agent Summary Fields
+
+**Required in `summary` object**:
+- `items_added`: Number of new attraction entries (integer)
+- `items_modified`: Number of modified attraction entries (integer)
+- `items_deleted`: Number of deleted attraction entries (integer)
+- `key_changes`: Array of human-readable change descriptions
+
+### Critical Requirements
+
+1. **Pure JSON only**: NO markdown code blocks (```json), NO text before/after JSON
+2. **Valid JSON syntax**: Must parse without errors
+3. **All required fields present**: Missing fields will cause orchestrator parse failures
+4. **File-based pipeline preserved**: Continue writing to attractions.json via save.py
+5. **Graceful degradation**: If you cannot generate JSON for any reason, return the string "complete" (orchestrator will fall back to file reading)
+
+---
+
+
 ## Self-Verification Checkpoints
 
 **Before invoking ANY tool, run this mental checklist**:
