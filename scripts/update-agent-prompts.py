@@ -329,28 +329,6 @@ def insert_before_line(body: str, line_idx: int, content: str) -> str:
     return '\n'.join(lines)
 
 
-def replace_section(body: str, start_marker: str, end_marker: str, new_content: str) -> str:
-    """Replace content between two markers."""
-    lines = body.split('\n')
-
-    start_idx = None
-    end_idx = None
-
-    for i, line in enumerate(lines):
-        if re.search(start_marker, line):
-            start_idx = i
-        if start_idx is not None and re.search(end_marker, line):
-            end_idx = i
-            break
-
-    if start_idx is None or end_idx is None:
-        return body
-
-    # Keep start marker line, replace content, keep end marker line
-    new_lines = lines[:start_idx + 1] + [new_content] + lines[end_idx:]
-    return '\n'.join(new_lines)
-
-
 def is_already_hardened(body: str) -> bool:
     """Check if agent already has 5-layer defense."""
     markers = [

@@ -41,7 +41,10 @@ DATA_DIR = PROJECT_ROOT / "data"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 SAVE_PY = SCRIPTS_DIR / "save.py"
 
-# Missing segments to merge
+# i18n constants
+CHECKIN_TEXT_ZH = "办理入住"
+
+# Missing segments to merge (one-time migration data)
 MISSING_SEGMENTS = [
     {
         "name_base": "Walk to Danzishi Ferry Pier",
@@ -172,7 +175,7 @@ def add_day2_hotel_checkin(timeline_data: Dict[str, Any], trip_dir: Path) -> Tup
     }
 
     if hotel_name_local:
-        hotel_activity['name_local'] = f"{hotel_name_local}办理入住"
+        hotel_activity['name_local'] = f"{hotel_name_local}{CHECKIN_TEXT_ZH}"
 
     # Insert into Day 2 timeline
     if len(timeline_data['data']['days']) < 2:
@@ -221,8 +224,9 @@ def save_timeline_with_savepy(trip_slug: str, timeline_data: Dict[str, Any]) -> 
     Returns:
         True if successful, False otherwise
     """
-    # Create temp file
-    temp_file = Path("/tmp/timeline_merge_update.json")
+    # Use tempfile to avoid collision risks
+    temp_fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="timeline_merge_")
+    temp_file = Path(temp_path)
 
     try:
         with open(temp_file, 'w', encoding='utf-8') as f:
