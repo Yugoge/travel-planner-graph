@@ -410,6 +410,16 @@ Use Task tool with:
 
 **Wait for all 6 agents to return "complete"**.
 
+**Parse each agent JSON response** (non-blocking):
+```bash
+echo "$MEALS_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+echo "$ACCOMMODATION_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+echo "$ATTRACTIONS_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+echo "$ENTERTAINMENT_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+echo "$SHOPPING_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+echo "$TRANSPORTATION_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verify files exist before proceeding**:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/meals.json && echo "meals.json verified" || echo "meals.json missing"
@@ -526,6 +536,11 @@ Use Task tool with:
 
 Wait for agent to return "complete".
 
+**Parse timeline agent JSON response** (non-blocking):
+```bash
+echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires explicit verification after subagent completion.
 
 **Step 1**: Confirm both files exist:
@@ -613,6 +628,11 @@ Use Task tool with:
 ```
 
 Wait for agent to return "complete".
+
+**Parse budget agent JSON response** (non-blocking):
+```bash
+echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
 
 **Verification**: Confirm file exists before proceeding:
 ```bash
@@ -1075,6 +1095,11 @@ Use Task tool with:
 
 Wait for agent to return "complete".
 
+**Parse specialist agent JSON response** (non-blocking):
+```bash
+echo "$SPECIALIST_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verification**: Confirm file updated before proceeding:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
@@ -1132,6 +1157,16 @@ Use Task tool with:
 ```
 
 Wait for both agents to return "complete".
+
+**Parse timeline agent JSON response** (non-blocking):
+```bash
+echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
+**Parse budget agent JSON response** (non-blocking):
+```bash
+echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
 
 **Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
 
@@ -1593,6 +1628,11 @@ Use Task tool with:
 
 **Wait for agent to return "complete"**.
 
+**Parse specialist agent JSON response** (non-blocking):
+```bash
+echo "$SPECIALIST_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verification**: Confirm file updated before proceeding:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
@@ -1661,6 +1701,16 @@ Use Task tool with:
 ```
 
 **Wait for both agents to return "complete"**.
+
+**Parse timeline agent JSON response** (non-blocking):
+```bash
+echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
+**Parse budget agent JSON response** (non-blocking):
+```bash
+echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
 
 **Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
 

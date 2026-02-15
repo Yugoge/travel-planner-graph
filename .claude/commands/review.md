@@ -751,6 +751,11 @@ Use Task tool with:
 
 Wait for agent to return "complete".
 
+**Parse agent JSON response** (non-blocking):
+```bash
+echo "$AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
 **Verification**: Confirm file updated before proceeding:
 ```bash
 test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
@@ -808,6 +813,16 @@ Use Task tool with:
 ```
 
 Wait for both agents to return "complete".
+
+**Parse timeline agent JSON response** (non-blocking):
+```bash
+echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
+
+**Parse budget agent JSON response** (non-blocking):
+```bash
+echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
 
 **Verification - Root Cause Reference (commit ef0ed28)**: File-based pipeline requires verification.
 
@@ -1268,6 +1283,11 @@ Use Task tool with:
 ```
 
 **Wait for agent to return "complete"**.
+
+**Parse specialist agent JSON response** (non-blocking):
+```bash
+echo "$SPECIALIST_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse-agent-json.py 2>/dev/null || true
+```
 
 **Verification**: Confirm file updated before proceeding:
 ```bash
