@@ -257,13 +257,16 @@ When parsing route data from Gaode Maps API or any mapping service:
 
    Exit code 0 = log entry created successfully. If this fails, STOP and report error.
 
-4. **Save using scripts/save.py**:
+4. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008):
    ```bash
-   python3 scripts/save.py \
+   python scripts/save.py \
      --trip {destination-slug} \
      --agent transportation \
      --input /tmp/transportation_update.json
+     --merge-days
    ```
+   **CRITICAL**: `--merge-days` flag merges single-day updates into existing multi-day file,
+   preserving all days NOT in update. Without this flag, entire file is replaced.
 
 5. **Verify save succeeded** (MANDATORY):
    Check exit code:

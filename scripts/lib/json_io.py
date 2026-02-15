@@ -314,6 +314,64 @@ def _atomic_write(file_path: Path, content: str) -> None:
         raise AtomicWriteError(f"Failed to write {file_path}: {e}") from e
 
 
+def merge_agent_days(
+    existing_data: dict,
+    update_data: dict,
+    agent_name: str
+) -> dict:
+    """Merge single-day updates into multi-day JSON file.
+
+    Root Cause Fix: Addresses commits b057f26, 579f972, 921f855, 894b008
+    where save.py was documented as merging but only performed full-file replacement,
+    causing timeline data loss (21 days → 1 day).
+
+    This function enables incremental updates: agents output single-day data,
+    merge_agent_days() combines it with existing multi-day file, preserving all other days.
+
+    Args:
+        existing_data: Current multi-day data from file (unwrapped, no envelope)
+        update_data: Single-day or multi-day update from agent (unwrapped, no envelope)
+        agent_name: Agent name for day-keyed validation
+
+    Returns:
+        Merged data with updated days replaced, other days preserved
+
+    Merge logic:
+        - Extract day numbers from update_data.days array
+        - For each updated day N: replace existing_data.days[N] with update_data.days[N]
+        - Preserve all days NOT in update_data
+        - Preserve trip metadata (trip_name, destination, etc)
+
+    Example:
+        existing: {days: [{day: 1, ...}, {day: 2, ...}, ..., {day: 21, ...}]}
+        update:   {days: [{day: 5, ...}]}
+        result:   {days: [{day: 1, ...}, ..., {day: 5, NEW}, ..., {day: 21, ...}]}
+    """
+    # Validate inputs
+    if not isinstance(existing_data, dict) or "days" not in existing_data:
+        raise ValueError(f"existing_data must have 'days' array, got: {list(existing_data.keys())}")
+    if not isinstance(update_data, dict) or "days" not in update_data:
+        raise ValueError(f"update_data must have 'days' array, got: {list(update_data.keys())}")
+
+    # Start with copy of existing data (preserves metadata)
+    merged = existing_data.copy()
+
+    # Build mapping of day_number → day_data from existing
+    existing_days_map = {day["day"]: day for day in existing_data.get("days", [])}
+
+    # Update with days from update_data
+    for update_day in update_data.get("days", []):
+        if "day" not in update_day:
+            raise ValueError(f"Day object missing 'day' field: {update_day.keys()}")
+        day_num = update_day["day"]
+        existing_days_map[day_num] = update_day
+
+    # Reconstruct days array in sorted order
+    merged["days"] = [existing_days_map[day_num] for day_num in sorted(existing_days_map.keys())]
+
+    return merged
+
+
 def _create_backup(file_path: Path) -> None:
     """Create .bak backup of existing file."""
     file_path = Path(file_path)

@@ -1,0 +1,113 @@
+{
+  "request_id": "dev-20260215-053000",
+  "timestamp": "2026-02-15T05:30:00Z",
+  "requirement": {
+    "original": "彻底没有。你根据以上分析结果立马修复save加入增量更新同时彻底修复8个agent教会他们增量更新方法",
+    "clarified": "Add incremental merge functionality to scripts/save.py to merge single-day agent updates into multi-day JSON files, and update all 8 agent instruction files to correctly use the merge mode",
+    "what": "Implement day-level merge functionality in save.py and update agent instructions",
+    "why": "Timeline data loss (21 days → 1 day) occurs because save.py performs full-file replacement instead of merging single-day updates from agents",
+    "where": [
+      "scripts/save.py",
+      "scripts/lib/json_io.py",
+      ".claude/agents/timeline.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/commands/review.md"
+    ],
+    "scope": {
+      "included": [
+        "Add --merge-days parameter to save.py",
+        "Implement merge_agent_days() function in json_io.py",
+        "Update all 8 agent Step 4 save instructions",
+        "Update review.md agent invocation prompts",
+        "Preserve existing validation and backup mechanisms"
+      ],
+      "excluded": [
+        "Changing agent output format (agents continue outputting single-day data)",
+        "Modifying schema validation logic",
+        "Changing backup file naming conventions"
+      ]
+    },
+    "success_criteria": [
+      "save.py with --merge-days merges single-day input into existing multi-day file",
+      "Timeline agent updating Day 5 preserves all other days (1-4, 6-21)",
+      "All 8 agent .md files include --merge-days in Step 4 save command",
+      "review.md agent invocations include --merge-days flag",
+      "No hardcoded trip slugs or day numbers in implementation",
+      "Root cause commits (ef0ed28, f9634dc, 579f972, 921f855) referenced in code/docs"
+    ],
+    "constraints": [
+      "Must preserve atomic write (.tmp → rename) mechanism",
+      "Must preserve backup (.bak) creation",
+      "Must preserve validation integration",
+      "Backward compatible: full-file updates still work without --merge-days",
+      "Must use source venv for Python execution"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline.json reduced from 21 days to 1 day during Day 5 review",
+    "root_cause": "save.py was documented as 'merging updates' but only performs full-file replacement. Timeline agent outputs single-day data, save.py writes it as-is, overwriting 21-day file with 1-day file.",
+    "root_cause_commits": [
+      "b057f26 (2026-02-12 18:58): save.py created without merge functionality",
+      "579f972 (2026-02-13 08:48): Claimed 'save.py merges updates' but never implemented it",
+      "921f855 (2026-02-14 20:38): First data loss - timeline 21 days → 1 day",
+      "894b008 (2026-02-15 05:50): Second data loss - meals/timeline overwritten"
+    ],
+    "why_introduced": "save.py was designed for atomic writes and validation, but merge functionality was assumed/documented but never coded",
+    "why_problematic": "Agents follow instructions to output only updated days (e.g., Day 5), expecting save.py to merge. Instead, save.py replaces entire file with single-day data, losing 20 days.",
+    "timeline": "Created Feb 12, documented as merging Feb 13, data loss occurred Feb 14-15",
+    "affected_files": [
+      "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/meals.json"
+    ]
+  },
+  "context": {
+    "codebase_state": "5 uncommitted changes (timeline.json, meals.json, HTML output, backup files)",
+    "recent_commits": "894b008, c9f6e25, 4b419e0, 9438a23 (all involved Day 1-5 review with data loss)",
+    "file_contents": {
+      "scripts/save.py": "Exists with full-file save, no merge mode",
+      "scripts/lib/json_io.py": "Has save_agent_json() but no merge_agent_days() function",
+      ".claude/agents/timeline.md": "Step 4 uses save.py but doesn't specify merge mode",
+      ".claude/commands/review.md": "Lines 790-791 claim save.py merges but don't pass merge flag"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x with venv at venv/bin/activate",
+      "packages": "jq for JSON manipulation, git for history"
+    },
+    "environment": {
+      "venv_path": "/root/travel-planner/venv",
+      "project_root": "/root/travel-planner",
+      "data_dir": "/root/travel-planner/data"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add merge mode to save.py that reads existing file, identifies day numbers in input, replaces matching days, preserves others",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/json_io.py - Add merge_agent_days()",
+      "scripts/save.py - Add --merge-days parameter and merge logic",
+      ".claude/agents/timeline.md - Step 4 add --merge-days",
+      ".claude/agents/meals.md - Step 4 add --merge-days",
+      ".claude/agents/attractions.md - Step 4 add --merge-days",
+      ".claude/agents/entertainment.md - Step 4 add --merge-days",
+      ".claude/agents/shopping.md - Step 4 add --merge-days",
+      ".claude/agents/accommodation.md - Step 4 add --merge-days",
+      ".claude/agents/transportation.md - Step 4 add --merge-days",
+      ".claude/agents/budget.md - Step 4 add --merge-days",
+      ".claude/commands/review.md - Add --merge-days to agent invocations"
+    ],
+    "validation_approach": "QA will test by simulating Day 5 update with 21-day file, verify 20 days preserved"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

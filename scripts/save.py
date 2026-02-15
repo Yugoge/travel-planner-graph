@@ -12,8 +12,11 @@ This script replaces all individual save scripts and enforces:
   - HIGH severity issues block saves
 
 Usage:
-  # Save single agent data
+  # Save single agent data (full-file replacement)
   python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json
+
+  # Merge single-day update into multi-day file (preserves other days)
+  python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5_update.json --merge-days
 
   # Save from stdin (pipe)
   cat modified_data.json | python3 scripts/save.py --trip TRIP_SLUG --agent meals
@@ -46,6 +49,8 @@ from typing import Dict, Any, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.json_io import (
     save_agent_json,
+    load_agent_json,
+    merge_agent_days,
     ValidationError,
     AtomicWriteError,
     validate_agent_data
@@ -102,8 +107,17 @@ def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
 def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
                       skip_validation: bool = False,
                       allow_high: bool = False,
-                      create_backup: bool = True) -> bool:
+                      create_backup: bool = True,
+                      merge_days: bool = False) -> bool:
     """Save single agent data with validation.
+
+    Root Cause Reference (b057f26, 579f972, 921f855, 894b008):
+    save.py was documented as merging but only performed full-file replacement,
+    causing timeline data loss (21 days → 1 day during Day 5 review).
+
+    Args:
+        merge_days: If True, merge single-day updates into existing multi-day file
+                    instead of replacing entire file. Preserves days not in update.
 
     Returns:
         True if successful, False otherwise
@@ -115,8 +129,25 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
 
     agent_file = trip_dir / f"{agent}.json"
 
-    # Validate first
-    success, issues, metrics = validate_data(trip_slug, agent, data, skip_validation, allow_high)
+    # Unwrap envelope if present
+    agent_data = data.get("data") if "data" in data else data
+
+    # Merge mode: read existing file and merge days
+    if merge_days and agent_file.exists():
+        try:
+            existing_data = load_agent_json(agent_file, validate=False)
+            merged_data = merge_agent_days(existing_data, agent_data, agent)
+            agent_data = merged_data
+            print(f"🔀 Merge mode: Merged {len(data.get('data', {}).get('days', []))} day(s) into existing file", file=sys.stderr)
+        except Exception as e:
+            print(f"❌ Merge failed: {e}", file=sys.stderr)
+            return False
+
+    # Wrap in envelope for validation
+    envelope_data = {"agent": agent, "status": "complete", "data": agent_data}
+
+    # Validate merged data
+    success, issues, metrics = validate_data(trip_slug, agent, envelope_data, skip_validation, allow_high)
 
     if not success:
         print(f"\n❌ Save aborted due to validation errors", file=sys.stderr)
@@ -129,7 +160,7 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
         save_agent_json(
             file_path=agent_file,
             agent_name=agent,
-            data=data.get("data") if "data" in data else data,
+            data=agent_data,
             validate=False,  # Already validated above
             create_backup=create_backup
         )
@@ -266,6 +297,9 @@ Examples:
   # Save single agent from file
   python3 scripts/save.py --trip china-feb-2026 --agent meals --input modified_meals.json
 
+  # Merge single-day update into multi-day file (preserves other days)
+  python3 scripts/save.py --trip china-feb-2026 --agent timeline --input day5_update.json --merge-days
+
   # Save single agent from stdin
   cat modified_meals.json | python3 scripts/save.py --trip china-feb-2026 --agent meals
 
@@ -287,6 +321,8 @@ Examples:
     parser.add_argument("--no-validate", action="store_true", help="Skip validation (DANGEROUS)")
     parser.add_argument("--allow-high", action="store_true", help="Allow HIGH severity issues (DANGEROUS)")
     parser.add_argument("--no-backup", action="store_true", help="Skip backup creation")
+    parser.add_argument("--merge-days", action="store_true",
+                        help="Merge single-day updates into existing multi-day file (preserves other days)")
 
     args = parser.parse_args()
 
@@ -341,7 +377,8 @@ Examples:
             data=data,
             skip_validation=args.no_validate,
             allow_high=args.allow_high,
-            create_backup=not args.no_backup
+            create_backup=not args.no_backup,
+            merge_days=args.merge_days
         )
 
     sys.exit(0 if success else 1)
