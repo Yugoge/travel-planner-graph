@@ -157,6 +157,67 @@ For each day, create timeline dictionary with:
 - **KEY**: Exact activity name from source JSON
 - **VALUE**: `{start_time: "HH:MM", end_time: "HH:MM", duration_minutes: N}`
 
+**🚫 CRITICAL ARCHITECTURAL PRINCIPLE - Timeline is Time Organizer, NOT Content Creator**
+
+**Timeline agent's ONLY job: Extract activity names and times from other agents' outputs and arrange them chronologically.**
+
+**DO NOT add ANY new content details that don't exist in source JSONs.**
+
+**Core principle**:
+- ✅ Timeline = Time organizer (when things happen)
+- ❌ Timeline ≠ Content creator (what those things are)
+
+**What timeline CAN do**:
+- ✅ Read "Jinli Ancient Street" from attractions.json → Add to timeline with time slots
+- ✅ Read "High-speed train C73" from transportation.json → Add to timeline with departure/arrival times
+- ✅ Read "Breakfast at Lao Wu Jiangrou Baozi" from meals.json → Add to timeline with meal time
+- ✅ Calculate gaps between activities and insert travel time
+- ✅ Detect conflicts and generate warnings
+
+**What timeline CANNOT do**:
+- ❌ Add train numbers that aren't in transportation.json (e.g., adding "D5121" when transportation.json only has placeholder "VERIFIED BY USER")
+- ❌ Add restaurant names that aren't in meals.json
+- ❌ Add attraction names that aren't in attractions.json
+- ❌ Add booking details, prices, or verification status from any source
+- ❌ Create new activities not present in any source JSON
+
+**Reference pattern (correct)**:
+```json
+// transportation.json has:
+"route_number": "C73",
+"verified_train": {"train_number": "C73", "departure_time": "07:26", ...}
+
+// timeline.json should reference it as:
+"High-speed Train C73 (Chongqing North → Bazhong East)": {
+  "start_time": "07:26",
+  "end_time": "10:36",
+  "duration_minutes": 190
+}
+```
+✅ Timeline used exact train number from transportation.json source
+
+**Anti-pattern (incorrect - Day 3 bug)**:
+```json
+// transportation.json has:
+"route_number": "VERIFIED BY USER",  // ← Placeholder, no real train number!
+"verified_train": {"train_number": "VERIFIED BY USER", ...}
+
+// timeline.json added:
+"High-speed train D5121 (Bazhong West → Chengdu East)": {...}
+```
+❌ Timeline created "D5121" content that doesn't exist in source - violation of architectural principle
+
+**What to do when source data is incomplete**:
+1. If transportation.json has placeholder (e.g., "VERIFIED BY USER"), use generic name:
+   - ✅ "High-speed train (Bazhong West → Chengdu East)"
+   - ❌ Don't invent train number
+2. Add warning: "Day X: transportation.json has incomplete train number - using generic label"
+3. Let orchestrator decide if transportation-agent needs re-invocation
+
+**Validation rule**: Every piece of information in timeline (except time calculations) must be traceable to a source JSON file. If you cannot find it in meals/attractions/entertainment/shopping/accommodation/transportation JSONs, DO NOT add it.
+
+---
+
 **🚫 CRITICAL ARCHITECTURAL RULE - travel_segments Scope (Root Cause: e2007ff)**
 
 **travel_segments is ONLY for intra-city transport (taxi, metro, walk, bus, ferry).**

@@ -915,28 +915,43 @@ class InteractiveHTMLGenerator:
                     best_similarity = 0.0
 
                     for timeline_key, timeline_val in day_timeline.items():
-                        # Skip transit entries (already filtered by _is_transit in _find_timeline_item)
+                        # Skip entries without time fields
+                        if "start_time" not in timeline_val or "end_time" not in timeline_val:
+                            continue
+
                         # Tokenize timeline entry
                         timeline_tokens = set(timeline_key.lower().split())
 
-                        # Calculate Jaccard similarity: |intersection| / |union|
                         if acc_tokens and timeline_tokens:
+                            # Strategy 1: Jaccard similarity (symmetric)
+                            # Works well when names are similar length
                             intersection = acc_tokens & timeline_tokens
                             union = acc_tokens | timeline_tokens
-                            similarity = len(intersection) / len(union) if union else 0
+                            jaccard = len(intersection) / len(union) if union else 0
 
-                            # Match if similarity >= 0.3 (30% overlap) and has time fields
-                            # This captures partial matches like "Orange Hotel" matching "Check in to Orange Hotel"
-                            if similarity >= 0.3 and "start_time" in timeline_val and "end_time" in timeline_val:
-                                if similarity > best_similarity:
-                                    best_similarity = similarity
-                                    best_match = timeline_val
+                            # Strategy 2: Containment similarity (asymmetric)
+                            # Checks if timeline tokens are mostly contained in accommodation name
+                            # Works well for "Orange Hotel" vs "Orange Hotel Beijing Zhongguancun"
+                            # Filters out common words like "check", "in", "to", "at"
+                            common_words = {"check", "in", "to", "at", "the", "a", "an", "arrive", "hotel", "入住"}
+                            timeline_tokens_filtered = timeline_tokens - common_words
 
-                    # Use best match if similarity >= 0.9 (90% threshold as requested)
-                    if best_match and best_similarity >= 0.9:
-                        acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
-                    elif best_match and best_similarity >= 0.3:
-                        # Lower threshold (30-89%) - still use it but could be improved
+                            if timeline_tokens_filtered:
+                                # How many timeline tokens (excluding common words) are in accommodation name?
+                                containment = len(timeline_tokens_filtered & acc_tokens) / len(timeline_tokens_filtered)
+                            else:
+                                containment = 0
+
+                            # Use the higher of the two scores
+                            similarity = max(jaccard, containment)
+
+                            if similarity > best_similarity:
+                                best_similarity = similarity
+                                best_match = timeline_val
+
+                    # Use best match if similarity >= 0.9 (90% threshold as requested by user)
+                    # or >= 0.5 (50% for partial matches like brand names)
+                    if best_match and best_similarity >= 0.5:
                         acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
 
                 # Fallback: use check_in field from accommodation.json if timeline lookup fails
