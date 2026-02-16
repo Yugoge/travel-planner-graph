@@ -7,7 +7,7 @@ model: inherit
 
 # Gaode Maps Skill
 
-Access Gaode Maps (高德地图) API via MCP server for accurate route planning, POI search, and location services in China.
+Access Gaode Maps API via MCP server for accurate route planning, POI search, and location services in China.
 
 ## Quick Start
 
@@ -109,7 +109,7 @@ Scripts use environment variable `AMAP_MAPS_API_KEY` (defaults to project key if
 **To use your own key**:
 ```bash
 export AMAP_MAPS_API_KEY="your_key_here"
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 ```
 
 **Get your own API key**: https://console.amap.com/dev/key/app
@@ -149,7 +149,7 @@ This skill is configured for the transportation agent. Usage pattern:
 
 1. Execute routing script directly via Bash tool:
    ```bash
-   python3 .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
+   source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
    ```
 
 2. Parse JSON response for distance, duration, cost estimates
@@ -162,15 +162,15 @@ See `.claude/agents/transportation.md` for integration details.
 
 **Meals Agent**: Use `poi_search.py` to find restaurants
 ```bash
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
+source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
 **Accommodation Agent**: Use `poi_search.py` for hotel search, `geocoding.py` for address validation
 ```bash
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
+source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
 ```
 
 **Attractions Agent**: Use `poi_search.py` to discover attractions, `utilities.py` for distances
 ```bash
-source /root/.claude/venv/bin/activate && python3 .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
+source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
 ```

@@ -263,7 +263,7 @@ echo "{destination-slug}" | grep -E '^[a-z0-9\-]+-[0-9]{8}-[0-9]{6}$' && echo "v
 ```
 
 **Why This Fixes the Issue**:
-Commit 77dca06 introduced {destination-slug} placeholder used 40+ times throughout plan.md, but never defined generation logic. Without explicit timestamp-based slugs, multiple /plan executions with same destination/dates reused identical directories, causing file conflicts and data混淆.
+Commit 77dca06 introduced {destination-slug} placeholder used 40+ times throughout plan.md, but never defined generation logic. Without explicit timestamp-based slugs, multiple /plan executions with same destination/dates reused identical directories, causing file conflicts and data confusion.
 
 #### Step 5: Validate Day Completion
 
@@ -848,8 +848,7 @@ Run fetch-images-batch.py with day-level force mode:
 
 ```bash
 cd /root/travel-planner && \
-source venv/bin/activate && \
-python3 scripts/fetch-images-batch.py \
+source venv/bin/activate && python scripts/fetch-images-batch.py \
   ${PLAN_ID} \
   0 \
   999 \

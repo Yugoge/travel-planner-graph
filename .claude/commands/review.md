@@ -502,8 +502,7 @@ Run fetch-images-batch.py with day-level force mode:
 
 ```bash
 cd /root/travel-planner && \
-source venv/bin/activate && \
-python3 scripts/fetch-images-batch.py \
+source venv/bin/activate && python scripts/fetch-images-batch.py \
   ${PLAN_ID} \
   0 \
   999 \
@@ -845,7 +844,7 @@ Verify Day {N} timeline is populated (not empty dictionary).
 
 Run day-scoped validation:
 ```bash
-source venv/bin/activate || source .venv/bin/activate && python3 /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug} --agent {agent_name}
+source venv/bin/activate || source .venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug} --agent {agent_name}
 ```
 
 **Exit code 0**: Changes valid → Proceed to next substep
