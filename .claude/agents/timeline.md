@@ -157,6 +157,33 @@ For each day, create timeline dictionary with:
 - **KEY**: Exact activity name from source JSON
 - **VALUE**: `{start_time: "HH:MM", end_time: "HH:MM", duration_minutes: N}`
 
+**🚫 CRITICAL ARCHITECTURAL RULE - travel_segments Scope (Root Cause: e2007ff)**
+
+**travel_segments is ONLY for intra-city transport (taxi, metro, walk, bus, ferry).**
+
+**DO NOT include location_change transport (train, flight) in travel_segments.**
+
+**Why this distinction exists**:
+- `timeline` object contains ALL activities including inter-city transport (train D5121, flights)
+- `travel_segments` array is for UI rendering of short intra-city transport hops between activities
+- Inter-city transport is already in timeline via `transportation.json` location_change field
+- Including inter-city transport in travel_segments creates data duplication and violates separation of concerns
+
+**What belongs in travel_segments**:
+- ✅ Taxi to restaurant
+- ✅ Metro to attraction
+- ✅ Walk between nearby locations
+- ✅ Bus to shopping center
+- ✅ Ferry across river
+
+**What does NOT belong in travel_segments**:
+- ❌ High-speed train between cities (train D5121)
+- ❌ Flights between cities
+- ❌ Long-distance buses between provinces
+- ❌ ANY transport marked as location_change in transportation.json
+
+**Validation rule**: If transport is in `transportation.json → location_change` field, exclude it from travel_segments.
+
 **ALSO generate `travel_segments` array** for each day. For every gap between consecutive activities that involves travel:
 
 1. Read `transportation.json` for intra-city route data:

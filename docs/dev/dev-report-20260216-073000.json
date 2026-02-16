@@ -1,0 +1,81 @@
+{
+  "request_id": "dev-20260216-073000",
+  "timestamp": "2026-02-16T07:35:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added CRITICAL architectural rule to timeline.md distinguishing intra-city vs inter-city transport for travel_segments",
+        "type": "documentation",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Inserted explicit exclusion rule before Step 2 travel_segments generation instructions",
+        "rationale": "Root cause analysis showed travel_segments instructions didn't distinguish intra-city (taxi, metro) from inter-city (train, flight) transport, causing data duplication"
+      },
+      {
+        "id": 2,
+        "description": "Explicitly stated travel_segments scope: ONLY intra-city transport (taxi, metro, walk, bus, ferry)",
+        "type": "specification",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Added whitelist (taxi, metro, walk, bus, ferry) and blacklist (train, flight, location_change transport)",
+        "rationale": "Timeline agent needs clear distinction between UI rendering hops (travel_segments) vs major journeys (timeline object)"
+      },
+      {
+        "id": 3,
+        "description": "Added validation rule: exclude transportation.json location_change entries from travel_segments",
+        "type": "validation",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Explicit rule: if transport is in location_change field, exclude from travel_segments",
+        "rationale": "Location_change field in transportation.json marks inter-city transport that should NOT duplicate into travel_segments"
+      }
+    ],
+    "files_modified": [
+      {
+        "path": ".claude/agents/timeline.md",
+        "section": "Step 2: Generate Timeline Dictionary + Travel Segments",
+        "changes_made": "Inserted CRITICAL ARCHITECTURAL RULE section before travel_segments generation logic",
+        "lines_added": 28,
+        "position": "Before line 160 (travel_segments array generation)"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "e2007ff - fix: 6 HTML generator issues + timeline agent travel_segments schema",
+      "why_issue_occurred": "Commit e2007ff added native travel_segments generation to timeline.md but instructions said 'For every gap between consecutive activities that involves travel' without distinguishing intra-city (taxi, metro) from inter-city (train, flight). This caused timeline agent to incorrectly add inter-city transport (like train D5121 from Bazhong to Chengdu) to both timeline object AND travel_segments array, creating data duplication and violating architectural separation where timeline contains ALL activities but travel_segments is only for short intra-city UI rendering hops.",
+      "how_fix_addresses_root": "Added explicit CRITICAL ARCHITECTURAL RULE section at line 157 (before travel_segments generation logic) that clearly separates intra-city transport (belongs in travel_segments) from inter-city transport (belongs ONLY in timeline object, NOT travel_segments). Rule includes whitelist (taxi, metro, walk, bus, ferry), blacklist (train, flight, location_change), and validation rule to exclude transportation.json location_change entries. This prevents future timeline agent runs from duplicating inter-city transport into travel_segments."
+    },
+    "architectural_clarification": {
+      "timeline_object_purpose": "Contains ALL activities including inter-city transport (train D5121), intra-city transport (taxi), meals, attractions, entertainment, shopping, hotel check-in/out",
+      "travel_segments_purpose": "Contains ONLY intra-city transport for UI rendering of short hops between consecutive activities (taxi to restaurant, metro to attraction, walk between nearby POIs)",
+      "location_change_field": "Marks inter-city transport in transportation.json that should appear in timeline but NOT in travel_segments",
+      "separation_of_concerns": "timeline = comprehensive schedule, travel_segments = UI rendering of local movement"
+    },
+    "validation_rules_added": [
+      "travel_segments type_base MUST be one of: walk, taxi, metro, bus, ferry (NOT train, NOT flight)",
+      "If transport is in transportation.json → location_change field, exclude from travel_segments",
+      "travel_segments describes SHORT intra-city hops, NOT major inter-city journeys"
+    ],
+    "qa_ready": true,
+    "qa_notes": [
+      "Verify timeline.md line 157-187 contains CRITICAL ARCHITECTURAL RULE section",
+      "Verify rule clearly states: travel_segments ONLY for intra-city, NOT location_change",
+      "Verify whitelist includes: taxi, metro, walk, bus, ferry",
+      "Verify blacklist includes: train, flight, location_change transport",
+      "Verify rule references root cause commit e2007ff",
+      "Verify rule is positioned BEFORE travel_segments generation logic (before line 189)"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Timeline agent should read transportation.json location_change field and skip those entries when generating travel_segments",
+    "Consider adding validation in scripts/plan-validate.py to detect inter-city transport types (train, flight) in travel_segments and flag as HIGH severity error",
+    "Update HTML generator tests to verify travel_segments only contains intra-city transport types"
+  ],
+  "next_steps_for_qa": [
+    "Read .claude/agents/timeline.md lines 157-187 to verify CRITICAL ARCHITECTURAL RULE is present",
+    "Verify rule is positioned before travel_segments generation instructions",
+    "Check that rule explicitly excludes location_change transport",
+    "Verify whitelist (taxi, metro, walk, bus, ferry) and blacklist (train, flight) are clear",
+    "Confirm root cause commit e2007ff is referenced in the rule"
+  ]
+}
