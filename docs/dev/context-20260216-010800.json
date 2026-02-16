@@ -1,0 +1,85 @@
+{
+  "request_id": "dev-20260216-010800",
+  "timestamp": "2026-02-16T01:08:00Z",
+  "requirement": {
+    "original": "nevermind 东水门有了。现在将抓取图片加入todo脚本作为强制步骤",
+    "clarified": "Add image fetching step to scripts/todo/review.py as a mandatory workflow step to prevent skipping Step 3a during /review command execution",
+    "what": "Add 'Fetch images for confirmed day' step to review.py todo list",
+    "why": "Step 3a (image fetching) exists in review.md but not in todo script, causing AI to skip this critical step",
+    "where": [
+      "scripts/todo/review.py"
+    ],
+    "scope": {
+      "included": [
+        "Add image fetching step to review.py get_todos() function",
+        "Insert step after 'Process user choice' (index 4)",
+        "Keep existing step ordering intact"
+      ],
+      "excluded": [
+        "Modifying review.md (already has Step 3a)",
+        "Adding day-specific dynamic todos (separate enhancement)",
+        "Changing other workflow steps"
+      ]
+    },
+    "success_criteria": [
+      "review.py includes 'Fetch images for confirmed day' step",
+      "Step appears between 'Process user choice' and 'Re-invoke agents'",
+      "Running 'python scripts/todo/review.py' outputs 10 steps (was 9)",
+      "Step has appropriate activeForm for TodoWrite display"
+    ],
+    "constraints": [
+      "Must preserve existing step order",
+      "Must not break TodoWrite JSON format",
+      "Must follow existing naming conventions"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "AI skipped Step 3a (image fetching) during Day 1 review, jumping directly to Day 2 presentation",
+    "root_cause": "Step 3a exists in review.md but not in scripts/todo/review.py, causing TodoWrite to not track this step",
+    "root_cause_commit": "65973c9 - refactor: Remove redundant validation steps from plan and review commands",
+    "why_introduced": "Commit added Step 3a to review.md but forgot to synchronize todo script",
+    "why_problematic": "AI agents rely on TodoWrite for workflow tracking. Missing steps in todo script = steps get skipped in execution",
+    "timeline": "Step 3a added in commit 65973c9, but review.py hasn't been updated since checkpoint commits 176a453 and aee7664",
+    "affected_files": [
+      ".claude/commands/review.md (has Step 3a)",
+      "scripts/todo/review.py (missing Step 3a)"
+    ]
+  },
+  "context": {
+    "codebase_state": "21 uncommitted files, working on Day 1 review fixes",
+    "recent_commits": [
+      "b5fe544 - fix: Add missing JSON parsing for timeline/budget agents in review.md Step 20",
+      "65973c9 - refactor: Remove redundant validation steps from plan and review commands",
+      "579f972 - fix: Prevent agent data loss by enforcing scripts/save.py usage"
+    ],
+    "file_contents": {
+      "scripts/todo/review.py": "Current version has 9 steps, missing image fetching step",
+      ".claude/commands/review.md": "Has Step 3a: Fetch Images for Confirmed Day with detailed substeps"
+    },
+    "dependencies": {
+      "runtime": "Python 3.x",
+      "packages": "json (stdlib)"
+    },
+    "environment": {
+      "venv_path": "/root/.claude/venv",
+      "config_files": [
+        "scripts/todo/review.py"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Insert new step into review.py get_todos() list at correct position (after index 3)",
+    "scripts_to_create": [],
+    "files_to_modify": [
+      "scripts/todo/review.py"
+    ],
+    "validation_approach": "Run python scripts/todo/review.py and verify output has 10 steps with image fetching step present"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
