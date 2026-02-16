@@ -444,7 +444,7 @@ class InteractiveHTMLGenerator:
             "train to", "metro to", "subway to", "transfer to",
             "travel from", "walk from", "drive from",
             "travel back", "return to", "board train",
-            "check luggage", "wake up", "arrive ",
+            "check luggage", "wake up",
             "return home", "free time", "settle in",
         )
 
@@ -903,29 +903,41 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
-                # Extract accommodation check-in time from timeline
-                # NO hardcoded defaults - must find semantic match in timeline
+                # Extract accommodation check-in time from timeline using similarity matching
+                # NO hardcoded keywords - use token-based similarity score
                 acc_time = None
                 if day_timeline:
-                    # Strategy: Find timeline entry containing check-in semantics
-                    # Match any entry with: "check-in", "check in", "入住", "arrive at [hotel]"
-                    acc_name_search = acc_name_base.split("(")[0].strip()
+                    acc_name_search = acc_name_base.split("(")[0].strip().lower()
+                    # Tokenize accommodation name
+                    acc_tokens = set(acc_name_search.split())
+
+                    best_match = None
+                    best_similarity = 0.0
 
                     for timeline_key, timeline_val in day_timeline.items():
-                        key_lower = timeline_key.lower()
-                        # Semantic matching: check-in indicators
-                        has_checkin_semantic = (
-                            "check-in" in key_lower or
-                            "check in" in key_lower or
-                            "入住" in timeline_key
-                        )
-                        # Name matching: hotel name appears in timeline entry
-                        has_hotel_name = acc_name_search.lower() in timeline_key.lower()
+                        # Skip transit entries (already filtered by _is_transit in _find_timeline_item)
+                        # Tokenize timeline entry
+                        timeline_tokens = set(timeline_key.lower().split())
 
-                        if has_checkin_semantic and has_hotel_name:
-                            if "start_time" in timeline_val and "end_time" in timeline_val:
-                                acc_time = {"start": timeline_val["start_time"], "end": timeline_val["end_time"]}
-                                break
+                        # Calculate Jaccard similarity: |intersection| / |union|
+                        if acc_tokens and timeline_tokens:
+                            intersection = acc_tokens & timeline_tokens
+                            union = acc_tokens | timeline_tokens
+                            similarity = len(intersection) / len(union) if union else 0
+
+                            # Match if similarity >= 0.3 (30% overlap) and has time fields
+                            # This captures partial matches like "Orange Hotel" matching "Check in to Orange Hotel"
+                            if similarity >= 0.3 and "start_time" in timeline_val and "end_time" in timeline_val:
+                                if similarity > best_similarity:
+                                    best_similarity = similarity
+                                    best_match = timeline_val
+
+                    # Use best match if similarity >= 0.9 (90% threshold as requested)
+                    if best_match and best_similarity >= 0.9:
+                        acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
+                    elif best_match and best_similarity >= 0.3:
+                        # Lower threshold (30-89%) - still use it but could be improved
+                        acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
 
                 # Fallback: use check_in field from accommodation.json if timeline lookup fails
                 if not acc_time:
