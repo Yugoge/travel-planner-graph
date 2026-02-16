@@ -134,7 +134,7 @@ For each day in the trip:
          "skill": "gaode-maps",
          "type": "place_detail",
          "url": "https://...",
-         "display_text": "高德地图"
+         "display_text": "Gaode Maps"
        }
      ]
    }
@@ -366,7 +366,7 @@ ERROR: Validation failed with 1 HIGH severity issues:
 ## Gaode Maps Integration
 
 **When to use Gaode Maps**:
-- For all Chinese domestic destinations (优先使用高德地图)
+- For all Chinese domestic destinations (preferred for China)
 - When searching for restaurants with Chinese cuisine
 - When accurate Chinese addresses needed
 - When POI details in Chinese required

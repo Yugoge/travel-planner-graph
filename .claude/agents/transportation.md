@@ -345,7 +345,7 @@ cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent transportation 
 ## Gaode Maps Integration
 
 **When to use Gaode Maps**:
-- For all Chinese domestic destinations (优先使用高德地图)
+- For all Chinese domestic destinations (preferred for China)
 - When real-time traffic data needed
 - When accurate travel times required
 - For multi-modal route comparisons

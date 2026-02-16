@@ -139,7 +139,7 @@ For each day in the trip:
          "skill": "rednote",
          "type": "note",
          "url": "https://www.xiaohongshu.com/explore/abc123",
-         "display_text": "小红书"
+         "display_text": "RedNote"
        }
      ]
    }
