@@ -903,24 +903,36 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
-                # Fix issue #10 (root cause): Lookup check-in time from timeline.
-                # "hotel check" removed from transit_prefixes so _find_timeline_item()
-                # can now match "Hotel check-in" entries directly (no workaround needed).
-                acc_time = {"start": "15:00", "end": "16:00"}  # default
+                # Extract accommodation check-in time from timeline
+                # NO hardcoded defaults - must find semantic match in timeline
+                acc_time = None
                 if day_timeline:
-                    acc_name_for_lookup = acc.get("name_base", acc.get("name", ""))
-                    timeline_item_acc = self._find_timeline_item(acc_name_for_lookup, day_timeline)
-                    if not timeline_item_acc:
-                        # Fallback: search for "Hotel check-in" as a timeline key name
-                        timeline_item_acc = self._find_timeline_item("Hotel check-in", day_timeline)
-                    if timeline_item_acc and "start_time" in timeline_item_acc and "end_time" in timeline_item_acc:
-                        acc_time = {"start": timeline_item_acc["start_time"], "end": timeline_item_acc["end_time"]}
-                else:
-                    raw_acc_time = acc.get("time")
-                    if raw_acc_time:
-                        normalized_acc_time = self._normalize_time(raw_acc_time)
-                        if normalized_acc_time:
-                            acc_time = normalized_acc_time
+                    # Strategy: Find timeline entry containing check-in semantics
+                    # Match any entry with: "check-in", "check in", "入住", "arrive at [hotel]"
+                    acc_name_search = acc_name_base.split("(")[0].strip()
+
+                    for timeline_key, timeline_val in day_timeline.items():
+                        key_lower = timeline_key.lower()
+                        # Semantic matching: check-in indicators
+                        has_checkin_semantic = (
+                            "check-in" in key_lower or
+                            "check in" in key_lower or
+                            "入住" in timeline_key
+                        )
+                        # Name matching: hotel name appears in timeline entry
+                        has_hotel_name = acc_name_search.lower() in timeline_key.lower()
+
+                        if has_checkin_semantic and has_hotel_name:
+                            if "start_time" in timeline_val and "end_time" in timeline_val:
+                                acc_time = {"start": timeline_val["start_time"], "end": timeline_val["end_time"]}
+                                break
+
+                # Fallback: use check_in field from accommodation.json if timeline lookup fails
+                if not acc_time:
+                    check_in = acc.get("check_in")
+                    if check_in and ":" in check_in:
+                        # Generate 30-minute window from check_in time
+                        acc_time = self._normalize_time(check_in, default_duration_hours=0.5)
 
                 # Parse stars from explicit field
                 stars = acc.get("stars", 0)
