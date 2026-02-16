@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-20260216-080000",
+  "timestamp": "2026-02-16T08:00:00Z",
+  "requirement": {
+    "original": "系统性修复锦里被同时归纳为entertainment和attraction的bug，save脚本加入验证系统，如果存在time完全相同的两个poi且不都是optional，报警；如果time有重叠，提醒",
+    "clarified": "Add cross-agent POI time validation to plan-validate.py to detect duplicate POIs across different agent files (attractions, entertainment, shopping, meals). Save.py already calls plan-validate.py, so adding validation logic there will automatically protect all saves.",
+    "what": "Add POI time conflict detection to plan-validate.py check_cross_agent() function",
+    "why": "Jinli Ancient Street appears in both attractions.json and entertainment.json with identical time slots (16:12-17:30), causing data duplication. No validation currently exists to detect cross-agent POI time conflicts.",
+    "where": [
+      "scripts/plan-validate.py - check_cross_agent() function"
+    ],
+    "scope": {
+      "included": [
+        "Add POI time conflict detection in check_cross_agent()",
+        "Rule 1: If two POIs have IDENTICAL time AND both are NOT optional → HIGH severity error",
+        "Rule 2: If two POIs have OVERLAPPING time → MEDIUM severity warning",
+        "Support POI sources: attractions, entertainment, shopping, meals",
+        "Compare POIs across all agent combinations per day"
+      ],
+      "excluded": [
+        "Modifying save.py (already calls plan-validate.py)",
+        "Fixing existing timeline.json data",
+        "Modifying agent JSON files directly"
+      ]
+    },
+    "success_criteria": [
+      "plan-validate.py detects Jinli duplicate (identical time, both non-optional) as HIGH severity",
+      "Validation distinguishes between identical time (ERROR) and overlapping time (WARNING)",
+      "Optional POIs are excluded from identical-time check",
+      "Save.py automatically blocks saves when HIGH severity POI conflicts detected"
+    ],
+    "constraints": [
+      "Must not break existing validation logic",
+      "Must preserve backward compatibility with current JSON formats",
+      "Must handle missing 'time' or 'optional' fields gracefully"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Jinli Ancient Street appears in both attractions.json and entertainment.json with identical time (16:12-17:30), both marked as non-optional",
+    "root_cause": "plan-validate.py check_cross_agent() function lacks POI time conflict detection. Current cross-agent checks only validate: day count consistency, date consistency, location consistency, budget sum consistency. No logic exists to detect when the same POI (or different POIs with identical times) appears across multiple agent files.",
+    "root_cause_commit": "No specific commit - validation gap exists since plan-validate.py creation",
+    "why_introduced": "check_cross_agent() was designed for structural consistency (dates, locations, budgets) but not content-level conflict detection (POI time overlaps)",
+    "why_problematic": "Allows timeline agent or individual agents to create conflicting schedules where user is expected to be in two places at the same time. This violates the fundamental constraint that a person can only be at one location at any given time.",
+    "timeline": "Validation gap exists since scripts/plan-validate.py creation",
+    "affected_files": [
+      "scripts/plan-validate.py",
+      "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+      "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json"
+    ]
+  },
+  "context": {
+    "codebase_state": "Working on Day 3 review, discovered Jinli duplication",
+    "validation_architecture": {
+      "save.py": "Calls plan-validate.py before all writes, blocks on HIGH severity",
+      "plan-validate.py": "6 validation categories, check_cross_agent() is Category 6",
+      "check_cross_agent": "Currently checks: day count, dates, locations, budget sums - MISSING: POI time conflicts"
+    },
+    "file_contents": {
+      "plan-validate.py_line_872": "check_cross_agent() function definition",
+      "jinli_attractions": "{name_local: 锦里古街, time: {start: 16:12, end: 17:30}, optional: false}",
+      "jinli_entertainment": "{name_local: 锦里古街, time: {start: 16:12, end: 17:30}, optional: false}"
+    },
+    "dependencies": {
+      "runtime": "Python 3.11",
+      "venv": "/root/.claude/venv"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add POI time conflict detection to check_cross_agent() function in plan-validate.py. Collect all POIs from attractions, entertainment, shopping, meals per day, then check for time conflicts (identical or overlapping).",
+    "files_to_modify": [
+      "scripts/plan-validate.py - Add POI time conflict logic to check_cross_agent()"
+    ],
+    "validation_approach": "QA will run plan-validate.py on china trip data and verify Jinli conflict is detected as HIGH severity"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": false
+  }
+}

@@ -199,7 +199,7 @@ For each day, create timeline dictionary with:
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
    - `name_local`: Local language — "打车前往[目的地]", "乘地铁前往[目的地]", "步行前往[目的地]"
-   - `type_base`: "walk" | "taxi" | "metro" | "bus" | "train" | "car" | "ferry"
+   - `type_base`: "walk" | "taxi" | "metro" | "bus" | "ferry"
    - `type_local`: local language equivalent (e.g., "步行", "出租车", "地铁")
    - `icon`: emoji icon for display (e.g., "🚶", "🚕", "🚇")
    - `start_time`, `end_time`: HH:MM format
@@ -371,12 +371,12 @@ cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent timeline
 ```
 ERROR: Validation failed with 1 HIGH severity issues:
   - Day 1, type_base: SCHEMA VIOLATION: Invalid type 'meal' in travel_segments
-    (travel_segments must only contain transport types: bus, car, ferry, metro, taxi, train, walk)
+    (travel_segments must only contain intra-city transport types: walk, taxi, metro, bus, ferry)
 ```
 
 **IMPORTANT - travel_segments Schema**:
 The `type_base` field in travel_segments MUST be one of:
-- "walk", "taxi", "metro", "bus", "train", "car", "ferry"
+- "walk", "taxi", "metro", "bus", "ferry"
 
 **NEVER** use these types in travel_segments:
 - ❌ "meal", "breakfast", "lunch", "dinner"
