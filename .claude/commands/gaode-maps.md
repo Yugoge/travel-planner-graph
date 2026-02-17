@@ -160,17 +160,15 @@ See `.claude/agents/transportation.md` for integration details.
 
 ## For Other Agents
 
-**Meals Agent**: Use `poi_search.py` to find restaurants
+All agents use `poi_search.py` with the same pattern — vary keyword, city, and type code per use case:
+
 ```bash
+# General pattern: poi_search.py keyword "<search_term>" "<city>" "<type_code>" <limit>
 source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
-**Accommodation Agent**: Use `poi_search.py` for hotel search, `geocoding.py` for address validation
-```bash
-source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
-```
+Common type codes: `050100` (restaurants), `100000` (hotels/accommodation), `110000` (attractions/sightseeing).
 
-**Attractions Agent**: Use `poi_search.py` to discover attractions, `utilities.py` for distances
-```bash
-source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "景点" "成都" "110000" 15
-```
+- **Meals Agent**: keyword = restaurant type, city = day's location
+- **Accommodation Agent**: keyword = hotel type, also use `geocoding.py` for address validation
+- **Attractions Agent**: keyword = attraction type, also use `utilities.py` for distance calculations
