@@ -287,10 +287,10 @@ Generate warnings for any conflicts detected.
 After generating timeline dictionary and travel_segments, run route optimization:
 
 ```bash
-source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
+source venv/bin/activate && python scripts/optimize-route-order.py {destination-slug}
 ```
 
-**What optimize-route.py does**:
+**What optimize-route-order.py does**:
 - Reads GPS coordinates from meals.json, attractions.json, entertainment.json, shopping.json
 - Calculates haversine distances between all locations
 - Detects A→B→A inefficiency patterns (visiting nearby locations with far travel in between)
@@ -324,7 +324,7 @@ source venv/bin/activate && python scripts/optimize-route.py {destination-slug}
    ```
 
 4. **Handle missing coordinates gracefully**:
-   - If optimize-route.py exits with code 1 (missing coordinates), continue with empty optimization warnings
+   - If optimize-route-order.py exits with code 1 (missing coordinates), continue with empty optimization warnings
    - Do NOT fail timeline generation due to missing GPS data
 
 **Exit code handling**:

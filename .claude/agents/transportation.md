@@ -304,10 +304,10 @@ Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
 **Usage**:
 ```bash
 # Save from file
-python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input data.json
+python scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input data.json
 
 # Save from stdin
-cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent transportation \
+cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
     --data-file data/chongqing-4day/transportation.json \
     --trip-dir data/chongqing-4day
 ```
@@ -499,7 +499,7 @@ cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent transportation 
 
 After generating or modifying data, validate output by running:
 ```bash
-source venv/bin/activate || source .venv/bin/activate && python3 scripts/plan-validate.py <trip-directory> --agent transportation
+source venv/bin/activate || source .venv/bin/activate && python scripts/plan-validate.py <trip-directory> --agent transportation
 ```
 
 Fix any HIGH or MEDIUM issues before considering the task complete.
@@ -517,17 +517,17 @@ Use `scripts/load.py` for reading agent data with 3-level access:
 
 **Level 1** - Day metadata only:
 ```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 1
+python scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 1
 ```
 
 **Level 2** - POI titles/keys:
 ```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 2 --day 3
+python scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 2 --day 3
 ```
 
 **Level 3** - Full POI data:
 ```bash
-python3 scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 3 --day 3 --poi POIKEY
+python scripts/load.py --trip TRIP_SLUG --agent AGENT_NAME --level 3 --day 3 --poi POIKEY
 ```
 
 ### Saving Data (save.py)
@@ -536,12 +536,12 @@ Use `scripts/save.py` for writing agent data with mandatory validation:
 
 **Save from file**:
 ```bash
-python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input modified_data.json
+python scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input modified_data.json
 ```
 
 **Save from stdin**:
 ```bash
-cat modified_data.json | python3 scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME
+cat modified_data.json | python scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME
 ```
 
 **Features**:

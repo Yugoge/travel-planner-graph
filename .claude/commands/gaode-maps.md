@@ -109,7 +109,7 @@ Scripts use environment variable `AMAP_MAPS_API_KEY` (defaults to project key if
 **To use your own key**:
 ```bash
 export AMAP_MAPS_API_KEY="your_key_here"
-source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
+source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/geocoding.py geocode "北京市"
 ```
 
 **Get your own API key**: https://console.amap.com/dev/key/app
@@ -162,12 +162,12 @@ See `.claude/agents/transportation.md` for integration details.
 
 **Meals Agent**: Use `poi_search.py` to find restaurants
 ```bash
-source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
+source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆" "050100" 10
 ```
 
 **Accommodation Agent**: Use `poi_search.py` for hotel search, `geocoding.py` for address validation
 ```bash
-source /root/.claude/venv/bin/activate && source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
+source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scripts/poi_search.py keyword "酒店" "成都" "100000" 20
 ```
 
 **Attractions Agent**: Use `poi_search.py` to discover attractions, `utilities.py` for distances
