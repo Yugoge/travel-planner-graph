@@ -306,6 +306,23 @@ echo "✓ Copied to: /${DESTINATION_SLUG}/${PLAN_DATE}/index.html (${FILE_SIZE} 
 # Create .nojekyll to disable Jekyll processing
 touch "${DEPLOY_DIR}/.nojekyll"
 
+# Create .gitignore to prevent accidental inclusion of non-web files
+cat > "${DEPLOY_DIR}/.gitignore" << 'EOF_GITIGNORE'
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.claude/
+scripts/
+output/
+data/
+*.log
+*.tmp
+EOF_GITIGNORE
+
 # Step 6: Generate/update index.html
 echo ""
 echo "📋 Step 6: Generating index page..."

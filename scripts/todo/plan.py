@@ -85,6 +85,11 @@ def get_todos():
             "status": "pending"
         },
         {
+            "content": "Step 14a: Fetch Images for Current Day",
+            "activeForm": "Step 14a: Fetching Images for Current Day",
+            "status": "pending"
+        },
+        {
             "content": "Step 15: Day-by-Day Refinement Loop (Nested Loop)",
             "activeForm": "Step 15: Executing Day-by-Day Refinement",
             "status": "pending"
