@@ -2718,10 +2718,13 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   }
   // Root cause fix: Standardize optional chaining for all day properties
   if (day.meals?.breakfast) add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
+  if (day.meals?.brunch) add(day.meals.brunch, 'meal', L('cat_brunch', lang));
   if (day.meals?.lunch) add(day.meals.lunch, 'meal', L('cat_lunch', lang));
   if (day.meals?.dinner) add(day.meals.dinner, 'meal', L('cat_dinner', lang));
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
+  // Root cause fix: shopping items were missing from timeline - add them here
+  day.shopping?.forEach(s => add(s, 'shopping', L('cat_shopping', lang)));
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
   // Fix issue #6: Add travel segments from timeline
   day.travel_segments?.forEach(t => {
