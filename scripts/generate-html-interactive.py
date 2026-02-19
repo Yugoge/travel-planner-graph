@@ -117,9 +117,9 @@ class InteractiveHTMLGenerator:
         "trip_type": "Trip Type", "base_location": "Base Location",
         "period": "Period", "travelers": "Travelers", "budget_trip": "Budget / Trip",
         "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner",
-        "cat_breakfast": "Breakfast", "cat_lunch": "Lunch", "cat_dinner": "Dinner",
+        "cat_breakfast": "Breakfast", "cat_brunch": "Brunch", "cat_lunch": "Lunch", "cat_dinner": "Dinner",
         "cat_attraction": "Attraction", "cat_entertainment": "Entertainment",
-        "cat_checkin": "Check-in",
+        "cat_shopping": "Shopping", "cat_checkin": "Check-in",
         "kanban_view": "Kanban View", "timeline_view": "Timeline View",
         "prepaid": "Prepaid", "free": "Free", "optional": "Optional",
         "show_less": "Show less", "show_more": "Show more",
@@ -2725,8 +2725,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
   day.shopping?.forEach(s => add(s, 'shopping', L('cat_shopping', lang)));
+  // Accommodation: time field is set by timeline agent after return-to-hotel travel segment.
+  // timeline agent is the single source of truth for check-in time placement.
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
-  // Fix issue #6: Add travel segments from timeline
+  // Fix issue #6: Add travel segments from timeline (includes return-to-hotel segment)
   day.travel_segments?.forEach(t => {
     const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);

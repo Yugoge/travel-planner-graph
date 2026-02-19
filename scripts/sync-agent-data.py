@@ -419,22 +419,70 @@ class AgentDataSyncer:
             if not accom or not isinstance(accom, dict):
                 continue
 
-            # Accommodation typically has check_in/check_out, not time
-            # But sync name format if needed
+            # Accommodation needs time: {start, end} for HTML renderer.
+            # Source of truth: return-to-hotel travel_segment end_time in timeline,
+            # or the accommodation entry itself if found directly in timeline.
             original = deepcopy(accom)
-            # Try to find check-in time from timeline
             accom_name = accom.get("name_base", accom.get("name", ""))
+
+            # Strategy 1: find "Return to [Hotel]" travel segment end_time
+            return_seg_time = None
+            day_obj = None
+            # We need raw timeline day data (travel_segments), not just dict keys
+            # timeline_by_day is keyed by day_num and contains the timeline dict
+            # Travel segments are in the parent day object — access via self._load_json
+            tl_data = self._load_json("timeline.json")
+            if tl_data and "days" in tl_data:
+                for tl_day in tl_data["days"]:
+                    if tl_day.get("day") == day_num:
+                        day_obj = tl_day
+                        break
+            if day_obj:
+                # Use the LAST travel segment that explicitly says "Return to" or "返回酒店"
+                # (not just any segment going to a hotel, e.g. arrival from airport)
+                for seg in day_obj.get("travel_segments", []):
+                    seg_name = seg.get("name_base", "")
+                    seg_local = seg.get("name_local", "")
+                    is_return = (
+                        seg_name.lower().startswith("return to") or
+                        "返回" in seg_local
+                    )
+                    if is_return:
+                        return_seg_time = seg.get("end_time")
+                        # Don't break — use the LAST matching segment
+
+            # Strategy 2: find accommodation directly in timeline dict
             tl_item = self._find_timeline_item(accom_name, day_tl)
-            if tl_item and "start_time" in tl_item:
-                if not accom.get("check_in_time"):
-                    accom["check_in_time"] = tl_item["start_time"]
+
+            # Determine check-in start time
+            checkin_start = None
+            if return_seg_time:
+                checkin_start = return_seg_time
+            elif tl_item and "start_time" in tl_item:
+                checkin_start = tl_item["start_time"]
+            elif accom.get("check_in"):
+                checkin_start = accom["check_in"]
+
+            if checkin_start:
+                old_time = accom.get("time")
+                # Build end time = start + 30 min
+                try:
+                    h, m = map(int, checkin_start.split(":"))
+                    end_h = min(h + 1, 23)
+                    checkin_end = f"{end_h:02d}:{m:02d}"
+                except Exception:
+                    checkin_end = checkin_start
+                new_time = {"start": checkin_start, "end": checkin_end}
+                if accom.get("time") != new_time:
+                    accom["time"] = new_time
+                    accom["check_in_time"] = checkin_start
                     self.report["timeline_injections"].append({
                         "agent": "accommodation",
                         "day": day_num,
                         "item": accom_name,
-                        "old_time": None,
-                        "new_time": tl_item["start_time"],
-                        "field": "check_in_time",
+                        "old_time": old_time,
+                        "new_time": new_time,
+                        "field": "time",
                     })
 
             if accom != original:

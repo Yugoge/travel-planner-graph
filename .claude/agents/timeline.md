@@ -270,6 +270,37 @@ For each day, create timeline dictionary with:
 - CORRECT: "Taxi to Chongqing North Station" / "打车前往重庆北站"
 - WRONG: "Take train to Chongqing" (confuses transit TO station with the train journey itself)
 
+**MANDATORY: Return-to-Hotel travel_segment (every day)**
+
+Every day MUST end with a travel_segment representing the journey back to the hotel. This is non-negotiable — even if the last activity is near the hotel.
+
+**Rules**:
+1. Identify the last non-accommodation activity of the day (e.g., dinner, last shop, last entertainment)
+2. Its `end_time` = departure time for the return journey
+3. Read `accommodation.json` for hotel name and coordinates
+4. Estimate travel mode based on distance from last activity to hotel:
+   - ≤ 800m → "walk" (🚶), ~10 min
+   - 800m–3km → "metro" (🚇) or "taxi" (🚕), ~15–20 min
+   - > 3km → "taxi" (🚕), ~20–30 min
+5. Generate segment:
+   ```json
+   {
+     "name_base": "Return to [Hotel Name]",
+     "name_local": "返回[酒店中文名]",
+     "type_base": "taxi",
+     "type_local": "出租车",
+     "icon": "🚕",
+     "start_time": "[last_activity_end_time]",
+     "end_time": "[start_time + duration]",
+     "duration_minutes": 20
+   }
+   ```
+6. This segment's `end_time` = hotel check_in display time in timeline
+
+7. **Write accommodation `time` field via sync**: After generating the return-to-hotel segment, the accommodation entry needs a `time` field so the HTML renderer can place it correctly. This is handled automatically by `sync-agent-data.py` (Step 5a) — it reads the return-to-hotel segment's `end_time` from timeline.json and injects it as `time.start` into accommodation.json. No manual action required here.
+
+**Exception**: Location-change days (flight/train to new city) — skip return-to-hotel segment if traveler arrives at new city hotel directly.
+
 Validate:
 - No overlapping activities
 - Realistic travel times between locations
@@ -393,6 +424,19 @@ source venv/bin/activate && python scripts/optimize-route-order.py {destination-
    - Exit code 2 = write failed → REPORT ERROR
 
    If exit code is NOT 0, you MUST stop and report error to user.
+
+5a. **Sync timeline times back to all agent files** (MANDATORY after successful save):
+
+   **Root Cause**: Timeline agent calculates authoritative times, but shopping.json, entertainment.json, attractions.json etc. still hold stale times from when specialist agents first wrote them. HTML renderer reads those stale times directly, causing timeline to appear discontinuous or missing items.
+
+   Run sync after every successful save.py call:
+   ```bash
+   source venv/bin/activate && python scripts/sync-agent-data.py {destination-slug} --skip-html
+   ```
+
+   Exit codes:
+   - Exit code 0: Sync successful → proceed to Step 6
+   - Non-zero: Log warning but do NOT fail — timeline.json is correctly saved, sync can be retried by orchestrator
 
 6. **Return completion status**:
    Only after exit code 0, return:
