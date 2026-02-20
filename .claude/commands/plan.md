@@ -828,15 +828,12 @@ Please choose an option or describe specific changes you'd like.
 **USER CHOICE PROCESSING**:
 
 **Option 1 - "This day is perfect"**:
-- Execute Step 14a (image fetching gate) - see below
-- Set `day_confirmed_perfect = true` (done in Step 14a Substep 4)
-- Exit INNER loop
-- OUTER loop increments `current_day_index += 1`
-- Present next day (if exists)
 
----
+**Substep: Fetch Images for Confirmed Day**
 
-#### Step 14a: Fetch Images for Confirmed Day
+**TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
+
+**PURPOSE**: Ensure all POIs for Day N have images before advancing to next day
 
 **TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
 
@@ -932,7 +929,7 @@ Please enter your choice (1, 2, or 3):
   - Add day to `days_missing_images` list
   - Proceed to Substep 4
 
-**Substep 4: Success Confirmation**
+**Substep 4: Success Confirmation and Exit INNER Loop**
 
 Print success message:
 
@@ -946,6 +943,8 @@ Proceeding to Day ${current_day_index + 1}...
 - Reset `retry_count_per_day[current_day_index]` to 0
 - Set `day_confirmed_perfect = true`
 - Exit INNER loop (workflow proceeds to increment `current_day_index`)
+
+**End of Option 1 processing. Continue to OUTER loop for next day.**
 
 ---
 

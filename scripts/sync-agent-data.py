@@ -465,11 +465,14 @@ class AgentDataSyncer:
 
             if checkin_start:
                 old_time = accom.get("time")
-                # Build end time = start + 30 min
+                # Build end time = start + 60 min (capped at 23:59)
                 try:
                     h, m = map(int, checkin_start.split(":"))
-                    end_h = min(h + 1, 23)
-                    checkin_end = f"{end_h:02d}:{m:02d}"
+                    total_min = h * 60 + m + 60
+                    if total_min >= 24 * 60:
+                        checkin_end = "23:59"
+                    else:
+                        checkin_end = f"{total_min // 60:02d}:{total_min % 60:02d}"
                 except Exception:
                     checkin_end = checkin_start
                 new_time = {"start": checkin_start, "end": checkin_end}

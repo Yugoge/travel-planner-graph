@@ -482,15 +482,12 @@ Please choose an option or describe specific changes you'd like.
 **USER CHOICE PROCESSING**:
 
 **Option 1 - "This day is perfect"**:
-- Execute Step 4a (image fetching gate) - see below
-- Set `day_confirmed_perfect = true` (done in Step 4a Substep 4)
-- Exit INNER loop
-- OUTER loop increments `current_day_index += 1`
-- Present next day (if exists)
 
----
+**Substep: Fetch Images for Confirmed Day**
 
-#### Step 3a: Fetch Images for Confirmed Day
+**TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
+
+**PURPOSE**: Ensure all POIs for Day N have images before advancing to next day
 
 **TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
 

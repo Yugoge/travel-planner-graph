@@ -278,11 +278,8 @@ Every day MUST end with a travel_segment representing the journey back to the ho
 1. Identify the last non-accommodation activity of the day (e.g., dinner, last shop, last entertainment)
 2. Its `end_time` = departure time for the return journey
 3. Read `accommodation.json` for hotel name and coordinates
-4. Estimate travel mode based on distance from last activity to hotel:
-   - ≤ 800m → "walk" (🚶), ~10 min
-   - 800m–3km → "metro" (🚇) or "taxi" (🚕), ~15–20 min
-   - > 3km → "taxi" (🚕), ~20–30 min
-5. Generate segment:
+4. **Use gaode-maps or google-maps to determine travel mode and duration**
+5. Generate segment using real data from maps:
    ```json
    {
      "name_base": "Return to [Hotel Name]",
