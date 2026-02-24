@@ -8,8 +8,10 @@ set -e
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_NAME="${GITHUB_PAGES_REPO:-travel-planner-graph}"
 BRANCH="${GITHUB_PAGES_BRANCH:-gh-pages}"
-TEMP_BASE="${TEMP_DIR:-/tmp}"
-DEPLOY_DIR="${TEMP_BASE}/${REPO_NAME}-deploy"
+
+# Create secure temporary directory
+DEPLOY_DIR=$(mktemp -d -t travel-planner-deploy-XXXXXX)
+trap "rm -rf '$DEPLOY_DIR'" EXIT INT TERM
 
 # Parse command line argument
 if [ -z "$1" ]; then

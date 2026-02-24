@@ -253,9 +253,7 @@ For each day, create timeline dictionary with:
    - Match each route's destination to the next activity
    - Use `recommended_transport` field for type_base (Metro → "metro", Bus → "bus", Taxi/Didi → "taxi", Walking → "walk")
 
-2. For gaps without explicit route data, infer mode:
-   - ≤ 10 min + ≤ 1km → "walk"
-   - Default → "taxi"
+2. For gaps without explicit route data, query gaode-maps for actual routing options and select based on returned data (distance, duration, complexity)
 
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
@@ -304,19 +302,22 @@ Every day MUST end with a travel_segment representing the journey back to the ho
      --destination "{hotel_lat},{hotel_lng}"
    ```
 
-4. **Intelligently select optimal transport mode**:
+4. **Choose optimal transport mode based on gaode-maps data**:
 
-   Analyze all three routes returned by gaode-maps and choose based on:
+   Analyze the three routes returned by gaode-maps API:
 
-   - **Distance**: If walking route ≤ 800m and duration ≤ 15min → prefer walking
-   - **Time of day**: If departure time ≥ 22:00 → strongly prefer taxi (metro may be closed or unsafe)
-   - **Transit complexity**: If transit requires >2 transfers or total time >1.5x driving time → prefer taxi
-   - **Cost vs convenience**: Balance taxi cost (~¥20-50) against metro convenience
+   - **Walking route**: Review actual distance and duration from API response
+   - **Transit route**: Review duration, number of transfers, and walking segments
+   - **Driving route**: Review duration and estimated cost
 
-   **Selection priority**:
-   1. Walk (if distance ≤ 800m, duration ≤ 15min, and time < 22:00)
-   2. Metro/Transit (if reasonable transfers, time < 22:00, saves significant cost)
-   3. Taxi (default fallback, especially for late night)
+   Select the most reasonable option for this specific situation by analyzing the actual data. Consider:
+   - Time differences between the options
+   - Transfer complexity versus direct routes
+   - Departure time and local context (metro operating hours vary by city)
+   - User convenience versus cost tradeoffs
+   - Weather conditions and traveler circumstances
+
+   Make the decision based on the actual data returned from gaode-maps, not predefined thresholds. Each situation is unique and requires contextual judgment.
 
 5. **Generate segment with real API data**:
    ```json
@@ -380,10 +381,10 @@ Generate warnings for any conflicts detected.
 After generating timeline dictionary and travel_segments, run route optimization:
 
 ```bash
-source venv/bin/activate && python scripts/optimize-route-order.py {destination-slug}
+source venv/bin/activate && python scripts/calculate-route-distances.py {destination-slug}
 ```
 
-**What optimize-route-order.py does**:
+**What calculate-route-distances.py does**:
 - Reads GPS coordinates from meals.json, attractions.json, entertainment.json, shopping.json
 - Calculates haversine distances between all locations
 - Detects A→B→A inefficiency patterns (visiting nearby locations with far travel in between)
@@ -417,7 +418,7 @@ source venv/bin/activate && python scripts/optimize-route-order.py {destination-
    ```
 
 4. **Handle missing coordinates gracefully**:
-   - If optimize-route-order.py exits with code 1 (missing coordinates), continue with empty optimization warnings
+   - If calculate-route-distances.py exits with code 1 (missing coordinates), continue with empty optimization warnings
    - Do NOT fail timeline generation due to missing GPS data
 
 **Exit code handling**:

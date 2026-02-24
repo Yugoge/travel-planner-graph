@@ -63,11 +63,16 @@ class InteractiveHTMLGenerator:
             with open(config_path, 'r') as f:
                 config = json.load(f)
             cny_to_eur = config.get("fallback_exchange_rate", 0.128)
-            rate = 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8
-            print(f"Exchange rate (config fallback): 1 EUR = {rate} CNY", file=sys.stderr)
-            return rate
-        except (FileNotFoundError, json.JSONDecodeError):
-            return 7.8
+            if cny_to_eur > 0:
+                rate = 1.0 / cny_to_eur
+                print(f"Exchange rate (config fallback): 1 EUR = {rate} CNY", file=sys.stderr)
+                return rate
+            else:
+                raise ValueError("Invalid fallback_exchange_rate in config")
+        except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
+            print(f"ERROR: Failed to fetch EUR→CNY exchange rate: {e}", file=sys.stderr)
+            print("Please check network connection or update config/currency-config.json", file=sys.stderr)
+            raise RuntimeError("Exchange rate unavailable - cannot generate accurate budget display")
 
     def _load_display_currency(self) -> tuple:
         """Load display currency from config/currency-config.json."""
@@ -94,8 +99,10 @@ class InteractiveHTMLGenerator:
             if source_currency == "CNY":
                 return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
             elif source_currency == "USD":
-                # USD to EUR (approximate: 1 USD ~ 0.92 EUR)
-                return amount * 0.92
+                # USD conversion not supported - would require real-time USD→EUR rate
+                print(f"WARNING: USD→EUR conversion not implemented. Cannot convert ${amount}", file=sys.stderr)
+                print("Please update budget data to use CNY or EUR", file=sys.stderr)
+                return 0  # Return 0 to make the missing data obvious
             else:
                 # Unknown currency, treat as CNY
                 return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
