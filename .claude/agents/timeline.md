@@ -274,29 +274,94 @@ For each day, create timeline dictionary with:
 
 Every day MUST end with a travel_segment representing the journey back to the hotel. This is non-negotiable — even if the last activity is near the hotel.
 
-**Rules**:
-1. Identify the last non-accommodation activity of the day (e.g., dinner, last shop, last entertainment)
-2. Its `end_time` = departure time for the return journey
-3. Read `accommodation.json` for hotel name and coordinates
-4. **Use gaode-maps or google-maps to determine travel mode and duration**
-5. Generate segment using real data from maps:
+**Workflow for generating return-to-hotel segment**:
+
+1. **Identify last activity of the day**:
+   - Find the last non-accommodation activity (dinner, shop, entertainment, attraction)
+   - Extract its `end_time` (this becomes return journey departure time)
+   - Extract its coordinates from the source agent file (meals.json, shopping.json, etc.)
+
+2. **Get hotel information**:
+   - Read `accommodation.json` for current day
+   - Extract hotel `name_base`, `name_local`, and `coordinates`
+
+3. **Query routing options via gaode-maps skill**:
+   ```bash
+   # Walking route
+   /gaode-maps route-walk \
+     --origin "{last_activity_lat},{last_activity_lng}" \
+     --destination "{hotel_lat},{hotel_lng}"
+
+   # Transit route (metro/bus)
+   /gaode-maps route-transit \
+     --origin "{last_activity_lat},{last_activity_lng}" \
+     --destination "{hotel_lat},{hotel_lng}" \
+     --strategy fastest
+
+   # Driving route (taxi)
+   /gaode-maps route-drive \
+     --origin "{last_activity_lat},{last_activity_lng}" \
+     --destination "{hotel_lat},{hotel_lng}"
+   ```
+
+4. **Intelligently select optimal transport mode**:
+
+   Analyze all three routes returned by gaode-maps and choose based on:
+
+   - **Distance**: If walking route ≤ 800m and duration ≤ 15min → prefer walking
+   - **Time of day**: If departure time ≥ 22:00 → strongly prefer taxi (metro may be closed or unsafe)
+   - **Transit complexity**: If transit requires >2 transfers or total time >1.5x driving time → prefer taxi
+   - **Cost vs convenience**: Balance taxi cost (~¥20-50) against metro convenience
+
+   **Selection priority**:
+   1. Walk (if distance ≤ 800m, duration ≤ 15min, and time < 22:00)
+   2. Metro/Transit (if reasonable transfers, time < 22:00, saves significant cost)
+   3. Taxi (default fallback, especially for late night)
+
+5. **Generate segment with real API data**:
    ```json
    {
-     "name_base": "Return to [Hotel Name]",
-     "name_local": "返回[酒店中文名]",
-     "type_base": "taxi",
-     "type_local": "出租车",
-     "icon": "🚕",
-     "start_time": "[last_activity_end_time]",
-     "end_time": "[start_time + duration]",
-     "duration_minutes": 20
+     "name_base": "Return to [Hotel Name from accommodation.json]",
+     "name_local": "返回[Hotel name_local from accommodation.json]",
+     "type_base": "[walk|metro|taxi from selected route]",
+     "type_local": "[步行|地铁|出租车 based on type_base]",
+     "icon": "[🚶|🚇|🚕 based on type_base]",
+     "start_time": "[last_activity end_time]",
+     "end_time": "[start_time + duration from gaode-maps API]",
+     "duration_minutes": [exact duration from gaode-maps API response],
+     "origin": {
+       "name": "[last activity name]",
+       "coordinates": {
+         "lat": [last_activity_lat],
+         "lng": [last_activity_lng]
+       }
+     },
+     "destination": {
+       "name": "[hotel name_base]",
+       "coordinates": {
+         "lat": [hotel_lat],
+         "lng": [hotel_lng]
+       }
+     },
+     "route_details": {
+       "distance_meters": [from API],
+       "steps": [optional: key steps from API for complex routes]
+     }
    }
    ```
-6. This segment's `end_time` = hotel check_in display time in timeline
 
-7. **Write accommodation `time` field via sync**: After generating the return-to-hotel segment, the accommodation entry needs a `time` field so the HTML renderer can place it correctly. This is handled automatically by `sync-agent-data.py` (Step 5a) — it reads the return-to-hotel segment's `end_time` from timeline.json and injects it as `time.start` into accommodation.json. No manual action required here.
+6. **Handle edge cases**:
+   - **Late-night arrival** (end_time > 23:30): Cap end_time at 23:59
+   - **Location-change days**: If day ends with flight/train arrival directly to hotel, skip return segment
+   - **Missing coordinates**: If last activity lacks coordinates, use POI search to geocode
 
-**Exception**: Location-change days (flight/train to new city) — skip return-to-hotel segment if traveler arrives at new city hotel directly.
+7. **Sync handles accommodation time injection**:
+   - After timeline.json is saved with return segment
+   - `sync-agent-data.py` (Step 5a) automatically reads return segment's `end_time`
+   - Injects as `time.start` into accommodation.json
+   - No manual action required here
+
+**Critical**: NEVER hardcode durations or transport modes. ALWAYS use real gaode-maps API data.
 
 Validate:
 - No overlapping activities
