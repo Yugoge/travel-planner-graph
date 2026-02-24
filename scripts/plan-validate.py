@@ -713,7 +713,7 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                 if ce > ns:
                     combined = (cn + " " + nn).lower()
                     intentional = any(kw in combined for kw in intentional_kw)
-                    sev = Severity.INFO if intentional else Severity.MEDIUM
+                    sev = Severity.INFO if intentional else Severity.HIGH
                     issues.append(Issue(sev, Category.SEMANTIC, "timeline", trip, dn,
                                         f"Day {dn}", "timeline",
                                         f"'{cn}' ({cs}-{ce}) overlaps '{nn}' ({ns}-{ne})"
@@ -721,6 +721,38 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
 
         # 4d-2. Travel segments validation (NEW - prevents breakfast-in-travel_segments bug)
         issues.extend(check_travel_segments(timeline_data, trip))
+
+        # 4d-3. Required activities validation (NEW - enforce breakfast/lunch/dinner/hotel)
+        for day in days:
+            dn = day.get("day", 0)
+            tl = day.get("timeline", {})
+            activity_names = " ".join(tl.keys()).lower()
+
+            # Check for required meals
+            meal_keywords = {
+                "breakfast": ["breakfast", "早餐", "brunch"],
+                "lunch": ["lunch", "午餐", "brunch"],
+                "dinner": ["dinner", "晚餐", "supper"]
+            }
+
+            for meal_type, keywords in meal_keywords.items():
+                has_meal = any(kw in activity_names for kw in keywords)
+                if not has_meal:
+                    issues.append(Issue(
+                        Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
+                        f"Day {dn}", "timeline",
+                        f"Missing required {meal_type} activity in timeline"
+                    ))
+
+            # Check for hotel check-in or arrival (unless it's a travel day ending at hotel)
+            hotel_keywords = ["check in", "check-in", "arrive at", "入住", "到达酒店"]
+            has_hotel = any(kw in activity_names for kw in hotel_keywords)
+            if not has_hotel:
+                issues.append(Issue(
+                    Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
+                    f"Day {dn}", "timeline",
+                    "Missing required hotel check-in/arrival activity in timeline"
+                ))
 
     # 4e. Transportation departure < arrival
     if agent == "transportation":
