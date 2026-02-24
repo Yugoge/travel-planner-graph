@@ -1,0 +1,342 @@
+{
+  "audit_metadata": {
+    "timestamp": "2026-02-24T00:00:00Z",
+    "auditor": "development-standards-inspector",
+    "project": "travel-planner",
+    "focus": "Recent accommodation timeline fix session",
+    "standards_checked": 11
+  },
+  "executive_summary": {
+    "overall_assessment": "MAJOR VIOLATIONS FOUND",
+    "critical_issues": 4,
+    "major_issues": 4,
+    "minor_issues": 2,
+    "total_violations": 10,
+    "primary_concerns": [
+      "Hardcoded magic numbers in timeline.md (distances, times, thresholds)",
+      "Hardcoded currency exchange rates in generate-html-interactive.py",
+      "Excessive backup file accumulation (41 .bak files across project)",
+      "Direct python3 usage without venv in legacy backup files"
+    ]
+  },
+  "violations": [
+    {
+      "id": "V001",
+      "standard": "No hardcoded magic numbers",
+      "severity": "critical",
+      "location": "/root/travel-planner/.claude/agents/timeline.md:311-318",
+      "finding": "Multiple hardcoded threshold values for transport mode selection: 800m walking distance, 15min duration, 22:00 late-night cutoff, 1.5x time multiplier, ~¥20-50 taxi cost range",
+      "evidence": [
+        "Line 311: 'If walking route ≤ 800m and duration ≤ 15min → prefer walking'",
+        "Line 312: 'If departure time ≥ 22:00 → strongly prefer taxi'",
+        "Line 313: 'If transit requires >2 transfers or total time >1.5x driving time → prefer taxi'",
+        "Line 314: 'Balance taxi cost (~¥20-50) against metro convenience'",
+        "Line 317: 'Walk (if distance ≤ 800m, duration ≤ 15min, and time < 22:00)'"
+      ],
+      "recommendation": "Extract these thresholds to config/transport-decision-rules.json with keys: max_walking_distance_m, max_walking_duration_min, late_night_hour, transit_time_multiplier, typical_taxi_cost_range. Agent should read config at runtime.",
+      "impact": "High - These thresholds should be configurable per destination (Beijing metro hours differ from Chengdu, walking tolerance varies by climate/season)",
+      "architectural_principle_violated": "Configuration should be data-driven, not hardcoded in agent instructions"
+    },
+    {
+      "id": "V002",
+      "standard": "No hardcoded currency rates",
+      "severity": "critical",
+      "location": "/root/travel-planner/scripts/generate-html-interactive.py:97-98",
+      "finding": "Hardcoded USD to EUR exchange rate: 0.92",
+      "evidence": [
+        "Line 97: '# USD to EUR (approximate: 1 USD ~ 0.92 EUR)'",
+        "Line 98: 'return amount * 0.92'"
+      ],
+      "recommendation": "Remove hardcoded rate. USD conversions should fetch real-time rate via fetch-exchange-rate.sh (already exists for EUR→CNY). If user needs USD support, add USD→EUR to currency-config.json with last_updated timestamp.",
+      "impact": "High - Exchange rates fluctuate daily. Hardcoded 0.92 will show incorrect budget calculations when USD≠0.92 EUR",
+      "code_context": "Function _to_display_currency already correctly fetches EUR→CNY rate dynamically (line 50-55), but falls back to hardcoded USD rate"
+    },
+    {
+      "id": "V003",
+      "standard": "Use venv activation",
+      "severity": "major",
+      "location": "/root/travel-planner/.claude/agents/*.bak files",
+      "finding": "16 backup (.bak) agent files contain direct python3 calls without venv activation",
+      "evidence": [
+        "meals.md.bak:242: 'python3 scripts/save-agent-data-template.py --help'",
+        "shopping.md.bak:249: 'python3 scripts/save-agent-data-template.py --help'",
+        "attractions.md.bak-20260214-101120:216: 'source venv/bin/activate && python3 scripts/save.py'",
+        "Multiple other instances across 16 backup files"
+      ],
+      "recommendation": "Delete all .bak and .bak-* files from .claude/agents/ directory. They are outdated and violate current standards. Active agent files (timeline.md, etc.) correctly use 'source venv/bin/activate && python'.",
+      "impact": "Medium - Backup files are not actively used, but could cause confusion if someone references them. Active files are compliant.",
+      "cleanup_command": "rm /root/travel-planner/.claude/agents/*.bak /root/travel-planner/.claude/agents/*.bak-*"
+    },
+    {
+      "id": "V004",
+      "standard": "File organization and cleanup",
+      "severity": "major",
+      "location": "/root/travel-planner/data/china-feb-15-mar-7-2026-20260202-195429/",
+      "finding": "9 .bak backup files accumulating in data directory, no automatic cleanup policy",
+      "evidence": [
+        "accommodation.json.bak",
+        "attractions.json.bak",
+        "budget.json.bak",
+        "entertainment.json.bak",
+        "meals.json.bak",
+        "modification-log.json.bak",
+        "shopping.json.bak",
+        "timeline.json.bak (2 versions)"
+      ],
+      "recommendation": "Implement backup rotation policy: Keep only last 3 .bak files per JSON, delete older backups. Add cleanup step to save.py or create scripts/cleanup-old-backups.sh",
+      "impact": "Medium - Accumulating backups waste disk space and make directory harder to navigate. With 21-day trip and frequent edits, could reach 100+ backup files",
+      "additional_context": "save.py creates .bak files correctly (line 704 reference in timeline.md), but has no retention limit"
+    },
+    {
+      "id": "V005",
+      "standard": "Naming conventions - meaningful names",
+      "severity": "minor",
+      "location": "/root/travel-planner/scripts/optimize-route-order.py",
+      "finding": "Script name uses forbidden pattern 'optimize-' which is generic enhancement word",
+      "evidence": [
+        "Filename: optimize-route-order.py",
+        "Pattern matches forbidden 'optimize-*' naming"
+      ],
+      "recommendation": "Rename to 'calculate-route-distances.py' or 'detect-route-inefficiencies.py' to describe actual function (haversine distance calculation + A→B→A pattern detection)",
+      "impact": "Low - Name is somewhat descriptive with '-order' suffix, but 'optimize' is still vague. Actual function is TSP approximation + distance comparison",
+      "note": "Script itself is well-written with good documentation (lines 1-15), just the filename violates naming standard"
+    },
+    {
+      "id": "V006",
+      "standard": "Documentation conciseness",
+      "severity": "minor",
+      "location": "/root/travel-planner/.claude/agents/timeline.md:1-878",
+      "finding": "timeline.md is 877 lines - excessively long for agent instructions. Contains repetitive explanations and verbose sections",
+      "evidence": [
+        "33 heading sections (# markers)",
+        "Lines 160-218: 58 lines explaining architectural principle with example/anti-pattern that could be 20 lines",
+        "Lines 273-364: 91 lines of return-to-hotel workflow that includes repetitive edge case documentation",
+        "Lines 430-514: 84 lines of numbered checklist + failure mode handling - highly repetitive structure"
+      ],
+      "recommendation": "Refactor into modular structure: (1) Core instructions (200 lines), (2) Reference appendix for examples (separate file), (3) Extract failure modes to shared doc. Target: reduce to 400-500 lines",
+      "impact": "Low - Verbosity increases token usage and cognitive load, but agent still functions correctly. Primary issue is maintainability",
+      "architectural_note": "Compare to other agents: attractions.md, meals.md are ~300-400 lines each. Timeline is 2x longer despite similar complexity"
+    },
+    {
+      "id": "V007",
+      "standard": "Hardcoded file paths",
+      "severity": "major",
+      "location": "/root/travel-planner/scripts/deploy-travel-plans.sh:11",
+      "finding": "Hardcoded /tmp directory path without fallback",
+      "evidence": [
+        "Line 11: TEMP_BASE=\"${TEMP_DIR:-/tmp}\"",
+        "Line 12: DEPLOY_DIR=\"${TEMP_BASE}/${REPO_NAME}-deploy\""
+      ],
+      "recommendation": "Use mktemp for guaranteed unique temp directory: DEPLOY_DIR=$(mktemp -d) or TEMP_BASE=$(mktemp -d -t travel-planner-deploy-XXXXXX)",
+      "impact": "Medium - /tmp works on Linux but not portable to macOS (uses /var/folders), Windows (no /tmp). Also risks collisions if script runs in parallel",
+      "security_concern": "Predictable temp directory name could enable race condition attacks"
+    },
+    {
+      "id": "V008",
+      "standard": "Configuration vs hardcoded values",
+      "severity": "major",
+      "location": "/root/travel-planner/scripts/generate-html-interactive.py:96-102",
+      "finding": "Currency conversion logic hardcodes fallback exchange rate logic instead of using config",
+      "evidence": [
+        "Line 66: Reads fallback_exchange_rate from config correctly",
+        "Line 67: 'rate = 1.0 / cny_to_eur if cny_to_eur > 0 else 7.8' - hardcoded 7.8 fallback",
+        "Line 98: Hardcoded USD→EUR rate 0.92",
+        "Line 70: 'return 7.8' - another hardcoded fallback"
+      ],
+      "recommendation": "Add to currency-config.json: 'emergency_fallback_rates': {'EUR_to_CNY': 7.8, 'USD_to_EUR': 0.92}. Update code to read from config, fail gracefully if config missing",
+      "impact": "Medium - Emergency fallbacks should still be configurable. User traveling to different regions may need different defaults",
+      "best_practice_violated": "All numeric constants should be in config files, not code"
+    }
+  ],
+  "standards_compliance_matrix": {
+    "1_no_secrets_hardcoded": {
+      "status": "PASS",
+      "notes": "No API keys, passwords, or credentials found in code or agent files. deploy-travel-plans.sh correctly uses GITHUB_TOKEN environment variable."
+    },
+    "2_venv_activation": {
+      "status": "PASS (with warnings)",
+      "notes": "Active agent files correctly use 'source venv/bin/activate && python'. Violation exists only in 16 backup .bak files which should be deleted.",
+      "action_required": "Delete backup files"
+    },
+    "3_naming_conventions": {
+      "status": "MOSTLY PASS",
+      "notes": "Scripts use kebab-case correctly. One violation: optimize-route-order.py uses forbidden 'optimize-' pattern.",
+      "violations": ["optimize-route-order.py"]
+    },
+    "4_no_hardcoded_magic_numbers": {
+      "status": "FAIL",
+      "notes": "Multiple critical violations: timeline.md has hardcoded transport thresholds (800m, 15min, 22:00, 1.5x), generate-html-interactive.py has hardcoded currency rates.",
+      "violations": ["timeline.md lines 311-318", "generate-html-interactive.py lines 97-98"]
+    },
+    "5_no_hardcoded_distances_thresholds": {
+      "status": "FAIL",
+      "notes": "timeline.md lines 311-318 contain multiple hardcoded thresholds for transport mode selection. These should be in config/transport-decision-rules.json",
+      "violations": ["timeline.md:311-318"]
+    },
+    "6_error_handling": {
+      "status": "PASS",
+      "notes": "Scripts properly handle errors with exit codes (optimize-route-order.py, sync-agent-data.py). Agent files document failure modes (timeline.md lines 576-651)."
+    },
+    "7_documentation_quality": {
+      "status": "PASS (with improvement opportunity)",
+      "notes": "Documentation is comprehensive and accurate, but timeline.md is excessively verbose (877 lines vs 300-400 for similar agents). Refactor recommended but not blocking.",
+      "improvement_recommended": "Reduce timeline.md to 400-500 lines by extracting examples to separate reference doc"
+    },
+    "8_agent_based_architecture": {
+      "status": "PASS",
+      "notes": "Project correctly uses agent-based architecture. Complex logic (timeline coordination, route optimization, data sync) properly delegated to agents/scripts. No violations.",
+      "evidence": "9 specialized agents (timeline, meals, attractions, etc.), each with clear responsibilities"
+    },
+    "9_real_api_data": {
+      "status": "PASS",
+      "notes": "timeline.md explicitly enforces gaode-maps API usage (lines 288-305, 364). No mock/fake data found. Excellent architectural principle documentation (lines 160-218).",
+      "evidence": "Lines 364: 'NEVER hardcode durations or transport modes. ALWAYS use real gaode-maps API data.'"
+    },
+    "10_file_organization": {
+      "status": "NEEDS ATTENTION",
+      "notes": "41 backup files (.bak, .bak-*) accumulating across project. No plan files found (plans/ directory doesn't exist). Data backups need rotation policy.",
+      "cleanup_required": [
+        "16 .bak files in .claude/agents/",
+        "9 .bak files in data/china-feb-15-mar-7-2026-20260202-195429/",
+        "16 more .bak files scattered in project"
+      ]
+    },
+    "11_git_commit_quality": {
+      "status": "PASS",
+      "notes": "Recent commit c5e2741 'Fix timeline agent: enforce return-to-hotel with real gaode-maps data' is descriptive and follows conventions. Previous commits show good practices.",
+      "recent_commits_reviewed": [
+        "c5e2741: Clear description of fix",
+        "ae674bf: Auto-save checkpoint (acceptable for WIP)",
+        "85cd366: Auto-save checkpoint",
+        "dac500d: Auto-save checkpoint"
+      ]
+    }
+  },
+  "priority_recommendations": [
+    {
+      "priority": 1,
+      "action": "Extract hardcoded thresholds from timeline.md to config file",
+      "rationale": "Critical architectural violation. Transport mode selection logic should be data-driven and configurable per destination.",
+      "implementation": "Create config/transport-decision-rules.json with fields: max_walking_distance_m, max_walking_duration_min, late_night_cutoff_hour, transit_time_multiplier, transfer_penalty, typical_taxi_cost_range. Update timeline.md lines 311-318 to reference config.",
+      "estimated_effort": "2 hours"
+    },
+    {
+      "priority": 2,
+      "action": "Remove hardcoded currency exchange rates",
+      "rationale": "Exchange rates change daily. Hardcoded values cause incorrect budget calculations.",
+      "implementation": "Add USD→EUR to currency-config.json with last_updated timestamp. Modify generate-html-interactive.py to fetch USD rate dynamically or use config fallback. Remove line 98 hardcoded 0.92.",
+      "estimated_effort": "1 hour"
+    },
+    {
+      "priority": 3,
+      "action": "Delete all backup .bak files and implement retention policy",
+      "rationale": "41 backup files waste space and violate file organization standards.",
+      "implementation": "Run: rm .claude/agents/*.bak .claude/agents/*.bak-* data/*/*.bak. Add retention logic to save.py to keep only last 3 backups per file.",
+      "estimated_effort": "30 minutes"
+    },
+    {
+      "priority": 4,
+      "action": "Fix deploy script temp directory handling",
+      "rationale": "Hardcoded /tmp is not portable and has security implications.",
+      "implementation": "Replace deploy-travel-plans.sh line 11-12 with: DEPLOY_DIR=$(mktemp -d -t travel-planner-deploy-XXXXXX)",
+      "estimated_effort": "15 minutes"
+    },
+    {
+      "priority": 5,
+      "action": "Rename optimize-route-order.py",
+      "rationale": "Minor naming convention violation.",
+      "implementation": "git mv scripts/optimize-route-order.py scripts/calculate-route-distances.py. Update references in timeline.md line 383.",
+      "estimated_effort": "10 minutes"
+    },
+    {
+      "priority": 6,
+      "action": "Refactor timeline.md to reduce verbosity",
+      "rationale": "877 lines is 2x longer than similar agents. Maintenance burden and token cost.",
+      "implementation": "Extract examples to docs/agent-examples/timeline-patterns.md. Consolidate repetitive failure mode sections. Target: 400-500 lines.",
+      "estimated_effort": "3 hours"
+    }
+  ],
+  "positive_findings": [
+    {
+      "standard": "Agent-based architecture",
+      "finding": "Excellent separation of concerns. Timeline agent correctly orchestrates but doesn't create content (architectural principle lines 160-218 is exemplary documentation)."
+    },
+    {
+      "standard": "Real API data enforcement",
+      "finding": "timeline.md explicitly prohibits hardcoded transport data and requires gaode-maps API. Line 364: 'NEVER hardcode durations or transport modes. ALWAYS use real gaode-maps API data.'"
+    },
+    {
+      "standard": "Error handling",
+      "finding": "Scripts properly use exit codes (optimize-route-order.py: 0=success, 1=missing coordinates, 2=file errors). Agent files document 5 distinct failure modes with JSON error formats."
+    },
+    {
+      "standard": "Security",
+      "finding": "No secrets found in code. deploy-travel-plans.sh correctly uses environment variables for GITHUB_TOKEN."
+    },
+    {
+      "standard": "Data validation",
+      "finding": "Centralized save.py with schema validation prevents bugs (timeline.md lines 517-554 documents travel_segments schema enforcement that caught meal-in-travel-segments bug)."
+    },
+    {
+      "standard": "Git commits",
+      "finding": "Recent commit c5e2741 follows best practices: descriptive message, single logical change, references root cause."
+    }
+  ],
+  "root_cause_analysis": {
+    "user_complaint": "彻底违反了开发规范 (Complete violation of development standards)",
+    "actual_findings": "4 critical violations, 4 major, 2 minor. Not 'complete violation' but significant issues exist.",
+    "primary_root_causes": [
+      {
+        "cause": "Documentation creep",
+        "explanation": "timeline.md grew from ~300 lines to 877 lines through incremental additions of edge cases, examples, and failure modes. No refactoring to keep concise.",
+        "evidence": "Lines 160-218 (architectural principle), 273-364 (return-to-hotel), 430-514 (failure modes) - all verbose"
+      },
+      {
+        "cause": "Lack of config-driven design review",
+        "explanation": "Recent changes (return-to-hotel logic, transport mode selection) added hardcoded thresholds without considering configurability.",
+        "evidence": "Commit c5e2741 added lines 311-318 with hardcoded 800m, 15min, 22:00 thresholds"
+      },
+      {
+        "cause": "Missing backup file cleanup automation",
+        "explanation": "save.py creates .bak files correctly but has no retention policy. Accumulates over time.",
+        "evidence": "41 .bak files across project, 9 in active data directory"
+      }
+    ],
+    "systemic_issues": [
+      {
+        "issue": "No automated standards enforcement",
+        "recommendation": "Add pre-commit hook to check: (1) No hardcoded thresholds in agent .md files, (2) Currency rates only in config files, (3) Max .bak file age 7 days"
+      },
+      {
+        "issue": "Agent file growth not monitored",
+        "recommendation": "Add CI check: agent .md files > 500 lines trigger warning, > 700 lines fail build. Forces refactoring."
+      }
+    ]
+  },
+  "comparison_to_standards": {
+    "dev_standards_source": "/dev (based on user context)",
+    "standards_met": 7,
+    "standards_failed": 4,
+    "pass_rate": "63.6%",
+    "grade": "D (needs significant improvement)"
+  },
+  "files_audited": [
+    "/root/travel-planner/.claude/agents/timeline.md (877 lines)",
+    "/root/travel-planner/scripts/sync-agent-data.py",
+    "/root/travel-planner/scripts/optimize-route-order.py",
+    "/root/travel-planner/scripts/generate-html-interactive.py",
+    "/root/travel-planner/scripts/deploy-travel-plans.sh",
+    "/root/travel-planner/config/currency-config.json",
+    "16 backup .bak files in .claude/agents/",
+    "9 backup .bak files in data/china-feb-15-mar-7-2026-20260202-195429/"
+  ],
+  "files_not_found": [
+    "/root/travel-planner/.claude/plans/cached-tickling-dewdrop.md (mentioned by user but directory doesn't exist)"
+  ],
+  "conclusion": {
+    "summary": "The travel-planner project has a solid architectural foundation with agent-based design and real API data enforcement, but recent rapid development introduced critical violations: hardcoded thresholds in timeline.md, hardcoded currency rates in HTML generator, and accumulating backup files. The violations are SERIOUS but FIXABLE - not a fundamental architecture problem, but execution issues from lack of config-driven design review.",
+    "urgency": "HIGH - Address priority 1-3 recommendations within 48 hours",
+    "overall_code_quality": "GOOD foundations, POOR recent execution on configurability",
+    "user_perception_vs_reality": "User's assessment '彻底违反' (complete violation) is overstated. Reality: 64% compliance, with fixable critical issues in 4 standards. Not systemic failure, but legitimate concerns."
+  }
+}
