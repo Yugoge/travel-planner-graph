@@ -61,6 +61,71 @@ DATA_DIR = PROJECT_ROOT / "data"
 PLAN_VALIDATE = PROJECT_ROOT / "scripts" / "plan-validate.py"
 
 
+def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None:
+    """Auto-extract image_url for POIs missing it, using BatchImageFetcher.
+
+    Uses the same BatchImageFetcher from fetch-images-batch.py — Gaode/Google
+    skill scripts via subprocess, with Bing Images fallback, country detection
+    via geopip, and images.json cache. No new code — direct reuse.
+
+    Args:
+        agent: Agent name (meals, attractions, entertainment, shopping, accommodation)
+        data: Agent data structure (unwrapped, data.days format)
+        trip_slug: Trip identifier for logging
+    """
+    if agent not in ["meals", "attractions", "entertainment", "shopping", "accommodation"]:
+        return  # Only process POI agents
+
+    # Import BatchImageFetcher from fetch-images-batch.py (existing infrastructure)
+    try:
+        import importlib.util
+        batch_script = Path(__file__).resolve().parent / "fetch-images-batch.py"
+        spec = importlib.util.spec_from_file_location("fetch_images_batch", batch_script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        fetcher = mod.BatchImageFetcher(trip_slug)
+    except Exception as e:
+        print(f"⚠️  Image fetcher unavailable: {e}", file=sys.stderr)
+        return
+
+    poi_updated = 0
+
+    for day in data.get("days", []):
+        city = day.get("location", "")
+
+        # Collect POIs based on agent type
+        pois = []
+        if agent == "meals":
+            for meal_type in ["breakfast", "lunch", "dinner"]:
+                if meal_type in day and isinstance(day[meal_type], dict):
+                    pois.append(day[meal_type])
+        elif agent == "accommodation":
+            if "accommodation" in day and isinstance(day["accommodation"], dict):
+                pois.append(day["accommodation"])
+        elif agent in ["attractions", "entertainment", "shopping"]:
+            pois.extend(day.get(agent, []))
+
+        for poi in pois:
+            if not isinstance(poi, dict):
+                continue
+            if poi.get("image_url"):
+                continue  # Already has image
+
+            photo_url = fetcher.fetch_poi_photo(
+                poi_name=poi.get("name_base", ""),
+                city=city,
+                name_local=poi.get("name_local"),
+                location_local=poi.get("location_local"),
+                poi_coordinates=poi.get("coordinates"),
+            )
+            if photo_url:
+                poi["image_url"] = photo_url
+                poi_updated += 1
+
+    if poi_updated > 0:
+        print(f"🖼️  Auto-extracted {poi_updated} image URLs", file=sys.stderr)
+
+
 def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
                   skip_validation: bool = False,
                   allow_high: bool = False) -> tuple:
@@ -142,6 +207,9 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
         except Exception as e:
             print(f"❌ Merge failed: {e}", file=sys.stderr)
             return False
+
+    # Auto-extract image URLs from search_results
+    extract_image_urls(agent, agent_data, trip_slug)
 
     # Wrap in envelope for validation
     envelope_data = {"agent": agent, "status": "complete", "data": agent_data}

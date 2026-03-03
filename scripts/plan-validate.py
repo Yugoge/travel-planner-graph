@@ -695,29 +695,32 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
     if agent == "timeline":
         timeline_data = all_data.get("timeline", {})
         days = timeline_data.get("data", {}).get("days", [])
-        intentional_kw = CONFIG.get("intentional_overlap_keywords", [])
-
-        for day in days:
-            dn = day.get("day", 0)
-            tl = day.get("timeline", {})
-            timed = []
-            for name, sched in tl.items():
-                if isinstance(sched, dict):
-                    s, e = sched.get("start_time", ""), sched.get("end_time", "")
-                    if s and e:
-                        timed.append((name, s, e))
-            timed.sort(key=lambda x: x[1])
-            for i in range(len(timed) - 1):
-                cn, cs, ce = timed[i]
-                nn, ns, ne = timed[i + 1]
-                if ce > ns:
-                    combined = (cn + " " + nn).lower()
-                    intentional = any(kw in combined for kw in intentional_kw)
-                    sev = Severity.INFO if intentional else Severity.HIGH
-                    issues.append(Issue(sev, Category.SEMANTIC, "timeline", trip, dn,
-                                        f"Day {dn}", "timeline",
-                                        f"'{cn}' ({cs}-{ce}) overlaps '{nn}' ({ns}-{ne})"
-                                        + (" [intentional]" if intentional else "")))
+        # NOTE: Timeline overlap detection moved to check_all_activity_overlaps()
+        # The old adjacent-only check below was incomplete and missed non-adjacent overlaps.
+        # Comprehensive pairwise overlap detection now handles timeline + all POI agents.
+        #
+        # intentional_kw = CONFIG.get("intentional_overlap_keywords", [])
+        # for day in days:
+        #     dn = day.get("day", 0)
+        #     tl = day.get("timeline", {})
+        #     timed = []
+        #     for name, sched in tl.items():
+        #         if isinstance(sched, dict):
+        #             s, e = sched.get("start_time", ""), sched.get("end_time", "")
+        #             if s and e:
+        #                 timed.append((name, s, e))
+        #     timed.sort(key=lambda x: x[1])
+        #     for i in range(len(timed) - 1):
+        #         cn, cs, ce = timed[i]
+        #         nn, ns, ne = timed[i + 1]
+        #         if ce > ns:
+        #             combined = (cn + " " + nn).lower()
+        #             intentional = any(kw in combined for kw in intentional_kw)
+        #             sev = Severity.INFO if intentional else Severity.HIGH
+        #             issues.append(Issue(sev, Category.SEMANTIC, "timeline", trip, dn,
+        #                                 f"Day {dn}", "timeline",
+        #                                 f"'{cn}' ({cs}-{ce}) overlaps '{nn}' ({ns}-{ne})"
+        #                                 + (" [intentional]" if intentional else "")))
 
         # 4d-2. Travel segments validation (NEW - prevents breakfast-in-travel_segments bug)
         issues.extend(check_travel_segments(timeline_data, trip))
@@ -898,6 +901,149 @@ def check_legacy_fields(items: list, agent: str) -> list:
                     issues.append(Issue(Severity.MEDIUM, Category.LEGACY, agent, ei.trip,
                                         ei.day_num, ei.label, legacy,
                                         f"LEGACY_ONLY: has '{legacy}' but not '{schema_name}'"))
+    return issues
+
+
+def _check_time_overlap(start1: str, end1: str, start2: str, end2: str) -> bool:
+    """Check if two time ranges overlap.
+
+    Args:
+        start1, end1: First time range (HH:MM format)
+        start2, end2: Second time range (HH:MM format)
+
+    Returns:
+        True if ranges overlap, False otherwise
+
+    Examples:
+        _check_time_overlap("10:00", "12:00", "11:00", "13:00") → True (overlap 11:00-12:00)
+        _check_time_overlap("10:00", "11:00", "11:00", "12:00") → False (adjacent, not overlapping)
+        _check_time_overlap("10:00", "12:00", "09:00", "10:00") → False (no overlap)
+    """
+    # Normalize times (handle both "8:00" and "08:00")
+    def normalize_time(t):
+        if not t or ":" not in t:
+            return "00:00"
+        parts = t.split(":")
+        return f"{int(parts[0]):02d}:{parts[1]}"
+
+    start1 = normalize_time(start1)
+    end1 = normalize_time(end1)
+    start2 = normalize_time(start2)
+    end2 = normalize_time(end2)
+
+    # Overlap condition: start1 < end2 AND start2 < end1
+    # Note: Using < not <= to treat adjacent times (11:00-12:00 vs 12:00-13:00) as non-overlapping
+    return start1 < end2 and start2 < end1
+
+
+def _collect_all_activities_for_day(all_data: dict, day_num: int) -> list:
+    """Collect ALL activities from ALL agents for a specific day.
+
+    Returns unified format: [{
+        "agent": "meals",
+        "name": "Dinner at Restaurant",
+        "start": "18:00",
+        "end": "19:30",
+        "optional": false
+    }, ...]
+    """
+    activities = []
+
+    # 1. Meals (breakfast, lunch, dinner)
+    meals_data = all_data.get("meals", {})
+    if meals_data:
+        for day in meals_data.get("data", {}).get("days", []):
+            if day.get("day") == day_num:
+                for meal_type in ["breakfast", "lunch", "dinner"]:
+                    meal = day.get(meal_type, {})
+                    if isinstance(meal, dict) and meal:
+                        time_obj = meal.get("time", {})
+                        if isinstance(time_obj, dict) and time_obj.get("start"):
+                            activities.append({
+                                "agent": "meals",
+                                "name": meal.get("name_base", f"{meal_type}"),
+                                "start": time_obj["start"],
+                                "end": time_obj["end"],
+                                "optional": meal.get("optional", False)
+                            })
+
+    # 2. POI agents (attractions, entertainment, shopping)
+    for agent in ["attractions", "entertainment", "shopping"]:
+        agent_data = all_data.get(agent, {})
+        if agent_data:
+            for day in agent_data.get("data", {}).get("days", []):
+                if day.get("day") == day_num:
+                    for poi in day.get(agent, []):
+                        if isinstance(poi, dict):
+                            time_obj = poi.get("time", {})
+                            if isinstance(time_obj, dict) and time_obj.get("start"):
+                                activities.append({
+                                    "agent": agent,
+                                    "name": poi.get("name_base", "Unknown"),
+                                    "start": time_obj["start"],
+                                    "end": time_obj["end"],
+                                    "optional": poi.get("optional", False)
+                                })
+
+    # 3. Timeline (CRITICAL: this is the missing piece!)
+    timeline_data = all_data.get("timeline", {})
+    if timeline_data:
+        for day in timeline_data.get("data", {}).get("days", []):
+            if day.get("day") == day_num:
+                timeline_dict = day.get("timeline", {})
+                for activity_name, sched in timeline_dict.items():
+                    if isinstance(sched, dict) and sched.get("start_time"):
+                        activities.append({
+                            "agent": "timeline",
+                            "name": activity_name,
+                            "start": sched["start_time"],  # Note: timeline uses start_time
+                            "end": sched["end_time"],      # not time.start
+                            "optional": False  # Timeline activities assumed required
+                        })
+
+    return activities
+
+
+def check_all_activity_overlaps(all_data: dict, trip: str) -> list:
+    """Detect ALL time overlaps across ALL agents including timeline.
+
+    Unifies data from 5 agents (meals, attractions, entertainment, shopping, timeline)
+    into common format, then performs comprehensive pairwise overlap detection.
+    """
+    issues = []
+
+    # Collect ALL activities from ALL agents per day
+    for day_num in range(1, 22):  # Iterate through all possible days
+        activities = _collect_all_activities_for_day(all_data, day_num)
+
+        if not activities:
+            continue
+
+        # Pairwise overlap detection
+        for i in range(len(activities)):
+            for j in range(i + 1, len(activities)):
+                act1, act2 = activities[i], activities[j]
+
+                overlap = _check_time_overlap(act1["start"], act1["end"],
+                                               act2["start"], act2["end"])
+
+                if overlap:
+                    # At least one optional → INFO severity (alternatives don't conflict)
+                    if act1["optional"] or act2["optional"]:
+                        severity = Severity.INFO
+                    # Both non-optional with ANY overlap → HIGH severity (blocks save)
+                    else:
+                        severity = Severity.HIGH
+
+                    issues.append(Issue(
+                        severity, Category.CROSS_AGENT,
+                        f"{act1['agent']}+{act2['agent']}", trip, day_num,
+                        f"Day {day_num}", "time",
+                        f"TIME OVERLAP: '{act1['name']}' ({act1['agent']}, "
+                        f"{act1['start']}-{act1['end']}) overlaps with "
+                        f"'{act2['name']}' ({act2['agent']}, {act2['start']}-{act2['end']})"
+                    ))
+
     return issues
 
 
@@ -1187,6 +1333,9 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
 
         # Cross-agent (once per trip)
         if not agent_filter:
+            # NEW: Comprehensive overlap detection across ALL agents (including timeline)
+            all_issues.extend(check_all_activity_overlaps(all_data, trip))
+            # Legacy cross-agent checks (day count, date, location, budget consistency)
             all_issues.extend(check_cross_agent(all_data, trip))
 
     return all_issues, metrics
