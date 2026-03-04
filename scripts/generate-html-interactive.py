@@ -910,56 +910,54 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
-                # Extract accommodation check-in time from timeline using similarity matching
-                # NO hardcoded keywords - use token-based similarity score
+                # Extract accommodation arrival time from timeline.
+                # Strategy 1 (schema-based): find entry with "accommodation_ref": true.
+                # Strategy 2 (fallback): similarity matching for data without the schema field.
                 acc_time = None
                 if day_timeline:
-                    acc_name_search = acc_name_base.split("(")[0].strip().lower()
-                    # Tokenize accommodation name
-                    acc_tokens = set(acc_name_search.split())
-
-                    best_match = None
-                    best_similarity = 0.0
-
+                    # Schema-based lookup — no string matching needed
                     for timeline_key, timeline_val in day_timeline.items():
-                        # Skip entries without time fields
-                        if "start_time" not in timeline_val or "end_time" not in timeline_val:
-                            continue
+                        if timeline_val.get("accommodation_ref") is True:
+                            if "start_time" in timeline_val and "end_time" in timeline_val:
+                                acc_time = {
+                                    "start": timeline_val["start_time"],
+                                    "end": timeline_val["end_time"],
+                                }
+                                break
 
-                        # Tokenize timeline entry
-                        timeline_tokens = set(timeline_key.lower().split())
+                    # Fallback: similarity matching for backward compatibility
+                    if not acc_time:
+                        acc_name_search = acc_name_base.split("(")[0].strip().lower()
+                        acc_tokens = set(acc_name_search.split())
 
-                        if acc_tokens and timeline_tokens:
-                            # Strategy 1: Jaccard similarity (symmetric)
-                            # Works well when names are similar length
-                            intersection = acc_tokens & timeline_tokens
-                            union = acc_tokens | timeline_tokens
-                            jaccard = len(intersection) / len(union) if union else 0
+                        best_match = None
+                        best_similarity = 0.0
 
-                            # Strategy 2: Containment similarity (asymmetric)
-                            # Checks if timeline tokens are mostly contained in accommodation name
-                            # Works well for "Orange Hotel" vs "Orange Hotel Beijing Zhongguancun"
-                            # Filters out common words like "check", "in", "to", "at"
-                            common_words = {"check", "in", "to", "at", "the", "a", "an", "arrive", "hotel", "入住"}
-                            timeline_tokens_filtered = timeline_tokens - common_words
+                        for timeline_key, timeline_val in day_timeline.items():
+                            if "start_time" not in timeline_val or "end_time" not in timeline_val:
+                                continue
 
-                            if timeline_tokens_filtered:
-                                # How many timeline tokens (excluding common words) are in accommodation name?
-                                containment = len(timeline_tokens_filtered & acc_tokens) / len(timeline_tokens_filtered)
-                            else:
-                                containment = 0
+                            timeline_tokens = set(timeline_key.lower().split())
 
-                            # Use the higher of the two scores
-                            similarity = max(jaccard, containment)
+                            if acc_tokens and timeline_tokens:
+                                intersection = acc_tokens & timeline_tokens
+                                union = acc_tokens | timeline_tokens
+                                jaccard = len(intersection) / len(union) if union else 0
 
-                            if similarity > best_similarity:
-                                best_similarity = similarity
-                                best_match = timeline_val
+                                common_words = {"check", "in", "to", "at", "the", "a", "an", "arrive", "hotel", "入住"}
+                                timeline_tokens_filtered = timeline_tokens - common_words
+                                if timeline_tokens_filtered:
+                                    containment = len(timeline_tokens_filtered & acc_tokens) / len(timeline_tokens_filtered)
+                                else:
+                                    containment = 0
 
-                    # Use best match if similarity >= 0.9 (90% threshold as requested by user)
-                    # or >= 0.5 (50% for partial matches like brand names)
-                    if best_match and best_similarity >= 0.5:
-                        acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
+                                similarity = max(jaccard, containment)
+                                if similarity > best_similarity:
+                                    best_similarity = similarity
+                                    best_match = timeline_val
+
+                        if best_match and best_similarity >= 0.5:
+                            acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
 
                 # Fallback: use check_in field from accommodation.json if timeline lookup fails
                 if not acc_time:

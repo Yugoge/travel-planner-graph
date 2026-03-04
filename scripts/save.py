@@ -127,15 +127,13 @@ def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None
 
 
 def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) -> List[str]:
-    """Validate that every day's timeline references its accommodation.
+    """Validate that every day's timeline references its accommodation via schema field.
 
-    Every day ends with a return to the accommodation — first-night check-in or
-    continuing-stay return. The HTML generator places the accommodation card by
-    similarity-matching the hotel name against timeline dict keys. Missing entries
-    cause a fallback to check_in field, creating a wrong time block.
+    Every day with accommodation must have exactly one timeline dict entry whose
+    value includes "accommodation_ref": true. This marks the check-in or
+    return-to-accommodation moment without relying on string matching or keyword lists.
 
-    A day passes if ANY timeline key shares ≥2 significant tokens with the hotel name.
-    Days without accommodation are skipped.
+    Days without accommodation (e.g., transit days with no lodging) are skipped.
 
     Returns:
         List of error strings (empty = all days pass).
@@ -153,46 +151,28 @@ def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) 
         return []
 
     acc_days = acc_raw.get("data", {}).get("days", acc_raw.get("days", []))
-    acc_by_day: Dict[int, str] = {
-        d["day"]: d.get("accommodation", {}).get("name_base", "")
+    days_with_accommodation = {
+        d["day"]
         for d in acc_days
         if d.get("accommodation", {}).get("name_base", "")
     }
 
-    stopwords = {"the", "a", "an", "hotel", "inn", "hostel", "resort", "check", "in", "at", "to"}
-
     timeline_by_day = {d.get("day"): d for d in agent_data.get("days", [])}
 
-    for day_num, hotel_name in acc_by_day.items():
+    for day_num in sorted(days_with_accommodation):
         day = timeline_by_day.get(day_num)
         if day is None:
             continue  # Not in current save batch — skip
 
-        base_name = hotel_name.split("(")[0].strip().lower()
-        # Keep tokens that: (a) have at least one alphanumeric char, (b) aren't stopwords
-        tokens = {
-            t for t in base_name.split()
-            if any(c.isalnum() for c in t) and t not in stopwords
-        }
-        if not tokens:
-            continue
-
-        # Require at least min(2, available) matching tokens so single-token names
-        # (e.g. "Home", "Hostel") don't need 2 matches
-        threshold = min(2, len(tokens))
-
-        timeline_keys = list(day.get("timeline", {}).keys())
-        matched = any(
-            sum(1 for t in tokens if t in key.lower()) >= threshold
-            for key in timeline_keys
+        has_ref = any(
+            val.get("accommodation_ref") is True
+            for val in day.get("timeline", {}).values()
         )
 
-        if not matched:
+        if not has_ref:
             errors.append(
-                f"Day {day_num}: timeline has no entry referencing accommodation "
-                f'"{hotel_name}". '
-                f"Add a check-in or return-to-hotel entry. "
-                f"(Need ≥2 of: {sorted(tokens)})"
+                f'Day {day_num}: no timeline entry has "accommodation_ref": true. '
+                f"Add the field to the check-in or return-to-accommodation entry."
             )
 
     return errors

@@ -75,6 +75,7 @@ For each day in the trip:
 2. **Create timeline dictionary**:
    - **KEY FORMAT**: Use EXACT activity name from source data
    - **VALUE FORMAT**: `{start_time: "HH:MM", end_time: "HH:MM", duration_minutes: N}`
+   - **MANDATORY**: The timeline entry for checking in or returning to accommodation each night **MUST** include `"accommodation_ref": true` in its value. This replaces all string-matching heuristics and is required by `save.py` validation.
 
    Example:
    ```json
@@ -93,9 +94,21 @@ For each day in the trip:
        "start_time": "14:30",
        "end_time": "16:00",
        "duration_minutes": 90
+     },
+     "Hotel check-in / Return to Hotel Name": {
+       "start_time": "22:00",
+       "end_time": "22:15",
+       "duration_minutes": 15,
+       "accommodation_ref": true
      }
    }
    ```
+
+   **`accommodation_ref` rules**:
+   - Required on **exactly one** timeline entry per day (the check-in or return-to-accommodation entry)
+   - Works for any accommodation type: hotel, apartment, rental, hostel, home, etc. — no name matching needed
+   - `save.py` **blocks the save** if no entry has `accommodation_ref: true` for a day with accommodation
+   - The HTML generator uses this field to place the accommodation card at the correct time
 
 3. **Validate timeline**:
    - Check for overlapping activities (conflict detection)
