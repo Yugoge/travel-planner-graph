@@ -127,17 +127,15 @@ def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None
 
 
 def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) -> List[str]:
-    """Validate that the FIRST night at each accommodation has a timeline entry referencing it.
+    """Validate that every day's timeline references its accommodation.
 
-    The HTML generator extracts accommodation check-in time by similarity-matching the hotel
-    name against timeline dict keys. If no key references the hotel on the check-in day,
-    it falls back to the check_in field and creates a wrong time block
-    (root cause of Day 14 Xi'an bug — second night at same hotel, no arrival entry).
-
-    Only the first day at a given accommodation is validated. Subsequent nights at the
-    same property (continuing stays) do not require a new check-in timeline entry.
+    Every day ends with a return to the accommodation — first-night check-in or
+    continuing-stay return. The HTML generator places the accommodation card by
+    similarity-matching the hotel name against timeline dict keys. Missing entries
+    cause a fallback to check_in field, creating a wrong time block.
 
     A day passes if ANY timeline key shares ≥2 significant tokens with the hotel name.
+    Days without accommodation are skipped.
 
     Returns:
         List of error strings (empty = all days pass).
@@ -154,31 +152,21 @@ def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) 
     except Exception:
         return []
 
-    acc_days = sorted(
-        acc_raw.get("data", {}).get("days", acc_raw.get("days", [])),
-        key=lambda d: d.get("day", 0)
-    )
-
-    # Build: day_num → hotel name, but ONLY for first-night arrivals
-    # A day is a "first night" when its accommodation name differs from the previous day's.
-    first_night_by_day: Dict[int, str] = {}
-    prev_name = None
-    for d in acc_days:
-        acc = d.get("accommodation", {})
-        name = acc.get("name_base", "")
-        if name and name != prev_name:
-            first_night_by_day[d["day"]] = name
-        prev_name = name if name else prev_name
+    acc_days = acc_raw.get("data", {}).get("days", acc_raw.get("days", []))
+    acc_by_day: Dict[int, str] = {
+        d["day"]: d.get("accommodation", {}).get("name_base", "")
+        for d in acc_days
+        if d.get("accommodation", {}).get("name_base", "")
+    }
 
     stopwords = {"the", "a", "an", "hotel", "inn", "hostel", "resort", "check", "in", "at", "to"}
 
-    # Build lookup for timeline days
     timeline_by_day = {d.get("day"): d for d in agent_data.get("days", [])}
 
-    for day_num, hotel_name in first_night_by_day.items():
+    for day_num, hotel_name in acc_by_day.items():
         day = timeline_by_day.get(day_num)
         if day is None:
-            continue  # This day not in the current save batch — skip
+            continue  # Not in current save batch — skip
 
         base_name = hotel_name.split("(")[0].strip().lower()
         tokens = set(base_name.split()) - stopwords
@@ -194,9 +182,8 @@ def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) 
         if not matched:
             errors.append(
                 f"Day {day_num}: timeline has no entry referencing accommodation "
-                f'"{hotel_name}" (first-night check-in). '
-                f"Add a hotel arrival or check-in entry so the HTML generator can "
-                f"place the accommodation card at the correct time. "
+                f'"{hotel_name}". '
+                f"Add a check-in or return-to-hotel entry. "
                 f"(Need ≥2 of: {sorted(tokens)})"
             )
 
