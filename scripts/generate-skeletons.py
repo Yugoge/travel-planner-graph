@@ -209,6 +209,7 @@ def generate_plan_skeleton(
         day_num = day_req['day']
         date = day_req['date']
         location = day_req['location']
+        location_local = day_req.get('location_local', "")
         user_plans = day_req.get('user_plans', [])
 
         # Initialize day object with all required fields
@@ -216,6 +217,7 @@ def generate_plan_skeleton(
             "day": day_num,
             "date": date,
             "location": location,
+            "location_local": location_local,
             "location_change": None,  # Will be set by detect_location_changes
             "user_requirements": user_plans,
             "breakfast": {"name": "", "location": "", "cost": 0, "notes": ""},

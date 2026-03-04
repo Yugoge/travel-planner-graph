@@ -194,7 +194,8 @@ def op_update_day_location(
     req: Dict[str, Any],
     plan: Dict[str, Any],
     day_number: int,
-    new_location: str
+    new_location: str,
+    new_location_local: str = ""
 ) -> List[str]:
     """Change a day's location in both skeleton files.
 
@@ -202,7 +203,8 @@ def op_update_day_location(
         req: Requirements skeleton data
         plan: Plan skeleton data
         day_number: Day to update
-        new_location: New location string
+        new_location: New location string (English)
+        new_location_local: Local language name for the location (optional)
 
     Returns:
         List of change summary messages
@@ -213,6 +215,8 @@ def op_update_day_location(
     req_idx = find_day_index(req['days'], day_number)
     old_location = req['days'][req_idx].get('location', '')
     req['days'][req_idx]['location'] = new_location
+    if new_location_local:
+        req['days'][req_idx]['location_local'] = new_location_local
     changes.append(
         f"Updated day {day_number} location: \"{old_location}\" -> \"{new_location}\""
     )
@@ -220,6 +224,8 @@ def op_update_day_location(
     # Update plan-skeleton
     plan_idx = find_day_index(plan['days'], day_number)
     plan['days'][plan_idx]['location'] = new_location
+    if new_location_local:
+        plan['days'][plan_idx]['location_local'] = new_location_local
 
     # Re-detect location changes for ALL days in both files
     req['days'] = detect_location_changes(req['days'])
@@ -809,7 +815,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--location',
-        help='New location for the day (requires --update-day)'
+        help='New location for the day in English (requires --update-day)'
+    )
+    parser.add_argument(
+        '--location-local',
+        dest='location_local',
+        help='Local language name for the location (optional, paired with --location)'
     )
     parser.add_argument(
         '--add-plan',
@@ -1048,7 +1059,8 @@ def main() -> int:
 
         if operation == 'update_day_location':
             all_changes = op_update_day_location(
-                req, plan, args.update_day, args.location
+                req, plan, args.update_day, args.location,
+                new_location_local=args.location_local or ""
             )
 
         elif operation == 'add_plan':
