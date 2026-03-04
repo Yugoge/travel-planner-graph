@@ -126,6 +126,83 @@ def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None
         print(f"🖼️  Auto-extracted {poi_updated} image URLs", file=sys.stderr)
 
 
+def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) -> List[str]:
+    """Validate that the FIRST night at each accommodation has a timeline entry referencing it.
+
+    The HTML generator extracts accommodation check-in time by similarity-matching the hotel
+    name against timeline dict keys. If no key references the hotel on the check-in day,
+    it falls back to the check_in field and creates a wrong time block
+    (root cause of Day 14 Xi'an bug — second night at same hotel, no arrival entry).
+
+    Only the first day at a given accommodation is validated. Subsequent nights at the
+    same property (continuing stays) do not require a new check-in timeline entry.
+
+    A day passes if ANY timeline key shares ≥2 significant tokens with the hotel name.
+
+    Returns:
+        List of error strings (empty = all days pass).
+    """
+    errors = []
+
+    acc_file = trip_dir / "accommodation.json"
+    if not acc_file.exists():
+        return []
+
+    try:
+        with open(acc_file, encoding="utf-8") as f:
+            acc_raw = json.load(f)
+    except Exception:
+        return []
+
+    acc_days = sorted(
+        acc_raw.get("data", {}).get("days", acc_raw.get("days", [])),
+        key=lambda d: d.get("day", 0)
+    )
+
+    # Build: day_num → hotel name, but ONLY for first-night arrivals
+    # A day is a "first night" when its accommodation name differs from the previous day's.
+    first_night_by_day: Dict[int, str] = {}
+    prev_name = None
+    for d in acc_days:
+        acc = d.get("accommodation", {})
+        name = acc.get("name_base", "")
+        if name and name != prev_name:
+            first_night_by_day[d["day"]] = name
+        prev_name = name if name else prev_name
+
+    stopwords = {"the", "a", "an", "hotel", "inn", "hostel", "resort", "check", "in", "at", "to"}
+
+    # Build lookup for timeline days
+    timeline_by_day = {d.get("day"): d for d in agent_data.get("days", [])}
+
+    for day_num, hotel_name in first_night_by_day.items():
+        day = timeline_by_day.get(day_num)
+        if day is None:
+            continue  # This day not in the current save batch — skip
+
+        base_name = hotel_name.split("(")[0].strip().lower()
+        tokens = set(base_name.split()) - stopwords
+        if not tokens:
+            continue
+
+        timeline_keys = list(day.get("timeline", {}).keys())
+        matched = any(
+            sum(1 for t in tokens if t in key.lower()) >= 2
+            for key in timeline_keys
+        )
+
+        if not matched:
+            errors.append(
+                f"Day {day_num}: timeline has no entry referencing accommodation "
+                f'"{hotel_name}" (first-night check-in). '
+                f"Add a hotel arrival or check-in entry so the HTML generator can "
+                f"place the accommodation card at the correct time. "
+                f"(Need ≥2 of: {sorted(tokens)})"
+            )
+
+    return errors
+
+
 def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
                   skip_validation: bool = False,
                   allow_high: bool = False) -> tuple:
@@ -210,6 +287,16 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
 
     # Auto-extract image URLs from search_results
     extract_image_urls(agent, agent_data, trip_slug)
+
+    # Timeline-specific: every day must reference its accommodation in the timeline dict
+    if agent == "timeline" and not skip_validation:
+        hotel_errors = validate_timeline_hotel_entries(trip_dir, agent_data)
+        if hotel_errors:
+            print("❌ Timeline validation failed — missing hotel entries:", file=sys.stderr)
+            for err in hotel_errors:
+                print(f"  • {err}", file=sys.stderr)
+            print("\n❌ Save aborted. Fix the timeline before saving.", file=sys.stderr)
+            return False
 
     # Wrap in envelope for validation
     envelope_data = {"agent": agent, "status": "complete", "data": agent_data}
