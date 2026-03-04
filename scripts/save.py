@@ -169,13 +169,21 @@ def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) 
             continue  # Not in current save batch — skip
 
         base_name = hotel_name.split("(")[0].strip().lower()
-        tokens = set(base_name.split()) - stopwords
+        # Keep tokens that: (a) have at least one alphanumeric char, (b) aren't stopwords
+        tokens = {
+            t for t in base_name.split()
+            if any(c.isalnum() for c in t) and t not in stopwords
+        }
         if not tokens:
             continue
 
+        # Require at least min(2, available) matching tokens so single-token names
+        # (e.g. "Home", "Hostel") don't need 2 matches
+        threshold = min(2, len(tokens))
+
         timeline_keys = list(day.get("timeline", {}).keys())
         matched = any(
-            sum(1 for t in tokens if t in key.lower()) >= 2
+            sum(1 for t in tokens if t in key.lower()) >= threshold
             for key in timeline_keys
         )
 
