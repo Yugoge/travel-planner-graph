@@ -51,10 +51,13 @@ from typing import Optional, List, Dict, Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
-# Meal types derived from config — single source of truth shared with
-# plan-validate.py and sync-agent-data.py.
+# All field sets and meal types derived from config — single source of truth.
 with open(PROJECT_ROOT / "config" / "validation.json", 'r') as _f:
-    _MEAL_TYPES = json.load(_f)["meal_types"]
+    _VAL_CFG = json.load(_f)
+
+_MEAL_TYPES = _VAL_CFG["meal_types"]
+_L1 = _VAL_CFG["level_1_fields"]
+_L2_EXTRA = _VAL_CFG["level_2_extra_fields"]
 
 # Agent-specific POI key mappings
 AGENT_POI_KEYS = {
@@ -69,14 +72,9 @@ AGENT_POI_KEYS = {
 }
 
 # Fields exposed at each level
-LEVEL_1_FIELDS = {"day", "date", "location", "location_base", "location_local"}
+LEVEL_1_FIELDS = set(_L1)
 
-LEVEL_2_FIELDS = LEVEL_1_FIELDS | {
-    "name_base", "name_local",
-    "type_base", "type_local",
-    "cuisine_base", "cuisine_local",
-    "from_base", "from_local", "to_base", "to_local",
-}
+LEVEL_2_FIELDS = LEVEL_1_FIELDS | set(_L2_EXTRA)
 
 # Level 3: all fields (no restriction)
 

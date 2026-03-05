@@ -83,12 +83,15 @@ def load_config() -> dict:
             with open(CONFIG_FILE, encoding="utf-8") as f:
                 config_data = json.load(f)
                 # Extract config values, ignoring _description keys
-                return {
+                cfg = {
                     "english_placeholders": config_data.get("english_placeholders", DEFAULT_CONFIG["english_placeholders"]),
                     "currency_region_map": config_data.get("currency_region_map", DEFAULT_CONFIG["currency_region_map"]),
                     "intentional_overlap_keywords": config_data.get("intentional_overlap_keywords", DEFAULT_CONFIG["intentional_overlap_keywords"]),
                     "enforce_title_case": config_data.get("enforce_title_case", DEFAULT_CONFIG["enforce_title_case"]),
+                    "meal_types": config_data["meal_types"],
+                    "travel_segment_required_fields": config_data["travel_segment_required_fields"],
                 }
+                return cfg
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Warning: Failed to load {CONFIG_FILE}: {e}. Using defaults.", file=sys.stderr)
             return DEFAULT_CONFIG
@@ -148,7 +151,7 @@ class AgentConfig:
 
 
 AGENT_CONFIGS = {
-    "meals": AgentConfig("meal_item", "named_keys", ["breakfast", "lunch", "dinner"]),
+    "meals": AgentConfig("meal_item", "named_keys", CONFIG.get("meal_types", ["breakfast", "lunch", "dinner"])),
     "attractions": AgentConfig("attraction_item", "array", ["attractions"]),
     "entertainment": AgentConfig("entertainment_item", "array", ["entertainment"]),
     "accommodation": AgentConfig("accommodation_item", "singular", ["accommodation"]),
@@ -640,7 +643,7 @@ def check_travel_segments(timeline_data: dict, trip: str) -> list:
                     ))
 
             # Check 2: Required fields
-            required = ["name_base", "name_local", "type_base", "start_time", "end_time"]
+            required = CONFIG.get("travel_segment_required_fields", ["name_base", "name_local", "type_base", "start_time", "end_time"])
             for field in required:
                 if field not in segment or not segment[field]:
                     issues.append(Issue(
