@@ -126,56 +126,6 @@ def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None
         print(f"🖼️  Auto-extracted {poi_updated} image URLs", file=sys.stderr)
 
 
-def validate_timeline_hotel_entries(trip_dir: Path, agent_data: Dict[str, Any]) -> List[str]:
-    """Validate that every day's timeline references its accommodation via schema field.
-
-    Every day with accommodation must have exactly one timeline dict entry whose
-    value includes "accommodation_ref": true. This marks the check-in or
-    return-to-accommodation moment without relying on string matching or keyword lists.
-
-    Days without accommodation (e.g., transit days with no lodging) are skipped.
-
-    Returns:
-        List of error strings (empty = all days pass).
-    """
-    errors = []
-
-    acc_file = trip_dir / "accommodation.json"
-    if not acc_file.exists():
-        return []
-
-    try:
-        with open(acc_file, encoding="utf-8") as f:
-            acc_raw = json.load(f)
-    except Exception:
-        return []
-
-    acc_days = acc_raw.get("data", {}).get("days", acc_raw.get("days", []))
-    days_with_accommodation = {
-        d["day"]
-        for d in acc_days
-        if d.get("accommodation", {}).get("name_base", "")
-    }
-
-    timeline_by_day = {d.get("day"): d for d in agent_data.get("days", [])}
-
-    for day_num in sorted(days_with_accommodation):
-        day = timeline_by_day.get(day_num)
-        if day is None:
-            continue  # Not in current save batch — skip
-
-        has_ref = any(
-            val.get("accommodation_ref") is True
-            for val in day.get("timeline", {}).values()
-        )
-
-        if not has_ref:
-            errors.append(
-                f'Day {day_num}: no timeline entry has "accommodation_ref": true. '
-                f"Add the field to the check-in or return-to-accommodation entry."
-            )
-
-    return errors
 
 
 def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
@@ -262,16 +212,6 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
 
     # Auto-extract image URLs from search_results
     extract_image_urls(agent, agent_data, trip_slug)
-
-    # Timeline-specific: every day must reference its accommodation in the timeline dict
-    if agent == "timeline" and not skip_validation:
-        hotel_errors = validate_timeline_hotel_entries(trip_dir, agent_data)
-        if hotel_errors:
-            print("❌ Timeline validation failed — missing hotel entries:", file=sys.stderr)
-            for err in hotel_errors:
-                print(f"  • {err}", file=sys.stderr)
-            print("\n❌ Save aborted. Fix the timeline before saving.", file=sys.stderr)
-            return False
 
     # Wrap in envelope for validation
     envelope_data = {"agent": agent, "status": "complete", "data": agent_data}

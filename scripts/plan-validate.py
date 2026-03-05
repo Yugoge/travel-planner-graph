@@ -725,37 +725,44 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
         # 4d-2. Travel segments validation (NEW - prevents breakfast-in-travel_segments bug)
         issues.extend(check_travel_segments(timeline_data, trip))
 
-        # 4d-3. Required activities validation (NEW - enforce breakfast/lunch/dinner/hotel)
+        # 4d-3. Required activities validation — schema-based, no hardcoded keyword lists.
+        # Both meals and accommodation use explicit ref fields on timeline entries:
+        #   meal_ref: "breakfast" | "lunch" | "dinner"
+        #   accommodation_ref: true
+        # This eliminates keyword lists and works for any language / accommodation type.
+
+        # Pre-compute which days have accommodation (only those need accommodation_ref check).
+        acc_raw = all_data.get("accommodation", {})
+        acc_days_list = acc_raw.get("data", {}).get("days", acc_raw.get("days", []))
+        days_with_acc = {
+            d["day"] for d in acc_days_list
+            if d.get("accommodation", {}).get("name_base", "")
+        }
+
         for day in days:
             dn = day.get("day", 0)
             tl = day.get("timeline", {})
-            activity_names = " ".join(tl.keys()).lower()
+            tl_values = list(tl.values())
 
-            # Check for required meals
-            meal_keywords = {
-                "breakfast": ["breakfast", "早餐", "brunch"],
-                "lunch": ["lunch", "午餐", "brunch"],
-                "dinner": ["dinner", "晚餐", "supper"]
-            }
-
-            for meal_type, keywords in meal_keywords.items():
-                has_meal = any(kw in activity_names for kw in keywords)
+            # Meals: each meal type must have exactly one timeline entry with meal_ref set.
+            for meal_type in ("breakfast", "lunch", "dinner"):
+                has_meal = any(v.get("meal_ref") == meal_type for v in tl_values)
                 if not has_meal:
                     issues.append(Issue(
                         Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
                         f"Day {dn}", "timeline",
-                        f"Missing required {meal_type} activity in timeline"
+                        f'Missing timeline entry with "meal_ref": "{meal_type}"'
                     ))
 
-            # Check for hotel check-in or arrival (unless it's a travel day ending at hotel)
-            hotel_keywords = ["check in", "check-in", "arrive at", "入住", "到达酒店"]
-            has_hotel = any(kw in activity_names for kw in hotel_keywords)
-            if not has_hotel:
-                issues.append(Issue(
-                    Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
-                    f"Day {dn}", "timeline",
-                    "Missing required hotel check-in/arrival activity in timeline"
-                ))
+            # Accommodation: days with lodging must have one timeline entry with accommodation_ref: true.
+            if dn in days_with_acc:
+                has_acc_ref = any(v.get("accommodation_ref") is True for v in tl_values)
+                if not has_acc_ref:
+                    issues.append(Issue(
+                        Severity.HIGH, Category.PRESENCE, "timeline", trip, dn,
+                        f"Day {dn}", "timeline",
+                        'Missing timeline entry with "accommodation_ref": true'
+                    ))
 
     # 4e. Transportation departure < arrival
     if agent == "transportation":

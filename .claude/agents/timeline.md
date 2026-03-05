@@ -81,9 +81,15 @@ For each day in the trip:
    ```json
    {
      "Hotel check-out": {
-       "start_time": "10:00",
-       "end_time": "10:30",
+       "start_time": "09:00",
+       "end_time": "09:30",
        "duration_minutes": 30
+     },
+     "Breakfast at Café Name": {
+       "start_time": "09:30",
+       "end_time": "10:30",
+       "duration_minutes": 60,
+       "meal_ref": "breakfast"
      },
      "The Louvre Museum": {
        "start_time": "11:00",
@@ -93,7 +99,14 @@ For each day in the trip:
      "Lunch at Le Comptoir du Relais": {
        "start_time": "14:30",
        "end_time": "16:00",
-       "duration_minutes": 90
+       "duration_minutes": 90,
+       "meal_ref": "lunch"
+     },
+     "Dinner at Bistro Name": {
+       "start_time": "19:00",
+       "end_time": "21:00",
+       "duration_minutes": 120,
+       "meal_ref": "dinner"
      },
      "Hotel check-in / Return to Hotel Name": {
        "start_time": "22:00",
@@ -104,11 +117,18 @@ For each day in the trip:
    }
    ```
 
-   **`accommodation_ref` rules**:
-   - Required on **exactly one** timeline entry per day (the check-in or return-to-accommodation entry)
-   - Works for any accommodation type: hotel, apartment, rental, hostel, home, etc. — no name matching needed
-   - `save.py` **blocks the save** if no entry has `accommodation_ref: true` for a day with accommodation
-   - The HTML generator uses this field to place the accommodation card at the correct time
+   **Schema ref fields — required on every day, no string matching:**
+
+   | Field | Value | Required on |
+   |-------|-------|-------------|
+   | `"meal_ref"` | `"breakfast"` \| `"lunch"` \| `"dinner"` | Every meal entry (one per meal type per day) |
+   | `"accommodation_ref"` | `true` | The check-in or return-to-accommodation entry |
+
+   **Rules:**
+   - Each meal type must have exactly one timeline entry with `meal_ref` set to that type
+   - Every day with accommodation must have exactly one entry with `accommodation_ref: true`
+   - Works for any accommodation type or meal name — no keyword matching needed
+   - `plan-validate.py` reports **HIGH severity** and **blocks saves** if any ref is missing
 
 3. **Validate timeline**:
    - Check for overlapping activities (conflict detection)
