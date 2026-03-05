@@ -28,17 +28,6 @@ sys.path.insert(0, os.path.dirname(__file__))
 class ImageFetcher:
     """Fetch and cache images from Google Maps and Gaode Maps APIs"""
 
-    # Mainland China cities (use Gaode Maps first)
-    CHINA_CITIES = {
-        "beijing", "shanghai", "guangzhou", "shenzhen", "chengdu", "chongqing",
-        "tianjin", "wuhan", "xian", "hangzhou", "nanjing", "suzhou", "zhengzhou",
-        "changsha", "shenyang", "qingdao", "xiamen", "harbin", "kunming", "dalian",
-        "济南", "青岛", "郑州", "石家庄", "太原", "呼和浩特", "沈阳", "长春", "哈尔滨",
-        "南京", "杭州", "合肥", "福州", "南昌", "武汉", "长沙", "广州", "南宁",
-        "海口", "成都", "贵阳", "昆明", "拉萨", "西安", "兰州", "西宁", "银川",
-        "乌鲁木齐", "北京", "天津", "上海", "重庆", "深圳", "厦门", "大连", "苏州"
-    }
-
     def __init__(self, destination_slug: str, data_dir: Optional[Path] = None):
         """
         Initialize image fetcher.
@@ -51,6 +40,11 @@ class ImageFetcher:
         self.base_dir = Path(__file__).parent.parent.parent
         self.data_dir = data_dir or (self.base_dir / "data" / destination_slug)
         self.cache_file = self.data_dir / "images.json"
+
+        # Load China cities from config (raises if config missing)
+        china_cfg = self.base_dir / "config" / "china-cities.json"
+        with open(china_cfg, 'r') as f:
+            self._china_cities = set(json.load(f)["cities"])
 
         # Image cache structure
         self.cache = self._load_cache()
@@ -70,8 +64,8 @@ class ImageFetcher:
 
         location_lower = location.lower().strip()
 
-        # Check against known China cities
-        for city in self.CHINA_CITIES:
+        # Check against config-driven China cities list
+        for city in self._china_cities:
             if city in location_lower:
                 return True
 

@@ -23,19 +23,14 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Default mode speeds in meters per second (m/s)
-# Based on Gaode Maps standards (routing.md line 84: walking ~1.2 m/s)
-DEFAULT_MODE_SPEEDS = {
-    'walking': 1.2,      # ~4.3 km/h
-    'cycling': 4.2,      # ~15 km/h
-    'driving': 11.1,     # ~40 km/h (urban average)
-    'transit': 8.3,      # ~30 km/h (including stops)
-    'taxi': 11.1,        # Same as driving
-    'didi': 11.1,        # Same as driving
-    'bus': 8.3,          # Same as transit
-    'subway': 13.9,      # ~50 km/h (including stops)
-    'metro': 13.9        # Same as subway
-}
+def _load_default_speeds() -> tuple:
+    """Load default mode speeds and tolerance from config/transport-mode-speeds.json."""
+    cfg = Path(__file__).resolve().parent.parent / "config" / "transport-mode-speeds.json"
+    with open(cfg, 'r') as f:
+        data = json.load(f)
+    return data["default_mode_speeds"], data["default_tolerance"]
+
+DEFAULT_MODE_SPEEDS, DEFAULT_TOLERANCE = _load_default_speeds()
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -55,8 +50,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--tolerance',
         type=float,
-        default=0.5,
-        help='Acceptable deviation ratio (default: 0.5 = 50%% tolerance)'
+        default=DEFAULT_TOLERANCE,
+        help=f'Acceptable deviation ratio (default: {DEFAULT_TOLERANCE} from config)'
     )
     parser.add_argument(
         '--output',
@@ -78,11 +73,12 @@ def get_mode_speed(transport_mode: str, mode_speeds: Dict[str, float]) -> float:
     Returns:
         Speed in m/s, or None if mode not recognized
     """
+    import re
     mode_lower = transport_mode.lower()
 
-    # Check each known mode keyword
+    # Word-boundary match to avoid e.g. "train" matching "strain"
     for mode_key, speed in mode_speeds.items():
-        if mode_key in mode_lower:
+        if re.search(r'\b' + re.escape(mode_key) + r'\b', mode_lower):
             return speed
 
     return None

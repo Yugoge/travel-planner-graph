@@ -30,21 +30,12 @@ from copy import deepcopy
 class AgentDataSyncer:
     """Synchronize agent data using timeline.json as Single Source of Truth."""
 
-    # Transit prefixes to exclude from POI matching
-    TRANSIT_PREFIXES = (
-        "travel to", "walk to", "drive to", "taxi to", "bus to",
-        "train to", "metro to", "subway to", "transfer to",
-        "travel from", "walk from", "drive from",
-        "travel back", "return to", "board train",
-        "hotel check", "check luggage", "wake up", "arrive ",
-        "return home", "free time", "settle in",
-    )
-
     def __init__(self, plan_id: str, dry_run: bool = False):
         self.plan_id = plan_id
         self.dry_run = dry_run
         self.base_dir = Path(__file__).parent.parent
         self.data_dir = self.base_dir / "data" / plan_id
+        self._config = self._load_config()
         self.report = {
             "timestamp": datetime.now().isoformat(),
             "plan_id": plan_id,
@@ -54,6 +45,19 @@ class AgentDataSyncer:
             "name_normalizations": [],
             "unmatched_items": [],
             "errors": [],
+        }
+
+    def _load_config(self) -> dict:
+        """Load validation config from config/validation.json. Raises if missing."""
+        cfg_path = self.base_dir / "config" / "validation.json"
+        with open(cfg_path, 'r') as f:
+            val = json.load(f)
+        base = tuple(val["transit_prefixes"])
+        extra = tuple(val["transit_prefixes_sync_extra"])
+        return {
+            "transit_prefixes": base + extra,
+            "meal_hint_ranges": {k: tuple(v) for k, v in val["meal_hint_ranges"].items()},
+            "meal_types": val["meal_types"],
         }
 
     def run(self, skip_html: bool = False) -> dict:
@@ -178,7 +182,7 @@ class AgentDataSyncer:
 
     def _is_transit(self, key: str) -> bool:
         """Check if a timeline key is a transit/travel entry (not a POI)."""
-        return key.lower().startswith(self.TRANSIT_PREFIXES)
+        return key.lower().startswith(self._config["transit_prefixes"])
 
     def _find_timeline_item(self, item_name: str, day_timeline: dict,
                             time_hint: str = None) -> dict:
@@ -196,11 +200,7 @@ class AgentDataSyncer:
         if not day_timeline or not item_name:
             return None
 
-        hint_ranges = {
-            "breakfast": (5, 10),
-            "lunch": (10, 15),
-            "dinner": (17, 23),
-        }
+        hint_ranges = self._config["meal_hint_ranges"]
 
         def _time_in_range(tl_val: dict, hint: str) -> bool:
             if not hint or not tl_val:
@@ -332,7 +332,7 @@ class AgentDataSyncer:
             day_num = day.get("day", 0)
             day_tl = timeline_by_day.get(day_num, {})
 
-            for meal_type in ["breakfast", "lunch", "dinner"]:
+            for meal_type in self._config["meal_types"]:
                 meal = day.get(meal_type)
                 if not meal or not isinstance(meal, dict):
                     continue

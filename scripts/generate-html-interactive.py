@@ -41,6 +41,9 @@ class InteractiveHTMLGenerator:
         # Load currency config for display
         self._eur_to_cny_rate = self._load_eur_to_cny_rate()
         self._display_currency, self._display_symbol = self._load_display_currency()
+        self._cross_rates_to_cny = self._load_cross_rates_to_cny()
+        (self._transit_prefixes, self._hint_ranges, self._type_display_map,
+         self._home_name_kw, self._home_type_kw) = self._load_validation_config()
 
     def _load_eur_to_cny_rate(self) -> float:
         """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
@@ -75,38 +78,66 @@ class InteractiveHTMLGenerator:
             raise RuntimeError("Exchange rate unavailable - cannot generate accurate budget display")
 
     def _load_display_currency(self) -> tuple:
-        """Load display currency from config/currency-config.json."""
+        """Load display currency from config/currency-config.json. Raises if config missing."""
         config_path = self.base_dir / "config" / "currency-config.json"
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            currency = config.get("default_display_currency", "EUR")
-            symbol_map = config.get("currency_symbol_map", {})
-            symbol = symbol_map.get(currency, "€")
-            print(f"Display currency: {currency} ({symbol})", file=sys.stderr)
-            return currency, symbol
-        except (FileNotFoundError, json.JSONDecodeError):
-            return "EUR", "€"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        currency = config["default_display_currency"]
+        symbol = config["currency_symbol_map"][currency]
+        print(f"Display currency: {currency} ({symbol})", file=sys.stderr)
+        return currency, symbol
+
+    def _load_cross_rates_to_cny(self) -> dict:
+        """Load foreign→CNY cross rates from config/currency-config.json."""
+        config_path = self.base_dir / "config" / "currency-config.json"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        return {k: v for k, v in config.get("cross_rates_to_cny", {}).items()
+                if not k.startswith("_") and isinstance(v, (int, float))}
+
+    def _load_validation_config(self) -> tuple:
+        """Load all config-driven keyword lists and display maps. Raises if config missing."""
+        val_path = self.base_dir / "config" / "validation.json"
+        type_path = self.base_dir / "config" / "type-display-map.json"
+
+        with open(val_path, 'r') as f:
+            val = json.load(f)
+        transit = tuple(val["transit_prefixes"])
+        hints = {k: tuple(v) for k, v in val["meal_hint_ranges"].items()}
+        home_name_kw = val["home_name_keywords"]
+        home_type_kw = val["home_type_keywords"]
+
+        with open(type_path, 'r') as f:
+            type_cfg = json.load(f)
+        type_map = {**type_cfg.get("trip_types", {}), **type_cfg.get("poi_types", {})}
+
+        return transit, hints, type_map, home_name_kw, home_type_kw
+
+    def _to_cny(self, amount: float, source_currency: str) -> float:
+        """Convert any amount to CNY using config cross rates."""
+        if source_currency == "CNY" or amount == 0:
+            return amount
+        rate = self._cross_rates_to_cny.get(source_currency)
+        if rate:
+            return amount * rate
+        print(f"WARNING: No cross rate for {source_currency}→CNY. Treating as CNY.", file=sys.stderr)
+        return amount
 
     def _to_display_currency(self, amount: float, source_currency: str = "CNY") -> float:
-        """Convert any amount to display currency (EUR) using proper exchange rates."""
+        """Convert any amount to display currency using config rates."""
         if amount == 0:
             return 0
         if source_currency == self._display_currency:
             return amount
-        # Convert source to EUR
+        # Normalize to CNY first, then convert to display currency
+        cny = self._to_cny(amount, source_currency)
         if self._display_currency == "EUR":
-            if source_currency == "CNY":
-                return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
-            elif source_currency == "USD":
-                # USD conversion not supported - would require real-time USD→EUR rate
-                print(f"WARNING: USD→EUR conversion not implemented. Cannot convert ${amount}", file=sys.stderr)
-                print("Please update budget data to use CNY or EUR", file=sys.stderr)
-                return 0  # Return 0 to make the missing data obvious
-            else:
-                # Unknown currency, treat as CNY
-                return amount / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
-        return amount
+            return cny / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
+        # Other display currencies: convert CNY→display via inverse of cross_rates_to_cny
+        display_rate = self._cross_rates_to_cny.get(self._display_currency)
+        if display_rate and display_rate > 0:
+            return cny / display_rate
+        return cny
 
     # Default UI labels (English only — local translations come from data)
     # These serve as fallback keys when requirements-skeleton doesn't provide a label.
@@ -192,13 +223,7 @@ class InteractiveHTMLGenerator:
         # Fallback: use cost field with currency awareness
         cost = loc_change.get("cost", 0)
         currency = loc_change.get("currency", "CNY")
-        if currency == "CNY":
-            return float(cost)
-        elif currency == "USD":
-            return float(cost) * 7.3  # approximate USD→CNY
-        elif currency == "EUR":
-            return float(cost) * 8.2  # approximate EUR→CNY
-        return float(cost)
+        return self._to_cny(float(cost), currency)
 
     def _is_home_location(self, item: dict) -> bool:
         """Check if item represents a home/family location.
@@ -212,26 +237,16 @@ class InteractiveHTMLGenerator:
             (item.get("name") or "")
         ).lower()
         item_type = (item.get("type") or "").lower()
-        home_name_keywords = ["family home", "家", "home", "family"]
-        home_type_keywords = ["family", "home stay", "homestay"]
         return (
-            any(kw in name for kw in home_name_keywords) or
-            any(kw in item_type for kw in home_type_keywords)
+            any(kw in name for kw in self._home_name_kw) or
+            any(kw in item_type for kw in self._home_type_kw)
         )
 
     def _format_trip_type(self, trip_type: str) -> str:
         """Convert trip_type code to natural language (Fix #1, #3)
         Root cause: commit 52d3528 - no formatting for trip types
         """
-        type_map = {
-            "bucket_list": "Bucket List",
-            "weekend_extended": "Extended Weekend",
-            "weekend_short": "Short Weekend",
-            "itinerary": "Itinerary",
-            "day_trip": "Day Trip",
-            "week_long": "Week-long Trip"
-        }
-        return type_map.get(trip_type, trip_type.replace("_", " ").title())
+        return self._type_display_map.get(trip_type, trip_type.replace("_", " ").title())
 
     def _format_preferences(self, preferences: dict) -> str:
         """Format preferences without code prefixes (Fix #2)
@@ -274,24 +289,7 @@ class InteractiveHTMLGenerator:
         if not type_code:
             return ""
 
-        # Common type mappings
-        type_map = {
-            "historical_site": "Historical Site",
-            "cultural_district": "Cultural District",
-            "religious_site": "Religious Site",
-            "museum": "Museum",
-            "park": "Park",
-            "cultural_performance": "Cultural Performance",
-            "nightlife": "Nightlife",
-            "spa_wellness": "Spa & Wellness",
-            "shopping": "Shopping",
-            "hotel": "Hotel",
-            "hostel": "Hostel",
-            "guesthouse": "Guesthouse"
-        }
-
-        # Return mapped value or format by replacing underscores and title-casing
-        return type_map.get(type_code, type_code.replace("_", " ").title())
+        return self._type_display_map.get(type_code, type_code.replace("_", " ").title())
 
     def _get_cover_image(self, location: str, index: int = 0) -> str:
         """Get cover image URL for location from images cache or fallback to Unsplash
@@ -442,28 +440,13 @@ class InteractiveHTMLGenerator:
         if not day_timeline or not item_name:
             return None
 
-        # Transit prefixes to exclude from matching (these are travel segments, not POIs)
-        # Note: "hotel check" intentionally omitted so accommodation can match
-        # "Hotel check-in" entries in timeline. Sync-agent-data.py keeps "hotel check"
-        # in its own list because _sync_accommodation uses direct name lookup instead.
-        transit_prefixes = (
-            "travel to", "walk to", "drive to", "taxi to", "bus to",
-            "train to", "metro to", "subway to", "transfer to",
-            "travel from", "walk from", "drive from",
-            "travel back", "return to", "board train",
-            "check luggage", "wake up",
-            "return home", "free time", "settle in",
-        )
-
-        # Time hint ranges for meal slots
-        hint_ranges = {
-            "breakfast": (5, 10),   # 05:00-10:00
-            "lunch": (10, 15),      # 10:00-15:00
-            "dinner": (17, 23),     # 17:00-23:00
-        }
+        # Transit prefixes and hint ranges are loaded from config at init.
+        # Note: "hotel check" is intentionally absent from transit_prefixes (config/validation.json)
+        # so that accommodation "Hotel check-in" entries still match. Sync uses the extra list.
+        hint_ranges = self._hint_ranges
 
         def _is_transit(key: str) -> bool:
-            return key.lower().startswith(transit_prefixes)
+            return key.lower().startswith(self._transit_prefixes)
 
         def _time_in_range(tl_val: dict, hint: str) -> bool:
             """Check if timeline entry falls within the hint time range."""

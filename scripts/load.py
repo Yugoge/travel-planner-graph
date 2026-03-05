@@ -51,16 +51,21 @@ from typing import Optional, List, Dict, Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
+# Meal types derived from config — single source of truth shared with
+# plan-validate.py and sync-agent-data.py.
+with open(PROJECT_ROOT / "config" / "validation.json", 'r') as _f:
+    _MEAL_TYPES = json.load(_f)["meal_types"]
+
 # Agent-specific POI key mappings
 AGENT_POI_KEYS = {
-    "meals": ["breakfast", "lunch", "dinner"],
-    "attractions": ["attractions"],  # array
-    "entertainment": ["entertainment"],  # array
-    "accommodation": ["accommodation"],  # singular
-    "shopping": ["shopping"],  # array
-    "transportation": ["location_change"],  # singular, optional
-    "budget": ["budget"],  # singular
-    "timeline": ["timeline", "travel_segments"],  # special: object map + array
+    "meals": _MEAL_TYPES,
+    "attractions": ["attractions"],
+    "entertainment": ["entertainment"],
+    "accommodation": ["accommodation"],
+    "shopping": ["shopping"],
+    "transportation": ["location_change"],
+    "budget": ["budget"],
+    "timeline": ["timeline", "travel_segments"],
 }
 
 # Fields exposed at each level
