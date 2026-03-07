@@ -69,33 +69,15 @@ LEGACY_FIELD_MAP = {
 # 2. Modify DEFAULT_CONFIG below (not recommended - defeats purpose of external config)
 # ---------------------------------------------------------------------------
 
-DEFAULT_CONFIG = {
-    "english_placeholders": ["Optional", "Alternative", "TBD", "N/A", "None", "Item "],
-    "currency_region_map": {},
-    "intentional_overlap_keywords": ["optional", "alternative", " or ", "in-park"],
-    "enforce_title_case": True,
-}
-
 def load_config() -> dict:
-    """Load validation configuration from external file or use defaults."""
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, encoding="utf-8") as f:
-                config_data = json.load(f)
-                # Extract config values, ignoring _description keys
-                cfg = {
-                    "english_placeholders": config_data.get("english_placeholders", DEFAULT_CONFIG["english_placeholders"]),
-                    "currency_region_map": config_data.get("currency_region_map", DEFAULT_CONFIG["currency_region_map"]),
-                    "intentional_overlap_keywords": config_data.get("intentional_overlap_keywords", DEFAULT_CONFIG["intentional_overlap_keywords"]),
-                    "enforce_title_case": config_data.get("enforce_title_case", DEFAULT_CONFIG["enforce_title_case"]),
-                    "meal_types": config_data["meal_types"],
-                    "travel_segment_required_fields": config_data["travel_segment_required_fields"],
-                }
-                return cfg
-        except (json.JSONDecodeError, KeyError) as e:
-            print(f"Warning: Failed to load {CONFIG_FILE}: {e}. Using defaults.", file=sys.stderr)
-            return DEFAULT_CONFIG
-    return DEFAULT_CONFIG
+    """Load validation configuration. Raises if config file is missing or malformed."""
+    with open(CONFIG_FILE, encoding="utf-8") as f:
+        config_data = json.load(f)
+    return {
+        "enforce_title_case": config_data.get("enforce_title_case", True),
+        "meal_types": config_data["meal_types"],
+        "travel_segment_required_fields": config_data["travel_segment_required_fields"],
+    }
 
 CONFIG = load_config()
 
@@ -659,19 +641,6 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
     """Category 4: Semantic / content checks."""
     issues = []
 
-    # 4a. name_local should not contain English placeholders (Fix 1: now uses CONFIG)
-    if agent in AGENTS_WITH_LOCAL:
-        english_placeholders = CONFIG.get("english_placeholders", [])
-        for ei in items:
-            nl = ei.data.get("name_local", "")
-            if isinstance(nl, str):
-                for kw in english_placeholders:
-                    if kw in nl:
-                        issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
-                                            ei.day_num, ei.label, "name_local",
-                                            f"Contains English placeholder: '{kw}' in '{nl}'"))
-                        break
-
     # 4b. type_base Title Case (attractions) - Fix 6: now configurable
     if agent == "attractions" and CONFIG.get("enforce_title_case", True):
         for ei in items:
@@ -681,49 +650,9 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
                                     ei.day_num, ei.label, "type_base",
                                     f"Not Title Case: '{tb}' (expected '{_smart_title(tb)}')"))
 
-    # 4c. Currency-region consistency - Fix 2: now optional, disabled by default
-    # Only run if currency_region_map is populated in CONFIG
-    currency_region_map = CONFIG.get("currency_region_map", {})
-    if agent in AGENTS_WITH_LOCAL and currency_region_map:
-        for ei in items:
-            cl = ei.data.get("currency_local", "")
-            loc = (ei.location or "").lower()
-            expected = currency_region_map.get(loc)
-            if expected and cl and cl != expected:
-                issues.append(Issue(Severity.MEDIUM, Category.SEMANTIC, agent, ei.trip,
-                                    ei.day_num, ei.label, "currency_local",
-                                    f"Expected '{expected}' for {ei.location}, got '{cl}'"))
-
-    # 4d. Timeline chronological ordering - Fix 4: uses CONFIG for intentional keywords
+    # 4d. Timeline validation
     if agent == "timeline":
         timeline_data = all_data.get("timeline", {})
-        days = timeline_data.get("data", {}).get("days", [])
-        # NOTE: Timeline overlap detection moved to check_all_activity_overlaps()
-        # The old adjacent-only check below was incomplete and missed non-adjacent overlaps.
-        # Comprehensive pairwise overlap detection now handles timeline + all POI agents.
-        #
-        # intentional_kw = CONFIG.get("intentional_overlap_keywords", [])
-        # for day in days:
-        #     dn = day.get("day", 0)
-        #     tl = day.get("timeline", {})
-        #     timed = []
-        #     for name, sched in tl.items():
-        #         if isinstance(sched, dict):
-        #             s, e = sched.get("start_time", ""), sched.get("end_time", "")
-        #             if s and e:
-        #                 timed.append((name, s, e))
-        #     timed.sort(key=lambda x: x[1])
-        #     for i in range(len(timed) - 1):
-        #         cn, cs, ce = timed[i]
-        #         nn, ns, ne = timed[i + 1]
-        #         if ce > ns:
-        #             combined = (cn + " " + nn).lower()
-        #             intentional = any(kw in combined for kw in intentional_kw)
-        #             sev = Severity.INFO if intentional else Severity.HIGH
-        #             issues.append(Issue(sev, Category.SEMANTIC, "timeline", trip, dn,
-        #                                 f"Day {dn}", "timeline",
-        #                                 f"'{cn}' ({cs}-{ce}) overlaps '{nn}' ({ns}-{ne})"
-        #                                 + (" [intentional]" if intentional else "")))
 
         # 4d-2. Travel segments validation (NEW - prevents breakfast-in-travel_segments bug)
         issues.extend(check_travel_segments(timeline_data, trip))

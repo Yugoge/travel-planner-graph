@@ -177,9 +177,9 @@ class AgentDataSyncer:
                     pass
         return None
 
-    def _is_transit(self, key: str) -> bool:
-        """Check if a timeline key is a transit/travel entry (not a POI)."""
-        return key.lower().startswith(self._config["transit_prefixes"])
+    def _is_transit(self, key: str, val: dict) -> bool:
+        """Check if a timeline entry is a transit/travel segment (not a POI)."""
+        return val.get("transit") is True
 
     def _find_timeline_item(self, item_name: str, day_timeline: dict,
                             time_hint: str = None) -> dict:
@@ -237,7 +237,7 @@ class AgentDataSyncer:
         item_base = item_name.split("(")[0].strip().split("（")[0].strip()
         tier2 = []
         for tl_key, tl_val in day_timeline.items():
-            if self._is_transit(tl_key):
+            if self._is_transit(tl_key, tl_val):
                 continue
             tl_base = tl_key.split("(")[0].strip().split("（")[0].strip()
             if item_base.lower() == tl_base.lower():
@@ -248,7 +248,7 @@ class AgentDataSyncer:
         # Tier 3: Substring match (POI only)
         tier3 = []
         for tl_key, tl_val in day_timeline.items():
-            if self._is_transit(tl_key):
+            if self._is_transit(tl_key, tl_val):
                 continue
             tl_base = tl_key.split("(")[0].strip().lower()
             if item_base.lower() in tl_key.lower() or tl_base in item_base.lower():

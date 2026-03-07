@@ -42,8 +42,7 @@ class InteractiveHTMLGenerator:
         self._eur_to_cny_rate = self._load_eur_to_cny_rate()
         self._display_currency, self._display_symbol = self._load_display_currency()
         self._cross_rates_to_cny = self._load_cross_rates_to_cny()
-        (self._transit_prefixes, self._hint_ranges, self._type_display_map,
-         self._home_name_kw, self._home_type_kw) = self._load_validation_config()
+        (self._hint_ranges, self._type_display_map) = self._load_validation_config()
 
     def _load_eur_to_cny_rate(self) -> float:
         """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
@@ -96,22 +95,19 @@ class InteractiveHTMLGenerator:
                 if not k.startswith("_") and isinstance(v, (int, float))}
 
     def _load_validation_config(self) -> tuple:
-        """Load all config-driven keyword lists and display maps. Raises if config missing."""
+        """Load display maps and meal hint ranges from config. Raises if config missing."""
         val_path = self.base_dir / "config" / "validation.json"
         type_path = self.base_dir / "config" / "type-display-map.json"
 
         with open(val_path, 'r') as f:
             val = json.load(f)
-        transit = tuple(val["transit_prefixes"])
         hints = {k: tuple(v) for k, v in val["meal_hint_ranges"].items()}
-        home_name_kw = val["home_name_keywords"]
-        home_type_kw = val["home_type_keywords"]
 
         with open(type_path, 'r') as f:
             type_cfg = json.load(f)
         type_map = {**type_cfg.get("trip_types", {}), **type_cfg.get("poi_types", {})}
 
-        return transit, hints, type_map, home_name_kw, home_type_kw
+        return hints, type_map
 
     def _to_cny(self, amount: float, source_currency: str) -> float:
         """Convert any amount to CNY using config cross rates."""
@@ -226,21 +222,8 @@ class InteractiveHTMLGenerator:
         return self._to_cny(float(cost), currency)
 
     def _is_home_location(self, item: dict) -> bool:
-        """Check if item represents a home/family location.
-
-        Fix #7: Identify home/family locations so image fallback logic
-        can use neighborhood-based search instead of irrelevant stock photos.
-        """
-        name = (
-            (item.get("name_base") or "") +
-            (item.get("name_local") or "") +
-            (item.get("name") or "")
-        ).lower()
-        item_type = (item.get("type") or "").lower()
-        return (
-            any(kw in name for kw in self._home_name_kw) or
-            any(kw in item_type for kw in self._home_type_kw)
-        )
+        """Check if item is a home/family location via schema field is_home."""
+        return item.get("is_home") is True
 
     def _format_trip_type(self, trip_type: str) -> str:
         """Convert trip_type code to natural language (Fix #1, #3)
@@ -440,13 +423,10 @@ class InteractiveHTMLGenerator:
         if not day_timeline or not item_name:
             return None
 
-        # Transit prefixes and hint ranges are loaded from config at init.
-        # Note: "hotel check" is intentionally absent from transit_prefixes (config/validation.json)
-        # so that accommodation "Hotel check-in" entries still match. Sync uses the extra list.
         hint_ranges = self._hint_ranges
 
-        def _is_transit(key: str) -> bool:
-            return key.lower().startswith(self._transit_prefixes)
+        def _is_transit(key: str, val: dict) -> bool:
+            return val.get("transit") is True
 
         def _time_in_range(tl_val: dict, hint: str) -> bool:
             """Check if timeline entry falls within the hint time range."""
@@ -490,7 +470,7 @@ class InteractiveHTMLGenerator:
         item_base = item_name.split("(")[0].strip().split("（")[0].strip()
         tier2 = []
         for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key):
+            if _is_transit(timeline_key, timeline_val):
                 continue
             timeline_base = timeline_key.split("(")[0].strip().split("（")[0].strip()
             if item_base.lower() == timeline_base.lower():
@@ -501,7 +481,7 @@ class InteractiveHTMLGenerator:
         # Tier 3: Substring match - POI entries only (exclude transit)
         tier3 = []
         for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key):
+            if _is_transit(timeline_key, timeline_val):
                 continue
             if item_base.lower() in timeline_key.lower() or timeline_key.split("(")[0].strip().lower() in item_base.lower():
                 tier3.append((timeline_key, timeline_val))
