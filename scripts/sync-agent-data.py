@@ -52,10 +52,7 @@ class AgentDataSyncer:
         cfg_path = self.base_dir / "config" / "validation.json"
         with open(cfg_path, 'r') as f:
             val = json.load(f)
-        base = tuple(val["transit_prefixes"])
-        extra = tuple(val["transit_prefixes_sync_extra"])
         return {
-            "transit_prefixes": base + extra,
             "meal_hint_ranges": {k: tuple(v) for k, v in val["meal_hint_ranges"].items()},
             "meal_types": val["meal_types"],
         }
