@@ -55,18 +55,7 @@ LEGACY_FIELD_MAP = {
 }
 
 # ---------------------------------------------------------------------------
-# Configuration-driven validation settings
-# Root cause: Commit f0cc710 (2026-02-10) created hardcoded validation logic
-# Fix pattern: Commit 2e14cfa removed hardcoded meal keywords - applying same
-# pattern to remaining 9 hardcoded issues
-#
-# CONFIGURATION GUIDE:
-# Settings are loaded from config/validation.json (external file).
-# If config file not found, uses default fallback values below.
-#
-# To customize validation behavior:
-# 1. Edit config/validation.json (recommended), OR
-# 2. Modify DEFAULT_CONFIG below (not recommended - defeats purpose of external config)
+# Configuration — loaded from config/validation.json (required, raises if missing)
 # ---------------------------------------------------------------------------
 
 def load_config() -> dict:
