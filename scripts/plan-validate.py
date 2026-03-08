@@ -64,7 +64,6 @@ def load_config() -> dict:
         config_data = json.load(f)
     return {
         "enforce_title_case": config_data.get("enforce_title_case", True),
-        "meal_types": config_data["meal_types"],
         "travel_segment_required_fields": config_data["travel_segment_required_fields"],
     }
 
@@ -121,17 +120,63 @@ class AgentConfig:
     optional_key: bool = False  # key may be absent (e.g., location_change)
 
 
-AGENT_CONFIGS = {
-    "meals": AgentConfig("meal_item", "named_keys", CONFIG.get("meal_types", ["breakfast", "lunch", "dinner"])),
-    "attractions": AgentConfig("attraction_item", "array", ["attractions"]),
-    "entertainment": AgentConfig("entertainment_item", "array", ["entertainment"]),
-    "accommodation": AgentConfig("accommodation_item", "singular", ["accommodation"]),
-    "shopping": AgentConfig("shopping_item", "array", ["shopping"]),
-    "transportation": AgentConfig("location_change", "singular", ["location_change"], optional_key=True),
-    "budget": AgentConfig("budget_categories", "singular", ["budget"]),
-}
+def _is_data_prop(prop_def: dict) -> bool:
+    """True if a day_entry property references an item schema (not a structural field)."""
+    if "$ref" in prop_def:
+        return True
+    if prop_def.get("type") == "array":
+        return "$ref" in prop_def.get("items", {})
+    return False
 
-# Timeline is special — two item types in one file
+
+def _derive_agent_configs(schema_dir: Path) -> dict:
+    """Build AGENT_CONFIGS by inspecting each agent schema's day_entry structure."""
+    result = {}
+    for schema_file in schema_dir.glob("*.schema.json"):
+        agent = schema_file.name.replace(".schema.json", "")
+        if agent in ("poi-common", "timeline"):
+            continue  # timeline has TIMELINE_CONFIGS; poi-common is shared defs
+        schema = json.loads(schema_file.read_text())
+        defs = schema.get("$defs", {})
+        day_entry = defs.get("day_entry")
+        if not day_entry:
+            continue
+        # Exactly one item def (not day_entry) is required
+        item_defs = [k for k in defs if k != "day_entry"]
+        if len(item_defs) != 1:
+            continue
+        item_def = item_defs[0]
+
+        day_required = set(day_entry.get("required", []))
+        data_keys = []
+        has_array = False
+        for key, prop in day_entry.get("properties", {}).items():
+            if not _is_data_prop(prop):
+                continue
+            data_keys.append(key)
+            if prop.get("type") == "array":
+                has_array = True
+
+        if not data_keys:
+            continue
+
+        if len(data_keys) > 1 and not has_array:
+            mode = "named_keys"
+        elif has_array:
+            mode = "array"
+        else:
+            mode = "singular"
+
+        optional_key = not all(k in day_required for k in data_keys)
+        result[agent] = AgentConfig(item_def, mode, data_keys, optional_key=optional_key)
+    return result
+
+
+# AGENT_CONFIGS derived from schemas — no hardcoding. Adding a new agent only
+# requires a correctly structured schema file in schemas/. No code change needed.
+AGENT_CONFIGS = _derive_agent_configs(SCHEMA_DIR)
+
+# Timeline is special — two item types in one file (excluded from auto-derivation)
 TIMELINE_CONFIGS = {
     "timeline_activity": AgentConfig("timeline_activity", "object_map", ["timeline"]),
     "travel_segment": AgentConfig("travel_segment", "array", ["travel_segments"], optional_key=True),

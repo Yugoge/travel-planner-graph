@@ -48,13 +48,21 @@ class AgentDataSyncer:
         }
 
     def _load_config(self) -> dict:
-        """Load validation config from config/validation.json. Raises if missing."""
+        """Load validation config. meal_types derived from meals schema (single source of truth)."""
         cfg_path = self.base_dir / "config" / "validation.json"
+        schema_path = self.base_dir / "schemas" / "meals.schema.json"
         with open(cfg_path, 'r') as f:
             val = json.load(f)
+        with open(schema_path, 'r') as f:
+            meals_schema = json.load(f)
+        # Derive meal_types from meals.schema.json day_entry properties
+        day_props = meals_schema["$defs"]["day_entry"]["properties"]
+        meal_item_ref = "#/$defs/meal_item"
+        meal_types = [k for k, v in day_props.items()
+                      if isinstance(v, dict) and v.get("$ref") == meal_item_ref]
         return {
             "meal_hint_ranges": {k: tuple(v) for k, v in val["meal_hint_ranges"].items()},
-            "meal_types": val["meal_types"],
+            "meal_types": meal_types,
         }
 
     def run(self, skip_html: bool = False) -> dict:

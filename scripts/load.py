@@ -50,26 +50,44 @@ from typing import Optional, List, Dict, Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
+SCHEMA_DIR = PROJECT_ROOT / "schemas"
 
-# All field sets and meal types derived from config — single source of truth.
+# Field sets and key overrides from config — single source of truth.
 with open(PROJECT_ROOT / "config" / "validation.json", 'r') as _f:
     _VAL_CFG = json.load(_f)
 
-_MEAL_TYPES = _VAL_CFG["meal_types"]
 _L1 = _VAL_CFG["level_1_fields"]
 _L2_EXTRA = _VAL_CFG["level_2_extra_fields"]
+_KEY_OVERRIDES = _VAL_CFG["agent_poi_key_overrides"]
 
-# Agent-specific POI key mappings
-AGENT_POI_KEYS = {
-    "meals": _MEAL_TYPES,
-    "attractions": ["attractions"],
-    "entertainment": ["entertainment"],
-    "accommodation": ["accommodation"],
-    "shopping": ["shopping"],
-    "transportation": ["location_change"],
-    "budget": ["budget"],
-    "timeline": ["timeline", "travel_segments"],
-}
+
+def _is_data_prop(prop_def: dict) -> bool:
+    """True if a day_entry property references an item schema (not a structural field)."""
+    if "$ref" in prop_def:
+        return True
+    if prop_def.get("type") == "array":
+        return "$ref" in prop_def.get("items", {})
+    return False
+
+
+def _derive_agent_poi_keys(schema_dir: Path, overrides: dict) -> dict:
+    """Build agent→[keys] map by reading each agent schema's day_entry properties."""
+    result = dict(overrides)  # Start with manual overrides (e.g. timeline)
+    for schema_file in schema_dir.glob("*.schema.json"):
+        agent = schema_file.name.replace(".schema.json", "")
+        if agent in result or agent in ("poi-common", "timeline"):
+            continue
+        schema = json.loads(schema_file.read_text())
+        day_entry = schema.get("$defs", {}).get("day_entry", {})
+        data_keys = [k for k, v in day_entry.get("properties", {}).items()
+                     if _is_data_prop(v)]
+        if data_keys:
+            result[agent] = data_keys
+    return result
+
+
+# Agent-specific POI key mappings — derived from schemas + config overrides
+AGENT_POI_KEYS = _derive_agent_poi_keys(SCHEMA_DIR, _KEY_OVERRIDES)
 
 # Fields exposed at each level
 LEVEL_1_FIELDS = set(_L1)
