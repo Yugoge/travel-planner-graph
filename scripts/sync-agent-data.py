@@ -61,7 +61,6 @@ class AgentDataSyncer:
         meal_types = [k for k, v in day_props.items()
                       if isinstance(v, dict) and v.get("$ref") == meal_item_ref]
         return {
-            "meal_hint_ranges": {k: tuple(v) for k, v in val["meal_hint_ranges"].items()},
             "meal_types": meal_types,
         }
 
@@ -189,57 +188,23 @@ class AgentDataSyncer:
         """Check if a timeline entry is a transit/travel segment (not a POI)."""
         return val.get("transit") is True
 
-    def _find_timeline_item(self, item_name: str, day_timeline: dict,
-                            time_hint: str = None) -> dict:
+    def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
         """Find timeline entry for item name using precise multi-tier matching.
 
         Tier 1: Exact match
         Tier 2: Base-name exact match (strip parenthetical suffixes)
         Tier 3: Substring match (POI entries only, exclude transit)
-
-        When multiple entries match (e.g. "Family Home" as lunch and dinner),
-        uses time_hint to disambiguate.
-        Args:
-            time_hint: "breakfast"/"lunch"/"dinner" or "HH:MM"
         """
         if not day_timeline or not item_name:
             return None
 
-        hint_ranges = self._config["meal_hint_ranges"]
-
-        def _time_in_range(tl_val: dict, hint: str) -> bool:
-            if not hint or not tl_val:
-                return True
-            start = tl_val.get("start_time", "")
-            if not start:
-                return True
-            try:
-                h = int(start.split(":")[0])
-            except (ValueError, IndexError):
-                return True
-            if hint in hint_ranges:
-                lo, hi = hint_ranges[hint]
-                return lo <= h < hi
-            try:
-                hint_h = int(hint.split(":")[0])
-                return abs(h - hint_h) <= 2
-            except (ValueError, IndexError):
-                return True
-
-        def _pick_best(candidates):
-            if not candidates:
-                return None
-            if len(candidates) == 1 or not time_hint:
-                return candidates[0][1]
-            for key, val in candidates:
-                if _time_in_range(val, time_hint):
-                    return val
-            return candidates[0][1]
+        def _first(candidates):
+            return candidates[0][1] if candidates else None
 
         # Tier 1: Exact match
         exact = [(k, v) for k, v in day_timeline.items() if k == item_name]
         if exact:
-            return _pick_best(exact)
+            return _first(exact)
 
         # Tier 2: Base-name exact match
         item_base = item_name.split("(")[0].strip().split("（")[0].strip()
@@ -251,7 +216,7 @@ class AgentDataSyncer:
             if item_base.lower() == tl_base.lower():
                 tier2.append((tl_key, tl_val))
         if tier2:
-            return _pick_best(tier2)
+            return _first(tier2)
 
         # Tier 3: Substring match (POI only)
         tier3 = []
@@ -262,29 +227,27 @@ class AgentDataSyncer:
             if item_base.lower() in tl_key.lower() or tl_base in item_base.lower():
                 tier3.append((tl_key, tl_val))
         if tier3:
-            return _pick_best(tier3)
+            return _first(tier3)
 
         return None
 
     def _inject_time(self, item: dict, day_timeline: dict, agent: str, day_num: int,
-                     default_duration: float = 1.0, time_hint: str = None) -> dict:
+                     default_duration: float = 1.0) -> dict:
         """Inject authoritative time from timeline into an item.
 
         Priority:
           1. timeline.json lookup (Single Source of Truth)
           2. Existing time in item (normalize format)
           3. None (skip)
-        Args:
-            time_hint: "breakfast"/"lunch"/"dinner" or "HH:MM" for disambiguation
         """
         item_name = item.get("name_base", item.get("name", ""))
         # Also try name_local for matching
         item_name_local = item.get("name_local", "")
 
         # Try matching with name_base first, then name_local
-        tl_item = self._find_timeline_item(item_name, day_timeline, time_hint=time_hint)
+        tl_item = self._find_timeline_item(item_name, day_timeline)
         if not tl_item and item_name_local:
-            tl_item = self._find_timeline_item(item_name_local, day_timeline, time_hint=time_hint)
+            tl_item = self._find_timeline_item(item_name_local, day_timeline)
 
         if tl_item and "start_time" in tl_item and "end_time" in tl_item:
             new_time = {"start": tl_item["start_time"], "end": tl_item["end_time"]}
@@ -343,8 +306,24 @@ class AgentDataSyncer:
                     continue
 
                 original = deepcopy(meal)
-                self._inject_time(meal, day_tl, "meals", day_num,
-                                  default_duration=1.0, time_hint=meal_type)
+                # Direct meal_ref lookup — timeline entries tagged with meal_ref field
+                tl_item = next((v for v in day_tl.values() if v.get("meal_ref") == meal_type), None)
+                if tl_item and "start_time" in tl_item and "end_time" in tl_item:
+                    item_name = meal.get("name_base", meal.get("name", ""))
+                    new_time = {"start": tl_item["start_time"], "end": tl_item["end_time"]}
+                    old_time = meal.get("time")
+                    if old_time != new_time:
+                        self.report["timeline_injections"].append({
+                            "agent": "meals",
+                            "day": day_num,
+                            "item": item_name,
+                            "old_time": old_time,
+                            "new_time": new_time,
+                        })
+                    meal["time"] = new_time
+                else:
+                    # Fallback: name-based lookup (no time_hint needed)
+                    self._inject_time(meal, day_tl, "meals", day_num, default_duration=1.0)
                 if meal != original:
                     day[meal_type] = meal
                     modified = True

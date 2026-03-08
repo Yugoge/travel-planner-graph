@@ -42,7 +42,7 @@ class InteractiveHTMLGenerator:
         self._eur_to_cny_rate = self._load_eur_to_cny_rate()
         self._display_currency, self._display_symbol = self._load_display_currency()
         self._cross_rates_to_cny = self._load_cross_rates_to_cny()
-        (self._hint_ranges, self._type_display_map) = self._load_validation_config()
+        self._type_display_map = self._load_validation_config()
 
     def _load_eur_to_cny_rate(self) -> float:
         """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
@@ -94,20 +94,13 @@ class InteractiveHTMLGenerator:
         return {k: v for k, v in config.get("cross_rates_to_cny", {}).items()
                 if not k.startswith("_") and isinstance(v, (int, float))}
 
-    def _load_validation_config(self) -> tuple:
-        """Load display maps and meal hint ranges from config. Raises if config missing."""
-        val_path = self.base_dir / "config" / "validation.json"
+    def _load_validation_config(self) -> dict:
+        """Load display maps from config. Raises if config missing."""
         type_path = self.base_dir / "config" / "type-display-map.json"
-
-        with open(val_path, 'r') as f:
-            val = json.load(f)
-        hints = {k: tuple(v) for k, v in val["meal_hint_ranges"].items()}
 
         with open(type_path, 'r') as f:
             type_cfg = json.load(f)
-        type_map = {**type_cfg.get("trip_types", {}), **type_cfg.get("poi_types", {})}
-
-        return hints, type_map
+        return {**type_cfg.get("trip_types", {}), **type_cfg.get("poi_types", {})}
 
     def _to_cny(self, amount: float, source_currency: str) -> float:
         """Convert any amount to CNY using config cross rates."""
@@ -407,64 +400,25 @@ class InteractiveHTMLGenerator:
                     pass
         return None
 
-    def _find_timeline_item(self, item_name: str, day_timeline: dict,
-                            time_hint: str = None) -> dict:
+    def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
         """Find timeline entry for given item name with precise matching.
 
-        Root cause fix: Previous fuzzy matching matched "Travel to X"/"Walk to X"
-        transit entries instead of actual POI entries. Now excludes transit entries
-        and uses multi-tier matching: exact > base-name exact > substring (POI only).
-
-        When multiple entries match the same name (e.g. "Family Home" appears as
-        both lunch and dinner), uses time_hint to pick the closest match.
-        Args:
-            time_hint: Expected time slot like "breakfast"/"lunch"/"dinner" or "HH:MM"
+        Excludes transit entries and uses multi-tier matching:
+        exact > base-name exact > substring (POI only).
         """
         if not day_timeline or not item_name:
             return None
 
-        hint_ranges = self._hint_ranges
-
         def _is_transit(key: str, val: dict) -> bool:
             return val.get("transit") is True
 
-        def _time_in_range(tl_val: dict, hint: str) -> bool:
-            """Check if timeline entry falls within the hint time range."""
-            if not hint or not tl_val:
-                return True
-            start = tl_val.get("start_time", "")
-            if not start:
-                return True
-            try:
-                h = int(start.split(":")[0])
-            except (ValueError, IndexError):
-                return True
-            if hint in hint_ranges:
-                lo, hi = hint_ranges[hint]
-                return lo <= h < hi
-            # Direct HH:MM hint - match within 2 hours
-            try:
-                hint_h = int(hint.split(":")[0])
-                return abs(h - hint_h) <= 2
-            except (ValueError, IndexError):
-                return True
-
-        def _collect_matches(candidates):
-            """From a list of (key, val) candidates, pick the best one using time_hint."""
-            if not candidates:
-                return None
-            if len(candidates) == 1 or not time_hint:
-                return candidates[0][1]
-            # Multiple candidates: prefer the one matching the time hint
-            for key, val in candidates:
-                if _time_in_range(val, time_hint):
-                    return val
-            return candidates[0][1]
+        def _first(candidates):
+            return candidates[0][1] if candidates else None
 
         # Tier 1: Exact match (highest priority)
         exact = [(k, v) for k, v in day_timeline.items() if k == item_name]
         if exact:
-            return _collect_matches(exact)
+            return _first(exact)
 
         # Tier 2: Base-name exact match (strip parenthetical Chinese/English suffixes)
         item_base = item_name.split("(")[0].strip().split("（")[0].strip()
@@ -476,7 +430,7 @@ class InteractiveHTMLGenerator:
             if item_base.lower() == timeline_base.lower():
                 tier2.append((timeline_key, timeline_val))
         if tier2:
-            return _collect_matches(tier2)
+            return _first(tier2)
 
         # Tier 3: Substring match - POI entries only (exclude transit)
         tier3 = []
@@ -486,7 +440,7 @@ class InteractiveHTMLGenerator:
             if item_base.lower() in timeline_key.lower() or timeline_key.split("(")[0].strip().lower() in item_base.lower():
                 tier3.append((timeline_key, timeline_val))
         if tier3:
-            return _collect_matches(tier3)
+            return _first(tier3)
 
         return None
 
@@ -556,9 +510,10 @@ class InteractiveHTMLGenerator:
                         meal_currency = "EUR"
                     cost = self._to_display_currency(cost, meal_currency)
 
-                    # Fix #6: Lookup actual time from timeline.json instead of using virtual defaults
-                    meal_name = meal.get("name_base", meal.get("name", ""))
-                    timeline_item = self._find_timeline_item(meal_name, day_timeline, time_hint=meal_type)
+                    # Lookup actual time from timeline via meal_ref tag
+                    timeline_item = next(
+                        (v for v in day_timeline.values() if v.get("meal_ref") == meal_type), None
+                    )
                     if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
                         meal_time = {
                             "start": timeline_item["start_time"],
