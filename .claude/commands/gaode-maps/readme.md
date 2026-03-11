@@ -30,6 +30,7 @@ Files in this folder should follow these rules:
 - Use descriptive names
 - Document purpose and usage
 
+disable-model-invocation: true
 ---
 
 ## Git Analysis

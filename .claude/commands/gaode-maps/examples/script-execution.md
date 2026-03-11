@@ -104,6 +104,7 @@ source /root/.claude/venv/bin/activate && python .claude/commands/gaode-maps/scr
 }
 ```
 
+disable-model-invocation: true
 ---
 
 ## 3. POI Search Examples

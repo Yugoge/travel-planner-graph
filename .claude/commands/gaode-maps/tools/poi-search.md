@@ -1,3 +1,8 @@
+---
+description: "Gaode Maps - POI Search Tools"
+disable-model-invocation: true
+---
+
 # Gaode Maps - POI Search Tools
 
 ## Quick Reference

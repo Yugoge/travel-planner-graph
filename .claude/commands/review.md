@@ -4,6 +4,7 @@ name: review
 allowed-tools: Task, Read, Write, TodoWrite, Bash, Skill
 argument-hint: "<plan-id> [--day N] [--force-images]"
 model: inherit
+disable-model-invocation: true
 ---
 
 **⚠️ CRITICAL**: Use TodoWrite to track workflow phases. Mark in_progress before each phase, completed immediately after.
@@ -259,19 +260,6 @@ All subagent invocation prompts in this file explicitly require bilingual annota
 
 ## Implementation
 
-### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/review.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/review.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
 
 ### Step 1: Parse Starting Day
 

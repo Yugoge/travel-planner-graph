@@ -3,6 +3,7 @@ description: "Multi-agent travel planning with specialized subagents and interac
 allowed-tools: Task, Read, Write, TodoWrite, Skill, Bash
 argument-hint: "[destination]"
 model: inherit
+disable-model-invocation: true
 ---
 
 **⚠️ CRITICAL**: Use TodoWrite to track workflow phases. Mark in_progress before each phase, completed immediately after.
@@ -109,19 +110,6 @@ Step 5: Orchestrator reads both files to present results
 
 ## Implementation
 
-### Step 0: Initialize Workflow
-
-Load todos from: `scripts/todo/plan.py`
-
-```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/todo/plan.py
-```
-
-Use output to create TodoWrite with all workflow steps.
-
-**Rules**: Mark `in_progress` before each step, `completed` after. NEVER skip steps.
-
----
 
 ### Phase 1: BA Requirement Collection
 

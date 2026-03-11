@@ -16,6 +16,8 @@ def get_todos():
         {"content": "Present completion summary with booking checklist", "activeForm": "Presenting completion summary", "status": "pending"}
     ]
 
+
+
 if __name__ == "__main__":
     import json
     print(json.dumps(get_todos(), indent=2, ensure_ascii=False))

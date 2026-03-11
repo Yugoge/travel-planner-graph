@@ -1,3 +1,8 @@
+---
+description: "Gaode Maps Documentation Consolidation Report"
+disable-model-invocation: true
+---
+
 # Gaode Maps Documentation Consolidation Report
 
 **Date**: 2026-01-31

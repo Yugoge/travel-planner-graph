@@ -3,6 +3,7 @@ description: "Gaode Maps integration for route planning, POI search, and geocodi
 allowed-tools: Task, Read, Bash
 argument-hint: "[category|help]"
 model: inherit
+disable-model-invocation: true
 ---
 
 # Gaode Maps Skill

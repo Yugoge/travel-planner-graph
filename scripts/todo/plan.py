@@ -4,16 +4,11 @@
 Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
 to support iterative day refinement until user confirms perfect.
 
-Updated to reflect current plan.md step numbering (Steps 0-20).
+Updated to reflect current plan.md step numbering (Steps 1-21).
 """
 
 def get_todos():
     return [
-        {
-            "content": "Step 0: Initialize Workflow",
-            "activeForm": "Step 0: Initializing Workflow",
-            "status": "pending"
-        },
         {
             "content": "Step 1: Parse Destination Hint",
             "activeForm": "Step 1: Parsing Destination",
@@ -125,6 +120,8 @@ def get_todos():
             "status": "pending"
         }
     ]
+
+
 
 if __name__ == "__main__":
     import json

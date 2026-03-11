@@ -131,6 +131,7 @@ source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scrip
 - Fails immediately on 4xx client errors
 - Logs all retry attempts for debugging
 
+disable-model-invocation: true
 ---
 
 ## Multi-City Trip Example

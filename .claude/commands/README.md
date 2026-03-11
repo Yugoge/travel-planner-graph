@@ -1,3 +1,8 @@
+---
+description: "commands"
+disable-model-invocation: true
+---
+
 # commands
 
 Slash command definitions for workflows (plan, review, clean, dev, push, etc.).
