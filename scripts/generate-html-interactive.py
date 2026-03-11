@@ -400,50 +400,6 @@ class InteractiveHTMLGenerator:
                     pass
         return None
 
-    def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
-        """Find timeline entry for given item name with precise matching.
-
-        Excludes transit entries and uses multi-tier matching:
-        exact > base-name exact > substring (POI only).
-        """
-        if not day_timeline or not item_name:
-            return None
-
-        def _is_transit(key: str, val: dict) -> bool:
-            return val.get("transit") is True
-
-        def _first(candidates):
-            return candidates[0][1] if candidates else None
-
-        # Tier 1: Exact match (highest priority)
-        exact = [(k, v) for k, v in day_timeline.items() if k == item_name]
-        if exact:
-            return _first(exact)
-
-        # Tier 2: Base-name exact match (strip parenthetical Chinese/English suffixes)
-        item_base = item_name.split("(")[0].strip().split("（")[0].strip()
-        tier2 = []
-        for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key, timeline_val):
-                continue
-            timeline_base = timeline_key.split("(")[0].strip().split("（")[0].strip()
-            if item_base.lower() == timeline_base.lower():
-                tier2.append((timeline_key, timeline_val))
-        if tier2:
-            return _first(tier2)
-
-        # Tier 3: Substring match - POI entries only (exclude transit)
-        tier3 = []
-        for timeline_key, timeline_val in day_timeline.items():
-            if _is_transit(timeline_key, timeline_val):
-                continue
-            if item_base.lower() in timeline_key.lower() or timeline_key.split("(")[0].strip().lower() in item_base.lower():
-                tier3.append((timeline_key, timeline_val))
-        if tier3:
-            return _first(tier3)
-
-        return None
-
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data
 
@@ -454,17 +410,6 @@ class InteractiveHTMLGenerator:
         date = day_skeleton.get("date", "")
         location_base = day_skeleton.get("location", "Unknown")  # Use location_base instead of location
         location_local = day_skeleton.get("location_local", "")
-
-        # Fix #6: Get timeline for this day (root cause: timeline data ignored)
-        # Note: _load_json already extracts 'data' field, so timeline has 'days' directly
-        day_timeline = {}
-        if self.timeline and "days" in self.timeline:
-            timeline_day = next(
-                (d for d in self.timeline["days"] if d.get("day") == day_num),
-                None
-            )
-            if timeline_day and "timeline" in timeline_day:
-                day_timeline = timeline_day["timeline"]
 
         merged = {
             "day": day_num,
@@ -490,13 +435,6 @@ class InteractiveHTMLGenerator:
             }
         }
 
-        # Fix #6: Merge meals with actual timeline times instead of virtual defaults
-        # Root cause: hardcoded meal_default_times used instead of reading timeline.json
-        meal_default_times = {
-            "breakfast": {"start": "08:00", "end": "09:00"},
-            "lunch": {"start": "12:00", "end": "13:30"},
-            "dinner": {"start": "18:30", "end": "20:00"}
-        }
         for meal_type in ["breakfast", "lunch", "dinner"]:
             if self.meals and "days" in self.meals:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
@@ -510,19 +448,7 @@ class InteractiveHTMLGenerator:
                         meal_currency = "EUR"
                     cost = self._to_display_currency(cost, meal_currency)
 
-                    # Lookup actual time from timeline via meal_ref tag
-                    timeline_item = next(
-                        (v for v in day_timeline.values() if v.get("meal_ref") == meal_type), None
-                    )
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        meal_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    else:
-                        # Fallback to default times if timeline missing
-                        raw_time = meal.get("time", meal_default_times[meal_type])
-                        meal_time = self._normalize_time(raw_time) or meal_default_times[meal_type]
+                    meal_time = self._normalize_time(meal.get("time"))
 
                     # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
                     # Backward compatible with old name/name_en format
@@ -559,56 +485,13 @@ class InteractiveHTMLGenerator:
                     }
                     merged["budget"]["meals"] += cost
 
-        # Merge attractions with sequential time allocation
+        # Merge attractions
         if self.attractions and "days" in self.attractions:
             day_attrs = next((d for d in self.attractions["days"] if d.get("day") == day_num), {})
             if "attractions" in day_attrs:
-                current_time_hour = 10  # Start attractions at 10:00
-                current_time_minute = 0
                 for attr in day_attrs["attractions"]:
-                    # Fix #6: Lookup actual time from timeline.json first
                     attr_name = attr.get("name_base", attr.get("name", ""))
-                    timeline_item = self._find_timeline_item(attr_name, day_timeline)
-
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        # Use actual timeline times
-                        attr_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    elif not attr.get("time"):
-                        # Fallback: Calculate virtual time based on recommended duration
-                        duration_str = attr.get("recommended_duration", "2h")
-                        duration_hours = 2.0  # default
-                        if "h" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("h", "").strip())
-                            except:
-                                duration_hours = 2.0
-                        elif "min" in duration_str:
-                            try:
-                                duration_hours = float(duration_str.replace("min", "").strip()) / 60
-                            except:
-                                duration_hours = 2.0
-
-                        start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
-                        end_hour = current_time_hour + int(duration_hours)
-                        end_minute = current_time_minute + int((duration_hours % 1) * 60)
-                        if end_minute >= 60:
-                            end_hour += 1
-                            end_minute -= 60
-                        end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                        attr_time = {"start": start_time, "end": end_time}
-
-                        # Update current time for next attraction (add 30min buffer)
-                        current_time_hour = end_hour
-                        current_time_minute = end_minute + 30
-                        if current_time_minute >= 60:
-                            current_time_hour += 1
-                            current_time_minute -= 60
-                    else:
-                        attr_time = self._normalize_time(attr.get("time"), default_duration_hours=1.5) or attr.get("time")
+                    attr_time = self._normalize_time(attr.get("time"))
 
                     # Convert cost to display currency (EUR)
                     cost = attr.get("cost", 0)
@@ -623,19 +506,12 @@ class InteractiveHTMLGenerator:
                     attr_name_base = attr.get("name_base", attr_name)
                     attr_name_local = attr.get("name_local", attr.get("name_en", ""))
 
-                    # Check optional field from data (new schema), fallback to detection
+                    # Check optional field from data (new schema), fallback to notes text detection
                     is_optional = attr.get("optional", False)
                     if not is_optional:
-                        # Fallback detection: check timeline and notes
-                        if day_timeline:
-                            for tl_name in day_timeline:
-                                if attr_name.lower() in tl_name.lower() and "optional" in tl_name.lower():
-                                    is_optional = True
-                                    break
-                        if not is_optional:
-                            notes_text = str(attr.get("notes", "")) + " " + str(attr.get("notes_base", ""))
-                            if "optional" in notes_text.lower():
-                                is_optional = True
+                        notes_text = str(attr.get("notes", "")) + " " + str(attr.get("notes_base", ""))
+                        if "optional" in notes_text.lower():
+                            is_optional = True
 
                     # Merge why_worth_visiting and best_time_to_visit into notes
                     attr_notes = attr.get("notes_base", attr.get("notes", ""))
@@ -682,56 +558,13 @@ class InteractiveHTMLGenerator:
                     })
                     merged["budget"]["attractions"] += cost
 
-        # Merge entertainment with sequential evening time allocation
+        # Merge entertainment
         if self.entertainment and "days" in self.entertainment:
             day_ent = next((d for d in self.entertainment["days"] if d.get("day") == day_num), {})
             if "entertainment" in day_ent:
-                current_time_hour = 19  # Start entertainment at 19:00 (after dinner)
-                current_time_minute = 0
                 for ent in day_ent["entertainment"]:
-                    # Fix #6: Lookup actual time from timeline.json first
                     ent_name = ent.get("name_base", ent.get("name", ""))
-                    timeline_item = self._find_timeline_item(ent_name, day_timeline)
-
-                    if timeline_item and "start_time" in timeline_item and "end_time" in timeline_item:
-                        # Use actual timeline times
-                        ent_time = {
-                            "start": timeline_item["start_time"],
-                            "end": timeline_item["end_time"]
-                        }
-                    else:
-                        # Try to normalize existing time value
-                        normalized = self._normalize_time(ent.get("time"), default_duration_hours=1.0)
-                        if normalized:
-                            ent_time = normalized
-                        else:
-                            # Fallback: Calculate virtual time based on duration
-                            duration_str = ent.get("duration", "2h")
-                            duration_hours = 2.0
-                            if "h" in duration_str:
-                                try:
-                                    duration_hours = float(duration_str.replace("h", "").strip())
-                                except:
-                                    duration_hours = 2.0
-                            elif "min" in duration_str:
-                                try:
-                                    duration_hours = float(duration_str.replace("min", "").strip()) / 60
-                                except:
-                                    duration_hours = 2.0
-
-                            start_time = f"{current_time_hour:02d}:{current_time_minute:02d}"
-                            end_hour = current_time_hour + int(duration_hours)
-                            end_minute = current_time_minute + int((duration_hours % 1) * 60)
-                            if end_minute >= 60:
-                                end_hour += 1
-                                end_minute -= 60
-                            end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                            ent_time = {"start": start_time, "end": end_time}
-
-                            # Update current time for next entertainment
-                            current_time_hour = end_hour
-                            current_time_minute = end_minute
+                    ent_time = self._normalize_time(ent.get("time"))
 
                     # Convert cost to display currency (EUR)
                     cost = ent.get("cost", 0)
@@ -828,61 +661,10 @@ class InteractiveHTMLGenerator:
                 acc_name_base = acc.get("name_base", acc.get("name", ""))
                 acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
 
-                # Extract accommodation arrival time from timeline.
-                # Strategy 1 (schema-based): find entry with "accommodation_ref": true.
-                # Strategy 2 (fallback): similarity matching for data without the schema field.
-                acc_time = None
-                if day_timeline:
-                    # Schema-based lookup — no string matching needed
-                    for timeline_key, timeline_val in day_timeline.items():
-                        if timeline_val.get("accommodation_ref") is True:
-                            if "start_time" in timeline_val and "end_time" in timeline_val:
-                                acc_time = {
-                                    "start": timeline_val["start_time"],
-                                    "end": timeline_val["end_time"],
-                                }
-                                break
-
-                    # Fallback: similarity matching for backward compatibility
-                    if not acc_time:
-                        acc_name_search = acc_name_base.split("(")[0].strip().lower()
-                        acc_tokens = set(acc_name_search.split())
-
-                        best_match = None
-                        best_similarity = 0.0
-
-                        for timeline_key, timeline_val in day_timeline.items():
-                            if "start_time" not in timeline_val or "end_time" not in timeline_val:
-                                continue
-
-                            timeline_tokens = set(timeline_key.lower().split())
-
-                            if acc_tokens and timeline_tokens:
-                                intersection = acc_tokens & timeline_tokens
-                                union = acc_tokens | timeline_tokens
-                                jaccard = len(intersection) / len(union) if union else 0
-
-                                common_words = {"check", "in", "to", "at", "the", "a", "an", "arrive", "hotel", "入住"}
-                                timeline_tokens_filtered = timeline_tokens - common_words
-                                if timeline_tokens_filtered:
-                                    containment = len(timeline_tokens_filtered & acc_tokens) / len(timeline_tokens_filtered)
-                                else:
-                                    containment = 0
-
-                                similarity = max(jaccard, containment)
-                                if similarity > best_similarity:
-                                    best_similarity = similarity
-                                    best_match = timeline_val
-
-                        if best_match and best_similarity >= 0.5:
-                            acc_time = {"start": best_match["start_time"], "end": best_match["end_time"]}
-
-                # Fallback: use check_in field from accommodation.json if timeline lookup fails
-                if not acc_time:
-                    check_in = acc.get("check_in")
-                    if check_in and ":" in check_in:
-                        # Generate 30-minute window from check_in time
-                        acc_time = self._normalize_time(check_in, default_duration_hours=0.5)
+                # Time comes from sync-injected item.time; fall back to check_in if absent
+                acc_time = self._normalize_time(acc.get("time"))
+                if not acc_time and acc.get("check_in"):
+                    acc_time = self._normalize_time(acc.get("check_in"), default_duration_hours=0.5)
 
                 # Parse stars from explicit field
                 stars = acc.get("stars", 0)

@@ -1,0 +1,180 @@
+{
+  "request_id": "dev-20260311-timeline-single-source",
+  "timestamp": "2026-03-11T00:00:00Z",
+  "requirement": {
+    "original": "彻底退出全部非timeline中的时间安排，一切以timeline agent生成的为准",
+    "clarified": "Remove ALL time logic in generate-html-interactive.py that does not come from timeline.json. The HTML generator must read item.time (already injected by sync-agent-data.py FROM timeline.json) directly. No virtual/sequential time computation, no timeline re-queries, no fallback time invention.",
+    "what": "Delete all non-timeline time arrangements in generate-html-interactive.py: meal_ref lookup, _find_timeline_item calls, sequential virtual time calculators for attractions/entertainment, optional detection via timeline key names, accommodation Jaccard similarity lookup",
+    "why": "sync-agent-data.py already injects authoritative times from timeline.json into each agent file (meals.json, attractions.json, entertainment.json, accommodation.json). The HTML generator re-querying timeline duplicates sync's work and introduces inconsistency. If time is not in agent file after sync, it means timeline had nothing — do not invent.",
+    "where": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "scope": {
+      "included": [
+        "Remove _find_timeline_item method entirely",
+        "Remove day_timeline loading block (lines ~460-467) — only used by removed logic",
+        "Remove meal_default_times dict",
+        "Simplify meals time: use self._normalize_time(meal.get('time'))",
+        "Simplify attractions time: use self._normalize_time(attr.get('time')), remove sequential calculator",
+        "Simplify entertainment time: use self._normalize_time(ent.get('time')), remove sequential calculator",
+        "Remove optional detection via timeline key name sniffing (lines ~628-638)",
+        "Simplify accommodation time: use self._normalize_time(acc.get('time')), remove accommodation_ref lookup and Jaccard similarity"
+      ],
+      "excluded": [
+        "sync-agent-data.py — meal_ref lookup in sync IS correct (it is sync's job to read timeline); do NOT change sync",
+        "_normalize_time method — keep it, it normalizes string format, does not invent times",
+        "travel_segments block at ~1135 — correctly reads from self.timeline, keep as-is",
+        "transportation time logic — out of scope",
+        "shopping time logic — out of scope"
+      ]
+    },
+    "success_criteria": [
+      "No call to _find_timeline_item in generate-html-interactive.py",
+      "No meal_ref lookup in generate-html-interactive.py",
+      "No current_time_hour / sequential time allocation in generate-html-interactive.py",
+      "No accommodation_ref or Jaccard similarity in generate-html-interactive.py",
+      "No optional detection via timeline key name string matching",
+      "Meals, attractions, entertainment, accommodation time all come from item.get('time') via _normalize_time",
+      "Python syntax valid (python3 -m py_compile passes)",
+      "sync-agent-data.py unchanged"
+    ],
+    "constraints": [
+      "Do NOT modify sync-agent-data.py",
+      "Do NOT remove _normalize_time method",
+      "Do NOT remove self.timeline loading",
+      "Keep travel_segments block at ~line 1135 unchanged",
+      "Use source venv when running Python: source /root/travel-planner/venv/bin/activate && python3"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "HTML generator has two redundant layers of time resolution: (1) sync-agent-data.py already injects timeline times into agent files, (2) HTML generator re-queries timeline or invents virtual times — duplicating and sometimes overriding sync's work",
+    "root_cause": "The sequential virtual time calculator was added in commit 3f51a5e BEFORE sync-agent-data.py existed. When sync was introduced (commit 13420d0), it made the HTML generator's time logic redundant but it was never cleaned up. The meal_ref timeline re-query was added in 13420d0 itself as a dual approach (sync + HTML re-query), also redundant.",
+    "root_cause_commit_1": "3f51a5e - feat: add interactive features to Notion-style HTML generator (added sequential virtual time for attractions/entertainment)",
+    "root_cause_commit_2": "13420d0 - feat: systematic timeline-data sync pipeline with time_hint disambiguation (added sync + meal_ref re-query in HTML)",
+    "why_introduced": "3f51a5e needed virtual times because sync didn't exist yet. 13420d0 added sync but kept HTML re-query as belt-and-suspenders approach.",
+    "why_problematic": "Double sourcing: HTML generator overrides sync-injected times with its own timeline queries. Removes clarity about single source of truth. The sequential virtual time can produce garbage times when sync has already provided correct ones.",
+    "proper_fix": "Trust sync completely. HTML generator reads item.get('time') which was written by sync FROM timeline. No re-query needed."
+  },
+  "context": {
+    "file_to_modify": "scripts/generate-html-interactive.py",
+    "file_line_count": 3167,
+    "sync_script": "scripts/sync-agent-data.py (DO NOT MODIFY)",
+    "key_sections_to_change": {
+      "_find_timeline_item method": "lines 403-445 — DELETE entirely",
+      "day_timeline loading block": "lines 458-467 — DELETE (only used by removed code; travel_segments uses self.timeline directly at line 1135)",
+      "meal_default_times + meal time logic": "lines 493-525 — DELETE meal_default_times dict; replace timeline re-query with self._normalize_time(meal.get('time'))",
+      "attractions time + optional detection": "lines 562-638 — DELETE sequential time calc and timeline key sniffing; use self._normalize_time(attr.get('time'))",
+      "entertainment time": "lines 685-730 — DELETE sequential time calc; use self._normalize_time(ent.get('time'))",
+      "accommodation time": "lines 835-878 — DELETE accommodation_ref lookup and Jaccard similarity; use self._normalize_time(acc.get('time'))"
+    },
+    "replacement_pattern_meals": "meal_time = self._normalize_time(meal.get('time'))",
+    "replacement_pattern_attractions": "attr_time = self._normalize_time(attr.get('time'))",
+    "replacement_pattern_entertainment": "ent_time = self._normalize_time(ent.get('time'))",
+    "replacement_pattern_accommodation": "acc_time = self._normalize_time(acc.get('time'))",
+    "normalize_time_handles": "dict {start,end} passthrough; string 'HH:MM-HH:MM' split; string 'HH:MM' + duration; returns None if invalid"
+  },
+  "development_approach": {
+    "strategy": "Edit generate-html-interactive.py to remove all non-timeline time logic section by section. Work top-to-bottom through the file. After each section, verify no syntax errors.",
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "files_to_not_modify": [
+      "scripts/sync-agent-data.py"
+    ],
+    "validation_approach": "python3 -m py_compile scripts/generate-html-interactive.py to check syntax; grep for removed patterns to confirm deletion"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_source_venv": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Deleted _find_timeline_item method entirely",
+        "type": "deletion",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "rationale": "Method was only used by HTML generator to re-query timeline — redundant after sync-agent-data.py injects times into agent files. Root cause commit 3f51a5e added this before sync existed."
+      },
+      {
+        "id": 2,
+        "description": "Deleted day_timeline loading block in _merge_day_data",
+        "type": "deletion",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "rationale": "day_timeline variable was only consumed by the blocks being removed. The travel_segments block at ~line 1135 uses timeline_day_obj loaded separately from self.timeline and was left untouched."
+      },
+      {
+        "id": 3,
+        "description": "Deleted meal_default_times dict and replaced meal time resolution with self._normalize_time(meal.get('time'))",
+        "type": "simplification",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Removed meal_default_times dict (hardcoded breakfast/lunch/dinner times). Removed timeline re-query via meal_ref. Now reads item.time directly as injected by sync.",
+        "rationale": "sync-agent-data.py uses meal_ref to inject times from timeline into meals.json. HTML generator duplicated that lookup — creating two competing sources."
+      },
+      {
+        "id": 4,
+        "description": "Deleted sequential virtual time calculator for attractions and replaced with self._normalize_time(attr.get('time'))",
+        "type": "simplification",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Removed current_time_hour/current_time_minute sequential accumulator. Removed _find_timeline_item call. Removed duration-based virtual time computation. Now reads item.time directly.",
+        "rationale": "Root cause commit 3f51a5e introduced sequential time before sync existed. After sync (commit 13420d0) this became redundant and could override correct injected times."
+      },
+      {
+        "id": 5,
+        "description": "Deleted optional detection via timeline key name string matching; kept notes text fallback",
+        "type": "simplification",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Removed the day_timeline loop that checked if attr_name appeared in a timeline key containing 'optional'. Retained the notes_text fallback check.",
+        "rationale": "Timeline key name sniffing depended on day_timeline which is now removed. Notes text detection is independent and still valid."
+      },
+      {
+        "id": 6,
+        "description": "Deleted sequential virtual time calculator for entertainment and replaced with self._normalize_time(ent.get('time'))",
+        "type": "simplification",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Removed current_time_hour/current_time_minute sequential accumulator starting at 19:00. Removed _find_timeline_item call. Removed duration-based virtual time fallback. Now reads item.time directly.",
+        "rationale": "Same root cause as attractions sequential time — added before sync existed, never cleaned up after sync introduced."
+      },
+      {
+        "id": 7,
+        "description": "Deleted accommodation_ref schema lookup and Jaccard similarity matching; replaced with self._normalize_time(acc.get('time')) with check_in fallback",
+        "type": "simplification",
+        "files_modified": [
+          "scripts/generate-html-interactive.py"
+        ],
+        "changes": "Removed accommodation_ref boolean field lookup loop. Removed Jaccard similarity computation with containment scoring. New logic: read acc.get('time') via _normalize_time; if absent, fall back to check_in field.",
+        "rationale": "accommodation_ref and Jaccard similarity were HTML-side re-queries of timeline data. sync-agent-data.py already injects the authoritative time into accommodation.json."
+      }
+    ],
+    "files_modified": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "files_not_modified": [
+      "scripts/sync-agent-data.py"
+    ],
+    "syntax_check": "PASS",
+    "grep_verification": "No output — zero matches for: _find_timeline_item, meal_ref, current_time_hour, accommodation_ref, Jaccard, jaccard, day_timeline",
+    "git_rationale": {
+      "root_cause_commits": "3f51a5e, 13420d0",
+      "why_issue_occurred": "Sequential virtual time calculator was added in commit 3f51a5e before sync-agent-data.py existed. When sync was introduced in commit 13420d0, it made the HTML generator's timeline re-query and time invention redundant, but neither was cleaned up. Commit 13420d0 also added meal_ref re-query in HTML as belt-and-suspenders alongside sync — creating dual competing sources of truth.",
+      "how_fix_addresses_root": "Trusts sync-agent-data.py as the single pipeline for timeline-to-agent-file time injection. HTML generator now reads item.get('time') directly via _normalize_time for all categories. If time is absent after sync, it means timeline had no entry — HTML does not invent times."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify that meals, attractions, entertainment, and accommodation time fields in HTML output match values in the corresponding agent JSON files (as injected by sync-agent-data.py), not any independently computed values. The SyntaxWarning on line 1260 (invalid escape sequence) is pre-existing and unrelated to these changes."
+  }
+}
