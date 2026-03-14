@@ -1,22 +1,74 @@
 #!/usr/bin/env python3
 """
-Validate timeline.json data completeness and structure.
+Validate timeline.json data completeness, structure, and time overlaps.
 
 Root Cause Reference (commit ef0ed28): timeline.json was cleared to empty
 dictionaries, causing HTML generation to fail. This script validates timeline
 data is present and non-empty.
 
+Overlap detection: two non-optional, non-transit activities with overlapping
+time ranges produce a hard conflict (exit code 1). If either activity is
+optional the overlap is reported as a warning only.
+
 Usage: validate-timeline-data.py <timeline_json_path>
 
 Exit Codes:
-  0 - Timeline data valid (>50% coverage)
-  1 - Timeline data invalid (most days empty or file errors)
+  0 - Timeline data valid (>50% coverage, no hard conflicts)
+  1 - Timeline data invalid (structure/coverage/hard overlap)
   2 - File not found or JSON parse error
 """
 
 import sys
 import json
+from itertools import combinations
 from pathlib import Path
+
+
+def _is_optional(name: str, entry: dict) -> bool:
+    """Return True if the activity is marked optional (field or name)."""
+    if entry.get("optional"):
+        return True
+    if "optional" in name.lower():
+        return True
+    return False
+
+
+def _check_day_overlaps(day_num, timeline: dict) -> tuple[list, list]:
+    """
+    Detect time-range overlaps among non-transit activities in one day.
+
+    Returns:
+        (hard_conflicts, soft_conflicts) -- lists of human-readable strings.
+        Hard = both non-optional.  Soft = at least one optional.
+    """
+    hard_conflicts: list[str] = []
+    soft_conflicts: list[str] = []
+
+    # Collect non-transit entries that have valid time fields
+    entries = []
+    for name, entry in timeline.items():
+        if entry.get("transit"):
+            continue
+        start = entry.get("start_time")
+        end = entry.get("end_time")
+        if not start or not end:
+            continue
+        entries.append((name, entry, start, end))
+
+    # Compare every pair
+    for (name_a, entry_a, s1, e1), (name_b, entry_b, s2, e2) in combinations(entries, 2):
+        # Two ranges [s1, e1) and [s2, e2) overlap when s1 < e2 AND s2 < e1
+        if s1 < e2 and s2 < e1:
+            msg = (
+                f"Day {day_num}: '{name_a}' ({s1}-{e1}) "
+                f"overlaps with '{name_b}' ({s2}-{e2})"
+            )
+            if _is_optional(name_a, entry_a) or _is_optional(name_b, entry_b):
+                soft_conflicts.append(msg)
+            else:
+                hard_conflicts.append(msg)
+
+    return hard_conflicts, soft_conflicts
 
 
 def validate_timeline_data(timeline_path: str) -> int:
@@ -94,6 +146,19 @@ def validate_timeline_data(timeline_path: str) -> int:
             days_empty += 1
             empty_day_numbers.append(day_num)
 
+    # Overlap detection across all days
+    all_hard_conflicts: list[str] = []
+    all_soft_conflicts: list[str] = []
+
+    for day in days:
+        day_num = day.get('day', '?')
+        timeline = day.get('timeline', {})
+        if not isinstance(timeline, dict) or not timeline:
+            continue
+        hard, soft = _check_day_overlaps(day_num, timeline)
+        all_hard_conflicts.extend(hard)
+        all_soft_conflicts.extend(soft)
+
     # Calculate coverage
     coverage_pct = (days_with_data / total_days) * 100 if total_days > 0 else 0
 
@@ -113,8 +178,22 @@ def validate_timeline_data(timeline_path: str) -> int:
 
     print(f"  - Coverage: {coverage_pct:.1f}%")
 
-    # Determine pass/fail (>50% coverage threshold)
-    if coverage_pct > 50:
+    # Report overlap results
+    if all_soft_conflicts:
+        print(f"  - Soft conflicts (warnings): {len(all_soft_conflicts)}")
+        for conflict in all_soft_conflicts:
+            print(f"    ⚠ {conflict}")
+
+    if all_hard_conflicts:
+        print(f"  - Hard conflicts (errors): {len(all_hard_conflicts)}")
+        for conflict in all_hard_conflicts:
+            print(f"    ✗ {conflict}")
+
+    # Determine pass/fail (>50% coverage threshold + no hard conflicts)
+    if all_hard_conflicts:
+        print(f"  - Status: FAIL ({len(all_hard_conflicts)} hard time conflict(s))")
+        return 1
+    elif coverage_pct > 50:
         print(f"  - Status: PASS (>50% coverage)")
         return 0
     else:

@@ -1,0 +1,58 @@
+{
+  "request_id": "dev-20260314-overlap",
+  "timestamp": "2026-03-14",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added _is_optional() helper function",
+        "type": "code",
+        "files_modified": ["scripts/validate-timeline-data.py"],
+        "changes": "New function at line 27 checks entry.get('optional') or 'optional' in name.lower()",
+        "rationale": "Centralizes optional detection logic for reuse in overlap classification"
+      },
+      {
+        "id": 2,
+        "description": "Added _check_day_overlaps() function",
+        "type": "code",
+        "files_modified": ["scripts/validate-timeline-data.py"],
+        "changes": "New function at line 36 iterates all non-transit entry pairs using itertools.combinations, checks s1 < e2 and s2 < e1 overlap condition, classifies into hard vs soft conflicts",
+        "rationale": "Encapsulates per-day overlap logic; returns (hard_conflicts, soft_conflicts) tuples"
+      },
+      {
+        "id": 3,
+        "description": "Integrated overlap detection into validate_timeline_data()",
+        "type": "code",
+        "files_modified": ["scripts/validate-timeline-data.py"],
+        "changes": "After existing per-day structure loop (line 149), added second loop calling _check_day_overlaps() for each day. Soft conflicts printed with warning prefix, hard conflicts printed with error prefix. Hard conflicts cause exit code 1.",
+        "rationale": "Root cause: script only validated structure/coverage but had no time-logic checks, allowing overlapping activities to pass undetected"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause": "validate-timeline-data.py only checked structural completeness and coverage percentage, with no time-range logic validation",
+      "how_fix_addresses_root": "Added pairwise time overlap detection that distinguishes hard conflicts (both non-optional) from soft conflicts (either optional), blocking pipeline on hard conflicts"
+    },
+    "test_results": {
+      "syntax_check": "PASS - py_compile successful",
+      "live_test": {
+        "file": "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json",
+        "result": "exit code 1",
+        "soft_conflicts_found": 2,
+        "hard_conflicts_found": 5,
+        "details": [
+          "Soft: Day 16 optional Tianjin Day Trip overlaps with in-trip meal and alternative day",
+          "Hard: Day 2, 6, 13, 16 have non-optional overlapping activities (train+meal, theme park+meals, etc.)"
+        ]
+      }
+    },
+    "qa_ready": true,
+    "qa_notes": "Run against any timeline.json. Verify: (1) hard conflicts produce exit 1, (2) soft conflicts print warnings but do not block, (3) transit entries are excluded from overlap checks, (4) existing structure/coverage checks still work unchanged.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Some detected hard conflicts (e.g., Disneyland 09:00-21:15 overlapping with in-park lunch) may be intentional sub-activities. Consider adding a 'parent' or 'nested' field to timeline entries to express containment without triggering false-positive conflicts."
+  ]
+}

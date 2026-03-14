@@ -1,0 +1,46 @@
+{
+  "request_id": "dev-20260314-overlap",
+  "timestamp": "2026-03-14",
+  "requirement": {
+    "original": "validate-timeline-data.py 里加 overlap 阻断，optional 条目除外",
+    "clarified": "在 validate-timeline-data.py 中新增时间重叠检测。两个非 optional 活动时间重叠 → exit code 1 阻断。任一方 optional → warning 但不阻断。",
+    "success_criteria": [
+      "两个非 optional 活动重叠 → 打印具体冲突信息 → exit code 1",
+      "任一方 optional 重叠 → 打印 warning → 不影响 exit code",
+      "无重叠 → 正常通过",
+      "transit 条目不参与 overlap 检测（transit 本身就是连接段）"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "timeline.json 可能包含时间重叠活动，无检测机制",
+    "root_cause": "validate-timeline-data.py 只检查结构完整性和覆盖率，未检查时间逻辑",
+    "affected_files": ["scripts/validate-timeline-data.py"]
+  },
+  "context": {
+    "existing_script": "scripts/validate-timeline-data.py — 141 行，只做结构校验和覆盖率检查",
+    "timeline_structure": {
+      "path": "data/*/timeline.json",
+      "format": "data.days[].timeline = { 'Activity Name': { start_time, end_time, duration_minutes, optional?, transit?, meal_ref? } }",
+      "optional_detection": [
+        "字段: entry.get('optional') == True",
+        "名字: '- Optional' 或 'optional' in name.lower()"
+      ],
+      "transit_field": "entry.get('transit') == True"
+    },
+    "overlap_rules": {
+      "hard_conflict": "两个非 optional、非 transit 活动时间段有交集 → 阻断 (exit 1)",
+      "soft_conflict": "任一方 optional 或 transit → warning 仅打印",
+      "time_format": "HH:MM 字符串，可直接字符串比较"
+    }
+  },
+  "development_approach": {
+    "strategy": "在现有 validate_timeline_data() 函数里，遍历每天 timeline 的所有条目对，检测时间段重叠",
+    "files_to_modify": ["scripts/validate-timeline-data.py"],
+    "implementation_notes": [
+      "新增 _is_optional(name, entry) 函数：检查 entry.get('optional') 或名字包含 optional",
+      "新增 _check_overlaps(day_num, timeline) 函数：返回 (hard_conflicts, soft_conflicts)",
+      "在主循环里调用，hard_conflicts > 0 则最终 exit 1",
+      "不新建文件，只修改现有脚本"
+    ]
+  }
+}
