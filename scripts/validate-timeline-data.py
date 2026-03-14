@@ -28,7 +28,7 @@ def _is_optional(name: str, entry: dict) -> bool:
     """Return True if the activity is marked optional (field or name)."""
     if entry.get("optional"):
         return True
-    if "optional" in name.lower():
+    if "optional" in name.lower() or "alternative" in name.lower():
         return True
     return False
 
@@ -59,6 +59,12 @@ def _check_day_overlaps(day_num, timeline: dict) -> tuple[list, list]:
     for (name_a, entry_a, s1, e1), (name_b, entry_b, s2, e2) in combinations(entries, 2):
         # Two ranges [s1, e1) and [s2, e2) overlap when s1 < e2 AND s2 < e1
         if s1 < e2 and s2 < e1:
+            # Nested activity: B fully inside A (or vice versa) → skip (not a conflict)
+            a_contains_b = s1 <= s2 and e2 <= e1
+            b_contains_a = s2 <= s1 and e1 <= e2
+            if a_contains_b or b_contains_a:
+                continue
+
             msg = (
                 f"Day {day_num}: '{name_a}' ({s1}-{e1}) "
                 f"overlaps with '{name_b}' ({s2}-{e2})"

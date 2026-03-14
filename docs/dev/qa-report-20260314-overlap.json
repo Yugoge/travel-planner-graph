@@ -1,0 +1,127 @@
+{
+  "request_id": "dev-20260314-overlap",
+  "timestamp": "2026-03-14T00:00:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "The overlap detection implementation in validate-timeline-data.py is correct, well-structured, and handles all specified edge cases properly.",
+    "tests_run": [
+      {
+        "name": "Syntax check",
+        "result": "pass",
+        "details": "Python AST parse succeeded with no errors."
+      },
+      {
+        "name": "Real data test: china-feb-15-mar-7-2026 timeline.json",
+        "result": "pass",
+        "details": "Script exited with code 0. 21/21 days with data, 100% coverage, PASS status. No conflicts detected."
+      },
+      {
+        "name": "Edge case: Hard conflict (partial overlap, non-optional)",
+        "result": "pass",
+        "details": "Two non-optional activities overlapping 09:00-11:30 and 11:00-13:00 correctly produced a hard conflict and exit code 1."
+      },
+      {
+        "name": "Edge case: Nested activity (one contains the other)",
+        "result": "pass",
+        "details": "Activity 08:00-18:00 fully containing 12:00-13:00 was correctly skipped (no conflict reported), exit code 0."
+      },
+      {
+        "name": "Edge case: Soft conflict (optional keyword in name)",
+        "result": "pass",
+        "details": "'Optional Coffee Tour' overlapping with non-optional 'Museum Visit' correctly produced a soft conflict (warning only), exit code 0."
+      },
+      {
+        "name": "Edge case: Soft conflict (optional=true field)",
+        "result": "pass",
+        "details": "Entry with optional:true overlapping a non-optional entry correctly produced a soft conflict, exit code 0."
+      },
+      {
+        "name": "Edge case: Soft conflict ('alternative' keyword in name)",
+        "result": "pass",
+        "details": "'Alternative: Art Gallery' overlapping a non-optional entry correctly produced a soft conflict, exit code 0."
+      },
+      {
+        "name": "Edge case: No conflict (non-overlapping activities)",
+        "result": "pass",
+        "details": "Three activities with no time overlap produced no conflicts, exit code 0."
+      },
+      {
+        "name": "Edge case: Transit entries skipped",
+        "result": "pass",
+        "details": "Transit entry with transit:true overlapping a non-transit entry was correctly ignored, exit code 0."
+      },
+      {
+        "name": "Edge case: Boundary (adjacent activities, end == start)",
+        "result": "pass",
+        "details": "Activities ending at 10:00 and starting at 10:00 correctly produced no overlap (half-open interval [s,e)), exit code 0."
+      },
+      {
+        "name": "Edge case: Reverse nested (smaller listed first)",
+        "result": "pass",
+        "details": "Smaller activity 10:00-10:30 with larger 08:00-20:00 (b_contains_a path) correctly skipped, exit code 0."
+      }
+    ],
+    "logic_verification": {
+      "_is_optional": {
+        "status": "correct",
+        "checks": [
+          "entry.get('optional') returns truthy value -> True",
+          "'optional' in name.lower() -> True",
+          "'alternative' in name.lower() -> True",
+          "All three paths tested and confirmed working"
+        ]
+      },
+      "_check_day_overlaps": {
+        "status": "correct",
+        "checks": [
+          "Transit entries (entry.get('transit')) are skipped before comparison",
+          "Entries without start_time or end_time are skipped",
+          "Overlap formula: s1 < e2 AND s2 < e1 is mathematically correct for half-open intervals",
+          "Nested detection: a_contains_b (s1<=s2 and e2<=e1) and b_contains_a (s2<=s1 and e1<=e2) both checked",
+          "Optional overlap -> soft_conflicts list (warning only)",
+          "Non-optional overlap -> hard_conflicts list (exit 1)",
+          "Uses itertools.combinations(entries, 2) for pairwise comparison - correct and complete"
+        ]
+      },
+      "exit_codes": {
+        "status": "correct",
+        "checks": [
+          "Exit 0: valid data with >50% coverage and no hard conflicts",
+          "Exit 1: invalid structure, low coverage, or hard conflicts",
+          "Exit 2: file not found or JSON parse error"
+        ]
+      }
+    },
+    "code_quality": {
+      "hardcoded_values": "none found",
+      "docstrings": {
+        "module": "present - describes purpose, usage, and exit codes",
+        "_is_optional": "present",
+        "_check_day_overlaps": "present - documents return tuple structure",
+        "validate_timeline_data": "present - documents args and return values",
+        "main": "missing (minor - trivial entry point function)"
+      },
+      "structure": "clean - functions are focused and single-purpose, type hints used on function signatures, proper use of itertools.combinations",
+      "error_handling": "comprehensive - handles file not found, JSON decode errors, invalid structure, type mismatches on timeline dict",
+      "naming": "good - _is_optional, _check_day_overlaps use clear verb-noun pattern with underscore prefix for internal functions"
+    },
+    "issues_found": [
+      {
+        "severity": "minor",
+        "category": "docstring",
+        "location": "/root/travel-planner/scripts/validate-timeline-data.py:211",
+        "issue": "main() function lacks a docstring",
+        "recommendation": "Add a brief docstring, though this is a trivial CLI entry point so impact is minimal.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 1,
+      "total_findings": 1,
+      "release_recommendation": "approve",
+      "narrative": "All overlap detection logic is correct. The _is_optional function properly checks three sources (field, 'optional' in name, 'alternative' in name). The _check_day_overlaps function correctly skips transit entries, uses the standard half-open interval overlap formula (s1 < e2 AND s2 < e1), properly skips nested activities in both directions, and routes conflicts to hard vs soft lists based on optional status. Real data test passed. All 9 edge case tests passed covering hard conflicts, soft conflicts, nested activities, transit skipping, boundary conditions, and no-conflict scenarios. Only one minor finding: missing docstring on trivial main() function."
+    }
+  }
+}
