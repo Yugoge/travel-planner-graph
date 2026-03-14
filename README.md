@@ -54,4 +54,22 @@ python tests/test_plan_validate_schema_inference.py
 
 ---
 
-Last updated: 
+## Project Structure
+
+```
+travel-planner/
+├── config/          # 7 JSON config files (validation, cities, currency, etc.)
+├── data/            # 5 trip directories, 75 JSON files
+├── docs/            # 796 files across 7 subdirectories (workflow JSONs, reports, guides)
+├── output/          # 8 HTML travel plans + index
+├── schemas/         # JSON schema definitions
+├── scripts/         # 124 files (24 .py, 20 .sh, 7 subdirectories including hooks/)
+├── tests/           # 1 test file (schema inference tests)
+├── gh-pages-check2/ # GitHub Pages deployment verification
+├── .claude/         # Claude Code skills, agents, hooks, commands
+├── index.html       # Project landing page
+├── requirements.txt # Python dependencies
+└── package.json     # Node.js dependencies
+```
+
+Last updated: 2026-03-14
