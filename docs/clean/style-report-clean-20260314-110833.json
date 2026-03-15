@@ -1,0 +1,143 @@
+{
+  "request_id": "clean-20260314-110833",
+  "timestamp": "2026-03-14T11:10:00Z",
+  "inspector": "style-inspector",
+  "violations": [
+    {
+      "standard": "use-source-venv",
+      "severity": "major",
+      "location": "scripts/test-load-py.sh:97-258",
+      "finding": "Uses direct python3 calls without venv activation for all test commands. Although the script activates venv on line 30, all test commands are constructed as strings with 'python3' instead of 'python', meaning they bypass venv if run in a subprocess.",
+      "recommendation": "Replace python3 with python in all test command strings since venv is already activated, or ensure subprocess inherits the venv environment."
+    },
+    {
+      "standard": "use-source-venv",
+      "severity": "major",
+      "location": "scripts/update-agent-docs.sh:47-71",
+      "finding": "Contains python3 calls in documentation template that gets appended to agent files. These example code blocks use 'python3 scripts/load.py' and 'python3 scripts/save.py' instead of venv-activated python.",
+      "recommendation": "Update template examples to show venv activation: 'source venv/bin/activate && python scripts/load.py ...'"
+    },
+    {
+      "standard": "english-only",
+      "severity": "major",
+      "location": "scripts/fix-day2-hotel-checkin.py:32",
+      "finding": "Contains Chinese constant: CHECKIN_TEXT_ZH = '办理入住'. This is intentional i18n data for bilingual timeline display, not a comment or UI text violation.",
+      "recommendation": "Add clarifying comment: '# i18n: Chinese check-in text for bilingual timeline display'. Low priority - this is localization data by design."
+    },
+    {
+      "standard": "english-only",
+      "severity": "major",
+      "location": "scripts/merge-timeline-day1.py:45-67",
+      "finding": "Contains Chinese constants: CHECKIN_TEXT_ZH and Chinese name_local fields in MISSING_SEGMENTS. These are bilingual data values by design.",
+      "recommendation": "Add comment explaining these are i18n data values. Low priority - localization data, not code comments."
+    },
+    {
+      "standard": "english-only",
+      "severity": "major",
+      "location": "scripts/fetch-images-batch.py:379-564",
+      "finding": "Contains Chinese text in code comments explaining Gaode Maps search behavior (e.g., '外滩夜景散步 -> 外滩夜景 -> 外滩'). Also contains Chinese suffix lists used as search term normalization data.",
+      "recommendation": "Translate Chinese comments to English while keeping Chinese strings used as API search data. Example: '# Remove trailing descriptive suffixes (walk, tour, experience) from search terms'"
+    },
+    {
+      "standard": "english-only",
+      "severity": "major",
+      "location": "scripts/fix-duration-units.py:97, scripts/validate-route-durations.py:70",
+      "finding": "Contains Chinese character in docstring: 'Bus 181路'",
+      "recommendation": "Change to: 'Bus 181 (route number)' or add note that this is a real-world Chinese bus route format."
+    },
+    {
+      "standard": "hardcoded-values",
+      "severity": "major",
+      "location": "scripts/test-unified-workflow.sh:7-9",
+      "finding": "Hardcoded PROJECT_ROOT='/root/travel-planner' and VENV='$HOME/.claude/venv' instead of deriving from script location.",
+      "recommendation": "Use: PROJECT_ROOT=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\" and check for venv in multiple locations."
+    },
+    {
+      "standard": "hardcoded-values",
+      "severity": "major",
+      "location": "scripts/push-to-main-repo.sh:20",
+      "finding": "Hardcoded default GitHub username: MAIN_REPO_USER=\"${1:-Yugoge}\"",
+      "recommendation": "Remove the default or derive from git config. The username should be explicitly provided."
+    },
+    {
+      "standard": "hardcoded-values",
+      "severity": "major",
+      "location": "test_json_io_direct.py:8,11",
+      "finding": "Hardcoded absolute paths: sys.path.insert(0, str(Path('/root/travel-planner/scripts'))) and TEST_DIR = Path('/root/travel-planner/data/agent-test-20260212-191529')",
+      "recommendation": "Use relative paths: sys.path.insert(0, str(Path(__file__).parent / 'scripts')) and TEST_DIR = Path(__file__).parent / 'data' / ..."
+    },
+    {
+      "standard": "hardcoded-values",
+      "severity": "major",
+      "location": "scripts/test-load-py.sh:8",
+      "finding": "Hardcoded default trip slug: TRIP_SLUG=\"${1:-china-feb-15-mar-7-2026-20260202-195429}\" ties test to one specific trip.",
+      "recommendation": "Make the trip slug required or detect an available trip from data/ directory."
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "minor",
+      "location": "scripts/fix-day2-hotel-checkin.py + scripts/merge-timeline-day1.py",
+      "finding": "fix-day2-hotel-checkin.py duplicates functionality already available in merge-timeline-day1.py via --fix-day2-hotel flag. Both share identical logic for CHECKIN_TEXT_ZH and save_timeline_with_savepy.",
+      "recommendation": "Remove fix-day2-hotel-checkin.py. Use merge-timeline-day1.py --fix-day2-hotel instead."
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "minor",
+      "location": "scripts/fix-duration-units.py + scripts/validate-route-durations.py",
+      "finding": "Both scripts analyze transportation route durations using the same mode speed logic and share DEFAULT_MODE_SPEEDS definitions.",
+      "recommendation": "Merge into single script with --fix/--validate modes, or extract shared logic into scripts/lib/transport_speeds.py."
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "minor",
+      "location": "scripts/generate-skeletons.py + scripts/init-plan-skeleton.sh + scripts/init-requirements-skeleton.sh",
+      "finding": "generate-skeletons.py creates both skeleton files from CLI params. The two shell scripts do the same with embedded Python and appear to be older versions.",
+      "recommendation": "Remove init-plan-skeleton.sh and init-requirements-skeleton.sh if generate-skeletons.py has superseded them."
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "minor",
+      "location": "scripts/detect-location-changes.py + scripts/generate-skeletons.py:127-191",
+      "finding": "generate-skeletons.py contains a duplicated detect_location_changes() function.",
+      "recommendation": "Import from detect-location-changes.py instead of duplicating the logic."
+    },
+    {
+      "standard": "shebang-lines",
+      "severity": "minor",
+      "location": "scripts/deploy-travel-plans.sh:1, scripts/generate-and-deploy.sh:1, scripts/push-to-main-repo.sh:1, scripts/test-unified-workflow.sh:1",
+      "finding": "Uses #!/bin/bash instead of #!/usr/bin/env bash",
+      "recommendation": "Change to #!/usr/bin/env bash for portability, consistent with other shell scripts in the project."
+    },
+    {
+      "standard": "error-handling",
+      "severity": "minor",
+      "location": "scripts/deploy-travel-plans.sh:6, scripts/generate-and-deploy.sh:5, scripts/push-to-main-repo.sh:6, scripts/test-unified-workflow.sh:5, scripts/update-agent-docs.sh:5",
+      "finding": "Uses 'set -e' without 'set -euo pipefail'. Missing -u (undefined variables) and -o pipefail.",
+      "recommendation": "Change to 'set -euo pipefail' for stricter error handling, consistent with other shell scripts."
+    },
+    {
+      "standard": "step-numbering",
+      "severity": "minor",
+      "location": ".claude/commands/review.md:589, .claude/agents/timeline.md:394",
+      "finding": "Uses sub-step numbering: 'Step 3a' and 'Step 5a'",
+      "recommendation": "Renumber to use flat integer steps."
+    },
+    {
+      "standard": "venv-search-order",
+      "severity": "minor",
+      "location": "scripts/generate-html.sh:25-31",
+      "finding": "Venv search order (.claude/venv first) is inconsistent with generate-and-deploy.sh (project venv first).",
+      "recommendation": "Standardize venv search order across all shell scripts: 1) PROJECT_ROOT/venv, 2) PROJECT_ROOT/.venv, 3) HOME/.claude/venv."
+    }
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 18,
+    "critical": 0,
+    "major": 10,
+    "minor": 8,
+    "files_audited": 42,
+    "files_total": 42,
+    "rounds_completed": 1
+  }
+}
