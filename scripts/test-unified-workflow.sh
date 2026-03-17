@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Test Unified Scripts Architecture
 # Creates isolated test environment and validates all components
 
-set -e
+set -euo pipefail
 
-PROJECT_ROOT="/root/travel-planner"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/data/test-unified-scripts-$(date +%Y%m%d-%H%M%S)"
 VENV="$HOME/.claude/venv"
 

@@ -1,16 +1,16 @@
-# 2026-02
+# clean
 
-Archived documentation from February 2026
+Cleanup execution reports and rule inspection documentation
 
 ---
 
 ## Purpose
 
-This folder contains 2026-02 files organized according to project standards.
+This folder contains clean files organized according to project standards.
 
 ## Allowed File Types
 
-.md
+.json,.md
 
 ## Naming Convention
 
@@ -34,9 +34,9 @@ Files in this folder should follow these rules:
 
 ## Git Analysis
 
-First created: 2026-02-08
+First created: 2026-01-31
 Last significant update: 2026-02-11
-Generated: 2026-02-11 15:25:31 UTC
+Generated: 2026-02-11 15:24:45 UTC
 
 ---
 
