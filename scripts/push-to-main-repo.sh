@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Push source code to main travel-planner repository (private)
 # This is separate from travel-planner-graph which is for GitHub Pages only
 # Based on knowledge-system's deployment pattern
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'

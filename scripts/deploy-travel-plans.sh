@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Deploy travel plan HTML to GitHub Pages
 # Usage: bash scripts/deploy-travel-plans.sh travel-plan-paris-2026-03-15.html
 # Prerequisites: Git + (GITHUB_TOKEN or SSH keys)
 
-set -e
+set -euo pipefail
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_NAME="${GITHUB_PAGES_REPO:-travel-planner-graph}"

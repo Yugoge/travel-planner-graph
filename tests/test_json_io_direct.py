@@ -4,11 +4,14 @@
 import sys
 from pathlib import Path
 
+# Detect project root relative to this file's location (tests/ -> project root)
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+
 # Import json_io
-sys.path.insert(0, str(Path("/root/travel-planner/scripts")))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 from lib.json_io import save_agent_json, load_agent_json, ValidationError
 
-TEST_DIR = Path("/root/travel-planner/data/agent-test-20260212-191529")
+TEST_DIR = PROJECT_ROOT / "data" / "agent-test-20260212-191529"
 TIMELINE_FILE = TEST_DIR / "timeline-direct.json"
 
 print("=" * 60)

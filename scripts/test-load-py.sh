@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-TRIP_SLUG="${1:-china-feb-15-mar-7-2026-20260202-195429}"
+TRIP_SLUG="${1:-your-trip-slug-here}"
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOAD_SCRIPT="$PROJECT_ROOT/scripts/load.py"
 TEST_OUTPUT_DIR="/tmp/load-py-test-$$"

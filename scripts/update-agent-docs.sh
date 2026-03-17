@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Update all agent documentation to use unified load.py/save.py scripts
 # Remove contradictory Write tool instructions
 
-set -e
+set -euo pipefail
 
 AGENTS_DIR=".claude/agents"
 AGENTS=("meals" "attractions" "entertainment" "accommodation" "shopping" "transportation" "timeline" "budget")

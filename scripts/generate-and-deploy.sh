@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Generate interactive React HTML and deploy to GitHub Pages
 # Usage: bash scripts/generate-and-deploy.sh <plan-id> [--force] [--day FILTER]
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
