@@ -447,7 +447,7 @@ class InteractiveHTMLGenerator:
 
                     meal_time = self._normalize_time(meal.get("time"))
 
-                    name_base = meal.get("name_base", meal_name)
+                    name_base = meal.get("name_base", meal_type)
                     name_local = meal.get("name_local", "")
 
                     merged["meals"][meal_type] = {
