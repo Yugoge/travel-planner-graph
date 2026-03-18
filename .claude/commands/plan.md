@@ -1304,6 +1304,8 @@ source venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py
 
 **IMPORTANT**: Generation and deployment are now a SINGLE atomic operation. Once HTML is generated, it MUST be deployed. There is NO option to skip deployment.
 
+**RE-DEPLOY RULE**: Every time plan data (JSON files) is updated, `generate-and-deploy.sh` MUST be re-run immediately. Do NOT batch multiple updates before deploying — deploy after EACH update to keep the live site in sync.
+
 Run unified script:
 ```bash
 bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug}
