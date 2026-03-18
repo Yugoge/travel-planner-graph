@@ -440,34 +440,29 @@ class InteractiveHTMLGenerator:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
                 if meal_type in day_meals:
                     meal = day_meals[meal_type]
-                    # Convert cost to display currency (EUR)
+                    # Convert cost to display currency
                     cost = meal.get("cost", 0)
-                    meal_currency = meal.get("currency_local", meal.get("currency", "CNY"))
-                    if cost == 0 and "price_range_eur_low" in meal:
-                        cost = meal.get("price_range_eur_low", 0)
-                        meal_currency = "EUR"
+                    meal_currency = meal.get("currency_local", "CNY")
                     cost = self._to_display_currency(cost, meal_currency)
 
                     meal_time = self._normalize_time(meal.get("time"))
 
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
                     name_base = meal.get("name_base", meal_name)
-                    name_local = meal.get("name_local", meal.get("name_en", ""))
+                    name_local = meal.get("name_local", "")
 
                     merged["meals"][meal_type] = {
                         "name_base": name_base,
                         "name_local": name_local,
-                        "location_base": meal.get("location_base", meal.get("location", "")),
-                        "location_local": meal.get("location_local", meal.get("location", "")),
+                        "location_base": meal.get("location_base", ""),
+                        "location_local": meal.get("location_local", ""),
                         "coordinates": meal.get("coordinates", {}),
                         "cost": cost,
                         "cost_local": meal.get("cost", 0),
-                        "cuisine_base": meal.get("cuisine_base", meal.get("cuisine", "")),
+                        "cuisine_base": meal.get("cuisine_base", ""),
                         "cuisine_local": meal.get("cuisine_local", ""),
-                        "signature_dishes_base": meal.get("signature_dishes_base", meal.get("signature_dishes", "")),
+                        "signature_dishes_base": meal.get("signature_dishes_base", ""),
                         "signature_dishes_local": meal.get("signature_dishes_local", ""),
-                        "notes_base": meal.get("notes_base", meal.get("notes", "")),
+                        "notes_base": meal.get("notes_base", ""),
                         "notes_local": meal.get("notes_local", ""),
                         "optional": meal.get("optional", False),
                         "image": self._get_placeholder_image(
@@ -476,8 +471,8 @@ class InteractiveHTMLGenerator:
                             gaode_id=meal.get("gaode_id", ""),
                             name_base=name_base,
                             name_local=name_local,
-                            location_base=meal.get("location_base", meal.get("location", "")),
-                            location_local=meal.get("location_local", meal.get("location", "")),
+                            location_base=meal.get("location_base", ""),
+                            location_local=meal.get("location_local", ""),
                             is_home=self._is_home_location(meal)
                         ),
                         "time": meal_time,
@@ -490,69 +485,39 @@ class InteractiveHTMLGenerator:
             day_attrs = next((d for d in self.attractions["days"] if d.get("day") == day_num), {})
             if "attractions" in day_attrs:
                 for attr in day_attrs["attractions"]:
-                    attr_name = attr.get("name_base", attr.get("name", ""))
+                    attr_name_base = attr.get("name_base", "")
+                    attr_name_local = attr.get("name_local", "")
                     attr_time = self._normalize_time(attr.get("time"))
 
-                    # Convert cost to display currency (EUR)
+                    # Convert cost to display currency
                     cost = attr.get("cost", 0)
-                    attr_currency = attr.get("currency_local", attr.get("currency", "CNY"))
-                    if cost == 0 and "ticket_price_eur" in attr:
-                        cost = attr.get("ticket_price_eur", 0)
-                        attr_currency = "EUR"
+                    attr_currency = attr.get("currency_local", "CNY")
                     cost = self._to_display_currency(cost, attr_currency)
-
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
-                    attr_name_base = attr.get("name_base", attr_name)
-                    attr_name_local = attr.get("name_local", attr.get("name_en", ""))
-
-                    # Check optional field from data (new schema), fallback to notes text detection
-                    is_optional = attr.get("optional", False)
-                    if not is_optional:
-                        notes_text = str(attr.get("notes", "")) + " " + str(attr.get("notes_base", ""))
-                        if "optional" in notes_text.lower():
-                            is_optional = True
-
-                    # Merge why_worth_visiting and best_time_to_visit into notes
-                    attr_notes = attr.get("notes_base", attr.get("notes", ""))
-                    attr_notes_local = attr.get("notes_local", "")
-                    wwv = attr.get("why_worth_visiting", "")
-                    wwv_local = attr.get("why_worth_visiting_local", "")
-                    btv = attr.get("best_time_to_visit", "")
-                    btv_local = attr.get("best_time_to_visit_local", "")
-                    if wwv and wwv not in attr_notes:
-                        attr_notes = f"{attr_notes}. {wwv}" if attr_notes else wwv
-                    if wwv_local and wwv_local not in attr_notes_local:
-                        attr_notes_local = f"{attr_notes_local}\u3002{wwv_local}" if attr_notes_local else wwv_local
-                    if btv and btv not in attr_notes:
-                        attr_notes = f"{attr_notes}. Best time: {btv}" if attr_notes else f"Best time: {btv}"
-                    if btv_local and btv_local not in attr_notes_local:
-                        attr_notes_local = f"{attr_notes_local}\u3002\u6700\u4f73\u65f6\u95f4\uff1a{btv_local}" if attr_notes_local else f"\u6700\u4f73\u65f6\u95f4\uff1a{btv_local}"
 
                     merged["attractions"].append({
                         "name_base": attr_name_base,
                         "name_local": attr_name_local,
-                        "location_base": attr.get("location_base", attr.get("location", "")),
-                        "location_local": attr.get("location_local", attr.get("location", "")),
+                        "location_base": attr.get("location_base", ""),
+                        "location_local": attr.get("location_local", ""),
                         "coordinates": attr.get("coordinates", {}),
-                        "type_base": self._format_type(attr.get("type_base", attr.get("type", ""))),
+                        "type_base": self._format_type(attr.get("type_base", "")),
                         "type_local": attr.get("type_local", ""),
                         "cost": cost,
                         "cost_local": attr.get("cost", 0),
                         "opening_hours": attr.get("opening_hours", ""),
-                        "optional": is_optional,
+                        "optional": attr.get("optional", False),
                         "image": self._get_placeholder_image(
                             "attraction",
-                            poi_name=attr_name_local if attr_name_local else attr_name,
+                            poi_name=attr_name_local if attr_name_local else attr_name_base,
                             gaode_id=attr.get("gaode_id", ""),
                             name_base=attr_name_base,
                             name_local=attr_name_local,
-                            location_base=attr.get("location_base", attr.get("location", "")),
-                            location_local=attr.get("location_local", attr.get("location", "")),
+                            location_base=attr.get("location_base", ""),
+                            location_local=attr.get("location_local", ""),
                             is_home=self._is_home_location(attr)
                         ),
-                        "notes_base": attr_notes,
-                        "notes_local": attr_notes_local,
+                        "notes_base": attr.get("notes_base", ""),
+                        "notes_local": attr.get("notes_local", ""),
                         "time": attr_time,
                         "links": attr.get("links", {})
                     })
@@ -563,45 +528,38 @@ class InteractiveHTMLGenerator:
             day_ent = next((d for d in self.entertainment["days"] if d.get("day") == day_num), {})
             if "entertainment" in day_ent:
                 for ent in day_ent["entertainment"]:
-                    ent_name = ent.get("name_base", ent.get("name", ""))
+                    ent_name_base = ent.get("name_base", "")
+                    ent_name_local = ent.get("name_local", "")
                     ent_time = self._normalize_time(ent.get("time"))
 
-                    # Convert cost to display currency (EUR)
+                    # Convert cost to display currency
                     cost = ent.get("cost", 0)
-                    ent_currency = ent.get("currency_local", ent.get("currency", "CNY"))
-                    if cost == 0 and "cost_eur" in ent:
-                        cost = ent.get("cost_eur", 0)
-                        ent_currency = "EUR"
+                    ent_currency = ent.get("currency_local", "CNY")
                     cost = self._to_display_currency(cost, ent_currency)
-
-                    # Root cause fix (commit 8f2bddd): Support standardized name_base/name_local fields
-                    # Backward compatible with old name/name_en format
-                    ent_name_base = ent.get("name_base", ent_name)
-                    ent_name_local = ent.get("name_local", ent.get("name_en", ""))
 
                     merged["entertainment"].append({
                         "name_base": ent_name_base,
                         "name_local": ent_name_local,
-                        "location_base": ent.get("location_base", ent.get("location", "")),
-                        "location_local": ent.get("location_local", ent.get("location", "")),
+                        "location_base": ent.get("location_base", ""),
+                        "location_local": ent.get("location_local", ""),
                         "coordinates": ent.get("coordinates", {}),
-                        "type_base": self._format_type(ent.get("type_base", ent.get("type", ""))),
+                        "type_base": self._format_type(ent.get("type_base", "")),
                         "type_local": ent.get("type_local", ""),
                         "cost": cost,
                         "cost_local": ent.get("cost", 0),
-                        "note_base": ent.get("note_base", ent.get("note", "")),
+                        "note_base": ent.get("note_base", ""),
                         "note_local": ent.get("note_local", ""),
-                        "notes_base": ent.get("notes_base", ent.get("notes", "")),
+                        "notes_base": ent.get("notes_base", ""),
                         "notes_local": ent.get("notes_local", ""),
                         "optional": ent.get("optional", False),
                         "image": self._get_placeholder_image(
                             "entertainment",
-                            poi_name=ent_name_local if ent_name_local else ent_name,
+                            poi_name=ent_name_local if ent_name_local else ent_name_base,
                             gaode_id=ent.get("gaode_id", ""),
                             name_base=ent_name_base,
                             name_local=ent_name_local,
-                            location_base=ent.get("location_base", ent.get("location", "")),
-                            location_local=ent.get("location_local", ent.get("location", "")),
+                            location_base=ent.get("location_base", ""),
+                            location_local=ent.get("location_local", ""),
                             is_home=self._is_home_location(ent)
                         ),
                         "time": ent_time,
@@ -614,10 +572,10 @@ class InteractiveHTMLGenerator:
             day_shop = next((d for d in self.shopping["days"] if d.get("day") == day_num), {})
             for shop_item in day_shop.get("shopping", []):
                 cost = shop_item.get("cost", 0)
-                shop_currency = shop_item.get("currency_local", shop_item.get("currency", "CNY"))
+                shop_currency = shop_item.get("currency_local", "CNY")
                 cost = self._to_display_currency(cost, shop_currency)
 
-                shop_name_base = shop_item.get("name_base", shop_item.get("name", ""))
+                shop_name_base = shop_item.get("name_base", "")
                 shop_name_local = shop_item.get("name_local", "")
 
                 merged["shopping"].append({
@@ -626,11 +584,11 @@ class InteractiveHTMLGenerator:
                     "location_base": shop_item.get("location_base", ""),
                     "location_local": shop_item.get("location_local", ""),
                     "coordinates": shop_item.get("coordinates", {}),
-                    "type_base": shop_item.get("type_base", shop_item.get("type", "Shopping")),
+                    "type_base": shop_item.get("type_base", ""),
                     "type_local": shop_item.get("type_local", ""),
                     "cost": cost,
                     "cost_local": shop_item.get("cost", 0),
-                    "notes_base": shop_item.get("notes_base", shop_item.get("notes", "")),
+                    "notes_base": shop_item.get("notes_base", ""),
                     "notes_local": shop_item.get("notes_local", ""),
                     "optional": shop_item.get("optional", False),
                     "image": self._get_placeholder_image(
@@ -649,17 +607,13 @@ class InteractiveHTMLGenerator:
             day_acc = next((d for d in self.accommodation["days"] if d.get("day") == day_num), {})
             if "accommodation" in day_acc:
                 acc = day_acc["accommodation"]
-                # Convert cost to display currency (EUR)
+                # Convert cost to display currency
                 cost = acc.get("cost", 0)
-                acc_currency = acc.get("currency_local", acc.get("currency", "CNY"))
-                if cost == 0 and "price_per_night_eur" in acc:
-                    cost = acc.get("price_per_night_eur", 0)
-                    acc_currency = "EUR"
+                acc_currency = acc.get("currency_local", "CNY")
                 cost = self._to_display_currency(cost, acc_currency)
 
-                # Root cause fix: Support standardized name_base/name_local fields
-                acc_name_base = acc.get("name_base", acc.get("name", ""))
-                acc_name_local = acc.get("name_local", acc.get("name_cn", ""))
+                acc_name_base = acc.get("name_base", "")
+                acc_name_local = acc.get("name_local", "")
 
                 # Time comes from sync-injected item.time; fall back to check_in if absent
                 acc_time = self._normalize_time(acc.get("time"))
@@ -672,19 +626,19 @@ class InteractiveHTMLGenerator:
                 merged["accommodation"] = {
                     "name_base": acc_name_base,
                     "name_local": acc_name_local,
-                    "type_base": self._format_type(acc.get("type_base", acc.get("type", "hotel"))),
+                    "type_base": self._format_type(acc.get("type_base", "")),
                     "type_local": acc.get("type_local", ""),
-                    "location_base": acc.get("location_base", acc.get("location", "")),
-                    "location_local": acc.get("location_local", acc.get("location", "")),
+                    "location_base": acc.get("location_base", ""),
+                    "location_local": acc.get("location_local", ""),
                     "coordinates": acc.get("coordinates", {}),
                     "cost": cost,
                     "cost_local": acc.get("cost", 0),
                     "stars": stars if stars else 0,
-                    "amenities_base": acc.get("amenities_base", acc.get("amenities", [])),
+                    "amenities_base": acc.get("amenities_base", []),
                     "amenities_local": acc.get("amenities_local", []),
                     "check_in": acc.get("check_in", ""),
                     "check_out": acc.get("check_out", ""),
-                    "notes_base": acc.get("notes_base", acc.get("notes", "")),
+                    "notes_base": acc.get("notes_base", ""),
                     "notes_local": acc.get("notes_local", ""),
                     "optional": acc.get("optional", False),
                     "time": acc_time,
@@ -695,8 +649,8 @@ class InteractiveHTMLGenerator:
                         gaode_id=acc.get("gaode_id", ""),
                         name_base=acc_name_base,
                         name_local=acc_name_local,
-                        location_base=acc.get("location_base", acc.get("location", "")),
-                        location_local=acc.get("location_local", acc.get("location", "")),
+                        location_base=acc.get("location_base", ""),
+                        location_local=acc.get("location_local", ""),
                         is_home=self._is_home_location(acc)
                     )
                 }
@@ -713,13 +667,11 @@ class InteractiveHTMLGenerator:
             from_beijing = day_trans.get("from_beijing")
 
             if loc_change:
-                # Itinerary format: location_change with route_details
-                route_details = loc_change.get("route_details", {})
 
                 # Determine transport type and icon — local from ui_labels data
                 req_labels = self.requirements.get("trip_summary", {}).get("ui_labels", {})
                 ui_local = req_labels.get("local", {})
-                transport_type = loc_change.get("type_base", loc_change.get("transportation", ""))
+                transport_type = loc_change.get("type_base", "")
                 if "train" in transport_type.lower():
                     icon = "🚄"
                     type_display = transport_type or "High-speed Train"
@@ -733,31 +685,14 @@ class InteractiveHTMLGenerator:
                     type_display = transport_type
                     type_display_local = loc_change.get("type_local", "")
 
-                # Extract route info — prefer new direct fields, fallback to route_details
-                if loc_change.get("departure_point_base") or loc_change.get("route_number"):
-                    # New schema: fields directly on loc_change
-                    departure_point = loc_change.get("departure_point_base", "")
-                    arrival_point = loc_change.get("arrival_point_base", "")
-                    route_number = loc_change.get("route_number", "")
-                    airline = loc_change.get("company_base", "")
-                elif "flight_number" in route_details:
-                    # Old schema fallback: Flight via route_details
-                    departure_point = route_details.get("departure_airport", "")
-                    arrival_point = route_details.get("arrival_airport", "")
-                    route_number = route_details.get("flight_number", "")
-                    airline = route_details.get("airline", "")
-                else:
-                    # Old schema fallback: Train via route_details
-                    departure_point = route_details.get("departure_station", "")
-                    arrival_point = route_details.get("arrival_station", "")
-                    verified = route_details.get("verified_train", {})
-                    raw_train_num = verified.get("train_number", "")
-                    # Filter out metadata strings - only keep actual train numbers (e.g., D2205, G8051)
-                    route_number = raw_train_num if raw_train_num and not raw_train_num.upper().startswith("VERIFIED") else ""
-                    airline = ""
+                # Extract route info from direct fields
+                departure_point = loc_change.get("departure_point_base", "")
+                arrival_point = loc_change.get("arrival_point_base", "")
+                route_number = loc_change.get("route_number", "")
+                airline = loc_change.get("company_base", "")
 
                 # Booking status — local strings come from ui_labels data
-                booking_status = loc_change.get("status_base", loc_change.get("booking_status", ""))
+                booking_status = loc_change.get("status_base", "")
                 if not booking_status:
                     if loc_change.get("booking_required", False):
                         urgency = loc_change.get("booking_urgency", "")
@@ -782,10 +717,10 @@ class InteractiveHTMLGenerator:
                 arr_local = loc_change.get("arrival_point_local", "") or arr_local
 
                 merged["transportation"] = {
-                    "name_base": loc_change.get("name_base", "") or f"{loc_change.get('from_base', loc_change.get('from', ''))} \u2192 {loc_change.get('to_base', loc_change.get('to', ''))}",
+                    "name_base": loc_change.get("name_base", "") or f"{loc_change.get('from_base', '')} \u2192 {loc_change.get('to_base', '')}",
                     "name_local": loc_change.get("name_local", "") or (f"{from_local} \u2192 {to_local}" if from_local and to_local else ""),
-                    "from_base": loc_change.get("from_base", loc_change.get("from", "")),
-                    "to_base": loc_change.get("to_base", loc_change.get("to", "")),
+                    "from_base": loc_change.get("from_base", ""),
+                    "to_base": loc_change.get("to_base", ""),
                     "from_local": from_local,
                     "to_local": to_local,
                     "departure_point_base": dep_base,
@@ -803,11 +738,11 @@ class InteractiveHTMLGenerator:
                         "CNY"
                     ),
                     "cost_local": self._extract_transport_cost_cny(loc_change),
-                    "cost_type_base": loc_change.get("cost_type_base", loc_change.get("cost_type", "")),
+                    "cost_type_base": loc_change.get("cost_type_base", ""),
                     "cost_type_local": loc_change.get("cost_type_local", ""),
                     "status_base": booking_status,
                     "status_local": booking_status_local,
-                    "notes_base": loc_change.get("notes_base", loc_change.get("notes", "")),
+                    "notes_base": loc_change.get("notes_base", ""),
                     "notes_local": loc_change.get("notes_local", ""),
                     "booking_required": loc_change.get("booking_required", False),
                     "time": {
