@@ -142,4 +142,9 @@ echo ""
 # Step 4: Deploy to GitHub Pages
 echo -e "${BLUE}[4/5]${NC} Deploying to GitHub Pages..."
 bash "$SCRIPT_DIR/deploy-travel-plans.sh" "$OUTPUT_FILE"
+
+# Step 5: Show local deployment URL
+LOCAL_DEPLOY_DOMAIN="${LOCAL_DEPLOY_DOMAIN:-travel.life-ai.app}"
+echo -e "${BLUE}[5/5]${NC} Local deployment summary"
+echo -e "${GREEN}✓${NC} Local: https://${LOCAL_DEPLOY_DOMAIN}/${PLAN_ID}/"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

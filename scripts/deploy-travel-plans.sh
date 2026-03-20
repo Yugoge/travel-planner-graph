@@ -8,6 +8,8 @@ set -euo pipefail
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_NAME="${GITHUB_PAGES_REPO:-travel-planner-graph}"
 BRANCH="${GITHUB_PAGES_BRANCH:-gh-pages}"
+LOCAL_DEPLOY_DIR="${LOCAL_DEPLOY_DIR:-/var/www/travel}"
+LOCAL_DEPLOY_DOMAIN="${LOCAL_DEPLOY_DOMAIN:-travel.life-ai.app}"
 
 # Create secure temporary directory
 DEPLOY_DIR=$(mktemp -d -t travel-planner-deploy-XXXXXX)
@@ -518,6 +520,115 @@ else
     fi
 fi
 
+# Step 8.5: Local deployment (parallel to GitHub Pages)
+echo ""
+echo "📋 Step 8.5: Deploying to local server..."
+
+if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
+    # Create target directory structure
+    LOCAL_TARGET_DIR="${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
+    mkdir -p "${LOCAL_TARGET_DIR}"
+
+    # Copy the HTML file
+    cp "$INPUT_FILE" "${LOCAL_TARGET_DIR}/index.html"
+    echo "✓ Copied to: ${LOCAL_TARGET_DIR}/index.html"
+
+    # Generate/update local index.html by scanning LOCAL_DEPLOY_DIR
+    LOCAL_PLAN_DIRS=$(find "${LOCAL_DEPLOY_DIR}" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+        rel="${d#${LOCAL_DEPLOY_DIR}/}"
+        if [[ "$rel" =~ ^[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "$rel"
+        fi
+    done | sort -r || echo "")
+
+    cat > "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_HEAD'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Plans</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background: #fbfbfa;
+            color: #37352f;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { margin-bottom: 40px; }
+        .title { font-size: 40px; font-weight: 700; margin-bottom: 12px; color: #37352f; }
+        .subtitle { font-size: 16px; color: #9b9a97; }
+        .plans-grid { display: flex; flex-direction: column; gap: 12px; }
+        .plan-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: white;
+            border: 1px solid #e3e2e0;
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.15s ease;
+        }
+        .plan-card:hover {
+            background: #f7f6f3;
+            border-color: #d3d1cb;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .plan-icon { font-size: 40px; flex-shrink: 0; }
+        .plan-content { flex: 1; min-width: 0; }
+        .plan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #37352f; }
+        .plan-meta { font-size: 13px; color: #9b9a97; }
+        .arrow { font-size: 20px; color: #9b9a97; flex-shrink: 0; transition: transform 0.15s ease; }
+        .plan-card:hover .arrow { transform: translateX(4px); color: #37352f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">✈️ Travel Plans</div>
+            <div class="subtitle">Your travel planning hub</div>
+        </div>
+        <div class="plans-grid">
+EOF_LOCAL_HEAD
+
+    if [ -n "$LOCAL_PLAN_DIRS" ]; then
+        while IFS= read -r rel_path; do
+            LOCAL_DEST=$(echo "$rel_path" | cut -d'/' -f1)
+            LOCAL_DATE=$(echo "$rel_path" | cut -d'/' -f2)
+            LOCAL_DEST_NAME=$(echo "$LOCAL_DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+
+            cat >> "${LOCAL_DEPLOY_DIR}/index.html" << EOF_LOCAL_CARD
+            <a href="./$LOCAL_DEST/$LOCAL_DATE/" class="plan-card">
+                <div class="plan-icon">🗺️</div>
+                <div class="plan-content">
+                    <div class="plan-title">$LOCAL_DEST_NAME</div>
+                    <div class="plan-meta">Updated $LOCAL_DATE</div>
+                </div>
+                <div class="arrow">→</div>
+            </a>
+EOF_LOCAL_CARD
+        done <<< "$LOCAL_PLAN_DIRS"
+    fi
+
+    cat >> "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_FOOT'
+        </div>
+    </div>
+</body>
+</html>
+EOF_LOCAL_FOOT
+
+    echo "✓ Local index page updated with all plans"
+    echo "✓ Local URL: https://${LOCAL_DEPLOY_DOMAIN}/${DESTINATION_SLUG}/${PLAN_DATE}/"
+else
+    echo "⚠️  Local deploy directory not found: ${LOCAL_DEPLOY_DIR}"
+    echo "  Skipping local deployment (GitHub Pages deployment succeeded)"
+fi
+
 # Step 9: Cleanup
 echo ""
 echo "📋 Step 9: Cleaning up..."
@@ -532,10 +643,15 @@ echo "✅ Deployment Complete!"
 echo "=================================================="
 echo ""
 echo "🌐 Your travel plan will be live at:"
-echo "  ${DESTINATION_SLUG}: https://${GITHUB_USER}.github.io/${REPO_NAME}/${DESTINATION_SLUG}/${PLAN_DATE}/"
-echo "  Index: https://${GITHUB_USER}.github.io/${REPO_NAME}/"
+echo "  GitHub Pages: https://${GITHUB_USER}.github.io/${REPO_NAME}/${DESTINATION_SLUG}/${PLAN_DATE}/"
+echo "  Local (Cloudflare): https://${LOCAL_DEPLOY_DOMAIN}/${DESTINATION_SLUG}/${PLAN_DATE}/"
+echo ""
+echo "📇 Index pages:"
+echo "  GitHub Pages: https://${GITHUB_USER}.github.io/${REPO_NAME}/"
+echo "  Local (Cloudflare): https://${LOCAL_DEPLOY_DOMAIN}/"
 echo ""
 echo "⏱️  Note: GitHub Pages may take 1-2 minutes to build"
+echo "⚡ Local deployment is available immediately"
 echo "📁 Repository: https://github.com/${GITHUB_USER}/${REPO_NAME}"
 echo ""
 echo "=================================================="

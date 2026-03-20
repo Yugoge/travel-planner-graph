@@ -1,0 +1,83 @@
+{
+  "request_id": "dev-20260320-213000",
+  "timestamp": "2026-03-20T21:30:00Z",
+  "requirement": {
+    "original": "将plan/review command的github Pages加一个并行的本地html部署。我通过cloudflare挂在了life-ai.app域名。现在开始加入新的sub page：travel.life-ai.app。并且每一次运行command使用deploy脚本的时候自动部署更新",
+    "clarified": "Add parallel local HTML deployment alongside GitHub Pages. Create travel-web.service on port 8094 serving /var/www/travel/. Modify deploy-travel-plans.sh to copy HTML files to /var/www/travel/ in addition to GitHub Pages push. User will configure travel.life-ai.app → localhost:8094 in Cloudflare tunnel dashboard.",
+    "what": "Add local static file serving for travel plans via systemd + python http.server, parallel to existing GitHub Pages deployment",
+    "why": "Enable faster deployment via Cloudflare tunnel (travel.life-ai.app) without waiting for GitHub Pages build",
+    "where": ["scripts/deploy-travel-plans.sh", "scripts/generate-and-deploy.sh", "/etc/systemd/system/travel-web.service", "/var/www/travel/"],
+    "scope": {
+      "included": [
+        "Create /var/www/travel/ directory",
+        "Create travel-web.service systemd unit (port 8094)",
+        "Modify deploy-travel-plans.sh to add local deployment step",
+        "Modify generate-and-deploy.sh to show local URL",
+        "Ensure plan.md and review.md auto-deploy via existing generate-and-deploy.sh call"
+      ],
+      "excluded": [
+        "Cloudflare tunnel configuration (user handles in dashboard)",
+        "Modifying plan.md or review.md commands (they already call generate-and-deploy.sh)",
+        "Fixing apply-web.service port conflict"
+      ]
+    },
+    "success_criteria": [
+      "travel-web.service running on port 8094 serving /var/www/travel/",
+      "deploy-travel-plans.sh copies HTML to /var/www/travel/{destination-slug}/{date}/index.html AND generates local index.html",
+      "generate-and-deploy.sh shows both GitHub Pages URL and local travel.life-ai.app URL",
+      "Running /plan or /review triggers both deployments automatically",
+      "Existing GitHub Pages deployment unchanged"
+    ],
+    "constraints": [
+      "Must not break existing GitHub Pages deployment",
+      "Follow same pattern as knowledge-web.service (systemd + python http.server)",
+      "Port 8094 (8090-8093 already in use)",
+      "No Docker, nginx, or external dependencies"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "No local deployment exists - only GitHub Pages (slow, requires git push)",
+    "root_cause": "deploy-travel-plans.sh was designed for GitHub Pages only, no local serving capability",
+    "root_cause_commit": "N/A - new feature, not a bug fix",
+    "why_introduced": "Original design only considered GitHub Pages as deployment target",
+    "why_problematic": "GitHub Pages has 1-2 min build delay; local serving via Cloudflare tunnel is instant",
+    "timeline": "Feature request",
+    "affected_files": ["scripts/deploy-travel-plans.sh", "scripts/generate-and-deploy.sh"]
+  },
+  "context": {
+    "codebase_state": "clean (master branch)",
+    "infrastructure_pattern": {
+      "existing_services": [
+        {"name": "knowledge-web.service", "port": 8092, "directory": "/var/www/knowledge", "domain": "knowledge.life-ai.app"},
+        {"name": "budget-web.service", "port": 8093, "directory": "/var/www/budget", "domain": "budget.life-ai.app"}
+      ],
+      "service_template": "[Unit]\nDescription={Name} Static File Server\nAfter=network.target\n\n[Service]\nType=simple\nExecStart=/usr/bin/python3 -m http.server {PORT} --directory {DIRECTORY}\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target",
+      "cloudflared": "Docker container 'cloudflared-lifeai' using token-based tunnel. Routes configured in Cloudflare Dashboard."
+    },
+    "deploy_script_structure": {
+      "deploy-travel-plans.sh": "542 lines. Takes HTML file path as arg. Steps: detect user → auth → check repo → clone gh-pages → create dir structure {dest-slug}/{date}/index.html → generate index.html → commit → push → enable Pages. Uses temp dir with trap cleanup.",
+      "generate-and-deploy.sh": "146 lines. Takes plan-id arg. Steps: fetch images → generate HTML → validate → deploy (calls deploy-travel-plans.sh) → auto-enable Pages."
+    },
+    "file_contents": {
+      "knowledge-web.service": "[Unit]\nDescription=Knowledge Graph Static File Server\nAfter=network.target\n\n[Service]\nType=simple\nExecStart=/usr/bin/python3 -m http.server 8092 --directory /var/www/knowledge\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target"
+    }
+  },
+  "development_approach": {
+    "strategy": "1) Create systemd service + directory. 2) Add local deploy function to deploy-travel-plans.sh that mirrors the GitHub Pages directory structure into /var/www/travel/. 3) Update generate-and-deploy.sh to display local URL.",
+    "files_to_create": [
+      "/etc/systemd/system/travel-web.service",
+      "/var/www/travel/index.html (generated by deploy script)"
+    ],
+    "files_to_modify": [
+      "scripts/deploy-travel-plans.sh - add local deployment step after GitHub Pages push",
+      "scripts/generate-and-deploy.sh - add local URL in output"
+    ],
+    "validation_approach": "1) Verify travel-web.service is active. 2) Run deploy-travel-plans.sh with existing HTML. 3) Verify files exist in /var/www/travel/. 4) Curl localhost:8094 to verify serving."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "use_env_vars": true,
+    "preserve_existing_behavior": true,
+    "follow_existing_patterns": true
+  }
+}
