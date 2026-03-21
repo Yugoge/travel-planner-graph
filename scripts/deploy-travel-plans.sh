@@ -334,60 +334,71 @@ echo "📋 Step 6: Generating index page..."
 # Scan all directories to build plan list
 PLAN_DIRS=$(find . -mindepth 2 -maxdepth 2 -type d | grep -E '^\./[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r || echo "")
 
-# Generate index.html with simple Notion-style template
-cat > "${DEPLOY_DIR}/index.html" << 'EOF_INDEX_HEAD'
+# Count plans for subtitle
+PLAN_COUNT=0
+if [ -n "$PLAN_DIRS" ]; then
+    PLAN_COUNT=$(echo "$PLAN_DIRS" | wc -l)
+fi
+
+# Generate index.html with dark theme (matches life-ai.app style)
+cat > "${DEPLOY_DIR}/index.html" << EOF_INDEX_HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Travel Plans</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background: #fbfbfa;
-            color: #37352f;
-            padding: 40px 20px;
-            min-height: 100vh;
-        }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { margin-bottom: 40px; }
-        .title { font-size: 40px; font-weight: 700; margin-bottom: 12px; color: #37352f; }
-        .subtitle { font-size: 16px; color: #9b9a97; }
-        .plans-grid { display: flex; flex-direction: column; gap: 12px; }
-        .plan-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            background: white;
-            border: 1px solid #e3e2e0;
-            border-radius: 8px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.15s ease;
-        }
-        .plan-card:hover {
-            background: #f7f6f3;
-            border-color: #d3d1cb;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .plan-icon { font-size: 40px; flex-shrink: 0; }
-        .plan-content { flex: 1; min-width: 0; }
-        .plan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #37352f; }
-        .plan-meta { font-size: 13px; color: #9b9a97; }
-        .arrow { font-size: 20px; color: #9b9a97; flex-shrink: 0; transition: transform 0.15s ease; }
-        .plan-card:hover .arrow { transform: translateX(4px); color: #37352f; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Plans | life-ai.app</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; margin-bottom: 0.5rem; }
+  .subtitle {
+    color: #8b949e;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #21262d;
+  }
+  .plan-list { list-style: none; }
+  .plan-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+  }
+  .plan-item:hover { border-color: #388bfd; }
+  .plan-name { font-weight: 500; color: #f0f6fc; font-size: 0.9rem; }
+  .plan-links { display: flex; gap: 0.75rem; align-items: center; }
+  .plan-links a {
+    color: #58a6ff;
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    transition: all 0.15s;
+  }
+  .plan-links a:hover { background: #161b22; border-color: #388bfd; }
+  .plan-date { color: #8b949e; font-size: 0.75rem; }
+  .empty { color: #484f58; font-size: 0.875rem; padding: 2rem; text-align: center; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="title">✈️ Travel Plans</div>
-            <div class="subtitle">Your travel planning hub</div>
-        </div>
-        <div class="plans-grid">
+<div class="container">
+<h1>Travel Plans</h1>
+<p class="subtitle">Yuge Tang &mdash; ${PLAN_COUNT} plans</p>
+<ul class="plan-list">
 EOF_INDEX_HEAD
 
 # Generate plan cards dynamically
@@ -402,24 +413,22 @@ if [ -n "$PLAN_DIRS" ]; then
 
         # Generate card HTML
         cat >> "${DEPLOY_DIR}/index.html" << EOF_CARD
-            <a href="./$DEST/$DATE/" class="plan-card">
-                <div class="plan-icon">🗺️</div>
-                <div class="plan-content">
-                    <div class="plan-title">$DEST_NAME</div>
-                    <div class="plan-meta">Updated $DATE</div>
-                </div>
-                <div class="arrow">→</div>
-            </a>
+  <li class="plan-item">
+    <span class="plan-name">$DEST_NAME</span>
+    <span class="plan-links"><span class="plan-date">$DATE</span> <a href="./$DEST/$DATE/">View Plan</a></span>
+  </li>
 EOF_CARD
     done
+else
+    cat >> "${DEPLOY_DIR}/index.html" << 'EOF_EMPTY'
+  <li class="empty">No travel plans deployed yet.</li>
+EOF_EMPTY
 fi
 
 # Close HTML
 cat >> "${DEPLOY_DIR}/index.html" << 'EOF_INDEX_FOOT'
-        </div>
-    </div>
-</body>
-</html>
+</ul>
+</div></body></html>
 EOF_INDEX_FOOT
 
 echo "✓ Index page generated with all plans"
@@ -541,59 +550,70 @@ if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
         fi
     done | sort -r || echo "")
 
-    cat > "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_HEAD'
+    # Count local plans
+    LOCAL_PLAN_COUNT=0
+    if [ -n "$LOCAL_PLAN_DIRS" ]; then
+        LOCAL_PLAN_COUNT=$(echo "$LOCAL_PLAN_DIRS" | wc -l)
+    fi
+
+    cat > "${LOCAL_DEPLOY_DIR}/index.html" << EOF_LOCAL_HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Travel Plans</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background: #fbfbfa;
-            color: #37352f;
-            padding: 40px 20px;
-            min-height: 100vh;
-        }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { margin-bottom: 40px; }
-        .title { font-size: 40px; font-weight: 700; margin-bottom: 12px; color: #37352f; }
-        .subtitle { font-size: 16px; color: #9b9a97; }
-        .plans-grid { display: flex; flex-direction: column; gap: 12px; }
-        .plan-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            background: white;
-            border: 1px solid #e3e2e0;
-            border-radius: 8px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.15s ease;
-        }
-        .plan-card:hover {
-            background: #f7f6f3;
-            border-color: #d3d1cb;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .plan-icon { font-size: 40px; flex-shrink: 0; }
-        .plan-content { flex: 1; min-width: 0; }
-        .plan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #37352f; }
-        .plan-meta { font-size: 13px; color: #9b9a97; }
-        .arrow { font-size: 20px; color: #9b9a97; flex-shrink: 0; transition: transform 0.15s ease; }
-        .plan-card:hover .arrow { transform: translateX(4px); color: #37352f; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Plans | life-ai.app</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; margin-bottom: 0.5rem; }
+  .subtitle {
+    color: #8b949e;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #21262d;
+  }
+  .plan-list { list-style: none; }
+  .plan-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+  }
+  .plan-item:hover { border-color: #388bfd; }
+  .plan-name { font-weight: 500; color: #f0f6fc; font-size: 0.9rem; }
+  .plan-links { display: flex; gap: 0.75rem; align-items: center; }
+  .plan-links a {
+    color: #58a6ff;
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    transition: all 0.15s;
+  }
+  .plan-links a:hover { background: #161b22; border-color: #388bfd; }
+  .plan-date { color: #8b949e; font-size: 0.75rem; }
+  .empty { color: #484f58; font-size: 0.875rem; padding: 2rem; text-align: center; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="title">✈️ Travel Plans</div>
-            <div class="subtitle">Your travel planning hub</div>
-        </div>
-        <div class="plans-grid">
+<div class="container">
+<h1>Travel Plans</h1>
+<p class="subtitle">Yuge Tang &mdash; ${LOCAL_PLAN_COUNT} plans</p>
+<ul class="plan-list">
 EOF_LOCAL_HEAD
 
     if [ -n "$LOCAL_PLAN_DIRS" ]; then
@@ -603,23 +623,21 @@ EOF_LOCAL_HEAD
             LOCAL_DEST_NAME=$(echo "$LOCAL_DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
 
             cat >> "${LOCAL_DEPLOY_DIR}/index.html" << EOF_LOCAL_CARD
-            <a href="./$LOCAL_DEST/$LOCAL_DATE/" class="plan-card">
-                <div class="plan-icon">🗺️</div>
-                <div class="plan-content">
-                    <div class="plan-title">$LOCAL_DEST_NAME</div>
-                    <div class="plan-meta">Updated $LOCAL_DATE</div>
-                </div>
-                <div class="arrow">→</div>
-            </a>
+  <li class="plan-item">
+    <span class="plan-name">$LOCAL_DEST_NAME</span>
+    <span class="plan-links"><span class="plan-date">$LOCAL_DATE</span> <a href="./$LOCAL_DEST/$LOCAL_DATE/">View Plan</a></span>
+  </li>
 EOF_LOCAL_CARD
         done <<< "$LOCAL_PLAN_DIRS"
+    else
+        cat >> "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_EMPTY'
+  <li class="empty">No travel plans deployed yet.</li>
+EOF_LOCAL_EMPTY
     fi
 
     cat >> "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_FOOT'
-        </div>
-    </div>
-</body>
-</html>
+</ul>
+</div></body></html>
 EOF_LOCAL_FOOT
 
     echo "✓ Local index page updated with all plans"
