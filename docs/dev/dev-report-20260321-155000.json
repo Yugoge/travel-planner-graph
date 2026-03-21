@@ -1,0 +1,71 @@
+{
+  "request_id": "dev-20260321-155000",
+  "timestamp": "2026-03-21T15:55:00Z",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed slug extraction for multi-hyphen destination names",
+        "type": "bugfix",
+        "files_modified": ["scripts/deploy-travel-plans.sh"],
+        "changes": "Changed line 49 from ${BASE_FILENAME%-*} to ${BASE_FILENAME%-${PLAN_DATE}} to strip the exact captured date instead of just the last hyphen segment",
+        "rationale": "Root cause: ${BASE_FILENAME%-*} is a non-greedy strip that only removes the last hyphen-delimited segment. For 'new-york-city-2026-03-15', it produced 'new-york-city-2026-03' instead of 'new-york-city'. Using the captured PLAN_DATE variable ensures the exact date suffix is stripped."
+      },
+      {
+        "id": 2,
+        "description": "Fixed date fallback to use file modification date instead of today's date",
+        "type": "bugfix",
+        "files_modified": ["scripts/deploy-travel-plans.sh"],
+        "changes": "Changed line 62 from $(date +%Y-%m-%d) to $(date -r \"$INPUT_FILE\" +%Y-%m-%d)",
+        "rationale": "Root cause: using today's date for files without date suffix (e.g. china-exchange-bucket-list-2026.html) creates a new version directory every deployment. Using the file's mtime provides a stable, deterministic date."
+      },
+      {
+        "id": 3,
+        "description": "Added dedup logic to remove old versions before deploying new version",
+        "type": "feature",
+        "files_modified": ["scripts/deploy-travel-plans.sh"],
+        "changes": "Added rm -rf of existing destination slug directory before mkdir in both gh-pages deploy (before line 284) and local deploy (before line 538)",
+        "rationale": "Root cause: no cleanup of previous versions meant destinations accumulated multiple date directories over time. Now each deploy removes the entire destination directory first, ensuring only one version exists."
+      },
+      {
+        "id": 4,
+        "description": "Extracted generate_index_html() shared function to eliminate ~80 lines of duplication",
+        "type": "refactor",
+        "files_modified": ["scripts/deploy-travel-plans.sh"],
+        "changes": "Created generate_index_html() function that takes target_dir parameter. Replaced both gh-pages index generation (lines 344-432) and local deploy index generation (lines 559-641) with single function calls. Uses PLAN_COUNT_PLACEHOLDER + sed for dynamic count injection since heredoc is single-quoted.",
+        "rationale": "DRY principle - identical HTML generation logic was duplicated. Single function ensures consistency between gh-pages and local deploy index pages."
+      },
+      {
+        "id": 5,
+        "description": "Lowered file size validation threshold from 100KB to 50KB",
+        "type": "config",
+        "files_modified": ["scripts/deploy-travel-plans.sh"],
+        "changes": "Changed FILE_SIZE threshold from 100000 to 50000 bytes",
+        "rationale": "Valid plans like the china-feb plan are only 88KB. The 100KB threshold was too aggressive and would reject legitimate plans."
+      },
+      {
+        "id": 6,
+        "description": "Cleaned gh-pages branch to remove duplicate versions",
+        "type": "cleanup",
+        "files_modified": [],
+        "changes": "Removed 5 old date directories from gh-pages branch: beijing-exchange-bucket-list/2026-02-02, beijing-exchange-bucket-list/2026-02-10, china-exchange-bucket-list/2026-02-10, china-feb-15-mar-7-2026/2026-02-02, china-feb-15-mar-7-2026/2026-02-10. Regenerated index.html. Pushed commit 27f6cac.",
+        "rationale": "gh-pages had accumulated 3 versions per destination over multiple deploys. Cleaned to match the dedup behavior now built into the script."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "Multiple deploys without cleanup logic",
+      "why_issue_occurred": "Script created new date directories on each deploy without removing old ones. Combined with date fallback using today's date, this created new directories each run.",
+      "how_fix_addresses_root": "Dedup removes old versions before deploy. Date fallback uses file mtime for stability. Slug extraction correctly handles multi-hyphen names."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify: 1) bash -n syntax check passes, 2) gh-pages branch has exactly 3 destinations with 1 date dir each, 3) local /var/www/travel/ has same structure, 4) generate_index_html function produces valid HTML with correct plan count, 5) slug extraction test: 'new-york-city-2026-03-15' should produce slug 'new-york-city'",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding a --dry-run flag to preview what would be deployed without actually pushing",
+    "Add integration test that deploys to a temp directory and validates the output structure"
+  ]
+}

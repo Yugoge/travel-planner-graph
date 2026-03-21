@@ -46,7 +46,7 @@ BASE_FILENAME="${BASE_FILENAME##travel-plan-}"
 if [[ "$BASE_FILENAME" =~ -([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
     # Format 1: Standard date format (YYYY-MM-DD)
     PLAN_DATE="${BASH_REMATCH[1]}"
-    DESTINATION_SLUG="${BASE_FILENAME%-*}"
+    DESTINATION_SLUG="${BASE_FILENAME%-${PLAN_DATE}}"
 elif [[ "$BASE_FILENAME" =~ -([0-9]{8}-[0-9]{6})$ ]]; then
     # Format 2: Timestamp format (YYYYMMDD-HHMMSS)
     TIMESTAMP="${BASH_REMATCH[1]}"
@@ -59,9 +59,111 @@ elif [[ "$BASE_FILENAME" =~ -([0-9]{8}-[0-9]{6})$ ]]; then
     DESTINATION_SLUG="${BASE_FILENAME:0:${#BASE_FILENAME}-16}"
 else
     # Format 3: No date (bucket list)
-    PLAN_DATE=$(date +%Y-%m-%d)
+    PLAN_DATE=$(date -r "$INPUT_FILE" +%Y-%m-%d)
     DESTINATION_SLUG="${BASE_FILENAME}"
 fi
+
+# Shared function: generate index.html for a given deploy directory
+generate_index_html() {
+    local target_dir="$1"
+    local plan_dirs
+    plan_dirs=$(find "${target_dir}" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+        rel="${d#${target_dir}/}"
+        if [[ "$rel" =~ ^[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "$rel"
+        fi
+    done | sort -t'/' -k2 -r || echo "")
+
+    local plan_count=0
+    if [ -n "$plan_dirs" ]; then
+        plan_count=$(echo "$plan_dirs" | wc -l)
+    fi
+
+    cat > "${target_dir}/index.html" << 'EOF_INDEX_HEAD'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Plans | life-ai.app</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; margin-bottom: 0.5rem; }
+  .subtitle {
+    color: #8b949e;
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #21262d;
+  }
+  .plan-list { list-style: none; }
+  .plan-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+  }
+  .plan-item:hover { border-color: #388bfd; }
+  .plan-name { font-weight: 500; color: #f0f6fc; font-size: 0.9rem; }
+  .plan-links { display: flex; gap: 0.75rem; align-items: center; }
+  .plan-links a {
+    color: #58a6ff;
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    transition: all 0.15s;
+  }
+  .plan-links a:hover { background: #161b22; border-color: #388bfd; }
+  .plan-date { color: #8b949e; font-size: 0.75rem; }
+  .empty { color: #484f58; font-size: 0.875rem; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Travel Plans</h1>
+<p class="subtitle">Yuge Tang &mdash; PLAN_COUNT_PLACEHOLDER plans</p>
+<ul class="plan-list">
+EOF_INDEX_HEAD
+
+    # Inject dynamic count
+    sed -i "s/PLAN_COUNT_PLACEHOLDER/${plan_count}/" "${target_dir}/index.html"
+
+    # Generate plan cards
+    if [ -n "$plan_dirs" ]; then
+        while IFS= read -r rel_path; do
+            local dest=$(echo "$rel_path" | cut -d'/' -f1)
+            local date_val=$(echo "$rel_path" | cut -d'/' -f2)
+            local dest_name=$(echo "$dest" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+            cat >> "${target_dir}/index.html" << EOF_CARD
+  <li class="plan-item">
+    <span class="plan-name">$dest_name</span>
+    <span class="plan-links"><span class="plan-date">$date_val</span> <a href="./$dest/$date_val/">View Plan</a></span>
+  </li>
+EOF_CARD
+        done <<< "$plan_dirs"
+    else
+        echo '  <li class="empty">No travel plans deployed yet.</li>' >> "${target_dir}/index.html"
+    fi
+
+    cat >> "${target_dir}/index.html" << 'EOF_INDEX_FOOT'
+</ul>
+</div></body></html>
+EOF_INDEX_FOOT
+}
 
 echo "=================================================="
 echo "🚀 Deploying Travel Plan to GitHub Pages"
@@ -281,6 +383,12 @@ cd "$DEPLOY_DIR"
 echo ""
 echo "📋 Step 5: Creating directory structure..."
 
+# Remove old versions of the same destination (keep only latest)
+if [ -d "${DEPLOY_DIR}/${DESTINATION_SLUG}" ]; then
+    echo "  Removing old versions of ${DESTINATION_SLUG}..."
+    rm -rf "${DEPLOY_DIR}/${DESTINATION_SLUG}"
+fi
+
 TARGET_DIR="${DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
 mkdir -p "$TARGET_DIR"
 
@@ -289,9 +397,9 @@ cp "$INPUT_FILE" "${TARGET_DIR}/index.html"
 
 # Validate deployed file
 FILE_SIZE=$(wc -c < "${TARGET_DIR}/index.html")
-if [ "$FILE_SIZE" -lt 100000 ]; then
+if [ "$FILE_SIZE" -lt 50000 ]; then
     echo "❌ Error: Deployed file too small ($FILE_SIZE bytes)"
-    echo "  Expected at least 100KB for a valid travel plan"
+    echo "  Expected at least 50KB for a valid travel plan"
     exit 1
 fi
 
@@ -331,105 +439,7 @@ EOF_GITIGNORE
 echo ""
 echo "📋 Step 6: Generating index page..."
 
-# Scan all directories to build plan list
-PLAN_DIRS=$(find . -mindepth 2 -maxdepth 2 -type d | grep -E '^\./[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r || echo "")
-
-# Count plans for subtitle
-PLAN_COUNT=0
-if [ -n "$PLAN_DIRS" ]; then
-    PLAN_COUNT=$(echo "$PLAN_DIRS" | wc -l)
-fi
-
-# Generate index.html with dark theme (matches life-ai.app style)
-cat > "${DEPLOY_DIR}/index.html" << EOF_INDEX_HEAD
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Travel Plans | life-ai.app</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0d1117;
-    color: #c9d1d9;
-    min-height: 100vh;
-    padding: 2rem;
-  }
-  .container { max-width: 800px; margin: 0 auto; }
-  h1 { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; margin-bottom: 0.5rem; }
-  .subtitle {
-    color: #8b949e;
-    font-size: 0.875rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #21262d;
-  }
-  .plan-list { list-style: none; }
-  .plan-item {
-    padding: 0.75rem 1rem;
-    border: 1px solid #21262d;
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: border-color 0.15s;
-  }
-  .plan-item:hover { border-color: #388bfd; }
-  .plan-name { font-weight: 500; color: #f0f6fc; font-size: 0.9rem; }
-  .plan-links { display: flex; gap: 0.75rem; align-items: center; }
-  .plan-links a {
-    color: #58a6ff;
-    text-decoration: none;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #21262d;
-    transition: all 0.15s;
-  }
-  .plan-links a:hover { background: #161b22; border-color: #388bfd; }
-  .plan-date { color: #8b949e; font-size: 0.75rem; }
-  .empty { color: #484f58; font-size: 0.875rem; padding: 2rem; text-align: center; }
-</style>
-</head>
-<body>
-<div class="container">
-<h1>Travel Plans</h1>
-<p class="subtitle">Yuge Tang &mdash; ${PLAN_COUNT} plans</p>
-<ul class="plan-list">
-EOF_INDEX_HEAD
-
-# Generate plan cards dynamically
-if [ -n "$PLAN_DIRS" ]; then
-    for dir in $PLAN_DIRS; do
-        # Extract destination and date from path
-        DEST=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f1)
-        DATE=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f2)
-
-        # Format destination name (capitalize and replace hyphens with spaces)
-        DEST_NAME=$(echo "$DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
-
-        # Generate card HTML
-        cat >> "${DEPLOY_DIR}/index.html" << EOF_CARD
-  <li class="plan-item">
-    <span class="plan-name">$DEST_NAME</span>
-    <span class="plan-links"><span class="plan-date">$DATE</span> <a href="./$DEST/$DATE/">View Plan</a></span>
-  </li>
-EOF_CARD
-    done
-else
-    cat >> "${DEPLOY_DIR}/index.html" << 'EOF_EMPTY'
-  <li class="empty">No travel plans deployed yet.</li>
-EOF_EMPTY
-fi
-
-# Close HTML
-cat >> "${DEPLOY_DIR}/index.html" << 'EOF_INDEX_FOOT'
-</ul>
-</div></body></html>
-EOF_INDEX_FOOT
+generate_index_html "${DEPLOY_DIR}"
 
 echo "✓ Index page generated with all plans"
 
@@ -445,14 +455,22 @@ This repository contains auto-generated travel plans from the travel-planner.
 
 EOF
 
-if [ -n "$PLAN_DIRS" ]; then
-    for dir in $PLAN_DIRS; do
-        DEST=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f1)
-        DATE=$(echo "$dir" | sed 's|^\./||' | cut -d'/' -f2)
+# Scan plan directories for README links
+README_PLAN_DIRS=$(find "${DEPLOY_DIR}" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+    rel="${d#${DEPLOY_DIR}/}"
+    if [[ "$rel" =~ ^[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        echo "$rel"
+    fi
+done | sort -t'/' -k2 -r || echo "")
+
+if [ -n "$README_PLAN_DIRS" ]; then
+    while IFS= read -r rel_path; do
+        DEST=$(echo "$rel_path" | cut -d'/' -f1)
+        DATE=$(echo "$rel_path" | cut -d'/' -f2)
         DEST_NAME=$(echo "$DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
 
         echo "- [$DEST_NAME - $DATE](https://${GITHUB_USER}.github.io/${REPO_NAME}/${DEST}/${DATE}/)" >> "${DEPLOY_DIR}/README.md"
-    done
+    done <<< "$README_PLAN_DIRS"
 fi
 
 CURRENT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -534,6 +552,12 @@ echo ""
 echo "📋 Step 8.5: Deploying to local server..."
 
 if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
+    # Remove old versions of the same destination (keep only latest)
+    if [ -d "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}" ]; then
+        echo "  Removing old versions of ${DESTINATION_SLUG}..."
+        rm -rf "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}"
+    fi
+
     # Create target directory structure
     LOCAL_TARGET_DIR="${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
     mkdir -p "${LOCAL_TARGET_DIR}"
@@ -542,103 +566,8 @@ if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
     cp "$INPUT_FILE" "${LOCAL_TARGET_DIR}/index.html"
     echo "✓ Copied to: ${LOCAL_TARGET_DIR}/index.html"
 
-    # Generate/update local index.html by scanning LOCAL_DEPLOY_DIR
-    LOCAL_PLAN_DIRS=$(find "${LOCAL_DEPLOY_DIR}" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
-        rel="${d#${LOCAL_DEPLOY_DIR}/}"
-        if [[ "$rel" =~ ^[^/]+/[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-            echo "$rel"
-        fi
-    done | sort -r || echo "")
-
-    # Count local plans
-    LOCAL_PLAN_COUNT=0
-    if [ -n "$LOCAL_PLAN_DIRS" ]; then
-        LOCAL_PLAN_COUNT=$(echo "$LOCAL_PLAN_DIRS" | wc -l)
-    fi
-
-    cat > "${LOCAL_DEPLOY_DIR}/index.html" << EOF_LOCAL_HEAD
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Travel Plans | life-ai.app</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0d1117;
-    color: #c9d1d9;
-    min-height: 100vh;
-    padding: 2rem;
-  }
-  .container { max-width: 800px; margin: 0 auto; }
-  h1 { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; margin-bottom: 0.5rem; }
-  .subtitle {
-    color: #8b949e;
-    font-size: 0.875rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #21262d;
-  }
-  .plan-list { list-style: none; }
-  .plan-item {
-    padding: 0.75rem 1rem;
-    border: 1px solid #21262d;
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: border-color 0.15s;
-  }
-  .plan-item:hover { border-color: #388bfd; }
-  .plan-name { font-weight: 500; color: #f0f6fc; font-size: 0.9rem; }
-  .plan-links { display: flex; gap: 0.75rem; align-items: center; }
-  .plan-links a {
-    color: #58a6ff;
-    text-decoration: none;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #21262d;
-    transition: all 0.15s;
-  }
-  .plan-links a:hover { background: #161b22; border-color: #388bfd; }
-  .plan-date { color: #8b949e; font-size: 0.75rem; }
-  .empty { color: #484f58; font-size: 0.875rem; padding: 2rem; text-align: center; }
-</style>
-</head>
-<body>
-<div class="container">
-<h1>Travel Plans</h1>
-<p class="subtitle">Yuge Tang &mdash; ${LOCAL_PLAN_COUNT} plans</p>
-<ul class="plan-list">
-EOF_LOCAL_HEAD
-
-    if [ -n "$LOCAL_PLAN_DIRS" ]; then
-        while IFS= read -r rel_path; do
-            LOCAL_DEST=$(echo "$rel_path" | cut -d'/' -f1)
-            LOCAL_DATE=$(echo "$rel_path" | cut -d'/' -f2)
-            LOCAL_DEST_NAME=$(echo "$LOCAL_DEST" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
-
-            cat >> "${LOCAL_DEPLOY_DIR}/index.html" << EOF_LOCAL_CARD
-  <li class="plan-item">
-    <span class="plan-name">$LOCAL_DEST_NAME</span>
-    <span class="plan-links"><span class="plan-date">$LOCAL_DATE</span> <a href="./$LOCAL_DEST/$LOCAL_DATE/">View Plan</a></span>
-  </li>
-EOF_LOCAL_CARD
-        done <<< "$LOCAL_PLAN_DIRS"
-    else
-        cat >> "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_EMPTY'
-  <li class="empty">No travel plans deployed yet.</li>
-EOF_LOCAL_EMPTY
-    fi
-
-    cat >> "${LOCAL_DEPLOY_DIR}/index.html" << 'EOF_LOCAL_FOOT'
-</ul>
-</div></body></html>
-EOF_LOCAL_FOOT
+    # Generate/update local index.html using shared function
+    generate_index_html "${LOCAL_DEPLOY_DIR}"
 
     echo "✓ Local index page updated with all plans"
     echo "✓ Local URL: https://${LOCAL_DEPLOY_DOMAIN}/${DESTINATION_SLUG}/${PLAN_DATE}/"

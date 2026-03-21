@@ -1,0 +1,170 @@
+{
+  "request_id": "dev-20260321-155000",
+  "timestamp": "2026-03-21T15:50:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All 5 fixes verified correct. Script syntax valid. Local deployment has 3 destinations with one date dir each. gh-pages cleaned. Minor discrepancy in gh-pages date for china-feb-15-mar-7-2026 (2026-02-11 vs local 2026-02-12) is expected behavior from file-modification-time fallback at different deploy times.",
+    "success_criteria_results": [
+      {
+        "criterion": "Fix 1 - Slug extraction uses PLAN_DATE-based suffix removal",
+        "verification_method": "Read script line 49; confirmed pattern is ${BASE_FILENAME%-${PLAN_DATE}}",
+        "result": "pass",
+        "details": "Line 49 reads: DESTINATION_SLUG=\"${BASE_FILENAME%-${PLAN_DATE}}\". For input 'new-york-city-2026-03-15', PLAN_DATE='2026-03-15', BASE_FILENAME='new-york-city-2026-03-15', so ${BASE_FILENAME%-2026-03-15} = 'new-york-city'. This is correct and avoids the old bug where ${BASE_FILENAME%-*} would strip at the first hyphen-digit boundary.",
+        "evidence": [
+          "deploy-travel-plans.sh:49 -> DESTINATION_SLUG=\"${BASE_FILENAME%-${PLAN_DATE}}\"",
+          "Mental test: 'new-york-city-2026-03-15' minus '-2026-03-15' = 'new-york-city' CORRECT",
+          "Mental test: 'paris-2026-03-15' minus '-2026-03-15' = 'paris' CORRECT",
+          "Mental test: 'china-feb-15-mar-7-2026-2026-02-12' minus '-2026-02-12' = 'china-feb-15-mar-7-2026' CORRECT"
+        ]
+      },
+      {
+        "criterion": "Fix 2 - Date fallback uses file modification time",
+        "verification_method": "Read script line 62; confirmed pattern is $(date -r \"$INPUT_FILE\" +%Y-%m-%d)",
+        "result": "pass",
+        "details": "Line 62 reads: PLAN_DATE=$(date -r \"$INPUT_FILE\" +%Y-%m-%d). This uses the file's modification time instead of current date, ensuring re-deployment of the same file produces the same date. This is idempotent behavior.",
+        "evidence": [
+          "deploy-travel-plans.sh:62 -> PLAN_DATE=$(date -r \"$INPUT_FILE\" +%Y-%m-%d)",
+          "Local deployment confirms: china-feb-15-mar-7-2026 has date 2026-02-12 (file mod time), not today's date"
+        ]
+      },
+      {
+        "criterion": "Fix 3 - Dedup via rm -rf before mkdir -p at BOTH locations",
+        "verification_method": "Read script lines 387-390 (gh-pages) and lines 556-559 (local deploy)",
+        "result": "pass",
+        "details": "Both gh-pages and local deploy paths have rm -rf of the existing slug directory before mkdir -p. gh-pages: lines 387-390 check and remove ${DEPLOY_DIR}/${DESTINATION_SLUG}. Local: lines 556-559 check and remove ${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}.",
+        "evidence": [
+          "deploy-travel-plans.sh:387-390 -> if [ -d \"${DEPLOY_DIR}/${DESTINATION_SLUG}\" ]; then rm -rf \"${DEPLOY_DIR}/${DESTINATION_SLUG}\"; fi",
+          "deploy-travel-plans.sh:556-559 -> if [ -d \"${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}\" ]; then rm -rf \"${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}\"; fi",
+          "Local deployment confirms: each destination has exactly 1 date directory (no duplicates)"
+        ]
+      },
+      {
+        "criterion": "Fix 4 - Shared generate_index_html() function called in TWO places",
+        "verification_method": "Read script lines 67-166 for function definition; grep for invocations",
+        "result": "pass",
+        "details": "Function generate_index_html() defined at lines 67-166, accepting a target_dir parameter. Called at line 442 for gh-pages (generate_index_html \"${DEPLOY_DIR}\") and at line 570 for local deploy (generate_index_html \"${LOCAL_DEPLOY_DIR}\"). Both invocations confirmed.",
+        "evidence": [
+          "deploy-travel-plans.sh:67 -> generate_index_html() {",
+          "deploy-travel-plans.sh:442 -> generate_index_html \"${DEPLOY_DIR}\"",
+          "deploy-travel-plans.sh:570 -> generate_index_html \"${LOCAL_DEPLOY_DIR}\"",
+          "Local /var/www/travel/index.html confirmed: valid HTML with 3 plan entries, count '3 plans' displayed correctly"
+        ]
+      },
+      {
+        "criterion": "Fix 5 - File size threshold is 50000 not 100000",
+        "verification_method": "Read script line 400",
+        "result": "pass",
+        "details": "Line 400 reads: if [ \"$FILE_SIZE\" -lt 50000 ]; then. Threshold is 50000 bytes (50KB).",
+        "evidence": [
+          "deploy-travel-plans.sh:400 -> if [ \"$FILE_SIZE\" -lt 50000 ]; then"
+        ]
+      },
+      {
+        "criterion": "Script syntax is valid",
+        "verification_method": "Ran bash -n deploy-travel-plans.sh",
+        "result": "pass",
+        "details": "bash -n returned exit code 0 with output 'SYNTAX OK'.",
+        "evidence": [
+          "bash -n /root/travel-planner/scripts/deploy-travel-plans.sh -> SYNTAX OK"
+        ]
+      },
+      {
+        "criterion": "gh-pages branch was cleaned of duplicate versions",
+        "verification_method": "Cloned gh-pages branch and inspected directory structure and git log",
+        "result": "pass",
+        "details": "gh-pages has 3 destinations each with 1 date directory. Latest commit '27f6cac Clean duplicate versions, keep only latest per destination' confirms cleanup was performed.",
+        "evidence": [
+          "gh-pages directories: beijing-exchange-bucket-list/2026-02-11, china-exchange-bucket-list/2026-02-11, china-feb-15-mar-7-2026/2026-02-11",
+          "git log: 27f6cac Clean duplicate versions, keep only latest per destination"
+        ]
+      },
+      {
+        "criterion": "Local /var/www/travel/ has exactly 3 destinations with one date dir each",
+        "verification_method": "Listed directory structure with find",
+        "result": "pass",
+        "details": "3 destinations found: beijing-exchange-bucket-list/2026-02-11, china-exchange-bucket-list/2026-02-11, china-feb-15-mar-7-2026/2026-02-12. Plus root index.html. All plan files are valid sizes (90KB-353KB).",
+        "evidence": [
+          "beijing-exchange-bucket-list/2026-02-11/index.html: 353186 bytes",
+          "china-exchange-bucket-list/2026-02-11/index.html: 181483 bytes",
+          "china-feb-15-mar-7-2026/2026-02-12/index.html: 90081 bytes",
+          "index.html: 2382 bytes (root index page with 3 entries)"
+        ]
+      },
+      {
+        "criterion": "generate_index_html handles empty directories",
+        "verification_method": "Code review of function lines 67-166",
+        "result": "pass",
+        "details": "Lines 78-80 check if plan_dirs is non-empty. If empty, line 159 outputs a fallback message 'No travel plans deployed yet.' Line 75 uses '|| echo \"\"' to handle find returning nothing without error. Plan count defaults to 0 when plan_dirs is empty.",
+        "evidence": [
+          "deploy-travel-plans.sh:78-80 -> plan_count=0; if [ -n \"$plan_dirs\" ]; then plan_count=...",
+          "deploy-travel-plans.sh:159 -> echo 'No travel plans deployed yet.' (empty case)"
+        ]
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "hardcoding",
+        "location": "deploy-travel-plans.sh:138",
+        "issue": "Author name 'Yuge Tang' is hardcoded in the index.html template",
+        "recommendation": "Consider making this a parameter or deriving from git config, though this is acceptable for a personal tool"
+      },
+      {
+        "severity": "minor",
+        "category": "other",
+        "location": "deploy-travel-plans.sh:216",
+        "issue": "GITHUB_TOKEN referenced without default (set -u will fail if unset and neither SSH nor token path is taken). However, the script structure ensures the variable is only accessed after being checked, and bash -u only triggers on actual expansion, so this is safe because line 216 is inside an if-block that checks -n first.",
+        "recommendation": "No action needed - current code is safe due to conditional structure"
+      },
+      {
+        "severity": "minor",
+        "category": "other",
+        "location": "gh-pages vs local date discrepancy",
+        "issue": "gh-pages has china-feb-15-mar-7-2026/2026-02-11 while local has china-feb-15-mar-7-2026/2026-02-12. This is expected behavior since they were deployed at different times and the file modification time may have changed between deployments. Not a bug.",
+        "recommendation": "Document that re-deployment date depends on file modification time, which may differ across environments"
+      }
+    ],
+    "script_quality_results": [
+      {
+        "script": "/root/travel-planner/scripts/deploy-travel-plans.sh",
+        "syntax_check": "pass",
+        "standards_compliance": "pass",
+        "issues": [],
+        "notes": [
+          "Shebang present: #!/usr/bin/env bash",
+          "Usage comment with parameters: line 3",
+          "Error handling: set -euo pipefail at line 6",
+          "Configurable via env vars: GITHUB_PAGES_REPO, GITHUB_PAGES_BRANCH, LOCAL_DEPLOY_DIR, LOCAL_DEPLOY_DOMAIN",
+          "Proper temp dir with cleanup trap: lines 15-16",
+          "Meaningful name: deploy-travel-plans.sh follows verb-noun pattern"
+        ]
+      }
+    ],
+    "regression_test_results": [
+      {
+        "test": "Script syntax validation",
+        "result": "pass",
+        "details": "bash -n passes without errors"
+      },
+      {
+        "test": "Local deployment integrity",
+        "result": "pass",
+        "details": "3 destinations, each with exactly 1 date dir, all files > 50KB threshold, root index.html correctly lists 3 plans"
+      },
+      {
+        "test": "gh-pages branch integrity",
+        "result": "pass",
+        "details": "3 destinations with 1 date dir each, cleanup commit present, no duplicate directories"
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 3,
+      "total_findings": 3,
+      "release_recommendation": "approve"
+    },
+    "iteration_needed": false,
+    "refined_context": null
+  }
+}

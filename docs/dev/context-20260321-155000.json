@@ -1,0 +1,68 @@
+{
+  "request_id": "dev-20260321-155000",
+  "timestamp": "2026-03-21T15:50:00Z",
+  "requirement": {
+    "original": "Fix deploy script: dedup old versions, fix slug extraction, fix date fallback, clean gh-pages",
+    "clarified": "When deploying a new version for a destination, automatically delete older versions of the same destination in both gh-pages and /var/www/travel/. Fix slug extraction for multi-hyphen filenames. Fix date fallback for files without proper date suffix. Reduce index.html generation code duplication.",
+    "success_criteria": [
+      "Each destination has only ONE version (latest) after deploy",
+      "Slug extraction works for multi-hyphen names like new-york-city-2026-03-15",
+      "Files without date suffix (e.g. china-exchange-bucket-list-2026) get consistent date, not today's date",
+      "Index generation code is shared between gh-pages and local deploy",
+      "gh-pages branch cleaned to match local state (3 plans, one per destination)",
+      "File size validation threshold lowered from 100KB to allow smaller valid plans"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Duplicate versions appearing for same destination",
+    "root_causes": [
+      {
+        "issue": "Date fallback uses $(date +%Y-%m-%d) for files without date suffix",
+        "location": "deploy-travel-plans.sh:62",
+        "fix": "Use file modification date instead of today's date"
+      },
+      {
+        "issue": "Slug extraction ${BASE_FILENAME%-*} only strips last hyphen segment",
+        "location": "deploy-travel-plans.sh:49",
+        "fix": "Use greedy regex to strip date suffix from end, keep full slug"
+      },
+      {
+        "issue": "No dedup - old versions never cleaned up",
+        "location": "deploy-travel-plans.sh:284-288 and 536-543",
+        "fix": "Before copying new version, delete all existing date dirs for same destination"
+      },
+      {
+        "issue": "Index HTML generation duplicated ~80 lines between gh-pages and local",
+        "location": "deploy-travel-plans.sh:344-432 vs 559-641",
+        "fix": "Extract to a generate_index_html() function"
+      }
+    ]
+  },
+  "files_to_modify": [
+    "scripts/deploy-travel-plans.sh"
+  ],
+  "current_deploy_state": {
+    "local": {
+      "beijing-exchange-bucket-list/2026-02-11": "345KB",
+      "china-exchange-bucket-list/2026-02-11": "178KB",
+      "china-feb-15-mar-7-2026/2026-02-12": "88KB"
+    },
+    "output_files": [
+      "travel-plan-beijing-exchange-bucket-list-20260202-232405.html",
+      "travel-plan-china-exchange-bucket-list-2026.html",
+      "travel-plan-china-feb-15-mar-7-2026-20260202-195429.html",
+      "travel-plan-china-feb-15-mar-7-2026.html"
+    ]
+  },
+  "qa_findings": {
+    "critical": [
+      "Shallow clone breaks dedup ordering - must use lexicographic sort of date dirs",
+      "'latest' fallback creates invisible index entries - DO NOT use 'latest', keep date format"
+    ],
+    "major": [
+      "Slug extraction bug: ${BASE_FILENAME%-*} breaks on multi-hyphen names",
+      "Atomicity gap: GitHub push and local copy not transactional",
+      "File size validation at 100KB rejects valid 88KB plans"
+    ]
+  }
+}
