@@ -6,6 +6,7 @@ Generates single-file HTML with embedded React components
 """
 
 import json
+import re
 import sys
 import os
 import subprocess
@@ -2852,6 +2853,14 @@ function NotionTravelApp() {
         print(f"\n✅ Generated: {output_file}")
         print(f"   File size: {len(html) / 1024:.1f} KB")
 
+
+        # Create canonical copy (without timestamp suffix) for stable URLs
+        canonical_name = re.sub(r"-\d{8}-\d{6}$", "", self.plan_id)
+        if canonical_name != self.plan_id:
+            canonical_file = output_dir / f"travel-plan-{canonical_name}.html"
+            with open(canonical_file, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"   Also: {canonical_file}")
         return str(output_file)
 
 
