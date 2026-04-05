@@ -715,38 +715,7 @@ class InteractiveHTMLGenerator:
                 notes_base = shop_item.get("notes_base", "")
                 notes_local = shop_item.get("notes_local", "")
 
-                # Parse brands from notes_base structured format
-                brands = self._parse_shopping_brands(notes_base, notes_local)
-                if brands:
-                    for brand in brands:
-                        merged["shopping"].append({
-                            "name_base": brand["name"],
-                            "name_local": brand.get("name_local", brand["name"]),
-                            "location_base": shop_item.get("location_base", ""),
-                            "location_local": shop_item.get("location_local", ""),
-                            "coordinates": shop_item.get("coordinates", {}),
-                            "type_base": brand.get("category", ""),
-                            "type_local": brand.get("category_local", ""),
-                            "cost": 0,
-                            "cost_local": 0,
-                            "notes_base": brand.get("description", ""),
-                            "notes_local": brand.get("description_local", ""),
-                            "floor": brand.get("floor", ""),
-                            "mall_name_base": shop_name_base,
-                            "mall_name_local": shop_name_local,
-                            "optional": shop_item.get("optional", False),
-                            "image": self._get_placeholder_image(
-                                "attraction",
-                                poi_name=brand.get("name_local", brand["name"]),
-                                name_base=brand["name"],
-                                name_local=brand.get("name_local", brand["name"])
-                            ),
-                            "time": self._normalize_time(shop_item.get("time", {})),
-                            "links": {}
-                        })
-                else:
-                    # Fallback: show mall as-is if parsing fails
-                    merged["shopping"].append({
+                merged["shopping"].append({
                         "name_base": shop_name_base,
                         "name_local": shop_name_local,
                         "location_base": shop_item.get("location_base", ""),
@@ -2294,59 +2263,35 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 
             {day.shopping && day.shopping.length > 0 && (
               <Section title={L('shopping', lang)} icon="🛍️">
-                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
-                  {day.shopping.map((shop, i) => {
-                    const catColors = {
-                      'FAST FASHION': '#e07c5a', 'STREETWEAR': '#9b6dd7', 'KOREAN': '#e0a05a',
-                      'DESIGNER': '#4a90d9', 'BEAUTY': '#d97eb5', 'SPECIAL': '#45b26b',
-                      'SPORT': '#0ea5e9', 'ACCESSORIES': '#c9a95a', 'SUPERMARKET': '#6bc95a',
-                      'B1 SUPERMARKET': '#6bc95a',
-                    };
-                    const catKey = (shop.type_base || '').toUpperCase().split('/')[0].split(' ')[0];
-                    const tagColor = Object.entries(catColors).find(([k]) => (shop.type_base || '').toUpperCase().includes(k))?.[1] || '#9b9a97';
-                    return (
-                      <div key={i} style={{
-                        background: '#fff', borderRadius: '8px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                        overflow: 'hidden', cursor: 'pointer', transition: 'box-shadow .15s'
-                      }}
-                        onClick={() => onItemClick && onItemClick(shop, 'shopping')}
-                        onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-                      >
-                        <div style={{ padding: '12px 14px' }}>
-                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                            {getDisplayName(shop, lang)}
-                          </div>
-                          {shop.type_base && (
-                            <span style={{
-                              display: 'inline-block', fontSize: '10px', fontWeight: '600',
-                              padding: '2px 6px', borderRadius: '3px', marginBottom: '6px',
-                              background: tagColor + '18', color: tagColor, textTransform: 'uppercase'
-                            }}>
-                              {getDisplayField(shop, 'type', lang)}
-                            </span>
-                          )}
-                          {shop.floor && (
-                            <span style={{ fontSize: '11px', color: '#9b9a97', marginLeft: '6px' }}>
-                              {shop.floor}
-                            </span>
-                          )}
-                          {shop.mall_name_base && (
-                            <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '4px' }}>
-                              🏬 {lang === 'local' && shop.mall_name_local ? shop.mall_name_local : shop.mall_name_base}
-                            </div>
-                          )}
-                          {shop.notes_base && (
-                            <div style={{ fontSize: '11px', color: '#6b6b6b', marginTop: '4px', lineHeight: 1.5 }}>
-                              {lang === 'local' && shop.notes_local ? shop.notes_local : shop.notes_base}
-                            </div>
-                          )}
-                        </div>
+                {day.shopping.map((shop, i) => (
+                  <div key={i} style={{
+                    background: '#fff', borderRadius: '8px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+                    overflow: 'hidden', marginBottom: '14px', transition: 'box-shadow .15s', cursor: 'pointer'
+                  }}
+                    onClick={() => onItemClick && onItemClick(shop, 'shopping')}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
+                  >
+                    {shop.image && (
+                      <div style={{ width: '100%', height: sm ? '120px' : '160px', overflow: 'hidden', background: '#f5f3ef' }}>
+                        <img src={shop.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={e => { e.target.style.display = 'none'; }} />
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
+                    <div style={{ padding: '14px 16px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                        {getDisplayName(shop, lang)}
+                        <RedNoteLink name={shop.name_local || shop.name_base} />
+                      </div>
+                      {shop.time && <PropLine label={L('time', lang)} value={shop.time.start + ' – ' + shop.time.end} />}
+                      {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
+                      {getDisplayField(shop, 'type', lang) && <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />}
+                      {(shop.location_base || shop.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={shop} lang={lang} mapProvider={mapProvider} />} />}
+                      <ExpandableNotes text={shop.notes_base} textLocal={shop.notes_local} lang={lang} />
+                    </div>
+                  </div>
+                ))}
               </Section>
             )}
 
