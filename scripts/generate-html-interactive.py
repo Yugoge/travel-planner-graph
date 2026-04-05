@@ -716,7 +716,41 @@ class InteractiveHTMLGenerator:
                 notes_base = shop_item.get("notes_base", "")
                 notes_local = shop_item.get("notes_local", "")
 
-                merged["shopping"].append({
+                # Get mall image (used as fallback for brand cards)
+                mall_image = shop_item.get("image_url", "") or self._get_placeholder_image(
+                    "attraction",
+                    poi_name=shop_name_local if shop_name_local else shop_name_base,
+                    name_base=shop_name_base,
+                    name_local=shop_name_local
+                )
+                mall_time = self._normalize_time(shop_item.get("time", {}))
+
+                # Parse brands from notes_base
+                brands = self._parse_shopping_brands(notes_base, notes_local)
+                if brands:
+                    for brand in brands:
+                        merged["shopping"].append({
+                            "name_base": brand["name"],
+                            "name_local": brand.get("name_local", brand["name"]),
+                            "location_base": shop_item.get("location_base", ""),
+                            "location_local": shop_item.get("location_local", ""),
+                            "coordinates": shop_item.get("coordinates", {}),
+                            "type_base": brand.get("category", ""),
+                            "type_local": brand.get("category_local", ""),
+                            "cost": 0,
+                            "cost_local": 0,
+                            "notes_base": brand.get("description", ""),
+                            "notes_local": brand.get("description_local", ""),
+                            "mall_name_base": shop_name_base,
+                            "mall_name_local": shop_name_local,
+                            "optional": shop_item.get("optional", False),
+                            "image": mall_image,
+                            "time": mall_time,
+                            "links": {}
+                        })
+                else:
+                    # Fallback: mall as-is
+                    merged["shopping"].append({
                         "name_base": shop_name_base,
                         "name_local": shop_name_local,
                         "location_base": shop_item.get("location_base", ""),
@@ -729,13 +763,8 @@ class InteractiveHTMLGenerator:
                         "notes_base": notes_base,
                         "notes_local": notes_local,
                         "optional": shop_item.get("optional", False),
-                        "image": self._get_placeholder_image(
-                            "attraction",
-                            poi_name=shop_name_local if shop_name_local else shop_name_base,
-                            name_base=shop_name_base,
-                            name_local=shop_name_local
-                        ),
-                        "time": self._normalize_time(shop_item.get("time", {})),
+                        "image": mall_image,
+                        "time": mall_time,
                         "links": {}
                     })
                 merged["budget"]["shopping"] += cost
@@ -2285,6 +2314,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         {getDisplayName(shop, lang)}
                         <RedNoteLink name={shop.name_local || shop.name_base} />
                       </div>
+                      {shop.mall_name_base && (
+                        <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>
+                          🏬 {lang === 'local' && shop.mall_name_local ? shop.mall_name_local : shop.mall_name_base}
+                        </div>
+                      )}
                       {shop.time && <PropLine label={L('time', lang)} value={shop.time.start + ' – ' + shop.time.end} />}
                       {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
                       {getDisplayField(shop, 'type', lang) && <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />}
