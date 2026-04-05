@@ -586,13 +586,40 @@ class AgentDataSyncer:
             self.report["errors"].append(f"Post-sync validation error: {e}")
 
     def _regenerate_html(self):
-        """Regenerate HTML output using generate-html-interactive.py."""
-        print("\nRegenerating HTML...")
+        """Regenerate HTML and deploy via generate-and-deploy.sh."""
+        print("\nRegenerating HTML and deploying...")
+        deploy_script = self.base_dir / "scripts" / "generate-and-deploy.sh"
+        if deploy_script.exists():
+            self._run_deploy(deploy_script)
+        else:
+            self._run_html_only()
+
+    def _run_deploy(self, script):
+        """Run generate-and-deploy.sh (HTML + deploy to web + GitHub)."""
+        try:
+            result = subprocess.run(
+                ["bash", str(script), self.plan_id],
+                capture_output=True, text=True, timeout=300,
+                cwd=str(self.base_dir),
+            )
+            if result.returncode == 0:
+                print("  HTML generated and deployed")
+                self._print_deploy_highlights(result.stdout)
+            else:
+                msg = (result.stderr or result.stdout)[:200]
+                self.report["errors"].append(f"Deploy failed: {msg}")
+                print(f"  ERROR: {msg}")
+        except subprocess.TimeoutExpired:
+            self.report["errors"].append("Deploy timed out (300s)")
+            print("  ERROR: Timed out")
+
+    def _run_html_only(self):
+        """Fallback: HTML-only generation without deploy."""
         script = self.base_dir / "scripts" / "generate-html-interactive.py"
         if not script.exists():
-            self.report["errors"].append(f"HTML generator not found: {script}")
+            self.report["errors"].append("No HTML generator found")
             return
-
+        print("  Warning: HTML-only fallback (no deploy)")
         try:
             result = subprocess.run(
                 [sys.executable, str(script), self.plan_id],
@@ -600,21 +627,21 @@ class AgentDataSyncer:
                 cwd=str(self.base_dir),
             )
             if result.returncode == 0:
-                print("  HTML regenerated successfully")
-                # Print any output file path from stdout
-                for line in result.stdout.strip().split("\n"):
-                    if line.strip():
-                        print(f"  {line.strip()}")
+                print("  HTML regenerated (no deployment)")
             else:
-                error_msg = result.stderr.strip() or result.stdout.strip()
-                self.report["errors"].append(f"HTML generation failed: {error_msg}")
-                print(f"  ERROR: {error_msg}")
+                msg = result.stderr or result.stdout
+                self.report["errors"].append(f"HTML failed: {msg}")
+                print(f"  ERROR: {msg}")
         except subprocess.TimeoutExpired:
-            self.report["errors"].append("HTML generation timed out")
+            self.report["errors"].append("HTML timed out")
             print("  ERROR: Timed out")
-        except Exception as e:
-            self.report["errors"].append(f"HTML generation error: {e}")
-            print(f"  ERROR: {e}")
+
+    def _print_deploy_highlights(self, stdout):
+        """Print key deploy output lines."""
+        for line in stdout.strip().split("\n"):
+            s = line.strip()
+            if s and any(k in s for k in ["Live", "URL", "Complete"]):
+                print(f"  {s}")
 
     def _print_report(self):
         """Print sync report summary."""

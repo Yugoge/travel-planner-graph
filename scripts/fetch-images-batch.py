@@ -213,7 +213,7 @@ class BatchImageFetcher:
         return {
             "destination": self.destination_slug,
             "city_covers": {},
-            "pois": [],
+            "pois": {},
             "fallback_unsplash": self._load_fallback_images()
         }
 
