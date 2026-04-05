@@ -401,6 +401,101 @@ class InteractiveHTMLGenerator:
                     pass
         return None
 
+    def _parse_shopping_brands(self, notes_base: str, notes_local: str = "") -> list:
+        """Parse structured notes_base to extract individual brand entries.
+        
+        Format: [CATEGORY] BrandName Floor -- description | BrandName2 Floor -- description
+        Categories separated by double newlines.
+        Returns list of brand dicts or empty list if parsing fails.
+        """
+        import re
+        if not notes_base:
+            return []
+        
+        brands = []
+        # Split by double newline to get category blocks
+        blocks = re.split(r'\n\n', notes_base)
+        local_blocks = re.split(r'\n\n', notes_local) if notes_local else []
+        
+        for block_idx, block in enumerate(blocks):
+            block = block.strip()
+            if not block:
+                continue
+            
+            # Extract category from [BRACKETS] or 【BRACKETS】
+            cat_match = re.match(r'\[([^\]]+)\]|【([^】]+)】', block)
+            if not cat_match:
+                continue  # Skip non-categorized blocks (rating text, hours, etc.)
+            
+            category = (cat_match.group(1) or cat_match.group(2)).strip()
+            # Skip dining/restaurant categories - not shopping brands
+            if any(k in category.upper() for k in ['DINING', 'RESTAURANT', '餐饮']):
+                continue
+            
+            rest = block[cat_match.end():].strip()
+            
+            # Get corresponding local block
+            local_block = ""
+            if block_idx < len(local_blocks):
+                lb = local_blocks[block_idx].strip()
+                lb_cat = re.match(r'\[([^\]]+)\]|【([^】]+)】', lb)
+                if lb_cat:
+                    local_block = lb[lb_cat.end():].strip()
+                    category_local = (lb_cat.group(1) or lb_cat.group(2)).strip()
+                else:
+                    category_local = category
+            else:
+                category_local = category
+                local_block = ""
+            
+            # Split by | to get individual brands
+            brand_entries = [b.strip() for b in rest.split('|') if b.strip()]
+            local_entries = [b.strip() for b in local_block.split('|') if b.strip()] if local_block else []
+            
+            for brand_idx, entry in enumerate(brand_entries):
+                # Parse: BrandName (Chinese) Floor -- description
+                # or: BrandName Floor -- description
+                parts = re.split(r'\s*(?:--|—)\s*', entry, maxsplit=1)
+                name_part = parts[0].strip()
+                description = parts[1].strip() if len(parts) > 1 else ""
+                
+                # Extract floor info (like 1F, 2F, B1, 1F/2F)
+                floor_match = re.search(r'([B]?\d+F(?:/[B]?\d+F)*)', name_part, re.IGNORECASE)
+                floor = floor_match.group(1) if floor_match else ""
+                # Remove floor from name
+                brand_name = re.sub(r'\s*[B]?\d+F(?:/[B]?\d+F)*\s*', ' ', name_part, flags=re.IGNORECASE).strip()
+                # Remove trailing hash codes like #111, #147A
+                brand_name = re.sub(r'\s*#\w+\s*$', '', brand_name).strip()
+                
+                if not brand_name:
+                    continue
+                
+                # Get local description
+                desc_local = ""
+                name_local = brand_name
+                if brand_idx < len(local_entries):
+                    local_entry = local_entries[brand_idx]
+                    local_parts = re.split(r'\s*(?:--|—)\s*', local_entry, maxsplit=1)
+                    local_name_part = local_parts[0].strip()
+                    desc_local = local_parts[1].strip() if len(local_parts) > 1 else ""
+                    # Extract local name (remove floor)
+                    local_name_clean = re.sub(r'\s*[B]?\d+F(?:/[B]?\d+F)*\s*', ' ', local_name_part, flags=re.IGNORECASE).strip()
+                    local_name_clean = re.sub(r'\s*#\w+\s*$', '', local_name_clean).strip()
+                    if local_name_clean:
+                        name_local = local_name_clean
+                
+                brands.append({
+                    "name": brand_name,
+                    "name_local": name_local,
+                    "category": category,
+                    "category_local": category_local if 'category_local' in dir() else category,
+                    "floor": floor,
+                    "description": description,
+                    "description_local": desc_local,
+                })
+        
+        return brands
+
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data
 
@@ -481,16 +576,17 @@ class InteractiveHTMLGenerator:
                     }
                     merged["budget"]["meals"] += cost
 
-                # Add meal alternatives if present
+                # Add meal alternatives as equal options in _options array
                 alt_key = f"{meal_type}_alternatives"
                 if alt_key in day_meals:
                     alts = day_meals[alt_key]
-                    merged["meals"][f"{meal_type}_alternatives"] = []
-                    for alt in alts:
+                    primary = merged["meals"][meal_type]
+                    options = [{ **primary, "option_label": "A" }]
+                    for idx, alt in enumerate(alts):
                         alt_cost = alt.get("cost", 0)
                         alt_currency = alt.get("currency_local", "CNY")
                         alt_cost_display = self._to_display_currency(alt_cost, alt_currency)
-                        merged["meals"][f"{meal_type}_alternatives"].append({
+                        options.append({
                             "name_base": alt.get("name_base", ""),
                             "name_local": alt.get("name_local", ""),
                             "location_base": alt.get("location_base", ""),
@@ -499,9 +595,13 @@ class InteractiveHTMLGenerator:
                             "cost_local": alt.get("cost", 0),
                             "cuisine_base": alt.get("cuisine_base", ""),
                             "cuisine_local": alt.get("cuisine_local", ""),
+                            "signature_dishes_base": alt.get("signature_dishes_base", ""),
+                            "signature_dishes_local": alt.get("signature_dishes_local", ""),
                             "notes_base": alt.get("notes_base", ""),
                             "notes_local": alt.get("notes_local", ""),
                             "coordinates": alt.get("coordinates", {}),
+                            "time": merged["meals"][meal_type].get("time", {}),
+                            "option_label": alt.get("option", chr(66 + idx)),
                             "image": self._get_placeholder_image(
                                 "meal",
                                 poi_name=alt.get("name_local", alt.get("name_base", "")),
@@ -510,7 +610,9 @@ class InteractiveHTMLGenerator:
                                 location_base=alt.get("location_base", ""),
                                 location_local=alt.get("location_local", ""),
                             ),
+                            "links": alt.get("links", {}),
                         })
+                    merged["meals"][f"{meal_type}_options"] = options
 
         # Merge attractions
         if self.attractions and "days" in self.attractions:
@@ -600,6 +702,7 @@ class InteractiveHTMLGenerator:
                     merged["budget"]["entertainment"] += cost
 
         # Merge shopping items into day data and budget
+        # Parse notes_base to extract individual brand stores from malls
         if self.shopping and "days" in self.shopping:
             day_shop = next((d for d in self.shopping["days"] if d.get("day") == day_num), {})
             for shop_item in day_shop.get("shopping", []):
@@ -609,29 +712,62 @@ class InteractiveHTMLGenerator:
 
                 shop_name_base = shop_item.get("name_base", "")
                 shop_name_local = shop_item.get("name_local", "")
+                notes_base = shop_item.get("notes_base", "")
+                notes_local = shop_item.get("notes_local", "")
 
-                merged["shopping"].append({
-                    "name_base": shop_name_base,
-                    "name_local": shop_name_local,
-                    "location_base": shop_item.get("location_base", ""),
-                    "location_local": shop_item.get("location_local", ""),
-                    "coordinates": shop_item.get("coordinates", {}),
-                    "type_base": shop_item.get("type_base", ""),
-                    "type_local": shop_item.get("type_local", ""),
-                    "cost": cost,
-                    "cost_local": shop_item.get("cost", 0),
-                    "notes_base": shop_item.get("notes_base", ""),
-                    "notes_local": shop_item.get("notes_local", ""),
-                    "optional": shop_item.get("optional", False),
-                    "image": self._get_placeholder_image(
-                        "attraction",
-                        poi_name=shop_name_local if shop_name_local else shop_name_base,
-                        name_base=shop_name_base,
-                        name_local=shop_name_local
-                    ),
-                    "time": self._normalize_time(shop_item.get("time", {})),
-                    "links": {}
-                })
+                # Parse brands from notes_base structured format
+                brands = self._parse_shopping_brands(notes_base, notes_local)
+                if brands:
+                    for brand in brands:
+                        merged["shopping"].append({
+                            "name_base": brand["name"],
+                            "name_local": brand.get("name_local", brand["name"]),
+                            "location_base": shop_item.get("location_base", ""),
+                            "location_local": shop_item.get("location_local", ""),
+                            "coordinates": shop_item.get("coordinates", {}),
+                            "type_base": brand.get("category", ""),
+                            "type_local": brand.get("category_local", ""),
+                            "cost": 0,
+                            "cost_local": 0,
+                            "notes_base": brand.get("description", ""),
+                            "notes_local": brand.get("description_local", ""),
+                            "floor": brand.get("floor", ""),
+                            "mall_name_base": shop_name_base,
+                            "mall_name_local": shop_name_local,
+                            "optional": shop_item.get("optional", False),
+                            "image": self._get_placeholder_image(
+                                "attraction",
+                                poi_name=brand.get("name_local", brand["name"]),
+                                name_base=brand["name"],
+                                name_local=brand.get("name_local", brand["name"])
+                            ),
+                            "time": self._normalize_time(shop_item.get("time", {})),
+                            "links": {}
+                        })
+                else:
+                    # Fallback: show mall as-is if parsing fails
+                    merged["shopping"].append({
+                        "name_base": shop_name_base,
+                        "name_local": shop_name_local,
+                        "location_base": shop_item.get("location_base", ""),
+                        "location_local": shop_item.get("location_local", ""),
+                        "coordinates": shop_item.get("coordinates", {}),
+                        "type_base": shop_item.get("type_base", ""),
+                        "type_local": shop_item.get("type_local", ""),
+                        "cost": cost,
+                        "cost_local": shop_item.get("cost", 0),
+                        "notes_base": notes_base,
+                        "notes_local": notes_local,
+                        "optional": shop_item.get("optional", False),
+                        "image": self._get_placeholder_image(
+                            "attraction",
+                            poi_name=shop_name_local if shop_name_local else shop_name_base,
+                            name_base=shop_name_base,
+                            name_local=shop_name_local
+                        ),
+                        "time": self._normalize_time(shop_item.get("time", {})),
+                        "links": {}
+                    })
                 merged["budget"]["shopping"] += cost
 
         # Merge accommodation
@@ -2002,77 +2138,60 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
           </Section>
         )}
 
-        {/* Meals */}
+        {/* Meals - All options as equal parallel cards */}
         <Section title={L('meals', lang)} icon="🍽️">
-          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: '14px' }}>
-            {['breakfast', 'lunch', 'dinner'].map(type => {
-              const meal = day.meals[type];
-              if (!meal) return null;
-              const lb = (mealEmoji[type] || '') + ' ' + L(type, lang);
-              return (
-                <div key={type} style={{
-                  background: '#fff', borderRadius: '8px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
-                }}
-                  onClick={() => onItemClick && onItemClick(meal, 'meal')}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-                >
-                  <div style={{ width: '100%', height: sm ? '100px' : '130px', overflow: 'hidden', background: '#f5f3ef' }}>
-                    <img src={meal.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={e => { e.target.style.display = 'none'; }} />
-                  </div>
-                  <div style={{ padding: '12px 14px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '6px' }}>
-                      {lb}: {getDisplayName(meal, lang)}
-                      <RedNoteLink name={meal.name_local || meal.name_base} />
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#6b6b6b', lineHeight: 1.7 }}>
-                      {meal.time && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {meal.time.start} – {meal.time.end}</div>}
-                      {meal.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(meal.cost, undefined, lang)}</div>}
-                      {getDisplayField(meal, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(meal, 'cuisine', lang)}</div>}
-                      {(meal.location_base || meal.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={meal} lang={lang} mapProvider={mapProvider} /></div>}
-                      {getDisplayField(meal, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(meal, 'signature_dishes', lang)}</div>}
-                    </div>
-                    <ExpandableNotes text={meal.notes_base} textLocal={meal.notes_local} lang={lang} />
-                    <LinksRow links={meal.links} compact={sm} />
-                  </div>
-                  {/* Meal alternatives */}
-                  {day.meals[type + '_alternatives'] && day.meals[type + '_alternatives'].length > 0 && (
-                    <div style={{ padding: '8px 14px 12px', borderTop: '1px dashed #e8e7e5', background: '#fafaf9' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: '#9b9a97', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {L('alternatives', lang) || 'Alternatives'}
-                      </div>
-                      {day.meals[type + '_alternatives'].map((alt, ai) => (
-                        <div key={ai} style={{
-                          display: 'flex', alignItems: 'center', gap: '8px',
-                          padding: '6px 0', borderBottom: ai < day.meals[type + '_alternatives'].length - 1 ? '1px solid #f0efed' : 'none',
-                          cursor: 'pointer'
-                        }}
-                          onClick={() => onItemClick && onItemClick(alt, 'meal')}
-                        >
-                          {alt.image && (
-                            <img src={alt.image} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
-                              onError={e => { e.target.style.display = 'none'; }} />
-                          )}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '12px', fontWeight: '500', color: '#37352f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {getDisplayName(alt, lang)}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#9b9a97' }}>
-                              {getDisplayField(alt, 'cuisine', lang)} {alt.cost > 0 && `· ${fmtCost(alt.cost, undefined, lang)}`}
-                            </div>
-                          </div>
-                          <MapLink item={alt} lang={lang} mapProvider={mapProvider} style={{ fontSize: '11px' }} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {['breakfast', 'lunch', 'dinner'].map(type => {
+            const meal = day.meals[type];
+            if (!meal) return null;
+            const lb = (mealEmoji[type] || '') + ' ' + L(type, lang);
+            // Use _options array if available (primary + alternatives), otherwise just primary
+            const options = day.meals[type + '_options'] || [meal];
+            return (
+              <div key={type} style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#9b9a97', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {lb}
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : `repeat(auto-fill, minmax(200px, 1fr))`, gap: '12px' }}>
+                  {options.map((opt, oi) => (
+                    <div key={oi} style={{
+                      background: '#fff', borderRadius: '8px',
+                      boxShadow: oi === 0 ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+                      overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
+                    }}
+                      onClick={() => onItemClick && onItemClick(opt, 'meal')}
+                      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.boxShadow = oi === 0 ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
+                    >
+                      <div style={{ width: '100%', height: sm ? '90px' : '110px', overflow: 'hidden', background: '#f5f3ef' }}>
+                        {opt.image && <img src={opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={e => { e.target.style.display = 'none'; }} />}
+                      </div>
+                      <div style={{ padding: '10px 12px' }}>
+                        {opt.option_label && (
+                          <div style={{ fontSize: '10px', fontWeight: '700', color: oi === 0 ? '#4a90d9' : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                            {L('option', lang) || 'Option'} {opt.option_label}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                          {getDisplayName(opt, lang)}
+                          <RedNoteLink name={opt.name_local || opt.name_base} />
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.7 }}>
+                          {opt.time && opt.time.start !== '00:00' && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {opt.time.start} \u2013 {opt.time.end}</div>}
+                          {opt.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(opt.cost, undefined, lang)}</div>}
+                          {getDisplayField(opt, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(opt, 'cuisine', lang)}</div>}
+                          {(opt.location_base || opt.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
+                          {getDisplayField(opt, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(opt, 'signature_dishes', lang)}</div>}
+                        </div>
+                        <ExpandableNotes text={opt.notes_base} textLocal={opt.notes_local} lang={lang} />
+                        <LinksRow links={opt.links} compact={sm} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </Section>
 
         {/* Attractions + Right column */}
@@ -2175,33 +2294,59 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 
             {day.shopping && day.shopping.length > 0 && (
               <Section title={L('shopping', lang)} icon="🛍️">
-                {day.shopping.map((shop, i) => (
-                  <div key={i} style={{
-                    background: '#fff', borderRadius: '8px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                    overflow: 'hidden', marginBottom: '10px', cursor: 'pointer'
-                  }}
-                    onClick={() => onItemClick && onItemClick(shop, 'shopping')}
-                  >
-                    {shop.image && (
-                      <div style={{ width: '100%', height: sm ? '100px' : '120px', overflow: 'hidden', background: '#f5f3ef' }}>
-                        <img src={shop.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => { e.target.style.display = 'none'; }} />
+                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                  {day.shopping.map((shop, i) => {
+                    const catColors = {
+                      'FAST FASHION': '#e07c5a', 'STREETWEAR': '#9b6dd7', 'KOREAN': '#e0a05a',
+                      'DESIGNER': '#4a90d9', 'BEAUTY': '#d97eb5', 'SPECIAL': '#45b26b',
+                      'SPORT': '#0ea5e9', 'ACCESSORIES': '#c9a95a', 'SUPERMARKET': '#6bc95a',
+                      'B1 SUPERMARKET': '#6bc95a',
+                    };
+                    const catKey = (shop.type_base || '').toUpperCase().split('/')[0].split(' ')[0];
+                    const tagColor = Object.entries(catColors).find(([k]) => (shop.type_base || '').toUpperCase().includes(k))?.[1] || '#9b9a97';
+                    return (
+                      <div key={i} style={{
+                        background: '#fff', borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+                        overflow: 'hidden', cursor: 'pointer', transition: 'box-shadow .15s'
+                      }}
+                        onClick={() => onItemClick && onItemClick(shop, 'shopping')}
+                        onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
+                      >
+                        <div style={{ padding: '12px 14px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                            {getDisplayName(shop, lang)}
+                          </div>
+                          {shop.type_base && (
+                            <span style={{
+                              display: 'inline-block', fontSize: '10px', fontWeight: '600',
+                              padding: '2px 6px', borderRadius: '3px', marginBottom: '6px',
+                              background: tagColor + '18', color: tagColor, textTransform: 'uppercase'
+                            }}>
+                              {getDisplayField(shop, 'type', lang)}
+                            </span>
+                          )}
+                          {shop.floor && (
+                            <span style={{ fontSize: '11px', color: '#9b9a97', marginLeft: '6px' }}>
+                              {shop.floor}
+                            </span>
+                          )}
+                          {shop.mall_name_base && (
+                            <div style={{ fontSize: '11px', color: '#9b9a97', marginTop: '4px' }}>
+                              🏬 {lang === 'local' && shop.mall_name_local ? shop.mall_name_local : shop.mall_name_base}
+                            </div>
+                          )}
+                          {shop.notes_base && (
+                            <div style={{ fontSize: '11px', color: '#6b6b6b', marginTop: '4px', lineHeight: 1.5 }}>
+                              {lang === 'local' && shop.notes_local ? shop.notes_local : shop.notes_base}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <div style={{ padding: '14px 16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
-                        {getDisplayName(shop, lang)}
-                        <RedNoteLink name={shop.name_local || shop.name_base} />
-                      </div>
-                      {shop.time && <PropLine label={L('time', lang)} value={`${shop.time.start} – ${shop.time.end}`} />}
-                      {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
-                      <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />
-                      {(shop.location_base || shop.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={shop} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={shop.notes_base} textLocal={shop.notes_local} lang={lang} />
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
               </Section>
             )}
 
@@ -2409,7 +2554,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   const entries = [];
   const add = (item, type, label) => {
     // Only add if item has valid time with start and end
-    if (item?.time?.start && item?.time?.end) {
+    // Filter out degenerate times: 00:00-00:00 (N/A items) and same start/end
+    if (item?.time?.start && item?.time?.end
+        && item.time.start !== '00:00'
+        && item.time.start !== item.time.end) {
       entries.push({ ...item, _type: type, _label: label });
     }
   };
@@ -2440,8 +2588,19 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Sort by start time
   entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
 
+  // Deduplicate: for optional entertainment/shopping items sharing the same time slot
+  // as another entry, keep only the first (primary) one in timeline view
+  const seen = new Set();
+  const deduped = entries.filter(e => {
+    const slot = e.time.start + '-' + e.time.end;
+    const key = slot + ':' + e._type;
+    if (e.optional && seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   // Compute column layout for overlapping events
-  const entriesWithLayout = computeColumnLayout(entries);
+  const entriesWithLayout = computeColumnLayout(deduped);
 
   const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
   const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
@@ -2493,7 +2652,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   };
 
   // Debug: log entries count
-  if (entries.length === 0) {
+  if (entriesWithLayout.length === 0) {
     console.warn('Timeline has no entries for day:', day.day, day.location_base);
   }
 
@@ -2513,7 +2672,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
           </h2>
         </div>
 
-        {entries.length === 0 ? (
+        {entriesWithLayout.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9b9a97' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏰</div>
             <div style={{ fontSize: '16px', marginBottom: '8px' }}>{L('no_timeline', lang)}</div>

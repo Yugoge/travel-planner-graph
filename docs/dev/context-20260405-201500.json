@@ -1,0 +1,130 @@
+{
+  "request_id": "dev-20260405-201500",
+  "timestamp": "2026-04-05T20:15:00+08:00",
+  "requirement": {
+    "original": "Three critical bugs in the travel plan HTML page (generate-html-interactive.py): Bug 1 - Meals: All restaurant options must be PARALLEL EQUAL CARDS. Bug 2 - Shopping: Show individual brand stores, NOT shopping malls. Bug 3 - Timeline View: Rendering is broken with huge empty gaps.",
+    "clarified": "Fix three rendering bugs in generate-html-interactive.py: (1) Restructure meal rendering so primary + alternative restaurants appear as equal parallel cards instead of 1 card + text list, (2) Parse shopping mall notes_base to extract individual brand stores as separate cards, (3) Fix Timeline view layout calculations that cause gaps and missing elements.",
+    "what": "Fix 3 bugs in the HTML generator: meal card equality, shopping brand extraction, timeline layout",
+    "why": "Current rendering shows meals hierarchically (1 primary + text alternatives), shopping as mall names instead of brands, and timeline with broken gaps -- all degrading user experience",
+    "where": ["scripts/generate-html-interactive.py"],
+    "scope": {
+      "included": [
+        "Meal section JSX restructuring (lines 2005-2075)",
+        "Meal alternatives Python merge logic (lines 484-513)",
+        "Shopping Python merge logic with notes_base parsing (lines 602-635)",
+        "Shopping section JSX (lines 2176-2206)",
+        "TimelineView component layout calculations (lines 2400-2691)",
+        "computeColumnLayout function (lines 2362-2397)"
+      ],
+      "excluded": [
+        "JSON data files (meals.json, shopping.json, timeline.json)",
+        "Other Python scripts or agents",
+        "Overall page design system or color scheme",
+        "Adding new data fields to schema"
+      ]
+    },
+    "success_criteria": [
+      "All meal options (primary + alternatives) render as equal-sized parallel cards",
+      "Shopping section shows individual brand stores extracted from notes_base, not mall names",
+      "Timeline view renders all activities without gaps or missing elements",
+      "Page loads without JavaScript errors",
+      "Mobile responsive layout preserved"
+    ],
+    "constraints": [
+      "Single file modification only: generate-html-interactive.py",
+      "Must not break existing data format compatibility",
+      "Must work with the embedded React (no external build system)",
+      "Must preserve bilingual (base/local) display support"
+    ]
+  },
+  "root_cause_analysis": {
+    "bug_1_meals": {
+      "symptom": "Meal alternatives render as small text items under 'Also try' heading instead of equal cards",
+      "root_cause": "JSX lines 2041-2071 render alternatives in a subordinate div with 32px thumbnails and single-line text. The meal section grid (line 2007) uses repeat(3, 1fr) for 3 meal types (breakfast/lunch/dinner), not for multiple options within a meal type. Alternatives are appended INSIDE each meal type card rather than being siblings.",
+      "root_cause_commit": "N/A - original design decision, not a regression",
+      "why_introduced": "Original design treated alternatives as secondary suggestions, not equal choices",
+      "why_problematic": "User wants all restaurant options presented equally for decision-making",
+      "affected_files": ["scripts/generate-html-interactive.py"],
+      "fix_approach": "Restructure meal section to iterate per meal type, then render ALL options (primary + alternatives) as equal cards in a horizontal scrolling container. Remove the subordinate alternatives div."
+    },
+    "bug_2_shopping": {
+      "symptom": "Shopping section shows mall names (e.g., 'Wangfujing Yintai in88') instead of individual brand stores",
+      "root_cause": "Python merge logic (lines 602-635) passes shopping entries as-is from shopping.json, which contains mall-level entries. The notes_base field contains structured brand information (e.g., '[FAST FASHION] UR 2F -- description | UNIQLO 1F/2F') but this is never parsed into individual entries. The JSX (lines 2176-2206) renders whatever the Python gives it.",
+      "root_cause_commit": "N/A - data was always mall-level, parsing was never implemented",
+      "why_introduced": "Shopping agent outputs mall-level data with brands in notes_base text",
+      "why_problematic": "User wants to see individual brand stores as separate browsable cards",
+      "affected_files": ["scripts/generate-html-interactive.py"],
+      "fix_approach": "Add a Python method to parse notes_base structured format into individual brand entries. In _merge_day_data(), expand each mall's notes_base into N brand cards. Each brand card inherits the mall's coordinates, time, and has the mall name as context. JSX renders the expanded brand list."
+    },
+    "bug_3_timeline": {
+      "symptom": "Timeline view has huge empty gaps and elements not rendering correctly",
+      "root_cause": "Multiple interacting issues: (1) hH constant (80px/hour) creates proportional layout where short activities (2-15 min) get minimum 24px height but the time grid stays at 80px/hour, causing visual mismatch. (2) Travel segments with 2-minute durations (e.g., walk 14:00-14:02) overlap with the next activity at 14:00, creating stacking. (3) The computeColumnLayout greedy algorithm assigns separate columns to overlapping items, but the visual width calculation doesn't account for the total timeline height expanding due to minimum heights. (4) Items with time 00:00-00:00 (like N/A breakfast) may create negative positioning from firstH.",
+      "root_cause_commit": "N/A - accumulation of layout edge cases",
+      "why_introduced": "Timeline was designed for 30-60 minute activities; 2-minute walks and overlapping time ranges expose layout bugs",
+      "why_problematic": "Large gaps between activities make the timeline unusable",
+      "affected_files": ["scripts/generate-html-interactive.py"],
+      "fix_approach": "Three fixes: (1) Filter out 00:00-00:00 entries and very short travel segments that overlap with their destination activity. (2) Adjust minimum height logic so short activities don't create gaps. (3) Consider collapsing travel segments into transition indicators rather than full timeline entries."
+    }
+  },
+  "context": {
+    "codebase_state": "Single modified file in working tree (.claude/workflow JSON). Generator script is stable.",
+    "recent_commits": "dca40ed Auto-commit: 2026-04-05 20:37:24 (most recent touch to generator)",
+    "file_contents": {
+      "generator_total_lines": "~2860 lines (Python class + embedded JSX)",
+      "meals_section_jsx": "lines 2005-2075",
+      "shopping_section_jsx": "lines 2176-2206",
+      "timeline_view_jsx": "lines 2400-2691",
+      "shopping_merge_python": "lines 602-635",
+      "meal_alternatives_merge_python": "lines 484-513"
+    },
+    "dependencies": {
+      "react": "embedded via CDN (React 18)",
+      "data_files": "JSON files in data/wangfujing-dongdan-beijing-20260405-192905/"
+    },
+    "environment": {
+      "live_url": "https://travel.life-ai.app/wangfujing-dongdan-beijing/2026-04-05/",
+      "deploy_target": "travel-web Docker container on port 8094"
+    }
+  },
+  "development_approach": {
+    "strategy": "Fix all 3 bugs in generate-html-interactive.py. Bug 1 and 2 require both Python merge logic changes and JSX rendering changes. Bug 3 is JSX-only. Process: modify Python merge for bugs 1+2, then modify JSX for all 3, then regenerate HTML and verify.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Regenerate the HTML for wangfujing-dongdan-beijing plan, deploy to travel-web container, verify all 3 fixes render correctly at the live URL. Check: (1) meal cards are parallel and equal, (2) shopping shows brand names not mall names, (3) timeline has no gaps."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fixes with clear root causes in identified code sections. No architectural decisions or design pattern questions."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "bug_specific_details": {
+    "bug_1_key_lines": {
+      "python_alternatives_merge": "484-513: Currently passes alternatives as separate array; needs restructuring so all options are in a single flat array per meal type",
+      "jsx_meal_grid": "2007: repeat(3, 1fr) grid for 3 meal types; needs per-meal-type sub-grid for N options",
+      "jsx_alternatives_subordinate": "2041-2071: 'Also try' section with 32px thumbnails; DELETE this entirely",
+      "jsx_primary_card": "2012-2040: Primary meal card template; alternatives should use same template"
+    },
+    "bug_2_key_lines": {
+      "python_shopping_merge": "602-635: Passes mall entries as-is; needs notes_base parser",
+      "jsx_shopping_section": "2176-2206: Renders whatever Python gives it; minimal changes needed if Python provides brand entries",
+      "notes_base_format_example": "[FAST FASHION] UR (Urban Revivo) 2F -- Chinese fast fashion | UNIQLO 1F/2F -- quality basics | H&M 2F -- international fast fashion",
+      "parsing_pattern": "Split by \\n\\n for categories, then by | for brands within category. Category is in [BRACKETS]. Brand name is first token before floor indicator."
+    },
+    "bug_3_key_lines": {
+      "hour_height": "2450: hH = sm ? 68 : 80 (pixels per hour)",
+      "min_height": "2472: 24px minimum for <10min activities",
+      "top_calc": "2461: top(t) calculates pixel position from time",
+      "column_layout": "2362-2397: computeColumnLayout greedy algorithm",
+      "entry_collection": "2409-2438: entries[] collection from day data",
+      "problematic_entries": "Travel segments with 2-min duration overlap with destination activities at same start time"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "request_id": "dev-20260405-201500",
+  "timestamp": "2026-04-05T20:30:00+08:00",
+  "dev_report_path": "docs/dev/dev-report-20260405-201500.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Bug 1 - Meals: Restructured Python merge to build _options arrays (primary + alternatives as equal entries)",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "In _merge_day_data(), replaced meal alternatives merge logic (was creating {type}_alternatives array) to create {type}_options array containing primary meal (labeled Option A) plus all alternatives (Option B/C/D). Each option has full fields including signature_dishes, time, links.",
+        "rationale": "Root cause: alternatives were stored in a separate subordinate array, JSX rendered them as small text list. Fix: flatten into equal-level options array."
+      },
+      {
+        "id": 2,
+        "description": "Bug 1 - Meals: Replaced JSX to render all options as equal parallel cards in responsive grid",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Replaced meals section JSX (was lines 2145-2216). New JSX: for each meal type, renders a label header then a grid of equal cards using gridTemplateColumns: repeat(auto-fill, minmax(200px, 1fr)). Primary option (A) gets subtle blue border highlight. All cards have identical template: image, option label badge, name, time, cost, cuisine, location, signature dishes, notes, links. Removed the entire 'Also try' subordinate alternatives section.",
+        "rationale": "All meal options now rendered as equal-sized parallel cards for fair comparison."
+      },
+      {
+        "id": 3,
+        "description": "Bug 2 - Shopping: Added _parse_shopping_brands() method to extract individual brands from notes_base",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added new method _parse_shopping_brands(notes_base, notes_local) that parses structured format: [CATEGORY] BrandName Floor -- description | Brand2 Floor -- desc. Splits by double newline for category blocks, extracts [BRACKETS] categories, splits by | for brands, extracts floor info (1F, B1, etc.) from brand name, handles bilingual local text. Skips DINING/RESTAURANT categories. Falls back to empty list if parsing fails.",
+        "rationale": "Root cause: shopping data was mall-level with brands embedded in notes_base text. Parser extracts individual brands for card rendering."
+      },
+      {
+        "id": 4,
+        "description": "Bug 2 - Shopping: Updated Python merge and JSX to render individual brand cards with category tags",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "In _merge_day_data(): shopping merge now calls _parse_shopping_brands() and creates one card per brand with mall_name_base/local context. JSX: replaced shopping section with responsive grid (2 cols mobile, auto-fill 180px+ desktop). Each brand card shows: name, category tag (color-coded by type: FAST FASHION=orange, STREETWEAR=purple, KOREAN=gold, DESIGNER=blue, BEAUTY=pink, etc.), floor info, mall name subtitle, and description. Falls back to mall-level card if parsing returns no brands.",
+        "rationale": "Individual brand cards give users actionable store-level information instead of generic mall names."
+      },
+      {
+        "id": 5,
+        "description": "Bug 3 - Timeline: Fixed degenerate entry filtering and deduplication",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Three fixes: (1) Updated add() function to filter entries where time.start === '00:00' (N/A breakfast) or time.start === time.end (zero-duration). (2) Added deduplication after sort: optional items sharing same time slot and type as another entry are removed (keeps primary). (3) Fixed entries.length references to use entriesWithLayout.length after dedup.",
+        "rationale": "Root cause: 00:00-00:00 entries caused negative positioning from firstH=0, optional items in same slot caused column stacking. Filtering and dedup fixes both gap and clutter issues."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": ["scripts/generate-and-deploy.sh", "scripts/generate-html.sh"]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - original design decisions, not regressions",
+      "why_issue_occurred": "Bug 1: alternatives designed as subordinate suggestions. Bug 2: shopping agent outputs mall-level data with brands in notes_base text field. Bug 3: timeline layout not handling edge cases (00:00 times, zero-duration, optional overlaps).",
+      "how_fix_addresses_root": "Bug 1: restructured data flow so all options are equal. Bug 2: added parser to extract structured brand data from text. Bug 3: filtered degenerate entries and deduplicated optional overlaps."
+    },
+    "qa_ready": true,
+    "qa_notes": "HTML has been regenerated and deployed. Verify at https://travel.life-ai.app/wangfujing-dongdan-beijing/2026-04-05/ - Check: (1) Meals section shows equal parallel cards for lunch (4 cards) and dinner (4 cards), breakfast should be single card (no alternatives). (2) Shopping section shows individual brand name cards with category color tags, not mall names. (3) Timeline view has no huge empty gap at top (should start at actual first activity hour, not 00:00). Test both desktop and mobile viewports.",
+    "permissions_to_add": [],
+    "tdd_skipped": true,
+    "tdd_skip_reason": "UI rendering fixes in embedded JSX template - not programmatically testable without browser rendering. Verification is via visual inspection of deployed page."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Shopping brand parser may need refinement for malls with non-standard notes_base format - test with other plan data",
+    "Consider adding a visual badge on primary meal option (Option A) to make default recommendation clearer",
+    "Timeline dedup logic uses type+timeslot as key - if two different-type activities share exact time, both show (correct behavior)"
+  ]
+}
