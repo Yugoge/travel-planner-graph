@@ -140,7 +140,7 @@ class InteractiveHTMLGenerator:
         "amenities": "Amenities", "links": "Links",
         "user_plans": "User Plans", "meals": "Meals", "attractions": "Attractions",
         "entertainment": "Entertainment", "accommodation": "Accommodation",
-        "transportation": "Transportation", "shopping": "Shopping", "budget": "Budget",
+        "transportation": "Transportation", "shopping": "Shopping", "budget": "Budget", "alternatives": "Also try",
         "transport": "Transport",
         "trip_type": "Trip Type", "base_location": "Base Location",
         "period": "Period", "travelers": "Travelers", "budget_trip": "Budget / Trip",
@@ -481,6 +481,37 @@ class InteractiveHTMLGenerator:
                     }
                     merged["budget"]["meals"] += cost
 
+                # Add meal alternatives if present
+                alt_key = f"{meal_type}_alternatives"
+                if alt_key in day_meals:
+                    alts = day_meals[alt_key]
+                    merged["meals"][f"{meal_type}_alternatives"] = []
+                    for alt in alts:
+                        alt_cost = alt.get("cost", 0)
+                        alt_currency = alt.get("currency_local", "CNY")
+                        alt_cost_display = self._to_display_currency(alt_cost, alt_currency)
+                        merged["meals"][f"{meal_type}_alternatives"].append({
+                            "name_base": alt.get("name_base", ""),
+                            "name_local": alt.get("name_local", ""),
+                            "location_base": alt.get("location_base", ""),
+                            "location_local": alt.get("location_local", ""),
+                            "cost": alt_cost_display,
+                            "cost_local": alt.get("cost", 0),
+                            "cuisine_base": alt.get("cuisine_base", ""),
+                            "cuisine_local": alt.get("cuisine_local", ""),
+                            "notes_base": alt.get("notes_base", ""),
+                            "notes_local": alt.get("notes_local", ""),
+                            "coordinates": alt.get("coordinates", {}),
+                            "image": self._get_placeholder_image(
+                                "meal",
+                                poi_name=alt.get("name_local", alt.get("name_base", "")),
+                                name_base=alt.get("name_base", ""),
+                                name_local=alt.get("name_local", ""),
+                                location_base=alt.get("location_base", ""),
+                                location_local=alt.get("location_local", ""),
+                            ),
+                        })
+
         # Merge attractions
         if self.attractions and "days" in self.attractions:
             day_attrs = next((d for d in self.attractions["days"] if d.get("day") == day_num), {})
@@ -598,7 +629,7 @@ class InteractiveHTMLGenerator:
                         name_base=shop_name_base,
                         name_local=shop_name_local
                     ),
-                    "time": self._normalize_time(shop_item.get("time", {})) or {"start": "15:00", "end": "16:00"},
+                    "time": self._normalize_time(shop_item.get("time", {})),
                     "links": {}
                 })
                 merged["budget"]["shopping"] += cost
@@ -2007,6 +2038,37 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <ExpandableNotes text={meal.notes_base} textLocal={meal.notes_local} lang={lang} />
                     <LinksRow links={meal.links} compact={sm} />
                   </div>
+                  {/* Meal alternatives */}
+                  {day.meals[type + '_alternatives'] && day.meals[type + '_alternatives'].length > 0 && (
+                    <div style={{ padding: '8px 14px 12px', borderTop: '1px dashed #e8e7e5', background: '#fafaf9' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: '#9b9a97', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {L('alternatives', lang) || 'Alternatives'}
+                      </div>
+                      {day.meals[type + '_alternatives'].map((alt, ai) => (
+                        <div key={ai} style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          padding: '6px 0', borderBottom: ai < day.meals[type + '_alternatives'].length - 1 ? '1px solid #f0efed' : 'none',
+                          cursor: 'pointer'
+                        }}
+                          onClick={() => onItemClick && onItemClick(alt, 'meal')}
+                        >
+                          {alt.image && (
+                            <img src={alt.image} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                              onError={e => { e.target.style.display = 'none'; }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: '500', color: '#37352f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {getDisplayName(alt, lang)}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#9b9a97' }}>
+                              {getDisplayField(alt, 'cuisine', lang)} {alt.cost > 0 && `· ${fmtCost(alt.cost, undefined, lang)}`}
+                            </div>
+                          </div>
+                          <MapLink item={alt} lang={lang} mapProvider={mapProvider} style={{ fontSize: '11px' }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
