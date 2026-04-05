@@ -213,11 +213,8 @@ echo "📋 Step 2: Checking authentication..."
 USE_SSH=false
 USE_TOKEN=false
 
-if [ -n "$GITHUB_TOKEN" ]; then
-    echo "✓ Using GITHUB_TOKEN for authentication"
-    USE_TOKEN=true
-    REPO_URL="https://${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${REPO_NAME}.git"
-elif [ -f ~/.ssh/id_rsa ] || [ -f ~/.ssh/id_ed25519 ]; then
+# SSH first (preferred — works without token), then GITHUB_TOKEN fallback
+if [ -f ~/.ssh/id_rsa ] || [ -f ~/.ssh/id_ed25519 ]; then
     echo "✓ Using SSH keys for authentication"
 
     if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
@@ -230,6 +227,10 @@ elif [ -f ~/.ssh/id_rsa ] || [ -f ~/.ssh/id_ed25519 ]; then
 
     USE_SSH=true
     REPO_URL="git@github.com:${GITHUB_USER}/${REPO_NAME}.git"
+elif [ -n "${GITHUB_TOKEN:-}" ]; then
+    echo "✓ Using GITHUB_TOKEN for authentication"
+    USE_TOKEN=true
+    REPO_URL="https://${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${REPO_NAME}.git"
 else
     echo "⚠️  Warning: No authentication method found"
     echo ""
@@ -480,7 +481,42 @@ cat >> "${DEPLOY_DIR}/README.md" << EOF
 Last updated: $CURRENT_TIME
 EOF
 
-# Step 7: Commit and push
+# Step 6.5: Local deployment FIRST (always succeeds, immediate availability)
+echo ""
+echo "📋 Step 6.5: Deploying to local server (travel.life-ai.app)..."
+
+if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
+    # Remove old versions of the same destination (keep only latest)
+    if [ -d "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}" ]; then
+        echo "  Removing old versions of ${DESTINATION_SLUG}..."
+        rm -rf "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}"
+    fi
+
+    # Create target directory structure
+    LOCAL_TARGET_DIR="${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
+    mkdir -p "${LOCAL_TARGET_DIR}"
+
+    # Copy the HTML file
+    cp "$INPUT_FILE" "${LOCAL_TARGET_DIR}/index.html"
+    echo "✓ Copied to: ${LOCAL_TARGET_DIR}/index.html"
+
+    # Generate/update local index.html using shared function
+    generate_index_html "${LOCAL_DEPLOY_DIR}"
+
+    echo "✓ Local index page updated"
+    echo "✓ Live NOW: https://${LOCAL_DEPLOY_DOMAIN}/${DESTINATION_SLUG}/${PLAN_DATE}/"
+else
+    echo "⚠️  Local deploy directory not found: ${LOCAL_DEPLOY_DIR}"
+    echo "  Creating it..."
+    mkdir -p "${LOCAL_DEPLOY_DIR}"
+    LOCAL_TARGET_DIR="${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
+    mkdir -p "${LOCAL_TARGET_DIR}"
+    cp "$INPUT_FILE" "${LOCAL_TARGET_DIR}/index.html"
+    generate_index_html "${LOCAL_DEPLOY_DIR}"
+    echo "✓ Created and deployed to: ${LOCAL_TARGET_DIR}/index.html"
+fi
+
+# Step 7: Commit and push to GitHub (non-fatal — local deploy already succeeded)
 echo ""
 echo "📋 Step 7: Deploying to GitHub Pages..."
 
@@ -500,11 +536,15 @@ Generated: $CURRENT_TIME
 # Set remote
 git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
 
-# Push to gh-pages branch (without force to preserve history)
+# Push to gh-pages branch (non-fatal — local deploy already succeeded)
 echo "  Pushing to ${BRANCH} branch..."
-git push origin "$BRANCH"
-
-echo "✓ Pushed to GitHub"
+if git push origin "$BRANCH" 2>&1; then
+    echo "✓ Pushed to GitHub"
+    GITHUB_PUSH_OK=true
+else
+    echo "⚠️  GitHub push failed (local deployment still succeeded)"
+    GITHUB_PUSH_OK=false
+fi
 
 # Step 8: Enable GitHub Pages (if using token)
 if [ "$USE_TOKEN" = true ]; then
@@ -547,34 +587,7 @@ else
     fi
 fi
 
-# Step 8.5: Local deployment (parallel to GitHub Pages)
-echo ""
-echo "📋 Step 8.5: Deploying to local server..."
-
-if [ -d "${LOCAL_DEPLOY_DIR}" ]; then
-    # Remove old versions of the same destination (keep only latest)
-    if [ -d "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}" ]; then
-        echo "  Removing old versions of ${DESTINATION_SLUG}..."
-        rm -rf "${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}"
-    fi
-
-    # Create target directory structure
-    LOCAL_TARGET_DIR="${LOCAL_DEPLOY_DIR}/${DESTINATION_SLUG}/${PLAN_DATE}"
-    mkdir -p "${LOCAL_TARGET_DIR}"
-
-    # Copy the HTML file
-    cp "$INPUT_FILE" "${LOCAL_TARGET_DIR}/index.html"
-    echo "✓ Copied to: ${LOCAL_TARGET_DIR}/index.html"
-
-    # Generate/update local index.html using shared function
-    generate_index_html "${LOCAL_DEPLOY_DIR}"
-
-    echo "✓ Local index page updated with all plans"
-    echo "✓ Local URL: https://${LOCAL_DEPLOY_DOMAIN}/${DESTINATION_SLUG}/${PLAN_DATE}/"
-else
-    echo "⚠️  Local deploy directory not found: ${LOCAL_DEPLOY_DIR}"
-    echo "  Skipping local deployment (GitHub Pages deployment succeeded)"
-fi
+# (Local deployment already completed in Step 6.5)
 
 # Step 9: Cleanup
 echo ""
