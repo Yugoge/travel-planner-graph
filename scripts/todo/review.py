@@ -9,8 +9,8 @@ def get_todos():
         {"content": "Fetch images for current day", "activeForm": "Fetching images for current day", "status": "pending"},
         {"content": "Present complete day review for review", "activeForm": "Presenting day review", "status": "pending"},
         {"content": "Process user choice (perfect/changes/accept all)", "activeForm": "Processing user choice", "status": "pending"},
-        {"content": "Re-invoke agents with day-scoped changes", "activeForm": "Re-invoking agents", "status": "pending"},
-        {"content": "Re-invoke timeline and budget agents", "activeForm": "Re-calculating timeline and budget", "status": "pending"},
+        {"content": "Re-invoke agents with day-scoped changes", "activeForm": "Re-invoking agents", "status": "pending", "subagent_call": {"agent": "{domain}", "subagent_type": "{domain}-agent"}},
+        {"content": "Re-invoke timeline and budget agents", "activeForm": "Re-calculating timeline and budget", "status": "pending", "subagent_call": [{"agent": "timeline", "subagent_type": "timeline-agent"}, {"agent": "budget", "subagent_type": "budget-agent"}]},
         {"content": "Present updated day review for next iteration", "activeForm": "Presenting updated review", "status": "pending"},
         {"content": "Generate HTML locally (manual deployment)", "activeForm": "Generating HTML", "status": "pending"},
         {"content": "Present completion summary with booking checklist", "activeForm": "Presenting completion summary", "status": "pending"}

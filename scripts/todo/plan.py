@@ -47,7 +47,8 @@ def get_todos():
         {
             "content": "Step 8: Invoke Parallel Agents (6 agents)",
             "activeForm": "Step 8: Invoking Parallel Agents",
-            "status": "pending"
+            "status": "pending",
+            "subagent_call": [{"agent": "meals", "subagent_type": "meals-agent"}, {"agent": "attractions", "subagent_type": "attractions-agent"}, {"agent": "entertainment", "subagent_type": "entertainment-agent"}, {"agent": "shopping", "subagent_type": "shopping-agent"}, {"agent": "accommodation", "subagent_type": "accommodation-agent"}, {"agent": "transportation", "subagent_type": "transportation-agent"}]
         },
         {
             "content": "Step 9: Verify Agent Outputs",
@@ -62,7 +63,8 @@ def get_todos():
         {
             "content": "Step 11: Invoke Timeline Agent (Serial)",
             "activeForm": "Step 11: Invoking Timeline Agent",
-            "status": "pending"
+            "status": "pending",
+            "subagent_call": {"agent": "timeline", "subagent_type": "timeline-agent"}
         },
         {
             "content": "Step 12: Validate Timeline Consistency",
@@ -72,7 +74,8 @@ def get_todos():
         {
             "content": "Step 13: Invoke Budget Agent (Serial)",
             "activeForm": "Step 13: Invoking Budget Agent",
-            "status": "pending"
+            "status": "pending",
+            "subagent_call": {"agent": "budget", "subagent_type": "budget-agent"}
         },
         {
             "content": "Step 14: Budget Gate Check",
