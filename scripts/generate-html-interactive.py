@@ -586,6 +586,14 @@ class InteractiveHTMLGenerator:
                         alt_cost = alt.get("cost", 0)
                         alt_currency = alt.get("currency_local", "CNY")
                         alt_cost_display = self._to_display_currency(alt_cost, alt_currency)
+                        alt_image = alt.get("image_url", "") or self._get_placeholder_image(
+                            "meal",
+                            poi_name=alt.get("name_local", alt.get("name_base", "")),
+                            name_base=alt.get("name_base", ""),
+                            name_local=alt.get("name_local", ""),
+                            location_base=alt.get("location_base", ""),
+                            location_local=alt.get("location_local", ""),
+                        )
                         options.append({
                             "name_base": alt.get("name_base", ""),
                             "name_local": alt.get("name_local", ""),
@@ -602,14 +610,7 @@ class InteractiveHTMLGenerator:
                             "coordinates": alt.get("coordinates", {}),
                             "time": merged["meals"][meal_type].get("time", {}),
                             "option_label": alt.get("option", chr(66 + idx)),
-                            "image": self._get_placeholder_image(
-                                "meal",
-                                poi_name=alt.get("name_local", alt.get("name_base", "")),
-                                name_base=alt.get("name_base", ""),
-                                name_local=alt.get("name_local", ""),
-                                location_base=alt.get("location_base", ""),
-                                location_local=alt.get("location_local", ""),
-                            ),
+                            "image": alt_image,
                             "links": alt.get("links", {}),
                         })
                     merged["meals"][f"{meal_type}_options"] = options
