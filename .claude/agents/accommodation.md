@@ -286,7 +286,7 @@ Validate:
    Exit code 0 = log entry created successfully. If this fails, STOP and report error.
 
 4. **Validate output against schema before saving**:
-   Read and verify your output conforms to: `/root/travel-planner/schemas/accommodation.schema.json`
+   Read and verify your output conforms to: `schemas/accommodation.schema.json`
    If validation fails, fix the output structure before proceeding to save.
 
 5. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008):

@@ -139,7 +139,7 @@ For multi-city: confirm location per day.
 
 Run skeleton generation script:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-skeletons.py \
+source venv/bin/activate && python scripts/generate-skeletons.py \
   --destination-slug "{destination-slug}" \
   --dates "{start_date}" "{end_date}" \
   --duration {days_count} \
@@ -160,7 +160,7 @@ source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/ge
 
 **Example**:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-skeletons.py \
+source venv/bin/activate && python scripts/generate-skeletons.py \
   --destination-slug "beijing-20260204-145508" \
   --dates "2026-03-15" "2026-03-24" \
   --duration 10 \
@@ -226,7 +226,7 @@ Generate unique directory slug to prevent multiple /plan executions from mixing 
 
 Run slug generation script:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-plan-slug.py "{destination}"
+source venv/bin/activate && python scripts/generate-plan-slug.py "{destination}"
 ```
 
 Capture output and set `{destination-slug}` variable for ALL subsequent steps.
@@ -257,7 +257,7 @@ Commit 77dca06 introduced {destination-slug} placeholder used 40+ times througho
 
 Run validation script:
 ```bash
-bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
+bash scripts/check-day-completion.sh {destination-slug}
 ```
 
 **Exit code 0**: All days complete → Proceed to Phase 2
@@ -276,7 +276,7 @@ bash /root/travel-planner/scripts/check-day-completion.sh {destination-slug}
 
 Verify plan skeleton exists and contains location changes:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/plan-skeleton.json && echo "verified" || echo "missing"
+test -f data/{destination-slug}/plan-skeleton.json && echo "verified" || echo "missing"
 ```
 
 **If missing**: Debug Step 3 script execution and retry.
@@ -322,7 +322,7 @@ Plan skeleton structure (already created):
 
 Run validation script:
 ```bash
-bash /root/travel-planner/scripts/check-location-continuity.sh {destination-slug}
+bash scripts/check-location-continuity.sh {destination-slug}
 ```
 
 **Exit code 0**: All location changes have objects → Proceed
@@ -376,7 +376,7 @@ Use Task tool with:
     coordinates: {latitude: float, longitude: float}
   }
 
-  Validate output against schema: /root/travel-planner/schemas/meals.schema.json before saving.
+  Validate output against schema: schemas/meals.schema.json before saving.
   Save to: data/{destination-slug}/meals.json
 
   After completing all tasks, return ONLY the word 'complete'.
@@ -422,12 +422,12 @@ echo "$TRANSPORTATION_AGENT_RESPONSE" | source venv/bin/activate && python scrip
 
 **Verify files exist before proceeding**:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/meals.json && echo "meals.json verified" || echo "meals.json missing"
-test -f /root/travel-planner/data/{destination-slug}/accommodation.json && echo "accommodation.json verified" || echo "accommodation.json missing"
-test -f /root/travel-planner/data/{destination-slug}/attractions.json && echo "attractions.json verified" || echo "attractions.json missing"
-test -f /root/travel-planner/data/{destination-slug}/entertainment.json && echo "entertainment.json verified" || echo "entertainment.json missing"
-test -f /root/travel-planner/data/{destination-slug}/shopping.json && echo "shopping.json verified" || echo "shopping.json missing"
-test -f /root/travel-planner/data/{destination-slug}/transportation.json && echo "transportation.json verified" || echo "transportation.json missing"
+test -f data/{destination-slug}/meals.json && echo "meals.json verified" || echo "meals.json missing"
+test -f data/{destination-slug}/accommodation.json && echo "accommodation.json verified" || echo "accommodation.json missing"
+test -f data/{destination-slug}/attractions.json && echo "attractions.json verified" || echo "attractions.json missing"
+test -f data/{destination-slug}/entertainment.json && echo "entertainment.json verified" || echo "entertainment.json missing"
+test -f data/{destination-slug}/shopping.json && echo "shopping.json verified" || echo "shopping.json missing"
+test -f data/{destination-slug}/transportation.json && echo "transportation.json verified" || echo "transportation.json missing"
 ```
 
 If any file missing: Debug and re-invoke failed agent.

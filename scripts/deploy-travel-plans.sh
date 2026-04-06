@@ -10,6 +10,8 @@ REPO_NAME="${GITHUB_PAGES_REPO:-travel-planner-graph}"
 BRANCH="${GITHUB_PAGES_BRANCH:-gh-pages}"
 LOCAL_DEPLOY_DIR="${LOCAL_DEPLOY_DIR:-/var/www/travel}"
 LOCAL_DEPLOY_DOMAIN="${LOCAL_DEPLOY_DOMAIN:-travel.life-ai.app}"
+DEPLOY_AUTHOR="${DEPLOY_AUTHOR:-$(git config --get user.name 2>/dev/null || echo 'Travel Planner')}"
+MIN_HTML_SIZE="${MIN_HTML_SIZE:-50000}"
 
 # Create secure temporary directory
 DEPLOY_DIR=$(mktemp -d -t travel-planner-deploy-XXXXXX)
@@ -85,7 +87,7 @@ generate_index_html() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Travel Plans | life-ai.app</title>
+<title>Travel Plans | ${LOCAL_DEPLOY_DOMAIN}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -135,7 +137,7 @@ generate_index_html() {
 <body>
 <div class="container">
 <h1>Travel Plans</h1>
-<p class="subtitle">Yuge Tang &mdash; PLAN_COUNT_PLACEHOLDER plans</p>
+<p class="subtitle">${DEPLOY_AUTHOR} &mdash; PLAN_COUNT_PLACEHOLDER plans</p>
 <ul class="plan-list">
 EOF_INDEX_HEAD
 
@@ -398,9 +400,9 @@ cp "$INPUT_FILE" "${TARGET_DIR}/index.html"
 
 # Validate deployed file
 FILE_SIZE=$(wc -c < "${TARGET_DIR}/index.html")
-if [ "$FILE_SIZE" -lt 50000 ]; then
+if [ "$FILE_SIZE" -lt "$MIN_HTML_SIZE" ]; then
     echo "❌ Error: Deployed file too small ($FILE_SIZE bytes)"
-    echo "  Expected at least 50KB for a valid travel plan"
+    echo "  Expected at least ${MIN_HTML_SIZE} bytes for a valid travel plan"
     exit 1
 fi
 
