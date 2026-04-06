@@ -1,0 +1,164 @@
+{
+  "request_id": "dev-20260406-020002",
+  "timestamp": "2026-04-06T12:10:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All five acceptance criteria verified. Schema change is additive and correctly gated (brands optional, not in required, additionalProperties: false preserved). Generator priority logic is correct (brands array preferred over regex fallback). Backward compatibility confirmed via wangfujing plan re-render. Agent and plan.md documentation updated correctly. Zero band-aid patterns detected.",
+    "success_criteria_results": [
+      {
+        "criterion": "save.py validates a shopping item with a brands array (exit code 0)",
+        "verification_method": "Direct jsonschema.validate() call against updated shopping.schema.json using a shopping_item containing a two-entry brands array (Nike SPORTS, Gucci DESIGNER). Also validated a shopping_item WITHOUT brands to confirm backward compat.",
+        "result": "pass",
+        "details": "Both validation tests exited without exception. brands field is present in shopping_item.properties, not in required array, additionalProperties: false preserved. Brand item requires name and category; optional fields: name_local, category_local, floor, description, description_local. Brand item also uses additionalProperties: false.",
+        "evidence": [
+          "AC1: PASS -- shopping_item with brands array validates successfully",
+          "AC4: PASS -- shopping_item WITHOUT brands validates successfully (backward compat)"
+        ]
+      },
+      {
+        "criterion": "shopping agent prompt instructs brands array output instead of notes_base encoding",
+        "verification_method": "Read /root/travel-planner/.claude/agents/shopping.md lines 120-160. Checked brands keyword count (grep -c).",
+        "result": "pass",
+        "details": "shopping.md contains 4 occurrences of 'brands'. Lines 120-124 explicitly instruct agent to populate brands array instead of encoding brand data in notes_base, clarify notes_base is non-brand only, list all required and optional brand fields. Full JSON example at line 139 shows two brand objects with all optional fields populated.",
+        "evidence": [
+          "grep -c 'brands' shopping.md = 4",
+          "Line 120: brands array (for mall-type locations) section added",
+          "Line 121-124: notes_base clarified as non-brand notes only"
+        ]
+      },
+      {
+        "criterion": "Generator reads brands array directly when present and skips _parse_shopping_brands()",
+        "verification_method": "grep on generate-html-interactive.py for shop_item.get.*brands pattern. Read lines 735-737 in context.",
+        "result": "pass",
+        "details": "Line 737: brands = shop_item.get('brands', []) or self._parse_shopping_brands(notes_base, notes_local). When brands is present and non-empty the 'or' short-circuits and _parse_shopping_brands is not called. Git diff in commit 0d4733b confirms this replaced the unconditional _parse_shopping_brands() call.",
+        "evidence": [
+          "grep 'shop_item.get.*brands' returns line 737 exactly as specified in BA spec",
+          "git show 0d4733b confirms old line was: brands = self._parse_shopping_brands(notes_base, notes_local)"
+        ]
+      },
+      {
+        "criterion": "Generator falls back to _parse_shopping_brands(notes_base) when brands is absent",
+        "verification_method": "Generated HTML from wangfujing-dongdan-beijing-20260405-192905 plan (no brands field on any shopping items). Verified HTML produced successfully via fallback path.",
+        "result": "pass",
+        "details": "Output: /root/travel-planner/output/travel-plan-wangfujing-dongdan-beijing-20260405-192905.html (224.7 KB). Script exited cleanly. Dev report confirms this plan exercises the fallback path -- no shopping items have brands field, so _parse_shopping_brands is called for every mall item.",
+        "evidence": [
+          "generate-html-interactive.py wangfujing-dongdan-beijing-20260405-192905 produced 224.7 KB HTML using fallback _parse_shopping_brands path (dev validation_results confirmed)",
+          "Orchestrator backward compat check: script exited with output lines showing HTML path and URL (exit code 0)"
+        ]
+      },
+      {
+        "criterion": "plan.md Step 8 shows brands array format in shopping-agent invocation example",
+        "verification_method": "grep -n 'brands' /root/travel-planner/.claude/commands/plan.md and read lines 397-407.",
+        "result": "pass",
+        "details": "Lines 397-407 in plan.md: 'Shopping Agent - Brands Array Required' bullet added under Step 8. Documents: brands array on parent item (not notes_base), category enum values (DESIGNER|SPORTS|FOOD|LUXURY|CRAFTS), all field names, and two-entry example JSON (Louis Vuitton DESIGNER 1F, Nike SPORTS 2F).",
+        "evidence": [
+          "grep -n 'brands' plan.md returns lines 398, 401, 403",
+          "Line 397: '- **Shopping Agent - Brands Array Required** (for mall/multi-brand locations):'"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause commit cfc5766 introduced _parse_shopping_brands as a workaround for missing schema support. This fix adds the missing schema support (brands property on shopping_item) and updates the generator to use structured data when available. The regex parser is preserved for backward compat but is no longer the primary path. All three layers (schema, agent prompt, generator) updated consistently."
+    },
+    "build_verification": {
+      "status": "skipped",
+      "build_command": null,
+      "deploy_command": null,
+      "build_output_summary": null,
+      "service_healthy": null,
+      "changes_verified_live": null,
+      "skip_reason": "travel-planner is a script-based static site generator, not a deployed web service. Changes affect: a JSON schema file, two agent prompt markdown files, and one Python script. No Docker service rebuild required. The generator script was validated by running it directly against a live data plan (wangfujing). HTML output verified at /root/travel-planner/output/travel-plan-wangfujing-dongdan-beijing-20260405-192905.html."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Backward compatibility -- existing plan without brands renders correctly",
+        "result": "pass",
+        "details": "wangfujing-dongdan-beijing-20260405-192905 plan has no brands field on any shopping items. HTML generation completed successfully producing 224.7 KB output. Fallback _parse_shopping_brands path exercised."
+      },
+      {
+        "test": "Schema backward compat -- shopping_item without brands validates",
+        "result": "pass",
+        "details": "jsonschema.validate() accepted a shopping_item without brands field. brands is optional (not in required array). additionalProperties: false is preserved."
+      },
+      {
+        "test": "Generator syntax check",
+        "result": "pass",
+        "details": "Script runs without SyntaxError. Pre-existing SyntaxWarning on line 1377 is unrelated to this change (noted in dev report validation_results)."
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 4,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      },
+      "notes": "/tmp/ usage at shopping.md lines 252 and 292 is pre-existing (not introduced by this change, confirmed via git diff). It is a script-local temp file for a shell heredoc pattern, acceptable in an agent instruction file."
+    },
+    "band_aid_detection": {
+      "checked": true,
+      "patterns_found": [],
+      "verdict": "clean",
+      "rationale": "The generator change replaces an unconditional regex call with a structured-data-first path that falls back to the same regex. No threshold was lowered, no exception was swallowed, no validation was skipped or removed. _parse_shopping_brands() function is preserved intact for backward compat. This is a proper fix upstream (schema + agent) not a band-aid on the consumer."
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true,
+      "skip_reason": "travel-planner is a CLI-based static site generator, not a running web app. No browser-based UI to test. Verification performed via direct script execution and schema validation."
+    },
+    "ui_test_results": [
+      {
+        "scenario": "N/A - travel-planner is a CLI tool with no running web service",
+        "url": null,
+        "status": "skipped",
+        "reason": "No web interface to test. All verification performed via Python script execution and JSON schema validation.",
+        "steps_performed": [],
+        "assertions": [],
+        "evidence": null
+      }
+    ],
+    "generated_tests": [],
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    },
+    "self_verification": {
+      "claims_total": 8,
+      "claims_with_evidence": 8,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high",
+      "evidence_summary": [
+        "AC1 schema validation: executed jsonschema.validate() directly -- not code reading",
+        "AC2 agent prompt: read file lines 120-154, confirmed brands instructions present",
+        "AC3 generator priority logic: grep confirmed line 737 exact pattern; git show 0d4733b confirmed replacement of old line",
+        "AC4 backward compat: wangfujing plan regenerated successfully via CLI execution",
+        "AC5 plan.md update: grep -n confirmed lines 397-407 contain full brands example",
+        "Band-aid check: git diff of all 4 files reviewed, no threshold/check weakening found",
+        "Hardcode scan: grep patterns run on all 4 modified files, /tmp/ in shopping.md confirmed pre-existing",
+        "Schema structure: python3 introspection confirmed brands optional, additionalProperties preserved"
+      ]
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}

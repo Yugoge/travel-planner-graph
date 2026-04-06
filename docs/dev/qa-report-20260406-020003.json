@@ -1,0 +1,189 @@
+{
+  "request_id": "dev-20260406-020003",
+  "timestamp": "2026-04-06T02:00:03Z",
+  "qa": {
+    "status": "warning",
+    "overall_assessment": "AC2 (agent definition files) fully satisfied: all 6 agent .md files have schema validation instructions with correct absolute paths and correct step numbering. AC3 (no regressions) satisfied: bilingual annotations, GPS requirements, Save to: lines, and return value requirements are all intact. AC1 (Step 8 inline prompts) partially satisfied: only meals-agent has an inline schema validation line in plan.md Step 8; the other 5 agents are not covered by inline prompts because plan.md Step 8 only contains one inline prompt block (meals-agent). Dev report acknowledged this gap as a recommendation. The core goal of reducing re-invocations is substantially achieved via agent definition files (which cover all invocations including Steps 15 and 20), with a known gap for Step 8 first-invocation inline prompts for 5 agents.",
+    "success_criteria_results": [
+      {
+        "criterion": "Each of the 6 Step 8 prompts in plan.md contains a schema validation instruction before the Save to: line",
+        "verification_method": "grep -c 'Validate output against schema' /root/travel-planner/.claude/commands/plan.md; read plan.md lines 335-420 to inspect all Step 8 agent blocks",
+        "result": "warning",
+        "details": "plan.md Step 8 contains only 1 inline prompt block (meals-agent, lines 346-384) with a schema validation line. The other 5 agents (accommodation, attractions, entertainment, shopping, transportation) are invoked by name reference only (lines 339-344) without inline prompt blocks. Only meals-agent satisfies AC1; 5 of 6 agents miss AC1 inline coverage. Per dev report task ID 1, this was acknowledged: 'Step 8 only contains one inline prompt block (meals-agent); the other 5 agents are covered via their agent definition files'. The fix is substantively correct in preventing re-invocations but does not technically satisfy the BA spec AC1 wording.",
+        "evidence": [
+          "grep count: 1 occurrence in plan.md",
+          "plan.md:379 - 'Validate output against schema: /root/travel-planner/schemas/meals.schema.json before saving.'",
+          "plan.md:380 - 'Save to: data/{destination-slug}/meals.json' (line order correct)",
+          "Lines 339-344: other 5 agents listed by name only, no inline prompt blocks with schema validation"
+        ]
+      },
+      {
+        "criterion": "Each of the 6 agent .md definition files contains a schema reference near the save instruction",
+        "verification_method": "grep -l 'Validate output against schema' across all 6 agent .md files; grep -A3 to inspect exact wording and absolute paths; check step numbering before/after insertion",
+        "result": "pass",
+        "details": "All 6 agent definition files contain the schema validation instruction at step 4, immediately before the save.py step (now step 5). Absolute paths are correct and agent-specific. Step renumbering is correct (steps previously 4-5-6 are now 5-6-7).",
+        "evidence": [
+          "meals.md:276 - step 4 references /root/travel-planner/schemas/meals.schema.json",
+          "attractions.md:276 - step 4 references /root/travel-planner/schemas/attractions.schema.json",
+          "entertainment.md:254 - step 4 references /root/travel-planner/schemas/entertainment.schema.json",
+          "shopping.md:283 - step 4 references /root/travel-planner/schemas/shopping.schema.json",
+          "accommodation.md:288 - step 4 references /root/travel-planner/schemas/accommodation.schema.json",
+          "transportation.md:260 - step 4 references /root/travel-planner/schemas/transportation.schema.json",
+          "Each file: step 5 is 'Save using scripts/save.py' - correct ordering"
+        ]
+      },
+      {
+        "criterion": "The instruction uses absolute path /root/travel-planner/schemas/{agent}.schema.json",
+        "verification_method": "grep -n '/root/travel-planner/schemas/' across all 7 modified files",
+        "result": "pass",
+        "details": "All schema path references use the correct absolute prefix /root/travel-planner/schemas/ with the correct agent-specific filename for all 6 agent .md files and the meals-agent inline prompt in plan.md.",
+        "evidence": [
+          "meals.md: /root/travel-planner/schemas/meals.schema.json",
+          "attractions.md: /root/travel-planner/schemas/attractions.schema.json",
+          "entertainment.md: /root/travel-planner/schemas/entertainment.schema.json",
+          "shopping.md: /root/travel-planner/schemas/shopping.schema.json",
+          "accommodation.md: /root/travel-planner/schemas/accommodation.schema.json",
+          "transportation.md: /root/travel-planner/schemas/transportation.schema.json",
+          "plan.md:379: /root/travel-planner/schemas/meals.schema.json",
+          "ls /root/travel-planner/schemas/*.schema.json confirmed all 6 referenced schema files exist"
+        ]
+      },
+      {
+        "criterion": "No existing prompt fields altered (bilingual, GPS, return value requirements intact)",
+        "verification_method": "grep for Bilingual Annotation, GPS Coordinates, return ONLY, Save to: in plan.md Step 8 meals prompt block",
+        "result": "pass",
+        "details": "All existing prompt fields intact. Bilingual annotation requirement present at plan.md:359-360. GPS coordinates requirement present at plan.md:367-376. 'return ONLY the word complete' intact at plan.md:382. 'Save to: data/{destination-slug}/meals.json' intact at plan.md:380, immediately after the schema validation line at plan.md:379.",
+        "evidence": [
+          "plan.md:359 - 'IMPORTANT - Bilingual Annotation Required' block intact",
+          "plan.md:367 - 'IMPORTANT - GPS Coordinates Required' block intact",
+          "plan.md:379-380 - schema validation line immediately before Save to: line (correct order)",
+          "plan.md:382 - 'return ONLY the word complete' intact"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "The root cause was agents lacking schema path references, preventing self-validation at write time. All 6 agent definition files now contain explicit schema path references in step 4 of their save checklist, immediately before the save.py call. This covers the primary re-invocation paths (Steps 15 and 20 re-invocations). Step 8 first-invocation coverage is partial (meals-agent only via inline prompt; other 5 via agent definition file which is also loaded on Task invocation). The referenced schema files all exist on disk. The fix substantially addresses the root cause for all agent re-invocation scenarios."
+    },
+    "build_verification": {
+      "status": "skipped",
+      "build_command": null,
+      "deploy_command": null,
+      "build_output_summary": null,
+      "service_healthy": null,
+      "changes_verified_live": null,
+      "skip_reason": "Changes are exclusively to .md prompt definition files (.claude/agents/*.md, .claude/commands/plan.md). No deployed code, frontend, backend, or Docker services were modified. These files are read by the Claude agent harness at invocation time, not compiled or deployed."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Save to: line format unchanged in plan.md",
+        "result": "pass",
+        "details": "plan.md:380 - 'Save to: data/{destination-slug}/meals.json' unchanged. Downstream parsing of this line format is preserved."
+      },
+      {
+        "test": "save.py invocation steps in agent .md files unchanged",
+        "result": "pass",
+        "details": "All 6 agent files retain 'Save using scripts/save.py' as step 5 (renumbered from step 4). The save.py command arguments (--trip, --agent, --input) are intact across all files."
+      },
+      {
+        "test": "Step numbering continuity in agent .md files",
+        "result": "pass",
+        "details": "All 6 agent files: schema validation inserted as step 4, save.py promoted to step 5. Grep confirms steps 4-5 present in correct order for all 6 files."
+      },
+      {
+        "test": "Schema files referenced actually exist on disk",
+        "result": "pass",
+        "details": "ls /root/travel-planner/schemas/*.schema.json returned all 6 agent schema files: meals.schema.json, accommodation.schema.json, attractions.schema.json, entertainment.schema.json, shopping.schema.json, transportation.schema.json. All exist."
+      },
+      {
+        "test": "timeline-agent and budget-agent not modified (out of scope)",
+        "result": "pass",
+        "details": "Dev report blast_radius lists only 7 files (plan.md + 6 agent .md files). No timeline or budget agent files in modified list. Confirmed by grep: no schema validation lines in those files."
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 7,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true
+    },
+    "ui_test_results": [
+      {
+        "scenario": "Playwright/browser verification of plan workflow",
+        "url": null,
+        "status": "skipped",
+        "reason": "Changes are exclusively to agent prompt .md definition files. These are not web-facing assets — they are instruction documents consumed by the Claude agent harness when agents are invoked. There is no running web service to test, no UI to interact with, and no browser-visible behavior changed by this modification. The only observable effect requires triggering a full /plan invocation, which is an agent orchestration workflow, not a web UI flow.",
+        "steps_performed": [],
+        "assertions": [],
+        "evidence": null,
+        "dynamic_verification": {
+          "before_screenshot": null,
+          "after_screenshot": null,
+          "user_visible_change_confirmed": false
+        }
+      }
+    ],
+    "generated_tests": [
+      {
+        "path": "tests/scripts/validate-schema-references.py",
+        "type": "unit",
+        "description": "Validates that all 6 agent .md files and plan.md contain schema validation instructions with correct absolute paths, that referenced schema files exist on disk, and that Save to: lines are intact",
+        "request_id": "dev-20260406-020003",
+        "edge_case_id": null,
+        "execution": {
+          "status": "pass",
+          "exit_code": 0,
+          "total_checks": 20,
+          "violations_found": 0,
+          "violations": [],
+          "error_message": null
+        }
+      }
+    ],
+    "all_findings": [
+      {
+        "severity": "major",
+        "location": "/root/travel-planner/.claude/commands/plan.md:335-384",
+        "issue": "AC1 partially unmet: plan.md Step 8 contains an inline schema validation instruction only for meals-agent. The 5 remaining agents (accommodation, attractions, entertainment, shopping, transportation) in Step 8 are invoked by agent name reference only without inline prompt blocks, so they have no inline schema validation instruction at Step 8 first-invocation. Coverage is provided via agent .md files (which are loaded on Task invocation), but the BA spec AC1 requires the instruction in each of the 6 Step 8 prompt blocks.",
+        "recommendation": "Add inline prompt blocks for all 5 remaining agents in plan.md Step 8 (following the same pattern as meals-agent), each containing 'Validate output against schema: /root/travel-planner/schemas/{agent}.schema.json before saving.' immediately before their Save to: line. This is also flagged in the dev report recommendations section.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 1,
+      "minor_issues": 0,
+      "total_findings": 1,
+      "release_recommendation": "approve-with-warnings"
+    },
+    "self_verification": {
+      "claims_total": 8,
+      "claims_with_evidence": 8,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
