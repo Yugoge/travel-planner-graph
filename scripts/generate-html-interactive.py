@@ -729,6 +729,13 @@ class InteractiveHTMLGenerator:
                 brands = self._parse_shopping_brands(notes_base, notes_local)
                 if brands:
                     for brand in brands:
+                        # Try brand-specific image first, fall back to mall image
+                        brand_cache_key = f"brand_{brand['name']}"
+                        brand_img = ""
+                        if self.images_cache and "pois" in self.images_cache:
+                            brand_img = self.images_cache["pois"].get(brand_cache_key, "")
+                        brand_img = brand_img or mall_image
+
                         merged["shopping"].append({
                             "name_base": brand["name"],
                             "name_local": brand.get("name_local", brand["name"]),
@@ -744,7 +751,7 @@ class InteractiveHTMLGenerator:
                             "mall_name_base": shop_name_base,
                             "mall_name_local": shop_name_local,
                             "optional": shop_item.get("optional", False),
-                            "image": mall_image,
+                            "image": brand_img,
                             "time": mall_time,
                             "links": {}
                         })
