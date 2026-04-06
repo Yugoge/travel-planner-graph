@@ -226,7 +226,7 @@ For each day, create timeline dictionary with:
 - ✅ Detect conflicts and generate warnings
 
 **What timeline CANNOT do**:
-- ❌ Add train numbers that aren't in transportation.json (e.g., adding "D5121" when transportation.json only has placeholder "VERIFIED BY USER")
+- ❌ Add train numbers that aren't in transportation.json (e.g., adding "D9999" when transportation.json only has placeholder "VERIFIED BY USER")
 - ❌ Add restaurant names that aren't in meals.json
 - ❌ Add attraction names that aren't in attractions.json
 - ❌ Add booking details, prices, or verification status from any source
@@ -276,7 +276,7 @@ For each day, create timeline dictionary with:
 **DO NOT include location_change transport (train, flight) in travel_segments.**
 
 **Why this distinction exists**:
-- `timeline` object contains ALL activities including inter-city transport (train D5121, flights)
+- `timeline` object contains ALL activities including inter-city transport (train D9999, flights)
 - `travel_segments` array is for UI rendering of short intra-city transport hops between activities
 - Inter-city transport is already in timeline via `transportation.json` location_change field
 - Including inter-city transport in travel_segments creates data duplication and violates separation of concerns
@@ -289,7 +289,7 @@ For each day, create timeline dictionary with:
 - ✅ Ferry across river
 
 **What does NOT belong in travel_segments**:
-- ❌ High-speed train between cities (train D5121)
+- ❌ High-speed train between cities (train D9999)
 - ❌ Flights between cities
 - ❌ Long-distance buses between provinces
 - ❌ ANY transport marked as location_change in transportation.json
@@ -310,7 +310,7 @@ For each day, create timeline dictionary with:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
    - `name_local`: Local language — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]" (translated to destination language)
    - `type_base`: "walk" | "taxi" | "metro" | "bus" | "ferry"
-   - `type_local`: local language equivalent (e.g., "步行", "出租车", "地铁")
+   - `type_local`: local language equivalent (e.g., "walk", "taxi", "metro" translated to destination language)
    - `icon`: emoji icon for display (e.g., "🚶", "🚕", "🚇")
    - `start_time`, `end_time`: HH:MM format
    - `duration_minutes`: integer
@@ -374,9 +374,9 @@ Every day MUST end with a travel_segment representing the journey back to the ho
    ```json
    {
      "name_base": "Return to [Hotel Name from accommodation.json]",
-     "name_local": "返回[Hotel name_local from accommodation.json]",
+     "name_local": "Return to [Hotel name_local from accommodation.json] (in destination language)",
      "type_base": "[walk|metro|taxi from selected route]",
-     "type_local": "[步行|地铁|出租车 based on type_base]",
+     "type_local": "[walk|metro|taxi in destination language, based on type_base]",
      "icon": "[🚶|🚇|🚕 based on type_base]",
      "start_time": "[last_activity end_time]",
      "end_time": "[start_time + duration from gaode-maps API]",
