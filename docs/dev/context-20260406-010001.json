@@ -1,0 +1,118 @@
+{
+  "request_id": "dev-20260406-010001",
+  "timestamp": "2026-04-06T01:00:01Z",
+  "requirement": {
+    "original": "Fix check-budget-overage.py crash when plan uses CNY instead of EUR",
+    "clarified": "Extend check-budget-overage.py to resolve overage and percentage values from CNY-named fields (overage_cny, overage_percent) and their known nested paths (data.trip_summary, data.days[*].budget_vs_user), in addition to the existing EUR-named fields, so the script does not exit 2 for valid CNY plans.",
+    "what": "Multi-currency field resolution in check-budget-overage.py so CNY plans exit 0 or 1 instead of 2",
+    "why": "CNY travel plans (e.g. wangfujing-dongdan-beijing) fail the budget overage check with exit code 2 because their overage fields use different names and nesting from the hard-coded EUR lookups",
+    "where": [
+      "scripts/check-budget-overage.py"
+    ],
+    "scope": {
+      "included": [
+        "Extend field-lookup logic to accept overage_cny and overage_percent as alternatives to overage_eur and overage_percentage",
+        "Search data.trip_summary as an additional candidate path",
+        "Search data.days[*].budget_vs_user as an additional candidate path",
+        "Apply EUR threshold via CNY->EUR conversion when currency_exchange_rate.cny_to_eur is present",
+        "Skip absolute EUR threshold (apply only percentage threshold) when no exchange rate is available",
+        "Update error message to list all accepted field names and paths"
+      ],
+      "excluded": [
+        "Generating or patching missing overage fields in budget.json files",
+        "Support for currencies other than EUR and CNY",
+        "Modifying any budget.json data files"
+      ]
+    },
+    "success_criteria": [
+      "Invoking script on wangfujing-dongdan-beijing-20260405-192905/budget.json exits 0 or 1, not 2",
+      "Invoking script on beijing-exchange-bucket-list-20260202-232405/budget.json continues to exit 0 or 1",
+      "Invoking script on china-exchange-bucket-list-2026/budget.json exits 2 with an error message listing all accepted field names",
+      "No ZeroDivisionError when currency_exchange_rate.cny_to_eur is absent or zero"
+    ],
+    "constraints": [
+      "No new third-party dependencies — stdlib only",
+      "Must preserve existing exit code semantics: 0=acceptable, 1=review required, 2=error",
+      "Must not lower the percentage or EUR thresholds"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Script exits 2 with 'Error: Missing overage_eur or overage_percentage' when run against CNY plans",
+    "root_cause": "check_budget_overage() hard-codes the field names overage_eur and overage_percentage and only searches three paths (root, summary, data). CNY plans store these values as overage_cny / overage_percent under data.trip_summary or data.days[*].budget_vs_user — none of which match the hard-coded lookups.",
+    "root_cause_commit": "N/A — no single commit introduced the bug; the script was authored for EUR-only plans and CNY plan structures evolved independently",
+    "why_introduced": "Script was written when only EUR-denominated plans existed. CNY plan shapes were added later by the budget agent without updating the check script.",
+    "why_problematic": "The script's field-detection logic is not exhaustive: it only handles overage_eur / overage_percentage under root/summary/data, while CNY plans use overage_cny / overage_percent under data.trip_summary.",
+    "timeline": "CNY trip_summary shape appeared at latest by 2026-04-05 (wangfujing plan). EUR shape with CNY conversion in data existed from at least 2026-02-02 (beijing-exchange plan).",
+    "affected_files": [
+      "scripts/check-budget-overage.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "scripts/check-budget-overage.py is modified (M) on master branch as of 2026-04-05",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11 | dca40ed Auto-commit: 2026-04-05 20:37:24 | d6c8d0b Auto-commit: 2026-04-05 20:31:38",
+    "file_contents": {
+      "scripts/check-budget-overage.py": {
+        "lines": 117,
+        "current_field_lookup_paths": [
+          "root.overage_eur",
+          "root.summary.overage_eur",
+          "root.data.overage",
+          "root.overage_percentage",
+          "root.summary.overage_percentage",
+          "root.data.overage_percentage"
+        ],
+        "missing_lookup_paths": [
+          "root.data.trip_summary.overage_cny",
+          "root.data.trip_summary.overage_percent",
+          "root.data.overage_cny",
+          "root.data.overage_percent",
+          "root.data.days[*].budget_vs_user.overage_cny",
+          "root.data.days[*].budget_vs_user.overage_percent"
+        ]
+      }
+    },
+    "dependencies": {
+      "currency_exchange_rate_path": "root.data.currency_exchange_rate.cny_to_eur",
+      "example_rate": 7.8,
+      "note": "Only the beijing-exchange plan embeds an exchange rate; wangfujing and others do not"
+    },
+    "environment": {
+      "python": "3.x stdlib only",
+      "budget_files_surveyed": [
+        "data/beijing-exchange-bucket-list-20260202-232405/budget.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/budget.json",
+        "data/china-exchange-bucket-list-2026/budget.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/budget.json"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Extend the existing sequential field-lookup blocks in check_budget_overage() to also probe overage_cny and overage_percent under data.trip_summary and data (peer to overage_eur). After resolving the absolute overage value, detect whether it is in CNY: if currency_exchange_rate.cny_to_eur is present and nonzero, convert to EUR for threshold comparison; otherwise skip the absolute EUR threshold and apply only the percentage threshold. Update error message to list all accepted variants.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/check-budget-overage.py"
+    ],
+    "key_changes": [
+      "Add overage_cny lookup in the overage_eur block (same three paths + data.trip_summary)",
+      "Add overage_percent lookup in the overage_percentage block (same three paths + data.trip_summary)",
+      "Add data.days[0].budget_vs_user as a fourth candidate path for both fields",
+      "After extracting values, resolve currency: if field name ends in _cny, set is_cny=True",
+      "If is_cny and exchange rate present and nonzero: overage_for_eur_check = overage_abs / rate",
+      "If is_cny and no exchange rate: skip absolute EUR threshold (eur_exceeded = False)",
+      "Update the None-check error message to list: overage_eur, overage_cny, overage_percentage, overage_percent",
+      "Update the output print lines to show the actual currency symbol/code dynamically"
+    ],
+    "validation_approach": "Run script against all four known budget.json files and verify exit codes: beijing-exchange->0 or 1, wangfujing->0 or 1, china-exchange->2 with updated error, china-feb15->2 with updated error"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause: hard-coded field names that do not match CNY plan field naming conventions. No architectural decisions or novel patterns involved."
+  }
+}

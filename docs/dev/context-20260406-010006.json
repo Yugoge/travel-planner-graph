@@ -1,0 +1,120 @@
+{
+  "request_id": "dev-20260406-010006",
+  "timestamp": "2026-04-06T01:00:06Z",
+  "requirement": {
+    "original": "Fix check-budget-overage.py to support CNY and other currencies, not just EUR. The script at /root/travel-planner/scripts/check-budget-overage.py hardcodes EUR field names. It needs to detect the plan currency and use appropriate field names. For CNY plans, look for overage_cny or calculate overage from total vs user_budget fields in budget.json. NOTE: Bug8 and Bug26 are in the same file. Combine the fixes.",
+    "clarified": "Fix check-budget-overage.py so it auto-detects currency from budget.json field names and uses the correct overage field (overage_eur or overage_cny or derived) for comparison. Rename EUR-hardcoded parameter threshold_eur to threshold_amount. Update all output labels to use the detected currency symbol. This is a combined Bug8 + Bug26 fix scoped to the single file.",
+    "what": "Multi-currency support in check-budget-overage.py: detect currency, use correct field names, rename parameters, fix output labels",
+    "why": "CNY-denominated plans (wangfujing-dongdan-beijing) fail with exit code 2 because the script only searches for overage_eur and overage_percentage, missing overage_cny and overage_percent. The output also incorrectly shows EUR symbols for non-EUR plans.",
+    "where": [
+      "scripts/check-budget-overage.py"
+    ],
+    "scope": {
+      "included": [
+        "Currency detection logic (inspect field presence in data structure)",
+        "CNY overage field lookup: data.trip_summary.overage_cny, data.overage_cny, summary.overage_cny",
+        "CNY percentage field lookup: overage_percent (no 'age' suffix)",
+        "Per-day overage aggregation fallback from data.days[*].budget_vs_user.overage_cny",
+        "Rename function parameter threshold_eur to threshold_amount",
+        "Rename CLI argument label overage_threshold_eur to overage_threshold",
+        "Update all print() calls: replace hardcoded euro symbol with detected currency symbol",
+        "Update error message to list all searched field paths (EUR and CNY variants)",
+        "Update module docstring and usage examples"
+      ],
+      "excluded": [
+        "budget.json data files (no schema changes)",
+        "budget agent (budget.md) schema",
+        "Any other script beyond check-budget-overage.py",
+        "Exit code semantics (0/1/2 unchanged)",
+        "Currency conversion between CNY and EUR"
+      ]
+    },
+    "success_criteria": [
+      "EUR plan (overage_eur present) continues to produce correct output with euro symbol",
+      "CNY plan with data.trip_summary.overage_cny produces correct output with yen symbol",
+      "Plans with no recognizable overage field exit with code 2 and list all searched paths",
+      "No hardcoded overage_eur in field-lookup logic (only in currency detection map as a string key)",
+      "No hardcoded EUR symbol in output (symbol comes from detected currency)",
+      "Function signature uses threshold_amount not threshold_eur"
+    ],
+    "constraints": [
+      "Single file modification only: scripts/check-budget-overage.py",
+      "Exit codes 0/1/2 must remain identical",
+      "Must not require changes to existing budget.json data files",
+      "Must handle both overage_percent and overage_percentage field name variants"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Running check-budget-overage.py against a CNY budget.json (e.g., wangfujing-dongdan-beijing) exits with code 2 and error: 'Missing overage_eur or overage_percentage'. The script never finds overage_cny or overage_percent.",
+    "root_cause": "Lines 53-66 of check-budget-overage.py search exclusively for 'overage_eur' (3 locations) and 'overage_percentage' (3 locations). CNY plans store overage as 'overage_cny' under 'data.trip_summary' and percentage as 'overage_percent' (without 'age' suffix). Neither variant is in the lookup. Additionally, the threshold parameter name 'threshold_eur' and all output labels embed 'EUR' / '€' unconditionally.",
+    "root_cause_commit": "cb6cc4d -- fix: deploy slug parsing bug + budget.json USD to CNY conversion",
+    "why_introduced": "The script was originally written for EUR-denominated European trips. When CNY support was added to the budget agent (commit cb6cc4d converted USD to CNY), new field names (overage_cny, overage_percent, trip_summary) were introduced in budget.json, but check-budget-overage.py was not updated to match.",
+    "why_problematic": "Any CNY plan that runs through the generate-and-deploy pipeline will have its budget overage check silently fail with exit code 2, bypassing the threshold gate entirely. The reviewer gets no overage signal for CNY trips.",
+    "timeline": "Script created before CNY support. CNY field names introduced in budget agent around commit cb6cc4d (2026-02-02 era). Script not updated at that time.",
+    "affected_files": [
+      "scripts/check-budget-overage.py"
+    ]
+  },
+  "observed_budget_json_structures": {
+    "eur_plan_example": {
+      "path": "data/beijing-exchange-bucket-list-20260202-232405/budget.json",
+      "overage_field": "data.overage_eur",
+      "pct_field": "data.overage_percentage",
+      "currency_symbol": "EUR"
+    },
+    "cny_plan_example": {
+      "path": "data/wangfujing-dongdan-beijing-20260405-192905/budget.json",
+      "overage_field": "data.trip_summary.overage_cny",
+      "pct_field": "data.trip_summary.overage_percent",
+      "currency_symbol": "CNY",
+      "note": "Also has per-day data.days[N].budget_vs_user.overage_cny as fallback"
+    },
+    "cny_multiday_no_summary": {
+      "path": "data/china-feb-15-mar-7-2026-20260202-195429/budget.json",
+      "overage_field": "none explicit",
+      "pct_field": "none explicit",
+      "currency_symbol": "CNY",
+      "note": "data is a list of day objects; must derive from per-day totals or treat as no-overage-data"
+    }
+  },
+  "context": {
+    "codebase_state": "scripts/check-budget-overage.py modified (M in git status)",
+    "recent_commits": "47d77bb Auto-commit 2026-04-05 20:58:11; dca40ed Auto-commit 2026-04-05 20:37:24",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Replace the EUR-only field lookup with a currency-detection-then-lookup approach. Build a CURRENCY_FIELDS map keyed by currency code. Probe budget.json in priority order to identify currency. Then search for overage using the currency-specific field names. Fall back to per-day aggregation if trip_summary is absent. Rename threshold_eur parameter to threshold_amount throughout. Replace hardcoded euro symbol in all print() statements with the detected symbol.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/check-budget-overage.py"
+    ],
+    "implementation_notes": {
+      "currency_detection_order": [
+        "Check for 'overage_eur' at root, data, summary → EUR",
+        "Check for 'overage_cny' at root, data, data.trip_summary, summary → CNY",
+        "Check for 'overage_amount' at root, summary → generic (no symbol prefix)"
+      ],
+      "cny_pct_field_variants": [
+        "overage_percent",
+        "overage_percentage"
+      ],
+      "per_day_aggregation": "If no trip-level overage_cny found but data is a list, sum data[*].budget_vs_user.overage_cny or budget_vs_user.overage if present",
+      "parameter_rename": "threshold_eur → threshold_amount in function signature, default stays 200.0; update sys.argv[2] assignment comment and docstring",
+      "output_label_fix": "Replace all f-string '€{overage_eur' with f'{symbol}{overage_amount'; replace 'Thresholds: €{threshold_eur}' with f'Thresholds: {symbol}{threshold_amount}'"
+    },
+    "validation_approach": "QA should run the script against both EUR and CNY sample budget.json files and verify: exit codes, currency symbols in output, no stderr on valid files, and exit code 2 with descriptive message on missing-field files."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause: wrong field names in lookup dict and hardcoded currency symbol in output. No architectural decision or pattern choice involved."
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "request_id": "dev-20260406-010005",
+  "timestamp": "2026-04-06T01:00:05Z",
+  "requirement": {
+    "original": "Make image fetch failure block the generate-and-deploy pipeline instead of silently continuing",
+    "clarified": "Image fetch failures in Step 1 of generate-and-deploy.sh are silently swallowed by `|| echo` constructs. Add one retry on failure; if the retry also fails, emit a loud (RED/banner) warning and continue -- images are optional but degradation must be visible in the log.",
+    "what": "Replace all three `|| echo` failure handlers on fetch-images-batch.py call sites with a retry-once-then-warn-loudly pattern implemented as a reusable bash function",
+    "why": "Broken image fetches silently deploy without images; operators have no signal that the output is degraded until they manually inspect the live page",
+    "where": [
+      "scripts/generate-and-deploy.sh lines 93, 101, 104 (Step 1, image fetch block)"
+    ],
+    "scope": {
+      "included": [
+        "Retry logic (one retry = two total attempts) for all three fetch-images-batch.py call sites",
+        "Loud RED warning with exit code on double failure",
+        "Pipeline continues after warning (images remain optional)",
+        "Single helper function to avoid copy-paste across call sites"
+      ],
+      "excluded": [
+        "Modifying fetch-images-batch.py",
+        "Changing retry count beyond one",
+        "Blocking deploy on image failure",
+        "Modifying any other pipeline step",
+        "Changing the POI_COUNT > 50 threshold logic"
+      ]
+    },
+    "success_criteria": [
+      "fetch-images-batch.py is called a second time when the first attempt exits non-zero",
+      "A RED multi-line warning containing FAILED or WARNING is printed when both attempts fail",
+      "Steps 2-5 complete successfully even after a double image-fetch failure",
+      "No behavioral change when fetch-images-batch.py exits zero on first attempt",
+      "All three call sites (lines 93, 101, 104) apply the same logic"
+    ],
+    "constraints": [
+      "set -euo pipefail is active; exit code must be captured explicitly, not left to propagate",
+      "2>/dev/null on Python invocations should be preserved on first attempt; stderr may surface on retry failure for diagnostics",
+      "All three call sites pass different argument combinations; helper function must forward arguments faithfully"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Image fetch failures produce no visible signal in the deploy log; the pipeline completes and deploys with broken or missing images without any warning",
+    "root_cause": "All three call sites of fetch-images-batch.py in Step 1 use `|| echo` or `|| echo -e` to absorb non-zero exit codes, converting hard failures into informational-looking single-line messages that blend into normal log output. There is no retry and no visual distinction between a successful fetch and a failed one.",
+    "root_cause_commit": "N/A - pattern present from initial script authorship; not introduced by a specific recent commit",
+    "why_introduced": "The `|| echo` pattern was used to intentionally bypass `set -euo pipefail` so images could remain optional and not abort the pipeline",
+    "why_problematic": "Bypassing the error entirely makes failures invisible. An operator reading the log cannot distinguish 'fetch succeeded' from 'fetch failed silently'. Broken deployments go undetected.",
+    "timeline": "Present since at least commit 74d3527 (2026-02-13); no change to failure handling in subsequent commits",
+    "affected_files": [
+      "scripts/generate-and-deploy.sh"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (unrelated to this fix)",
+    "recent_commits": "d6c8d0b Auto-commit: 2026-04-05 20:31:38 (modified fetch-images-batch.py minor change and sync-agent-data.py); e26314a Auto-commit 2026-03-20; 34b5cf5 cleanup; 9b42ee0 fix: Use location_local for Gaode searches",
+    "file_contents": {
+      "generate-and-deploy.sh:line_range": "Lines 80-112 contain the full Step 1 image fetch block with three fetch-images-batch.py invocations at lines 93, 101, and 104. Color variables RED/YELLOW/GREEN/NC are defined at lines 8-12."
+    },
+    "dependencies": {
+      "fetch-images-batch.py": "Called by all three sites; not modified by this fix",
+      "set -euo pipefail": "Active at line 5; helper function must handle exit codes explicitly"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Define a bash helper function `fetch_images_with_retry` before the Step 1 block. The function accepts all arguments, runs fetch-images-batch.py once, checks the exit code, retries once on failure (optionally with a 1-2s sleep), and on second failure prints a RED multi-line banner before returning 0 (so the pipeline continues). Replace all three `|| echo` patterns with calls to this function.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-and-deploy.sh"
+    ],
+    "validation_approach": "Run the pipeline with a deliberately broken plan ID or by temporarily making fetch-images-batch.py exit non-zero; verify (1) two invocation attempts appear in the log, (2) a RED warning banner is printed, (3) HTML generation (Step 2) still runs. Also run against a valid plan to confirm silent success path is unchanged."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bash error handling pattern with clear root cause. No architectural decision or new integration involved."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

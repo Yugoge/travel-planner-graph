@@ -1,0 +1,101 @@
+{
+  "request_id": "dev-20260406-010007",
+  "timestamp": "2026-04-06T01:00:07Z",
+  "requirement": {
+    "original": "Fix deploy-travel-plans.sh to auto-detect the correct git branch instead of assuming main",
+    "clarified": "Verify and fix the full clone/push flow in scripts/deploy-travel-plans.sh so that no hardcoded branch names remain, and the script handles both existing gh-pages repos and new empty repos correctly. The prior push bug (git push origin main) was already fixed; remaining issues are: (1) git commit failing on idempotent redeploy of same file, which causes set -euo pipefail to exit mid-script.",
+    "what": "Audit branch detection throughout the script and fix the git commit failure on no-changes scenario",
+    "why": "Script previously hardcoded 'main' branch in push command, causing deploy failures. Current code is mostly correct but has an edge case where deploying the same file twice silently fails at the commit step.",
+    "where": [
+      "scripts/deploy-travel-plans.sh"
+    ],
+    "scope": {
+      "included": [
+        "Branch variable usage audit throughout deploy script",
+        "Fix git commit no-changes failure (lines 529-534)",
+        "Verify clone path (lines 348-381) uses BRANCH variable correctly",
+        "Verify push path (lines 537-547) uses BRANCH variable correctly"
+      ],
+      "excluded": [
+        "Authentication flow changes",
+        "Source repo (travel-planner) branch handling",
+        "Multi-branch deploy support",
+        "Network timeout handling for git ls-remote"
+      ]
+    },
+    "success_criteria": [
+      "No hardcoded 'main' or 'master' appears in any push, clone, or checkout command",
+      "Script completes without error when deploying the same file twice",
+      "Script correctly creates gh-pages branch when repo has no remote branches yet",
+      "BRANCH variable (defaulting to gh-pages) is used in all git operations"
+    ],
+    "constraints": [
+      "set -euo pipefail must remain -- no weakening of error handling",
+      "Local deploy (Step 6.5) must always succeed regardless of GitHub push outcome",
+      "git commit failure on 'nothing to commit' must be handled without swallowing other git errors"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Script fails when git push uses wrong branch name; secondary issue: script exits on git commit with no changes",
+    "root_cause": "Original script hardcoded 'git push -f origin $BRANCH' but BRANCH was not always set; earlier versions may have had 'git push origin main'. The idempotent redeploy issue exists because git commit exits with code 1 when there is nothing to commit, and set -euo pipefail propagates this as a script failure.",
+    "root_cause_commit": "41e4544 - fix: remove force push from deployment scripts to preserve history (introduced BRANCH variable usage in push); d04e3eb - fix: Enhance deployment reliability with validation and shallow clones (made push non-fatal)",
+    "why_introduced": "Original script was written assuming force-push to a fixed branch; branch name was later parameterized but edge cases around commit/push were not fully handled",
+    "why_problematic": "On idempotent redeploy (same file content), git commit returns exit code 1 even though this is not an error condition. Under set -euo pipefail this terminates the script before the push step, even though local deploy already succeeded.",
+    "timeline": "Bug introduced pre-2026-02-12; push branch fixed in commit 41e4544; push made non-fatal in d04e3eb; git commit idempotency issue remains unfixed",
+    "affected_files": [
+      "scripts/deploy-travel-plans.sh"
+    ]
+  },
+  "context": {
+    "codebase_state": "scripts/deploy-travel-plans.sh is modified (M) in working tree relative to HEAD",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11\ndca40ed Auto-commit: 2026-04-05 20:37:24\nd04e3eb fix: Enhance deployment reliability with validation and shallow clones\n41e4544 fix: remove force push from deployment scripts to preserve history",
+    "file_contents": {
+      "scripts/deploy-travel-plans.sh": {
+        "line_10": "BRANCH=\"${GITHUB_PAGES_BRANCH:-gh-pages}\"",
+        "line_352": "if git ls-remote --heads \"$REPO_URL\" \"$BRANCH\" 2>/dev/null | grep -q \"$BRANCH\"; then",
+        "line_354": "git clone --branch \"$BRANCH\" --single-branch --depth=1 \"$REPO_URL\" \"$DEPLOY_DIR\" 2>&1",
+        "line_371": "git checkout -b \"$BRANCH\"",
+        "line_529_534": "git commit -m \"Add travel plan: ${DESTINATION_SLUG} (${PLAN_DATE})...\"",
+        "line_537": "git remote add origin \"$REPO_URL\" 2>/dev/null || git remote set-url origin \"$REPO_URL\"",
+        "line_541": "if git push origin \"$BRANCH\" 2>&1; then"
+      }
+    },
+    "dependencies": {},
+    "environment": {
+      "shell": "bash with set -euo pipefail",
+      "git_operations": "clone, init, checkout, add, commit, push, remote",
+      "auth_methods": "SSH keys or GITHUB_TOKEN"
+    }
+  },
+  "development_approach": {
+    "strategy": "Fix the git commit step to be idempotent by checking for staged changes before committing. Confirm all branch references use the $BRANCH variable. No structural changes to the script flow.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/deploy-travel-plans.sh"
+    ],
+    "specific_changes": [
+      {
+        "location": "lines 529-534 (git commit block)",
+        "change": "Wrap git commit in a conditional to skip when nothing is staged: replace bare 'git commit -m ...' with 'if ! git diff --cached --quiet || git status --porcelain | grep -q .; then git commit -m ...; else echo \"Nothing new to commit (local deploy already succeeded)\"; fi'",
+        "rationale": "Prevents set -euo pipefail from killing the script on idempotent redeploy; maintains error detection for other git failures"
+      },
+      {
+        "location": "Full script audit",
+        "change": "Confirm no 'main' or 'master' hardcoded strings appear in any git command",
+        "rationale": "The original reported bug; must be verified as fully resolved"
+      }
+    ],
+    "validation_approach": "QA should: (1) grep the modified file for 'push origin main' and 'push origin master' to confirm absence; (2) trace the git commit block to confirm it handles empty-diff case without exiting; (3) verify BRANCH variable is used in all git checkout, clone --branch, push, and Pages API calls"
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix and edge case audit of an existing shell script with clear root cause identified from git history"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

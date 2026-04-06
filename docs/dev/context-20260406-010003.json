@@ -1,0 +1,68 @@
+{
+  "request_id": "dev-20260406-010003",
+  "timestamp": "2026-04-06T01:00:03",
+  "requirement": {
+    "original": "Fix fetch-images-batch.py to read gaode API key from environment variable instead of hardcoded expired key. The script has a hardcoded gaode API key `c0a3b4e300f38b4038845a8a24a0e348` which is expired. The working key is in env var $AMAP_MAPS_API_KEY. Find all hardcoded key references and replace with os.environ.get(\"AMAP_MAPS_API_KEY\").",
+    "clarified": "The hardcoded key `c0a3b4e300f38b4038845a8a24a0e348` no longer exists in the file. The actual bug is that the script reads os.environ.get(\"GAODE_API_KEY\") at line 130, but the correct env var name used throughout the project is AMAP_MAPS_API_KEY. Replace GAODE_API_KEY with AMAP_MAPS_API_KEY at lines 127 and 130.",
+    "what": "Rename env var reference from GAODE_API_KEY to AMAP_MAPS_API_KEY in scripts/fetch-images-batch.py",
+    "why": "GAODE_API_KEY is never set in the runtime environment; AMAP_MAPS_API_KEY holds the working key. The wrong name causes the geocoding fallback to always be skipped silently.",
+    "where": ["scripts/fetch-images-batch.py"],
+    "scope": {
+      "included": [
+        "Replace os.environ.get(\"GAODE_API_KEY\") with os.environ.get(\"AMAP_MAPS_API_KEY\") at line 130",
+        "Update comment on line 127 to reference AMAP_MAPS_API_KEY"
+      ],
+      "excluded": [
+        "Changes to .claude/skills/gaode-maps/ scripts (already use AMAP_MAPS_API_KEY correctly)",
+        "Changes to Google Maps API key handling",
+        "Any refactoring beyond the env var name fix"
+      ]
+    },
+    "success_criteria": [
+      "grep for GAODE_API_KEY in scripts/fetch-images-batch.py returns no matches",
+      "grep for AMAP_MAPS_API_KEY in scripts/fetch-images-batch.py shows the replacement at line ~130",
+      "When AMAP_MAPS_API_KEY is set, geocoding fallback executes rather than being silently skipped"
+    ],
+    "constraints": [
+      "Python script — no imports needed (os already imported)",
+      "No logic changes; name substitution only"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Gaode geocoding fallback in fetch-images-batch.py never executes; gaode_key is always None",
+    "root_cause": "Script reads os.environ.get(\"GAODE_API_KEY\") but the working Gaode API key is stored in AMAP_MAPS_API_KEY. GAODE_API_KEY is never populated in the environment, so gaode_key evaluates to None and the geocoding branch is unconditionally skipped.",
+    "root_cause_commit": "N/A - env var name mismatch, no single introducing commit identified; the gaode-maps skill settled on AMAP_MAPS_API_KEY while fetch-images-batch.py used the older GAODE_API_KEY name",
+    "why_introduced": "The script was likely written before the AMAP_MAPS_API_KEY convention was established by the gaode-maps skill integration",
+    "why_problematic": "City coordinates cannot be resolved via Gaode geocoding fallback, degrading image fetch quality for Chinese cities",
+    "timeline": "Present in current HEAD (d6c8d0b); exact introduction commit not identified",
+    "affected_files": ["scripts/fetch-images-batch.py"]
+  },
+  "context": {
+    "codebase_state": "scripts/fetch-images-batch.py has uncommitted modifications (git status: M scripts/generate-html-interactive.py — unrelated file)",
+    "recent_commits": "d6c8d0b Auto-commit: 2026-04-05 20:31:38",
+    "file_contents": {
+      "scripts/fetch-images-batch.py:127-132": "# Only attempt if GAODE_API_KEY is available\nimport urllib.request\nimport urllib.parse\ngaode_key = os.environ.get(\"GAODE_API_KEY\")\nif gaode_key:\n    params = urllib.parse.urlencode({\"key\": gaode_key, \"address\": city, \"output\": \"json\"})"
+    },
+    "dependencies": {
+      "AMAP_MAPS_API_KEY": "Used by all .claude/skills/gaode-maps/scripts/*.py files correctly"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Single-file edit: replace the wrong env var name GAODE_API_KEY with the correct AMAP_MAPS_API_KEY at two locations (comment line 127, code line 130) in scripts/fetch-images-batch.py",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/fetch-images-batch.py"],
+    "validation_approach": "grep -n GAODE_API_KEY scripts/fetch-images-batch.py should return no results; grep -n AMAP_MAPS_API_KEY scripts/fetch-images-batch.py should show line ~130"
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward variable name correction with clear root cause; no design patterns or architectural decisions involved"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

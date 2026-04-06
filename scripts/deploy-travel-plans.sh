@@ -525,13 +525,17 @@ git config user.email "$GIT_EMAIL"
 
 git add -A
 
-# Create commit message
-git commit -m "Add travel plan: ${DESTINATION_SLUG} (${PLAN_DATE})
+# Create commit message — skip if nothing changed (idempotent redeploy of same content)
+if git diff --cached --quiet; then
+    echo "  No changes to deploy (same content already in gh-pages)"
+else
+    git commit -m "Add travel plan: ${DESTINATION_SLUG} (${PLAN_DATE})
 
 Generated: $CURRENT_TIME
 
 🤖 Auto-deployed by travel-planner
 "
+fi
 
 # Set remote
 git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"

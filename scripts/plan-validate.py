@@ -705,6 +705,7 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
             if d.get("accommodation", {}).get("name_base", "")
         }
 
+        days = timeline_data.get("data", {}).get("days", [])
         for day in days:
             dn = day.get("day", 0)
             tl = day.get("timeline", {})

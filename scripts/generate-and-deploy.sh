@@ -77,6 +77,42 @@ else
     echo -e "${YELLOW}⚠${NC}  Virtual environment not found, using system Python" >&2
 fi
 
+# Helper: run fetch-images-batch.py with one retry on failure.
+# On double failure, print a loud RED banner and return 0 so the pipeline continues.
+# Usage: fetch_images_with_retry <arg1> [arg2 ...]
+fetch_images_with_retry() {
+    local exit_code=0
+
+    # Step 1: First attempt (stderr suppressed to keep log clean)
+    python "$SCRIPT_DIR/fetch-images-batch.py" "$@" 2>/dev/null || exit_code=$?
+
+    if [ "$exit_code" -eq 0 ]; then
+        return 0
+    fi
+
+    # Step 2: First attempt failed — wait briefly then retry (stderr surfaced for diagnostics)
+    echo -e "${YELLOW}⚠${NC}  Image fetch attempt 1 failed (exit $exit_code), retrying in 2s..."
+    sleep 2
+    exit_code=0
+    python "$SCRIPT_DIR/fetch-images-batch.py" "$@" || exit_code=$?
+
+    if [ "$exit_code" -eq 0 ]; then
+        echo -e "${GREEN}✓${NC} Image fetch succeeded on retry"
+        return 0
+    fi
+
+    # Step 3: Both attempts failed — emit a loud RED banner and continue
+    IMAGE_FETCH_STATUS="FAILED"
+    echo -e "${RED}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  WARNING: IMAGE FETCH FAILED (exit $exit_code)            ║${NC}"
+    echo -e "${RED}║  Both attempts failed. Deploying WITHOUT images.  ║${NC}"
+    echo -e "${RED}║  Operators: check API keys and network access.    ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════╝${NC}"
+    return 0
+}
+
+IMAGE_FETCH_STATUS="OK"
+
 # Step 1: Fetch real images from Google Maps and Gaode Maps
 echo -e "${BLUE}[1/5]${NC} Fetching real photos from Google Maps and Gaode Maps..."
 cd "$PROJECT_ROOT"
