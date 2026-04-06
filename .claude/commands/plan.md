@@ -507,6 +507,17 @@ Use Task tool with:
      - Keys: EXACT activity names from source JSONs
      - Values: {start_time: 'HH:MM', end_time: 'HH:MM', duration_minutes: N}
      - Schedule activities following route-optimization.json order for efficiency
+     - **SEMANTIC TIME WINDOW CONSTRAINTS** — enforce during construction (not post-hoc):
+       Before assigning start_time to any entry, check meal_ref:
+       | meal_ref | Window |
+       |----------|--------|
+       | breakfast | 07:00 – 10:00 |
+       | lunch | 11:30 – 14:00 |
+       | afternoon_tea | 14:30 – 17:30 (also match by name: tea/coffee/matcha/cafe when meal_ref absent) |
+       | dinner | 18:00 – 20:30 |
+       | entertainment entry with any meal_ref | inherits that meal type's window |
+       If proximity order places a meal entry outside its window, clamp start_time to the window boundary and append: "Day N: [name] clamped from HH:MM to HH:MM (semantic time window enforcement)" to warnings.
+       Non-meal entries (attractions, shopping, transport without meal_ref) are unaffected.
 
   3. Detect conflicts: overlapping times, unrealistic travel, tight schedules
 

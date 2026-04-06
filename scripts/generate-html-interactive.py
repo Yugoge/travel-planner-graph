@@ -2545,7 +2545,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     // Filter out degenerate times: 00:00-00:00 (N/A items) and same start/end
     if (item?.time?.start && item?.time?.end
         && item.time.start !== '00:00'
-        && item.time.start !== item.time.end) {
+        && item.time.end !== '00:00'
+        && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end)) {
       entries.push({ ...item, _type: type, _label: label });
     }
   };
@@ -2581,7 +2582,8 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   const seen = new Set();
   const deduped = entries.filter(e => {
     const slot = e.time.start + '-' + e.time.end;
-    const key = slot + ':' + e._type;
+    const name = e.name_base || e.title || e._label || '';
+    const key = slot + ':' + e._type + ':' + name;
     if (e.optional && seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -2590,8 +2592,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Compute column layout for overlapping events
   const entriesWithLayout = computeColumnLayout(deduped);
 
-  const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;
-  const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;
+  const firstH = entriesWithLayout.length ? (parseInt(entriesWithLayout[0].time.start) || 8) : 8;
+  const lastH = entriesWithLayout.length
+    ? Math.min(Math.max(...entriesWithLayout.map(e => parseInt(e.time.end) || (parseInt(e.time.start) + 1) || 9)), 24)
+    : 20;
   const hours = []; for (let h = firstH; h <= lastH; h++) hours.push(h);
 
   const hH = sm ? 68 : 80;
@@ -2605,7 +2609,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     travel: { bg: '#f8f8f8', border: '#d0d0d0', dot: '#999' }
   };
 
-  const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };
+  const top = (t) => { const [h, m] = t.split(':').map(Number); return Math.max(0, (h - firstH) * hH + (m / 60) * hH); };
   const rawHgt = (s, e) => top(e) - top(s);
 
   // Apple Calendar style: 10-minute minimum height for clickability

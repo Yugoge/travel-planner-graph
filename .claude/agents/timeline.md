@@ -151,7 +151,7 @@ For each day in the trip:
 3. **Validate timeline**:
    - Check for overlapping activities (conflict detection)
    - Ensure travel time between locations is realistic
-   - Verify meal times are reasonable (breakfast 7-10am, lunch 12-3pm, dinner 6-10pm)
+   - Verify meal times conform to the hard semantic time windows defined in Step 2 (breakfast 07:00-10:00, lunch 11:30-14:00, afternoon_tea 14:30-17:30, dinner 18:00-20:30); any violation at this stage indicates a clamping step was missed — re-apply before saving
    - Check that attraction hours match opening times
    - Flag if day is over-scheduled (>12 hours of activities)
    - Note if insufficient breaks between activities
