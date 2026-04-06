@@ -1,0 +1,178 @@
+{
+  "request_id": "clean-20260406-134403",
+  "group_id": 1,
+  "timestamp": "2026-04-06T13:44:03Z",
+  "inspector": "style-inspector",
+  "files_audited": [
+    "scripts/check-budget-overage.py",
+    "scripts/deploy-travel-plans.sh",
+    "scripts/fetch-images-batch.py",
+    "scripts/generate-and-deploy.sh",
+    "scripts/generate-html-interactive.py",
+    "scripts/plan-validate.py",
+    "scripts/sync-agent-data.py"
+  ],
+  "violations": [
+    {
+      "standard": "use-source-venv",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:1263",
+      "finding": "Usage docstring and examples in main() show 'python3 fetch-images-batch.py' without venv activation. While the script itself uses _find_venv_python() internally, the printed usage instructions instruct callers to invoke via bare python3.",
+      "recommendation": "Change printed usage examples to: 'source venv/bin/activate && python scripts/fetch-images-batch.py ...'"
+    },
+    {
+      "standard": "use-source-venv",
+      "severity": "critical",
+      "location": "scripts/sync-agent-data.py:700-703",
+      "finding": "Usage docstring and main() usage message show 'python scripts/sync-agent-data.py ...' without venv activation instruction. The script module header docstring also lacks venv guidance.",
+      "recommendation": "Add venv activation to usage examples: 'source venv/bin/activate && python scripts/sync-agent-data.py ...'"
+    },
+    {
+      "standard": "use-source-venv",
+      "severity": "critical",
+      "location": "scripts/plan-validate.py:21-22",
+      "finding": "Usage docstring shows 'python3 plan-validate.py ...' without venv activation. All three usage examples in the docstring use bare python3.",
+      "recommendation": "Replace usage examples with 'source venv/bin/activate && python scripts/plan-validate.py ...'"
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/check-budget-overage.py:181",
+      "finding": "Default values threshold_amount=200.0 and threshold_pct=20.0 are hardcoded in function signature. While CLI args can override them (sys.argv[2], sys.argv[3]), the function signature itself hardcodes the defaults which are business-logic constants without documentation of why those values were chosen.",
+      "recommendation": "Document the 200/20 defaults with a comment explaining business rationale, OR move them to config/validation.json alongside other thresholds. As currently implemented with proper CLI fallback, this is borderline — flag for review."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/deploy-travel-plans.sh:401",
+      "finding": "Hardcoded minimum file size threshold: 'if [ \"$FILE_SIZE\" -lt 50000 ]'. The 50000 byte minimum for a valid travel plan HTML is a magic number with no parameter override.",
+      "recommendation": "Extract to variable with env override: MIN_HTML_SIZE=\"${MIN_HTML_SIZE:-50000}\" and use that variable in the check."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/deploy-travel-plans.sh:139",
+      "finding": "Hardcoded subtitle 'Yuge Tang' personal name in the generated index.html: '<p class=\"subtitle\">Yuge Tang &mdash; PLAN_COUNT_PLACEHOLDER plans</p>'. This should be a parameter, not embedded in the script.",
+      "recommendation": "Add SITE_OWNER variable: SITE_OWNER=\"${SITE_OWNER:-$(git config user.name)}\" and use it in the heredoc instead of the literal string."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/deploy-travel-plans.sh:88",
+      "finding": "Hardcoded title 'Travel Plans | life-ai.app' in generated index.html heredoc. The domain 'life-ai.app' is hardcoded rather than derived from the LOCAL_DEPLOY_DOMAIN variable that is already defined.",
+      "recommendation": "Replace hardcoded 'life-ai.app' with the already-defined LOCAL_DEPLOY_DOMAIN: '<title>Travel Plans | ${LOCAL_DEPLOY_DOMAIN}</title>'"
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/generate-and-deploy.sh:124",
+      "finding": "Hardcoded threshold '50' in POI photo count check: 'if [ \"$POI_COUNT\" -gt \"50\" ]'. This magic number determines whether cached images are considered sufficient without parameter override.",
+      "recommendation": "Extract: MIN_CACHED_POIS=\"${MIN_CACHED_POIS:-50}\" and use the variable in the comparison."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/generate-and-deploy.sh:137-140",
+      "finding": "Hardcoded fetch limits '100' and '300' in fetch_images_with_retry calls (lines 129, 137, 140). These limits for city and POI counts are embedded without parameter override.",
+      "recommendation": "Extract: CITY_LIMIT=\"${CITY_LIMIT:-100}\" and POI_LIMIT=\"${POI_LIMIT:-300}\" or accept as CLI arguments."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:42",
+      "finding": "Instance attribute 'self.force_refresh = False' is hardcoded as False in __init__ rather than being a constructor parameter. The caller (generate-and-deploy.sh) sets it post-construction via 'fetcher.force_refresh = force_refresh', which is an anti-pattern.",
+      "recommendation": "Add force_refresh as a constructor parameter: def __init__(self, destination_slug: str, force_refresh: bool = False)"
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:293-294",
+      "finding": "Hardcoded photo URL parameter 'maxwidth=800' in Google Maps Place Photo API URL construction (appears at both lines 293 and 362). This pixel width should be configurable.",
+      "recommendation": "Extract: PHOTO_MAX_WIDTH = int(os.environ.get('GOOGLE_PHOTO_MAX_WIDTH', 800)) and use it in the URL string."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:456",
+      "finding": "Hardcoded minimum name length '2' in _get_fallback_search_terms: 'if simplified and len(simplified) >= 2'. Also hardcoded minimum length '2' for Chinese core name generation (line 455: 'length >= 2'). While minor, these are magic numbers.",
+      "recommendation": "These constants are acceptable as-is since they represent language-level minimums (no single-character meaningful searches), but could be extracted to named constants: MIN_SEARCH_TERM_LENGTH = 2."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/plan-validate.py:991",
+      "finding": "Hardcoded day range in check_all_activity_overlaps: 'for day_num in range(1, 22)'. This limits overlap detection to trips of at most 21 days without any parameter or dynamic detection.",
+      "recommendation": "Determine max day count dynamically from all_data: max_day = max((d.get('day', 0) for adata in all_data.values() for d in adata.get('data', {}).get('days', [])), default=0) and iterate range(1, max_day + 1)."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/plan-validate.py:1325-1326",
+      "finding": "Hardcoded display width '140' for table output: 'w = 140'. This is a magic number with no parameter override.",
+      "recommendation": "Use terminal width detection: import shutil; w = min(shutil.get_terminal_size().columns, 160) or accept as --width CLI arg."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/generate-html-interactive.py:67",
+      "finding": "Hardcoded fallback exchange rate key 'fallback_exchange_rate' with a fallback value (0.128 is referenced as the default in config). The code reads from config correctly, but raises a RuntimeError if the config is missing rather than accepting a CLI override.",
+      "recommendation": "Accept FALLBACK_EUR_CNY_RATE environment variable: os.environ.get('FALLBACK_EUR_CNY_RATE') as additional fallback before raising RuntimeError."
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/sync-agent-data.py:460-461",
+      "finding": "Hardcoded check-in duration of 60 minutes: 'total_min = h * 60 + m + 60'. The 60-minute check-in window is a magic number embedded in accommodation time calculation.",
+      "recommendation": "Extract: CHECKIN_DURATION_MINUTES = 60 as a named constant or config value."
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "critical",
+      "location": "scripts/generate-and-deploy.sh and scripts/deploy-travel-plans.sh",
+      "finding": "Both scripts perform HTML deployment and index.html generation. generate-and-deploy.sh calls deploy-travel-plans.sh, but the local deploy logic and index generation function are duplicated between the two files (deploy-travel-plans.sh:generate_index_html function is called from both scripts).",
+      "recommendation": "This is an acceptable split since generate-and-deploy.sh orchestrates the pipeline and deploy-travel-plans.sh handles git/GitHub. No merge required — the shared function already exists in deploy-travel-plans.sh. No violation."
+    },
+    {
+      "standard": "concise-documentation",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:503-525",
+      "finding": "_bing_images_search method body is entirely a comment block describing limitations and future implementation options. The method contains no real implementation — it is dead placeholder code with 15 lines of TODO commentary followed by 'return None'.",
+      "recommendation": "Either implement the method or remove it entirely. If kept as a stub, reduce to: 'return None  # Not implemented: requires Azure Bing API key' and remove the verbose multi-paragraph docstring."
+    },
+    {
+      "standard": "concise-documentation",
+      "severity": "critical",
+      "location": "scripts/check-budget-overage.py:11-13",
+      "finding": "The docstring includes three repetitive usage examples with the same arguments (all using 200 and 20 as thresholds): 'china-feb15/budget.json 200 20', 'wangfujing/budget.json 200 20', 'data/trip/budget.json'. Two examples are redundant — one showing override args and one showing defaults is sufficient.",
+      "recommendation": "Reduce to two examples maximum: one with threshold args, one without."
+    }
+  ],
+  "standards_checked": [
+    "no-hardcoded-values",
+    "use-source-venv",
+    "no-inline-code",
+    "integer-step-numbering",
+    "meaningful-naming",
+    "english-only",
+    "merge-similar-scripts",
+    "concise-documentation",
+    "parameterized-scripts",
+    "dangling-references",
+    "merge-conflicts"
+  ],
+  "standards_passed": [
+    "no-inline-code (scripts only, not .md files)",
+    "integer-step-numbering (no .md step numbering found in scripts)",
+    "meaningful-naming (all script names are descriptive)",
+    "english-only (no Chinese characters found in script files, only in string data)",
+    "dangling-references (all internal script cross-references resolve correctly)",
+    "merge-conflicts (no conflict markers found)"
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 18,
+    "critical": 18,
+    "files_audited": 7,
+    "files_total": 7
+  }
+}
