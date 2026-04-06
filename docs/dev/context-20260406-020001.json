@@ -1,0 +1,128 @@
+{
+  "request_id": "dev-20260406-020001",
+  "timestamp": "2026-04-06T02:00:01Z",
+  "requirement": {
+    "original": "Restructure meal alternatives data format so alternatives are nested inside each meal type, not as separate top-level fields",
+    "clarified": "Migrate meals.json from flat sibling format (lunch + lunch_alternatives at the day level) to nested format (lunch.primary + lunch.alternatives), updating schema, HTML generator merge logic, sync agent, and meals agent prompt to match",
+    "what": "Structural refactor of meals.json data shape — alternatives nested under meal type object instead of stored as sibling keys at day level",
+    "why": "Current flat format is a schema anti-pattern: related data fragmented across siblings, invisible to schema validation (additionalProperties: true silently permits *_alternatives keys), and requiring dynamic key construction (alt_key = f\"{meal_type}_alternatives\") at the read sites",
+    "where": [
+      "schemas/meals.schema.json",
+      "scripts/generate-html-interactive.py",
+      "scripts/sync-agent-data.py",
+      ".claude/agents/meals.md"
+    ],
+    "scope": {
+      "included": [
+        "meals.schema.json: new meal_slot def wrapping primary + alternatives",
+        "generate-html-interactive.py _merge_day_data(): replace alt_key pattern with nested read",
+        "sync-agent-data.py _sync_meals(): drill into meal_type.primary for time injection",
+        "meals.md agent prompt: update output format example to emit nested structure",
+        "Backward compatibility handling in HTML generator for existing data files"
+      ],
+      "excluded": [
+        "Non-meals agent schemas and scripts",
+        "UI visual rendering behavior (must be identical)",
+        "timeline, budget, attractions, entertainment, shopping, transportation data",
+        "plan.md orchestrator (no reference to alternatives format)"
+      ]
+    },
+    "success_criteria": [
+      "meals.schema.json validates new nested format (save.py exit code 0)",
+      "meals.schema.json rejects old flat *_alternatives sibling pattern",
+      "HTML output visually identical for trips with alternatives (option labels A/B/C preserved)",
+      "sync-agent-data.py injects timeline times into meal.primary.time correctly",
+      "meals-agent emits meals.json with nested format when invoked"
+    ],
+    "constraints": [
+      "save.py must be used for all data writes (Write tool forbidden for agents)",
+      "Existing data files under data/ use old flat format — migration or backward compat required",
+      "meal_item additionalProperties: false must be preserved",
+      "No change to meal_item field set — only structural wrapping changes"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "meal alternatives stored as sibling keys (lunch_alternatives) at day level, invisible to schema validation, requiring fragile dynamic key construction at every read site",
+    "root_cause": "When alternatives were added to meals.json, they were appended as parallel sibling fields at the day level rather than nested under the meal type object. The day_entry schema uses additionalProperties: true, so *_alternatives keys pass validation silently. Every consumer must independently reconstruct the relationship via string concatenation (alt_key = f\"{meal_type}_alternatives\").",
+    "root_cause_commit": "N/A - design improvement, not a regression",
+    "why_introduced": "Alternatives were likely added incrementally without a schema design review; appending a sibling key was the path of least resistance and did not require schema changes",
+    "why_problematic": "Three independent read sites must know about the naming convention; schema cannot enforce structural correctness; additionalProperties: true on day_entry masks any typo in the key name; sync agent bypasses alternatives entirely (no reference in sync-agent-data.py)",
+    "timeline": "Current state at time of this request; no regression event",
+    "affected_files": [
+      "schemas/meals.schema.json",
+      "scripts/generate-html-interactive.py",
+      "scripts/sync-agent-data.py",
+      ".claude/agents/meals.md",
+      "data/wangfujing-dongdan-beijing-20260405-192905/meals.json"
+    ]
+  },
+  "context": {
+    "codebase_state": "Modified: scripts/generate-html-interactive.py (per git status)",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11 | dca40ed Auto-commit: 2026-04-05 20:37:24",
+    "file_contents": {
+      "generate-html-interactive.py_lines_580-617": "alt_key = f\"{meal_type}_alternatives\"; if alt_key in day_meals: alts = day_meals[alt_key]; builds _options array with primary labeled A and alternatives B/C/D",
+      "sync-agent-data.py_sync_meals_line_304": "for meal_type in self._config['meal_types']: meal = day.get(meal_type); expects meal to be dict with name_base directly",
+      "meals.schema.json_day_entry": "breakfast/lunch/dinner each $ref meal_item directly; additionalProperties: true silently allows *_alternatives siblings",
+      "meals.json_current_format": "day.lunch is meal_item dict; day.lunch_alternatives is array of partial meal_item dicts with 'option' label field"
+    },
+    "dependencies": {
+      "save.py": "validates against meals.schema.json before write — schema change will cause old-format saves to fail",
+      "plan-validate.py": "no *_alternatives reference found in grep; validates meals schema indirectly",
+      "load.py": "data access script — may reference meal field paths, confirm at dev time"
+    },
+    "environment": {
+      "python_version": "3.x with venv at /root/.claude/venv",
+      "data_dir": "/root/travel-planner/data/",
+      "existing_meals_files": [
+        "data/agent-test-20260212-191529/meals.json",
+        "data/beijing-exchange-bucket-list-20260202-232405/meals.json",
+        "data/china-exchange-bucket-list-2026/meals.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+        "data/test-unified-scripts-20260212-190655/meals.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/meals.json"
+      ]
+    }
+  },
+  "development_approach": {
+    "strategy": "Four-file coordinated change: (1) update schema to define meal_slot wrapper, (2) update HTML generator to read from nested path with backward-compat fallback, (3) update sync agent to drill into .primary, (4) update meals agent prompt output example. Order matters: schema must be updated first so save.py accepts new format; HTML generator backward-compat fallback ensures existing data files continue to render during transition.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "schemas/meals.schema.json",
+      "scripts/generate-html-interactive.py",
+      "scripts/sync-agent-data.py",
+      ".claude/agents/meals.md"
+    ],
+    "change_details": {
+      "meals_schema": {
+        "add_def": "meal_slot: { type: object, properties: { primary: { $ref: meal_item }, alternatives: { type: array, items: { $ref: meal_item } } }, required: [primary], additionalProperties: false }",
+        "update_day_entry": "breakfast/lunch/dinner properties change from $ref meal_item to $ref meal_slot",
+        "tighten_day_entry": "consider additionalProperties: false after confirming no other unknown fields used in existing data"
+      },
+      "html_generator": {
+        "location": "lines 535-617 in _merge_day_data()",
+        "change": "line 539: meal = day_meals[meal_type] becomes meal_slot = day_meals.get(meal_type, {}); meal = meal_slot.get('primary', meal_slot) [backward compat: if no 'primary' key, treat slot as the meal item itself for old-format files]",
+        "alternatives_change": "lines 580-617: replace alt_key lookup with alts = meal_slot.get('alternatives', day_meals.get(f'{meal_type}_alternatives', [])) [backward compat: fall back to old sibling key if nested not present]"
+      },
+      "sync_agent": {
+        "location": "_sync_meals() method, ~line 304",
+        "change": "meal = day.get(meal_type) becomes meal_slot = day.get(meal_type, {}); meal = meal_slot.get('primary', meal_slot) [same backward-compat pattern]; after modification, day[meal_type] = meal_slot with updated primary"
+      },
+      "meals_agent_prompt": {
+        "location": "Step 2 output format example in meals.md",
+        "change": "Update the JSON example to show lunch: { primary: {...meal_item...}, alternatives: [...] } instead of lunch: {...meal_item...} at day level; remove lunch_alternatives sibling from example"
+      }
+    },
+    "validation_approach": "QA runs save.py against new-format meals.json fixture to confirm schema acceptance; runs generate-html-interactive.py against existing wangfujing data to confirm HTML renders alternatives correctly with backward-compat fallback; runs sync-agent-data.py against a new-format meals.json to confirm time injection hits meal.primary"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward structural refactor of an established schema with clear before/after format. No new architectural patterns or library APIs involved. All affected code paths fully identified from direct file inspection."
+  }
+}

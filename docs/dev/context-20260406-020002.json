@@ -1,0 +1,120 @@
+{
+  "request_id": "dev-20260406-020002",
+  "timestamp": "2026-04-06T02:00:02Z",
+  "requirement": {
+    "original": "Make shopping agent output individual brand stores directly in JSON instead of burying them in notes_base free text",
+    "clarified": "Add a structured `brands` array to each shopping_item in shopping.json so individual brand stores within a mall are expressed as typed objects (name, category, floor, description) rather than encoded in notes_base free text. The HTML generator should read the brands array directly when present, falling back to the existing regex parse when absent.",
+    "what": "Add optional `brands` array field to shopping_item schema and agent output; update HTML generator to consume it directly",
+    "why": "The current notes_base text protocol is fragile (regex parse can break), untestable, and prevents typed validation of brand-level data. Structured JSON gives the agent direct control and makes the generator simpler.",
+    "where": [
+      "schemas/shopping.schema.json",
+      ".claude/agents/shopping.md",
+      "scripts/generate-html-interactive.py",
+      ".claude/commands/plan.md"
+    ],
+    "scope": {
+      "included": [
+        "Schema change to allow brands array on shopping_item",
+        "Shopping agent prompt update to produce brands array",
+        "HTML generator merge logic to read brands array with fallback",
+        "plan.md Step 8 shopping-agent invocation example update"
+      ],
+      "excluded": [
+        "Migration of existing data files in data/ directories",
+        "Changes to timeline-agent, budget-agent, or other agents",
+        "Removing notes_base from schema",
+        "Changing plan-validate.py (nice-to-have only)"
+      ]
+    },
+    "success_criteria": [
+      "save.py validates a shopping item with a brands array (exit code 0)",
+      "shopping agent prompt instructs brands array output instead of notes_base encoding",
+      "Generator reads brands array directly when present and skips _parse_shopping_brands()",
+      "Generator falls back to _parse_shopping_brands(notes_base) when brands is absent",
+      "plan.md Step 8 shows brands array format in shopping-agent invocation example"
+    ],
+    "constraints": [
+      "shopping_item has additionalProperties: false -- brands MUST be added to the schema properties block",
+      "Backward compatibility is non-negotiable -- existing plans with old notes_base format must still render",
+      "save.py validates against shopping.schema.json at write time -- schema update must land before agent prompt update is effective"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Brand stores within a mall are embedded in notes_base as free text using a bracket-encoded format, requiring a 94-line regex parser in the HTML generator",
+    "root_cause": "When the shopping agent was originally designed, there was no structured field for sub-POI data (individual brands within a mall). Brand data was encoded into the unstructured notes_base field as a workaround, and a regex parser (_parse_shopping_brands) was added to the generator to recover structure at render time.",
+    "root_cause_commit": "cfc5766 -- fix: realistic prices + shopping merge bug (introduced _parse_shopping_brands workaround pattern)",
+    "why_introduced": "The shopping schema had no provision for nested brand data; notes_base was the only available free-form field",
+    "why_problematic": "Regex parse is fragile, cannot be validated by save.py schema validation, and forces the agent to format data as text rather than JSON. Any change to the text protocol breaks rendering silently.",
+    "timeline": "Pattern established ~Feb 9 2026 (commit cfc5766), extended by cb70c2e (Feb 10 2026)",
+    "affected_files": [
+      "schemas/shopping.schema.json",
+      ".claude/agents/shopping.md",
+      "scripts/generate-html-interactive.py",
+      ".claude/commands/plan.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (uncommitted changes present)",
+    "recent_commits": "47d77bb, dca40ed, d6c8d0b, 10d7a85, db42434 -- all Auto-commit entries since 2026-04-05",
+    "file_contents": {
+      "shopping_schema_shopping_item_required": ["name_base", "name_local", "location_base", "location_local", "cost", "currency_local", "type_base", "time", "optional"],
+      "shopping_schema_additional_properties": false,
+      "generator_parse_fn_lines": "405-498",
+      "generator_merge_shopping_lines": "706-778",
+      "shopping_agent_output_format_section": "shopping.md Step 2 and Step 3",
+      "plan_md_shopping_agent_invocation": "plan.md Step 8 (~lines 339-398)"
+    },
+    "dependencies": {
+      "save_py_validates_against": "schemas/shopping.schema.json",
+      "generator_fallback_path": "_parse_shopping_brands(notes_base, notes_local) when brands absent",
+      "merged_card_fields": {
+        "name_base": "brand name (was: regex-extracted brand_name)",
+        "type_base": "brand category (was: regex-extracted category)",
+        "notes_base": "brand description (was: regex-extracted description)",
+        "mall_name_base": "parent mall name_base (unchanged)",
+        "mall_name_local": "parent mall name_local (unchanged)"
+      }
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Additive schema change first, then agent prompt update, then generator logic update. Schema must be updated before agent can produce valid brands arrays. Generator fallback ensures no regression on existing data.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "/root/travel-planner/schemas/shopping.schema.json",
+      "/root/travel-planner/.claude/agents/shopping.md",
+      "/root/travel-planner/scripts/generate-html-interactive.py",
+      "/root/travel-planner/.claude/commands/plan.md"
+    ],
+    "change_details": {
+      "shopping_schema_json": {
+        "location": "$defs.shopping_item.properties",
+        "change": "Add brands property as optional array. Each brand item: {name: string, name_local: string, category: string, category_local: string, floor: string, description: string, description_local: string}. Do NOT add brands to the required array. Schema uses additionalProperties: false so the field must be explicitly declared."
+      },
+      "shopping_md": {
+        "location": "Step 2 'Structure data' section and Step 3 JSON example",
+        "change": "Add brands array to the required output fields. Replace notes_base brand encoding instruction with brands array format. Provide example brand object. Clarify notes_base should now only contain non-brand notes (hours, tips, rating)."
+      },
+      "generate_html_interactive_py": {
+        "location": "_merge_day_data() shopping block, lines 729-730",
+        "change": "Replace: brands = self._parse_shopping_brands(notes_base, notes_local)\nWith: brands = shop_item.get('brands', []) or self._parse_shopping_brands(notes_base, notes_local)\nThis reads brands array when present and non-empty, falls back to regex parse otherwise. No other changes to the merge block needed -- the downstream brand dict mapping is compatible."
+      },
+      "plan_md": {
+        "location": "Step 8 shopping-agent prompt (around lines 389-398)",
+        "change": "Add brands array to the output format hint shown in the invocation prompt so future agent invocations know to produce structured brands."
+      }
+    },
+    "validation_approach": "Run save.py against a test shopping.json with brands array; confirm exit code 0. Regenerate HTML from a shopping.json with brands array; confirm brand cards render. Verify existing shopping.json without brands array still renders correctly (fallback path)."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward schema addition and code path change with clear existing pattern to follow. No architectural decision required -- the solution is specified in the requirement."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

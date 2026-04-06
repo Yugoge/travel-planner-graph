@@ -117,6 +117,24 @@ For each day in the trip:
    }
    ```
 
+   **SEMANTIC TIME WINDOW CONSTRAINTS** (enforced during construction, not post-hoc):
+
+   When building the timeline dictionary, check `meal_ref` on every entry before assigning `start_time`. If proximity optimisation would place a meal-typed entry outside its window, clamp `start_time` to the window boundary and append a warning to the day's `warnings` array.
+
+   | meal_ref value | Allowed start_time window | Fallback detection |
+   |----------------|--------------------------|-------------------|
+   | `breakfast` | 07:00 – 10:00 | — |
+   | `lunch` | 11:30 – 14:00 | — |
+   | `afternoon_tea` | 14:30 – 17:30 | activity name contains "tea", "coffee", "matcha", or "cafe" (fallback only when meal_ref absent) |
+   | `dinner` | 18:00 – 20:30 | — |
+   | *(entertainment entry with any meal_ref set)* | inherits window of the referenced meal type | — |
+
+   **Enforcement rule**: Read `meal_ref` first. Apply the corresponding window. If no `meal_ref` and the entry is not an entertainment entry with a meal_ref, apply no window (proximity order governs).
+
+   **Clamping warning format**: `"Day N: [Activity name] clamped from HH:MM to HH:MM (semantic time window enforcement)"`
+
+   **Non-meal activities** (attractions, shopping, transport without `meal_ref`): remain subject to proximity order only — do NOT apply any window.
+
    **Schema ref fields — required on every day, no string matching:**
 
    | Field | Value | Required on |

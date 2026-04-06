@@ -376,6 +376,7 @@ Use Task tool with:
     coordinates: {latitude: float, longitude: float}
   }
 
+  Validate output against schema: /root/travel-planner/schemas/meals.schema.json before saving.
   Save to: data/{destination-slug}/meals.json
 
   After completing all tasks, return ONLY the word 'complete'.
