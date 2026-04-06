@@ -1,0 +1,56 @@
+{
+  "request_id": "dev-20260406-010005",
+  "timestamp": "2026-04-06T01:05:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260406-010005.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added fetch_images_with_retry helper function before Step 1 block",
+        "type": "code",
+        "files_modified": ["scripts/generate-and-deploy.sh"],
+        "changes": "Inserted reusable bash function at line 80 (before Step 1). Function: (a) runs fetch-images-batch.py with stderr suppressed, captures exit code explicitly via '|| exit_code=$?' to satisfy set -euo pipefail; (b) on first failure, prints yellow warning, sleeps 2s, retries with stderr surfaced; (c) on second failure, sets IMAGE_FETCH_STATUS=FAILED and prints a RED multi-line banner containing 'WARNING' and 'FAILED'; (d) always returns 0 so the pipeline continues.",
+        "rationale": "Root cause: all three call sites used '|| echo' to silently swallow non-zero exit codes. The fix adds visibility without blocking the deploy."
+      },
+      {
+        "id": 2,
+        "description": "Replaced three '|| echo' patterns with calls to fetch_images_with_retry",
+        "type": "code",
+        "files_modified": ["scripts/generate-and-deploy.sh"],
+        "changes": "Line 93 (was): python ... 2>/dev/null || echo ... -> fetch_images_with_retry \"$PLAN_ID\" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER. Line 101 (was): python ... 2>/dev/null || echo ... -> fetch_images_with_retry \"$PLAN_ID\" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER. Line 104 (was): python ... 2>/dev/null || echo ... -> fetch_images_with_retry \"$PLAN_ID\" 100 300. All argument combinations are preserved faithfully.",
+        "rationale": "Each call site now has identical retry-and-warn semantics. No call site silently ignores failure."
+      },
+      {
+        "id": 3,
+        "description": "Initialized IMAGE_FETCH_STATUS variable before Step 1",
+        "type": "code",
+        "files_modified": ["scripts/generate-and-deploy.sh"],
+        "changes": "Added IMAGE_FETCH_STATUS=\"OK\" at line 114 (before the Step 1 echo). Set to \"FAILED\" inside the helper on double failure. Available for use in final summary or by callers.",
+        "rationale": "Allows downstream steps or the operator to query whether image fetch degradation occurred."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-and-deploy.sh",
+        "imported_by": [],
+        "notes": "Script is invoked directly by operators and referenced in docs/READMEs and .claude/commands. No shell callers source it or depend on its internal exit-code behaviour. Low blast radius."
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - pattern present from initial script authorship (visible since at least 74d3527)",
+      "why_issue_occurred": "The '|| echo' pattern was an intentional but overly silent bypass of set -euo pipefail to keep images optional. It made fetch failures indistinguishable from successes in the log.",
+      "how_fix_addresses_root": "The helper function preserves the 'images are optional' invariant (always returns 0) while replacing the silent bypass with a retry + loud RED banner on double failure, making degradation unmissable in any terminal or CI log."
+    },
+    "tdd_note": "TDD skipped: the failure path requires a deliberately broken fetch-images-batch.py or unavailable API endpoint. This is a black-box integration path not reproducible programmatically in the test suite. BA/PM validation approach (run with broken plan ID) is the correct verification method per BA spec.",
+    "qa_ready": true,
+    "qa_notes": "To verify AC1+AC2+AC3: temporarily prepend 'exit 1' to fetch-images-batch.py (or pass a nonexistent plan ID), run 'bash scripts/generate-and-deploy.sh <any-plan-id>'. Expect: (1) two Python invocations in the log, (2) RED banner with WARNING/FAILED, (3) Steps 2-5 continue. To verify AC4: run with a valid plan that has >50 cached POIs and no --force; expect no retry and no warning. Confirm IMAGE_FETCH_STATUS variable is accessible if needed for summary output.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider printing IMAGE_FETCH_STATUS in the Step 5 summary section so operators see the degradation indicator at the very end of the log alongside the deployed URL.",
+    "If a CI/CD wrapper script checks the exit code of generate-and-deploy.sh, IMAGE_FETCH_STATUS could be used to set a non-zero final exit code if degraded output is unacceptable in that context."
+  ]
+}

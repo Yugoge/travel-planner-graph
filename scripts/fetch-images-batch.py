@@ -124,10 +124,10 @@ class BatchImageFetcher:
                         return (float(c["lng"]), float(c["lat"]))
 
         # 2. Fallback: Gaode geocoding (single API call)
-        # Only attempt if GAODE_API_KEY is available
+        # Only attempt if AMAP_MAPS_API_KEY is available
         import urllib.request
         import urllib.parse
-        gaode_key = os.environ.get("GAODE_API_KEY")
+        gaode_key = os.environ.get("AMAP_MAPS_API_KEY")
         if gaode_key:
             params = urllib.parse.urlencode({"key": gaode_key, "address": city, "output": "json"})
             try:

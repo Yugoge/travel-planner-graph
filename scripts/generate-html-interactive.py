@@ -269,10 +269,11 @@ class InteractiveHTMLGenerator:
         return self._type_display_map.get(type_code, type_code.replace("_", " ").title())
 
     def _get_cover_image(self, location: str, index: int = 0) -> str:
-        """Get cover image URL for location from images cache or fallback to Unsplash
-        Fix #1: City cover images should use cache, not always fallback to Unsplash
-        Root cause: commit 123f8df - cache lookup logic was incomplete
-        """
+        """Get cover image URL from cache. Fix #1 (commit 123f8df). Fix dev-20260406-010004."""
+        # Strip parenthetical suffix "City (District)" -> "City" before any lookup
+        location = location.split("(")[0].strip()
+        if not location:
+            return ""
         # Try to get from images cache first
         if self.images_cache and "city_covers" in self.images_cache:
             city_covers = self.images_cache["city_covers"]
