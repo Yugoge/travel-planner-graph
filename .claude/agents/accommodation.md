@@ -125,20 +125,20 @@ Accommodation is its own category and doesn't overlap with other POI types. Howe
 
    ```json
    {
-     "name_base": "Chongqing Marriott Hotel",
-     "name_local": "重庆万豪酒店",
-     "location_base": "235 Minquan Road, Yuzhong District",
-     "location_local": "重庆市渝中区民权路235号",
+     "name_base": "City Center Hotel",
+     "name_local": "Example: local language hotel name",
+     "location_base": "123 Main Street, City Center",
+     "location_local": "Example: local language address",
      "cost": 120,
      "optional": false,
 
      "type_base": "Hotel",
-     "type_local": "酒店",
+     "type_local": "Example: local language type",
      "amenities_base": ["WiFi", "Breakfast included", "Pool"],
-     "amenities_local": ["无线网络", "含早餐", "泳池"],
+     "amenities_local": ["Example: local translations"],
      "stars": 4.5,
      "notes_base": "Near subway station, check-in after 3pm",
-     "notes_local": "靠近地铁站，下午3点后入住",
+     "notes_local": "Example: local language notes",
      "search_results": [
        {
          "skill": "google-maps",
@@ -160,19 +160,19 @@ Accommodation is its own category and doesn't overlap with other POI types. Howe
    ```json
    {
      "name_base": "Modern Apartment in Downtown",
-     "name_local": "市中心现代公寓",
-     "location_base": "Jiefangbei District, Chongqing",
-     "location_local": "重庆市解放碑商圈",
+     "name_local": "Example: local language apartment name",
+     "location_base": "Downtown District, City",
+     "location_local": "Example: local language address",
      "cost": 180,
 
      "total_cost": 1250,
      "type_base": "Vacation Rental (Airbnb)",
-     "type_local": "度假公寓 (Airbnb)",
+     "type_local": "Example: local language type",
      "amenities_base": ["Full kitchen", "Washer", "WiFi", "Workspace"],
-     "amenities_local": ["厨房", "洗衣机", "无线网络", "办公区"],
+     "amenities_local": ["Example: local translations"],
      "stars": 4.8,
      "notes_base": "Average per night $180 | Total for 6 nights: $1,250 (includes cleaning fee) | Superhost | 4.8 stars (127 reviews) | Check-in: 3pm",
-     "notes_local": "每晚均价$180 | 6晚总价$1,250（含清洁费）| 超赞房东 | 4.8星（127条评论）| 入住：下午3点",
+     "notes_local": "Example: local language notes with same details",
      "search_results": [
        {
          "skill": "airbnb",

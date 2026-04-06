@@ -1745,14 +1745,14 @@ Increment version counter (track internally: v2, v3, etc.)
 
 Run generation script:
 ```bash
-bash /root/travel-planner/scripts/generate-html.sh {destination-slug} -v{version}
+bash scripts/generate-and-deploy.sh {destination-slug} -v{version}
 ```
 
 **Example**: Second refinement → `travel-plan-{destination-slug}-v2.html`
 
 Verify file exists:
 ```bash
-test -f /root/travel-planner/travel-plan-{destination-slug}-v{version}.html && echo "verified" || echo "missing"
+test -f travel-plan-{destination-slug}-v{version}.html && echo "verified" || echo "missing"
 ```
 
 **If missing**: Debug and retry.
@@ -1795,7 +1795,7 @@ Major restructures require re-running entire Phase 2-5 workflow.
 **Action sequence**:
 1. Update skeleton files via script (orchestrator NEVER edits data files directly):
    ```bash
-   source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/update-skeleton.py \
+   source venv/bin/activate && python scripts/update-skeleton.py \
      --destination-slug {destination-slug} \
      <operation-flags>
    ```

@@ -19,6 +19,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Configurable constants (override via environment variables)
+PHOTO_MAX_WIDTH = int(os.environ.get("PHOTO_MAX_WIDTH", "800"))
+MIN_SEARCH_TERM_LENGTH = 2
+
 # Load environment variables from .env file
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
@@ -33,13 +37,13 @@ if env_file.exists():
 class BatchImageFetcher:
     """Fetch images using skill scripts in small batches"""
 
-    def __init__(self, destination_slug: str):
+    def __init__(self, destination_slug: str, force_refresh: bool = False):
         self.destination_slug = destination_slug
         self.base_dir = Path(__file__).parent.parent
         self.data_dir = self.base_dir / "data" / destination_slug
         self.cache_file = self.data_dir / "images.json"
         self.venv_python = self._find_venv_python()
-        self.force_refresh = False  # Set to True to ignore cache and re-fetch all
+        self.force_refresh = force_refresh
 
         # Load config from requirements-skeleton.json
         self.config = self._load_config()
@@ -290,7 +294,7 @@ class BatchImageFetcher:
                 return None
 
             # Step 3: Construct photo URL
-            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_reference}&key={google_api_key}"
+            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth={PHOTO_MAX_WIDTH}&photoreference={photo_reference}&key={google_api_key}"
 
             return photo_url
 
@@ -360,7 +364,7 @@ class BatchImageFetcher:
                 return None
 
             # Step 3: Construct photo URL
-            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference={photo_reference}&key={google_api_key}"
+            photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth={PHOTO_MAX_WIDTH}&photoreference={photo_reference}&key={google_api_key}"
 
             return photo_url
 

@@ -312,8 +312,8 @@ python scripts/save.py --trip TRIP_SLUG --agent AGENT_NAME --input data.json
 
 # Save from stdin
 cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
-    --data-file data/chongqing-4day/transportation.json \
-    --trip-dir data/chongqing-4day
+    --data-file data/{destination-slug}/transportation.json \
+    --trip-dir data/{destination-slug}
 ```
 
 **Benefits:**

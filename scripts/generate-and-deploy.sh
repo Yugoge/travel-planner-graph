@@ -15,6 +15,11 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Configurable thresholds (override via environment)
+MIN_CACHED_POIS="${MIN_CACHED_POIS:-50}"
+FETCH_CITY_LIMIT="${FETCH_CITY_LIMIT:-100}"
+FETCH_POI_LIMIT="${FETCH_POI_LIMIT:-300}"
+
 # Check argument
 if [ -z "$1" ]; then
     echo -e "${RED}❌ Error: Plan ID required${NC}"
@@ -121,23 +126,23 @@ cd "$PROJECT_ROOT"
 IMAGES_FILE="$DATA_DIR/images.json"
 if [ -f "$IMAGES_FILE" ]; then
     POI_COUNT=$(python -c "import json; data = json.load(open('$IMAGES_FILE')); print(len(data.get('pois', {})))" 2>/dev/null || echo "0")
-    if [ "$POI_COUNT" -gt "50" ] && [ -z "$FETCH_FORCE" ]; then
+    if [ "$POI_COUNT" -gt "$MIN_CACHED_POIS" ] && [ -z "$FETCH_FORCE" ]; then
         echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
     else
         if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
             echo -e "${YELLOW}⚠${NC} Image fetch requested${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}"
-            fetch_images_with_retry "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER
+            fetch_images_with_retry "$PLAN_ID" "$FETCH_CITY_LIMIT" 10 $FETCH_FORCE $FETCH_DAY_FILTER
         else
             echo -e "${GREEN}✓${NC} Found $POI_COUNT cached POI photos (using cache)"
         fi
     fi
 else
     if [ -n "$FETCH_FORCE" ] || [ -n "$FETCH_DAY_FILTER" ]; then
-        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}..."
-        fetch_images_with_retry "$PLAN_ID" 100 10 $FETCH_FORCE $FETCH_DAY_FILTER
+        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to ${FETCH_CITY_LIMIT} POIs${FETCH_FORCE:+ (FORCE MODE)}${FETCH_DAY_FILTER:+ for $FETCH_DAY_FILTER}..."
+        fetch_images_with_retry "$PLAN_ID" "$FETCH_CITY_LIMIT" 10 $FETCH_FORCE $FETCH_DAY_FILTER
     else
-        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to 100 POIs..."
-        fetch_images_with_retry "$PLAN_ID" 100 300
+        echo -e "${YELLOW}⚠${NC}  No image cache found, fetching up to ${FETCH_CITY_LIMIT} POIs..."
+        fetch_images_with_retry "$PLAN_ID" "$FETCH_CITY_LIMIT" "$FETCH_POI_LIMIT"
     fi
 fi
 
