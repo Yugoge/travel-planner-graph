@@ -846,10 +846,6 @@ Please choose an option or describe specific changes you'd like.
 
 **PURPOSE**: Ensure all POIs for Day N have images before advancing to next day
 
-**TRIGGER**: Immediately after user confirms "This day is perfect" for Day N
-
-**PURPOSE**: Ensure all POIs for Day N have images before presenting next day
-
 **Substep 1: Execute Batch Image Fetch**
 
 Run fetch-images-batch.py with day-level force mode:
@@ -1242,45 +1238,6 @@ Return to Step 14 INNER LOOP:
 
 **ITERATION LIMIT**:
 After 5 iterations on same day, present safety warning (see Step 14).
-
----
-
-**EXAMPLE EXECUTION FLOW**:
-
-```
-Step 14 INNER LOOP - Day 3:
-  → Present complete Day 3 plan
-  → User: "Make changes - add spa"
-
-Step 15 (this step):
-  → Parse: domain=entertainment, instruction="add spa"
-  → Re-invoke entertainment-agent for Day 3
-  → Re-invoke timeline-agent for Day 3
-  → Re-invoke budget-agent for Day 3
-  → Validate Day 3 changes
-  → Return to Step 14 INNER LOOP
-
-Step 14 INNER LOOP - Day 3 (re-presentation):
-  → Present complete Day 3 plan WITH spa included
-  → User: "Make changes - change lunch to vegetarian"
-
-Step 15 (this step again):
-  → Parse: domain=meals, instruction="change lunch to vegetarian"
-  → Re-invoke meals-agent for Day 3
-  → Re-invoke timeline-agent for Day 3
-  → Re-invoke budget-agent for Day 3
-  → Validate Day 3 changes
-  → Return to Step 14 INNER LOOP
-
-Step 14 INNER LOOP - Day 3 (re-presentation):
-  → Present complete Day 3 plan WITH spa AND vegetarian lunch
-  → User: "This day is perfect"
-  → day_confirmed_perfect = true
-  → Exit INNER loop, increment current_day_index to 4
-
-Step 14 OUTER LOOP:
-  → Move to Day 4, start new INNER loop
-```
 
 ---
 

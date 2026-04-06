@@ -1,7 +1,7 @@
 # clean
 
-*Last updated: 2026-04-06T13:47:48Z*
-**Total entries**: 32
+*Last updated: 2026-04-06T16:43:37Z*
+**Total entries**: 35
 **Convention**: kebab
 
 ## Tree
@@ -13,7 +13,9 @@ clean/
 ├── `cleanliness-report-clean-20260406-134403.json` - json config
 ├── `cleanup-execution-clean-20260216-014622.json` - json config
 ├── `cleanup-execution-clean-20260314-110833.json` - json config
+├── `cleanup-execution-clean-20260406-134403-group3.json` - json config
 ├── `combined-report-clean-20260314-110833.json` - json config
+├── `combined-report-clean-20260406-134403.json` - json config
 ├── `completion-clean-20260216-012843.md` - Cleanup Completion Report
 ├── `completion-clean-20260216-014622.md` - Cleanup Completion Report
 ├── `completion-clean-20260314-110833.md` - Cleanup Completion Report
@@ -38,7 +40,8 @@ clean/
 ├── `style-report-clean-20260216-023304.json` - json config
 ├── `style-report-clean-20260314-110833.json` - json config
 ├── `user-approvals-clean-20260216-014622.json` - json config
-└── `user-approvals-clean-20260314-110833.json` - json config
+├── `user-approvals-clean-20260314-110833.json` - json config
+└── `user-approvals-clean-20260406-134403.json` - json config
 ```
 
 ---

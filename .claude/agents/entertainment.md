@@ -113,21 +113,21 @@ For each day in the trip:
 
    ```json
    {
-     "name_base": "Nanshan Night View",
-     "name_local": "南山夜景",
-     "location_base": "Nanshan District, Chongqing",
-     "location_local": "重庆市南岸区南山",
+     "name_base": "City Night View",
+     "name_local": "Example: local language entertainment name",
+     "location_base": "Entertainment District, City",
+     "location_local": "Example: local language address",
      "cost": 50,
      "optional": false,
 
      "time": "20:00",
      "type_base": "Theater",
-     "type_local": "剧场",
+     "type_local": "Example: local language type",
 
      "note_base": "Dress code: smart casual",
-     "note_local": "着装要求：商务休闲",
+     "note_local": "Example: local language note",
      "notes_base": "Book tickets in advance, dress code: smart casual",
-     "notes_local": "建议提前购票，着装要求：商务休闲",
+     "notes_local": "Example: local language notes",
      "search_results": [
        {
          "skill": "google-maps",
@@ -146,7 +146,7 @@ For each day in the trip:
    ```
 
    **Examples by destination**:
-   - **China**: `"name_base": "Nanshan Night View", "name_local": "南山夜景"`
+   - **China**: `"name_base": "Riverside Night View", "name_local": "Example: local name"`
    - **Japan**: `"name_base": "Kabuki-za Theatre", "name_local": "歌舞伎座"`
    - **Korea**: `"name_base": "Nanta Show", "name_local": "난타"`
    - **USA/UK** (when base_lang=en): `"name_base": "Broadway Theater", "name_local": "Broadway Theater"` (destination lang = base_lang)

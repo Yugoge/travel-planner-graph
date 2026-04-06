@@ -125,35 +125,35 @@ For each day in the trip:
 
    ```json
    {
-     "name_base": "Ciqikou Ancient Town",
-     "name_local": "磁器口古镇",
-     "location_base": "Shapingba District, Chongqing",
-     "location_local": "重庆市沙坪坝区磁器口",
+     "name_base": "Old Town Market",
+     "name_local": "Example: local language market name",
+     "location_base": "Historic District, City",
+     "location_local": "Example: local language address",
      "cost": 100,
      "optional": false,
 
      "type_base": "Local Market",
-     "type_local": "本地市场",
+     "type_local": "Example: local language type",
      "notes_base": "Open 9am-5pm, bargaining expected. Rating 4.7",
-     "notes_local": "营业时间9:00-17:00，可以讲价，评分4.7",
+     "notes_local": "Example: local language notes",
      "brands": [
        {
-         "name": "Shu Brocade Workshop",
-         "name_local": "蜀锦工坊",
+         "name": "Traditional Crafts Workshop",
+         "name_local": "Example: local language brand name",
          "category": "CRAFTS",
-         "category_local": "手工艺品",
+         "category_local": "Example: local language category",
          "floor": "Street Level",
-         "description": "Traditional Sichuan brocade textiles, handwoven silk",
-         "description_local": "传统蜀锦纺织品，手工编织丝绸"
+         "description": "Traditional textiles, handwoven silk",
+         "description_local": "Example: local language description"
        },
        {
-         "name": "Mahua Street Snacks",
-         "name_local": "麻花街小吃",
+         "name": "Local Snack Shop",
+         "name_local": "Example: local language brand name",
          "category": "FOOD",
-         "category_local": "食品",
+         "category_local": "Example: local language category",
          "floor": "Main Street",
-         "description": "Famous twisted dough snacks and local specialties",
-         "description_local": "著名麻花小吃及本地特产"
+         "description": "Famous local snacks and specialties",
+         "description_local": "Example: local language description"
        }
      ],
      "search_results": [
@@ -174,7 +174,7 @@ For each day in the trip:
    ```
 
    **Examples by destination**:
-   - **China**: `"name_base": "Ciqikou Ancient Town", "name_local": "磁器口古镇"`
+   - **China**: `"name_base": "Old Town Market", "name_local": "Example: local name"`
    - **Japan**: `"name_base": "Takeshita Street", "name_local": "竹下通り"`
    - **Korea**: `"name_base": "Myeongdong Shopping District", "name_local": "명동"`
    - **USA/UK** (when base_lang=en): `"name_base": "Fifth Avenue", "name_local": "Fifth Avenue"` (destination lang = base_lang)

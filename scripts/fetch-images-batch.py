@@ -451,15 +451,15 @@ class BatchImageFetcher:
         for suffix in ["散步", "游览", "观光", "体验", "之旅", "路线", "路径", " walkthrough", " tour", " experience"]:
             if search_name.endswith(suffix):
                 simplified = search_name[:-len(suffix)].strip()
-                if simplified and len(simplified) >= 2:
+                if simplified and len(simplified) >= MIN_SEARCH_TERM_LENGTH:
                     terms.append(simplified)
                 break
 
         # For Chinese, try using just the first 2-4 characters (core name)
         if len(search_name) >= 4:
             # Try progressively shorter versions
-            for length in [len(search_name) - 2, len(search_name) - 4, 4, 3, 2]:
-                if length >= 2 and length < len(search_name):
+            for length in [len(search_name) - 2, len(search_name) - 4, 4, 3, MIN_SEARCH_TERM_LENGTH]:
+                if length >= MIN_SEARCH_TERM_LENGTH and length < len(search_name):
                     core = search_name[:length]
                     if core not in terms:
                         terms.append(core)
@@ -505,27 +505,7 @@ class BatchImageFetcher:
         return photo_url
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
-        """Bing Images search as final fallback.
-
-        NOTE: Currently returns None due to limitations:
-        - Bing Images requires JavaScript for dynamic loading
-        - Bing API requires authentication key
-        - Web scraping approach is unreliable
-
-        This method is a placeholder for future implementation.
-        Consider using:
-        - Bing Image Search API (requires Azure key)
-        - Unsplash API (free, good for travel photos)
-        - Pixabay API (free, Creative Commons)
-
-        Args:
-            search_name: POI name
-            city: City name
-
-        Returns:
-            None (fallback not implemented)
-        """
-        logger.debug(f"Bing Images fallback not implemented for: {search_name}")
+        """Bing Images search fallback (not implemented: requires Azure Bing API key)."""
         return None
 
     def fetch_cities(self, limit: int = 5):
@@ -1264,12 +1244,12 @@ class BatchImageFetcher:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 fetch-images-batch.py <destination-slug> [city_limit] [poi_limit] [--day FILTER] [--force]")
+        print("Usage: source venv/bin/activate && python scripts/fetch-images-batch.py <destination-slug> [city_limit] [poi_limit] [--day FILTER] [--force]")
         print("Examples:")
-        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 5 10")
-        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1")
-        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1-5")
-        print("  python3 fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1,3,5")
+        print("  source venv/bin/activate && python scripts/fetch-images-batch.py china-exchange-bucket-list-2026 5 10")
+        print("  source venv/bin/activate && python scripts/fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1")
+        print("  source venv/bin/activate && python scripts/fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1-5")
+        print("  source venv/bin/activate && python scripts/fetch-images-batch.py china-exchange-bucket-list-2026 100 10 --day 1,3,5")
         print("")
         print("Day filter formats:")
         print("  --day 1        # Day 1 only")
@@ -1313,8 +1293,8 @@ Day filter examples:
         print(f"📅 DAY FILTER: {day_filter}")
     print("="*60)
 
-    fetcher = BatchImageFetcher(destination)
-    fetcher.force_refresh = force_refresh
+    fetcher = BatchImageFetcher(destination, force_refresh=force_refresh)
+    # force_refresh already passed to constructor
     fetcher.fetch_cities(city_limit)
     fetcher.fetch_pois(poi_limit, day_filter=day_filter)
 

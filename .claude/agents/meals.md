@@ -116,19 +116,19 @@ For each day in the trip:
 
    ```json
    {
-     "name_base": "Chaoshidai Food Street (Raffles City)",
-     "name_local": "超食代美食街区(重庆来福士店)",
-     "location_base": "Raffles City Chongqing, Jiesheng Street 8",
-     "location_local": "重庆来福士广场捷盛街8号",
+     "name_base": "Local Food Street",
+     "name_local": "Example: local language restaurant name",
+     "location_base": "123 Main Street, City Center",
+     "location_local": "Example: local language address",
      "cost": 25,
      "optional": false,
 
-     "cuisine_base": "Sichuan Cuisine",
-     "cuisine_local": "川菜",
-     "signature_dishes_base": "Mapo Tofu, Kung Pao Chicken",
-     "signature_dishes_local": "麻婆豆腐、宫保鸡丁",
-     "notes_base": "Famous for spicy dishes, reservations recommended",
-     "notes_local": "以辣菜闻名，建议提前预约",
+     "cuisine_base": "Local Cuisine",
+     "cuisine_local": "Example: local language cuisine type",
+     "signature_dishes_base": "Signature Dish A, Signature Dish B",
+     "signature_dishes_local": "Example: local language dish names",
+     "notes_base": "Famous for local dishes, reservations recommended",
+     "notes_local": "Example: local language notes",
      "search_results": [
        {
          "skill": "gaode-maps",

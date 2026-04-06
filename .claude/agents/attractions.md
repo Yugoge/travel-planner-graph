@@ -130,17 +130,17 @@ For each day in the trip:
 
    ```json
    {
-     "name_base": "Raffles City Observation Deck",
-     "name_local": "来福士观景台",
-     "location_base": "Raffles City Chongqing, Jiesheng Street 8",
-     "location_local": "重庆来福士广场捷盛街8号",
+     "name_base": "City Observation Deck",
+     "name_local": "Example: local language attraction name",
+     "location_base": "123 Main Street, City Center",
+     "location_local": "Example: local language address",
      "cost": 15,
      "optional": false,
 
      "type_base": "Museum",
-     "type_local": "博物馆",
+     "type_local": "Example: local language type",
      "notes_base": "Book tickets online, skip-the-line available",
-     "notes_local": "可网上购票，有免排队通道",
+     "notes_local": "Example: local language notes",
      "opening_hours": "09:00-17:00",
 
      "search_results": [
