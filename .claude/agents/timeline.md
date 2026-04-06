@@ -308,7 +308,7 @@ For each day, create timeline dictionary with:
 
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
-   - `name_local`: Local language — "打车前往[目的地]", "乘地铁前往[目的地]", "步行前往[目的地]"
+   - `name_local`: Local language — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]" (translated to destination language)
    - `type_base`: "walk" | "taxi" | "metro" | "bus" | "ferry"
    - `type_local`: local language equivalent (e.g., "步行", "出租车", "地铁")
    - `icon`: emoji icon for display (e.g., "🚶", "🚕", "🚇")

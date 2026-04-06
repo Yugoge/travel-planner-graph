@@ -296,8 +296,6 @@ When parsing route data from Gaode Maps API or any mapping service:
 
 **CRITICAL: Use centralized JSON I/O library for all JSON writes**
 
-Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
-
 **All data saves MUST use `scripts/save.py`** which provides:
 - ✅ Automatic schema validation prevents bugs
 - ✅ Atomic writes prevent data corruption
@@ -316,13 +314,6 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
     --trip-dir data/{destination-slug}
 ```
 
-**Benefits:**
-- ✅ Automatic schema validation prevents bugs
-- ✅ Atomic writes prevent data corruption
-- ✅ Automatic backups enable recovery
-- ✅ Consistent formatting across all files
-- ✅ Clear error messages when validation fails
-
 ## Duffel Flights Integration
 
 **When to use Duffel Flights**:
@@ -332,10 +323,10 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - When real-time flight pricing needed
 - For multi-city itineraries with flight segments
 
-2. Parse JSON output for price, duration, airline, stops
-4. Extract baggage allowance and cabin class from results
-5. Calculate total journey time (including airport transfers)
-6. Save structured data to transportation.json
+1. Parse JSON output for price, duration, airline, stops
+2. Extract baggage allowance and cabin class from results
+3. Calculate total journey time (including airport transfers)
+4. Save structured data to transportation.json
 
 **Error Handling**:
 - Scripts implement automatic retry logic (3 attempts with exponential backoff)
@@ -354,11 +345,11 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - When accurate travel times required
 - For multi-modal route comparisons
 
-2. Parse JSON output for segments (train, bus, walk)
-3. Extract: departure/arrival times, cost, duration, station names
-4. Optionally compare with driving route (see `.claude/skills/gaode-maps/SKILL.md` for routing usage)
-5. Select best option based on user preferences
-6. Save structured data to transportation.json
+1. Parse JSON output for segments (train, bus, walk)
+2. Extract: departure/arrival times, cost, duration, station names
+3. Optionally compare with driving route (see `.claude/skills/gaode-maps/SKILL.md` for routing usage)
+4. Select best option based on user preferences
+5. Save structured data to transportation.json
 
 **Error Handling**:
 - Scripts implement automatic retry logic (3 attempts with exponential backoff)
@@ -377,14 +368,15 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - For walking routes between nearby attractions
 - For public transit in non-China cities
 
-2. Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
-3. Parse JSON output for distance, duration, route details
-4. For TRANSIT: Extract subway/bus line information from response
-5. For DRIVE: Script uses current time for traffic-aware routing
-6. Save structured data to transportation.json
+1. Travel modes: DRIVE, TRANSIT, WALK, BICYCLE
+2. Parse JSON output for distance, duration, route details
+3. For TRANSIT: Extract subway/bus line information from response
+4. For DRIVE: Script uses current time for traffic-aware routing
+5. Save structured data to transportation.json
 
-2. Search for airports, train stations, bus terminals
-3. Parse JSON output for location coordinates and contact information
+**For place searches**:
+1. Search for airports, train stations, bus terminals
+2. Parse JSON output for location coordinates and contact information
 
 **Error Handling**:
 - Scripts implement automatic retry logic (3 attempts with exponential backoff)

@@ -308,13 +308,6 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent entertainment \
     --trip-dir data/{destination-slug}
 ```
 
-**Benefits:**
-- ✅ Automatic schema validation prevents bugs
-- ✅ Atomic writes prevent data corruption
-- ✅ Automatic backups enable recovery
-- ✅ Consistent formatting across all files
-- ✅ Clear error messages when validation fails
-
 ## Quality Standards
 
 - All venues and shows must be real and scheduled for travel dates

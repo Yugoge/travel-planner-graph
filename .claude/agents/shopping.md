@@ -319,8 +319,6 @@ Validate:
 
 **CRITICAL: Use centralized JSON I/O library for all JSON writes**
 
-Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
-
 **All data saves MUST use `scripts/save.py`** which provides:
 - ✅ Automatic schema validation prevents bugs
 - ✅ Atomic writes prevent data corruption
@@ -338,13 +336,6 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent shopping \
     --data-file data/{destination-slug}/shopping.json \
     --trip-dir data/{destination-slug}
 ```
-
-**Benefits:**
-- ✅ Automatic schema validation prevents bugs
-- ✅ Atomic writes prevent data corruption
-- ✅ Automatic backups enable recovery
-- ✅ Consistent formatting across all files
-- ✅ Clear error messages when validation fails
 
 ## Quality Standards
 

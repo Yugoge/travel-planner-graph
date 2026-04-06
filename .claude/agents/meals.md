@@ -141,7 +141,7 @@ For each day in the trip:
    ```
 
    **Examples by destination**:
-   - **China**: `"name_base": "Qu Nanshan Night View Hotpot Park", "name_local": "去南山夜景火锅公园"`
+   - **China**: `"name_base": "Local Hotpot Restaurant", "name_local": "Example: local name"`
    - **Japan**: `"name_base": "Sushi Saito", "name_local": "鮨 さいとう"`
    - **Korea**: `"name_base": "Gwangjang Market", "name_local": "광장시장"`
    - **USA** (when base_lang=en): `"name_base": "In-N-Out Burger", "name_local": "In-N-Out Burger"` (destination lang = base_lang)
@@ -331,13 +331,6 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent meals \
     --data-file data/{destination-slug}/meals.json \
     --trip-dir data/{destination-slug}
 ```
-
-**Benefits:**
-- ✅ Automatic schema validation prevents bugs
-- ✅ Atomic writes prevent data corruption
-- ✅ Automatic backups enable recovery
-- ✅ Consistent formatting across all files
-- ✅ Clear error messages when validation fails
 
 **Example Validation Error:**
 ```

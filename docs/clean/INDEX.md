@@ -1,7 +1,7 @@
 # clean
 
-*Last updated: 2026-04-06T16:43:37Z*
-**Total entries**: 35
+*Last updated: 2026-04-06T16:45:53Z*
+**Total entries**: 36
 **Convention**: kebab
 
 ## Tree
@@ -13,6 +13,7 @@ clean/
 ├── `cleanliness-report-clean-20260406-134403.json` - json config
 ├── `cleanup-execution-clean-20260216-014622.json` - json config
 ├── `cleanup-execution-clean-20260314-110833.json` - json config
+├── `cleanup-execution-clean-20260406-134403-group1.json` - json config
 ├── `cleanup-execution-clean-20260406-134403-group3.json` - json config
 ├── `combined-report-clean-20260314-110833.json` - json config
 ├── `combined-report-clean-20260406-134403.json` - json config

@@ -342,13 +342,6 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent accommodation \
     --trip-dir data/{destination-slug}
 ```
 
-**Benefits:**
-- ✅ Automatic schema validation prevents bugs
-- ✅ Atomic writes prevent data corruption
-- ✅ Automatic backups enable recovery
-- ✅ Consistent formatting across all files
-- ✅ Clear error messages when validation fails
-
 ## Quality Standards
 
 - All accommodations must be real and bookable
