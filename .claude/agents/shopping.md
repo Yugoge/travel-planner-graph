@@ -280,7 +280,11 @@ Validate:
 
    Exit code 0 = log entry created successfully. If this fails, STOP and report error.
 
-4. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008):
+4. **Validate output against schema before saving**:
+   Read and verify your output conforms to: `/root/travel-planner/schemas/shopping.schema.json`
+   If validation fails, fix the output structure before proceeding to save.
+
+5. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008):
    ```bash
    python scripts/save.py \
      --trip {destination-slug} \
@@ -291,7 +295,7 @@ Validate:
    **CRITICAL**: `--merge-days` flag merges single-day updates into existing multi-day file,
    preserving all days NOT in update. Without this flag, entire file is replaced.
 
-5. **Verify save succeeded** (MANDATORY):
+6. **Verify save succeeded** (MANDATORY):
    Check exit code:
    - Exit code 0 = success → proceed
    - Exit code 1 = validation failed → REPORT ERROR (see Failure Modes)
@@ -299,7 +303,7 @@ Validate:
 
    If exit code is NOT 0, you MUST stop and report error to user.
 
-6. **Return completion status**:
+7. **Return completion status**:
    Only after exit code 0, return:
    ```json
    {

@@ -1,0 +1,84 @@
+{
+  "request_id": "dev-20260406-020002",
+  "timestamp": "2026-04-06T02:20:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260406-020002.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added optional brands array to shopping_item in schemas/shopping.schema.json",
+        "type": "schema",
+        "files_modified": ["schemas/shopping.schema.json"],
+        "changes": "Added brands property as an array of brand objects under shopping_item properties. Each brand requires name (string) and category (string); optional fields: name_local, category_local, floor, description, description_local. Not added to required array (optional field). Schema uses additionalProperties: false so explicit declaration was mandatory.",
+        "rationale": "Root cause fix for cfc5766: shopping_item had no provision for nested brand data. Brands were encoded in notes_base as workaround. Schema addition is prerequisite for agent to save valid brands arrays."
+      },
+      {
+        "id": 2,
+        "description": "Updated shopping.md agent prompt to document brands array output format",
+        "type": "config",
+        "files_modified": [".claude/agents/shopping.md"],
+        "changes": "Added brands array explanation and full JSON example to Step 4 'Structure data' section. Notes_base clarified as non-brand notes only (hours, rating, tips). Example shows two brand objects with all fields.",
+        "rationale": "Agent prompt previously had no instruction for brands array; brands would continue to be encoded in notes_base without this update."
+      },
+      {
+        "id": 3,
+        "description": "Updated HTML generator merge logic with brands array priority check",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Line ~735: replaced unconditional _parse_shopping_brands() call with: brands = shop_item.get('brands', []) or self._parse_shopping_brands(notes_base, notes_local). Reads structured brands array directly when present and non-empty; falls back to regex parse for existing old-format data.",
+        "rationale": "Root cause fix for cfc5766 / cb70c2e pattern: generator was always regex-parsing notes_base regardless of whether structured data was available. New path: brands array is authoritative when present."
+      },
+      {
+        "id": 4,
+        "description": "Updated plan.md Step 8 shopping-agent invocation notes with brands array format",
+        "type": "config",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Added 'Shopping Agent - Brands Array Required' bullet under Step 8 'Each agent' section. Documents category values, field names, and a two-entry example JSON snippet.",
+        "rationale": "AC5 requirement: future orchestrator invocations of shopping-agent will now have the brands array format in the invocation hint."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "schemas/shopping.schema.json",
+        "imported_by": ["scripts/validate-agent-outputs.py", "scripts/save.py (indirectly via schema directory scan)"],
+        "impact": "low — additive change only, existing items without brands continue to validate"
+      },
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": [],
+        "impact": "low — standalone script, no importers"
+      },
+      {
+        "modified": ".claude/agents/shopping.md",
+        "imported_by": [],
+        "impact": "low — agent prompt file, affects future agent invocations only"
+      },
+      {
+        "modified": ".claude/commands/plan.md",
+        "imported_by": [],
+        "impact": "low — command prompt file, affects future plan command invocations only"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "cfc5766 -- fix: realistic prices + shopping merge bug (introduced _parse_shopping_brands workaround pattern)",
+      "why_issue_occurred": "Shopping schema had no nested field for brand data. Brands were encoded into notes_base free text using [CATEGORY] bracket syntax. A 94-line regex parser (_parse_shopping_brands) was added to recover structure at render time. This pattern is fragile, untestable, and prevents typed schema validation.",
+      "how_fix_addresses_root": "Added brands array to the schema so agents can output typed brand objects directly. HTML generator reads brands array first (skipping regex parse). Fallback preserved for all existing plans that predate this change."
+    },
+    "validation_results": {
+      "schema_test_with_brands": "PASS -- jsonschema.validate accepted shopping_item with brands array",
+      "schema_test_without_brands": "PASS -- jsonschema.validate accepted shopping_item without brands (backward compat)",
+      "generator_syntax_check": "PASS -- python -m py_compile (pre-existing SyntaxWarning on line 1377 unrelated to this change)",
+      "wangfujing_fallback_render": "PASS -- generate-html-interactive.py wangfujing-dongdan-beijing-20260405-192905 produced 224.7 KB HTML using fallback _parse_shopping_brands path"
+    },
+    "tdd_note": "No failing test written first (TDD skipped). Schema and fallback validation performed post-implementation via inline Python and full HTML generation test. The wangfujing plan has no brands field on any shopping items, confirming the fallback path exercises _parse_shopping_brands.",
+    "qa_ready": true,
+    "qa_notes": "AC1: Run save.py with a shopping.json item containing a brands array -- expect exit 0. AC3: Generate HTML for a plan with brands array -- confirm brand cards render from structured data not regex parse. AC4: Wangfujing plan already tested -- HTML renders correctly via fallback. AC5: Verify plan.md Step 8 contains brands array example (added under 'Shopping Agent - Brands Array Required' bullet)."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Update existing high-value plan shopping.json files (e.g. beijing-exchange-bucket-list-2026) to use brands array instead of notes_base bracket encoding -- this is a future task, backward compat handles them until then",
+    "Consider adding a plan-validate.py check that warns when [DESIGNER] bracket patterns appear in notes_base alongside a brands array (conflicting data), as noted in BA spec 'Could Have'"
+  ]
+}

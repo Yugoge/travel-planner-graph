@@ -218,10 +218,38 @@ Validate:
    {
      "agent": "meals",
      "status": "complete",
-     "data": {...your meals data...}
+     "data": {
+       "days": [
+         {
+           "day": 1,
+           "date": "YYYY-MM-DD",
+           "location": "City Name",
+           "breakfast": {
+             "primary": { "name_base": "...", "name_local": "...", ... }
+           },
+           "lunch": {
+             "primary": { "name_base": "...", "name_local": "...", ... },
+             "alternatives": [
+               { "name_base": "...", "name_local": "...", ... }
+             ]
+           },
+           "dinner": {
+             "primary": { "name_base": "...", "name_local": "...", ... }
+           }
+         }
+       ]
+     }
    }
    EOF
    ```
+
+   **CRITICAL - Nested meal format (format change 2026-04-06)**:
+   Each meal type (`breakfast`, `lunch`, `dinner`) MUST be a `meal_slot` object:
+   - `primary` (required): main meal recommendation — a complete `meal_item` object
+   - `alternatives` (optional): array of backup `meal_item` objects
+
+   Do NOT emit the old flat format where `lunch_alternatives` appears as a sibling key
+   at the day level. The schema (`meals.schema.json`) will reject old-format saves.
 
 3. **Create modification log entry** (MANDATORY - Root cause: ef0ed28, f9634dc):
    ```bash

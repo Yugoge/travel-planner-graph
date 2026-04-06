@@ -301,9 +301,13 @@ class AgentDataSyncer:
             day_tl = timeline_by_day.get(day_num, {})
 
             for meal_type in self._config["meal_types"]:
-                meal = day.get(meal_type)
-                if not meal or not isinstance(meal, dict):
+                meal_slot = day.get(meal_type)
+                if not meal_slot or not isinstance(meal_slot, dict):
                     continue
+
+                # Dual-read: new format has meal_slot.primary; old format is meal_item directly
+                is_nested = "primary" in meal_slot
+                meal = meal_slot.get("primary", meal_slot)
 
                 original = deepcopy(meal)
                 # Direct meal_ref lookup — timeline entries tagged with meal_ref field
@@ -325,7 +329,9 @@ class AgentDataSyncer:
                     # Fallback: name-based lookup (no time_hint needed)
                     self._inject_time(meal, day_tl, "meals", day_num, default_duration=1.0)
                 if meal != original:
-                    day[meal_type] = meal
+                    if is_nested:
+                        meal_slot["primary"] = meal
+                    day[meal_type] = meal_slot
                     modified = True
 
         if modified:
