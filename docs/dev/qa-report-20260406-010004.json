@@ -1,0 +1,160 @@
+{
+  "request_id": "dev-20260406-010004",
+  "timestamp": "2026-04-06T11:40:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "Fix correctly normalises the location key by stripping parenthetical suffixes before all three lookup tiers. The orchestrator-specified cover-field test passes: cover is a valid HTTPS URL. All four acceptance criteria verified via isolation test. No regressions detected.",
+    "success_criteria_results": [
+      {
+        "criterion": "_get_cover_image('Beijing (Wangfujing + Dongdan)') returns the URL stored under 'Beijing' in city_covers",
+        "verification_method": "Generated HTML from the real wangfujing-dongdan-beijing-20260405-192905 dataset; extracted PLAN_DATA.trips[0].days[0].cover; also ran strip-logic isolation test",
+        "result": "pass",
+        "details": "cover field contains 'https://store.is.autonavi.com/showpic/c5d1f954b76563325f7a9d7433b66167' - valid HTTPS URL, not empty",
+        "evidence": [
+          "Script output: cover: https://store.is.autonavi.com/showpic/c5d1f954b76563325f7a9d7433b66167",
+          "Isolation test: strip_location('Beijing (Wangfujing + Dongdan)') -> 'Beijing' PASS"
+        ]
+      },
+      {
+        "criterion": "_get_cover_image('Shanghai') continues to return the URL stored under 'Shanghai'",
+        "verification_method": "Strip-logic isolation test: input without parenthetical must pass through unchanged",
+        "result": "pass",
+        "details": "strip_location('Shanghai') -> 'Shanghai' — simple names are unmodified by the split/strip",
+        "evidence": [
+          "Isolation test: PASS strip_location('Shanghai') -> 'Shanghai' (expected 'Shanghai')"
+        ]
+      },
+      {
+        "criterion": "_get_cover_image('(Unknown)') returns empty string without error",
+        "verification_method": "Strip-logic isolation test: purely parenthetical location strips to empty string, triggering early return",
+        "result": "pass",
+        "details": "strip_location('(Unknown)') -> '' which triggers the 'if not location: return \"\"' guard in the implementation",
+        "evidence": [
+          "Isolation test: PASS strip_location('(Unknown)') -> '' (expected '')"
+        ]
+      },
+      {
+        "criterion": "No other method behaviour changes",
+        "verification_method": "Code review of the diff at lines 272-274; verified only _get_cover_image was touched and the three lookup tiers are unchanged",
+        "result": "pass",
+        "details": "Two lines added at the top of _get_cover_image (split/strip normalization + empty guard); docstring compressed from 4-line to 1-line; all three lookup branches untouched",
+        "evidence": [
+          "Code read at lines 271-302: only normalization prepended; lookup logic identical to original"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause was: compound location string 'Beijing (Wangfujing + Dongdan)' never matched bare 'Beijing' key because the full string was used as the lookup key. Fix strips the suffix before any lookup so exact and case-insensitive tiers fire correctly. Confirmed by real HTML generation producing a non-empty cover URL."
+    },
+    "band_aid_scan": {
+      "performed": true,
+      "findings": [],
+      "verdict": "clean",
+      "notes": "Fix is normalisation upstream (correct approach). No threshold was lowered, no validation was swallowed, no check was removed or weakened."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "python scripts/generate-html-interactive.py wangfujing-dongdan-beijing-20260405-192905",
+      "deploy_command": "n/a - static file generation, no Docker service",
+      "build_output_summary": "Generated output/travel-plan-wangfujing-dongdan-beijing-20260405-192905.html (224.5 KB) with exit code 0",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Simple city name (no parenthetical) unchanged",
+        "result": "pass",
+        "details": "strip_location('Shanghai') -> 'Shanghai': the split on '(' with no '(' present returns the full string; strip() is a no-op on clean input"
+      },
+      {
+        "test": "HTML generation completes without error",
+        "result": "pass",
+        "details": "Script ran to completion, produced 224.5 KB output file, no exceptions raised (SyntaxWarning in unrelated line 1370 is pre-existing)"
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true,
+      "notes": "Travel planner is a static HTML generator, not an interactive web app with a running service. Playwright not applicable. Verification performed by generating real output and inspecting the produced HTML data."
+    },
+    "ui_test_results": [
+      {
+        "scenario": "Cover field present in generated HTML PLAN_DATA",
+        "url": "file:///root/travel-planner/output/travel-plan-wangfujing-dongdan-beijing-20260405-192905.html",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "Ran generate-html-interactive.py with wangfujing-dongdan-beijing-20260405-192905",
+          "Parsed PLAN_DATA JSON from generated HTML",
+          "Extracted trips[0].days[0].cover value"
+        ],
+        "assertions": [
+          {
+            "expected": "cover field is a non-empty valid HTTPS URL",
+            "actual": "https://store.is.autonavi.com/showpic/c5d1f954b76563325f7a9d7433b66167",
+            "passed": true
+          }
+        ],
+        "evidence": "Script output: cover: https://store.is.autonavi.com/showpic/c5d1f954b76563325f7a9d7433b66167"
+      }
+    ],
+    "generated_tests": [
+      {
+        "path": "inline isolation test (not written to disk)",
+        "type": "unit",
+        "description": "Tests strip_location logic for all four acceptance criteria: compound location, simple location, unknown city, purely-parenthetical location",
+        "request_id": "dev-20260406-010004",
+        "edge_case_id": null,
+        "execution": {
+          "status": "pass",
+          "exit_code": 0,
+          "total_checks": 4,
+          "violations_found": 0,
+          "violations": [],
+          "error_message": null
+        }
+      }
+    ],
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    },
+    "self_verification": {
+      "claims_total": 7,
+      "claims_with_evidence": 7,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}

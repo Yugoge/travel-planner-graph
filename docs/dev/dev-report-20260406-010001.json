@@ -1,0 +1,64 @@
+{
+  "request_id": "dev-20260406-010001",
+  "timestamp": "2026-04-06T01:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260406-010001.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Rewrote check-budget-overage.py with multi-currency field resolution",
+        "type": "code_modification",
+        "files_modified": ["scripts/check-budget-overage.py"],
+        "changes": "Replaced hard-coded EUR-only field lookups with CURRENCY_FIELDS map, currency auto-detection, and a generic candidate-path search covering root, summary, data, data.trip_summary, and data.days[0].budget_vs_user. Renamed threshold_eur parameter to threshold_amount. Output currency symbol is now derived from detected currency. Error message lists all accepted field names and paths.",
+        "rationale": "Root cause: script authored for EUR-only plans. CNY plan field names (overage_cny, overage_percent) under data.trip_summary were never added to the lookup logic when the budget agent added CNY support around commit cb6cc4d."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/check-budget-overage.py",
+        "imported_by": []
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "cb6cc4d -- fix: deploy slug parsing bug + budget.json USD to CNY conversion",
+      "why_issue_occurred": "Budget agent started emitting CNY field names (overage_cny, overage_percent, trip_summary) in budget.json but check-budget-overage.py was not updated to match, leaving it EUR-only.",
+      "how_fix_addresses_root": "CURRENCY_FIELDS lookup table covers both EUR and CNY field name variants. _detect_currency probes all candidate nodes to determine plan currency before resolving fields. Threshold comparison uses native currency units directly."
+    },
+    "test_results": [
+      {
+        "file": "data/wangfujing-dongdan-beijing-20260405-192905/budget.json",
+        "args": "200 20",
+        "exit_code": 0,
+        "output": "Budget acceptable — ¥0.00 (0.0%) [from data.trip_summary.overage_cny, data.trip_summary.overage_percent]",
+        "expected": "0 or 1",
+        "pass": true
+      },
+      {
+        "file": "data/beijing-exchange-bucket-list-20260202-232405/budget.json",
+        "args": "200 20",
+        "exit_code": 1,
+        "output": "BUDGET REVIEW REQUIRED — €-1043.33 (-29.8%) [from data.overage_eur, data.overage_percentage]",
+        "expected": "0 or 1",
+        "pass": true
+      },
+      {
+        "file": "data/china-exchange-bucket-list-2026/budget.json",
+        "args": "200 20",
+        "exit_code": 2,
+        "output": "Error: Missing overage fields — lists all accepted field names and paths",
+        "expected": "2 with descriptive error",
+        "pass": true
+      }
+    ],
+    "qa_ready": true,
+    "qa_notes": "Run the three test commands above. Also test data/china-feb-15-mar-7-2026-20260202-195429/budget.json which should also exit 2 (no trip-level summary). Verify CNY output shows ¥ symbol not €. Verify EUR output still shows € symbol.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "If future currencies are added to the budget agent, add a new entry to CURRENCY_FIELDS in check-budget-overage.py to keep parity.",
+    "Consider adding data.days[0].budget_vs_user fallback aggregation for multi-day plans that lack a trip_summary node (china-feb-15, china-exchange) — currently those plans correctly exit 2, but a sum-of-days approach would allow threshold checking on them."
+  ]
+}
