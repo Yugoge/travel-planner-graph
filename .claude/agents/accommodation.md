@@ -324,8 +324,6 @@ Validate:
 
 **CRITICAL: Use centralized JSON I/O library for all JSON writes**
 
-Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
-
 **All data saves MUST use `scripts/save.py`** which provides:
 - ✅ Automatic schema validation prevents bugs
 - ✅ Atomic writes prevent data corruption
@@ -569,7 +567,7 @@ Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
     "items_modified": 1,
     "items_deleted": 0,
     "key_changes": [
-      "Added Airbnb for Days 1-3 in Chongqing",
+      "Added Airbnb for Days 1-3 in {destination}",
       "Modified Day 5 hotel to 4-star option"
     ]
   },

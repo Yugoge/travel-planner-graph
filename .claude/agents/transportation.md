@@ -115,14 +115,14 @@ For each location change day:
 
    ```json
    {
-     "from_base": "Chongqing",
-     "from_local": "重庆",
-     "to_base": "Chengdu",
-     "to_local": "成都",
-     "name_base": "Chongqing to Chengdu",
-     "name_local": "重庆 → 成都",
+     "from_base": "City A",
+     "from_local": "Example: local language city name",
+     "to_base": "City B",
+     "to_local": "Example: local language city name",
+     "name_base": "City A to City B",
+     "name_local": "Example: local language route name",
      "type_base": "High-speed train",
-     "type_local": "高铁",
+     "type_local": "Example: local language type",
      "departure_time": "08:30",
      "arrival_time": "11:45",
 
@@ -130,18 +130,18 @@ For each location change day:
 
      "currency_local": "CNY",
      "cost_type_base": "Second class seat",
-     "cost_type_local": "二等座",
-     "company_base": "China Railway",
-     "company_local": "中国铁路",
-     "route_number": "G8601",
-     "departure_point_base": "Chongqing North Station",
-     "departure_point_local": "重庆北站",
-     "arrival_point_base": "Chengdu East Station",
-     "arrival_point_local": "成都东站",
+     "cost_type_local": "Example: local language seat class",
+     "company_base": "Railway Company",
+     "company_local": "Example: local language company",
+     "route_number": "G1234",
+     "departure_point_base": "City A Main Station",
+     "departure_point_local": "Example: local language station name",
+     "arrival_point_base": "City B East Station",
+     "arrival_point_local": "Example: local language station name",
      "status_base": "Not yet booked",
-     "status_local": "尚未预订",
+     "status_local": "Example: local language status",
      "notes_base": "Book 2 weeks in advance for discount, luggage included",
-     "notes_local": "提前两周预订可享折扣，含行李"
+     "notes_local": "Example: local language notes"
    }
    ```
 
@@ -589,7 +589,7 @@ Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
     "items_deleted": 0,
     "location_changes_processed": [3, 7],
     "key_changes": [
-      "Added train route for Day 3 location change (Chongqing to Bazhong)"
+      "Added train route for Day N location change (City A to City B)"
     ]
   },
   "warnings": [],

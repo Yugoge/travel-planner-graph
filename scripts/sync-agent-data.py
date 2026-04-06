@@ -11,9 +11,9 @@ Purpose: After any agent updates, this script:
   5. Generates sync report
 
 Usage:
-    python scripts/sync-agent-data.py <destination-slug>
-    python scripts/sync-agent-data.py <destination-slug> --dry-run
-    python scripts/sync-agent-data.py <destination-slug> --skip-html
+    source venv/bin/activate && python scripts/sync-agent-data.py <destination-slug>
+    source venv/bin/activate && python scripts/sync-agent-data.py <destination-slug> --dry-run
+    source venv/bin/activate && python scripts/sync-agent-data.py <destination-slug> --skip-html
 """
 
 import json
@@ -25,6 +25,9 @@ import importlib.util
 from pathlib import Path
 from datetime import datetime
 from copy import deepcopy
+
+
+CHECKIN_WINDOW_MINUTES = 60  # Default check-in duration for accommodation
 
 
 class AgentDataSyncer:
@@ -458,7 +461,7 @@ class AgentDataSyncer:
                 # Build end time = start + 60 min (capped at 23:59)
                 try:
                     h, m = map(int, checkin_start.split(":"))
-                    total_min = h * 60 + m + 60
+                    total_min = h * 60 + m + CHECKIN_WINDOW_MINUTES
                     if total_min >= 24 * 60:
                         checkin_end = "23:59"
                     else:
@@ -699,8 +702,8 @@ def main():
         print("Normalizes time formats, injects timeline times, and regenerates HTML.")
         print()
         print("Examples:")
-        print("  python scripts/sync-agent-data.py china-feb-15-mar-7-2026-20260202-195429")
-        print("  python scripts/sync-agent-data.py china-feb-15-mar-7-2026-20260202-195429 --dry-run")
+        print("  source venv/bin/activate && python scripts/sync-agent-data.py china-feb-15-mar-7-2026-20260202-195429")
+        print("  source venv/bin/activate && python scripts/sync-agent-data.py china-feb-15-mar-7-2026-20260202-195429 --dry-run")
         sys.exit(1)
 
     plan_id = sys.argv[1]

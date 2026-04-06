@@ -73,8 +73,20 @@ class InteractiveHTMLGenerator:
             else:
                 raise ValueError("Invalid fallback_exchange_rate in config")
         except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
+            # Final fallback: environment variable override
+            env_rate = os.environ.get('FALLBACK_EUR_CNY_RATE')
+            if env_rate:
+                try:
+                    cny_to_eur = float(env_rate)
+                    if cny_to_eur > 0:
+                        rate = 1.0 / cny_to_eur
+                        print(f"Exchange rate (env FALLBACK_EUR_CNY_RATE): 1 EUR = {rate} CNY", file=sys.stderr)
+                        return rate
+                except (ValueError, ZeroDivisionError):
+                    pass
             print(f"ERROR: Failed to fetch EUR→CNY exchange rate: {e}", file=sys.stderr)
             print("Please check network connection or update config/currency-config.json", file=sys.stderr)
+            print("Or set FALLBACK_EUR_CNY_RATE environment variable (e.g., 0.128)", file=sys.stderr)
             raise RuntimeError("Exchange rate unavailable - cannot generate accurate budget display")
 
     def _load_display_currency(self) -> tuple:

@@ -9,7 +9,6 @@ Exit codes:
 
 Examples:
   python scripts/check-budget-overage.py data/china-feb15/budget.json 200 20
-  python scripts/check-budget-overage.py data/wangfujing/budget.json 200 20
   python scripts/check-budget-overage.py data/trip/budget.json
 
 Supported currencies: EUR, CNY
@@ -179,6 +178,9 @@ def _evaluate_thresholds(overage_abs, overage_pct, threshold_amount, threshold_p
 
 
 def check_budget_overage(budget_path: str, threshold_amount: float = 200.0, threshold_pct: float = 20.0) -> int:
+    # Defaults: 200 currency units absolute / 20% relative — chosen as reasonable
+    # thresholds where overage becomes significant enough to warrant day-by-day review.
+    # Override via CLI args: check-budget-overage.py <path> <amount> <pct>
     """
     Check if budget overage exceeds thresholds.
 

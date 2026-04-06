@@ -235,11 +235,11 @@ For each day, create timeline dictionary with:
 **Reference pattern (correct)**:
 ```json
 // transportation.json has:
-"route_number": "C73",
-"verified_train": {"train_number": "C73", "departure_time": "07:26", ...}
+"route_number": "G1234",
+"verified_train": {"train_number": "G1234", "departure_time": "07:26", ...}
 
 // timeline.json should reference it as:
-"High-speed Train C73 (Chongqing North → Bazhong East)": {
+"High-speed Train G1234 (City A Station → City B Station)": {
   "start_time": "07:26",
   "end_time": "10:36",
   "duration_minutes": 190
@@ -247,20 +247,20 @@ For each day, create timeline dictionary with:
 ```
 ✅ Timeline used exact train number from transportation.json source
 
-**Anti-pattern (incorrect - Day 3 bug)**:
+**Anti-pattern (incorrect)**:
 ```json
 // transportation.json has:
 "route_number": "VERIFIED BY USER",  // ← Placeholder, no real train number!
 "verified_train": {"train_number": "VERIFIED BY USER", ...}
 
 // timeline.json added:
-"High-speed train D5121 (Bazhong West → Chengdu East)": {...}
+"High-speed train D9999 (City A → City B)": {...}
 ```
-❌ Timeline created "D5121" content that doesn't exist in source - violation of architectural principle
+❌ Timeline created "D9999" content that doesn't exist in source - violation of architectural principle
 
 **What to do when source data is incomplete**:
 1. If transportation.json has placeholder (e.g., "VERIFIED BY USER"), use generic name:
-   - ✅ "High-speed train (Bazhong West → Chengdu East)"
+   - ✅ "High-speed train (City A → City B)"
    - ❌ Don't invent train number
 2. Add warning: "Day X: transportation.json has incomplete train number - using generic label"
 3. Let orchestrator decide if transportation-agent needs re-invocation
@@ -316,8 +316,8 @@ For each day, create timeline dictionary with:
    - `duration_minutes`: integer
 
 **IMPORTANT**: The `name_base` and `name_local` describe the TRANSIT action, not the destination activity. Example:
-- CORRECT: "Taxi to Chongqing North Station" / "打车前往重庆北站"
-- WRONG: "Take train to Chongqing" (confuses transit TO station with the train journey itself)
+- CORRECT: "Taxi to City A Station" / "Example: local language transit description"
+- WRONG: "Take train to City A" (confuses transit TO station with the train journey itself)
 
 **MANDATORY: Return-to-Hotel travel_segment (every day)**
 
@@ -840,7 +840,7 @@ Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
 {
   "agent": "timeline",
   "status": "complete",
-  "file_updated": "data/china-feb-15-mar-7-2026-20260202-195429/timeline.json",
+  "file_updated": "data/{destination-slug}/timeline.json",
   "summary": {
     "items_added": 0,
     "items_modified": 1,

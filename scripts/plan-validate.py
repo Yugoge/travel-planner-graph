@@ -15,11 +15,11 @@ Checks 7 categories:
   7. Additional Properties (redundant fields not in schema - NEW for 100% coverage)
 
 Usage:
-  python3 plan-validate.py                              # all trips
-  python3 plan-validate.py china-feb-15-mar-7-2026-...  # one trip
-  python3 plan-validate.py --json                       # JSON to stdout
-  python3 plan-validate.py --min-severity MEDIUM        # filter
-  python3 plan-validate.py --agent meals                # one agent
+  source venv/bin/activate && python scripts/plan-validate.py                     # all trips
+  source venv/bin/activate && python scripts/plan-validate.py china-feb-15-...    # one trip
+  source venv/bin/activate && python scripts/plan-validate.py --json              # JSON to stdout
+  source venv/bin/activate && python scripts/plan-validate.py --min-severity MEDIUM  # filter
+  source venv/bin/activate && python scripts/plan-validate.py --agent meals          # one agent
 """
 
 import json
@@ -987,7 +987,12 @@ def check_all_activity_overlaps(all_data: dict, trip: str) -> list:
     issues = []
 
     # Collect ALL activities from ALL agents per day
-    for day_num in range(1, 22):  # Iterate through all possible days
+    # Dynamically determine max day count from loaded data
+    max_day = max(
+        (d.get("day", 0) for adata in all_data.values() for d in adata.get("data", adata).get("days", [])),
+        default=0
+    )
+    for day_num in range(1, max_day + 1):
         activities = _collect_all_activities_for_day(all_data, day_num)
 
         if not activities:
@@ -1322,7 +1327,8 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
 def format_table(issues: list, metrics: dict, min_severity: Severity, trips: list):
     """Print human-readable report."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    w = 140
+    import shutil
+    w = min(shutil.get_terminal_size().columns, 160)
     print("=" * w)
     print(f"UNIFIED DATA VALIDATION REPORT — {now}")
     print("=" * w)

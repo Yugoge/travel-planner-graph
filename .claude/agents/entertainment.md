@@ -290,8 +290,6 @@ Validate:
 
 **CRITICAL: Use centralized JSON I/O library for all JSON writes**
 
-Replace direct scripts/save.py script usage with `scripts/lib/json_io.py`:
-
 **All data saves MUST use `scripts/save.py`** which provides:
 - ✅ Automatic schema validation prevents bugs
 - ✅ Atomic writes prevent data corruption
