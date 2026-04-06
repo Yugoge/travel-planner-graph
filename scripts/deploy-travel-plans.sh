@@ -87,7 +87,7 @@ generate_index_html() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Travel Plans | ${LOCAL_DEPLOY_DOMAIN}</title>
+<title>Travel Plans | DEPLOY_DOMAIN_PLACEHOLDER</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -137,12 +137,14 @@ generate_index_html() {
 <body>
 <div class="container">
 <h1>Travel Plans</h1>
-<p class="subtitle">${DEPLOY_AUTHOR} &mdash; PLAN_COUNT_PLACEHOLDER plans</p>
+<p class="subtitle">DEPLOY_AUTHOR_PLACEHOLDER &mdash; PLAN_COUNT_PLACEHOLDER plans</p>
 <ul class="plan-list">
 EOF_INDEX_HEAD
 
-    # Inject dynamic count
+    # Inject dynamic values into generated HTML
     sed -i "s/PLAN_COUNT_PLACEHOLDER/${plan_count}/" "${target_dir}/index.html"
+    sed -i "s/DEPLOY_DOMAIN_PLACEHOLDER/${LOCAL_DEPLOY_DOMAIN}/" "${target_dir}/index.html"
+    sed -i "s/DEPLOY_AUTHOR_PLACEHOLDER/${DEPLOY_AUTHOR}/" "${target_dir}/index.html"
 
     # Generate plan cards
     if [ -n "$plan_dirs" ]; then

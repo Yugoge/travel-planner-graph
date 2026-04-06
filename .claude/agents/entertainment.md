@@ -306,8 +306,8 @@ source venv/bin/activate && python scripts/save.py --trip TRIP_SLUG --agent AGEN
 
 # Save from stdin
 cat data.json | python scripts/save.py --trip TRIP_SLUG --agent entertainment \
-    --data-file data/chongqing-4day/entertainment.json \
-    --trip-dir data/chongqing-4day
+    --data-file data/{destination-slug}/entertainment.json \
+    --trip-dir data/{destination-slug}
 ```
 
 **Benefits:**

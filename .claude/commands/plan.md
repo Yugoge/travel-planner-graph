@@ -436,7 +436,7 @@ If any file missing: Debug and re-invoke failed agent.
 
 Check all files exist:
 ```bash
-cd /root/travel-planner/data/{destination-slug} && ls -1 *.json | grep -E '(meals|accommodation|attractions|entertainment|shopping|transportation)\.json'
+cd data/{destination-slug} && ls -1 *.json | grep -E '(meals|accommodation|attractions|entertainment|shopping|transportation)\.json'
 ```
 
 Expected: 6 files (or 5 if no location changes → transportation.json may be empty)
@@ -447,7 +447,7 @@ If any missing: Debug and re-invoke failed agent.
 
 Run validation script:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/validate-agent-outputs.py /root/travel-planner/data/{destination-slug}
+source venv/bin/activate && python scripts/validate-agent-outputs.py data/{destination-slug}
 ```
 
 **Exit code 0**: All valid → Proceed
@@ -556,8 +556,8 @@ echo "$TIMELINE_AGENT_RESPONSE" | source venv/bin/activate && python scripts/par
 
 **Step 1**: Confirm both files exist:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/route-optimization.json && echo "route-optimization.json verified" || echo "missing"
-test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "missing"
+test -f data/{destination-slug}/route-optimization.json && echo "route-optimization.json verified" || echo "missing"
+test -f data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "missing"
 ```
 
 If either file missing: Debug timeline-agent execution and retry.
@@ -581,7 +581,7 @@ Read data/{destination-slug}/timeline.json
 
 Run validation script:
 ```bash
-bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-slug}
+bash scripts/validate-timeline-consistency.sh {destination-slug}
 ```
 
 **Exit code 0**: Timeline valid → Proceed
@@ -592,7 +592,7 @@ bash /root/travel-planner/scripts/validate-timeline-consistency.sh {destination-
 **CRITICAL**: After timeline validation, synchronize all agent JSONs with authoritative times from timeline.json. This ensures meals, attractions, entertainment, shopping all have correct times before budget calculation and HTML generation.
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug} --skip-html
+source venv/bin/activate && python scripts/sync-agent-data.py {destination-slug} --skip-html
 ```
 
 **What this does**:
@@ -647,7 +647,7 @@ echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse
 
 **Verification**: Confirm file exists before proceeding:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "missing"
+test -f data/{destination-slug}/budget.json && echo "budget.json verified" || echo "missing"
 ```
 
 If file missing: Debug budget-agent execution and retry.
@@ -658,7 +658,7 @@ If file missing: Debug budget-agent execution and retry.
 
 Run budget gate script:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/check-budget-overage.py /root/travel-planner/data/{destination-slug}/budget.json 200 20
+source venv/bin/activate && python scripts/check-budget-overage.py data/{destination-slug}/budget.json 200 20  # 200=max overage amount (local currency), 20=max overage percentage
 ```
 
 **Exit code 0**: Budget acceptable → Set `force_review=false`, proceed to Step 14
@@ -728,7 +728,7 @@ while not day_confirmed_perfect:
 
 Extract complete Day N data using load.py batch command and capture in variable:
 ```bash
-day_data=$(source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/load.py \
+day_data=$(source venv/bin/activate && python scripts/load.py \
   --trip {destination-slug} \
   --agents timeline,meals,attractions,entertainment,shopping,budget \
   --level 3 \
@@ -855,7 +855,6 @@ Please choose an option or describe specific changes you'd like.
 Run fetch-images-batch.py with day-level force mode:
 
 ```bash
-cd /root/travel-planner && \
 source venv/bin/activate && python scripts/fetch-images-batch.py \
   ${PLAN_ID} \
   0 \
@@ -1111,7 +1110,7 @@ echo "$SPECIALIST_AGENT_RESPONSE" | source venv/bin/activate && python scripts/p
 
 **Verification**: Confirm file updated before proceeding:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
+test -f data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
 ```
 
 If file missing: Debug specialist agent execution and retry.
@@ -1181,8 +1180,8 @@ echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse
 
 **Step 1**: Confirm files exist:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
-test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
+test -f data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
+test -f data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
 ```
 
 **Step 2**: Read and verify timeline.json content (equity-analyst pattern):
@@ -1198,7 +1197,7 @@ Verify Day {N} timeline is populated (not empty dictionary).
 
 Run day-scoped validation:
 ```bash
-source venv/bin/activate || source .venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug} --agent {agent_name}
+source venv/bin/activate && python scripts/plan-validate.py data/{destination-slug} --agent {agent_name}
 ```
 
 **Exit code 0**: Changes valid → Proceed to next substep
@@ -1210,7 +1209,7 @@ source venv/bin/activate || source .venv/bin/activate && python /root/travel-pla
 
 After timeline/budget agents update, re-sync all agent times:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug} --skip-html
+source venv/bin/activate && python scripts/sync-agent-data.py {destination-slug} --skip-html
 ```
 
 This ensures agent JSONs stay synchronized with updated timeline after each refinement cycle.
@@ -1300,7 +1299,7 @@ Root cause reference: Script separation caused workflow interruption where AI su
 **MANDATORY**: Run final sync to ensure all agent data is synchronized with timeline before HTML generation. This sync also regenerates the HTML automatically.
 
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug}
+source venv/bin/activate && python scripts/sync-agent-data.py {destination-slug}
 ```
 
 Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-report.json for any remaining unmatched items.
@@ -1310,7 +1309,7 @@ Note: This run includes HTML regeneration (no `--skip-html` flag). Check sync-re
 **CRITICAL**: After all agents complete and data is synced, run the plan validation script as a final quality gate before HTML generation. This ensures all agent outputs meet structural and content requirements.
 
 ```bash
-source venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py /root/travel-planner/data/{destination-slug}
+source venv/bin/activate && python scripts/plan-validate.py data/{destination-slug}
 ```
 
 **Exit code 0 (PASS)**: Validation passed. Proceed to Step 16 (HTML generation).
@@ -1331,12 +1330,12 @@ source venv/bin/activate && python /root/travel-planner/scripts/plan-validate.py
 
 Run unified script:
 ```bash
-bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug}
+bash scripts/generate-and-deploy.sh {destination-slug}
 ```
 
 **If warnings prompted refinement**: Use version suffix
 ```bash
-bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug} -v2
+bash scripts/generate-and-deploy.sh {destination-slug} -v2
 ```
 
 Script performs:
@@ -1360,7 +1359,7 @@ Script performs:
 
 Check file exists locally:
 ```bash
-test -f /root/travel-planner/travel-plan-{destination-slug}.html && echo "verified" || echo "missing"
+test -f travel-plan-{destination-slug}.html && echo "verified" || echo "missing"
 ```
 
 **If missing**: Debug unified script, check agent JSON completeness
@@ -1382,7 +1381,7 @@ https://{username}.github.io/travel-planner-graph/{destination-slug}/{date}/
 
 Run checklist generator:
 ```bash
-source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/generate-booking-checklist.py /root/travel-planner/data/{destination-slug}/timeline.json /root/travel-planner/data/{destination-slug}/budget.json
+source venv/bin/activate && python scripts/generate-booking-checklist.py data/{destination-slug}/timeline.json data/{destination-slug}/budget.json
 ```
 
 Capture output and include in presentation below.
@@ -1646,7 +1645,7 @@ echo "$SPECIALIST_AGENT_RESPONSE" | source venv/bin/activate && python scripts/p
 
 **Verification**: Confirm file updated before proceeding:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
+test -f data/{destination-slug}/{domain}.json && echo "{domain}.json verified" || echo "{domain}.json missing"
 ```
 
 **Example agent delegation**:
@@ -1727,8 +1726,8 @@ echo "$BUDGET_AGENT_RESPONSE" | source venv/bin/activate && python scripts/parse
 
 **Step 1**: Confirm files exist:
 ```bash
-test -f /root/travel-planner/data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
-test -f /root/travel-planner/data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
+test -f data/{destination-slug}/timeline.json && echo "timeline.json verified" || echo "timeline.json missing"
+test -f data/{destination-slug}/budget.json && echo "budget.json verified" || echo "budget.json missing"
 ```
 
 **Step 2**: Read and verify timeline.json content (equity-analyst pattern):
