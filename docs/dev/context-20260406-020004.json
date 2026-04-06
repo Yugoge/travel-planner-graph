@@ -1,0 +1,108 @@
+{
+  "request_id": "dev-20260406-020004",
+  "timestamp": "2026-04-06T02:00:04Z",
+  "requirement": {
+    "original": "Add semantic time constraints to timeline agent prompt so it doesn't put dinner at 17:10 and afternoon tea at 19:15",
+    "clarified": "Add hard semantic time-window constraints to both the timeline agent definition (.claude/agents/timeline.md) and the Step 10 prompt in plan.md. Constraints must be enforced during timeline construction using the existing meal_ref tag, not post-hoc validation. Route optimisation for non-meal activities must remain unchanged.",
+    "what": "Insert a semantic time-window constraint table and enforcement instruction into the timeline agent's scheduling logic in two files",
+    "why": "Nearest-neighbor GPS optimisation ignores semantic meaning of meal types, producing absurd schedules (dinner at 17:10, afternoon tea at 19:15) that harm traveller experience",
+    "where": [
+      ".claude/agents/timeline.md (Step 2: Create timeline dictionary and validation checklist)",
+      ".claude/commands/plan.md (Step 10 timeline agent prompt, Phase 2 Timeline Creation)"
+    ],
+    "scope": {
+      "included": [
+        "Hard time window constraints for breakfast, lunch, afternoon_tea/coffee, dinner",
+        "Constraint application via meal_ref tag (not name string matching)",
+        "Warning emission when clamping occurs",
+        "entertainment entries with meal_ref inherit meal window",
+        "Updates to both .claude/agents/timeline.md and .claude/commands/plan.md"
+      ],
+      "excluded": [
+        "Route optimisation algorithm changes",
+        "Changes to meals, entertainment, attractions, shopping agents",
+        "Changes to save.py, plan-validate.py, or any scripts",
+        "Configurable time windows from user preferences (deferred)",
+        "Auto-rescheduling of activities displaced by clamping"
+      ]
+    },
+    "success_criteria": [
+      "Dinner entry start_time is always >= 18:00 in generated timeline",
+      "Afternoon tea / coffee entry start_time is always <= 17:30",
+      "Breakfast entry start_time is always between 07:00 and 10:00",
+      "Lunch entry start_time is always between 11:30 and 14:00",
+      "Clamping events produce a warning in the day's warnings array",
+      "Non-meal activities (attractions, shopping) are unaffected by the change",
+      "meal_ref tag is the sole trigger for constraint application"
+    ],
+    "constraints": [
+      "Write tool is absolutely forbidden in timeline agent — constraints are enforced through prompt instructions only, no script changes",
+      "meal_ref schema tag already exists and is mandatory; new constraints must consume it, not re-derive meal type from names",
+      "Both files must be updated consistently; divergence between agent definition and Step 10 prompt would cause inconsistent behaviour depending on invocation path"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Dinner scheduled at 17:10 and afternoon matcha break scheduled at 19:15 in generated itinerary",
+    "root_cause": "The timeline agent's scheduling algorithm in Step 2 orders all activities (including meals) purely by GPS proximity using nearest-neighbor optimisation. There is no pre-scheduling constraint that pins meal activities to their semantically appropriate time windows before or during sequence construction. The existing 'verify meal times are reasonable' note appears only in the post-hoc validation checklist, not as an enforcement step during construction.",
+    "root_cause_commit": "N/A — design gap present from initial timeline agent creation; no single commit introduced the bug",
+    "why_introduced": "Nearest-neighbor route optimisation was added to minimise total travel distance per day, which is a valid goal. At the time, meal time windows were listed only as a validation hint, not as a scheduling constraint, so the optimiser was free to place meals at any position in the sequence.",
+    "why_problematic": "GPS proximity optimisation has no concept of 'dinner should happen after 18:00'. When dinner is geographically close to an attraction that is naturally visited in the late afternoon, the optimiser places dinner immediately after that attraction — which may be as early as 17:00. This is semantically wrong and produces an itinerary that no real traveller would follow.",
+    "timeline": "Present from initial implementation; first reported concretely in this requirement",
+    "affected_files": [
+      ".claude/agents/timeline.md",
+      ".claude/commands/plan.md"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (unrelated to this change)",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11 | dca40ed Auto-commit: 2026-04-05 20:37:24 | 199df19 Auto-commit: 2026-03-18 10:25:47 (last timeline.md / plan.md change)",
+    "file_contents": {
+      "timeline_md_step2_validation_hint": "Verify meal times are reasonable (breakfast 7-10am, lunch 12-3pm, dinner 6-10pm)",
+      "timeline_md_meal_ref_table": "meal_ref field is already required schema tag: 'breakfast' | 'lunch' | 'dinner' on every meal entry",
+      "plan_md_step10_phase2_instruction": "Schedule activities following route-optimization.json order for efficiency",
+      "plan_md_step10_phase1": "Uses nearest-neighbor GPS optimisation exclusively; no semantic constraints"
+    },
+    "dependencies": {
+      "meal_ref_tag": "Already mandatory on all meal timeline entries per timeline.md Schema ref fields table; enforced by save.py validation",
+      "route_optimization_json": "Produced by Phase 1 of timeline agent; contains optimized_order per day; semantic constraints must post-process or constrain this order for meal items"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Add a 'Semantic Time Windows' constraint block to the timeline construction instructions in both target files. The block defines five categories with their allowed start-time windows, instructs the agent to read meal_ref on each timeline entry and enforce the corresponding window, and requires a warning to be appended to the day warnings array when clamping occurs. Non-meal activities remain subject to proximity order only.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "/root/travel-planner/.claude/agents/timeline.md",
+      "/root/travel-planner/.claude/commands/plan.md"
+    ],
+    "edit_locations": {
+      "timeline_md": [
+        "Step 2 'Create timeline dictionary' section — after the activity arrangement instruction, before the travel_segments section: insert SEMANTIC TIME WINDOW CONSTRAINTS block",
+        "Step 2 validation checklist bullet 'Verify meal times are reasonable (breakfast 7-10am, lunch 12-3pm, dinner 6-10pm)' — replace with reference to the new hard constraints block"
+      ],
+      "plan_md": [
+        "Step 10 Phase 2 Timeline Creation item 2 — after 'Schedule activities following route-optimization.json order for efficiency': insert the same SEMANTIC TIME WINDOW CONSTRAINTS block (condensed inline version)"
+      ]
+    },
+    "constraint_table_to_insert": {
+      "breakfast": {"window": "07:00-10:00", "trigger": "meal_ref == breakfast"},
+      "lunch": {"window": "11:30-14:00", "trigger": "meal_ref == lunch"},
+      "afternoon_tea": {"window": "14:30-17:30", "trigger": "meal_ref == afternoon_tea OR activity name contains tea/coffee/matcha without meal_ref (fallback)"},
+      "dinner": {"window": "18:00-20:30", "trigger": "meal_ref == dinner"},
+      "entertainment_with_meal_ref": {"window": "inherits from meal_ref value", "trigger": "entertainment entry has meal_ref set"}
+    },
+    "note_on_afternoon_tea": "afternoon_tea is not a standard meal_ref value; the agent may need to detect it by activity name or by a future meal_ref value of 'afternoon_tea'. For now, instruct the agent to check for meal_ref == 'afternoon_tea' and also to pattern-match activity names containing 'tea', 'coffee', 'matcha', 'cafe' as a fallback. This is the one place where limited name-pattern matching is acceptable because there is no existing schema tag for this category.",
+    "validation_approach": "QA verifies by inspecting a generated timeline.json: dinner entries must have start_time >= 18:00, afternoon tea entries must have start_time <= 17:30, all meal entries must have a warning in the warnings array if their original proximity-optimal time fell outside their window."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward prompt-engineering fix with clear root cause: add time-window constraints to an existing scheduling instruction. The pattern (hard constraints + warning emission) is well-established in the codebase already (e.g., accommodation_ref, meal_ref enforcement). No new architecture or external patterns required."
+  }
+}

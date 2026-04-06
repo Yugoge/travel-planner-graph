@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-06T11:40:51Z*
-**Total entries**: 43
+*Last updated: 2026-04-06T11:55:40Z*
+**Total entries**: 50
 **Convention**: kebab
 
 ## Tree
@@ -19,6 +19,11 @@ dev/
 ├── `ba-spec-20260406-010005.md` - BA Specification: Image Fetch Failure Visibility in generate-and-deploy Pipeline
 ├── `ba-spec-20260406-010006.md` - BA Specification: Fix check-budget-overage.py for Multi-Currency Support (Bug8 + Bug26 Combined)
 ├── `ba-spec-20260406-010007.md` - BA Specification: Fix deploy-travel-plans.sh Branch Detection
+├── `ba-spec-20260406-020001.md` - BA Specification: Restructure Meal Alternatives to Nested Format
+├── `ba-spec-20260406-020002.md` - BA Specification: Structured Brand Array in Shopping JSON
+├── `ba-spec-20260406-020003.md` - BA Specification: Include Schema File Paths in Step 8 Agent Prompts
+├── `ba-spec-20260406-020004.md` - BA Specification: Semantic Time Constraints for Timeline Agent
+├── `ba-spec-20260406-020005.md` - BA Specification: Harden TimelineView Degenerate Entry Filtering and Optional Item Deduplication
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -29,6 +34,8 @@ dev/
 ├── `context-20260406-010005.json` - json config
 ├── `context-20260406-010006.json` - json config
 ├── `context-20260406-010007.json` - json config
+├── `context-20260406-020003.json` - json config
+├── `context-20260406-020004.json` - json config
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config

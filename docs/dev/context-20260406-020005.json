@@ -1,0 +1,125 @@
+{
+  "request_id": "dev-20260406-020005",
+  "timestamp": "2026-04-06T02:00:05Z",
+  "requirement": {
+    "original": "Harden the timeline view's degenerate entry filtering and optional item deduplication in generate-html-interactive.py",
+    "clarified": "Audit and fix five specific weaknesses in TimelineView's add() filter, dedup key, firstH/lastH calculation, and top() helper so that malformed or edge-case data cannot produce invisible or misaligned timeline entries.",
+    "what": "Five targeted hardening changes to the TimelineView JSX component within scripts/generate-html-interactive.py",
+    "why": "Filtering logic added during the current session has correctness gaps (end-time sentinel not checked, dedup key too coarse, lastH uses start not end, firstH/top not NaN-safe) that can silently produce broken timeline renders on real trip data.",
+    "where": [
+      "scripts/generate-html-interactive.py: lines 2543-2594 (TimelineView body)"
+    ],
+    "scope": {
+      "included": [
+        "add() guard: reject time.end === '00:00'",
+        "add() guard: numeric zero-duration check via timeToMinutes",
+        "Dedup key: include stable name identifier to avoid over-deduplication",
+        "firstH: NaN fallback to 8",
+        "lastH: compute from max(time.end) across all deduped entries, cap at 24"
+      ],
+      "excluded": [
+        "computeColumnLayout algorithm",
+        "Visual layout, styles, or colors",
+        "Python data-generation layer",
+        "Any file other than generate-html-interactive.py"
+      ]
+    },
+    "success_criteria": [
+      "Entries with time.end === '00:00' are not rendered in timeline",
+      "Two optional items with same type and slot but different names are both rendered",
+      "firstH is never NaN regardless of entry data",
+      "lastH extends to cover the actual end time of the last activity",
+      "No new regressions in existing timeline rendering"
+    ],
+    "constraints": [
+      "All fixes must be within the TimelineView function body (lines 2535-end of component)",
+      "timeToMinutes is already in scope and must be reused, not duplicated",
+      "Do not alter the computeColumnLayout function",
+      "Do not alter any Python layer code"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline may render no entries or drop distinct optional items due to logic gaps in filtering and deduplication added this session.",
+    "root_cause": "Four independent logic gaps: (1) add() checks start!='00:00' but not end!='00:00'; (2) dedup key uses only type+slot, collapsing distinct named alternatives; (3) lastH reads start+2 instead of max(end); (4) firstH/top do not guard against NaN from parseInt on malformed strings.",
+    "root_cause_commit": "N/A - logic gaps in code added this session, not a regression from a prior commit",
+    "why_introduced": "Filters were added incrementally to handle specific known cases (N/A breakfast, zero-duration slots) without a systematic audit of all degenerate input combinations.",
+    "why_problematic": "Each gap is individually minor but collectively they can combine: a day where the last entry ends at 23:00 will have its final hour clipped (lastH bug), AND if that entry is optional and shares a slot with another of the same type with a different name, one is silently dropped (dedup key bug).",
+    "timeline": "All gaps introduced in current session (2026-04-05 to 2026-04-06).",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (modified, not committed)",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11",
+    "file_contents": {
+      "add_guard_lines": "2543-2550",
+      "sort_line": "2577",
+      "dedup_block_lines": "2579-2588",
+      "firstH_line": "2593",
+      "lastH_line": "2594",
+      "top_helper_line": "2608",
+      "timeToMinutes_lines": "2474-2477"
+    },
+    "dependencies": {
+      "timeToMinutes": "already in scope at line 2474, splits HH:MM and returns h*60+m"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Make five targeted in-place edits to the TimelineView function body. Each edit is independent and can be made in any order. No new helper functions needed beyond reusing timeToMinutes.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "specific_changes": [
+      {
+        "id": "FIX-1",
+        "location": "add() guard, lines 2546-2548",
+        "description": "Add rejection of time.end === '00:00' and use timeToMinutes for numeric zero-duration check",
+        "current_code": "if (item?.time?.start && item?.time?.end\n        && item.time.start !== '00:00'\n        && item.time.start !== item.time.end)",
+        "target_code": "if (item?.time?.start && item?.time?.end\n        && item.time.start !== '00:00'\n        && item.time.end !== '00:00'\n        && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end))"
+      },
+      {
+        "id": "FIX-2",
+        "location": "dedup key, line 2584",
+        "description": "Add stable name component to dedup key so distinct named optional items at same slot are not collapsed",
+        "current_code": "const key = slot + ':' + e._type;",
+        "target_code": "const name = e.name_base || e.title || e._label || '';\n    const key = slot + ':' + e._type + ':' + name;"
+      },
+      {
+        "id": "FIX-3",
+        "location": "firstH, line 2593",
+        "description": "Add NaN fallback so corrupt time.start does not propagate NaN into pixel calculations",
+        "current_code": "const firstH = entriesWithLayout.length ? parseInt(entriesWithLayout[0].time.start) : 8;",
+        "target_code": "const firstH = entriesWithLayout.length ? (parseInt(entriesWithLayout[0].time.start) || 8) : 8;"
+      },
+      {
+        "id": "FIX-4",
+        "location": "lastH, line 2594",
+        "description": "Compute lastH from the actual maximum time.end across all entries instead of last entry's start+2",
+        "current_code": "const lastH = entriesWithLayout.length ? Math.min(parseInt(entriesWithLayout[entriesWithLayout.length - 1].time.start) + 2, 24) : 20;",
+        "target_code": "const lastH = entriesWithLayout.length\n    ? Math.min(Math.max(...entriesWithLayout.map(e => parseInt(e.time.end) || (parseInt(e.time.start) + 1) || 9)), 24)\n    : 20;"
+      },
+      {
+        "id": "FIX-5",
+        "location": "top() helper, line 2608",
+        "description": "Clamp result to >= 0 to prevent negative pixel offsets from stray entries with start < firstH",
+        "current_code": "const top = (t) => { const [h, m] = t.split(':').map(Number); return (h - firstH) * hH + (m / 60) * hH; };",
+        "target_code": "const top = (t) => { const [h, m] = t.split(':').map(Number); return Math.max(0, (h - firstH) * hH + (m / 60) * hH); };"
+      }
+    ],
+    "validation_approach": "QA should verify: (1) a day with a breakfast entry having time 00:00-00:00 renders without that entry; (2) a day with two optional entertainment entries at identical slots but different names shows both; (3) a day ending at 23:00 has its final hour visible in the grid; (4) no NaN values appear in computed CSS top/height for any entry."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug-fix audit of existing session code; root causes are concrete logic gaps identified directly from reading the source, no architectural decisions or pattern choices involved."
+  }
+}
