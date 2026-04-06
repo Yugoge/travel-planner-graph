@@ -1,0 +1,58 @@
+{
+  "request_id": "dev-20260406-020004",
+  "timestamp": "2026-04-06T02:05:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260406-020004.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Inserted SEMANTIC TIME WINDOW CONSTRAINTS block into timeline.md Step 2 (before Schema ref fields table)",
+        "type": "prompt_edit",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Added constraint table with five rows (breakfast 07:00-10:00, lunch 11:30-14:00, afternoon_tea 14:30-17:30, dinner 18:00-20:30, entertainment-with-meal_ref inherits). Added enforcement rule and clamping warning format. Added note that non-meal activities are unaffected.",
+        "rationale": "Root cause: nearest-neighbor GPS optimisation has no semantic awareness. Constraints placed before the Schema ref fields table position them during timeline construction, not post-hoc."
+      },
+      {
+        "id": 2,
+        "description": "Replaced soft validation hint in timeline.md Step 2 validate section with reference to hard constraints",
+        "type": "prompt_edit",
+        "files_modified": [".claude/agents/timeline.md"],
+        "changes": "Replaced 'Verify meal times are reasonable (breakfast 7-10am, lunch 12-3pm, dinner 6-10pm)' with a hard-constraint reference that treats any violation at validation time as a missed clamping step requiring correction before save.",
+        "rationale": "Soft hints in post-hoc validation are the identified root cause — they do not prevent bad schedules from being written. Replacing with a reference to the construction-time constraints closes the gap."
+      },
+      {
+        "id": 3,
+        "description": "Inserted condensed SEMANTIC TIME WINDOW CONSTRAINTS block into plan.md Step 10 Phase 2 item 2",
+        "type": "prompt_edit",
+        "files_modified": [".claude/commands/plan.md"],
+        "changes": "Added inline constraint table and enforcement instruction immediately after 'Schedule activities following route-optimization.json order for efficiency' in the timeline-agent prompt passed from the orchestrator.",
+        "rationale": "BA spec requires both files to be updated consistently. The Step 10 prompt is the invocation path used by the orchestrator; without updating it, constraints would only apply when timeline-agent is invoked directly."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": ".claude/agents/timeline.md",
+        "imported_by": ["Referenced by .claude/commands/plan.md Step 10 and Step 15 via subagent_type: timeline-agent invocation"]
+      },
+      {
+        "modified": ".claude/commands/plan.md",
+        "imported_by": ["Invoked directly by user via /plan command"]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — design gap present from initial timeline agent creation; no single commit introduced the bug",
+      "why_issue_occurred": "Nearest-neighbor route optimisation was added to minimise travel distance. Meal time windows were listed only as a post-hoc validation hint, not as a scheduling constraint, so the optimiser was free to place meals at any position in the sequence.",
+      "how_fix_addresses_root": "Constraints are now defined at the construction step (Step 2 of timeline.md and Phase 2 item 2 of plan.md), not at the validation step. The agent reads meal_ref before assigning start_time and clamps to the window. This intercepts the problem before the data is written, rather than detecting it after."
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should invoke /plan with a destination where GPS proximity would naturally place dinner before 18:00 (e.g., a restaurant geographically adjacent to a late-afternoon attraction). Verify: (1) dinner entry start_time >= 18:00 in timeline.json, (2) a clamping warning exists in the day's warnings array, (3) attraction entries are unaffected by the change. Also verify afternoon tea / matcha break is <= 17:30. Both invocation paths must be tested: direct timeline-agent invocation and /plan end-to-end.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding meal_ref: afternoon_tea as a formal schema value in save.py validation to remove the name-pattern fallback for afternoon_tea detection — currently the fallback (tea/coffee/matcha/cafe name matching) is acceptable but less robust than a first-class schema tag",
+    "The constraint windows are currently hardcoded in both prompt files; a future iteration could read them from requirements-skeleton.json preferences field to support early-bird or late-night traveller profiles (noted as deferred in BA spec)"
+  ]
+}

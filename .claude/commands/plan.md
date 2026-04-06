@@ -394,6 +394,17 @@ Use Task tool with:
   - Use gaode-maps (for China locations) or google-maps (international) to obtain GPS coordinates
   - Add `coordinates: {latitude: float, longitude: float}` field to each location entry
   - Format: latitude/longitude as decimal degrees (e.g., 29.5583, 106.5528 for Chongqing)
+- **Shopping Agent - Brands Array Required** (for mall/multi-brand locations):
+  - Output individual stores as a `brands` array on the parent shopping item (NOT in `notes_base` text)
+  - Each brand object: `{"name": "...", "name_local": "...", "category": "DESIGNER|SPORTS|FOOD|LUXURY|CRAFTS", "floor": "1F", "description": "...", "description_local": "..."}`
+  - `notes_base` on the mall item: opening hours, rating, general tips only (no bracket-encoded brand lists)
+  - Example brands array:
+    ```json
+    "brands": [
+      {"name": "Louis Vuitton", "name_local": "路易威登", "category": "DESIGNER", "floor": "1F", "description": "Flagship luxury goods store"},
+      {"name": "Nike", "name_local": "耐克", "category": "SPORTS", "floor": "2F", "description": "Sports apparel and footwear"}
+    ]
+    ```
 - Saves structured data to `data/{destination-slug}/{agent-name}.json`
 - Returns ONLY: `complete`
 

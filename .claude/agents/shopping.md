@@ -117,6 +117,12 @@ For each day in the trip:
    **CRITICAL: `name_local` must be a real POI name searchable on the configured map service, or `null`.**
    No invented names, no translations, no generic descriptions. If no specific POI exists, set `name_local` to `null`.
 
+   **`brands` array (for mall-type locations)**:
+   - For shopping malls and multi-brand destinations, populate the `brands` array with individual store objects instead of encoding brand data in `notes_base` free text.
+   - `notes_base` should contain only non-brand notes: opening hours, ratings, general tips, access info.
+   - Each brand object requires: `name` (base language), `category` (e.g., "DESIGNER", "SPORTS", "FOOD", "LUXURY"), and at minimum one of `floor` or `description`.
+   - Optional per brand: `name_local`, `category_local`, `floor`, `description`, `description_local`.
+
    ```json
    {
      "name_base": "Ciqikou Ancient Town",
@@ -128,8 +134,28 @@ For each day in the trip:
 
      "type_base": "Local Market",
      "type_local": "本地市场",
-     "notes_base": "Open 9am-5pm, bargaining expected, famous for textiles",
-     "notes_local": "营业时间9:00-17:00，可以讲价，以纺织品闻名",
+     "notes_base": "Open 9am-5pm, bargaining expected. Rating 4.7",
+     "notes_local": "营业时间9:00-17:00，可以讲价，评分4.7",
+     "brands": [
+       {
+         "name": "Shu Brocade Workshop",
+         "name_local": "蜀锦工坊",
+         "category": "CRAFTS",
+         "category_local": "手工艺品",
+         "floor": "Street Level",
+         "description": "Traditional Sichuan brocade textiles, handwoven silk",
+         "description_local": "传统蜀锦纺织品，手工编织丝绸"
+       },
+       {
+         "name": "Mahua Street Snacks",
+         "name_local": "麻花街小吃",
+         "category": "FOOD",
+         "category_local": "食品",
+         "floor": "Main Street",
+         "description": "Famous twisted dough snacks and local specialties",
+         "description_local": "著名麻花小吃及本地特产"
+       }
+     ],
      "search_results": [
        {
          "skill": "google-maps",

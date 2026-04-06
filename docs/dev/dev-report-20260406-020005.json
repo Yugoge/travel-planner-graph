@@ -1,0 +1,75 @@
+{
+  "request_id": "dev-20260406-020005",
+  "timestamp": "2026-04-06T02:10:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260406-020005.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "FIX-1: add() guard rejects time.end === '00:00' and uses numeric timeToMinutes comparison for zero-duration",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added `item.time.end !== '00:00'` sentinel check and replaced string equality `start !== end` with `timeToMinutes(start) !== timeToMinutes(end)` to handle format variations like '9:00' vs '09:00'",
+        "rationale": "Root cause: add() checked start!='00:00' but not end, allowing degenerate midnight-sentinel entries through; string equality missed numerically-equal but differently-formatted times"
+      },
+      {
+        "id": 2,
+        "description": "FIX-2: Dedup key includes stable name identifier to prevent over-deduplication of distinct optional items",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Dedup key changed from `slot:type` to `slot:type:name` where name = `e.name_base || e.title || e._label || ''`",
+        "rationale": "Root cause: key used only type+slot, causing two different optional activities at the same time (e.g., 'Dim Sum' vs 'Noodles' both optional at 08:00-09:00) to be collapsed into one"
+      },
+      {
+        "id": 3,
+        "description": "FIX-3: firstH has NaN fallback via `|| 8`",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Changed `parseInt(...)` to `parseInt(...) || 8` so a corrupt or missing time.start does not propagate NaN into all pixel calculations",
+        "rationale": "Root cause: parseInt on malformed string returns NaN; NaN propagates through hH arithmetic producing invisible timeline"
+      },
+      {
+        "id": 4,
+        "description": "FIX-4: lastH computed from max(time.end) across all entries, not last entry's start+2",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "lastH now uses `Math.min(Math.max(...entriesWithLayout.map(e => parseInt(e.time.end) || (parseInt(e.time.start) + 1) || 9)), 24)` instead of last-entry-start + 2",
+        "rationale": "Root cause: a 3-hour dinner starting at 20:00 (ending 23:00) would clip its last hour since lastH was capped at 22 (20+2)"
+      },
+      {
+        "id": 5,
+        "description": "FIX-5: top() return value clamped to Math.max(0, ...) to prevent negative pixel offsets",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Wrapped top() return in `Math.max(0, ...)` to ensure no entry is positioned above the grid top",
+        "rationale": "Root cause: if a stray entry slips through with start < firstH (e.g., via direct push bypassing add()), top() produces a negative pixel value rendering the entry above the visible grid"
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": [
+          "scripts/sync-agent-data.py",
+          "scripts/plan-validate.py",
+          "scripts/generate-and-deploy.sh",
+          "scripts/generate-html.sh"
+        ]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - logic gaps in code added during current session (2026-04-05 to 2026-04-06)",
+      "why_issue_occurred": "Filters were added incrementally to handle specific known cases without a systematic audit of all degenerate input combinations: end sentinel not checked, dedup key too coarse, lastH reads start not end, NaN not guarded",
+      "how_fix_addresses_root": "Five independent in-place fixes each address their specific gap: sentinel check, numeric comparison, name-keyed dedup, max(end) for lastH, and pixel clamping"
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify against BA acceptance criteria: (AC1) entry with end='00:00' absent from timeline; (AC2) entry with start='09:00'/end='9:00' absent; (AC3) two optional entertainment items with same slot but different name_base both visible; (AC4) no NaN in CSS top/height; (AC5) day ending at 23:00 shows hour 23 in grid. HTML regenerated at output/travel-plan-wangfujing-dongdan-beijing-20260405-192905.html (224.7 KB, no Python errors).",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding a console.warn in add() when an entry is rejected (BA spec C1) to aid future debugging of degenerate YAML data",
+    "The SyntaxWarning at line 1370 (invalid escape sequence \\d in a triple-quoted string) is pre-existing and unrelated to this change; it should be fixed separately"
+  ]
+}

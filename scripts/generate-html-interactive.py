@@ -536,7 +536,9 @@ class InteractiveHTMLGenerator:
             if self.meals and "days" in self.meals:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
                 if meal_type in day_meals:
-                    meal = day_meals[meal_type]
+                    # Dual-read: new format has meal_slot.primary; old format is meal_item directly
+                    meal_slot = day_meals[meal_type]
+                    meal = meal_slot.get("primary", meal_slot)
                     # Convert cost to display currency
                     cost = meal.get("cost", 0)
                     meal_currency = meal.get("currency_local", "CNY")
@@ -578,9 +580,13 @@ class InteractiveHTMLGenerator:
                     merged["budget"]["meals"] += cost
 
                 # Add meal alternatives as equal options in _options array
-                alt_key = f"{meal_type}_alternatives"
-                if alt_key in day_meals:
-                    alts = day_meals[alt_key]
+                # Dual-read: new format uses meal_slot.alternatives; old format uses {meal_type}_alternatives sibling
+                meal_slot_for_alts = day_meals.get(meal_type, {})
+                nested_alts = meal_slot_for_alts.get("alternatives", None) if isinstance(meal_slot_for_alts, dict) else None
+                flat_alts = day_meals.get(f"{meal_type}_alternatives", None)
+                alts_raw = nested_alts if nested_alts is not None else flat_alts
+                if alts_raw:
+                    alts = alts_raw
                     primary = merged["meals"][meal_type]
                     options = [{ **primary, "option_label": "A" }]
                     for idx, alt in enumerate(alts):
@@ -726,8 +732,9 @@ class InteractiveHTMLGenerator:
                 )
                 mall_time = self._normalize_time(shop_item.get("time", {}))
 
-                # Parse brands from notes_base
-                brands = self._parse_shopping_brands(notes_base, notes_local)
+                # Use structured brands array when present (root cause fix: cfc5766 workaround).
+                # Fall back to regex parse of notes_base for existing plans without brands array.
+                brands = shop_item.get("brands", []) or self._parse_shopping_brands(notes_base, notes_local)
                 if brands:
                     for brand in brands:
                         # Try brand-specific image first, fall back to mall image
