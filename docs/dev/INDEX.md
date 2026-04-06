@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-05T20:57:12Z*
-**Total entries**: 17
+*Last updated: 2026-04-06T11:31:00Z*
+**Total entries**: 24
 **Convention**: kebab
 
 ## Tree
@@ -12,9 +12,16 @@ dev/
 ├── playwright-screenshots/
 │   └── `01-initial-load.png` - png file
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
+├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
+├── `ba-spec-20260406-010003.md` - BA Specification: Fix Gaode API Key Environment Variable Name in fetch-images-batch.py
+├── `ba-spec-20260406-010004.md` - BA Specification: Fix City Cover Image Partial Matching
+├── `ba-spec-20260406-010005.md` - BA Specification: Image Fetch Failure Visibility in generate-and-deploy Pipeline
+├── `ba-spec-20260406-010007.md` - BA Specification: Fix deploy-travel-plans.sh Branch Detection
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
+├── `context-20260406-010002.json` - json config
+├── `context-20260406-010004.json` - json config
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config

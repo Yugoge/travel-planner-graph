@@ -1,0 +1,80 @@
+{
+  "request_id": "dev-20260406-010002",
+  "timestamp": "2026-04-06T01:00:02Z",
+  "requirement": {
+    "original": "Fix plan-validate.py NameError: name 'days' is not defined at line 708",
+    "clarified": "Insert a missing variable assignment `days = timeline_data.get(\"data\", {}).get(\"days\", [])` before the for-loop at line 708 in the `check_semantics` function of scripts/plan-validate.py.",
+    "what": "One-line variable assignment to define `days` in `check_semantics` scope before it is iterated",
+    "why": "The loop at line 708 references `days` which was never assigned in this function scope, causing a NameError crash whenever timeline validation runs",
+    "where": [
+      "scripts/plan-validate.py",
+      "function: check_semantics",
+      "line: 708"
+    ],
+    "scope": {
+      "included": [
+        "Add single assignment line before line 708 in check_semantics"
+      ],
+      "excluded": [
+        "Refactoring check_semantics",
+        "Changing check_travel_segments",
+        "Modifying meal or accommodation validation logic",
+        "Any other file"
+      ]
+    },
+    "success_criteria": [
+      "plan-validate.py runs to completion without NameError when processing timeline agent data",
+      "Meal presence and accommodation presence checks execute and produce correct output"
+    ],
+    "constraints": [
+      "Must use the established pattern: .get(\"data\", {}).get(\"days\", []) — consistent with lines 347, 422, 631, 1030",
+      "No other lines may be changed"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "NameError: name 'days' is not defined at line 708 when plan-validate.py runs timeline validation",
+    "root_cause": "check_semantics assigns `timeline_data` at line 689 and passes it to check_travel_segments (which defines its own local `days`), but never assigns `days` in its own scope before the for-loop at line 708",
+    "root_cause_commit": "N/A — likely introduced when the meal/accommodation loop block was added without copying the standard days-extraction line",
+    "why_introduced": "The loop body (lines 708-731) was written assuming `days` would be in scope, but the assignment was omitted",
+    "why_problematic": "Python raises NameError at runtime on the first execution of the for-loop; the entire timeline validation section is skipped with a crash",
+    "timeline": "Present in current master HEAD",
+    "affected_files": [
+      "scripts/plan-validate.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (unrelated modified file)",
+    "recent_commits": "47d77bb Auto-commit: 2026-04-05 20:58:11",
+    "file_contents": {
+      "scripts/plan-validate.py:700-711": "Pre-compute accommodation days (lines 700-706), then for day in days: (line 708) — days undefined"
+    },
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Insert the missing `days` assignment using the established extraction pattern, immediately before the for-loop at line 708",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/plan-validate.py"
+    ],
+    "fix_details": {
+      "file": "scripts/plan-validate.py",
+      "insert_before_line": 708,
+      "old_string": "        for day in days:",
+      "new_string": "        days = timeline_data.get(\"data\", {}).get(\"days\", [])\n        for day in days:",
+      "pattern_reference": "Identical to line 631: days = timeline_data.get(\"data\", {}).get(\"days\", [])"
+    },
+    "validation_approach": "Run plan-validate.py against a plan that has timeline data; confirm no NameError and that meal/accommodation checks produce output"
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward variable scope bug with clear root cause and established fix pattern already present in the same file"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

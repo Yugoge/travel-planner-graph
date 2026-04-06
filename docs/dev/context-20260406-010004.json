@@ -1,0 +1,74 @@
+{
+  "request_id": "dev-20260406-010004",
+  "timestamp": "2026-04-06T01:00:04Z",
+  "requirement": {
+    "original": "Improve city cover image matching in generate-html-interactive.py _get_cover_image method",
+    "clarified": "Strip parenthetical suffixes from the location argument inside _get_cover_image before performing cache lookups, so that a location like 'Beijing (Wangfujing + Dongdan)' correctly resolves to the 'Beijing' entry in city_covers.",
+    "what": "Normalise the location key by stripping everything from the first '(' onward before any cache lookup",
+    "why": "Compound location strings constructed from itinerary data do not match bare city names in city_covers, causing cover images to be missing for affected pages",
+    "where": [
+      "scripts/generate-html-interactive.py",
+      "method _get_cover_image (~line 271)"
+    ],
+    "scope": {
+      "included": [
+        "Strip parenthetical suffix from location before lookup",
+        "Guard against empty string after strip",
+        "All three existing lookup tiers (exact, case-insensitive, partial) use the stripped key"
+      ],
+      "excluded": [
+        "Changes to city_covers cache population",
+        "Changes to any other method",
+        "Adding Unsplash fallback"
+      ]
+    },
+    "success_criteria": [
+      "_get_cover_image('Beijing (Wangfujing + Dongdan)') returns the URL stored under 'Beijing' in city_covers",
+      "_get_cover_image('Shanghai') continues to return the URL stored under 'Shanghai'",
+      "_get_cover_image('(Unknown)') returns empty string without error",
+      "No other method behaviour changes"
+    ],
+    "constraints": [
+      "No new imports",
+      "No Unsplash fallback — method must continue to return '' when no cache hit",
+      "Python 4-space indentation per project style"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Cover image is blank for itinerary pages whose location field contains a parenthetical district suffix such as 'Beijing (Wangfujing + Dongdan)'",
+    "root_cause": "The partial-match branch at line 293-294 checks 'city.lower() in key or key in city.lower()' where key is the full compound location string. Although the first branch ('beijing' in 'beijing (wangfujing + dongdan)') is logically true, the method iterates all cache entries and the first match wins; if no entry happens to be a pure prefix the loop may exit without returning. More importantly, the lookup key is never normalised, so the exact and case-insensitive tiers (lines 280-290) never fire for compound strings. Stripping the suffix before any lookup fixes all three tiers at once.",
+    "root_cause_commit": "ed70308 - Auto-commit 2026-04-06 10:18:17 (introduced wangfujing-dongdan dataset; _get_cover_image unchanged, bug latent since 123f8df)",
+    "why_introduced": "The _get_cover_image method was written for simple city-name strings; compound location names were not anticipated when the partial-match heuristic was added.",
+    "why_problematic": "City cover images are missing for any itinerary page whose location is a compound string, producing a visual gap in the rendered HTML.",
+    "timeline": "Bug latent since initial implementation (commit 123f8df). Surfaced when the wangfujing-dongdan-beijing dataset was added in commit ed70308.",
+    "affected_files": [
+      "scripts/generate-html-interactive.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "M scripts/generate-html-interactive.py (uncommitted changes present)",
+    "recent_commits": "ed70308 Auto-commit 2026-04-06 - added wangfujing-dongdan dataset; 1b8e94a, 2814667, a4ca14a earlier on 2026-04-05",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "At the top of _get_cover_image, compute a normalised lookup key by splitting on '(' and stripping whitespace. Use this normalised key for all three lookup tiers. Add an early return for empty normalised key.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "Manual invocation of _get_cover_image with 'Beijing (Wangfujing + Dongdan)' against a city_covers dict containing 'Beijing'; confirm non-empty URL is returned. Also confirm simple name and missing name cases."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause identified from code inspection and git history. No new architecture or external patterns involved."
+  }
+}
