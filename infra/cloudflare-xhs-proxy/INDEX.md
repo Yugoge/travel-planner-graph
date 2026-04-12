@@ -1,13 +1,14 @@
 # cloudflare-xhs-proxy
 
-*Last updated: 2026-04-12T13:22:34Z*
-**Total entries**: 2
-**Convention**: lower
+*Last updated: 2026-04-12T13:39:52Z*
+**Total entries**: 3
+**Convention**: kebab
 
 ## Tree
 ```
 cloudflare-xhs-proxy/
 ├── src/
+│   └── `worker.js` - js file
 └── `wrangler.toml` - toml file
 ```
 
