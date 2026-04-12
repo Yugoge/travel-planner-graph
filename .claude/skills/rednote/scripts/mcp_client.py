@@ -86,7 +86,7 @@ class MCPClient:
 
         for attempt in range(max_retries):
             try:
-                cmd = ["npx", "-y", self.package] + self.extra_args
+                cmd = ["xvfb-run", "--auto-servernum", "node", "/usr/lib/node_modules/rednote-mcp/dist/cli.js"] + self.extra_args
                 self.process = subprocess.Popen(
                     cmd,
                     env=env,
