@@ -744,56 +744,61 @@ class InteractiveHTMLGenerator:
                 )
                 mall_time = self._normalize_time(shop_item.get("time", {}))
 
-                # Use structured brands array when present (root cause fix: cfc5766 workaround).
-                # Fall back to regex parse of notes_base for existing plans without brands array.
+                # Single card per shopping item. If brands exist, append brand info to notes.
+                # (Fix for cfc5766 brand-splitting that caused duplicate mall images on every brand card.)
                 brands = shop_item.get("brands", []) or self._parse_shopping_brands(notes_base, notes_local)
                 if brands:
+                    # Build brand summary lines for notes
+                    brand_lines_base = []
+                    brand_lines_local = []
                     for brand in brands:
-                        # Try brand-specific image first, fall back to mall image
-                        brand_cache_key = f"brand_{brand['name']}"
-                        brand_img = ""
-                        if self.images_cache and "pois" in self.images_cache:
-                            brand_img = self.images_cache["pois"].get(brand_cache_key, "")
-                        brand_img = brand_img or mall_image
+                        b_name = brand.get("name", "")
+                        b_name_local = brand.get("name_local", b_name)
+                        b_cat = brand.get("category", "")
+                        b_desc = brand.get("description", "")
+                        b_desc_local = brand.get("description_local", b_desc)
+                        if b_name:
+                            line_base = f"\u2022 {b_name}"
+                            line_local = f"\u2022 {b_name_local}"
+                            if b_cat:
+                                line_base += f" ({b_cat})"
+                                line_local += f" ({b_cat})"
+                            if b_desc:
+                                line_base += f" \u2014 {b_desc}"
+                            if b_desc_local:
+                                line_local += f" \u2014 {b_desc_local}"
+                            brand_lines_base.append(line_base)
+                            brand_lines_local.append(line_local)
+                    brand_text_base = "\n".join(brand_lines_base)
+                    brand_text_local = "\n".join(brand_lines_local)
+                    # Append brand info to existing notes
+                    if notes_base:
+                        notes_base = notes_base.rstrip() + "\n\n**Shops:**\n" + brand_text_base
+                    else:
+                        notes_base = "**Shops:**\n" + brand_text_base
+                    if notes_local:
+                        notes_local = notes_local.rstrip() + "\n\n**\u63a8\u8350\u5e97\u94fa\uff1a**\n" + brand_text_local
+                    else:
+                        notes_local = "**\u63a8\u8350\u5e97\u94fa\uff1a**\n" + brand_text_local
 
-                        merged["shopping"].append({
-                            "name_base": brand["name"],
-                            "name_local": brand.get("name_local", brand["name"]),
-                            "location_base": shop_item.get("location_base", ""),
-                            "location_local": shop_item.get("location_local", ""),
-                            "coordinates": shop_item.get("coordinates", {}),
-                            "type_base": brand.get("category", ""),
-                            "type_local": brand.get("category_local", ""),
-                            "cost": 0,
-                            "cost_local": 0,
-                            "notes_base": brand.get("description", ""),
-                            "notes_local": brand.get("description_local", ""),
-                            "mall_name_base": shop_name_base,
-                            "mall_name_local": shop_name_local,
-                            "optional": shop_item.get("optional", False),
-                            "image": brand_img,
-                            "time": mall_time,
-                            "links": {}
-                        })
-                else:
-                    # Fallback: mall as-is
-                    merged["shopping"].append({
-                        "name_base": shop_name_base,
-                        "name_local": shop_name_local,
-                        "location_base": shop_item.get("location_base", ""),
-                        "location_local": shop_item.get("location_local", ""),
-                        "coordinates": shop_item.get("coordinates", {}),
-                        "type_base": shop_item.get("type_base", ""),
-                        "type_local": shop_item.get("type_local", ""),
-                        "cost": cost,
-                        "cost_local": shop_item.get("cost", 0),
-                        "notes_base": notes_base,
-                        "notes_local": notes_local,
-                        "optional": shop_item.get("optional", False),
-                        "image": mall_image,
-                        "time": mall_time,
-                        "links": {}
-                    })
+                # Always create ONE card per shopping item
+                merged["shopping"].append({
+                    "name_base": shop_name_base,
+                    "name_local": shop_name_local,
+                    "location_base": shop_item.get("location_base", ""),
+                    "location_local": shop_item.get("location_local", ""),
+                    "coordinates": shop_item.get("coordinates", {}),
+                    "type_base": shop_item.get("type_base", ""),
+                    "type_local": shop_item.get("type_local", ""),
+                    "cost": cost,
+                    "cost_local": shop_item.get("cost", 0),
+                    "notes_base": notes_base,
+                    "notes_local": notes_local,
+                    "optional": shop_item.get("optional", False),
+                    "image": mall_image,
+                    "time": mall_time,
+                    "links": {}
+                })
                 merged["budget"]["shopping"] += cost
 
         # Merge accommodation
@@ -2332,11 +2337,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         {getDisplayName(shop, lang)}
                         <RedNoteLink name={shop.name_local || shop.name_base} />
                       </div>
-                      {shop.mall_name_base && (
-                        <div style={{ fontSize: '12px', color: '#9b9a97', marginBottom: '6px' }}>
-                          🏬 {lang === 'local' && shop.mall_name_local ? shop.mall_name_local : shop.mall_name_base}
-                        </div>
-                      )}
+
                       {shop.time && <PropLine label={L('time', lang)} value={shop.time.start + ' – ' + shop.time.end} />}
                       {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
                       {getDisplayField(shop, 'type', lang) && <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />}

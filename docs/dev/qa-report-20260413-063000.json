@@ -1,0 +1,201 @@
+{
+  "request_id": "dev-20260413-063000",
+  "timestamp": "2026-04-13T06:45:00+08:00",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All 4 success criteria verified via both data parsing and live browser testing. Shopping cards reduced from ~25 to exactly 10 (one per location). All 10 images are unique. Brand info preserved in card notes under 'Shops'/'推荐店铺' headers. Zero JavaScript errors in deployed HTML.",
+    "success_criteria_results": [
+      {
+        "criterion": "Each shopping location renders as exactly ONE card with its own unique image",
+        "verification_method": "Parsed PLAN_DATA JSON from deployed HTML; counted shopping items per day",
+        "result": "pass",
+        "details": "10 shopping items across 7 days, each with a distinct Gaode Maps image URL. Day 1: Qianmen (1), Day 4: Weidu (1), Day 5: Jinli (1), Day 7: Kuanzhai (1), Day 10: Muslim Quarter (1), Day 11: Shuyuanmen (1), Day 13: Yu Garden + Tianzifang + Nanjing Road (3), Day 14: Wangfujing (1).",
+        "evidence": ["Total: 10 shopping cards", "Unique images: 10", "All unique: True"]
+      },
+      {
+        "criterion": "All brand information (name, category, description) remains visible within the card",
+        "verification_method": "grep for '推荐店铺' in deployed HTML + browser snapshot verification of card content",
+        "result": "pass",
+        "details": "9 occurrences of '推荐店铺' (matching 9 items with brands). Day 4 Weidu Antique City correctly has no brand section (brands: False). Browser snapshots of Day 1 and Day 5 confirm brand names, categories (SILK, FOOD, SOUVENIRS, CRAFTS etc.) and descriptions are visible within card notes.",
+        "evidence": [
+          "grep -c '推荐店铺' = 9",
+          "Day 1 Qianmen: 4 brands listed (瑞蚨祥, 稻香村, 大栅栏, 南锣鼓巷)",
+          "Day 5 Jinli: 3 brands listed (四川辣酱礼盒, 熊猫周边商店, 蜀锦蜀绣工艺品)",
+          "Day 4 Weidu: no brand section (correct)"
+        ]
+      },
+      {
+        "criterion": "Total shopping cards across all days drops from ~25 to ~10",
+        "verification_method": "Programmatic count from PLAN_DATA JSON in deployed HTML",
+        "result": "pass",
+        "details": "Exactly 10 total shopping cards. Previous count was ~25 (24 brand cards + 1 non-brand item). Reduction matches expectation: 9 brand-split items collapsed to 9 single cards + 1 non-brand item = 10.",
+        "evidence": ["Total shopping cards: 10"]
+      },
+      {
+        "criterion": "No adjacent cards show the same image",
+        "verification_method": "Verified all 10 image URLs are unique (set comparison)",
+        "result": "pass",
+        "details": "10 unique images out of 10 total cards. Each shopping location has its own distinct Gaode Maps POI image URL.",
+        "evidence": ["Unique images: 10, Total cards: 10, Duplicates: 0"]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "The brand-splitting for-loop (originally lines 750-777) that created individual cards per brand with duplicated mall images has been replaced with single-card logic. The new code (lines 747-799) iterates brands only to build summary text for notes_base/notes_local, then creates ONE card per shopping item using the parent mall's image_url. Dead mall_name_base JSX template code was also removed (0 references in both source and deployed HTML)."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "generate-and-deploy.sh china-20260412-092624",
+      "deploy_command": "Dev ran deployment; HTML served via travel-web Docker container at port 8094",
+      "build_output_summary": "HTML generated and deployed to /var/www/travel/china/2026-04-12/index.html (6733 lines)",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "Non-brand shopping item unaffected (Day 4 Weidu Antique City)",
+        "result": "pass",
+        "details": "Day 4 item has brands: False and renders as a normal card without brand section"
+      },
+      {
+        "test": "JavaScript execution",
+        "result": "pass",
+        "details": "Page loaded with 0 JS errors, 1 warning (Babel in-browser transpilation notice, expected and pre-existing)"
+      },
+      {
+        "test": "mall_name_base dead code removal",
+        "result": "pass",
+        "details": "0 references to mall_name_base in both source script and deployed HTML"
+      },
+      {
+        "test": "Non-shopping sections unaffected",
+        "result": "pass",
+        "details": "Browser snapshots of Day 1 and Day 5 show Meals, Attractions, Entertainment, Accommodation, Transportation, Budget sections all rendering correctly"
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "standards_compliance": {
+      "checked": true,
+      "violations": []
+    },
+    "app_understanding_flow": {
+      "executed": true,
+      "core_flow_completed": true,
+      "steps_completed": 3,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": false
+    },
+    "ui_test_results": [
+      {
+        "scenario": "Day 1 shopping section shows single Qianmen Street card with embedded brands",
+        "url": "http://localhost:8094/china/2026-04-12/",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_navigate to http://localhost:8094/china/2026-04-12/",
+          "browser_snapshot to verify Day 1 shopping section"
+        ],
+        "assertions": [
+          {
+            "expected": "Exactly 1 shopping card for Day 1 (Qianmen Street)",
+            "actual": "1 shopping card: 前门大街 with Shopping section header",
+            "passed": true
+          },
+          {
+            "expected": "Brand info (推荐店铺) visible within card notes",
+            "actual": "Found '推荐店铺' header followed by 4 brand listings (瑞蚨祥, 稻香村, 大栅栏, 南锣鼓巷) in card body",
+            "passed": true
+          }
+        ],
+        "evidence": "Accessibility tree snapshot of Day 1 page"
+      },
+      {
+        "scenario": "Day 5 shopping section shows single Jinli card with embedded brands",
+        "url": "http://localhost:8094/china/2026-04-12/",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_click on May 6 (Wed) sidebar link",
+          "browser_snapshot to verify Day 5 shopping section"
+        ],
+        "assertions": [
+          {
+            "expected": "Exactly 1 shopping card for Day 5 (Jinli Ancient Street)",
+            "actual": "1 shopping card: 锦里古街 with Shopping section header",
+            "passed": true
+          },
+          {
+            "expected": "Brand info visible within card notes",
+            "actual": "Found '推荐店铺' followed by 3 brand listings (四川辣酱礼盒, 熊猫周边商店, 蜀锦蜀绣工艺品)",
+            "passed": true
+          }
+        ],
+        "evidence": "Accessibility tree snapshot of Day 5 page"
+      },
+      {
+        "scenario": "Zero JavaScript errors on page load",
+        "url": "http://localhost:8094/china/2026-04-12/",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": ["browser_navigate", "check console errors count"],
+        "assertions": [
+          {
+            "expected": "0 JavaScript errors",
+            "actual": "Console: 0 errors, 1 warning (Babel transpilation notice, pre-existing)",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright console report"
+      }
+    ],
+    "output_quality_verification": {
+      "checked": true,
+      "output_type": "generated_content",
+      "completeness": "all sections populated",
+      "quality_assessment": "good",
+      "specific_checks": [
+        {"check": "all shopping items have brand info in notes", "result": "pass", "details": "9 of 9 items with brands have formatted brand lists; 1 item without brands renders normally"},
+        {"check": "brand formatting includes name, category, and description", "result": "pass", "details": "Each brand line follows bullet-point format: name (CATEGORY) -- description"},
+        {"check": "both English and Chinese notes present", "result": "pass", "details": "notes_base has 'Shops:' header, notes_local has '推荐店铺：' header"}
+      ],
+      "verdict": "pass"
+    },
+    "generated_tests": [],
+    "all_findings": [],
+    "self_verification": {
+      "claims_total": 8,
+      "claims_with_evidence": 8,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    },
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}

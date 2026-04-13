@@ -1,0 +1,96 @@
+{
+  "request_id": "dev-20260413-063000",
+  "timestamp": "2026-04-13T06:30:00+08:00",
+  "requirement": {
+    "original": "这些都是系统性问题，先修复系统性问题我们再说具体的安排 (systemic shopping image duplication across all brand cards)",
+    "clarified": "Stop splitting shopping malls into individual brand cards. Show each shopping location as a single card with its own image, and list brands as sub-items within the card description.",
+    "what": "Remove brand-splitting logic in HTML generator; consolidate brands into parent card notes",
+    "why": "All brand cards display the same parent mall image because brand-specific images are never fetched, creating a 'default image' appearance across 24 of 25 shopping cards",
+    "where": ["scripts/generate-html-interactive.py"],
+    "scope": {
+      "included": [
+        "Modify brand-splitting logic (lines 750-777) to produce single card per shopping item",
+        "Append brand names/descriptions to card notes_base and notes_local",
+        "Clean up mall_name_base/mall_name_local references in JSX template if orphaned"
+      ],
+      "excluded": [
+        "Fetching individual brand images from Gaode Maps API",
+        "Modifying shopping.json or images.json data files",
+        "Creating new card layout components",
+        "Changing non-shopping sections of the HTML generator"
+      ]
+    },
+    "success_criteria": [
+      "Each shopping location renders as exactly ONE card with its own unique image",
+      "All brand information (name, category, description) remains visible within the card",
+      "Total shopping cards across all days drops from ~25 to ~10",
+      "No adjacent cards show the same image"
+    ],
+    "constraints": [
+      "Must not lose any brand detail information -- user wants this data visible",
+      "Must handle both structured brands array and _parse_shopping_brands() regex fallback",
+      "Notes must support both base (English) and local (Chinese) languages"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "All brand cards within a mall show the same parent mall photo, appearing as 'default images'",
+    "root_cause": "Brand-splitting logic (lines 750-777) creates individual cards per brand, but images.json has zero brand_* keys. Line 757 falls back to mall_image for every brand card, producing N identical images per mall.",
+    "root_cause_commit": "cfc5766 - fix: realistic prices across all categories + shopping merge bug",
+    "why_introduced": "Brand splitting was added as a workaround to surface detailed sub-recommendations within shopping areas",
+    "why_problematic": "The image pipeline (fetch-images-batch.py) was never updated to fetch brand-specific images. The brands array contains stall-type shops that often lack distinct Gaode Maps POI images. Result: 24 cards with duplicated images across 9 shopping locations.",
+    "timeline": "Introduced in cfc5766, propagated through all subsequent HTML regenerations",
+    "affected_files": ["scripts/generate-html-interactive.py"]
+  },
+  "context": {
+    "codebase_state": "master branch, recent auto-commits",
+    "recent_commits": "0951b79 checkpoint: Auto-save at 2026-04-13 06:17:44",
+    "file_contents": {
+      "brand_splitting_logic": "lines 726-797 of generate-html-interactive.py",
+      "mall_name_jsx_reference": "line 2335 of generate-html-interactive.py"
+    },
+    "dependencies": {
+      "images_json_poi_count": 102,
+      "brand_keys_in_images_json": 0,
+      "shopping_items_with_brands": 9,
+      "total_brand_cards_generated": 24,
+      "shopping_items_without_brands": 1
+    },
+    "environment": {
+      "affected_days": [1, 5, 7, 10, 11, 13, 14],
+      "brand_counts_per_mall": {
+        "day1_qianmen": 4,
+        "day5_jinli": 3,
+        "day7_kuanzhai": 2,
+        "day10_muslim_quarter": 3,
+        "day11_shuyuanmen": 2,
+        "day13_yuyuan": 3,
+        "day13_tianzifang": 2,
+        "day13_nanjing_road": 3,
+        "day14_wangfujing": 2
+      }
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace the brand-splitting for-loop with logic that builds a single merged card. Concatenate brand names, categories, and descriptions into notes_base/notes_local. Use the parent mall's image_url directly. Preserve the else branch for items without brands.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/generate-html-interactive.py"],
+    "modification_details": {
+      "scripts/generate-html-interactive.py": {
+        "lines_750_to_777": "Replace brand for-loop with single-card generation that appends formatted brand list to notes",
+        "line_2335_area": "Review and clean up mall_name_base JSX display logic (may become dead code)"
+      }
+    },
+    "validation_approach": "Regenerate HTML, count shopping cards per day, verify each has a unique image, confirm brand text appears in card body"
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause in existing codebase; no architectural patterns to research"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

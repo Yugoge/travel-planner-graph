@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-13T06:17:44Z*
-**Total entries**: 70
+*Last updated: 2026-04-13T06:31:44Z*
+**Total entries**: 74
 **Convention**: kebab
 
 ## Tree
@@ -29,6 +29,7 @@ dev/
 ├── `ba-spec-20260406-020004.md` - BA Specification: Semantic Time Constraints for Timeline Agent
 ├── `ba-spec-20260406-020005.md` - BA Specification: Harden TimelineView Degenerate Entry Filtering and Optional Item Deduplication
 ├── `ba-spec-20260412-213000.md` - BA Specification: Fix City Covers, Meals Layout, and Shopping Images
+├── `ba-spec-20260413-063000.md` - BA Specification: Fix Shopping Brand-Splitting Duplicate Image Bug
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -44,6 +45,7 @@ dev/
 ├── `context-20260406-020003.json` - json config
 ├── `context-20260406-020004.json` - json config
 ├── `context-20260406-020005.json` - json config
+├── `context-20260413-063000.json` - json config
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config
@@ -60,6 +62,7 @@ dev/
 ├── `dev-report-20260406-020004.json` - json config
 ├── `dev-report-20260406-020005.json` - json config
 ├── `dev-report-20260412-213000.json` - json config
+├── `dev-report-20260413-063000.json` - json config
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
 ├── `qa-report-20260405-201500.json` - json config
@@ -75,6 +78,7 @@ dev/
 ├── `qa-report-20260406-020004.json` - json config
 ├── `qa-report-20260406-020005.json` - json config
 ├── `qa-report-20260412-213000.json` - json config
+├── `qa-report-20260413-063000.json` - json config
 ├── `qa-validation-20260321.json` - json config
 └── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ```
