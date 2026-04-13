@@ -1,0 +1,123 @@
+{
+  "request_id": "dev-20260413-181500",
+  "timestamp": "2026-04-13T18:15:00+08:00",
+  "requirement": {
+    "original": "travel-planner的html生成机制修改一下设计，meal，attraction等等的每一个大项目只占一行，超出的内容加一个scrollbar用户可以scroll。同时每一个卡片都要同一个设计同一个大小。具体的设计你可以召唤UI设计师先consult一下。可以使用的样本是https://travel.life-ai.app/china/2026-04-12/",
+    "clarified": "Redesign the travel plan HTML generation so each major category (meals, attractions, entertainment, shopping, accommodation, transportation) occupies a single horizontal row. Overflow content gets a horizontal scrollbar. All cards must have uniform design and size. Consult UI designer for specific design decisions. Reference sample: https://travel.life-ai.app/china/2026-04-12/",
+    "what": "Convert category card layouts from wrapping grid/vertical stack to single-row horizontal scroll with uniform card sizes",
+    "why": "Current layout is inconsistent: meals wrap to multiple rows, attractions/entertainment/shopping use a 2-column vertical stack. User wants a clean, uniform horizontal browsing experience per category.",
+    "where": [
+      "scripts/generate-html-interactive.py (KanbanView component, lines 2110-2866)",
+      "scripts/lib/html_generator.py (CSS .activity-grid, renderDayContent, renderCityContent)"
+    ],
+    "scope": {
+      "included": [
+        "KanbanView layout in generate-html-interactive.py",
+        "All category sections: meals, attractions, entertainment, shopping, accommodation, transportation",
+        "CSS activity-grid in html_generator.py for bucket-list pages",
+        "Mobile responsive behavior",
+        "Card design uniformity"
+      ],
+      "excluded": [
+        "Timeline view layout",
+        "Sidebar navigation",
+        "Data model or JSON schema changes",
+        "Detail sidebar panel",
+        "Image fetching or data loading logic",
+        "Budget display sections"
+      ]
+    },
+    "success_criteria": [
+      "Every category section renders items in a single horizontal row (no wrapping)",
+      "Horizontal scrollbar appears when items overflow viewport width",
+      "All cards within each category have identical width and height",
+      "Cards maintain consistent visual design across categories",
+      "Layout works on both desktop and mobile viewports",
+      "Both generators (interactive React and bucket-list HTML) updated consistently"
+    ],
+    "constraints": [
+      "Must preserve existing click handlers (onItemClick, onBudgetClick)",
+      "Must preserve responsive breakpoint logic (sm/md/lg via useBreakpoint())",
+      "Must not change data loading or JSON schema",
+      "Must consult UI designer (frontend-design skill) for specific card dimensions and visual design before implementation",
+      "Single-file HTML output format must be maintained (no external CSS/JS files)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Category cards wrap to multiple rows and have inconsistent sizes across meals, attractions, entertainment, shopping sections",
+    "root_cause": "N/A - this is a design change request, not a bug fix",
+    "root_cause_commit": "N/A",
+    "why_introduced": "Original layout used CSS grid auto-fill/auto-fit which wraps by design, and a 2-column layout for attractions vs entertainment/shopping",
+    "why_problematic": "Wrapping creates uneven visual weight per category; 2-column layout groups unrelated categories together; card sizes vary by category type",
+    "timeline": "N/A - design change request",
+    "affected_files": [
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/html_generator.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "Clean working tree on master branch",
+    "recent_commits": "439af73 Auto-commit: 2026-04-13 17:57:13",
+    "file_contents": {
+      "scripts/generate-html-interactive.py": {
+        "description": "Interactive React travel plan generator (~3100 lines). KanbanView component at line 2110 renders day content with inline JSX styles. Meals grid at line 2174, attractions+right-column 2-col grid at line 2220.",
+        "key_patterns": {
+          "meals_grid": "display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))'",
+          "attractions_layout": "display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr' -- attractions left, entertainment/shopping/accommodation right",
+          "card_sizing": "No fixed dimensions -- cards auto-size based on content",
+          "responsive": "useBreakpoint() hook returns sm/md/lg, used throughout"
+        }
+      },
+      "scripts/lib/html_generator.py": {
+        "description": "Reusable HTML generator for bucket-list and itinerary types (~3100 lines). CSS at top, JS rendering functions at bottom.",
+        "key_patterns": {
+          "activity_grid_css": ".activity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-md); }",
+          "activity_card_css": ".activity-card { background: var(--color-primary); padding: var(--space-md); border-radius: var(--radius-md); border-left: 4px solid var(--color-accent); }",
+          "render_functions": "renderDayContent() and renderCityContent() both emit <div class='activity-grid'> containers with <div class='activity-card'> children"
+        }
+      }
+    },
+    "dependencies": {
+      "react": "Loaded via CDN (React 18, Babel standalone for JSX)",
+      "css": "All inline styles in interactive generator; CSS classes in html_generator.py"
+    },
+    "environment": {
+      "deploy_script": "scripts/deploy-travel-plans.sh",
+      "generate_script": "scripts/generate-html.sh",
+      "output_dir": "output/",
+      "live_url": "https://travel.life-ai.app/china/2026-04-12/"
+    }
+  },
+  "development_approach": {
+    "strategy": "1) Consult UI designer (frontend-design skill) for card dimensions, spacing, and scrollbar styling. 2) Modify KanbanView in generate-html-interactive.py: replace grid layouts with flex nowrap + overflow-x auto, use fixed card dimensions. 3) Remove the 2-column attractions/right-column split -- make each category a full-width horizontal scroll row. 4) Update CSS in html_generator.py: change .activity-grid from grid to flex row with overflow. 5) Test with sample data and verify on live URL after deploy.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/html_generator.py"
+    ],
+    "validation_approach": "1) Generate HTML with generate-html.sh china. 2) Deploy and verify at travel.life-ai.app. 3) Check each category section renders as single horizontal row. 4) Verify horizontal scroll works when items overflow. 5) Measure card dimensions to confirm uniformity. 6) Test on mobile viewport."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Horizontal scroll card rows is a well-established UI pattern (Netflix, Spotify, app stores). Implementation via CSS flexbox nowrap + overflow-x is standard and well-understood. No research needed."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "ui_designer_consultation": {
+    "required": true,
+    "reason": "User explicitly asked to consult UI designer for specific card design",
+    "questions_for_designer": [
+      "What should the fixed card dimensions be (width x height) for desktop and mobile?",
+      "Should card images maintain a fixed aspect ratio or fixed pixel height?",
+      "What scrollbar style works best -- native thin scrollbar, custom styled, or hidden with arrows?",
+      "Should there be scroll-snap behavior (snap to card boundaries)?",
+      "How should card content be truncated when it exceeds the fixed card height?",
+      "Should there be visual indicators (fade, arrows) at row edges to signal scrollability?"
+    ]
+  }
+}

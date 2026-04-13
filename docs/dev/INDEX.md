@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-13T10:05:34Z*
-**Total entries**: 82
+*Last updated: 2026-04-13T19:17:55Z*
+**Total entries**: 84
 **Convention**: kebab
 
 ## Tree
@@ -31,6 +31,7 @@ dev/
 ├── `ba-spec-20260412-213000.md` - BA Specification: Fix City Covers, Meals Layout, and Shopping Images
 ├── `ba-spec-20260413-063000.md` - BA Specification: Fix Shopping Brand-Splitting Duplicate Image Bug
 ├── `ba-spec-20260413-064500.md` - BA Specification: Fix Duplicate POIs Across Categories and Broken Day 1 Timeline
+├── `ba-spec-20260413-181500.md` - BA Specification: Horizontal Scroll Layout for Category Cards
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -48,6 +49,7 @@ dev/
 ├── `context-20260406-020005.json` - json config
 ├── `context-20260413-063000.json` - json config
 ├── `context-20260413-064500.json` - json config
+├── `context-20260413-181500.json` - json config
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config

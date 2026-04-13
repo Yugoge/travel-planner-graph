@@ -1,0 +1,82 @@
+{
+  "request_id": "dev-20260413-181500",
+  "timestamp": "2026-04-13T18:45:00+08:00",
+  "dev_report_path": "docs/dev/dev-report-20260413-181500.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replaced KanbanView meals grid layout with horizontal flex scroll row",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Replaced display:grid + repeat(auto-fill, minmax(200px,1fr)) with display:flex + flex-wrap:nowrap + overflow-x:auto. All meal cards now have uniform 280x320px (desktop) / 240x300px (mobile) dimensions with 140px/120px image area. Cards use scroll-snap-align:start for snap behavior.",
+        "rationale": "User requested single horizontal row per category with uniform card sizes instead of wrapping grid"
+      },
+      {
+        "id": 2,
+        "description": "Replaced 2-column attractions/right-column grid with individual horizontal scroll rows per category",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed the gridTemplateColumns:'1fr 1fr' 2-column layout that grouped attractions (left) with entertainment/shopping/accommodation (right). Each category now gets its own full-width Section with a horizontal scroll container. All categories use the same uniform card template: image on top, category label, title (1-line ellipsis), time+cost, type, location (truncated), description (2-line clamp).",
+        "rationale": "2-column layout mixed unrelated categories and used inconsistent card designs per category"
+      },
+      {
+        "id": 3,
+        "description": "Added themed scrollbar CSS and right-edge fade gradient",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added webkit scrollbar CSS (6px height, rgba(0,0,0,0.15) thumb) to the existing <style> tag. Each category row has a 40px fade gradient overlay on the right edge to indicate scrollability. Category label colors: meals=#e67e22, attractions=#3498db, entertainment=#9b59b6, shopping=#e74c3c, accommodation=#27ae60, transportation=#0ea5e9.",
+        "rationale": "UI designer spec requires thin themed scrollbar and right-edge fade for scroll indication"
+      },
+      {
+        "id": 4,
+        "description": "Added hover effect with elevation and border highlight",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Cards now have hover effect: box-shadow 0 4px 12px rgba(0,0,0,0.1) + 1px rgba(74,144,217,0.2) border + translateY(-2px) transform. Transition on both box-shadow and transform.",
+        "rationale": "UI designer spec hover effect for interactive feedback"
+      },
+      {
+        "id": 5,
+        "description": "Updated html_generator.py activity-grid CSS from grid to flex scroll",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/html_generator.py"],
+        "changes": "Changed .activity-grid from display:grid + repeat(auto-fit, minmax(280px,1fr)) to display:flex + flex-wrap:nowrap + overflow-x:auto with scroll-snap. Added webkit scrollbar styling. Changed .activity-card to fixed 280px width with flex-shrink:0 and scroll-snap-align:start.",
+        "rationale": "Bucket-list HTML generator needs the same horizontal scroll treatment for consistency"
+      }
+    ],
+    "scripts_created": [],
+    "tdd_status": "skipped",
+    "tdd_skip_reason": "This is a pure CSS/layout change in a Python-generated HTML template. The change cannot be tested programmatically without browser rendering. QA should verify visually at travel.life-ai.app after deployment.",
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": ["scripts/sync-agent-data.py", "scripts/plan-validate.py", "scripts/generate-and-deploy.sh", "scripts/generate-html.sh"]
+      },
+      {
+        "modified": "scripts/lib/html_generator.py",
+        "imported_by": ["scripts/generate-html.sh"]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - design change request, not a bug fix",
+      "why_issue_occurred": "Original layout used CSS grid auto-fill (wraps to multiple rows) and a 2-column layout that grouped unrelated categories together. Card sizes were inconsistent across category types.",
+      "how_fix_addresses_root": "Replaced all grid layouts with flex-wrap:nowrap horizontal scroll containers. All cards now use identical dimensions (280x320px desktop, 240x300px mobile) with the same visual template regardless of category."
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should: 1) Regenerate HTML using scripts/generate-html.sh china, 2) Deploy to travel.life-ai.app, 3) Verify each category renders as single horizontal row, 4) Verify horizontal scroll works when cards overflow, 5) Measure card dimensions are uniform, 6) Test on mobile viewport (<768px), 7) Verify click-to-expand detail sidebar still works, 8) Check both kanban and timeline views render correctly (timeline was not modified)",
+    "implementation_notes": [
+      "Transportation card uses height:auto instead of fixed 320px since it has no image and variable content length",
+      "Budget section was NOT converted to horizontal scroll - it remains full-width as it contains a donut chart",
+      "ExpandableNotes and LinksRow were removed from compact card view in favor of 2-line clamped description",
+      "The file scripts/generate-html-interactive.py had a pre-existing truncation issue (content deleted from line 2172 onwards) which was restored from git HEAD before applying changes"
+    ],
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "After QA verification, regenerate and deploy all active trip plans to propagate the new layout",
+    "Consider adding left/right arrow buttons for non-touch desktop users in a future iteration"
+  ]
+}

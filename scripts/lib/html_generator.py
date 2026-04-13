@@ -1317,10 +1317,32 @@ class TravelPlanHTMLGenerator:
     }}
 
     .activity-grid {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      display: flex;
+      flex-wrap: nowrap;
       gap: var(--space-md);
       margin-top: var(--space-md);
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+      padding-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,0.15) transparent;
+      position: relative;
+    }}
+
+    .activity-grid::-webkit-scrollbar {{
+      height: 6px;
+    }}
+
+    .activity-grid::-webkit-scrollbar-track {{
+      background: transparent;
+    }}
+
+    .activity-grid::-webkit-scrollbar-thumb {{
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
     }}
 
     .activity-card {{
@@ -1328,6 +1350,10 @@ class TravelPlanHTMLGenerator:
       padding: var(--space-md);
       border-radius: var(--radius-md);
       border-left: 4px solid var(--color-accent);
+      min-width: 280px;
+      width: 280px;
+      flex-shrink: 0;
+      scroll-snap-align: start;
     }}
 
     .activity-card h4 {{

@@ -1367,6 +1367,19 @@ class InteractiveHTMLGenerator:
     body {{
       overflow-x: hidden;
     }}
+    .category-scroll-container::-webkit-scrollbar {{
+      height: 6px;
+    }}
+    .category-scroll-container::-webkit-scrollbar-track {{
+      background: transparent;
+    }}
+    .category-scroll-container::-webkit-scrollbar-thumb {{
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
+    }}
+    .category-scroll-container::-webkit-scrollbar-thumb:hover {{
+      background: rgba(0,0,0,0.25);
+    }}
   </style>
 </head>
 <body>
@@ -2169,307 +2182,362 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
           </Section>
         )}
 
-        {/* Meals - Single flat grid of all meal cards */}
-        <Section title={L('meals', lang)} icon="🍽️">
-          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-            {['breakfast', 'lunch', 'dinner'].flatMap(type => {
-              const meal = day.meals[type];
-              if (!meal) return [];
-              const options = day.meals[type + '_options'] || [meal];
-              const emoji = mealEmoji[type] || '';
-              const label = L(type, lang);
-              return options.map((opt, oi) => ({...opt, _type: type, _emoji: emoji, _label: label, _isPrimary: oi === 0, _oi: oi}));
-            }).map((opt, gi) => (
-              <div key={gi} style={{
-                background: '#fff', borderRadius: '8px',
-                boxShadow: opt._isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
-              }}
-                onClick={() => onItemClick && onItemClick(opt, 'meal')}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = opt._isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-              >
-                <div style={{ width: '100%', height: sm ? '90px' : '110px', overflow: 'hidden', background: '#f5f3ef' }}>
-                  {opt.image && <img src={opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={e => { e.target.style.display = 'none'; }} />}
-                </div>
-                <div style={{ padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? '#4a90d9' : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    {opt._emoji} {opt._label}{opt.option_label ? ' \u2022 ' + (L('option', lang) || 'Option') + ' ' + opt.option_label : ''}
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                    {getDisplayName(opt, lang)}
-                    <RedNoteLink name={opt.name_local || opt.name_base} />
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.7 }}>
-                    {opt.time && opt.time.start !== '00:00' && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {opt.time.start} \u2013 {opt.time.end}</div>}
-                    {opt.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(opt.cost, undefined, lang)}</div>}
-                    {getDisplayField(opt, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(opt, 'cuisine', lang)}</div>}
-                    {(opt.location_base || opt.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
-                    {getDisplayField(opt, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(opt, 'signature_dishes', lang)}</div>}
-                  </div>
-                  <ExpandableNotes text={opt.notes_base} textLocal={opt.notes_local} lang={lang} />
-                  <LinksRow links={opt.links} compact={sm} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
+        {/* ========== HORIZONTAL SCROLL CARD ROWS ========== */}
+        {(() => {
+          const cardW = sm ? 240 : 280;
+          const cardH = sm ? 300 : 320;
+          const imgH = sm ? 120 : 140;
+          const categoryColors = { meals: '#e67e22', attractions: '#3498db', entertainment: '#9b59b6', shopping: '#e74c3c', accommodation: '#27ae60', transportation: '#0ea5e9' };
 
-        {/* Attractions + Right column */}
-        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: '24px' }}>
-          {/* Attractions */}
-          <Section title={L('attractions', lang)} icon="📍">
-            {day.attractions.map((attr, i) => (
-              <div key={i} style={{
-                background: '#fff', borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                overflow: 'hidden', marginBottom: '14px', transition: 'box-shadow .15s', cursor: 'pointer'
-              }}
-                onClick={() => onItemClick && onItemClick(attr, 'attraction')}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-              >
-                {sm ? (
-                  <>
-                    <div style={{ height: '110px', overflow: 'hidden', background: '#eef4f9' }}>
-                      <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                    </div>
-                    <div style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                        {getDisplayName(attr, lang)}
-                        <RedNoteLink name={attr.name_local || attr.name_base} />
-                        {attr.optional && <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>}
-                      </div>
-                      {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
-                      {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
-                      <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
-                      <LinksRow links={attr.links} compact />
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: 'flex' }}>
-                    <div style={{ width: '140px', flexShrink: 0, overflow: 'hidden', background: '#eef4f9' }}>
-                      <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '160px' }} onError={e => e.target.style.display = 'none'} />
-                    </div>
-                    <div style={{ padding: '14px 16px', flex: 1, lineHeight: 1.7 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '2px' }}>
-                        {getDisplayName(attr, lang)}
-                        <RedNoteLink name={attr.name_local || attr.name_base} />
-                        {attr.optional && <span style={{ fontSize: '11px', padding: '2px 6px', background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', color: '#9b9a97', marginLeft: '6px', fontWeight: '600', verticalAlign: 'middle' }}>{L('optional', lang)}</span>}
-                      </div>
-                      {attr.time && <PropLine label={L('time', lang)} value={`${attr.time.start} – ${attr.time.end}`} />}
-                      {attr.cost > 0 && <PropLine label={L('cost', lang)} value={<>{fmtCost(attr.cost, undefined, lang)}</>} />}
-                      <PropLine label={L('type', lang)} value={getDisplayField(attr, 'type', lang)} />
-                      {(attr.location_base || attr.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={attr} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={attr.notes_base} textLocal={attr.notes_local} lang={lang} />
-                      <LinksRow links={attr.links} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </Section>
+          const scrollContainerStyle = {
+            display: 'flex', flexWrap: 'nowrap', gap: '12px',
+            overflowX: 'auto', overflowY: 'hidden',
+            scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch',
+            scrollSnapType: 'x proximity',
+            paddingBottom: '8px',
+            scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent'
+          };
 
-          {/* Right column */}
-          <div>
-            {day.entertainment?.length > 0 && (
-              <Section title={L('entertainment', lang)} icon="🎭">
-                {day.entertainment.map((ent, i) => (
-                  <div key={i} style={{
-                    background: '#fff', borderRadius: '8px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                    overflow: 'hidden', marginBottom: '10px', cursor: 'pointer'
-                  }}
-                    onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
-                  >
-                    {ent.image && (
-                      <div style={{ width: '100%', height: sm ? '100px' : '120px', overflow: 'hidden', background: '#f5f3ef' }}>
-                        <img src={ent.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => { e.target.style.display = 'none'; }} />
-                      </div>
-                    )}
-                    <div style={{ padding: '14px 16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px' }}>
-                        {getDisplayName(ent, lang)}
-                        <RedNoteLink name={ent.name_local || ent.name_base} />
-                      </div>
-                      {ent.time && <PropLine label={L('time', lang)} value={`${ent.time.start} – ${ent.time.end}`} />}
-                      {ent.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(ent.cost, undefined, lang)} />}
-                      <PropLine label={L('type', lang)} value={getDisplayField(ent, 'type', lang)} />
-                      {(ent.location_base || ent.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={ent} lang={lang} mapProvider={mapProvider} />} />}
-                      {ent.duration && <PropLine label={L('duration', lang)} value={ent.duration} />}
-                      {(lang === 'local' && ent.note_local ? ent.note_local : ent.note_base) && (
-                        <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
-                          💡 {lang === 'local' && ent.note_local ? ent.note_local : ent.note_base}
+          const cardStyle = (catColor, isPrimary) => ({
+            width: cardW + 'px', minWidth: cardW + 'px', height: cardH + 'px',
+            flexShrink: 0, scrollSnapAlign: 'start',
+            background: '#fff', borderRadius: '8px',
+            boxShadow: isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+            overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column'
+          });
+
+          const hoverOn = (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(74,144,217,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; };
+          const hoverOff = (e, catColor, isPrimary) => { e.currentTarget.style.boxShadow = isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; };
+
+          const categoryRowStyle = { position: 'relative' };
+          const fadeStyle = {
+            content: "''", position: 'absolute', right: 0, bottom: '8px',
+            width: '40px', height: (cardH) + 'px',
+            background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.9))',
+            pointerEvents: 'none', zIndex: 1
+          };
+
+          return (
+            <>
+              {/* Meals */}
+              <Section title={L('meals', lang)} icon="🍽️">
+                <div style={categoryRowStyle}>
+                  <div style={scrollContainerStyle} className="category-scroll-container">
+                    {['breakfast', 'lunch', 'dinner'].flatMap(type => {
+                      const meal = day.meals[type];
+                      if (!meal) return [];
+                      const options = day.meals[type + '_options'] || [meal];
+                      const emoji = mealEmoji[type] || '';
+                      const label = L(type, lang);
+                      return options.map((opt, oi) => ({...opt, _type: type, _emoji: emoji, _label: label, _isPrimary: oi === 0, _oi: oi}));
+                    }).map((opt, gi) => {
+                      const catColor = categoryColors.meals;
+                      return (
+                        <div key={gi} style={cardStyle(catColor, opt._isPrimary)}
+                          onClick={() => onItemClick && onItemClick(opt, 'meal')}
+                          onMouseEnter={hoverOn}
+                          onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}
+                        >
+                          <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                            {opt.image && <img src={opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={e => { e.target.style.display = 'none'; }} />}
+                          </div>
+                          <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? catColor : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                              <span>{opt._emoji} {opt._label}</span>
+                              {opt.option_label && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97' }}>{(L('option', lang) || 'Option') + ' ' + opt.option_label}</span>}
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                              {getDisplayName(opt, lang)}
+                              <RedNoteLink name={opt.name_local || opt.name_base} />
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                              {opt.time && opt.time.start !== '00:00' && <div>{opt.time.start} – {opt.time.end}{opt.cost > 0 ? ' · ' + fmtCost(opt.cost, undefined, lang) : ''}</div>}
+                              {!opt.time && opt.cost > 0 && <div>{fmtCost(opt.cost, undefined, lang)}</div>}
+                              {getDisplayField(opt, 'cuisine', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(opt, 'cuisine', lang)}</div>}
+                              {(opt.location_base || opt.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                              {lang === 'local' && opt.notes_local ? opt.notes_local : opt.notes_base}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <ExpandableNotes text={ent.notes_base} textLocal={ent.notes_local} lang={lang} />
-                      <LinksRow links={ent.links} compact={sm} />
+                      );
+                    })}
+                  </div>
+                  <div style={fadeStyle} />
+                </div>
+              </Section>
+
+              {/* Attractions */}
+              {day.attractions && day.attractions.length > 0 && (
+                <Section title={L('attractions', lang)} icon="📍">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {day.attractions.map((attr, i) => {
+                        const catColor = categoryColors.attractions;
+                        return (
+                          <div key={i} style={cardStyle(catColor, false)}
+                            onClick={() => onItemClick && onItemClick(attr, 'attraction')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#eef4f9', flexShrink: 0 }}>
+                              {attr.image && <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <span>📍 {L('attractions', lang)}</span>
+                                {attr.optional && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' }}>{L('optional', lang)}</span>}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(attr, lang)}
+                                <RedNoteLink name={attr.name_local || attr.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {attr.time && <div>{attr.time.start} – {attr.time.end}{attr.cost > 0 ? ' · ' + fmtCost(attr.cost, undefined, lang) : ''}</div>}
+                                {!attr.time && attr.cost > 0 && <div>{fmtCost(attr.cost, undefined, lang)}</div>}
+                                {getDisplayField(attr, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(attr, 'type', lang)}</div>}
+                                {(attr.location_base || attr.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={attr} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && attr.notes_local ? attr.notes_local : attr.notes_base}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={fadeStyle} />
+                  </div>
+                </Section>
+              )}
+
+              {/* Entertainment */}
+              {day.entertainment?.length > 0 && (
+                <Section title={L('entertainment', lang)} icon="🎭">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {day.entertainment.map((ent, i) => {
+                        const catColor = categoryColors.entertainment;
+                        return (
+                          <div key={i} style={cardStyle(catColor, false)}
+                            onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                              {ent.image && <img src={ent.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none'; }} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
+                                🎭 {L('entertainment', lang)}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(ent, lang)}
+                                <RedNoteLink name={ent.name_local || ent.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {ent.time && <div>{ent.time.start} – {ent.time.end}{ent.cost > 0 ? ' · ' + fmtCost(ent.cost, undefined, lang) : ''}</div>}
+                                {!ent.time && ent.cost > 0 && <div>{fmtCost(ent.cost, undefined, lang)}</div>}
+                                {getDisplayField(ent, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(ent, 'type', lang)}</div>}
+                                {(ent.location_base || ent.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={ent} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && ent.notes_local ? ent.notes_local : (lang === 'local' && ent.note_local ? ent.note_local : ent.note_base)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={fadeStyle} />
+                  </div>
+                </Section>
+              )}
+
+              {/* Shopping */}
+              {day.shopping && day.shopping.length > 0 && (
+                <Section title={L('shopping', lang)} icon="🛍️">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {day.shopping.map((shop, i) => {
+                        const catColor = categoryColors.shopping;
+                        return (
+                          <div key={i} style={cardStyle(catColor, false)}
+                            onClick={() => onItemClick && onItemClick(shop, 'shopping')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                              {shop.image && <img src={shop.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none'; }} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
+                                🛍️ {L('shopping', lang)}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(shop, lang)}
+                                <RedNoteLink name={shop.name_local || shop.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {shop.time && <div>{shop.time.start} – {shop.time.end}{shop.cost > 0 ? ' · ' + fmtCost(shop.cost, undefined, lang) : ''}</div>}
+                                {!shop.time && shop.cost > 0 && <div>{fmtCost(shop.cost, undefined, lang)}</div>}
+                                {getDisplayField(shop, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(shop, 'type', lang)}</div>}
+                                {(shop.location_base || shop.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={shop} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && shop.notes_local ? shop.notes_local : shop.notes_base}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={fadeStyle} />
+                  </div>
+                </Section>
+              )}
+
+              {/* Accommodation */}
+              {day.accommodation && (
+                <Section title={L('accommodation', lang)} icon="🏨">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {[day.accommodation].map((acc, i) => {
+                        const catColor = categoryColors.accommodation;
+                        return (
+                          <div key={i} style={cardStyle(catColor, false)}
+                            onClick={() => onItemClick && onItemClick(acc, 'accommodation')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                              {acc.image && <img src={acc.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none'; }} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
+                                🏨 {L('accommodation', lang)}
+                                {acc.stars > 0 && <span style={{ color: '#e9b200', marginLeft: '4px', letterSpacing: '1px' }}>{'★'.repeat(acc.stars)}</span>}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(acc, lang)}
+                                <RedNoteLink name={acc.name_local || acc.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {acc.check_in && <div>{L('checkin', lang)}: {acc.check_in}{acc.check_out ? ' · ' + L('checkout', lang) + ': ' + acc.check_out : ''}</div>}
+                                {acc.cost > 0 && <div>{fmtCost(acc.cost, undefined, lang)}</div>}
+                                {getDisplayField(acc, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(acc, 'type', lang)}</div>}
+                                {(acc.location_base || acc.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={acc} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && acc.notes_local ? acc.notes_local : acc.notes_base}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
-              </Section>
-            )}
+                </Section>
+              )}
 
-            {day.shopping && day.shopping.length > 0 && (
-              <Section title={L('shopping', lang)} icon="🛍️">
-                {day.shopping.map((shop, i) => (
-                  <div key={i} style={{
-                    background: '#fff', borderRadius: '8px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                    overflow: 'hidden', marginBottom: '14px', transition: 'box-shadow .15s', cursor: 'pointer'
-                  }}
-                    onClick={() => onItemClick && onItemClick(shop, 'shopping')}
-                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
-                    onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-                  >
-                    {shop.image && (
-                      <div style={{ width: '100%', height: sm ? '120px' : '160px', overflow: 'hidden', background: '#f5f3ef' }}>
-                        <img src={shop.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => { e.target.style.display = 'none'; }} />
-                      </div>
-                    )}
-                    <div style={{ padding: '14px 16px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                        {getDisplayName(shop, lang)}
-                        <RedNoteLink name={shop.name_local || shop.name_base} />
-                      </div>
-
-                      {shop.time && <PropLine label={L('time', lang)} value={shop.time.start + ' – ' + shop.time.end} />}
-                      {shop.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(shop.cost, undefined, lang)} />}
-                      {getDisplayField(shop, 'type', lang) && <PropLine label={L('type', lang)} value={getDisplayField(shop, 'type', lang)} />}
-                      {(shop.location_base || shop.location_local) && <PropLine label={L('location', lang)} value={<MapLink item={shop} lang={lang} mapProvider={mapProvider} />} />}
-                      <ExpandableNotes text={shop.notes_base} textLocal={shop.notes_local} lang={lang} />
+              {/* Transportation */}
+              {day.transportation && (
+                <Section title={L('transportation', lang)} icon={day.transportation.icon}>
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {[day.transportation].map((tr, i) => {
+                        const catColor = categoryColors.transportation;
+                        return (
+                          <div key={i} style={{...cardStyle(catColor, false), height: 'auto', minHeight: sm ? '160px' : '180px'}}
+                            onClick={() => onItemClick && onItemClick(tr, 'transportation')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ padding: '12px 14px', flex: 1 }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                                {tr.icon} {L('transportation', lang)}
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {lang === 'local' && tr.from_local ? tr.from_local : tr.from_base}
+                                {' → '}
+                                {lang === 'local' && tr.to_local ? tr.to_local : tr.to_base}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.7 }}>
+                                {tr.time && <div>{tr.time.start} – {tr.time.end}</div>}
+                                {(tr.cost > 0 || tr.cost_type_base === 'prepaid') && <div>{fmtCost(tr.cost, tr.cost_type_base, lang)}</div>}
+                                {getDisplayField(tr, 'type', lang) && <div>{getDisplayField(tr, 'type', lang)}</div>}
+                                {getDisplayField(tr, 'company', lang) && <div>{getDisplayField(tr, 'company', lang)}</div>}
+                                {tr.route_number && <div>{tr.route_number}</div>}
+                              </div>
+                              {getDisplayField(tr, 'status', lang) && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <span style={{
+                                    padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                                    background: tr.status_base?.includes('URGENT') ? '#fff4e6' : tr.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
+                                    color: tr.status_base?.includes('URGENT') ? '#d97706' : tr.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
+                                  }}>
+                                    {getDisplayField(tr, 'status', lang)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
-              </Section>
-            )}
+                </Section>
+              )}
 
-            {day.accommodation && (
-              <Section title={L('accommodation', lang)} icon="🏨">
+              {/* Budget */}
+              <Section title={L('budget', lang)} icon="💰">
                 <div style={{
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  overflow: 'hidden', cursor: 'pointer'
-                }}
-                  onClick={() => onItemClick && onItemClick(day.accommodation, 'accommodation')}
-                >
-                  {day.accommodation.image && (
-                    <div style={{ width: '100%', height: sm ? '120px' : '160px', overflow: 'hidden', background: '#f5f3ef' }}>
-                      <img src={day.accommodation.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={e => { e.target.style.display = 'none'; }} />
+                  padding: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: sm ? 'center' : 'center', gap: '20px', flexDirection: sm ? 'column' : 'row' }}>
+                    <Donut budget={day.budget} size={sm ? 72 : 88} onBudgetClick={onBudgetClick} day={day} />
+                    <div style={{ fontSize: '13px', color: '#6b6b6b', lineHeight: 2, flex: 1, width: '100%' }}>
+                      {[
+                        { k: 'meals', l: L('meals', lang), c: '#f0b429' },
+                        { k: 'attractions', l: L('attractions', lang), c: '#4a90d9' },
+                        { k: 'entertainment', l: L('entertainment', lang), c: '#9b6dd7' },
+                        { k: 'accommodation', l: L('accommodation', lang), c: '#45b26b' },
+                        { k: 'shopping', l: L('shopping', lang), c: '#e07c5a' },
+                        { k: 'transportation', l: L('transport', lang), c: '#0ea5e9' }
+                      ].filter(r => day.budget[r.k] > 0).map(r => (
+                        <div key={r.k} style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          cursor: 'pointer', padding: '4px 6px', margin: '0 -6px',
+                          borderRadius: '4px', transition: 'background .12s'
+                        }}
+                          onClick={() => onBudgetClick && onBudgetClick(r.k, day)}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(55,53,47,0.04)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
+                          <span style={{ flex: 1 }}>{r.l}</span>
+                          <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k], undefined, lang)}</span>
+                        </div>
+                      ))}
+                      <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{L('total', lang)}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
+                      </div>
                     </div>
-                  )}
-                  <div style={{ padding: '14px 16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                      {getDisplayName(day.accommodation, lang)}
-                      <RedNoteLink name={day.accommodation.name_local || day.accommodation.name_base} />
-                    </div>
-                    {day.accommodation.time && <PropLine label={L('time', lang)} value={`${day.accommodation.time.start} – ${day.accommodation.time.end}`} />}
-                    {day.accommodation.check_in && <PropLine label={L('checkin', lang)} value={day.accommodation.check_in} />}
-                    {day.accommodation.check_out && <PropLine label={L('checkout', lang)} value={day.accommodation.check_out} />}
-                    {day.accommodation.cost > 0 && <PropLine label={L('cost', lang)} value={fmtCost(day.accommodation.cost, undefined, lang)} />}
-                    <PropLine label={L('type', lang)} value={getDisplayField(day.accommodation, 'type', lang)} />
-                    {day.accommodation.stars > 0 && <PropLine label={L('stars', lang)} value={<span style={{ color: '#e9b200', letterSpacing: '1px' }}>{'★'.repeat(day.accommodation.stars)}</span>} />}
-                    <PropLine label={L('location', lang)} value={<MapLink item={day.accommodation} lang={lang} mapProvider={mapProvider} />} />
-                    <ExpandableNotes text={day.accommodation.notes_base} textLocal={day.accommodation.notes_local} lang={lang} />
-                    <LinksRow links={day.accommodation.links} compact={sm} />
                   </div>
                 </div>
               </Section>
-            )}
+            </>
+          );
+        })()}
 
-            {day.transportation && (
-              <Section title={L('transportation', lang)} icon={day.transportation.icon}>
-                <div style={{
-                  background: '#fff', borderRadius: '8px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                  overflow: 'hidden', cursor: 'pointer'
-                }}
-                  onClick={() => onItemClick && onItemClick(day.transportation, 'transportation')}
-                >
-                  <div style={{ padding: '14px 16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#37352f', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {day.transportation.icon}
-                      {' '}
-                      {lang === 'local' && day.transportation.from_local ? day.transportation.from_local : day.transportation.from_base}
-                      {' → '}
-                      {lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base}
-                    </div>
-                    {day.transportation.time && <PropLine label={L('time', lang)} value={`${day.transportation.time.start} – ${day.transportation.time.end}`} />}
-                    {(day.transportation.cost > 0 || day.transportation.cost_type_base === 'prepaid') && (
-                      <PropLine label={L('cost', lang)} value={fmtCost(day.transportation.cost, day.transportation.cost_type_base, lang)} />
-                    )}
-                    <PropLine label={L('type', lang)} value={getDisplayField(day.transportation, 'type', lang)} />
-                    {getDisplayField(day.transportation, 'company', lang) && <PropLine label={L('company', lang)} value={getDisplayField(day.transportation, 'company', lang)} />}
-                    {day.transportation.route_number && <PropLine label={L('route_number', lang)} value={day.transportation.route_number} />}
-                    <PropLine label={L('route', lang)} value={`${lang === 'local' && day.transportation.departure_point_local ? day.transportation.departure_point_local : day.transportation.departure_point_base} → ${lang === 'local' && day.transportation.arrival_point_local ? day.transportation.arrival_point_local : day.transportation.arrival_point_base}`} />
-                    {getDisplayField(day.transportation, 'status', lang) && (
-                      <div style={{ marginTop: '4px' }}>
-                        <span style={{
-                          padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
-                          background: day.transportation.status_base?.includes('URGENT') ? '#fff4e6' : day.transportation.status_base?.includes('VERIFIED') ? '#e9f5ec' : '#edf2fc',
-                          color: day.transportation.status_base?.includes('URGENT') ? '#d97706' : day.transportation.status_base?.includes('VERIFIED') ? '#1a7a32' : '#2b63b5'
-                        }}>
-                          {getDisplayField(day.transportation, 'status', lang)}
-                        </span>
-                      </div>
-                    )}
-                    {(lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base) && (
-                      <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fffdf5', borderRadius: '5px', border: '1px solid #f5ecd7', fontSize: '12px', color: '#9a6700' }}>
-                        💡 {lang === 'local' && day.transportation.note_local ? day.transportation.note_local : day.transportation.note_base}
-                      </div>
-                    )}
-                    <ExpandableNotes text={day.transportation.notes_base} textLocal={day.transportation.notes_local} lang={lang} />
-                  </div>
-                </div>
-              </Section>
-            )}
-
-            <Section title={L('budget', lang)} icon="💰">
-              <div style={{
-                background: '#fff', borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                padding: '16px'
-              }}>
-                <div style={{ display: 'flex', alignItems: sm ? 'center' : 'center', gap: '20px', flexDirection: sm ? 'column' : 'row' }}>
-                  <Donut budget={day.budget} size={sm ? 72 : 88} onBudgetClick={onBudgetClick} day={day} />
-                  <div style={{ fontSize: '13px', color: '#6b6b6b', lineHeight: 2, flex: 1, width: '100%' }}>
-                    {[
-                      { k: 'meals', l: L('meals', lang), c: '#f0b429' },
-                      { k: 'attractions', l: L('attractions', lang), c: '#4a90d9' },
-                      { k: 'entertainment', l: L('entertainment', lang), c: '#9b6dd7' },
-                      { k: 'accommodation', l: L('accommodation', lang), c: '#45b26b' },
-                      { k: 'shopping', l: L('shopping', lang), c: '#e07c5a' },
-                      { k: 'transportation', l: L('transport', lang), c: '#0ea5e9' }
-                    ].filter(r => day.budget[r.k] > 0).map(r => (
-                      <div key={r.k} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        cursor: 'pointer', padding: '4px 6px', margin: '0 -6px',
-                        borderRadius: '4px', transition: 'background .12s'
-                      }}
-                        onClick={() => onBudgetClick && onBudgetClick(r.k, day)}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(55,53,47,0.04)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: r.c, flexShrink: 0 }} />
-                        <span style={{ flex: 1 }}>{r.l}</span>
-                        <span style={{ fontWeight: '600', color: '#37352f' }}>{fmtCost(day.budget[r.k], undefined, lang)}</span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{L('total', lang)}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Section>
-          </div>
-        </div>
       </div>
     </div>
   );
