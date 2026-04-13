@@ -68,7 +68,7 @@ For each day in the trip:
    - Mall shopping vs boutique stores
    - Budget allocation for shopping
 
-**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
+**POI Classification**: See `/docs/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 **BEFORE adding any POI to shopping**, ask: "Is the primary purpose to buy goods?" If NO, consider other categories.
 

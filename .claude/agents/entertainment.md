@@ -68,7 +68,7 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Budget for entertainment
 
-**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
+**POI Classification**: See `/docs/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 2. **Research entertainment options**:
    - **For global destinations**: Use Skill tool with `google-maps`

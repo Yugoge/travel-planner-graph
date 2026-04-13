@@ -65,7 +65,7 @@ For each day in the trip:
    - Budget constraints for meals
    - Special occasions (celebration dinner, romantic meal)
 
-**POI Classification**: See `/docs/dev/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
+**POI Classification**: See `/docs/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 2. **Research local restaurants** using available skills:
    - **For global destinations**: Use Skill tool with `google-maps`
