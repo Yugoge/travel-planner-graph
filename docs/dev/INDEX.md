@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-13T19:38:12Z*
-**Total entries**: 86
+*Last updated: 2026-04-13T20:06:21Z*
+**Total entries**: 89
 **Convention**: kebab
 
 ## Tree
@@ -32,6 +32,8 @@ dev/
 ├── `ba-spec-20260413-063000.md` - BA Specification: Fix Shopping Brand-Splitting Duplicate Image Bug
 ├── `ba-spec-20260413-064500.md` - BA Specification: Fix Duplicate POIs Across Categories and Broken Day 1 Timeline
 ├── `ba-spec-20260413-181500.md` - BA Specification: Horizontal Scroll Layout for Category Cards
+├── `ba-spec-20260413-190000.md` - BA Specification: Fix sync-agent-data.py meal_types Detection Bug
+├── `ba-spec-20260413-200500.md` - BA Specification: Hard-Blocking Time Conflict Gate in save.py
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -50,6 +52,7 @@ dev/
 ├── `context-20260413-063000.json` - json config
 ├── `context-20260413-064500.json` - json config
 ├── `context-20260413-181500.json` - json config
+├── `context-20260413-190000.json` - json config
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config

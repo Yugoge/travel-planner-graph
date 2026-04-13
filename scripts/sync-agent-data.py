@@ -60,7 +60,7 @@ class AgentDataSyncer:
             meals_schema = json.load(f)
         # Derive meal_types from meals.schema.json day_entry properties
         day_props = meals_schema["$defs"]["day_entry"]["properties"]
-        meal_item_ref = "#/$defs/meal_item"
+        meal_item_ref = "#/$defs/meal_slot"
         meal_types = [k for k, v in day_props.items()
                       if isinstance(v, dict) and v.get("$ref") == meal_item_ref]
         return {

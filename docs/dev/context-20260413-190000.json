@@ -1,0 +1,71 @@
+{
+  "request_id": "dev-20260413-190000",
+  "timestamp": "2026-04-13T19:00:00+08:00",
+  "requirement": {
+    "original": "sync-agent-data.py reports 'no data changes needed' but the HTML still shows stale/old Day 1 timeline data",
+    "clarified": "The sync script's _load_config() method fails to detect meal types because it looks for '$ref: #/$defs/meal_item' in the meals schema, but the schema was refactored to use '$ref: #/$defs/meal_slot'. This causes _sync_meals to iterate over zero meal types, never updating meals.json. The HTML generator reads from meals.json, so stale times persist.",
+    "what": "Fix $ref matching in _load_config() from 'meal_item' to 'meal_slot'",
+    "why": "Meal times in meals.json are never synced from timeline.json, causing stale data in generated HTML",
+    "where": ["scripts/sync-agent-data.py"],
+    "scope": {
+      "included": [
+        "Fix _load_config() meal_type detection in sync-agent-data.py",
+        "Verify sync correctly updates meals.json after fix",
+        "Regenerate HTML to confirm correct times"
+      ],
+      "excluded": [
+        "Refactoring HTML generator to read from timeline.json directly",
+        "Fixing the 58 schema validation warnings",
+        "Changes to meals.schema.json"
+      ]
+    },
+    "success_criteria": [
+      "self._config['meal_types'] returns ['breakfast', 'lunch', 'dinner']",
+      "sync-agent-data.py reports timeline injections for meals with stale times",
+      "meals.json Day 1 lunch time updated from 15:10-15:40 to 13:00-13:40",
+      "Generated HTML shows correct meal times"
+    ],
+    "constraints": []
+  },
+  "root_cause_analysis": {
+    "symptom": "sync-agent-data.py reports '0 changes needed' for meals, but meals.json has stale times (15:10-15:40) while timeline.json has correct times (13:00-13:40)",
+    "root_cause": "_load_config() on line 63 checks for '$ref' == '#/$defs/meal_item' in meals schema day_entry properties, but schema was refactored to use '#/$defs/meal_slot' wrapper. Result: meal_types = [] (empty list), so _sync_meals iterates over zero types.",
+    "root_cause_commit": "N/A - schema refactored separately from sync script, mismatch was never caught",
+    "why_introduced": "The meals schema was correctly refactored to add meal_slot (with primary + alternatives), but sync-agent-data.py was not updated to match the new $ref",
+    "why_problematic": "Zero meal types means _sync_meals does nothing. All meal data in meals.json stays stale. HTML generator reads meals.json, so HTML shows old times.",
+    "timeline": "Bug has existed since the meal_slot schema refactor",
+    "affected_files": [
+      "scripts/sync-agent-data.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "timeline.json has correct data (Heyan Meat Pie lunch 13:00-13:40 with meal_ref=lunch), meals.json has stale data (15:10-15:40)",
+    "recent_commits": "sync-agent-data.py last modified at checkpoint 2026-04-06",
+    "file_contents": {
+      "scripts/sync-agent-data.py:63": "meal_item_ref = \"#/$defs/meal_item\"",
+      "scripts/sync-agent-data.py:64-65": "meal_types = [k for k, v in day_props.items() if isinstance(v, dict) and v.get(\"$ref\") == meal_item_ref]",
+      "schemas/meals.schema.json:79-81": "breakfast/lunch/dinner properties use $ref: #/$defs/meal_slot (not meal_item)"
+    },
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Change the $ref comparison string from '#/$defs/meal_item' to '#/$defs/meal_slot' in _load_config(). Then run sync and verify meals.json is updated.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/sync-agent-data.py"
+    ],
+    "validation_approach": "1. Run sync --dry-run and verify timeline_injections > 0 for meals. 2. Run sync without dry-run and verify meals.json Day 1 lunch time is 13:00-13:40. 3. Regenerate HTML and verify correct times."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause - schema ref mismatch"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

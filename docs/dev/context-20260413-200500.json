@@ -1,0 +1,105 @@
+{
+  "request_id": "dev-20260413-200500",
+  "timestamp": "2026-04-13T20:05:00Z",
+  "requirement": {
+    "original": "When a timeline save has non-optional time conflicts, save.py must REFUSE to write the file. Not a warning, not an error log -- a hard block. Exit code non-zero, file unchanged.",
+    "clarified": "Add a hard-blocking time conflict gate in save.py's save_single_agent() function that detects non-optional time overlaps (reusing plan-validate.py's existing overlap logic) and refuses to write the file when conflicts exist.",
+    "what": "Hard-blocking time conflict gate in save.py for timeline saves",
+    "why": "Currently, timeline saves bypass cross-agent overlap detection because run_pipeline() skips cross-agent checks when agent_filter is set. This allows conflicting timelines to be saved silently.",
+    "where": ["scripts/save.py", "scripts/lib/json_io.py"],
+    "scope": {
+      "included": [
+        "Detect non-optional time conflicts before file write in save.py",
+        "Block save (exit 1, file unchanged) when conflicts found",
+        "Reuse plan-validate.py overlap detection functions",
+        "Respect --allow-high and --no-validate bypass flags",
+        "Handle travel segment overlaps"
+      ],
+      "excluded": [
+        "Modifying timeline schema to add optional field",
+        "Changing plan-validate.py's existing logic",
+        "Adding new overlap detection algorithms",
+        "Handling intentional overlaps beyond existing _is_same_activity() dedup"
+      ]
+    },
+    "success_criteria": [
+      "Non-optional time conflicts cause exit code 1, file unchanged",
+      "Optional overlaps do not block save",
+      "Same-event dedup (timeline + POI same event) does not false-positive",
+      "--allow-high bypasses the conflict gate",
+      "Travel segment overlaps with non-optional activities block save"
+    ],
+    "constraints": [
+      "Must load sibling agent files from trip_dir for cross-agent conflict detection",
+      "Timeline uses start_time/end_time keys; POI agents use time.start/time.end -- existing normalizer handles this",
+      "Must not break existing validation pipeline or batch save mode"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Timeline saves with time conflicts succeed silently -- no blocking, no error",
+    "root_cause": "run_pipeline() in plan-validate.py (line 1469) guards cross-agent checks with 'if not agent_filter:'. When save.py calls validate_agent_data() with agent_filter='timeline', the cross-agent overlap check (check_all_activity_overlaps) is completely skipped.",
+    "root_cause_commit": "N/A - architectural gap, not a regression",
+    "why_introduced": "agent_filter optimization was designed to speed up single-agent validation by skipping irrelevant cross-agent checks. The side effect is that the most critical check (time conflicts) is also skipped.",
+    "why_problematic": "Allows agents to save conflicting timelines that should be blocked, leading to invalid trip plans with double-booked time slots.",
+    "timeline": "Since save.py was created with agent_filter support",
+    "affected_files": [
+      "scripts/save.py",
+      "scripts/plan-validate.py (read-only, reuse functions)",
+      "scripts/lib/json_io.py (possibly)"
+    ]
+  },
+  "context": {
+    "codebase_state": "save.py is a mature unified save script with validation, atomic writes, backups, batch mode, and merge-days support. plan-validate.py has comprehensive overlap detection that works correctly when called without agent_filter.",
+    "recent_commits": "No recent commits to save.py or overlap detection",
+    "file_contents": {
+      "scripts/save.py": {
+        "lines": 458,
+        "key_functions": [
+          "validate_data() - lines 131-171: runs plan-validate, blocks on HIGH severity",
+          "save_single_agent() - lines 174-253: main save flow with validation gate",
+          "save_batch() - lines 256-358: batch save with rollback"
+        ],
+        "insertion_point": "Between line 220 (validation success) and line 228 (save_agent_json call)"
+      },
+      "scripts/plan-validate.py": {
+        "reusable_functions": {
+          "_check_time_overlap": "line 881 - pure function, checks [start, end) overlap between two HH:MM ranges",
+          "_collect_all_activities_for_day": "line 913 - collects activities from all 5 agents into unified format with optional flag",
+          "_is_same_activity": "line 982 - deduplicates same real-world event from timeline + POI agent",
+          "check_all_activity_overlaps": "line 1023 - pairwise overlap detection, HIGH for non-optional, INFO for optional",
+          "check_travel_segment_continuity": "line 1075 - travel segment gap/overlap detection",
+          "load_agent_data": "loads agent JSON from trip_dir"
+        }
+      }
+    },
+    "dependencies": {
+      "lib/json_io.py": "validate_agent_data() calls run_pipeline() with agent_filter, which skips cross-agent checks"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Add a dedicated time-conflict gate in save_single_agent() for timeline saves. After existing validation passes (line 220) and before file write (line 228), import and call check_all_activity_overlaps() and check_travel_segment_continuity() directly, loading sibling agent data from trip_dir. Block on any HIGH severity overlap issues.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/save.py"
+    ],
+    "implementation_steps": [
+      "1. At top of save.py, import overlap detection functions from plan-validate.py: check_all_activity_overlaps, check_travel_segment_continuity, load_agent_data, Severity",
+      "2. Add function check_time_conflicts(trip_slug, agent, agent_data) that: (a) returns immediately if agent != 'timeline', (b) loads all sibling agent files from trip_dir, (c) builds all_data dict with the new timeline data (not the on-disk version), (d) calls check_all_activity_overlaps() and check_travel_segment_continuity(), (e) filters for HIGH severity issues, (f) returns the list of blocking conflicts",
+      "3. In save_single_agent(), after validate_data() succeeds (line 220) and before save_agent_json() (line 228), call check_time_conflicts(). If it returns any HIGH issues and not allow_high, print conflicts to stderr and return False.",
+      "4. Pass allow_high and skip_validation flags through to respect existing bypass behavior"
+    ],
+    "validation_approach": "Create test timeline data with known overlaps, run save.py, verify exit code 1 and file unchanged. Create clean timeline data, verify save succeeds."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward gate insertion into existing save pipeline, reusing well-tested overlap detection functions already in the codebase"
+  }
+}
