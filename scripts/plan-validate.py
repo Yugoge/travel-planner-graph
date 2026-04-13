@@ -978,6 +978,48 @@ def _collect_all_activities_for_day(all_data: dict, day_num: int) -> list:
     return activities
 
 
+
+def _is_same_activity(act1: dict, act2: dict) -> bool:
+    """Detect if two activities from different agents refer to the same real-world event.
+
+    The same activity often appears in both timeline.json AND the individual agent file
+    (e.g., meals, attractions). This causes false positive overlap reports.
+
+    Returns True if the pair should be skipped (same event from two sources).
+    """
+    poi_agents = {"meals", "attractions", "entertainment", "shopping"}
+
+    # Case 1: Exact same start AND end time → same scheduled event from two sources
+    if act1["start"] == act2["start"] and act1["end"] == act2["end"]:
+        # Only skip if one is timeline and the other is a POI agent, or both are
+        # from different sources for the same slot
+        agents = {act1["agent"], act2["agent"]}
+        if "timeline" in agents and agents & poi_agents:
+            return True
+
+    # Case 2: One is timeline, the other is a POI agent, and names share a substring
+    if not ({act1["agent"], act2["agent"]} >= {"timeline"} and
+            {act1["agent"], act2["agent"]} & poi_agents):
+        return False
+
+    # Check if activity names share a meaningful common substring (>= 2 chars)
+    name1 = act1["name"]
+    name2 = act2["name"]
+    # Direct containment check (one name contains the other or vice versa)
+    if name1 in name2 or name2 in name1:
+        return True
+
+    # Check for shared Chinese/meaningful substring (at least 2 characters)
+    shorter, longer = (name1, name2) if len(name1) <= len(name2) else (name2, name1)
+    for length in range(len(shorter), 1, -1):
+        for start in range(len(shorter) - length + 1):
+            substr = shorter[start:start + length]
+            if substr in longer:
+                return True
+
+    return False
+
+
 def check_all_activity_overlaps(all_data: dict, trip: str) -> list:
     """Detect ALL time overlaps across ALL agents including timeline.
 
@@ -1003,6 +1045,10 @@ def check_all_activity_overlaps(all_data: dict, trip: str) -> list:
             for j in range(i + 1, len(activities)):
                 act1, act2 = activities[i], activities[j]
 
+                # Skip pairs that refer to the same real-world event from two sources
+                if _is_same_activity(act1, act2):
+                    continue
+
                 overlap = _check_time_overlap(act1["start"], act1["end"],
                                                act2["start"], act2["end"])
 
@@ -1022,6 +1068,90 @@ def check_all_activity_overlaps(all_data: dict, trip: str) -> list:
                         f"{act1['start']}-{act1['end']}) overlaps with "
                         f"'{act2['name']}' ({act2['agent']}, {act2['start']}-{act2['end']})"
                     ))
+
+    return issues
+
+
+def check_travel_segment_continuity(all_data: dict, trip: str) -> list:
+    """Check that travel_segment end_time connects to the next activity start_time.
+
+    For each day, merges timeline activities and travel_segments chronologically,
+    then checks consecutive (travel_segment -> activity) pairs for gaps or overlaps.
+    Gaps >5 minutes: MEDIUM severity. Overlaps (segment ends after activity starts): HIGH.
+    """
+    issues = []
+    hhmm_re = re.compile(r"^[0-2]?[0-9]:[0-5][0-9]$")
+
+    def to_minutes(t: str) -> int:
+        parts = t.split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+
+    timeline_data = all_data.get("timeline", {})
+    if not timeline_data:
+        return issues
+
+    for day in timeline_data.get("data", {}).get("days", []):
+        dn = day.get("day", 0)
+
+        # Collect all events with start/end times into a unified list
+        events = []  # [(start_min, end_min, type, name)]
+
+        # Timeline activities
+        for act_name, act_data in day.get("timeline", {}).items():
+            if not isinstance(act_data, dict):
+                continue
+            st = act_data.get("start_time", "")
+            et = act_data.get("end_time", "")
+            if st and et and hhmm_re.match(st) and hhmm_re.match(et):
+                events.append((to_minutes(st), to_minutes(et), "activity", act_name))
+
+        # Travel segments
+        for idx, seg in enumerate(day.get("travel_segments", [])):
+            if not isinstance(seg, dict):
+                continue
+            st = seg.get("start_time", "")
+            et = seg.get("end_time", "")
+            name = seg.get("name_base", f"segment-{idx}")
+            if st and et and hhmm_re.match(st) and hhmm_re.match(et):
+                events.append((to_minutes(st), to_minutes(et), "travel_segment", name))
+
+        if len(events) < 2:
+            continue
+
+        # Sort chronologically by start time, then by end time
+        events.sort(key=lambda e: (e[0], e[1]))
+
+        # Check consecutive pairs where a travel_segment precedes an activity
+        for k in range(len(events) - 1):
+            curr_start, curr_end, curr_type, curr_name = events[k]
+            next_start, next_end, next_type, next_name = events[k + 1]
+
+            # Only check travel_segment -> activity transitions
+            if curr_type != "travel_segment" or next_type != "activity":
+                continue
+
+            gap_minutes = next_start - curr_end
+
+            if gap_minutes < 0:
+                # Overlap: segment ends AFTER activity starts
+                issues.append(Issue(
+                    Severity.HIGH, Category.SEMANTIC, "timeline", trip, dn,
+                    f"Day {dn}", "travel_segment",
+                    f"TRAVEL OVERLAP: segment '{curr_name}' ends at "
+                    f"{curr_end // 60:02d}:{curr_end % 60:02d} but next activity "
+                    f"'{next_name}' starts at {next_start // 60:02d}:{next_start % 60:02d} "
+                    f"(overlap of {-gap_minutes} min)"
+                ))
+            elif gap_minutes > 5:
+                # Gap > 5 minutes tolerance
+                issues.append(Issue(
+                    Severity.MEDIUM, Category.SEMANTIC, "timeline", trip, dn,
+                    f"Day {dn}", "travel_segment",
+                    f"TRAVEL GAP: segment '{curr_name}' ends at "
+                    f"{curr_end // 60:02d}:{curr_end % 60:02d} but next activity "
+                    f"'{next_name}' starts at {next_start // 60:02d}:{next_start % 60:02d} "
+                    f"(gap of {gap_minutes} min)"
+                ))
 
     return issues
 
@@ -1337,7 +1467,9 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
 
         # Cross-agent (once per trip)
         if not agent_filter:
-            # NEW: Comprehensive overlap detection across ALL agents (including timeline)
+            # Travel segment continuity (gap/overlap between segments and activities)
+            all_issues.extend(check_travel_segment_continuity(all_data, trip))
+            # Comprehensive overlap detection across ALL agents (including timeline)
             all_issues.extend(check_all_activity_overlaps(all_data, trip))
             # Legacy cross-agent checks (day count, date, location, budget consistency)
             all_issues.extend(check_cross_agent(all_data, trip))
