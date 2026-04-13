@@ -299,10 +299,21 @@ For each day, create timeline dictionary with:
 **ALSO generate `travel_segments` array** for each day. For every gap between consecutive activities that involves travel:
 
 1. Read `transportation.json` for intra-city route data:
-   - `intra_city_routes` (day-level array)
-   - `location_change.morning_routes` / `evening_routes`
-   - Match each route's destination to the next activity
-   - Use `recommended_transport` field for type_base (Metro → "metro", Bus → "bus", Taxi/Didi → "taxi", Walking → "walk")
+
+   **Root Cause Reference (field name mismatch bug, discovered 2026-04-13)**: Prior spec used `recommended_transport` field which does not exist in transportation.json — actual field is `type_base`. This caused timeline-agent to silently get null and fall back to ad-hoc generation, ignoring pre-researched transport data. Fixed: always read `type_base` for transport mode classification.
+
+   - `intra_city_routes` (day-level object, keyed by route name — NOT an array)
+   - `location_change` (inter-city route object — exclude its routes from travel_segments; they belong in the timeline dictionary only)
+   - Match each route's `to_base` / `to_local` destination to the next activity
+   - Read the `type_base` field on each route entry to classify transport mode:
+     - `type_base` contains "metro" OR "Metro" OR "地铁" → mode = "metro", icon = "🚇"
+     - `type_base` contains "taxi" OR "Taxi" OR "Didi" OR "滴滴" → mode = "taxi", icon = "🚕"
+     - `type_base` contains "bus" OR "Bus" OR "公交" → mode = "bus", icon = "🚌"
+     - `type_base` contains "walk" OR "Walk" OR "步行" → mode = "walk", icon = "🚶"
+     - `type_base` contains "Airport Express" OR "机场快轨" OR "train" OR "Train" OR "flight" → mode = "transit", icon = "🚇"
+     - default (none of the above match) → mode = "taxi", icon = "🚕"
+
+   **Day 1 arrival rule**: For Day 1 (or any day with a traveler arriving at the destination), ALWAYS check `intra_city_routes` for arrival routes (entries whose `from_base` contains an airport, train station, or port name, and whose `to_base` contains the hotel/hostel area or first activity location). Add the matching arrival route as the FIRST travel_segment of that day, before any sightseeing segments.
 
 2. For gaps without explicit route data, query gaode-maps for actual routing options and select based on returned data (distance, duration, complexity)
 
