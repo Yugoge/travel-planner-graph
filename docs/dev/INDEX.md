@@ -1,16 +1,20 @@
 # dev
 
-*Last updated: 2026-04-06T12:07:23Z*
-**Total entries**: 63
+*Last updated: 2026-04-13T06:17:44Z*
+**Total entries**: 70
 **Convention**: kebab
 
 ## Tree
 ```
 dev/
+├── overnight/
+│   └── c6ec78c9-d0c0-4f25-a13b-34a83ae12d49/
 ├── playwright-judge5-output/
 │   └── screenshots/
 ├── playwright-screenshots/
 │   └── `01-initial-load.png` - png file
+├── specs/
+│   └── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -24,6 +28,7 @@ dev/
 ├── `ba-spec-20260406-020003.md` - BA Specification: Include Schema File Paths in Step 8 Agent Prompts
 ├── `ba-spec-20260406-020004.md` - BA Specification: Semantic Time Constraints for Timeline Agent
 ├── `ba-spec-20260406-020005.md` - BA Specification: Harden TimelineView Degenerate Entry Filtering and Optional Item Deduplication
+├── `ba-spec-20260412-213000.md` - BA Specification: Fix City Covers, Meals Layout, and Shopping Images
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -54,6 +59,7 @@ dev/
 ├── `dev-report-20260406-020003.json` - json config
 ├── `dev-report-20260406-020004.json` - json config
 ├── `dev-report-20260406-020005.json` - json config
+├── `dev-report-20260412-213000.json` - json config
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
 ├── `qa-report-20260405-201500.json` - json config
@@ -68,6 +74,7 @@ dev/
 ├── `qa-report-20260406-020003.json` - json config
 ├── `qa-report-20260406-020004.json` - json config
 ├── `qa-report-20260406-020005.json` - json config
+├── `qa-report-20260412-213000.json` - json config
 ├── `qa-validation-20260321.json` - json config
 └── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ```

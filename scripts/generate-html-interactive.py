@@ -2164,60 +2164,51 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
           </Section>
         )}
 
-        {/* Meals - All options as equal parallel cards */}
+        {/* Meals - Single flat grid of all meal cards */}
         <Section title={L('meals', lang)} icon="🍽️">
-          {['breakfast', 'lunch', 'dinner'].map(type => {
-            const meal = day.meals[type];
-            if (!meal) return null;
-            const lb = (mealEmoji[type] || '') + ' ' + L(type, lang);
-            // Use _options array if available (primary + alternatives), otherwise just primary
-            const options = day.meals[type + '_options'] || [meal];
-            return (
-              <div key={type} style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#9b9a97', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {lb}
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+            {['breakfast', 'lunch', 'dinner'].flatMap(type => {
+              const meal = day.meals[type];
+              if (!meal) return [];
+              const options = day.meals[type + '_options'] || [meal];
+              const emoji = mealEmoji[type] || '';
+              const label = L(type, lang);
+              return options.map((opt, oi) => ({...opt, _type: type, _emoji: emoji, _label: label, _isPrimary: oi === 0, _oi: oi}));
+            }).map((opt, gi) => (
+              <div key={gi} style={{
+                background: '#fff', borderRadius: '8px',
+                boxShadow: opt._isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+                overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
+              }}
+                onClick={() => onItemClick && onItemClick(opt, 'meal')}
+                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
+                onMouseLeave={e => e.currentTarget.style.boxShadow = opt._isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
+              >
+                <div style={{ width: '100%', height: sm ? '90px' : '110px', overflow: 'hidden', background: '#f5f3ef' }}>
+                  {opt.image && <img src={opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { e.target.style.display = 'none'; }} />}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : `repeat(auto-fill, minmax(200px, 1fr))`, gap: '12px' }}>
-                  {options.map((opt, oi) => (
-                    <div key={oi} style={{
-                      background: '#fff', borderRadius: '8px',
-                      boxShadow: oi === 0 ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
-                      overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer'
-                    }}
-                      onClick={() => onItemClick && onItemClick(opt, 'meal')}
-                      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)'}
-                      onMouseLeave={e => e.currentTarget.style.boxShadow = oi === 0 ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px rgba(74,144,217,0.15)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'}
-                    >
-                      <div style={{ width: '100%', height: sm ? '90px' : '110px', overflow: 'hidden', background: '#f5f3ef' }}>
-                        {opt.image && <img src={opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => { e.target.style.display = 'none'; }} />}
-                      </div>
-                      <div style={{ padding: '10px 12px' }}>
-                        {opt.option_label && (
-                          <div style={{ fontSize: '10px', fontWeight: '700', color: oi === 0 ? '#4a90d9' : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                            {L('option', lang) || 'Option'} {opt.option_label}
-                          </div>
-                        )}
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
-                          {getDisplayName(opt, lang)}
-                          <RedNoteLink name={opt.name_local || opt.name_base} />
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.7 }}>
-                          {opt.time && opt.time.start !== '00:00' && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {opt.time.start} \u2013 {opt.time.end}</div>}
-                          {opt.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(opt.cost, undefined, lang)}</div>}
-                          {getDisplayField(opt, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(opt, 'cuisine', lang)}</div>}
-                          {(opt.location_base || opt.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
-                          {getDisplayField(opt, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(opt, 'signature_dishes', lang)}</div>}
-                        </div>
-                        <ExpandableNotes text={opt.notes_base} textLocal={opt.notes_local} lang={lang} />
-                        <LinksRow links={opt.links} compact={sm} />
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? '#4a90d9' : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    {opt._emoji} {opt._label}{opt.option_label ? ' \u2022 ' + (L('option', lang) || 'Option') + ' ' + opt.option_label : ''}
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '4px' }}>
+                    {getDisplayName(opt, lang)}
+                    <RedNoteLink name={opt.name_local || opt.name_base} />
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.7 }}>
+                    {opt.time && opt.time.start !== '00:00' && <div><span style={{ color: '#9b9a97' }}>{L('time', lang)}</span> {opt.time.start} \u2013 {opt.time.end}</div>}
+                    {opt.cost > 0 && <div><span style={{ color: '#9b9a97' }}>{L('cost', lang)}</span> {fmtCost(opt.cost, undefined, lang)}</div>}
+                    {getDisplayField(opt, 'cuisine', lang) && <div><span style={{ color: '#9b9a97' }}>{L('cuisine', lang)}</span> {getDisplayField(opt, 'cuisine', lang)}</div>}
+                    {(opt.location_base || opt.location_local) && <div><span style={{ color: '#9b9a97' }}>{L('location', lang)}</span> <MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
+                    {getDisplayField(opt, 'signature_dishes', lang) && !sm && <div><span style={{ color: '#9b9a97' }}>{L('signature', lang)}</span> {getDisplayField(opt, 'signature_dishes', lang)}</div>}
+                  </div>
+                  <ExpandableNotes text={opt.notes_base} textLocal={opt.notes_local} lang={lang} />
+                  <LinksRow links={opt.links} compact={sm} />
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </Section>
 
         {/* Attractions + Right column */}

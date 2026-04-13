@@ -1,0 +1,81 @@
+{
+  "request_id": "dev-20260412-213000",
+  "timestamp": "2026-04-13T04:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260412-213000.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Populated location_local values in plan-skeleton.json for all 15 days",
+        "type": "data_fix",
+        "files_modified": ["data/china-20260412-092624/plan-skeleton.json"],
+        "changes": "Set location_local for all days: Beijing->北京, Datong->大同, Chengdu->成都, Xi an->西安, Shanghai->上海",
+        "rationale": "fetch-images-batch.py fetch_cities() checks 'if loc and loc_local:' to build city_local_map. All location_local values were empty strings, so the condition was falsy and no city covers were fetched."
+      },
+      {
+        "id": 2,
+        "description": "Fetched city cover images for all 5 cities via Gaode Maps",
+        "type": "execution",
+        "files_modified": ["data/china-20260412-092624/images.json"],
+        "changes": "Ran fetch-images-batch.py which successfully fetched covers for Beijing, Datong, Chengdu, Xi'an, Shanghai (5/5)",
+        "rationale": "With location_local populated, the city_local_map is no longer empty and Gaode Maps can find the cities by Chinese name."
+      },
+      {
+        "id": 3,
+        "description": "Replaced meals section in generate-html-interactive.py from 3 separate rows to single flat grid",
+        "type": "code_change",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Lines 2167-2221: Replaced per-meal-type iteration (3 separate sub-sections with labels) with a single flatMap that collects all meal options into one flat grid. Each card now shows a meal type badge (emoji + label) at the top instead of separate section headers.",
+        "rationale": "User wanted all 3 meals in ONE horizontal row of cards, not 3 separate sections with separate labels."
+      },
+      {
+        "id": 4,
+        "description": "Fixed surrogate emoji encoding issue in the meals section replacement",
+        "type": "bugfix",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Replaced escaped surrogate pair \\ud83c\\udf7d\\ufe0f with actual Unicode emoji character U+1F37D in the Section icon prop",
+        "rationale": "Python string replacement wrote emoji as surrogate escapes which caused UnicodeEncodeError when writing the HTML file."
+      },
+      {
+        "id": 5,
+        "description": "Generated HTML and deployed to travel.life-ai.app and GitHub Pages",
+        "type": "deployment",
+        "files_modified": [],
+        "changes": "Ran generate-and-deploy.sh which: fetched cached images, generated interactive React HTML (361KB), deployed to local server and GitHub Pages",
+        "rationale": "All fixes need to be visible in the deployed site."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "data/china-20260412-092624/plan-skeleton.json",
+        "imported_by": ["scripts/fetch-images-batch.py", "scripts/generate-html-interactive.py"],
+        "note": "Data file read by image fetcher and HTML generator"
+      },
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": [],
+        "note": "Standalone script, not imported by other Python modules. Called by generate-and-deploy.sh"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - plan-skeleton.json was generated with empty location_local values from the initial plan creation",
+      "why_issue_occurred": "Plan skeleton generator did not populate location_local for Chinese city names, and fetch-images-batch.py requires non-empty location_local to build the city mapping for Gaode Maps searches",
+      "how_fix_addresses_root": "Populated location_local with correct Chinese names so the existing fetch_cities() logic works correctly"
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify at https://travel.life-ai.app/china/2026-04-12/ that: (1) City cover images appear in the hero/header sections for all 5 cities, (2) Meals section shows all 3 meal cards in a single horizontal row (no separate Breakfast/Lunch/Dinner section headers), (3) Shopping section shows real images from Gaode Maps (not default placeholders)",
+    "permissions_to_add": [],
+    "deployment_urls": {
+      "local": "https://travel.life-ai.app/china/2026-04-12/",
+      "github_pages": "https://Yugoge.github.io/travel-planner-graph/china/2026-04-12/"
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Plan skeleton generator should auto-populate location_local for known Chinese cities to prevent this issue recurring",
+    "Consider adding a validation step in generate-and-deploy.sh that warns if location_local is empty for any day"
+  ],
+  "tdd_skip_reason": "All three fixes are data/template changes verified by deployment and visual inspection, not programmatically testable unit behavior"
+}
