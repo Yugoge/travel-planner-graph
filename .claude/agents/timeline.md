@@ -298,22 +298,26 @@ For each day, create timeline dictionary with:
 
 **ALSO generate `travel_segments` array** for each day. For every gap between consecutive activities that involves travel:
 
-**travel_segments Generation — MANDATORY Gaode Maps Routing**
+**travel_segments Generation — Gaode Maps API Driven**
 
-For each consecutive pair of activities in the day:
-1. Call gaode-maps route API to get actual routing options (walking, transit, driving)
-2. Select the most appropriate mode based on distance and context:
-   - ≤800m between POIs → walk (icon: 🚶)
-   - >800m in city center with good metro coverage → metro (icon: 🚇)
-   - Late night / heavy luggage / tourist area without metro → taxi/Didi (icon: 🚕)
-   - Bus only available → bus (icon: 🚌)
-3. Use the actual duration from Gaode Maps response (NOT estimated)
-4. For Day 1 (arrival day): add arrival segment at day start using plan-skeleton.json user_requirements to identify arrival origin (airport name, train station name) and Gaode Maps route to first activity location
+Root Cause Reference (hardcoded transport rules, 2026-04-13): Previous spec hardcoded distance thresholds (≤800m=walk, >800m=metro, etc.). Transport mode MUST be determined by Gaode Maps API response, never by hardcoded rules.
 
-DO NOT default to walk without querying Gaode Maps first.
+For each consecutive pair of activities in the day timeline:
+1. Query Gaode Maps route planning API with origin and destination coordinates
+   - Use route-walk, route-transit, route-drive endpoints as appropriate
+   - The API returns available routes with modes, durations, distances, and costs
+2. Select the route recommended by the API response
+   - Use the API's suggested optimal route (it already accounts for distance, traffic, transit availability, time of day)
+   - If multiple options returned, prefer the one with shortest duration unless cost is disproportionate
+3. Build the travel_segment from the API response fields:
+   - type_base: from API route type (walking/transit/driving → walk/metro/taxi)
+   - duration_minutes: from API response (actual calculated duration)
+   - icon: 🚶 for walk, 🚇 for transit/metro, 🚕 for driving/taxi, 🚌 for bus
+4. For Day 1 (arrival day): identify arrival origin from plan-skeleton.json user_requirements (airport/station name), query Gaode Maps route from that origin to the first activity location
+
+DO NOT hardcode distance thresholds for mode selection.
+DO NOT assume transport mode without querying the API.
 DO NOT read intra_city_routes from transportation.json — transportation-agent handles inter-city only.
-
-**Root Cause Reference (intra-city transport missing, 2026-04-13)**: timeline-agent was defaulting to "walk" without calling Gaode Maps. transportation.json intra_city_routes is NEVER populated (transportation-agent is inter-city only). Fix: timeline-agent MUST call Gaode Maps for every consecutive POI pair.
 
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
