@@ -1097,8 +1097,33 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
                                     f"Day {dn}", "budget.meals",
                                     f"Budget meals={budget_meals:.0f} vs actual={actual:.0f} (>25% diff)"))
 
-    # POI time conflict detection (NEW - prevents duplicate POIs like Jinli across agents)
-    # Collect all POIs with time data from attractions, entertainment, shopping, meals per day
+    # Cross-category duplicate POI detection
+    for dn in ref_days:
+        name_to_agents = defaultdict(list)
+        for agent_name in ['attractions', 'entertainment', 'shopping']:
+            agent_data = all_data.get(agent_name, {})
+            if not agent_data:
+                continue
+            for day in agent_data.get('data', {}).get('days', []):
+                if day.get('day') != dn:
+                    continue
+                for poi in day.get(agent_name, []):
+                    if not isinstance(poi, dict):
+                        continue
+                    name = poi.get('name_local') or poi.get('name_base', '')
+                    if name:
+                        name_to_agents[name].append(agent_name)
+        for name, agents in name_to_agents.items():
+            if len(agents) > 1:
+                issues.append(Issue(
+                    Severity.HIGH, Category.CROSS_AGENT,
+                    '+'.join(agents), trip, dn,
+                    f'Day {dn}', 'name_local',
+                    f"DUPLICATE POI: '{name}' appears in {', '.join(agents)} "
+                    f'(each POI must belong to exactly one category)'
+                ))
+
+    # POI time conflict detection
     for dn in ref_days:
         poi_list = []  # [(agent, name, time_obj, optional_flag, poi_data)]
 
