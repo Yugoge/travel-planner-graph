@@ -1069,6 +1069,30 @@ class InteractiveHTMLGenerator:
                     "icon": seg.get("icon", "\U0001f6b6")
                 })
 
+        # Cross-category dedup: same name_local keeps only highest-priority category
+        # Root cause: independent subagents produce overlapping POIs across categories
+        _cat_priority = {'attractions': 1, 'shopping': 2, 'entertainment': 3}
+        _seen_names = {}
+        for cat in ['attractions', 'shopping', 'entertainment']:
+            deduped_items = []
+            for item in merged.get(cat, []):
+                name = item.get('name_local') or item.get('name_base', '')
+                if not name:
+                    deduped_items.append(item)
+                    continue
+                prev_cat = _seen_names.get(name)
+                if prev_cat is None:
+                    _seen_names[name] = cat
+                    deduped_items.append(item)
+                elif _cat_priority.get(cat, 99) < _cat_priority.get(prev_cat, 99):
+                    # Current category has higher priority -- replace
+                    merged[prev_cat] = [x for x in merged[prev_cat]
+                        if (x.get('name_local') or x.get('name_base', '')) != name]
+                    _seen_names[name] = cat
+                    deduped_items.append(item)
+                # else: skip (lower priority duplicate)
+            merged[cat] = deduped_items
+
         # Add transportation cost to budget (from merged transportation data)
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
             merged["budget"]["transportation"] = merged["transportation"]["cost"]
@@ -2591,13 +2615,26 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Deduplicate: for optional entertainment/shopping items sharing the same time slot
   // as another entry, keep only the first (primary) one in timeline view
   const seen = new Set();
-  const deduped = entries.filter(e => {
+  const deduped1 = entries.filter(e => {
     const slot = e.time.start + '-' + e.time.end;
     const name = e.name_base || e.title || e._label || '';
     const key = slot + ':' + e._type + ':' + name;
     if (e.optional && seen.has(key)) return false;
     seen.add(key);
     return true;
+  });
+  // Cross-category dedup: same name_local on same day keeps highest-priority category only
+  const typePriority = {transportation:0, meal:1, attraction:2, shopping:3, entertainment:4, accommodation:5, travel:6};
+  const seenNames = {};
+  const deduped = deduped1.filter(e => {
+    const name = e.name_local || e.name_base || e.title || e._label || '';
+    if (!name) return true;
+    const prev = seenNames[name];
+    if (!prev) { seenNames[name] = e; return true; }
+    const prevP = typePriority[prev._type] ?? 99;
+    const curP = typePriority[e._type] ?? 99;
+    if (curP < prevP) { seenNames[name] = e; return true; }
+    return false;
   });
 
   // Compute column layout for overlapping events
