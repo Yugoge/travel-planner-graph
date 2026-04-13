@@ -171,6 +171,174 @@ def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
             return False, e.issues, e.metrics
 
 
+
+def _parse_hhmm(t: str) -> int:
+    """Parse HH:MM to minutes since midnight. -1 if invalid."""
+    if not t or ":" not in t:
+        return -1
+    try:
+        parts = t.split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+    except (ValueError, IndexError):
+        return -1
+
+
+def _times_overlap(s1: str, e1: str, s2: str, e2: str) -> bool:
+    """Check if two HH:MM ranges overlap (exclusive endpoints)."""
+    m1s, m1e = _parse_hhmm(s1), _parse_hhmm(e1)
+    m2s, m2e = _parse_hhmm(s2), _parse_hhmm(e2)
+    if min(m1s, m1e, m2s, m2e) < 0:
+        return False
+    return m1s < m2e and m2s < m1e
+
+
+def _collect_timeline_activities(day: dict) -> list:
+    """Extract activities from a timeline day entry."""
+    acts = []
+    for name, d in day.get("timeline", {}).items():
+        if isinstance(d, dict) and d.get("start_time"):
+            acts.append({"ag": "timeline", "n": name,
+                         "s": d["start_time"], "e": d.get("end_time", ""),
+                         "opt": d.get("optional", False)})
+    for i, seg in enumerate(day.get("travel_segments", [])):
+        if isinstance(seg, dict) and seg.get("start_time"):
+            acts.append({"ag": "segment", "n": seg.get("name_base", f"seg-{i}"),
+                         "s": seg["start_time"], "e": seg.get("end_time", ""),
+                         "opt": seg.get("optional", False)})
+    return acts
+
+
+def _collect_meal_acts(sib_day: dict) -> list:
+    """Extract meal activities from a meals day entry."""
+    acts = []
+    for mt in ("breakfast", "lunch", "dinner"):
+        m = sib_day.get(mt, {})
+        if not isinstance(m, dict):
+            continue
+        t = m.get("time", {})
+        if isinstance(t, dict) and t.get("start"):
+            acts.append({"ag": "meals", "n": m.get("name_base", mt),
+                         "s": t["start"], "e": t.get("end", ""),
+                         "opt": m.get("optional", False)})
+    return acts
+
+
+def _collect_poi_acts(sib_day: dict, agent: str) -> list:
+    """Extract POI activities from a day entry."""
+    acts = []
+    for poi in sib_day.get(agent, []):
+        if not isinstance(poi, dict):
+            continue
+        t = poi.get("time", {})
+        if isinstance(t, dict) and t.get("start"):
+            acts.append({"ag": agent, "n": poi.get("name_base", "?"),
+                         "s": t["start"], "e": t.get("end", ""),
+                         "opt": poi.get("optional", False)})
+    return acts
+
+
+def _collect_sibling_acts(siblings: dict, day_num: int) -> list:
+    """Collect activities from sibling agent files for a day."""
+    acts = []
+    for name, data in siblings.items():
+        for d in data.get("data", {}).get("days", []):
+            if d.get("day") != day_num:
+                continue
+            if name == "meals":
+                acts.extend(_collect_meal_acts(d))
+            else:
+                acts.extend(_collect_poi_acts(d, name))
+    return acts
+
+
+def _is_contained(a_s: int, a_e: int, b_s: int, b_e: int) -> bool:
+    """True if one time range fully contains the other."""
+    if min(a_s, a_e, b_s, b_e) < 0:
+        return False
+    return (b_s >= a_s and b_e <= a_e) or (a_s >= b_s and a_e <= b_e)
+
+
+def _share_name_substring(name_a: str, name_b: str, min_len: int = 4) -> bool:
+    """True if two names share a common substring of min_len+ chars."""
+    a, b = name_a.lower(), name_b.lower()
+    if len(a) < min_len or len(b) < min_len:
+        return False
+    return any(a[i:i + min_len] in b for i in range(len(a) - min_len + 1))
+
+
+def _is_same_event(a: dict, b: dict) -> bool:
+    """Schedule-agent vs POI-agent representing the same event."""
+    schedule_set = {"timeline", "segment"}
+    poi_set = {"meals", "attractions", "entertainment", "shopping"}
+    pair = {a["ag"], b["ag"]}
+    if not ((pair & schedule_set) and (pair & poi_set)):
+        return False
+    a_s, a_e = _parse_hhmm(a["s"]), _parse_hhmm(a["e"])
+    b_s, b_e = _parse_hhmm(b["s"]), _parse_hhmm(b["e"])
+    dur_a, dur_b = max(a_e - a_s, 0), max(b_e - b_s, 0)
+    shorter = min(dur_a, dur_b) or 1
+    overlap = max(0, min(a_e, b_e) - max(a_s, b_s))
+    if overlap / shorter >= 0.8:
+        return True
+    return _share_name_substring(a["n"], b["n"])
+
+
+def _detect_conflicts(activities: list, day_num: int) -> list:
+    """Find blocking overlaps among non-optional activities."""
+    conflicts = []
+    for i in range(len(activities)):
+        for j in range(i + 1, len(activities)):
+            a, b = activities[i], activities[j]
+            if a["opt"] or b["opt"]:
+                continue
+            if not _times_overlap(a["s"], a["e"], b["s"], b["e"]):
+                continue
+            a_s = _parse_hhmm(a["s"])
+            a_e = _parse_hhmm(a["e"])
+            b_s = _parse_hhmm(b["s"])
+            b_e = _parse_hhmm(b["e"])
+            if _is_contained(a_s, a_e, b_s, b_e):
+                continue
+            if _is_same_event(a, b):
+                continue
+            conflicts.append(
+                f'Day {day_num}: "{a["n"]}" ({a["s"]}-{a["e"]}) '
+                f'overlaps "{b["n"]}" ({b["s"]}-{b["e"]})')
+    return conflicts
+
+
+def _load_sibling_agents(trip_dir) -> dict:
+    """Load sibling agent JSON files gracefully."""
+    result = {}
+    for name in ("meals", "attractions", "entertainment", "shopping"):
+        p = trip_dir / f"{name}.json"
+        if not p.exists():
+            continue
+        try:
+            with open(p, encoding="utf-8") as f:
+                result[name] = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return result
+
+
+def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
+    """Hard-block timeline saves with non-optional time conflicts."""
+    if agent != "timeline":
+        return []
+    days = agent_data.get("data", {}).get("days", agent_data.get("days", []))
+    if not days:
+        return []
+    siblings = _load_sibling_agents(trip_dir)
+    conflicts = []
+    for day in days:
+        dn = day.get("day", 0)
+        acts = _collect_timeline_activities(day)
+        acts.extend(_collect_sibling_acts(siblings, dn))
+        conflicts.extend(_detect_conflicts(acts, dn))
+    return conflicts
+
+
 def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
                       skip_validation: bool = False,
                       allow_high: bool = False,
@@ -225,7 +393,17 @@ def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
         print(f"   Or use --allow-high to force save (NOT RECOMMENDED)", file=sys.stderr)
         return False
 
-    # Save using json_io
+    # Hard-block timeline saves with non-optional time conflicts
+    time_conflicts = check_time_conflicts(envelope_data, trip_dir, agent)
+    if time_conflicts:
+        n = len(time_conflicts)
+        print(f"\n\u274c SAVE BLOCKED: {n} time conflict(s) detected", file=sys.stderr)
+        for c in time_conflicts:
+            print(f"  CONFLICT: {c}", file=sys.stderr)
+        print(f"\nFix the timeline to resolve conflicts before saving.", file=sys.stderr)
+        return False
+
+        # Save using json_io
     try:
         save_agent_json(
             file_path=agent_file,
