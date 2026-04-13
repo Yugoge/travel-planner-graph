@@ -1069,30 +1069,6 @@ class InteractiveHTMLGenerator:
                     "icon": seg.get("icon", "\U0001f6b6")
                 })
 
-        # Cross-category dedup: same name_local keeps only highest-priority category
-        # Root cause: independent subagents produce overlapping POIs across categories
-        _cat_priority = {'attractions': 1, 'shopping': 2, 'entertainment': 3}
-        _seen_names = {}
-        for cat in ['attractions', 'shopping', 'entertainment']:
-            deduped_items = []
-            for item in merged.get(cat, []):
-                name = item.get('name_local') or item.get('name_base', '')
-                if not name:
-                    deduped_items.append(item)
-                    continue
-                prev_cat = _seen_names.get(name)
-                if prev_cat is None:
-                    _seen_names[name] = cat
-                    deduped_items.append(item)
-                elif _cat_priority.get(cat, 99) < _cat_priority.get(prev_cat, 99):
-                    # Current category has higher priority -- replace
-                    merged[prev_cat] = [x for x in merged[prev_cat]
-                        if (x.get('name_local') or x.get('name_base', '')) != name]
-                    _seen_names[name] = cat
-                    deduped_items.append(item)
-                # else: skip (lower priority duplicate)
-            merged[cat] = deduped_items
-
         # Add transportation cost to budget (from merged transportation data)
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
             merged["budget"]["transportation"] = merged["transportation"]["cost"]

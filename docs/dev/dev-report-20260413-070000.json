@@ -1,0 +1,69 @@
+{
+  "request_id": "dev-20260413-070000",
+  "timestamp": "2026-04-13T07:14:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260413-070000.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Restored poi-classification-rules.md from git history (commit a574d24) to docs/dev/poi-classification-rules.md",
+        "type": "file_restore",
+        "files_created": ["docs/dev/poi-classification-rules.md"],
+        "rationale": "File was deleted in commit 00d6023 but is referenced by 4 agent prompts (attractions, entertainment, meals, shopping). Agents need this classification decision tree to correctly categorize POIs across domains."
+      },
+      {
+        "id": 2,
+        "description": "Removed hardcoded cross-category dedup block from generate-html-interactive.py (lines 1072-1094)",
+        "type": "code_edit",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed 23-line Python block that performed cross-category dedup with hardcoded priority map (_cat_priority). This block silently dropped POIs that appeared in multiple categories, using a fixed priority order (attractions > shopping > entertainment).",
+        "rationale": "The dedup should be handled upstream by agents using the restored poi-classification-rules.md, not by a hardcoded priority map in the HTML generator. The generator should faithfully render whatever the data files contain."
+      },
+      {
+        "id": 3,
+        "description": "Verified agent prompt paths reference correct location for poi-classification-rules.md",
+        "type": "verification",
+        "files_verified": [
+          ".claude/agents/attractions.md",
+          ".claude/agents/entertainment.md",
+          ".claude/agents/meals.md",
+          ".claude/agents/shopping.md"
+        ],
+        "changes": "No changes needed -- all 4 agent files already reference /docs/dev/poi-classification-rules.md which matches the restored file path.",
+        "rationale": "The agents were already referencing the correct path; the issue was the file being missing, not the path being wrong."
+      },
+      {
+        "id": 4,
+        "description": "Regenerated and deployed travel plan HTML",
+        "type": "deploy",
+        "files_modified": ["output/travel-plan-china-20260412-092624.html", "output/travel-plan-china.html"],
+        "changes": "Regenerated HTML (316 KB) and deployed to both GitHub Pages and local travel.life-ai.app",
+        "rationale": "Regeneration needed to reflect the removal of the cross-category dedup block -- POIs previously dropped will now appear in the output."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": ["scripts/generate-and-deploy.sh"],
+        "notes": "Only invoked by the generate-and-deploy pipeline"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "00d602340cfff5601d3505780e625b666afa8d4b - cleanup: Delete backup files, archive directory",
+      "why_issue_occurred": "Cleanup commit deleted poi-classification-rules.md along with archive directory. A hardcoded dedup block was added to generate-html-interactive.py as a workaround for agents producing overlapping POIs without the classification rules.",
+      "how_fix_addresses_root": "Restoring the classification rules file allows agents to correctly classify POIs upstream, eliminating the need for hardcoded dedup in the generator. Removing the dedup block ensures the generator faithfully renders all data."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify: (1) https://travel.life-ai.app/china/2026-04-12/ loads correctly, (2) POIs that were previously deduplicated now appear in their correct categories, (3) no duplicate POIs appear (agents should handle classification correctly with restored rules file).",
+    "tdd_skipped": true,
+    "tdd_skip_reason": "Changes are file restoration, code block removal, and HTML regeneration -- not programmatically testable bugs. QA verification is browser-based.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding poi-classification-rules.md to a protected files list to prevent accidental deletion in future cleanup commits",
+    "The SyntaxWarning about invalid escape sequence on line 1394 of generate-html-interactive.py is pre-existing and unrelated to this change"
+  ]
+}

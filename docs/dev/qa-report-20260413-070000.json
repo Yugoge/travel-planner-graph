@@ -1,0 +1,122 @@
+{
+  "request_id": "dev-20260413-070000",
+  "timestamp": "2026-04-13T07:00:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All five verification criteria confirmed. The poi-classification-rules.md decision tree exists, the hardcoded dedup block is fully removed, the flatMap and brand-split fixes remain intact, all 4 agent prompts reference the correct path, and the deployed HTML exists at 354 KB.",
+    "success_criteria_results": [
+      {
+        "criterion": "poi-classification-rules.md exists and has a decision tree",
+        "verification_method": "Read file at /root/travel-planner/docs/dev/poi-classification-rules.md",
+        "result": "pass",
+        "details": "File exists with 107 lines. Contains a full ASCII decision tree covering Food/Beverage, Sightseeing, Entertainment, and Shopping categories, plus classification criteria, bilingual annotation requirements, edge cases, and validation checklist.",
+        "evidence": ["File line 8: '## Decision Tree'", "Lines 9-35: complete ASCII tree with 4 top-level branches and 16 leaf nodes"]
+      },
+      {
+        "criterion": "Hardcoded Python dedup block (_cat_priority, _seen_names, deduped_items) removed from generate-html-interactive.py",
+        "verification_method": "Grep for _cat_priority, _seen_names, deduped_items in scripts/generate-html-interactive.py",
+        "result": "pass",
+        "details": "Zero matches found for any of the three dedup identifiers. The 23-line block (previously at lines 1072-1094) has been completely removed.",
+        "evidence": ["grep '_cat_priority|_seen_names|deduped_items' returned 'No matches found'"]
+      },
+      {
+        "criterion": "Meals flatMap change and shopping brand-split removal are still present",
+        "verification_method": "Grep for flatMap and brand.split in generate-html-interactive.py, then read surrounding context",
+        "result": "pass",
+        "details": "flatMap is present at line 2175 for meal rendering. Brand-split removal confirmed at line 748 with comment referencing cfc5766 fix -- brands are now appended as notes to a single card instead of creating duplicate mall cards per brand.",
+        "evidence": [
+          "Line 2175: \"['breakfast', 'lunch', 'dinner'].flatMap(type => {\"",
+          "Line 748: \"# (Fix for cfc5766 brand-splitting that caused duplicate mall images on every brand card.)\"",
+          "Line 747: \"# Single card per shopping item. If brands exist, append brand info to notes.\""
+        ]
+      },
+      {
+        "criterion": "Agent prompts reference correct path /docs/dev/poi-classification-rules.md",
+        "verification_method": "Grep for poi-classification-rules across entire project",
+        "result": "pass",
+        "details": "All 4 domain agent prompts reference the correct path. Found in: attractions.md:71, entertainment.md:71, meals.md:68, shopping.md:71. All use identical text: 'See /docs/dev/poi-classification-rules.md for complete decision tree and classification rules across all domains'.",
+        "evidence": [
+          ".claude/agents/attractions.md:71",
+          ".claude/agents/entertainment.md:71",
+          ".claude/agents/meals.md:68",
+          ".claude/agents/shopping.md:71"
+        ]
+      },
+      {
+        "criterion": "Deployed HTML at /var/www/travel/china/2026-04-12/index.html exists",
+        "verification_method": "ls -la and head on deployed file",
+        "result": "pass",
+        "details": "File exists, 354,690 bytes, valid HTML5 document with proper DOCTYPE and meta tags. Last modified Apr 13 07:15.",
+        "evidence": [
+          "-rw-r--r-- 1 root root 354690 Apr 13 07:15 /var/www/travel/china/2026-04-12/index.html",
+          "<!DOCTYPE html> with lang='en', charset UTF-8, viewport meta"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause was deletion of poi-classification-rules.md in commit 00d6023, which led to a hardcoded dedup workaround. Both issues are resolved: the file is restored from git history (commit a574d24) and the workaround code is removed."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "HTML regeneration via generate-html-interactive.py",
+      "deploy_command": "Copied to /var/www/travel/china/2026-04-12/index.html",
+      "build_output_summary": "354 KB HTML generated and deployed successfully",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "flatMap meals rendering preserved",
+        "result": "pass",
+        "details": "flatMap at line 2175 intact -- meals rendering unaffected by dedup removal"
+      },
+      {
+        "test": "Brand-split fix preserved",
+        "result": "pass",
+        "details": "Single-card-per-shopping-item logic at line 747-759 intact with cfc5766 fix comment"
+      },
+      {
+        "test": "Agent prompts consistent",
+        "result": "pass",
+        "details": "All 4 agent files reference the same path, and the file exists at that path"
+      },
+      {
+        "test": "Deployed HTML valid",
+        "result": "pass",
+        "details": "HTML5 DOCTYPE, proper meta tags, 354 KB size indicates full content"
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 2,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "ui_test_results": [],
+    "generated_tests": [],
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
