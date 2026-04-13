@@ -586,6 +586,36 @@ Proceeding to Day ${current_day_index + 1}...
 - Set `day_confirmed_perfect = true`
 - Exit INNER loop (workflow proceeds to increment `current_day_index`)
 
+**This completes Step 3a (image fetch). Proceed immediately to Substep 5 below.**
+
+---
+
+**Substep 5: Per-Day HTML Generation and Deployment (MANDATORY)**
+
+After day confirmed perfect and images fetched, IMMEDIATELY generate and deploy HTML:
+
+**Sync agent data**:
+```bash
+source /root/.claude/venv/bin/activate && python /root/travel-planner/scripts/sync-agent-data.py {destination-slug}
+```
+
+**Generate and deploy**:
+```bash
+bash /root/travel-planner/scripts/generate-and-deploy.sh {destination-slug}
+```
+
+This is MANDATORY — do not skip. The live URL updates incrementally so the user can preview each confirmed day.
+
+Print confirmation:
+```
+✅ Day ${current_day_index} published to live URL: https://{username}.github.io/travel-planner-graph/{destination-slug}/
+Proceeding to Day ${current_day_index + 1}...
+```
+
+**State Updates**:
+- Set `day_confirmed_perfect = true`
+- Exit INNER loop (workflow proceeds to increment `current_day_index`)
+
 **This completes Step 3a. Return to Step 3-5 USER CHOICE PROCESSING to continue OUTER loop.**
 
 ---

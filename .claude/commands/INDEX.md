@@ -1,7 +1,7 @@
 # commands
 
-*Last updated: 2026-04-06T16:43:07Z*
-**Total entries**: 14
+*Last updated: 2026-04-13T12:34:51Z*
+**Total entries**: 15
 **Convention**: kebab
 
 ## Tree
@@ -20,6 +20,7 @@ commands/
 │   └── `readme.md` - gaode-maps
 ├── `gaode-maps.md` - Gaode Maps integration for route planning, POI search, and geocoding in China
 ├── `plan.md` - Multi-agent travel planning with specialized subagents and interactive HTML generation
+├── `poi-classification-rules.md` - Decision tree and rules for POI classification across domains
 └── `review.md` - Multi-day iterative review command with incremental workflow
 ```
 
