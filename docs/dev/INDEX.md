@@ -1,6 +1,6 @@
 # dev
 
-*Last updated: 2026-04-13T07:17:03Z*
+*Last updated: 2026-04-13T07:49:01Z*
 **Total entries**: 81
 **Convention**: kebab
 
@@ -67,7 +67,7 @@ dev/
 ├── `dev-report-20260413-063000.json` - json config
 ├── `dev-report-20260413-064500.json` - json config
 ├── `dev-report-20260413-070000.json` - json config
-├── `poi-classification-rules.md` - Decision tree and rules for POI classification across domains
+├── `qa-full-audit-20260413.json` - json config
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
 ├── `qa-report-20260405-201500.json` - json config
