@@ -68,7 +68,7 @@ For each day in the trip:
    - Family-friendly vs adult-oriented
    - Activity level (walking tours, physical activities)
 
-**POI Classification**: See `/docs/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
+**POI Classification**: See `/.claude/commands/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 **BEFORE adding any POI to attractions**, ask: "Is this primarily a sightseeing destination or landmark?" If NO, do NOT add to attractions.
 
