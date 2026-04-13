@@ -725,22 +725,29 @@ class BatchImageFetcher:
                             pois.append(poi_dict)
 
                 elif field_name == "meals":
-                    # Meals: breakfast/lunch/dinner dict
+                    # Meals: breakfast/lunch/dinner with primary/alternatives
                     for meal_type in ["breakfast", "lunch", "dinner"]:
-                        meal = day.get(meal_type)
-                        if meal and isinstance(meal, dict):
-                            # New format: name_base and name_local
+                        meal_wrapper = day.get(meal_type)
+                        if not meal_wrapper or not isinstance(meal_wrapper, dict):
+                            continue
+                        meal_items = []
+                        primary = meal_wrapper.get("primary")
+                        if primary and isinstance(primary, dict):
+                            meal_items.append(primary)
+                        for alt in meal_wrapper.get("alternatives", []):
+                            if isinstance(alt, dict):
+                                meal_items.append(alt)
+                        if not meal_items and meal_wrapper.get("name_base"):
+                            meal_items.append(meal_wrapper)
+                        for meal in meal_items:
                             name_base = meal.get("name_base", "")
                             name_local = meal.get("name_local", "")
                             location_base = meal.get("location_base", "")
                             location_local = meal.get("location_local", "")
-
-                            # Backward compatibility: fallback to old fields
                             if not name_base:
                                 name_base = meal.get("name", "")
                             if not name_local:
                                 name_local = meal.get("name_chinese", "") or self._extract_local_name(name_base)
-
                             if name_base:
                                 poi_dict = {
                                     "name_base": name_base,
@@ -750,7 +757,6 @@ class BatchImageFetcher:
                                     "location_local": location_local,
                                     "type": poi_type
                                 }
-                                # Add POI's own coordinates if available
                                 if meal.get("coordinates"):
                                     poi_dict["coordinates"] = meal["coordinates"]
                                 pois.append(poi_dict)
@@ -1110,26 +1116,31 @@ class BatchImageFetcher:
                                 modified = True
                                 updated += 1
 
-                # Process meals
+                # Process meals (with primary/alternatives structure)
                 elif field_name == "meals":
                     for meal_type in ["breakfast", "lunch", "dinner"]:
-                        meal = day.get(meal_type)
-                        if meal and isinstance(meal, dict):
+                        meal_wrapper = day.get(meal_type)
+                        if not meal_wrapper or not isinstance(meal_wrapper, dict):
+                            continue
+                        meal_items = []
+                        primary = meal_wrapper.get("primary")
+                        if primary and isinstance(primary, dict):
+                            meal_items.append(primary)
+                        for alt in meal_wrapper.get("alternatives", []):
+                            if isinstance(alt, dict):
+                                meal_items.append(alt)
+                        if not meal_items and meal_wrapper.get("name_base"):
+                            meal_items.append(meal_wrapper)
+                        for meal in meal_items:
                             name_base = meal.get("name_base") or meal.get("name", "")
                             name_local = meal.get("name_local")
                             if not name_base:
                                 continue
-
-                            # Generate cache key matching fetch phase logic
                             if service == "gaode" and name_local:
                                 cache_key = f"{service}_{name_local}"
                             else:
                                 cache_key = f"{service}_{name_base}"
-
-                            # Direct cache lookup (strict service matching)
                             photo_url = self.cache["pois"].get(cache_key)
-
-                            # Add image_url field if photo exists in cache
                             if photo_url:
                                 if "image_url" not in meal or meal.get("image_url") != photo_url:
                                     meal["image_url"] = photo_url
