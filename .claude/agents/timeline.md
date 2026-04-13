@@ -298,24 +298,22 @@ For each day, create timeline dictionary with:
 
 **ALSO generate `travel_segments` array** for each day. For every gap between consecutive activities that involves travel:
 
-1. Read `transportation.json` for intra-city route data:
+**travel_segments Generation — MANDATORY Gaode Maps Routing**
 
-   **Root Cause Reference (field name mismatch bug, discovered 2026-04-13)**: Prior spec used `recommended_transport` field which does not exist in transportation.json — actual field is `type_base`. This caused timeline-agent to silently get null and fall back to ad-hoc generation, ignoring pre-researched transport data. Fixed: always read `type_base` for transport mode classification.
+For each consecutive pair of activities in the day:
+1. Call gaode-maps route API to get actual routing options (walking, transit, driving)
+2. Select the most appropriate mode based on distance and context:
+   - ≤800m between POIs → walk (icon: 🚶)
+   - >800m in city center with good metro coverage → metro (icon: 🚇)
+   - Late night / heavy luggage / tourist area without metro → taxi/Didi (icon: 🚕)
+   - Bus only available → bus (icon: 🚌)
+3. Use the actual duration from Gaode Maps response (NOT estimated)
+4. For Day 1 (arrival day): add arrival segment at day start using plan-skeleton.json user_requirements to identify arrival origin (airport name, train station name) and Gaode Maps route to first activity location
 
-   - `intra_city_routes` (day-level object, keyed by route name — NOT an array)
-   - `location_change` (inter-city route object — exclude its routes from travel_segments; they belong in the timeline dictionary only)
-   - Match each route's `to_base` / `to_local` destination to the next activity
-   - Read the `type_base` field on each route entry to classify transport mode:
-     - `type_base` contains "metro" OR "Metro" OR "地铁" → mode = "metro", icon = "🚇"
-     - `type_base` contains "taxi" OR "Taxi" OR "Didi" OR "滴滴" → mode = "taxi", icon = "🚕"
-     - `type_base` contains "bus" OR "Bus" OR "公交" → mode = "bus", icon = "🚌"
-     - `type_base` contains "walk" OR "Walk" OR "步行" → mode = "walk", icon = "🚶"
-     - `type_base` contains "Airport Express" OR "机场快轨" OR "train" OR "Train" OR "flight" → mode = "transit", icon = "🚇"
-     - default (none of the above match) → mode = "taxi", icon = "🚕"
+DO NOT default to walk without querying Gaode Maps first.
+DO NOT read intra_city_routes from transportation.json — transportation-agent handles inter-city only.
 
-   **Day 1 arrival rule**: For Day 1 (or any day with a traveler arriving at the destination), ALWAYS check `intra_city_routes` for arrival routes (entries whose `from_base` contains an airport, train station, or port name, and whose `to_base` contains the hotel/hostel area or first activity location). Add the matching arrival route as the FIRST travel_segment of that day, before any sightseeing segments.
-
-2. For gaps without explicit route data, query gaode-maps for actual routing options and select based on returned data (distance, duration, complexity)
+**Root Cause Reference (intra-city transport missing, 2026-04-13)**: timeline-agent was defaulting to "walk" without calling Gaode Maps. transportation.json intra_city_routes is NEVER populated (transportation-agent is inter-city only). Fix: timeline-agent MUST call Gaode Maps for every consecutive POI pair.
 
 3. Each travel_segment must have:
    - `name_base`: English description — "Taxi to [destination]", "Metro to [destination]", "Walk to [destination]"
