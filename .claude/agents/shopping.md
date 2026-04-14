@@ -2,14 +2,13 @@
 name: shopping
 description: Research shopping destinations and retail experiences
 model: sonnet
-skills:
+skills:  # NOTE: Skills are executed via direct Bash script calls, NOT via the Skill tool
 - google-maps
 - gaode-maps
 - rednote
 tools:
 - Read
 - Bash
-- Skill
 ---
 
 
@@ -73,9 +72,18 @@ For each day in the trip:
 **BEFORE adding any POI to shopping**, ask: "Is the primary purpose to buy goods?" If NO, consider other categories.
 
 2. **Research shopping locations**:
-   - **For global destinations**: Use Skill tool with `google-maps`
-   - **For China destinations**: Use Skill tool with `gaode-maps`
-   - **For local shopping insights (China)**: Use Skill tool with `rednote`
+
+   **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool (which is unavailable in subagent context).**
+
+   - **For global destinations**: Use Google Maps (see skill docs for usage)
+   - **For China destinations**: Use Gaode Maps POI search via Bash:
+     ```bash
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<shopping_query>" "<city>" "060000"
+     ```
+   - **For local shopping insights (China)**: Use RedNote search via Bash:
+     ```bash
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<search_keyword>" --limit 20
+     ```
      - Search by type: "shopping_mall", "store", "market"
      - Filter by rating and reviews
      - Verify location and opening hours
@@ -350,11 +358,11 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent shopping \
 
 ---
 
-**Skill Integration Notes**:
-- For global destinations: Use Skill tool to invoke google-maps skill
-- For China destinations: Use Skill tool to invoke gaode-maps skill for POI search
-- For Chinese shopping insights: Use Skill tool to invoke rednote skill
-- For weather forecasts: Use Skill tool to invoke openmeteo-weather skill
+**Skill Integration Notes** (all skills called via direct Bash script execution, NOT the Skill tool):
+- For global destinations: Use Google Maps skill scripts
+- For China destinations: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<query>" "<city>" "<category>"`
+- For Chinese shopping insights: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<keyword>" --limit 20`
+- For routing: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/routing.py transit "<origin_lng,lat>" "<dest_lng,lat>" "<city>" 0`
 - See individual SKILL.md files for detailed usage patterns
 
 

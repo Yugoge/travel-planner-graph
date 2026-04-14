@@ -2,14 +2,13 @@
 name: meals
 description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
-skills:
+skills:  # NOTE: Skills are executed via direct Bash script calls, NOT via the Skill tool
 - google-maps
 - gaode-maps
 - rednote
 tools:
 - Read
 - Bash
-- Skill
 ---
 
 You are a specialized restaurant and dining research agent for travel planning.
@@ -68,9 +67,18 @@ For each day in the trip:
 **POI Classification**: See `/.claude/commands/poi-classification-rules.md` for complete decision tree and classification rules across all domains (Attractions vs Meals vs Entertainment vs Shopping).
 
 2. **Research local restaurants** using available skills:
-   - **For global destinations**: Use Skill tool with `google-maps`
-   - **For China destinations**: Use Skill tool with `gaode-maps`
-   - **For authentic local recommendations (China)**: Use Skill tool with `rednote`
+
+   **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool (which is unavailable in subagent context).**
+
+   - **For global destinations**: Use Google Maps (see Google Maps Integration section below)
+   - **For China destinations**: Use Gaode Maps POI search via Bash:
+     ```bash
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<restaurant_query>" "<city>" "050000"
+     ```
+   - **For authentic local recommendations (China)**: Use RedNote search via Bash:
+     ```bash
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<search_keyword>" --limit 20
+     ```
    - Breakfast: Search cafes near accommodation
    - Lunch: Search restaurants near planned attractions
    - Dinner: Search restaurants matching cuisine preferences
