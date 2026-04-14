@@ -1,7 +1,7 @@
 # commands
 
-*Last updated: 2026-04-13T12:34:51Z*
-**Total entries**: 15
+*Last updated: 2026-04-14T09:18:59Z*
+**Total entries**: 17
 **Convention**: kebab
 
 ## Tree
@@ -19,8 +19,10 @@ commands/
 │   ├── `consolidation-report.md` - Gaode Maps Documentation Consolidation Report
 │   └── `readme.md` - gaode-maps
 ├── `gaode-maps.md` - Gaode Maps integration for route planning, POI search, and geocoding in China
+├── `google-maps.md` - Google Maps integration for places, routing, geocoding, distance matrix, and elevation
 ├── `plan.md` - Multi-agent travel planning with specialized subagents and interactive HTML generation
 ├── `poi-classification-rules.md` - Decision tree and rules for POI classification across domains
+├── `rednote.md` - RedNote (小红书/Xiaohongshu) integration for searching Chinese UGC travel content
 └── `review.md` - Multi-day iterative review command with incremental workflow
 ```
 
