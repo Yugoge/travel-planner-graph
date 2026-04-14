@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-13T20:06:21Z*
-**Total entries**: 89
+*Last updated: 2026-04-14T11:54:56Z*
+**Total entries**: 91
 **Convention**: kebab
 
 ## Tree
@@ -53,6 +53,8 @@ dev/
 ├── `context-20260413-064500.json` - json config
 ├── `context-20260413-181500.json` - json config
 ├── `context-20260413-190000.json` - json config
+├── `context-20260413-200500.json` - json config
+├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
 ├── `dev-report-20260321-155000.json` - json config
