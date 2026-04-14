@@ -6,35 +6,16 @@ Single script for all agent data saving with mandatory validation.
 
 This script replaces all individual save scripts and enforces:
   - Automatic validation (plan-validate.py)
-  - Atomic writes (.tmp → rename)
+  - Atomic writes (.tmp to rename)
   - Automatic backups (.bak)
   - Batch operations with rollback
   - HIGH severity issues block saves
 
 Usage:
-  # Save single agent data (full-file replacement)
   python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json
-
-  # Merge single-day update into multi-day file (preserves other days)
-  python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5_update.json --merge-days
-
-  # Save from stdin (pipe)
-  cat modified_data.json | python3 scripts/save.py --trip TRIP_SLUG --agent meals
-
-  # Batch save multiple agents
+  python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5.json --merge-days
+  cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent meals
   python3 scripts/save.py --trip TRIP_SLUG --batch agents_data.json
-
-  # Skip validation (DANGEROUS - not recommended)
-  python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json --no-validate
-
-  # Allow HIGH severity issues (DANGEROUS)
-  python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json --allow-high
-
-Design Goals:
-  - Mandatory validation: prevent data corruption
-  - Atomic operations: prevent partial writes
-  - Rollback support: batch operations all-or-nothing
-  - Error reporting: detailed issue reporting
 """
 
 import json
@@ -45,7 +26,6 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# Import from lib
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.json_io import (
     save_agent_json,
@@ -78,115 +58,116 @@ TIMELINE_FIELD = "timeline"
 TRAVEL_SEGMENTS_FIELD = "travel_segments"
 
 
-def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None:
-    """Auto-extract image_url for POIs missing it, using BatchImageFetcher.
-
-    Uses the same BatchImageFetcher from fetch-images-batch.py — Gaode/Google
-    skill scripts via subprocess, with Bing Images fallback, country detection
-    via geopip, and images.json cache. No new code — direct reuse.
-
-    Args:
-        agent: Agent name (meals, attractions, entertainment, shopping, accommodation)
-        data: Agent data structure (unwrapped, data.days format)
-        trip_slug: Trip identifier for logging
-    """
-    if agent not in (POI_AGENTS | {"accommodation"}):
-        return  # Only process POI agents
-
-    # Import BatchImageFetcher from fetch-images-batch.py (existing infrastructure)
+def _load_image_fetcher(trip_slug: str):
+    """Load BatchImageFetcher from fetch-images-batch.py. None on failure."""
     try:
         import importlib.util
         batch_script = Path(__file__).resolve().parent / "fetch-images-batch.py"
         spec = importlib.util.spec_from_file_location("fetch_images_batch", batch_script)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        fetcher = mod.BatchImageFetcher(trip_slug)
+        return mod.BatchImageFetcher(trip_slug)
     except Exception as e:
-        print(f"⚠️  Image fetcher unavailable: {e}", file=sys.stderr)
+        print(f"Image fetcher unavailable: {e}", file=sys.stderr)
+        return None
+
+
+def _collect_day_pois(day: dict, agent: str) -> list:
+    """Collect POIs from a day entry based on agent type."""
+    if agent == "meals":
+        return [day[mt] for mt in MEAL_TYPES if isinstance(day.get(mt), dict)]
+    if agent == "accommodation":
+        acc = day.get("accommodation")
+        return [acc] if isinstance(acc, dict) else []
+    if agent in ["attractions", "entertainment", "shopping"]:
+        return list(day.get(agent, []))
+    return []
+
+
+def _fetch_poi_image(fetcher, poi: dict, city: str) -> bool:
+    """Try to fetch image for a single POI. Returns True if updated."""
+    photo_url = fetcher.fetch_poi_photo(
+        poi_name=poi.get("name_base", ""),
+        city=city,
+        name_local=poi.get("name_local"),
+        location_local=poi.get("location_local"),
+        poi_coordinates=poi.get("coordinates"),
+    )
+    if photo_url:
+        poi["image_url"] = photo_url
+        return True
+    return False
+
+
+def _fill_missing_images(fetcher, pois: list, city: str) -> int:
+    """Fetch images for POIs missing image_url. Returns count updated."""
+    updated = 0
+    for poi in pois:
+        if not isinstance(poi, dict) or poi.get("image_url"):
+            continue
+        if _fetch_poi_image(fetcher, poi, city):
+            updated += 1
+    return updated
+
+
+def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None:
+    """Auto-extract image_url for POIs missing it."""
+    if agent not in (POI_AGENTS | {"accommodation"}):
         return
-
-    poi_updated = 0
-
+    fetcher = _load_image_fetcher(trip_slug)
+    if not fetcher:
+        return
+    total = 0
     for day in data.get("days", []):
-        city = day.get("location", "")
-
-        # Collect POIs based on agent type
-        pois = []
-        if agent == "meals":
-            for meal_type in MEAL_TYPES:
-                if meal_type in day and isinstance(day[meal_type], dict):
-                    pois.append(day[meal_type])
-        elif agent == "accommodation":
-            if "accommodation" in day and isinstance(day["accommodation"], dict):
-                pois.append(day["accommodation"])
-        elif agent in ["attractions", "entertainment", "shopping"]:
-            pois.extend(day.get(agent, []))
-
-        for poi in pois:
-            if not isinstance(poi, dict):
-                continue
-            if poi.get("image_url"):
-                continue  # Already has image
-
-            photo_url = fetcher.fetch_poi_photo(
-                poi_name=poi.get("name_base", ""),
-                city=city,
-                name_local=poi.get("name_local"),
-                location_local=poi.get("location_local"),
-                poi_coordinates=poi.get("coordinates"),
-            )
-            if photo_url:
-                poi["image_url"] = photo_url
-                poi_updated += 1
-
-    if poi_updated > 0:
-        print(f"🖼️  Auto-extracted {poi_updated} image URLs", file=sys.stderr)
+        pois = _collect_day_pois(day, agent)
+        total += _fill_missing_images(fetcher, pois, day.get("location", ""))
+    if total > 0:
+        print(f"Auto-extracted {total} image URLs", file=sys.stderr)
 
 
+def _extract_high_issues(issues: list) -> list:
+    """Filter HIGH severity issues from a list."""
+    def _is_high(i):
+        sev = i.severity.value if hasattr(i.severity, 'value') else i.severity
+        return sev == "HIGH"
+    return [i for i in issues if _is_high(i)]
 
 
-def validate_data(trip_slug: str, agent: str, data: Dict[str, Any],
-                  skip_validation: bool = False,
-                  allow_high: bool = False) -> tuple:
-    """Run plan-validate.py validation.
+def _report_high_issues(issues: list) -> None:
+    """Print HIGH severity issues to stderr."""
+    high = _extract_high_issues(issues)
+    print(f"Validation failed with {len(high)} HIGH severity issues:", file=sys.stderr)
+    for issue in high[:10]:
+        print(f"  - {issue.label}: {issue.field} - {issue.message}", file=sys.stderr)
+    if len(high) > 10:
+        print(f"  ... and {len(high) - 10} more", file=sys.stderr)
 
-    Returns:
-        (success: bool, issues: list, metrics: dict)
-    """
+
+def _handle_validation_error(e, allow_high):
+    """Handle a ValidationError, returning (success, issues, metrics)."""
+    if allow_high:
+        print("WARNING: HIGH issues present but --allow-high specified", file=sys.stderr)
+        return True, e.issues, e.metrics
+    _report_high_issues(e.issues)
+    return False, e.issues, e.metrics
+
+
+def validate_data(
+    trip_slug: str, agent: str, data: Dict[str, Any],
+    skip_validation: bool = False, allow_high: bool = False,
+) -> tuple:
+    """Run validation. Returns (success, issues, metrics)."""
     if skip_validation:
-        print("⚠️  WARNING: Validation skipped (--no-validate)", file=sys.stderr)
+        print("WARNING: Validation skipped (--no-validate)", file=sys.stderr)
         return True, [], {}
-
-    # Use json_io validation which calls plan-validate.py
     try:
         trip_dir = DATA_DIR / trip_slug
         issues, metrics = validate_agent_data(agent, data, trip_dir)
-
-        # Check for HIGH severity issues
-        high_issues = [
-            i for i in issues
-            if (i.severity.value if hasattr(i.severity, 'value') else i.severity) == "HIGH"
-        ]
-        if high_issues and not allow_high:
+        if _extract_high_issues(issues) and not allow_high:
             raise ValidationError(issues, metrics)
-
         return True, [], {}
-
     except ValidationError as e:
-        if allow_high:
-            print(f"⚠️  WARNING: HIGH severity issues present but --allow-high specified",
-                  file=sys.stderr)
-            return True, e.issues, e.metrics
-        else:
-            print(f"❌ Validation failed with {len(e.high_issues)} HIGH severity issues:",
-                  file=sys.stderr)
-            for issue in e.high_issues[:10]:
-                print(f"  - {issue.label}: {issue.field} — {issue.message}", file=sys.stderr)
-            if len(e.high_issues) > 10:
-                print(f"  ... and {len(e.high_issues) - 10} more HIGH severity issues",
-                      file=sys.stderr)
-            return False, e.issues, e.metrics
-
+        return _handle_validation_error(e, allow_high)
 
 
 def _parse_hhmm(t: str) -> int:
@@ -209,30 +190,61 @@ def _times_overlap(s1: str, e1: str, s2: str, e2: str) -> bool:
     return m1s < m2e and m2s < m1e
 
 
-def _collect_timeline_activities(day: dict) -> list:
-    """Extract activities from a timeline day entry."""
+def _build_timeline_act(name: str, d: dict) -> dict:
+    """Build an activity dict from a timeline entry."""
+    act = {
+        "ag": "timeline", "name": name,
+        "s": d["start_time"], "e": d.get("end_time", ""),
+        "optional": d.get("optional", False),
+    }
+    for ref_key in ("meal_ref", "transport_ref", "accommodation_ref"):
+        if d.get(ref_key):
+            act[ref_key] = d[ref_key]
+    return act
+
+
+def _collect_timeline_entries(day: dict) -> list:
+    """Collect timeline dict entries as activity dicts."""
     acts = []
     for name, d in day.get(TIMELINE_FIELD, {}).items():
         if isinstance(d, dict) and d.get("start_time"):
-            act = {
-                "ag": "timeline", "name": name,
-                "s": d["start_time"], "e": d.get("end_time", ""),
-                "optional": d.get("optional", False),
-            }
-            # Preserve ref fields for category detection
-            for ref_key in ("meal_ref", "transport_ref", "accommodation_ref"):
-                if d.get(ref_key):
-                    act[ref_key] = d[ref_key]
-            acts.append(act)
-    for i, seg in enumerate(day.get(TRAVEL_SEGMENTS_FIELD, [])):
-        if isinstance(seg, dict) and seg.get("start_time"):
-            acts.append({
-                "ag": "segment", "name": seg.get("name_base", f"seg-{i}"),
-                "s": seg["start_time"], "e": seg.get("end_time", ""),
-                "optional": seg.get("optional", False),
-                "transport_ref": True,
-            })
+            acts.append(_build_timeline_act(name, d))
     return acts
+
+
+def _collect_segment_entries(day: dict) -> list:
+    """Collect travel_segments as activity dicts."""
+    acts = []
+    for i, seg in enumerate(day.get(TRAVEL_SEGMENTS_FIELD, [])):
+        if not (isinstance(seg, dict) and seg.get("start_time")):
+            continue
+        acts.append({
+            "ag": "segment",
+            "name": seg.get("name_base", f"seg-{i}"),
+            "s": seg["start_time"],
+            "e": seg.get("end_time", ""),
+            "optional": seg.get("optional", False),
+            "transport_ref": True,
+        })
+    return acts
+
+
+def _collect_timeline_activities(day: dict) -> list:
+    """Extract activities from a timeline day entry."""
+    return _collect_timeline_entries(day) + _collect_segment_entries(day)
+
+
+def _build_meal_act(m: dict, mt: str) -> Optional[dict]:
+    """Build an activity dict from a meal slot, or None if invalid."""
+    t = m.get("time", {})
+    if not (isinstance(t, dict) and t.get("start")):
+        return None
+    return {
+        "ag": "meals", "name": m.get("name_base", mt),
+        "s": t["start"], "e": t.get("end", ""),
+        "optional": m.get("optional", False),
+        "meal_ref": True,
+    }
 
 
 def _collect_meal_acts(sib_day: dict) -> list:
@@ -242,48 +254,56 @@ def _collect_meal_acts(sib_day: dict) -> list:
         m = sib_day.get(mt, {})
         if not isinstance(m, dict):
             continue
-        t = m.get("time", {})
-        if isinstance(t, dict) and t.get("start"):
-            acts.append({
-                "ag": "meals", "name": m.get("name_base", mt),
-                "s": t["start"], "e": t.get("end", ""),
-                "optional": m.get("optional", False),
-                "meal_ref": True,
-            })
+        act = _build_meal_act(m, mt)
+        if act:
+            acts.append(act)
     return acts
+
+
+def _build_poi_act(poi: dict, agent: str) -> Optional[dict]:
+    """Build an activity dict from a POI, or None if invalid."""
+    if not isinstance(poi, dict):
+        return None
+    t = poi.get("time", {})
+    if not (isinstance(t, dict) and t.get("start")):
+        return None
+    return {
+        "ag": agent, "name": poi.get("name_base", "?"),
+        "s": t["start"], "e": t.get("end", ""),
+        "optional": poi.get("optional", False),
+    }
 
 
 def _collect_poi_acts(sib_day: dict, agent: str) -> list:
     """Extract POI activities from a day entry."""
-    acts = []
-    for poi in sib_day.get(agent, []):
-        if not isinstance(poi, dict):
-            continue
-        t = poi.get("time", {})
-        if isinstance(t, dict) and t.get("start"):
-            acts.append({
-                "ag": agent, "name": poi.get("name_base", "?"),
-                "s": t["start"], "e": t.get("end", ""),
-                "optional": poi.get("optional", False),
-            })
-    return acts
+    return [a for a in (
+        _build_poi_act(poi, agent) for poi in sib_day.get(agent, [])
+    ) if a is not None]
+
+
+def _collect_sibling_day_acts(name: str, d: dict) -> list:
+    """Collect activities from a single sibling day."""
+    if name == "meals":
+        return _collect_meal_acts(d)
+    return _collect_poi_acts(d, name)
+
+
+def _find_sibling_day(data: dict, day_num: int) -> Optional[dict]:
+    """Find the day entry matching day_num in sibling data."""
+    for d in data.get("data", {}).get("days", []):
+        if d.get("day") == day_num:
+            return d
+    return None
 
 
 def _collect_sibling_acts(siblings: dict, day_num: int) -> list:
     """Collect activities from sibling agent files for a day."""
     acts = []
     for name, data in siblings.items():
-        for d in data.get("data", {}).get("days", []):
-            if d.get("day") != day_num:
-                continue
-            if name == "meals":
-                acts.extend(_collect_meal_acts(d))
-            else:
-                acts.extend(_collect_poi_acts(d, name))
+        d = _find_sibling_day(data, day_num)
+        if d:
+            acts.extend(_collect_sibling_day_acts(name, d))
     return acts
-
-
-
 
 
 def _fmt_time(minutes: int) -> str:
@@ -302,11 +322,12 @@ def _get_category(act: dict) -> str:
     if act.get("accommodation_ref"):
         return "accommodation"
     ag = act.get("ag", "")
-    return {
+    cat_map = {
         "meals": "meal", "attractions": "attraction",
         "entertainment": "entertainment", "shopping": "shopping",
         "segment": "transport",
-    }.get(ag, "activity")
+    }
+    return cat_map.get(ag, "activity")
 
 
 def _is_fully_contained(a: dict, b: dict) -> bool:
@@ -318,31 +339,45 @@ def _is_fully_contained(a: dict, b: dict) -> bool:
     return b_s >= a_s and b_e <= a_e
 
 
-def _detect_conflicts(activities: list, day_num: int) -> tuple:
-    """General conflict detection.
+def _classify_overlap(a: dict, b: dict) -> str:
+    """Classify an overlap: 'warn' (containment/transport handoff) or 'block'."""
+    if _is_fully_contained(a, b) or _is_fully_contained(b, a):
+        return "warn"
+    cats = {_get_category(a), _get_category(b)}
+    if "transport" in cats:
+        return "warn"
+    return "block"
 
-    Rules:
-    - If B fully contained in A AND category(A) != category(B) -> WARNING
-    - Else if overlap AND both non-optional -> BLOCK
-    """
-    blocks = []
-    warnings = []
+
+def _check_pair(a: dict, b: dict, day_num: int) -> Optional[tuple]:
+    """Check a pair of activities for conflict. Returns (kind, entry) or None."""
+    if not _times_overlap(a["s"], a["e"], b["s"], b["e"]):
+        return None
+    if a.get("optional") or b.get("optional"):
+        return None
+    kind = _classify_overlap(a, b)
+    return (kind, {"day": day_num, "a": a, "b": b})
+
+
+def _activity_pairs(activities: list):
+    """Generate all unique pairs of activities."""
     for i, a in enumerate(activities):
         for b in activities[i + 1:]:
-            if not _times_overlap(a["s"], a["e"], b["s"], b["e"]):
-                continue
-            if a.get("optional") or b.get("optional"):
-                continue
+            yield a, b
 
-            cat_a = _get_category(a)
-            cat_b = _get_category(b)
 
-            contained = _is_fully_contained(a, b) or _is_fully_contained(b, a)
-            if contained and cat_a != cat_b:
-                warnings.append({"day": day_num, "a": a, "b": b})
-                continue
+def _check_all_pairs(activities: list, day_num: int) -> list:
+    """Check all activity pairs for conflicts. Returns list of (kind, entry)."""
+    return [r for a, b in _activity_pairs(activities)
+            for r in [_check_pair(a, b, day_num)] if r]
 
-            blocks.append({"day": day_num, "a": a, "b": b})
+
+def _detect_conflicts(activities: list, day_num: int) -> tuple:
+    """Detect time conflicts. Returns (blocks, warnings) lists."""
+    blocks, warnings = [], []
+    pairs = _check_all_pairs(activities, day_num)
+    for kind, entry in pairs:
+        (blocks if kind == "block" else warnings).append(entry)
     return blocks, warnings
 
 
@@ -354,11 +389,56 @@ def _load_sibling_agents(trip_dir) -> dict:
         if not p.exists():
             continue
         try:
-            with open(p, encoding="utf-8") as f:
-                result[name] = json.load(f)
+            result[name] = json.loads(p.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             pass
     return result
+
+
+def _format_warning(w: dict) -> str:
+    """Format a conflict warning as a string."""
+    a, b = w["a"], w["b"]
+    return (
+        f'  Day {w["day"]}: '
+        f'"{a["name"]}" ({a["ag"]}/{_get_category(a)}) '
+        f'overlaps "{b["name"]}" '
+        f'({b["ag"]}/{_get_category(b)}) '
+        f'- warning only (containment or transport handoff)'
+    )
+
+
+def _format_block(c: dict) -> str:
+    """Format a conflict block as a string."""
+    a, b = c["a"], c["b"]
+    a_range = f'{_fmt_time(_parse_hhmm(a["s"]))}-{_fmt_time(_parse_hhmm(a["e"]))}'
+    b_range = f'{_fmt_time(_parse_hhmm(b["s"]))}-{_fmt_time(_parse_hhmm(b["e"]))}'
+    return f'  Day {c["day"]}: "{a["name"]}" ({a_range}) overlaps "{b["name"]}" ({b_range})'
+
+
+def _gather_day_conflicts(days, siblings) -> tuple:
+    """Gather all blocks and warnings across all days."""
+    all_blocks, all_warnings = [], []
+    for day in days:
+        day_num = day.get("day", "?")
+        activities = _collect_timeline_activities(day)
+        activities.extend(_collect_sibling_acts(siblings, day_num))
+        blocks, warnings = _detect_conflicts(activities, day_num)
+        all_blocks.extend(blocks)
+        all_warnings.extend(warnings)
+    return all_blocks, all_warnings
+
+
+def _print_conflict_results(all_blocks, all_warnings) -> None:
+    """Print all conflict warnings and blocks to stderr."""
+    for w in all_warnings:
+        print(f"  W  {_format_warning(w)}", file=sys.stderr)
+    for c in all_blocks:
+        print(f"  X  {_format_block(c)}", file=sys.stderr)
+    if all_blocks:
+        msg = f"\nSAVE BLOCKED: {len(all_blocks)} time conflict(s). Fix timeline."
+        print(msg, file=sys.stderr)
+    if all_warnings:
+        print(f"{len(all_warnings)} overlap warning(s) (non-blocking)", file=sys.stderr)
 
 
 def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
@@ -369,344 +449,241 @@ def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
     if not days:
         return []
     siblings = _load_sibling_agents(trip_dir)
-    all_blocks = []
-    all_warnings = []
-
-    for day in days:
-        day_num = day.get("day", "?")
-        activities = _collect_timeline_activities(day)
-        activities.extend(_collect_sibling_acts(siblings, day_num))
-        blocks, warnings = _detect_conflicts(activities, day_num)
-        all_blocks.extend(blocks)
-        all_warnings.extend(warnings)
-
-    # Print warnings (non-blocking)
-    for w in all_warnings:
-        a, b = w["a"], w["b"]
-        print(
-            f"  \u26a0\ufe0f  Day {w['day']}: "
-            f"\"{a['name']}\" ({a['ag']}/{_get_category(a)}) "
-            f"contained within \"{b['name']}\" "
-            f"({b['ag']}/{_get_category(b)}) "
-            f"\u2014 different category, warning only",
-            file=sys.stderr,
-        )
-
-    # Print blocks (blocking)
-    for c in all_blocks:
-        a, b = c["a"], c["b"]
-        print(
-            f"  \u274c Day {c['day']}: "
-            f"\"{a['name']}\" ({_fmt_time(_parse_hhmm(a['s']))}-"
-            f"{_fmt_time(_parse_hhmm(a['e']))}) "
-            f"overlaps \"{b['name']}\" "
-            f"({_fmt_time(_parse_hhmm(b['s']))}-"
-            f"{_fmt_time(_parse_hhmm(b['e']))})",
-            file=sys.stderr,
-        )
-
-    if all_blocks:
-        print(
-            f"\n\u274c SAVE BLOCKED: {len(all_blocks)} time conflict(s). "
-            f"Fix timeline before saving.",
-            file=sys.stderr,
-        )
-    if all_warnings:
-        print(
-            f"\u26a0\ufe0f  {len(all_warnings)} containment warning(s) "
-            f"(non-blocking)",
-            file=sys.stderr,
-        )
-
+    all_blocks, all_warnings = _gather_day_conflicts(days, siblings)
+    _print_conflict_results(all_blocks, all_warnings)
     return all_blocks
 
 
-def save_single_agent(trip_slug: str, agent: str, data: Dict[str, Any],
-                      skip_validation: bool = False,
-                      allow_high: bool = False,
-                      create_backup: bool = True,
-                      merge_days: bool = False) -> bool:
-    """Save single agent data with validation.
+def _merge_existing_data(agent_file, agent_data, data):
+    """Merge single-day update into existing multi-day file."""
+    existing_data = load_agent_json(agent_file, validate=False)
+    merged = merge_agent_days(existing_data, agent_data, agent_file.stem)
+    day_count = len(data.get('data', {}).get('days', []))
+    print(f"Merge mode: Merged {day_count} day(s) into existing file", file=sys.stderr)
+    return merged
 
-    Root Cause Reference (b057f26, 579f972, 921f855, 894b008):
-    save.py was documented as merging but only performed full-file replacement,
-    causing timeline data loss (21 days → 1 day during Day 5 review).
 
-    Args:
-        merge_days: If True, merge single-day updates into existing multi-day file
-                    instead of replacing entire file. Preserves days not in update.
-
-    Returns:
-        True if successful, False otherwise
-    """
-    trip_dir = DATA_DIR / trip_slug
-    if not trip_dir.exists():
-        print(f"❌ Error: Trip directory not found: {trip_dir}", file=sys.stderr)
-        return False
-
-    agent_file = trip_dir / f"{agent}.json"
-
-    # Unwrap envelope if present
-    agent_data = data.get("data") if "data" in data else data
-
-    # Merge mode: read existing file and merge days
-    if merge_days and agent_file.exists():
-        try:
-            existing_data = load_agent_json(agent_file, validate=False)
-            merged_data = merge_agent_days(existing_data, agent_data, agent)
-            agent_data = merged_data
-            print(f"🔀 Merge mode: Merged {len(data.get('data', {}).get('days', []))} day(s) into existing file", file=sys.stderr)
-        except Exception as e:
-            print(f"❌ Merge failed: {e}", file=sys.stderr)
-            return False
-
-    # Auto-extract image URLs from search_results
-    extract_image_urls(agent, agent_data, trip_slug)
-
-    # Wrap in envelope for validation
-    envelope_data = {"agent": agent, "status": "complete", "data": agent_data}
-
-    # Validate merged data
-    success, issues, metrics = validate_data(trip_slug, agent, envelope_data, skip_validation, allow_high)
-
-    if not success:
-        print(f"\n❌ Save aborted due to validation errors", file=sys.stderr)
-        print(f"   Fix HIGH severity issues and try again", file=sys.stderr)
-        print(f"   Or use --allow-high to force save (NOT RECOMMENDED)", file=sys.stderr)
-        return False
-
-    # Hard-block timeline saves with non-optional time conflicts
-    time_conflicts = check_time_conflicts(envelope_data, trip_dir, agent)
-    if time_conflicts:
-        # Detailed output already printed by check_time_conflicts
-        return False
-
-    # Save using json_io
+def _do_save(agent_file, agent, agent_data, create_backup, issues):
+    """Perform atomic write and report result. Returns True on success."""
     try:
         save_agent_json(
-            file_path=agent_file,
-            agent_name=agent,
-            data=agent_data,
-            validate=False,  # Already validated above
-            create_backup=create_backup
+            file_path=agent_file, agent_name=agent,
+            data=agent_data, validate=False, create_backup=create_backup,
         )
-
-        print(f"✅ Saved: {agent_file}", file=sys.stderr)
-
-        if issues:
-            med_count = len([i for i in issues if i.severity.value == "MEDIUM"])
-            low_count = len([i for i in issues if i.severity.value == "LOW"])
-            if med_count or low_count:
-                print(f"   ⚠️  Warnings: {med_count} MEDIUM, {low_count} LOW", file=sys.stderr)
-
-        return True
-
-    except AtomicWriteError as e:
-        print(f"❌ Write error: {e}", file=sys.stderr)
+    except (AtomicWriteError, Exception) as e:
+        kind = "Write" if isinstance(e, AtomicWriteError) else "Unexpected"
+        print(f"{kind} error: {e}", file=sys.stderr)
         return False
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
-        return False
-
-
-def save_batch(trip_slug: str, batch_data: Dict[str, Any],
-               skip_validation: bool = False,
-               allow_high: bool = False) -> bool:
-    """Save multiple agents with rollback on failure.
-
-    batch_data format:
-    {
-      "meals": {...},
-      "attractions": {...},
-      ...
-    }
-
-    Returns:
-        True if all saves successful, False otherwise
-    """
-    trip_dir = DATA_DIR / trip_slug
-    if not trip_dir.exists():
-        print(f"❌ Error: Trip directory not found: {trip_dir}", file=sys.stderr)
-        return False
-
-    print(f"📦 Batch save: {len(batch_data)} agents", file=sys.stderr)
-
-    # Phase 1: Validate all
-    print(f"\n1️⃣  Phase 1: Validating {len(batch_data)} agents...", file=sys.stderr)
-    validation_results = {}
-
-    for agent, data in batch_data.items():
-        print(f"   Validating {agent}...", end=" ", file=sys.stderr)
-        success, issues, metrics = validate_data(trip_slug, agent, data, skip_validation, allow_high)
-        validation_results[agent] = (success, issues, metrics)
-
-        if success:
-            print("✅", file=sys.stderr)
-        else:
-            print("❌", file=sys.stderr)
-
-    # Check if any failed
-    failed_agents = [agent for agent, (success, _, _) in validation_results.items() if not success]
-
-    if failed_agents:
-        print(f"\n❌ Validation failed for {len(failed_agents)} agents: {', '.join(failed_agents)}",
-              file=sys.stderr)
-        print(f"   Batch save aborted (no files modified)", file=sys.stderr)
-        return False
-
-    # Phase 2: Create backups
-    print(f"\n2️⃣  Phase 2: Creating backups...", file=sys.stderr)
-    backup_paths = {}
-
-    for agent in batch_data.keys():
-        agent_file = trip_dir / f"{agent}.json"
-        if agent_file.exists():
-            backup_path = agent_file.with_suffix(".json.bak")
-            shutil.copy2(agent_file, backup_path)
-            backup_paths[agent] = backup_path
-            print(f"   {agent}: {backup_path.name}", file=sys.stderr)
-
-    # Phase 3: Save all
-    print(f"\n3️⃣  Phase 3: Saving {len(batch_data)} agents...", file=sys.stderr)
-    save_errors = []
-
-    for agent, data in batch_data.items():
-        agent_file = trip_dir / f"{agent}.json"
-
-        try:
-            # Use json_io save
-            save_agent_json(
-                file_path=agent_file,
-                agent_name=agent,
-                data=data.get("data") if "data" in data else data,
-                validate=False,  # Already validated
-                create_backup=False  # Already created backups
-            )
-            print(f"   {agent}: ✅", file=sys.stderr)
-
-        except Exception as e:
-            print(f"   {agent}: ❌ {e}", file=sys.stderr)
-            save_errors.append((agent, str(e)))
-
-    # Phase 4: Rollback if any errors
-    if save_errors:
-        print(f"\n4️⃣  Phase 4: Rolling back {len(save_errors)} failed saves...", file=sys.stderr)
-
-        for agent, backup_path in backup_paths.items():
-            agent_file = trip_dir / f"{agent}.json"
-            shutil.copy2(backup_path, agent_file)
-            print(f"   {agent}: restored from backup", file=sys.stderr)
-
-        print(f"\n❌ Batch save failed, all changes rolled back", file=sys.stderr)
-        return False
-
-    # Success
-    print(f"\n✅ Batch save successful: {len(batch_data)} agents", file=sys.stderr)
-
-    # Report warnings
-    total_warnings = sum(
-        len([i for i in issues if i.severity.value in ("MEDIUM", "LOW")])
-        for _, issues, _ in validation_results.values()
-    )
-    if total_warnings:
-        print(f"   ⚠️  Total warnings: {total_warnings}", file=sys.stderr)
-
+    print(f"Saved: {agent_file}", file=sys.stderr)
+    _report_save_warnings(issues)
     return True
 
 
-def main():
+def _report_save_warnings(issues: list) -> None:
+    """Print MEDIUM/LOW warning counts after successful save."""
+    if not issues:
+        return
+    med = len([i for i in issues if i.severity.value == "MEDIUM"])
+    low = len([i for i in issues if i.severity.value == "LOW"])
+    if med or low:
+        print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
+
+
+def _prepare_agent_data(data, agent_file, trip_slug, merge_days):
+    """Unwrap envelope, merge if needed, extract images."""
+    agent_data = data.get("data") if "data" in data else data
+    if merge_days and agent_file.exists():
+        agent_data = _merge_existing_data(agent_file, agent_data, data)
+    extract_image_urls(agent_file.stem, agent_data, trip_slug)
+    return agent_data
+
+
+def save_single_agent(
+    trip_slug: str, agent: str, data: Dict[str, Any],
+    skip_validation: bool = False, allow_high: bool = False,
+    create_backup: bool = True, merge_days: bool = False,
+) -> bool:
+    """Save single agent data with validation."""
+    trip_dir = DATA_DIR / trip_slug
+    if not trip_dir.exists():
+        print(f"Error: Trip directory not found: {trip_dir}", file=sys.stderr)
+        return False
+    agent_file = trip_dir / f"{agent}.json"
+    try:
+        agent_data = _prepare_agent_data(data, agent_file, trip_slug, merge_days)
+    except Exception as e:
+        print(f"Merge failed: {e}", file=sys.stderr)
+        return False
+    envelope = {"agent": agent, "status": "complete", "data": agent_data}
+    ok, issues, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
+    if not ok:
+        print(f"\nSave aborted due to validation errors", file=sys.stderr)
+        return False
+    if check_time_conflicts(envelope, trip_dir, agent):
+        return False
+    return _do_save(agent_file, agent, agent_data, create_backup, issues)
+
+
+def _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high):
+    """Phase 1: validate all agents. Returns dict of results."""
+    print(f"\nPhase 1: Validating {len(batch_data)} agents...", file=sys.stderr)
+    results = {}
+    for agent, data in batch_data.items():
+        print(f"   Validating {agent}...", end=" ", file=sys.stderr)
+        ok, issues, metrics = validate_data(trip_slug, agent, data, skip_validation, allow_high)
+        results[agent] = (ok, issues, metrics)
+        print("OK" if ok else "FAIL", file=sys.stderr)
+    return results
+
+
+def _create_batch_backups(trip_dir, batch_data) -> dict:
+    """Phase 2: create backups for existing files."""
+    print(f"\nPhase 2: Creating backups...", file=sys.stderr)
+    backups = {}
+    for agent in batch_data.keys():
+        agent_file = trip_dir / f"{agent}.json"
+        if agent_file.exists():
+            backup = agent_file.with_suffix(".json.bak")
+            shutil.copy2(agent_file, backup)
+            backups[agent] = backup
+            print(f"   {agent}: {backup.name}", file=sys.stderr)
+    return backups
+
+
+def _save_batch_agent(trip_dir, agent, data) -> Optional[str]:
+    """Save one agent in batch mode. Returns error string or None."""
+    try:
+        save_agent_json(
+            file_path=trip_dir / f"{agent}.json", agent_name=agent,
+            data=data.get("data") if "data" in data else data,
+            validate=False, create_backup=False,
+        )
+        print(f"   {agent}: OK", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"   {agent}: FAIL {e}", file=sys.stderr)
+        return str(e)
+
+
+def _save_all_agents(trip_dir, batch_data) -> list:
+    """Phase 3: save all agents. Returns list of (agent, error) tuples."""
+    print(f"\nPhase 3: Saving {len(batch_data)} agents...", file=sys.stderr)
+    errors = []
+    for agent, data in batch_data.items():
+        err = _save_batch_agent(trip_dir, agent, data)
+        if err:
+            errors.append((agent, err))
+    return errors
+
+
+def _rollback_batch(backup_paths, trip_dir) -> None:
+    """Phase 4: restore all files from backups."""
+    print(f"\nPhase 4: Rolling back...", file=sys.stderr)
+    for agent, backup in backup_paths.items():
+        shutil.copy2(backup, trip_dir / f"{agent}.json")
+        print(f"   {agent}: restored from backup", file=sys.stderr)
+    print(f"\nBatch save failed, all changes rolled back", file=sys.stderr)
+
+
+def _report_batch_warnings(results) -> None:
+    """Report total MEDIUM/LOW warnings from batch validation."""
+    total = sum(
+        len([i for i in iss if i.severity.value in ("MEDIUM", "LOW")])
+        for _, iss, _ in results.values()
+    )
+    if total:
+        print(f"   Total warnings: {total}", file=sys.stderr)
+
+
+def save_batch(
+    trip_slug: str, batch_data: Dict[str, Any],
+    skip_validation: bool = False, allow_high: bool = False,
+) -> bool:
+    """Save multiple agents with rollback on failure."""
+    trip_dir = DATA_DIR / trip_slug
+    if not trip_dir.exists():
+        print(f"Error: Trip directory not found: {trip_dir}", file=sys.stderr)
+        return False
+    print(f"Batch save: {len(batch_data)} agents", file=sys.stderr)
+    results = _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high)
+    failed = [a for a, (ok, _, _) in results.items() if not ok]
+    if failed:
+        print(f"\nValidation failed: {', '.join(failed)}", file=sys.stderr)
+        return False
+    backups = _create_batch_backups(trip_dir, batch_data)
+    errors = _save_all_agents(trip_dir, batch_data)
+    if errors:
+        _rollback_batch(backups, trip_dir)
+        return False
+    print(f"\nBatch save successful: {len(batch_data)} agents", file=sys.stderr)
+    _report_batch_warnings(results)
+    return True
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
         description="Unified data saving script with mandatory validation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Save single agent from file
-  python3 scripts/save.py --trip china-feb-2026 --agent meals --input modified_meals.json
-
-  # Merge single-day update into multi-day file (preserves other days)
-  python3 scripts/save.py --trip china-feb-2026 --agent timeline --input day5_update.json --merge-days
-
-  # Save single agent from stdin
-  cat modified_meals.json | python3 scripts/save.py --trip china-feb-2026 --agent meals
-
-  # Batch save multiple agents
-  python3 scripts/save.py --trip china-feb-2026 --batch batch_data.json
-
-  # Skip validation (NOT RECOMMENDED)
-  python3 scripts/save.py --trip china-feb-2026 --agent meals --input data.json --no-validate
-
-  # Allow HIGH severity issues (NOT RECOMMENDED)
-  python3 scripts/save.py --trip china-feb-2026 --agent meals --input data.json --allow-high
-        """
     )
-
-    parser.add_argument("--trip", required=True, help="Trip slug (directory name in data/)")
-    parser.add_argument("--agent", help="Agent name (meals, attractions, etc.)")
+    parser.add_argument("--trip", required=True, help="Trip slug")
+    parser.add_argument("--agent", help="Agent name")
     parser.add_argument("--input", help="Input JSON file (default: stdin)")
-    parser.add_argument("--batch", help="Batch input JSON file (multiple agents)")
-    parser.add_argument("--no-validate", action="store_true", help="Skip validation (DANGEROUS)")
-    parser.add_argument("--allow-high", action="store_true", help="Allow HIGH severity issues (DANGEROUS)")
-    parser.add_argument("--no-backup", action="store_true", help="Skip backup creation")
-    parser.add_argument("--merge-days", action="store_true",
-                        help="Merge single-day updates into existing multi-day file (preserves other days)")
+    parser.add_argument("--batch", help="Batch input JSON file")
+    parser.add_argument("--no-validate", action="store_true", help="Skip validation")
+    parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
+    parser.add_argument("--no-backup", action="store_true", help="Skip backups")
+    parser.add_argument("--merge-days", action="store_true", help="Merge day updates")
+    return parser
 
-    args = parser.parse_args()
 
-    # Validate arguments
+def _validate_args(args) -> None:
+    """Validate mutually exclusive argument combinations."""
     if args.batch and args.agent:
         print("Error: Cannot specify both --batch and --agent", file=sys.stderr)
         sys.exit(1)
-
     if not args.batch and not args.agent:
         print("Error: Must specify either --batch or --agent", file=sys.stderr)
         sys.exit(1)
-
     if args.batch and args.input:
         print("Error: --batch and --input are mutually exclusive", file=sys.stderr)
         sys.exit(1)
 
-    # Load input data
-    if args.batch:
-        # Batch mode
-        batch_path = Path(args.batch)
-        if not batch_path.exists():
-            print(f"Error: Batch file not found: {batch_path}", file=sys.stderr)
+
+def _load_input(args) -> Dict[str, Any]:
+    """Load input JSON from --input file or stdin."""
+    if args.input:
+        path = Path(args.input)
+        if not path.exists():
+            print(f"Error: Input file not found: {path}", file=sys.stderr)
             sys.exit(1)
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return json.load(sys.stdin)
 
-        with open(batch_path, encoding="utf-8") as f:
-            batch_data = json.load(f)
 
-        success = save_batch(
-            trip_slug=args.trip,
-            batch_data=batch_data,
-            skip_validation=args.no_validate,
-            allow_high=args.allow_high
-        )
+def _run_batch(args) -> bool:
+    """Execute batch save mode."""
+    batch_path = Path(args.batch)
+    if not batch_path.exists():
+        print(f"Error: Batch file not found: {batch_path}", file=sys.stderr)
+        sys.exit(1)
+    with open(batch_path, encoding="utf-8") as f:
+        return save_batch(args.trip, json.load(f), args.no_validate, args.allow_high)
 
+
+def main():
+    args = _build_parser().parse_args()
+    _validate_args(args)
+    if args.batch:
+        success = _run_batch(args)
     else:
-        # Single agent mode
-        if args.input:
-            input_path = Path(args.input)
-            if not input_path.exists():
-                print(f"Error: Input file not found: {input_path}", file=sys.stderr)
-                sys.exit(1)
-
-            with open(input_path, encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            # Read from stdin
-            data = json.load(sys.stdin)
-
+        data = _load_input(args)
         success = save_single_agent(
-            trip_slug=args.trip,
-            agent=args.agent,
-            data=data,
-            skip_validation=args.no_validate,
-            allow_high=args.allow_high,
-            create_backup=not args.no_backup,
-            merge_days=args.merge_days
+            trip_slug=args.trip, agent=args.agent, data=data,
+            skip_validation=args.no_validate, allow_high=args.allow_high,
+            create_backup=not args.no_backup, merge_days=args.merge_days,
         )
-
     sys.exit(0 if success else 1)
 
 
