@@ -1,0 +1,94 @@
+--- /tmp/package/dist/tools/rednoteTools.js	1985-10-26 08:15:00.000000000 +0000
++++ /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js	2026-04-14 18:35:17.845885561 +0000
+@@ -21,16 +21,51 @@
+             throw new Error('Failed to initialize browser');
+         }
+         try {
+-            this.page = await this.browser.newPage();
++            const ctx = this.browser.contexts()[0] || await this.browser.newContext({ serviceWorkers: 'block' });
++            this.page = await ctx.newPage();
++            await this.page.addInitScript(() => {
++                const s = document.createElement('style');
++                s.textContent = '.cookie-banner-overlay,.cookie-banner,[class*="cookie-banner"]{display:none!important;pointer-events:none!important;opacity:0!important;z-index:-1!important}';
++                (document.head || document.documentElement).appendChild(s);
++                new MutationObserver(() => { if (!document.head.contains(s)) (document.head || document.documentElement).appendChild(s); }).observe(document.documentElement, { childList: true, subtree: true });
++            });
++            await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
++                const url = route.request().url().replace(
++                    'https://edith.xiaohongshu.com',
++                    'https://xhs.life-ai.app/api-edith'
++                );
++                await route.continue({ url });
++            });
++            await this.page.route('**://xhslink.com/**', async (route) => {
++                const url = route.request().url().replace(
++                    'https://xhslink.com',
++                    'https://xhs.life-ai.app'
++                );
++                const response = await route.fetch({ url });
++                await route.fulfill({ response });
++            });
++            await this.page.route('**/website-login/error**', (route) => route.abort());
++            await this.page.route('**://www.xiaohongshu.com/**', async (route) => {
++                const url = route.request().url().replace('https://www.xiaohongshu.com', 'https://xhs.life-ai.app');
++                const response = await route.fetch({ url });
++                await route.fulfill({ response });
++            });
+             // Load cookies if available
+             const cookies = await this.authManager.getCookies();
+             if (cookies.length > 0) {
+                 logger_1.default.info(`Loading ${cookies.length} cookies`);
+-                await this.page.context().addCookies(cookies);
++                // Add cookies for both domains so edith.xiaohongshu.com gets them directly
++                const extraCookies = cookies
++                    .filter(c => c.domain === 'www.xiaohongshu.com' || c.domain === '.www.xiaohongshu.com')
++                    .map(c => ({ ...c, domain: '.xiaohongshu.com' }));
++                await this.page.context().addCookies([...cookies, ...extraCookies]);
+             }
+             // Check login status
+             logger_1.default.info('Checking login status');
+-            await this.page.goto('https://www.xiaohongshu.com');
++            await this.page.goto('https://xhs.life-ai.app');
++            await this.page.evaluate(() => {
++                document.querySelectorAll('.cookie-banner-overlay, .cookie-banner, [class*="cookie-banner"]').forEach(el => el.remove());
++            }).catch(() => {});
+             const isLoggedIn = await this.page.evaluate(() => {
+                 const sidebarUser = document.querySelector('.user.side-bar-component .channel');
+                 return sidebarUser?.textContent?.trim() === '我';
+@@ -76,7 +111,7 @@
+             return xhslinkMatch[1];
+         }
+         // 匹配 https://www.xiaohongshu.com/ 开头的链接
+-        const xiaohongshuRegex = /(https?:\/\/(?:www\.)?xiaohongshu\.com\/[^，\s]+)/i;
++        const xiaohongshuRegex = /(https?:\/\/(?:www\.)?(?:xiaohongshu\.com|xhs\.life-ai\.app)\/[^，\s]+)/i;
+         const xiaohongshuMatch = shareText.match(xiaohongshuRegex);
+         if (xiaohongshuMatch && xiaohongshuMatch[1]) {
+             return xiaohongshuMatch[1];
+@@ -91,7 +126,8 @@
+                 throw new Error('Page not initialized');
+             // Navigate to search page
+             logger_1.default.info('Navigating to search page');
+-            await this.page.goto(`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(keywords)}`);
++            await this.page.goto(`https://xhs.life-ai.app/search_result?keyword=${encodeURIComponent(keywords)}`);
++            await this.page.waitForTimeout(500);
+             // Wait for search results to load
+             logger_1.default.info('Waiting for search results');
+             await this.page.waitForSelector('.feeds-container', {
+@@ -155,7 +191,7 @@
+                     const closeButton = await this.page.$('.close-circle');
+                     if (closeButton) {
+                         logger_1.default.info('Closing note dialog');
+-                        await closeButton.click();
++                        await this.page.evaluate(() => { const b = document.querySelector('.close-circle'); if (b) b.click(); });
+                         // Wait for note dialog to disappear
+                         await this.page.waitForSelector('#noteContainer', {
+                             state: 'detached',
+@@ -168,7 +204,7 @@
+                     const closeButton = await this.page.$('.close-circle');
+                     if (closeButton) {
+                         logger_1.default.info('Attempting to close note dialog after error');
+-                        await closeButton.click();
++                        await this.page.evaluate(() => { const b = document.querySelector('.close-circle'); if (b) b.click(); });
+                         // Wait for note dialog to disappear
+                         await this.page.waitForSelector('#noteContainer', {
+                             state: 'detached',

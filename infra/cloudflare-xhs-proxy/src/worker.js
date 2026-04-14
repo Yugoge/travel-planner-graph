@@ -11,6 +11,35 @@
 
 const UPSTREAM = 'www.xiaohongshu.com';
 const UPSTREAM_ORIGIN = 'https://www.xiaohongshu.com';
+const EDITH_UPSTREAM = 'edith.xiaohongshu.com';
+const EDITH_UPSTREAM_ORIGIN = 'https://edith.xiaohongshu.com';
+
+const INJECT_SCRIPT = `<script>
+(function() {
+  var edithOrigin = 'https://edith.xiaohongshu.com';
+  var proxyEdith = '/api-edith';
+
+  // Override fetch
+  var origFetch = window.fetch;
+  window.fetch = function(input, init) {
+    if (typeof input === 'string' && input.indexOf(edithOrigin) === 0) {
+      input = proxyEdith + input.slice(edithOrigin.length);
+    } else if (input instanceof Request && input.url.indexOf(edithOrigin) === 0) {
+      input = new Request(proxyEdith + input.url.slice(edithOrigin.length), input);
+    }
+    return origFetch.call(this, input, init);
+  };
+
+  // Override XMLHttpRequest.open
+  var origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    if (typeof url === 'string' && url.indexOf(edithOrigin) === 0) {
+      arguments[1] = proxyEdith + url.slice(edithOrigin.length);
+    }
+    return origOpen.apply(this, arguments);
+  };
+})();
+</script>`;
 
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'te',
@@ -35,24 +64,50 @@ export default {
       return new Response('Forbidden', { status: 403 });
     }
 
-    const upstreamURL = buildUpstreamURL(url);
-    const upstreamHeaders = buildUpstreamHeaders(request);
-    const upstreamRequest = buildUpstreamRequest(request, upstreamURL, upstreamHeaders);
+    const requestOrigin = request.headers.get('origin') || '*';
 
-    let response;
-    try {
-      response = await fetch(upstreamRequest);
-    } catch (err) {
-      return new Response(`Upstream error: ${err.message}`, { status: 502 });
+    if (request.method === 'OPTIONS') {
+      return buildPreflightResponse(request, requestOrigin);
     }
 
-    if (isRedirect(response)) {
-      return handleRedirect(response, proxyHost);
-    }
-
-    return buildProxyResponse(response, proxyHost);
+    return forwardToUpstream(request, url, proxyHost, requestOrigin);
   },
 };
+
+function buildPreflightResponse(request, requestOrigin) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'access-control-allow-origin': requestOrigin,
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'access-control-allow-headers': request.headers.get('access-control-request-headers') || '*',
+      'access-control-max-age': '86400',
+    },
+  });
+}
+
+function forwardToUpstream(request, url, proxyHost, requestOrigin) {
+  const isEdith = isEdithRoute(url);
+  const targetHost = isEdith ? EDITH_UPSTREAM : UPSTREAM;
+  const upstreamURL = buildUpstreamURL(url);
+  const upstreamHeaders = buildUpstreamHeaders(request, targetHost, isEdith);
+  return proxyToUpstream(request, upstreamURL, upstreamHeaders, proxyHost, requestOrigin);
+}
+
+async function proxyToUpstream(request, upstreamURL, upstreamHeaders, proxyHost, requestOrigin) {
+  const upstreamRequest = buildUpstreamRequest(request, upstreamURL, upstreamHeaders);
+  let response;
+  try {
+    response = await fetch(upstreamRequest);
+  } catch (err) {
+    return new Response(`Upstream error: ${err.message}`, { status: 502 });
+  }
+  if (isRedirect(response)) {
+    return handleRedirect(response, proxyHost);
+  }
+  return buildProxyResponse(response, proxyHost, requestOrigin);
+}
 
 function isAllowedIP(request, env) {
   if (!env.ALLOWED_IPS) return true;
@@ -61,19 +116,31 @@ function isAllowedIP(request, env) {
   return allowed.includes(clientIP);
 }
 
+function isEdithRoute(url) {
+  return url.pathname.startsWith('/api-edith/') || url.pathname === '/api-edith';
+}
+
 function buildUpstreamURL(url) {
+  if (isEdithRoute(url)) {
+    const edithPath = url.pathname.replace('/api-edith', '') || '/';
+    return new URL(edithPath + url.search, EDITH_UPSTREAM_ORIGIN);
+  }
   return new URL(url.pathname + url.search, UPSTREAM_ORIGIN);
 }
 
-function buildUpstreamHeaders(request) {
+function buildUpstreamHeaders(request, targetHost, isEdith) {
   const headers = new Headers();
   for (const [key, value] of request.headers.entries()) {
     if (HOP_BY_HOP.has(key.toLowerCase())) continue;
     headers.set(key, value);
   }
-  headers.set('Host', UPSTREAM);
-  headers.set('Origin', UPSTREAM_ORIGIN);
-  headers.set('Referer', UPSTREAM_ORIGIN + '/');
+  headers.set('Host', targetHost);
+  if (!isEdith) {
+    // Only override Origin/Referer for www pages, not for edith API calls
+    headers.set('Origin', `https://${targetHost}`);
+    headers.set('Referer', `https://${targetHost}/`);
+  }
+  // For edith: keep original Origin/Referer from browser (matches x-s-common)
   for (const h of LEAK_HEADERS) {
     headers.delete(h);
   }
@@ -104,14 +171,17 @@ function handleRedirect(response, proxyHost) {
   return new Response(null, { status: response.status, headers });
 }
 
-async function buildProxyResponse(response, proxyHost) {
-  const responseHeaders = buildResponseHeaders(response, proxyHost);
+async function buildProxyResponse(response, proxyHost, requestOrigin) {
+  const responseHeaders = buildResponseHeaders(response, proxyHost, requestOrigin);
   const contentType = response.headers.get('content-type') || '';
   const isRewritable = isRewritableContent(contentType);
 
   if (isRewritable) {
     const body = await response.text();
-    const rewritten = rewriteBody(body, proxyHost);
+    let rewritten = rewriteBody(body, proxyHost);
+    if (contentType.includes('text/html')) {
+      rewritten = rewritten.replace(/<head([^>]*)>/i, `<head$1>${INJECT_SCRIPT}`);
+    }
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
     return new Response(rewritten, { status: response.status, headers: responseHeaders });
@@ -120,7 +190,7 @@ async function buildProxyResponse(response, proxyHost) {
   return new Response(response.body, { status: response.status, headers: responseHeaders });
 }
 
-function buildResponseHeaders(response, proxyHost) {
+function buildResponseHeaders(response, proxyHost, requestOrigin) {
   const headers = new Headers();
   for (const [key, value] of response.headers.entries()) {
     if (HOP_BY_HOP.has(key.toLowerCase())) continue;
@@ -132,7 +202,7 @@ function buildResponseHeaders(response, proxyHost) {
   }
   headers.delete('content-security-policy');
   headers.delete('content-security-policy-report-only');
-  headers.set('access-control-allow-origin', '*');
+  headers.set('access-control-allow-origin', requestOrigin);
   headers.set('access-control-allow-credentials', 'true');
   return headers;
 }
@@ -163,6 +233,9 @@ function rewriteBody(body, proxyHost) {
 function rewriteUrl(url, proxyHost) {
   try {
     const parsed = new URL(url);
+    if (parsed.hostname === 'edith.xiaohongshu.com') {
+      return `https://${proxyHost}/api-edith${parsed.pathname}${parsed.search}`;
+    }
     if (parsed.hostname === UPSTREAM || parsed.hostname.endsWith('.xiaohongshu.com')) {
       parsed.hostname = proxyHost;
       return parsed.toString();

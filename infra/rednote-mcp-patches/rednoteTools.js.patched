@@ -1,0 +1,297 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RedNoteTools = void 0;
+const authManager_1 = require("../auth/authManager");
+const logger_1 = __importDefault(require("../utils/logger"));
+const noteDetail_1 = require("./noteDetail");
+class RedNoteTools {
+    constructor() {
+        this.browser = null;
+        this.page = null;
+        logger_1.default.info('Initializing RedNoteTools');
+        this.authManager = new authManager_1.AuthManager();
+    }
+    async initialize() {
+        logger_1.default.info('Initializing browser and page');
+        this.browser = await this.authManager.getBrowser();
+        if (!this.browser) {
+            throw new Error('Failed to initialize browser');
+        }
+        try {
+            const ctx = this.browser.contexts()[0] || await this.browser.newContext({ serviceWorkers: 'block' });
+            this.page = await ctx.newPage();
+            await this.page.addInitScript(() => {
+                const s = document.createElement('style');
+                s.textContent = '.cookie-banner-overlay,.cookie-banner,[class*="cookie-banner"]{display:none!important;pointer-events:none!important;opacity:0!important;z-index:-1!important}';
+                (document.head || document.documentElement).appendChild(s);
+                new MutationObserver(() => { if (!document.head.contains(s)) (document.head || document.documentElement).appendChild(s); }).observe(document.documentElement, { childList: true, subtree: true });
+            });
+            await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                const url = route.request().url().replace(
+                    'https://edith.xiaohongshu.com',
+                    'https://xhs.life-ai.app/api-edith'
+                );
+                await route.continue({ url });
+            });
+            await this.page.route('**://xhslink.com/**', async (route) => {
+                const url = route.request().url().replace(
+                    'https://xhslink.com',
+                    'https://xhs.life-ai.app'
+                );
+                const response = await route.fetch({ url });
+                await route.fulfill({ response });
+            });
+            await this.page.route('**/website-login/error**', (route) => route.abort());
+            await this.page.route('**://www.xiaohongshu.com/**', async (route) => {
+                const url = route.request().url().replace('https://www.xiaohongshu.com', 'https://xhs.life-ai.app');
+                const response = await route.fetch({ url });
+                await route.fulfill({ response });
+            });
+            // Load cookies if available
+            const cookies = await this.authManager.getCookies();
+            if (cookies.length > 0) {
+                logger_1.default.info(`Loading ${cookies.length} cookies`);
+                // Add cookies for both domains so edith.xiaohongshu.com gets them directly
+                const extraCookies = cookies
+                    .filter(c => c.domain === 'www.xiaohongshu.com' || c.domain === '.www.xiaohongshu.com')
+                    .map(c => ({ ...c, domain: '.xiaohongshu.com' }));
+                await this.page.context().addCookies([...cookies, ...extraCookies]);
+            }
+            // Check login status
+            logger_1.default.info('Checking login status');
+            await this.page.goto('https://xhs.life-ai.app');
+            await this.page.evaluate(() => {
+                document.querySelectorAll('.cookie-banner-overlay, .cookie-banner, [class*="cookie-banner"]').forEach(el => el.remove());
+            }).catch(() => {});
+            const isLoggedIn = await this.page.evaluate(() => {
+                const sidebarUser = document.querySelector('.user.side-bar-component .channel');
+                return sidebarUser?.textContent?.trim() === '我';
+            });
+            // If not logged in, perform login
+            if (!isLoggedIn) {
+                logger_1.default.error('Not logged in, please login first');
+                throw new Error('Not logged in');
+            }
+            logger_1.default.info('Login status verified');
+        }
+        catch (error) {
+            // 初始化过程中出错，确保清理资源
+            await this.cleanup();
+            throw error;
+        }
+    }
+    async cleanup() {
+        logger_1.default.info('Cleaning up browser resources');
+        try {
+            if (this.page) {
+                await this.page.close().catch(err => logger_1.default.error('Error closing page:', err));
+                this.page = null;
+            }
+            if (this.browser) {
+                await this.browser.close().catch(err => logger_1.default.error('Error closing browser:', err));
+                this.browser = null;
+            }
+        }
+        catch (error) {
+            logger_1.default.error('Error during cleanup:', error);
+        }
+        finally {
+            this.page = null;
+            this.browser = null;
+        }
+    }
+    extractRedBookUrl(shareText) {
+        // 匹配 http://xhslink.com/ 开头的链接
+        const xhslinkRegex = /(https?:\/\/xhslink\.com\/[a-zA-Z0-9\/]+)/i;
+        const xhslinkMatch = shareText.match(xhslinkRegex);
+        if (xhslinkMatch && xhslinkMatch[1]) {
+            return xhslinkMatch[1];
+        }
+        // 匹配 https://www.xiaohongshu.com/ 开头的链接
+        const xiaohongshuRegex = /(https?:\/\/(?:www\.)?(?:xiaohongshu\.com|xhs\.life-ai\.app)\/[^，\s]+)/i;
+        const xiaohongshuMatch = shareText.match(xiaohongshuRegex);
+        if (xiaohongshuMatch && xiaohongshuMatch[1]) {
+            return xiaohongshuMatch[1];
+        }
+        return shareText;
+    }
+    async searchNotes(keywords, limit = 10) {
+        logger_1.default.info(`Searching notes with keywords: ${keywords}, limit: ${limit}`);
+        try {
+            await this.initialize();
+            if (!this.page)
+                throw new Error('Page not initialized');
+            // Navigate to search page
+            logger_1.default.info('Navigating to search page');
+            await this.page.goto(`https://xhs.life-ai.app/search_result?keyword=${encodeURIComponent(keywords)}`);
+            await this.page.waitForTimeout(500);
+            // Wait for search results to load
+            logger_1.default.info('Waiting for search results');
+            await this.page.waitForSelector('.feeds-container', {
+                timeout: 30000
+            });
+            // Get all note items
+            let noteItems = await this.page.$$('.feeds-container .note-item');
+            logger_1.default.info(`Found ${noteItems.length} note items`);
+            const notes = [];
+            // Process each note
+            for (let i = 0; i < Math.min(noteItems.length, limit); i++) {
+                logger_1.default.info(`Processing note ${i + 1}/${Math.min(noteItems.length, limit)}`);
+                try {
+                    // Click on the note cover to open detail
+                    await noteItems[i].$eval('a.cover.mask.ld', (el) => el.click());
+                    // Wait for the note page to load
+                    logger_1.default.info('Waiting for note page to load');
+                    await this.page.waitForSelector('#noteContainer', {
+                        timeout: 30000
+                    });
+                    await this.randomDelay(0.5, 1.5);
+                    // Extract note content
+                    const note = await this.page.evaluate(() => {
+                        const article = document.querySelector('#noteContainer');
+                        if (!article)
+                            return null;
+                        // Get title
+                        const titleElement = article.querySelector('#detail-title');
+                        const title = titleElement?.textContent?.trim() || '';
+                        // Get content
+                        const contentElement = article.querySelector('#detail-desc .note-text');
+                        const content = contentElement?.textContent?.trim() || '';
+                        // Get author info
+                        const authorElement = article.querySelector('.author-wrapper .username');
+                        const author = authorElement?.textContent?.trim() || '';
+                        // Get interaction counts from engage-bar
+                        const engageBar = document.querySelector('.engage-bar-style');
+                        const likesElement = engageBar?.querySelector('.like-wrapper .count');
+                        const likes = parseInt(likesElement?.textContent?.replace(/[^\d]/g, '') || '0');
+                        const collectElement = engageBar?.querySelector('.collect-wrapper .count');
+                        const collects = parseInt(collectElement?.textContent?.replace(/[^\d]/g, '') || '0');
+                        const commentsElement = engageBar?.querySelector('.chat-wrapper .count');
+                        const comments = parseInt(commentsElement?.textContent?.replace(/[^\d]/g, '') || '0');
+                        return {
+                            title,
+                            content,
+                            url: window.location.href,
+                            author,
+                            likes,
+                            collects,
+                            comments
+                        };
+                    });
+                    if (note) {
+                        logger_1.default.info(`Extracted note: ${note.title}`);
+                        notes.push(note);
+                    }
+                    // Add random delay before closing
+                    await this.randomDelay(0.5, 1);
+                    // Close note by clicking the close button
+                    const closeButton = await this.page.$('.close-circle');
+                    if (closeButton) {
+                        logger_1.default.info('Closing note dialog');
+                        await this.page.evaluate(() => { const b = document.querySelector('.close-circle'); if (b) b.click(); });
+                        // Wait for note dialog to disappear
+                        await this.page.waitForSelector('#noteContainer', {
+                            state: 'detached',
+                            timeout: 30000
+                        });
+                    }
+                }
+                catch (error) {
+                    logger_1.default.error(`Error processing note ${i + 1}:`, error);
+                    const closeButton = await this.page.$('.close-circle');
+                    if (closeButton) {
+                        logger_1.default.info('Attempting to close note dialog after error');
+                        await this.page.evaluate(() => { const b = document.querySelector('.close-circle'); if (b) b.click(); });
+                        // Wait for note dialog to disappear
+                        await this.page.waitForSelector('#noteContainer', {
+                            state: 'detached',
+                            timeout: 30000
+                        });
+                    }
+                }
+                finally {
+                    // Add random delay before next note
+                    await this.randomDelay(0.5, 1.5);
+                }
+            }
+            logger_1.default.info(`Successfully processed ${notes.length} notes`);
+            return notes;
+        }
+        catch (error) {
+            logger_1.default.error('Error searching notes:', error);
+            throw error;
+        }
+        finally {
+            await this.cleanup();
+        }
+    }
+    async getNoteContent(url) {
+        logger_1.default.info(`Getting note content for URL: ${url}`);
+        try {
+            await this.initialize();
+            if (!this.page)
+                throw new Error('Page not initialized');
+            const actualURL = this.extractRedBookUrl(url);
+            await this.page.goto(actualURL);
+            let note = await (0, noteDetail_1.GetNoteDetail)(this.page);
+            note.url = url;
+            logger_1.default.info(`Successfully extracted note: ${note.title}`);
+            return note;
+        }
+        catch (error) {
+            logger_1.default.error('Error getting note content:', error);
+            throw error;
+        }
+        finally {
+            await this.cleanup();
+        }
+    }
+    async getNoteComments(url) {
+        logger_1.default.info(`Getting comments for URL: ${url}`);
+        try {
+            await this.initialize();
+            if (!this.page)
+                throw new Error('Page not initialized');
+            await this.page.goto(url);
+            // Wait for comments to load
+            logger_1.default.info('Waiting for comments to load');
+            await this.page.waitForSelector('[role="dialog"] [role="list"]');
+            // Extract comments
+            const comments = await this.page.evaluate(() => {
+                const items = document.querySelectorAll('[role="dialog"] [role="list"] [role="listitem"]');
+                const results = [];
+                items.forEach((item) => {
+                    const author = item.querySelector('[data-testid="user-name"]')?.textContent?.trim() || '';
+                    const content = item.querySelector('[data-testid="comment-content"]')?.textContent?.trim() || '';
+                    const likes = parseInt(item.querySelector('[data-testid="likes-count"]')?.textContent || '0');
+                    const time = item.querySelector('time')?.textContent?.trim() || '';
+                    results.push({ author, content, likes, time });
+                });
+                return results;
+            });
+            logger_1.default.info(`Successfully extracted ${comments.length} comments`);
+            return comments;
+        }
+        catch (error) {
+            logger_1.default.error('Error getting note comments:', error);
+            throw error;
+        }
+        finally {
+            await this.cleanup();
+        }
+    }
+    /**
+     * Wait for a random duration between min and max seconds
+     * @param min Minimum seconds to wait
+     * @param max Maximum seconds to wait
+     */
+    async randomDelay(min, max) {
+        const delay = Math.random() * (max - min) + min;
+        logger_1.default.debug(`Adding random delay of ${delay.toFixed(2)} seconds`);
+        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+    }
+}
+exports.RedNoteTools = RedNoteTools;

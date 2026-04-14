@@ -1,0 +1,60 @@
+--- /tmp/package/dist/auth/authManager.js	1985-10-26 08:15:00.000000000 +0000
++++ /usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js	2026-04-14 18:35:18.336889576 +0000
+@@ -74,7 +74,7 @@
+         logger_1.default.info('Launching browser');
+         // 始终创建新的浏览器实例，不复用之前的
+         this.browser = await playwright_1.chromium.launch({
+-            headless: false,
++            headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
+         });
+         return this.browser;
+     }
+@@ -87,7 +87,7 @@
+         logger_1.default.info(`Starting login process with timeout: ${timeoutSeconds}s`);
+         const timeoutMs = timeoutSeconds * 1000;
+         this.browser = await playwright_1.chromium.launch({
+-            headless: false,
++            headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
+             timeout: timeoutMs,
+         });
+         if (!this.browser) {
+@@ -101,15 +101,37 @@
+                 logger_1.default.info(`Login attempt ${retryCount + 1}/${maxRetries}`);
+                 this.context = await this.browser.newContext();
+                 this.page = await this.context.newPage();
++                await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
++                    const url = route.request().url().replace(
++                        'https://edith.xiaohongshu.com',
++                        'https://xhs.life-ai.app/api-edith'
++                    );
++                    await route.continue({ url });
++                });
++                await this.page.route('**://xhslink.com/**', async (route) => {
++                    const url = route.request().url().replace('https://xhslink.com', 'https://xhs.life-ai.app');
++                    const response = await route.fetch({ url });
++                    await route.fulfill({ response });
++                });
++                await this.page.route('**://www.xiaohongshu.com/**', async (route) => {
++                    const url = route.request().url().replace('https://www.xiaohongshu.com', 'https://xhs.life-ai.app');
++                    const response = await route.fetch({ url });
++                    await route.fulfill({ response });
++                });
++                await this.page.route('**/website-login/error**', (route) => route.abort());
+                 // Load existing cookies if available
+                 const cookies = await this.cookieManager.loadCookies();
+                 if (cookies && cookies.length > 0) {
+                     logger_1.default.info(`Loaded ${cookies.length} existing cookies`);
+-                    await this.context.addCookies(cookies);
++                    // Add cookies for both domains so edith.xiaohongshu.com gets them directly
++                    const extraCookies = cookies
++                        .filter(c => c.domain === 'www.xiaohongshu.com' || c.domain === '.www.xiaohongshu.com')
++                        .map(c => ({ ...c, domain: '.xiaohongshu.com' }));
++                    await this.context.addCookies([...cookies, ...extraCookies]);
+                 }
+                 // Navigate to explore page
+                 logger_1.default.info('Navigating to explore page');
+-                await this.page.goto('https://www.xiaohongshu.com/explore', {
++                await this.page.goto('https://xhs.life-ai.app/explore', {
+                     waitUntil: 'domcontentloaded',
+                     timeout: timeoutMs
+                 });
