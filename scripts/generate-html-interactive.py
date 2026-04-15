@@ -13,6 +13,9 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib.meal_utils import get_meal_types, get_default_time, get_meal_emoji, format_meal_type_label
+
 
 class InteractiveHTMLGenerator:
     """Generate interactive React travel plan from skeleton and agent data"""
@@ -606,7 +609,8 @@ class InteractiveHTMLGenerator:
             }
         }
 
-        for meal_type in ["breakfast", "lunch", "dinner"]:
+        day_meals_data = next((d for d in self.meals.get("days", []) if d.get("day") == day_num), {}) if self.meals else {}
+        for meal_type in get_meal_types(day_meals_data):
             if self.meals and "days" in self.meals:
                 day_meals = next((d for d in self.meals["days"] if d.get("day") == day_num), {})
                 if meal_type in day_meals:
@@ -1284,8 +1288,9 @@ class InteractiveHTMLGenerator:
             # Find meals for this city
             if self.meals and "cities" in self.meals:
                 city_meals = next((c for c in self.meals["cities"] if c.get("city") == city_name), {})
-                for i, meal in enumerate(city_meals.get("meals", [])[:3]):
-                    meal_type = ["breakfast", "lunch", "dinner"][i]
+                _default_meal_keys = ["breakfast", "lunch", "dinner"]
+                for i, meal in enumerate(city_meals.get("meals", [])):
+                    meal_type = _default_meal_keys[i] if i < len(_default_meal_keys) else f"meal_{i + 1}"
                     m_name_base = meal.get("name_base", meal.get("name", ""))
                     m_name_local = meal.get("name_local", meal.get("name_chinese", ""))
                     day["meals"][meal_type] = {
@@ -1302,9 +1307,7 @@ class InteractiveHTMLGenerator:
                         "notes_base": meal.get("notes", ""),
                         "notes_local": meal.get("notes_local", ""),
                         "image": self._get_placeholder_image("meal", poi_name=m_name_local if m_name_local else m_name_base, name_base=m_name_base, name_local=m_name_local),
-                        "time": {"start": "08:00", "end": "09:00"} if meal_type == "breakfast" else
-                                {"start": "12:00", "end": "13:30"} if meal_type == "lunch" else
-                                {"start": "18:30", "end": "20:00"},
+                        "time": get_default_time(meal_type),
                         "links": {}
                     }
                     day["budget"]["meals"] += self._to_display_currency(meal.get("price_range_eur_low", 10), "EUR")
@@ -2043,7 +2046,8 @@ const dayLabelShort = (dayNumOrObj, lng) => {
 };
 
 // Meal type emoji (kept separate from label text — emoji is decoration, not translation)
-const mealEmoji = { breakfast: '🌅', lunch: '☀️', dinner: '🌙' };
+const mealEmoji = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', brunch: '🍳', afternoon_tea: '🍵', mid_morning_cafe: '☕', late_night_snack: '🌃', supper: '🍽️' };
+const getMealEmoji = (type) => mealEmoji[type] || '🍴';
 
 // Google Maps logo (from Simple Icons)
 const GoogleMapsLogo = ({ size = 14 }) => (
@@ -2286,11 +2290,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               <Section title={L('meals', lang)} icon="🍽️">
                 <div style={categoryRowStyle}>
                   <div style={scrollContainerStyle} className="category-scroll-container">
-                    {['breakfast', 'lunch', 'dinner'].flatMap(type => {
+                    {Object.keys(day.meals || {}).filter(k => !k.endsWith('_options')).flatMap(type => {
                       const meal = day.meals[type];
-                      if (!meal) return [];
+                      if (!meal || typeof meal !== 'object') return [];
                       const options = day.meals[type + '_options'] || [meal];
-                      const emoji = mealEmoji[type] || '';
+                      const emoji = getMealEmoji(type);
                       const label = L(type, lang);
                       return options.map((opt, oi) => ({...opt, _type: type, _emoji: emoji, _label: label, _isPrimary: oi === 0, _oi: oi}));
                     }).map((opt, gi) => {
@@ -3035,10 +3039,11 @@ function NotionTravelApp() {
     let total = 0;
 
     if (category === 'meals') {
-      ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
-        if (dayData.meals[mealType]) {
-          items.push(dayData.meals[mealType]);
-          total += dayData.meals[mealType].cost || 0;
+      Object.keys(dayData.meals || {}).filter(k => !k.endsWith('_options')).forEach(mealType => {
+        const meal = dayData.meals[mealType];
+        if (meal && typeof meal === 'object') {
+          items.push(meal);
+          total += meal.cost || 0;
         }
       });
     } else if (category === 'attractions') {

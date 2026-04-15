@@ -141,6 +141,23 @@ def _derive_agent_configs(schema_dir: Path) -> dict:
         day_entry = defs.get("day_entry")
         if not day_entry:
             continue
+
+        # Handle additionalProperties-based schemas (e.g., meals with dynamic keys)
+        add_props = day_entry.get("additionalProperties")
+        if isinstance(add_props, dict) and "$ref" in add_props:
+            # Dynamic keys schema — find the referenced item def
+            ref_path = add_props["$ref"]  # e.g., "#/$defs/meal_slot"
+            ref_def = ref_path.split("/")[-1] if "/" in ref_path else ref_path
+            # Use the primary item type if the ref is a wrapper (e.g., meal_slot wraps meal_item)
+            item_schema = defs.get(ref_def, {})
+            primary_ref = item_schema.get("properties", {}).get("primary", {}).get("$ref", "")
+            if primary_ref:
+                primary_def = primary_ref.split("/")[-1]
+            else:
+                primary_def = ref_def
+            result[agent] = AgentConfig(primary_def, "named_keys", [], optional_key=True)
+            continue
+
         # Exactly one item def (not day_entry) is required
         item_defs = [k for k in defs if k != "day_entry"]
         if len(item_defs) != 1:
@@ -353,11 +370,18 @@ def extract_items(agent: str, config: AgentConfig, data: dict, trip: str) -> lis
         loc = day.get("location", "")
 
         if config.mode == "named_keys":
-            for key in config.keys:
+            # If config.keys is empty, derive dynamically from data (for additionalProperties schemas)
+            _structural_keys = {"day", "date", "location", "notes"}
+            keys_to_check = config.keys if config.keys else [k for k in day if k not in _structural_keys and isinstance(day.get(k), dict)]
+            for key in keys_to_check:
                 if key in day and isinstance(day[key], dict):
-                    name = day[key].get("name_base", key)
+                    # Handle meal_slot wrapper (primary key) — extract the inner item
+                    item_data = day[key]
+                    if "primary" in item_data and isinstance(item_data["primary"], dict):
+                        item_data = item_data["primary"]
+                    name = item_data.get("name_base", key)
                     items.append(ExtractedItem(
-                        day[key], agent, config.item_def, trip,
+                        item_data, agent, config.item_def, trip,
                         dn, dt, loc, f"Day {dn} ({dt}) {key}: {name}"))
 
         elif config.mode == "array":
@@ -693,7 +717,7 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
 
         # 4d-3. Required activities validation — schema-based, no hardcoded keyword lists.
         # Both meals and accommodation use explicit ref fields on timeline entries:
-        #   meal_ref: "breakfast" | "lunch" | "dinner"
+        #   meal_ref: any meal type key from meals.json (e.g., "breakfast", "lunch", "dinner", "afternoon_tea")
         #   accommodation_ref: true
         # This eliminates keyword lists and works for any language / accommodation type.
 
@@ -712,7 +736,11 @@ def check_semantics(items: list, agent: str, all_data: dict, trip: str, trip_dir
             tl_values = list(tl.values())
 
             # Meals: each meal type must have exactly one timeline entry with meal_ref set.
-            for meal_type in ("breakfast", "lunch", "dinner"):
+            # Derive meal types from actual meals data for this day
+            meals_raw = all_data.get("meals", {})
+            meals_day = next((d for d in meals_raw.get("data", {}).get("days", []) if d.get("day") == dn), {})
+            day_meal_types = [k for k, v in meals_day.items() if k not in ("day", "date", "location", "notes") and isinstance(v, dict)]
+            for meal_type in day_meal_types:
                 has_meal = any(v.get("meal_ref") == meal_type for v in tl_values)
                 if not has_meal:
                     issues.append(Issue(
@@ -1185,10 +1213,13 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
             if not isinstance(budget_meals, (int, float)):
                 continue
             actual = 0
-            for mt in ("breakfast", "lunch", "dinner"):
-                meal = mdays[dn].get(mt, {})
+            day_data = mdays[dn]
+            for mt in [k for k, v in day_data.items() if k not in ("day", "date", "location", "notes") and isinstance(v, dict)]:
+                meal = day_data.get(mt, {})
                 if isinstance(meal, dict):
-                    actual += meal.get("cost", 0)
+                    # Handle meal_slot format (primary key) vs flat format
+                    primary = meal.get("primary", meal)
+                    actual += primary.get("cost", 0)
             if budget_meals and actual and abs(budget_meals - actual) / max(budget_meals, 1) > 0.25:
                 issues.append(Issue(Severity.LOW, Category.CROSS_AGENT, "budget", trip, dn,
                                     f"Day {dn}", "budget.meals",

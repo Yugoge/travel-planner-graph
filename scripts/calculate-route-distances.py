@@ -71,8 +71,9 @@ def extract_locations_for_day(day: int, agent_data: Dict) -> List[Dict]:
         if not day_data:
             return locations
 
-        # Extract locations based on agent type
-        for key in ["breakfast", "lunch", "dinner"]:
+        # Extract locations based on agent type — dynamically iterate all meal-type keys
+        _non_meal_route = {"day", "date", "location", "notes"}
+        for key in [k for k in day_data if k not in _non_meal_route and isinstance(day_data.get(k), dict)]:
             if key in day_data and day_data[key]:
                 item = day_data[key]
                 if isinstance(item, dict) and "coordinates" in item:
