@@ -234,62 +234,6 @@ class AgentDataSyncer:
 
         return None
 
-    def _inject_time(self, item: dict, day_timeline: dict, agent: str, day_num: int,
-                     default_duration: float = 1.0) -> dict:
-        """Inject authoritative time from timeline into an item.
-
-        Priority:
-          1. timeline.json lookup (Single Source of Truth)
-          2. Existing time in item (normalize format)
-          3. None (skip)
-        """
-        item_name = item.get("name_base", item.get("name", ""))
-        # Also try name_local for matching
-        item_name_local = item.get("name_local", "")
-
-        # Try matching with name_base first, then name_local
-        tl_item = self._find_timeline_item(item_name, day_timeline)
-        if not tl_item and item_name_local:
-            tl_item = self._find_timeline_item(item_name_local, day_timeline)
-
-        if tl_item and "start_time" in tl_item and "end_time" in tl_item:
-            new_time = {"start": tl_item["start_time"], "end": tl_item["end_time"]}
-            old_time = item.get("time")
-            if old_time != new_time:
-                self.report["timeline_injections"].append({
-                    "agent": agent,
-                    "day": day_num,
-                    "item": item_name,
-                    "old_time": old_time,
-                    "new_time": new_time,
-                })
-            item["time"] = new_time
-            return item
-
-        # Normalize existing time if present
-        existing = item.get("time")
-        if existing is not None:
-            normalized = self._normalize_time(existing, default_duration)
-            if normalized and normalized != existing:
-                self.report["time_normalizations"].append({
-                    "agent": agent,
-                    "day": day_num,
-                    "item": item_name,
-                    "old": existing,
-                    "new": normalized,
-                })
-                item["time"] = normalized
-        elif day_timeline:
-            # Time is None and we couldn't match - report it
-            self.report["unmatched_items"].append({
-                "agent": agent,
-                "day": day_num,
-                "item": item_name,
-                "reason": "no timeline match, time is None",
-            })
-
-        return item
-
     def _sync_meals(self, timeline_by_day: dict):
         """Sync meals agent data with timeline."""
         print("Syncing meals...")
@@ -313,24 +257,7 @@ class AgentDataSyncer:
                 meal = meal_slot.get("primary", meal_slot)
 
                 original = deepcopy(meal)
-                # Direct meal_ref lookup — timeline entries tagged with meal_ref field
-                tl_item = next((v for v in day_tl.values() if v.get("meal_ref") == meal_type), None)
-                if tl_item and "start_time" in tl_item and "end_time" in tl_item:
-                    item_name = meal.get("name_base", meal.get("name", ""))
-                    new_time = {"start": tl_item["start_time"], "end": tl_item["end_time"]}
-                    old_time = meal.get("time")
-                    if old_time != new_time:
-                        self.report["timeline_injections"].append({
-                            "agent": "meals",
-                            "day": day_num,
-                            "item": item_name,
-                            "old_time": old_time,
-                            "new_time": new_time,
-                        })
-                    meal["time"] = new_time
-                else:
-                    # Fallback: name-based lookup (no time_hint needed)
-                    self._inject_time(meal, day_tl, "meals", day_num, default_duration=1.0)
+                # Name normalization only (time injection removed — timeline is single source of truth)
                 if meal != original:
                     if is_nested:
                         meal_slot["primary"] = meal
@@ -358,8 +285,7 @@ class AgentDataSyncer:
 
             for i, attr in enumerate(attractions):
                 original = deepcopy(attr)
-                self._inject_time(attr, day_tl, "attractions", day_num,
-                                  default_duration=2.0)
+                # Time injection removed — timeline is single source of truth
                 if attr != original:
                     attractions[i] = attr
                     modified = True
@@ -385,8 +311,7 @@ class AgentDataSyncer:
 
             for i, ent in enumerate(items):
                 original = deepcopy(ent)
-                self._inject_time(ent, day_tl, "entertainment", day_num,
-                                  default_duration=1.5)
+                # Time injection removed — timeline is single source of truth
                 if ent != original:
                     items[i] = ent
                     modified = True
@@ -397,98 +322,12 @@ class AgentDataSyncer:
             print("  No changes needed")
 
     def _sync_accommodation(self, timeline_by_day: dict):
-        """Sync accommodation agent data with timeline."""
+        """Sync accommodation agent data with timeline.
+        Time injection removed — timeline is single source of truth.
+        Only check_in/check_out (intrinsic hotel properties) remain in accommodation data.
+        """
         print("Syncing accommodation...")
-        data = self._load_json("accommodation.json")
-        if not data or "days" not in data:
-            print("  Skipped (no data)")
-            return
-
-        modified = False
-        for day in data["days"]:
-            day_num = day.get("day", 0)
-            day_tl = timeline_by_day.get(day_num, {})
-            accom = day.get("accommodation")
-            if not accom or not isinstance(accom, dict):
-                continue
-
-            # Accommodation needs time: {start, end} for HTML renderer.
-            # Source of truth: return-to-hotel travel_segment end_time in timeline,
-            # or the accommodation entry itself if found directly in timeline.
-            original = deepcopy(accom)
-            accom_name = accom.get("name_base", accom.get("name", ""))
-
-            # Strategy 1: find "Return to [Hotel]" travel segment end_time
-            return_seg_time = None
-            day_obj = None
-            # We need raw timeline day data (travel_segments), not just dict keys
-            # timeline_by_day is keyed by day_num and contains the timeline dict
-            # Travel segments are in the parent day object — access via self._load_json
-            tl_data = self._load_json("timeline.json")
-            if tl_data and "days" in tl_data:
-                for tl_day in tl_data["days"]:
-                    if tl_day.get("day") == day_num:
-                        day_obj = tl_day
-                        break
-            if day_obj:
-                # Use the LAST travel segment that explicitly says "Return to" or "返回酒店"
-                # (not just any segment going to a hotel, e.g. arrival from airport)
-                for seg in day_obj.get("travel_segments", []):
-                    seg_name = seg.get("name_base", "")
-                    seg_local = seg.get("name_local", "")
-                    is_return = (
-                        seg_name.lower().startswith("return to") or
-                        "返回" in seg_local
-                    )
-                    if is_return:
-                        return_seg_time = seg.get("end_time")
-                        # Don't break — use the LAST matching segment
-
-            # Strategy 2: find accommodation directly in timeline dict
-            tl_item = self._find_timeline_item(accom_name, day_tl)
-
-            # Determine check-in start time
-            checkin_start = None
-            if return_seg_time:
-                checkin_start = return_seg_time
-            elif tl_item and "start_time" in tl_item:
-                checkin_start = tl_item["start_time"]
-            elif accom.get("check_in"):
-                checkin_start = accom["check_in"]
-
-            if checkin_start:
-                old_time = accom.get("time")
-                # Build end time = start + 60 min (capped at 23:59)
-                try:
-                    h, m = map(int, checkin_start.split(":"))
-                    total_min = h * 60 + m + CHECKIN_WINDOW_MINUTES
-                    if total_min >= 24 * 60:
-                        checkin_end = "23:59"
-                    else:
-                        checkin_end = f"{total_min // 60:02d}:{total_min % 60:02d}"
-                except Exception:
-                    checkin_end = checkin_start
-                new_time = {"start": checkin_start, "end": checkin_end}
-                if accom.get("time") != new_time:
-                    accom["time"] = new_time
-                    accom["check_in_time"] = checkin_start
-                    self.report["timeline_injections"].append({
-                        "agent": "accommodation",
-                        "day": day_num,
-                        "item": accom_name,
-                        "old_time": old_time,
-                        "new_time": new_time,
-                        "field": "time",
-                    })
-
-            if accom != original:
-                day["accommodation"] = accom
-                modified = True
-
-        if modified:
-            self._save_json("accommodation.json", data)
-        else:
-            print("  No changes needed")
+        print("  No time injection needed (timeline is single source of truth)")
 
     def _sync_shopping(self, timeline_by_day: dict):
         """Sync shopping agent data with timeline."""
@@ -506,8 +345,7 @@ class AgentDataSyncer:
 
             for i, shop in enumerate(items):
                 original = deepcopy(shop)
-                self._inject_time(shop, day_tl, "shopping", day_num,
-                                  default_duration=1.5)
+                # Time injection removed — timeline is single source of truth
 
                 # Also normalize bilingual name fields if using old format
                 if "name" in shop and "name_base" not in shop:

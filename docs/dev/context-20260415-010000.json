@@ -1,0 +1,198 @@
+{
+  "request_id": "dev-20260415-010000",
+  "timestamp": "2026-04-15T01:00:00",
+  "requirement": {
+    "original": "Refactor travel-planner infrastructure to enforce timeline.json as the SINGLE source of truth for all time/scheduling data. Remove time fields from all POI agent files (meals, attractions, entertainment, shopping). No backwards compatibility, no symbolic fixes — clean break.",
+    "clarified": "Perform a clean-break refactor across schemas, scripts, and data files: (1) remove the `time` field from the four POI agent schemas and their data files, (2) remove the `time_range` shared type from poi-common.schema.json, (3) delete the _inject_time logic and all time-sync behavior from sync-agent-data.py, (4) rewrite generate-html-interactive.py to look up POI times from timeline.json by name/ref matching, (5) update plan-validate.py and save.py to not read or validate time from POI agent files. Gray areas (accommodation check_in/check_out, transportation departure_time/arrival_time) are kept as intrinsic service properties.",
+    "what": "Remove time/{start,end} fields from 4 POI agent schemas + poi-common.schema.json, strip time data from 26+ data files, delete sync-agent-data.py time injection logic, rewrite HTML generator timeline lookup, update validate/save scripts",
+    "why": "Eliminate dual-authority over scheduling data. Today both timeline.json and POI agent files store time ranges, leading to sync drift, circular dependencies, and schema complexity. timeline.json is the authoritative source; POI files should hold only POI-specific data.",
+    "where": [
+      "schemas/meals.schema.json",
+      "schemas/attractions.schema.json",
+      "schemas/entertainment.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/poi-common.schema.json",
+      "schemas/poi-data-schema.md",
+      "scripts/sync-agent-data.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/plan-validate.py",
+      "scripts/save.py",
+      "data/*/meals.json (8 trip directories)",
+      "data/*/attractions.json (7 trip directories)",
+      "data/*/entertainment.json (7 trip directories)",
+      "data/*/shopping.json (7 trip directories)",
+      "data/china-20260412-092624/accommodation.json",
+      "data/wangfujing-dongdan-beijing-20260405-192905/accommodation.json",
+      "data/qa-new-format-test/accommodation.json"
+    ],
+    "scope": {
+      "included": [
+        "Remove time property from meals.schema.json $defs.meal_item.properties and $defs.meal_item.required",
+        "Remove time property from attractions.schema.json $defs.attraction_item.properties and $defs.attraction_item.required",
+        "Remove time property from entertainment.schema.json $defs.entertainment_item.properties and $defs.entertainment_item.required",
+        "Remove time property from shopping.schema.json $defs.shopping_item.properties and $defs.shopping_item.required",
+        "Remove $defs.time_range block from poi-common.schema.json",
+        "Remove time row from universal fields table in poi-data-schema.md",
+        "Delete _inject_time() method from sync-agent-data.py",
+        "Delete all _inject_time() call sites in sync-agent-data.py (_sync_meals, _sync_attractions, _sync_entertainment, _sync_shopping)",
+        "Delete time-injection logic from _sync_accommodation in sync-agent-data.py",
+        "Rewrite generate-html-interactive.py _merge_day_data() to resolve POI times from timeline.json (by meal_ref for meals, by name-match for attractions/entertainment/shopping)",
+        "Update plan-validate.py _collect_all_activities_for_day() to not read time from POI agent files",
+        "Update plan-validate.py check_cross_agent() POI time conflict block to source times from timeline only",
+        "Update save.py _build_meal_act() and _build_poi_act() to not read time from POI files",
+        "Strip time field from all POI items in data/*/meals.json, attractions.json, entertainment.json, shopping.json",
+        "Remove injected time field from accommodation.json in 3 specific trip directories"
+      ],
+      "excluded": [
+        "accommodation.schema.json check_in/check_out fields (intrinsic hotel service properties)",
+        "transportation.schema.json departure_time/arrival_time fields (intrinsic transport service properties)",
+        "timeline.schema.json (no changes needed)",
+        ".claude/agents/*.md agent prompt files",
+        "Any backwards-compatibility shims or migration helpers",
+        "timeline.json data files (already correct as authoritative source)"
+      ]
+    },
+    "success_criteria": [
+      "Running jsonschema validation on any POI item object containing a 'time' key produces an additionalProperties error",
+      "grep -r '\"time\"' data/*/meals.json data/*/attractions.json data/*/entertainment.json data/*/shopping.json returns zero results",
+      "generate-html-interactive.py renders correct times on POI cards sourced from timeline.json",
+      "sync-agent-data.py run on any trip directory does not write time fields to any POI agent file",
+      "plan-validate.py produces zero HIGH issues on a clean plan with no time fields in POI files"
+    ],
+    "constraints": [
+      "No backwards compatibility — existing data files must be migrated (time field stripped), not wrapped",
+      "Meal time lookup must use meal_ref ('breakfast'/'lunch'/'dinner') matching against timeline entries, not restaurant name matching",
+      "All 4 POI item schemas use additionalProperties: false, so removing 'time' from properties is sufficient — no need to add an explicit 'not' constraint",
+      "The _normalize_time() helper in generate-html-interactive.py should remain (still used for travel segment start_time/end_time conversion)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Time/scheduling data exists redundantly in both timeline.json and POI agent files (meals, attractions, entertainment, shopping), requiring sync infrastructure that is fragile and creates drift",
+    "root_cause": "The original system design placed time fields in POI agent schemas as required fields, making POI agents responsible for scheduling data they should not own. When timeline.json was introduced as the authoritative scheduling source, sync-agent-data.py was added as a band-aid to copy times from timeline into POI files rather than removing time from POI files",
+    "root_cause_commit": "N/A - architectural debt across multiple historical commits",
+    "why_introduced": "POI schemas originally included time for convenience — agents could describe a complete activity in one place. Timeline was added later as a higher-level scheduling mechanism without cleaning up the now-redundant time fields in POI schemas.",
+    "why_problematic": "Dual authority creates: (1) drift when timeline is updated but sync is not run, (2) circular dependency where sync reads timeline to write POI files, (3) schema complexity from time_range type used across all POI schemas, (4) HTML generator reading stale POI times instead of authoritative timeline times",
+    "timeline": "Architectural debt present since initial schema design; sync-agent-data.py added as workaround; now being eliminated with clean break",
+    "affected_files": [
+      "schemas/meals.schema.json",
+      "schemas/attractions.schema.json",
+      "schemas/entertainment.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/poi-common.schema.json",
+      "scripts/sync-agent-data.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/plan-validate.py",
+      "scripts/save.py"
+    ]
+  },
+  "context": {
+    "codebase_state": "26 data files across 8 trip directories contain time fields in POI items. 3 accommodation.json files have injected time fields. schemas use additionalProperties: false on all 4 POI item types.",
+    "recent_commits": "6efa17d Auto-commit: 2026-04-14 20:28:57, 3dc713c Auto-commit: 2026-04-14 19:16:52",
+    "file_contents": {
+      "schemas/meals.schema.json:40": "\"time\": { \"$ref\": \"poi-common.schema.json#/$defs/time_range\" }",
+      "schemas/meals.schema.json:56": "\"required\": [\"name_base\", \"name_local\", \"location_base\", \"location_local\", \"cost\", \"currency_local\", \"cuisine_base\", \"time\", \"optional\"]",
+      "schemas/attractions.schema.json:39": "\"time\": { \"$ref\": \"poi-common.schema.json#/$defs/time_range\" }",
+      "schemas/attractions.schema.json:55": "\"required\": [\"name_base\", \"name_local\", \"location_base\", \"location_local\", \"cost\", \"currency_local\", \"type_base\", \"time\", \"optional\"]",
+      "schemas/entertainment.schema.json:34": "\"time\": { \"$ref\": \"poi-common.schema.json#/$defs/time_range\" }",
+      "schemas/entertainment.schema.json:60": "\"required\": [\"name_base\", \"name_local\", \"location_base\", \"location_local\", \"cost\", \"currency_local\", \"type_base\", \"time\", \"optional\"]",
+      "schemas/shopping.schema.json:38": "\"time\": { \"$ref\": \"poi-common.schema.json#/$defs/time_range\" }",
+      "schemas/shopping.schema.json:68": "\"required\": [\"name_base\", \"name_local\", \"location_base\", \"location_local\", \"cost\", \"currency_local\", \"type_base\", \"time\", \"optional\"]",
+      "schemas/poi-common.schema.json:61-78": "\"time_range\": { type object with start/end HH:MM pattern }",
+      "scripts/sync-agent-data.py:237-291": "_inject_time() method - injects timeline start_time/end_time into POI item.time field",
+      "scripts/sync-agent-data.py:293-341": "_sync_meals() - calls _inject_time via meal_ref or name lookup at lines 332-333",
+      "scripts/sync-agent-data.py:345-370": "_sync_attractions() - calls _inject_time at lines 361-362",
+      "scripts/sync-agent-data.py:372-397": "_sync_entertainment() - calls _inject_time at lines 388-389",
+      "scripts/sync-agent-data.py:399-491": "_sync_accommodation() - injects time into accommodation at lines 471-482",
+      "scripts/sync-agent-data.py:493-535": "_sync_shopping() - calls _inject_time at lines 509-510",
+      "scripts/generate-html-interactive.py:559": "meal_time = self._normalize_time(meal.get('time'))",
+      "scripts/generate-html-interactive.py:644": "attr_time = self._normalize_time(attr.get('time'))",
+      "scripts/generate-html-interactive.py:687": "ent_time = self._normalize_time(ent.get('time'))",
+      "scripts/generate-html-interactive.py:745": "mall_time = self._normalize_time(shop_item.get('time', {}))",
+      "scripts/generate-html-interactive.py:818": "acc_time = self._normalize_time(acc.get('time'))",
+      "scripts/plan-validate.py:934-960": "_collect_all_activities_for_day() reads meal.get('time') and poi.get('time') from agent files",
+      "scripts/plan-validate.py:1256-1368": "check_cross_agent() POI time conflict block reads time from POI agent files",
+      "scripts/save.py:239": "t = m.get('time', {}) in _build_meal_act()",
+      "scripts/save.py:267": "t = poi.get('time', {}) in _build_poi_act()"
+    },
+    "dependencies": {
+      "timeline_entry_format": "Each timeline entry: { start_time: 'HH:MM', end_time: 'HH:MM', meal_ref?: 'breakfast'|'lunch'|'dinner', accommodation_ref?: true, transit?: true }",
+      "meal_time_lookup": "Meals must be looked up by meal_ref field ('breakfast'/'lunch'/'dinner'), NOT by restaurant name",
+      "attraction_time_lookup": "Attractions/entertainment/shopping use multi-tier name matching: exact name_base, then base-name (strip parentheticals), then substring — mirrors _find_timeline_item() in sync-agent-data.py lines 194-235",
+      "data_files_with_time": [
+        "data/agent-test-20260212-191529/meals.json",
+        "data/china-exchange-bucket-list-2026/meals.json",
+        "data/china-exchange-bucket-list-2026/entertainment.json",
+        "data/china-exchange-bucket-list-2026/shopping.json",
+        "data/test-unified-scripts-20260212-190655/meals.json",
+        "data/beijing-exchange-bucket-list-20260202-232405/meals.json",
+        "data/beijing-exchange-bucket-list-20260202-232405/attractions.json",
+        "data/beijing-exchange-bucket-list-20260202-232405/entertainment.json",
+        "data/beijing-exchange-bucket-list-20260202-232405/shopping.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/meals.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/attractions.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/entertainment.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/shopping.json",
+        "data/qa-new-format-test/meals.json",
+        "data/qa-new-format-test/attractions.json",
+        "data/qa-new-format-test/entertainment.json",
+        "data/qa-new-format-test/shopping.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/meals.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/attractions.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/entertainment.json",
+        "data/china-feb-15-mar-7-2026-20260202-195429/shopping.json",
+        "data/china-20260412-092624/meals.json",
+        "data/china-20260412-092624/attractions.json",
+        "data/china-20260412-092624/entertainment.json",
+        "data/china-20260412-092624/shopping.json",
+        "data/qa-test-schema-check/meals.json"
+      ],
+      "accommodation_files_with_injected_time": [
+        "data/china-20260412-092624/accommodation.json",
+        "data/wangfujing-dongdan-beijing-20260405-192905/accommodation.json",
+        "data/qa-new-format-test/accommodation.json"
+      ]
+    },
+    "environment": {
+      "python_version": "3.x",
+      "project_root": "/root/travel-planner",
+      "schema_dir": "schemas/",
+      "data_dir": "data/",
+      "scripts_dir": "scripts/"
+    }
+  },
+  "development_approach": {
+    "strategy": "Execute in 4 phases to prevent breakage at each stage: (1) Schema surgery — remove time from 4 POI schemas and poi-common.schema.json, update poi-data-schema.md; (2) Script surgery — delete _inject_time and all sync time logic, update generate-html-interactive.py to read from timeline, update plan-validate.py and save.py; (3) Data cleanup — strip time fields from all 26 POI data files and 3 accommodation files; (4) Verification — run plan-validate.py to confirm zero HIGH issues, run HTML generator to confirm time displays correctly.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "schemas/meals.schema.json — remove time property (line 40) and time from required array (line 56)",
+      "schemas/attractions.schema.json — remove time property (line 39) and time from required array (line 55)",
+      "schemas/entertainment.schema.json — remove time property (line 34) and time from required array (line 60)",
+      "schemas/shopping.schema.json — remove time property (line 38) and time from required array (line 68)",
+      "schemas/poi-common.schema.json — remove $defs.time_range block (lines 61-78)",
+      "schemas/poi-data-schema.md — remove time row from table (line 23) and time in example (line 156)",
+      "scripts/sync-agent-data.py — delete _inject_time method (lines 237-291) and all call sites; delete accommodation time injection (lines 399-491)",
+      "scripts/generate-html-interactive.py — rewrite meal/attraction/entertainment/shopping/accommodation time lookup to use timeline.json",
+      "scripts/plan-validate.py — rewrite _collect_all_activities_for_day and cross-agent time conflict block to use timeline only",
+      "scripts/save.py — update _build_meal_act and _build_poi_act to not read poi.time",
+      "data/*/meals.json (8 trips) — strip time field from all meal items",
+      "data/*/attractions.json (7 trips) — strip time field from all attraction items",
+      "data/*/entertainment.json (7 trips) — strip time field from all entertainment items",
+      "data/*/shopping.json (7 trips) — strip time field from all shopping items",
+      "data/china-20260412-092624/accommodation.json — remove injected time field",
+      "data/wangfujing-dongdan-beijing-20260405-192905/accommodation.json — remove injected time field",
+      "data/qa-new-format-test/accommodation.json — remove injected time field"
+    ],
+    "validation_approach": "After all changes: (1) python scripts/plan-validate.py china-20260412-092624 — should pass with zero HIGH issues; (2) python scripts/generate-html-interactive.py china-20260412-092624 — should complete without error and produce HTML with times; (3) python scripts/sync-agent-data.py china-20260412-092624 --dry-run — should show zero time injections; (4) grep -r '\"time\"' data/*/meals.json data/*/attractions.json data/*/entertainment.json data/*/shopping.json — should return no results."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward schema and data refactor with clear root cause (dual authority over scheduling data) and well-identified affected files. No new patterns or architectural decisions required — the direction (timeline as single source of truth) is already specified by the user."
+  }
+}

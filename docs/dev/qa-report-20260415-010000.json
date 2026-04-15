@@ -1,0 +1,323 @@
+{
+  "request_id": "dev-20260415-010000",
+  "timestamp": "2026-04-15T02:15:00",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "The refactor is structurally correct and 4 of 5 acceptance criteria pass. However AC3 (HTML generator uses timeline for time display) fails with a critical bug: the two new helper methods _get_meal_time_from_timeline() and _get_timeline_time() were added to generate-html-interactive.py but are never called. All five old poi.get('time') call sites (lines 621, 706, 749, 807, 880) remain in _merge_day_data(). Since time was correctly stripped from POI files, all meal/attraction/entertainment/shopping/accommodation time fields in the generated HTML are null. Day 5 verification confirms: 谭豆花 (11:15), 明婷小馆 (13:00), and 饕林 (18:30) all show \"time\": null in the output HTML instead of the correct timeline times. The fix is a one-line substitution at each of the five call sites.",
+    "success_criteria_results": [
+      {
+        "criterion": "Running jsonschema validation on any POI item object containing a 'time' key produces an additionalProperties error",
+        "verification_method": "Ran jsonschema.validate() against meals.schema.json/$defs/meal_item with a meal item containing a time field",
+        "result": "pass",
+        "details": "Validation correctly rejected: 'Additional properties are not allowed ('time' was unexpected)'",
+        "evidence": [
+          "meals.schema.json: time property absent, additionalProperties: false confirmed",
+          "attractions.schema.json: time property absent, additionalProperties: false confirmed",
+          "entertainment.schema.json: time property absent, additionalProperties: false confirmed",
+          "shopping.schema.json: time property absent, additionalProperties: false confirmed",
+          "poi-common.schema.json: time_range $defs block confirmed removed",
+          "Live jsonschema validation test: PASS"
+        ]
+      },
+      {
+        "criterion": "grep -r '\"time\"' data/*/meals.json data/*/attractions.json data/*/entertainment.json data/*/shopping.json returns zero results",
+        "verification_method": "Ran grep -r '\"time\"' against all POI data files and .bak files across all trip directories",
+        "result": "pass",
+        "details": "Zero results for all POI data files (meals, attractions, entertainment, shopping). Non-POI files (load-level3-output.json, requirements-skeleton.json) contain time references but are out of scope. Accommodation files also confirmed clean.",
+        "evidence": [
+          "grep returned empty output for all 4 POI file types across all trip directories",
+          "find data/ -name '*.bak' | xargs grep -l '\"time\"' returned empty",
+          "Accommodation files (china-20260412, wangfujing-dongdan, qa-new-format-test) confirmed clean"
+        ]
+      },
+      {
+        "criterion": "generate-html-interactive.py renders correct times on POI cards sourced from timeline.json",
+        "verification_method": "Ran HTML generator, inspected output HTML for Day 5 meal times (谭豆花 at 11:15, 明婷小馆 at 13:00, 饕林 at 18:30), checked that _get_meal_time_from_timeline() and _get_timeline_time() are called from _merge_day_data()",
+        "result": "fail",
+        "details": "CRITICAL BUG: The two new helper methods _get_meal_time_from_timeline() (line 552) and _get_timeline_time() (line 512) are defined but never called. All five old poi.get('time') call sites remain unchanged: line 621 (meals), line 706 (attractions), line 749 (entertainment), line 807 (shopping), line 880 (accommodation). Since time was stripped from POI files, meal.get('time') returns None, and all 152 POI card time fields in the generated HTML are null. Timeline data exists and is correct (verified: Day 5 breakfast=11:15, lunch=13:00, dinner=18:30) but the lookup is never invoked. grep -c '\"time\": null' output HTML = 152.",
+        "evidence": [
+          "Line 621: meal_time = self._normalize_time(meal.get('time'))  -- should call _get_meal_time_from_timeline(meal_type, day_timeline)",
+          "Line 706: attr_time = self._normalize_time(attr.get('time'))  -- should call _get_timeline_time(attr_name_base, attr_name_local, day_timeline)",
+          "Line 749: ent_time = self._normalize_time(ent.get('time'))  -- should call _get_timeline_time(ent_name_base, ent_name_local, day_timeline)",
+          "Line 807: mall_time = self._normalize_time(shop_item.get('time', {}))  -- should call _get_timeline_time(shop_name_base, shop_name_local, day_timeline)",
+          "Line 880: acc_time = self._normalize_time(acc.get('time'))  -- should call _get_timeline_time(acc_name_base, acc_name_local, day_timeline)",
+          "HTML output: grep -c '\"time\": null' = 152 occurrences",
+          "HTML output: grep -c '\"time\": {' = 106 occurrences (all travel segments, not POI cards)",
+          "Day 5 timeline.json confirmed correct: 谭豆花 start_time=11:15, 明婷小馆 start_time=13:00, 饕林 start_time=18:30",
+          "Day 5 HTML meal cards: all three show '\"time\": null'"
+        ]
+      },
+      {
+        "criterion": "sync-agent-data.py run on any trip directory does not write time fields to any POI agent file",
+        "verification_method": "Ran sync-agent-data.py china-20260412-092624 --skip-html, inspected output and sync report",
+        "result": "pass",
+        "details": "Timeline injections: 0, Time normalizations: 0. No time fields written to any POI file. _inject_time() method confirmed deleted. _sync_accommodation() confirmed as no-op. All 4 POI sync methods confirmed with time injection removed.",
+        "evidence": [
+          "Sync output: 'Timeline injections:  0'",
+          "Sync output: 'Time normalizations:  0'",
+          "Sync output: 'No time injection needed (timeline is single source of truth)'",
+          "grep _inject_time scripts/sync-agent-data.py = no results"
+        ]
+      },
+      {
+        "criterion": "plan-validate.py produces zero HIGH issues on a clean plan with no time fields in POI files",
+        "verification_method": "Ran plan-validate.py against china-20260412-092624, reviewed all 16 HIGH issues",
+        "result": "pass",
+        "details": "All 16 HIGH issues are pre-existing timeline overlap issues unrelated to this refactor: 11 TRAVEL OVERLAP issues (travel segment end_time overlapping next activity start_time) and 5 TIME OVERLAP issues (concurrent timeline entries). Zero HIGH issues mention missing time fields in POI agents. _collect_all_activities_for_day() confirmed rewritten to read from timeline only. check_cross_agent() POI time conflict block confirmed removed (replaced with comment at line 1223).",
+        "evidence": [
+          "plan-validate.py output: HIGH: 16 | all are [timeline] or [timeline+timeline] category",
+          "No HIGH issues mentioning 'time' field absence on POI agents",
+          "_collect_all_activities_for_day() at line 913: reads from timeline.json only",
+          "check_cross_agent() line 1223: 'POI time conflict detection — removed'"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": "partial",
+      "confidence": "medium",
+      "rationale": "The root cause (dual authority over scheduling data) is structurally addressed: schemas are clean, data files are migrated, sync no longer injects time, validation no longer expects time. However the HTML generator fix is incomplete — the new timeline lookup methods were written but not wired into the calling code. The dual authority is eliminated from the data layer but the HTML output still shows null times because the lookup bridge was not connected."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "python scripts/generate-html-interactive.py china-20260412-092624",
+      "deploy_command": "N/A (static file generator, no Docker deployment needed for this change)",
+      "build_output_summary": "Generated travel-plan-china-20260412-092624.html (373.7 KB) without errors. SyntaxWarning for invalid escape sequence at line 1469 (pre-existing, not related to this refactor).",
+      "service_healthy": true,
+      "changes_verified_live": false,
+      "skip_reason": null,
+      "notes": "HTML generates without error but content is incorrect (null times on all POI cards). The build 'passes' in the sense of no crash, but the output fails AC3."
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "sync-agent-data.py produces no changes and 0 timeline injections",
+        "result": "pass",
+        "details": "Total changes: 0, Timeline injections: 0"
+      },
+      {
+        "test": "plan-validate.py HIGH issues are all pre-existing (not caused by refactor)",
+        "result": "pass",
+        "details": "All 16 HIGHs are travel overlap issues present before this refactor. Zero new HIGHs introduced."
+      },
+      {
+        "test": "HTML generator completes without runtime errors",
+        "result": "pass",
+        "details": "Generator runs to completion, produces 373.7 KB HTML"
+      },
+      {
+        "test": "jsonschema validation rejects POI items with time field",
+        "result": "pass",
+        "details": "additionalProperties: false correctly blocks time field on all 4 POI item schemas"
+      },
+      {
+        "test": "Accommodation files have no injected time field",
+        "result": "pass",
+        "details": "grep found no time fields in china-20260412, wangfujing-dongdan, qa-new-format-test accommodation.json files"
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "stale-description",
+        "location": "schemas/shopping.schema.json:6",
+        "issue": "Description string still says 'all items require currency, time, search_results' — 'time' is no longer required after this refactor",
+        "recommendation": "Update description to remove 'time': \"STRICT: no legacy fields, all items require currency, search_results.\""
+      },
+      {
+        "severity": "minor",
+        "category": "stale-comment",
+        "location": "scripts/generate-html-interactive.py:879",
+        "issue": "Comment 'Time comes from sync-injected item.time; fall back to check_in if absent' is now obsolete. Sync no longer injects time, so the primary path (acc.get('time')) always returns None.",
+        "recommendation": "Update comment and replace line 880 with timeline lookup using _get_timeline_time(acc_name_base, acc_name_local, day_timeline)"
+      },
+      {
+        "severity": "minor",
+        "category": "dead-code",
+        "location": "scripts/sync-agent-data.py:283, 309, 343",
+        "issue": "Variables day_tl are assigned from timeline_by_day in _sync_attractions, _sync_entertainment, _sync_shopping but never used (time injection was removed but the variable assignment remains)",
+        "recommendation": "Remove unused day_tl variable assignments from the three affected methods"
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 5,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true,
+      "notes": "This is an offline tool/script refactor — the travel-web Docker service serves a static HTML file, but the verification target is the HTML generator output quality rather than a running web app. Verification was performed directly on the generated output file and by executing the Python scripts."
+    },
+    "ui_test_results": [
+      {
+        "scenario": "Day 5 meal times in generated HTML (谭豆花 at 11:15, 明婷小馆 at 13:00, 饕林 at 18:30)",
+        "url": "file:///root/travel-planner/output/travel-plan-china-20260412-092624.html",
+        "status": "fail",
+        "reason": "All meal time fields are null in HTML output — timeline lookup methods exist but are not called from _merge_day_data()",
+        "steps_performed": [
+          "Ran python scripts/generate-html-interactive.py china-20260412-092624",
+          "Inspected output HTML for Day 5 meal time values",
+          "Confirmed timeline.json Day 5 has correct entries (11:15, 13:00, 18:30)",
+          "Checked generate-html-interactive.py _merge_day_data() for timeline lookup calls",
+          "Counted null time fields in HTML output"
+        ],
+        "assertions": [
+          {
+            "expected": "Day 5 breakfast (谭豆花) shows time: {start: '11:15', end: '12:15'} in HTML",
+            "actual": "HTML shows '\"time\": null' for breakfast meal card",
+            "passed": false
+          },
+          {
+            "expected": "Day 5 lunch (明婷小馆) shows time: {start: '13:00', end: '14:30'} in HTML",
+            "actual": "HTML shows '\"time\": null' for lunch meal card",
+            "passed": false
+          },
+          {
+            "expected": "Day 5 dinner (饕林) shows time: {start: '18:30', end: '21:00'} in HTML",
+            "actual": "HTML shows '\"time\": null' for dinner meal card",
+            "passed": false
+          },
+          {
+            "expected": "_get_meal_time_from_timeline() is called at line 621 in generate-html-interactive.py",
+            "actual": "Line 621 still calls self._normalize_time(meal.get('time')) — old POI file read, not timeline lookup",
+            "passed": false
+          },
+          {
+            "expected": "grep -c '\"time\": null' output HTML = 0 for POI cards",
+            "actual": "grep -c '\"time\": null' = 152 (all POI card time fields are null)",
+            "passed": false
+          }
+        ],
+        "evidence": "Lines 621, 706, 749, 807, 880 of generate-html-interactive.py still use poi.get('time') which now returns None since time was stripped from POI files. The new methods _get_meal_time_from_timeline() (line 552) and _get_timeline_time() (line 512) are defined but have zero call sites."
+      }
+    ],
+    "output_quality_verification": {
+      "checked": true,
+      "output_type": "generated_content",
+      "completeness": "some sections empty",
+      "quality_assessment": "poor",
+      "specific_checks": [
+        {
+          "check": "Meal time fields populated from timeline",
+          "result": "fail",
+          "details": "All 152 POI time fields are null. Travel segment times (106 occurrences) are correct, but POI cards (meals, attractions, entertainment, shopping, accommodation) show no times."
+        },
+        {
+          "check": "HTML file generates without crash",
+          "result": "pass",
+          "details": "373.7 KB file produced successfully"
+        },
+        {
+          "check": "Timeline data available and correct in source",
+          "result": "pass",
+          "details": "timeline.json Day 5 has correct meal_ref entries with start_time/end_time for all three meals"
+        }
+      ],
+      "verdict": "fail"
+    },
+    "generated_tests": [],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "scripts/generate-html-interactive.py:621",
+        "issue": "Meal time still reads from POI file (meal.get('time')) instead of calling _get_meal_time_from_timeline(). Since time was stripped from POI files, all meal card times are null in HTML output.",
+        "recommendation": "Replace: meal_time = self._normalize_time(meal.get('time'))  WITH: meal_time = self._get_meal_time_from_timeline(meal_type, day_timeline)",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/generate-html-interactive.py:706",
+        "issue": "Attraction time still reads from POI file (attr.get('time')) instead of calling _get_timeline_time(). All attraction card times are null.",
+        "recommendation": "Replace: attr_time = self._normalize_time(attr.get('time'))  WITH: attr_time = self._get_timeline_time(attr_name_base, attr_name_local, day_timeline)",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/generate-html-interactive.py:749",
+        "issue": "Entertainment time still reads from POI file (ent.get('time')) instead of calling _get_timeline_time(). All entertainment card times are null.",
+        "recommendation": "Replace: ent_time = self._normalize_time(ent.get('time'))  WITH: ent_time = self._get_timeline_time(ent_name_base, ent_name_local, day_timeline)",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/generate-html-interactive.py:807",
+        "issue": "Shopping time still reads from POI file (shop_item.get('time', {})) instead of calling _get_timeline_time(). All shopping card times are null.",
+        "recommendation": "Replace: mall_time = self._normalize_time(shop_item.get('time', {}))  WITH: mall_time = self._get_timeline_time(shop_name_base, shop_name_local, day_timeline)",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/generate-html-interactive.py:880",
+        "issue": "Accommodation time still reads from sync-injected item.time (acc.get('time')) which is now always None since time was stripped from accommodation files. The check_in fallback (line 882) provides only a single time string, not a timeline-sourced range.",
+        "recommendation": "Replace line 880: acc_time = self._normalize_time(acc.get('time'))  WITH: acc_time = self._get_timeline_time(acc_name_base, acc_name_local, day_timeline). Remove stale comment on line 879.",
+        "blocks_release": true
+      },
+      {
+        "severity": "minor",
+        "location": "schemas/shopping.schema.json:6",
+        "issue": "Description string still mentions 'time' as a required field: 'all items require currency, time, search_results'",
+        "recommendation": "Remove 'time' from the description string",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:879",
+        "issue": "Comment 'Time comes from sync-injected item.time; fall back to check_in if absent' is now incorrect — sync no longer injects time",
+        "recommendation": "Update comment to reflect that time comes from timeline lookup",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/sync-agent-data.py:283,309,343",
+        "issue": "Unused variable day_tl assigned in _sync_attractions, _sync_entertainment, _sync_shopping loops but never used",
+        "recommendation": "Remove the three day_tl = timeline_by_day.get(day_num, {}) assignments",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 5,
+      "major_issues": 0,
+      "minor_issues": 3,
+      "total_findings": 8,
+      "release_recommendation": "reject"
+    },
+    "self_verification": {
+      "claims_total": 12,
+      "claims_with_evidence": 12,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "AC3: generate-html-interactive.py renders correct times on POI cards sourced from timeline.json"
+    ],
+    "critical_issues": [
+      "generate-html-interactive.py: _get_meal_time_from_timeline() and _get_timeline_time() were defined but never wired into _merge_day_data(). Five old poi.get('time') call sites remain unchanged at lines 621, 706, 749, 807, 880. All POI card times in HTML output are null.",
+      "Fix required at exactly 5 lines in scripts/generate-html-interactive.py:",
+      "Line 621: meal_time = self._normalize_time(meal.get('time'))  →  meal_time = self._get_meal_time_from_timeline(meal_type, day_timeline)",
+      "Line 706: attr_time = self._normalize_time(attr.get('time'))  →  attr_time = self._get_timeline_time(attr_name_base, attr_name_local, day_timeline)",
+      "Line 749: ent_time = self._normalize_time(ent.get('time'))  →  ent_time = self._get_timeline_time(ent_name_base, ent_name_local, day_timeline)",
+      "Line 807: mall_time = self._normalize_time(shop_item.get('time', {}))  →  mall_time = self._get_timeline_time(shop_name_base, shop_name_local, day_timeline)",
+      "Line 880: acc_time = self._normalize_time(acc.get('time'))  →  acc_time = self._get_timeline_time(acc_name_base, acc_name_local, day_timeline)"
+    ],
+    "recommended_approach": "One-line substitution at each of the 5 call sites. The helper methods already implement the correct logic. Variable day_timeline is already computed at line 583 and is in scope at all 5 call sites. After fix, verify by running the HTML generator and confirming Day 5 shows 谭豆花 at 11:15, 明婷小馆 at 13:00, 饕林 at 18:30 in the meal card time fields (not null).",
+    "additional_context": "All other aspects of the refactor are correctly implemented: schemas clean, data migrated, sync does not inject time, plan-validate works from timeline only, save.py returns None from both build functions. Only the HTML generator is broken. The 16 HIGH issues in plan-validate are pre-existing timeline overlaps, not regressions from this refactor."
+  }
+}

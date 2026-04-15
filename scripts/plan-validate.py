@@ -911,11 +911,14 @@ def _check_time_overlap(start1: str, end1: str, start2: str, end2: str) -> bool:
 
 
 def _collect_all_activities_for_day(all_data: dict, day_num: int) -> list:
-    """Collect ALL activities from ALL agents for a specific day.
+    """Collect ALL activities for a specific day from timeline.json only.
+
+    timeline.json is the single source of truth for all scheduling data.
+    POI agent files no longer contain time fields.
 
     Returns unified format: [{
-        "agent": "meals",
-        "name": "Dinner at Restaurant",
+        "agent": "timeline",
+        "name": "Activity Name",
         "start": "18:00",
         "end": "19:30",
         "optional": false
@@ -923,43 +926,7 @@ def _collect_all_activities_for_day(all_data: dict, day_num: int) -> list:
     """
     activities = []
 
-    # 1. Meals (breakfast, lunch, dinner)
-    meals_data = all_data.get("meals", {})
-    if meals_data:
-        for day in meals_data.get("data", {}).get("days", []):
-            if day.get("day") == day_num:
-                for meal_type in ["breakfast", "lunch", "dinner"]:
-                    meal = day.get(meal_type, {})
-                    if isinstance(meal, dict) and meal:
-                        time_obj = meal.get("time", {})
-                        if isinstance(time_obj, dict) and time_obj.get("start"):
-                            activities.append({
-                                "agent": "meals",
-                                "name": meal.get("name_base", f"{meal_type}"),
-                                "start": time_obj["start"],
-                                "end": time_obj["end"],
-                                "optional": meal.get("optional", False)
-                            })
-
-    # 2. POI agents (attractions, entertainment, shopping)
-    for agent in ["attractions", "entertainment", "shopping"]:
-        agent_data = all_data.get(agent, {})
-        if agent_data:
-            for day in agent_data.get("data", {}).get("days", []):
-                if day.get("day") == day_num:
-                    for poi in day.get(agent, []):
-                        if isinstance(poi, dict):
-                            time_obj = poi.get("time", {})
-                            if isinstance(time_obj, dict) and time_obj.get("start"):
-                                activities.append({
-                                    "agent": agent,
-                                    "name": poi.get("name_base", "Unknown"),
-                                    "start": time_obj["start"],
-                                    "end": time_obj["end"],
-                                    "optional": poi.get("optional", False)
-                                })
-
-    # 3. Timeline (CRITICAL: this is the missing piece!)
+    # Timeline is the single source of truth for all scheduling
     timeline_data = all_data.get("timeline", {})
     if timeline_data:
         for day in timeline_data.get("data", {}).get("days", []):
@@ -970,9 +937,9 @@ def _collect_all_activities_for_day(all_data: dict, day_num: int) -> list:
                         activities.append({
                             "agent": "timeline",
                             "name": activity_name,
-                            "start": sched["start_time"],  # Note: timeline uses start_time
-                            "end": sched["end_time"],      # not time.start
-                            "optional": False  # Timeline activities assumed required
+                            "start": sched["start_time"],
+                            "end": sched["end_time"],
+                            "optional": False
                         })
 
     return activities
@@ -1253,119 +1220,10 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
                     f'(each POI must belong to exactly one category)'
                 ))
 
-    # POI time conflict detection
-    for dn in ref_days:
-        poi_list = []  # [(agent, name, time_obj, optional_flag, poi_data)]
-
-        # Collect from attractions
-        attractions_data = all_data.get("attractions", {})
-        if attractions_data:
-            adays = {d.get("day"): d for d in attractions_data.get("data", {}).get("days", [])}
-            if dn in adays:
-                for idx, poi in enumerate(adays[dn].get("attractions", [])):
-                    if isinstance(poi, dict) and "time" in poi:
-                        poi_list.append((
-                            "attractions",
-                            poi.get("name_local", poi.get("name_base", f"attraction-{idx}")),
-                            poi.get("time"),
-                            poi.get("optional", False),
-                            poi
-                        ))
-
-        # Collect from entertainment
-        entertainment_data = all_data.get("entertainment", {})
-        if entertainment_data:
-            edays = {d.get("day"): d for d in entertainment_data.get("data", {}).get("days", [])}
-            if dn in edays:
-                for idx, poi in enumerate(edays[dn].get("entertainment", [])):
-                    if isinstance(poi, dict) and "time" in poi:
-                        poi_list.append((
-                            "entertainment",
-                            poi.get("name_local", poi.get("name_base", f"entertainment-{idx}")),
-                            poi.get("time"),
-                            poi.get("optional", False),
-                            poi
-                        ))
-
-        # Collect from shopping
-        shopping_data = all_data.get("shopping", {})
-        if shopping_data:
-            sdays = {d.get("day"): d for d in shopping_data.get("data", {}).get("days", [])}
-            if dn in sdays:
-                for idx, poi in enumerate(sdays[dn].get("shopping", [])):
-                    if isinstance(poi, dict) and "time" in poi:
-                        poi_list.append((
-                            "shopping",
-                            poi.get("name_local", poi.get("name_base", f"shopping-{idx}")),
-                            poi.get("time"),
-                            poi.get("optional", False),
-                            poi
-                        ))
-
-        # Collect from meals
-        if meals_data:
-            if dn in mdays:
-                for meal_type in ("breakfast", "lunch", "dinner"):
-                    meal = mdays[dn].get(meal_type, {})
-                    if isinstance(meal, dict) and "time" in meal:
-                        poi_list.append((
-                            "meals",
-                            meal.get("name_local", meal.get("name_base", meal_type)),
-                            meal.get("time"),
-                            meal.get("optional", False),
-                            meal
-                        ))
-
-        # Check for time conflicts between all POI pairs
-        for i in range(len(poi_list)):
-            for j in range(i + 1, len(poi_list)):
-                agent1, name1, time1, opt1, poi1 = poi_list[i]
-                agent2, name2, time2, opt2, poi2 = poi_list[j]
-
-                # Skip if either time is missing or invalid
-                if not isinstance(time1, dict) or not isinstance(time2, dict):
-                    continue
-                if "start" not in time1 or "end" not in time1:
-                    continue
-                if "start" not in time2 or "end" not in time2:
-                    continue
-
-                start1, end1 = time1["start"], time1["end"]
-                start2, end2 = time2["start"], time2["end"]
-
-                # Skip if any time value is empty
-                if not start1 or not end1 or not start2 or not end2:
-                    continue
-
-                # Rule 1: Identical time slots → HIGH severity if both non-optional
-                if start1 == start2 and end1 == end2:
-                    if not opt1 and not opt2:
-                        issues.append(Issue(
-                            Severity.HIGH, Category.CROSS_AGENT,
-                            f"{agent1}+{agent2}", trip, dn,
-                            f"Day {dn}", "time",
-                            f"IDENTICAL TIME CONFLICT: '{name1}' ({agent1}) and '{name2}' ({agent2}) "
-                            f"both scheduled at {start1}-{end1} (both non-optional)"
-                        ))
-                    # If at least one is optional, it's INFO (acceptable alternative)
-                    else:
-                        issues.append(Issue(
-                            Severity.INFO, Category.CROSS_AGENT,
-                            f"{agent1}+{agent2}", trip, dn,
-                            f"Day {dn}", "time",
-                            f"Identical time (optional): '{name1}' ({agent1}) and '{name2}' ({agent2}) "
-                            f"at {start1}-{end1} (at least one is optional)"
-                        ))
-
-                # Rule 2: Overlapping time slots → MEDIUM severity warning
-                elif (start1 < end2 and start2 < end1):
-                    issues.append(Issue(
-                        Severity.MEDIUM, Category.CROSS_AGENT,
-                        f"{agent1}+{agent2}", trip, dn,
-                        f"Day {dn}", "time",
-                        f"OVERLAPPING TIME: '{name1}' ({agent1}, {start1}-{end1}) overlaps "
-                        f"'{name2}' ({agent2}, {start2}-{end2})"
-                    ))
+    # POI time conflict detection — removed.
+    # Time fields no longer exist in POI agent files.
+    # All time conflict detection is now handled by check_all_activity_overlaps()
+    # which sources times exclusively from timeline.json.
 
     return issues
 

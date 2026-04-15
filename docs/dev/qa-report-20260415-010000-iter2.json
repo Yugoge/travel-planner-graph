@@ -1,0 +1,184 @@
+{
+  "request_id": "dev-20260415-010000-iter2",
+  "timestamp": "2026-04-15T01:30:00Z",
+  "qa": {
+    "status": "pass",
+    "overall_assessment": "All 5 call-site fixes in generate-html-interactive.py are correctly wired. Day 5 meals show the expected times from timeline.json (谭豆花 11:15-12:15, 明婷小馆 13:00-14:30, 饕林 18:30-21:00). No remaining poi.get('time') calls exist. Generate-and-deploy pipeline completes successfully. POI schemas contain no time field.",
+    "success_criteria_results": [
+      {
+        "criterion": "generate-html-interactive.py renders correct times on POI cards sourced from timeline.json",
+        "verification_method": "Ran HTML generator, then parsed embedded JSON in output HTML and extracted time fields for all 3 Day 5 meal restaurants",
+        "result": "pass",
+        "details": "谭豆花 breakfast: start=11:15 end=12:15; 明婷小馆 lunch: start=13:00 end=14:30; 饕林 dinner: start=18:30 end=21:00 — all exactly match timeline.json values",
+        "evidence": [
+          "output/travel-plan-china-20260412-092624.html embedded JSON at offset ~95787",
+          "'time': {'start': '11:15', 'end': '12:15'} for 谭豆花",
+          "'time': {'start': '13:00', 'end': '14:30'} for 明婷小馆",
+          "'time': {'start': '18:30', 'end': '21:00'} for 饕林"
+        ]
+      },
+      {
+        "criterion": "No poi.get('time') or .get(\"time\") calls remain in generate-html-interactive.py",
+        "verification_method": "grep -n '.get(\"time\")' and '.get('time')' against generate-html-interactive.py",
+        "result": "pass",
+        "details": "Zero matches returned",
+        "evidence": [
+          "grep .get[('\"']time returned exit:1 (no matches)"
+        ]
+      },
+      {
+        "criterion": "grep -r '\"time\"' data/*/meals.json data/*/attractions.json data/*/entertainment.json data/*/shopping.json returns zero results (AC2)",
+        "verification_method": "grep -rn '\"time\"' against china-20260412-092624 POI data files",
+        "result": "pass",
+        "details": "No time fields in POI data files for the verified trip directory",
+        "evidence": [
+          "grep on meals.json, attractions.json, entertainment.json, shopping.json returned exit code 1 (no matches)"
+        ]
+      },
+      {
+        "criterion": "POI schemas have no time field (AC1 — additionalProperties: false enforces rejection of time key)",
+        "verification_method": "grep -l '\"time\"' against all 4 POI schemas",
+        "result": "pass",
+        "details": "None of the 4 schema files (meals, attractions, entertainment, shopping) contain a time property definition",
+        "evidence": [
+          "schema_grep_exit:1 — grep returned no matching files"
+        ]
+      },
+      {
+        "criterion": "Full deployment pipeline completes successfully",
+        "verification_method": "bash /root/travel-planner/scripts/generate-and-deploy.sh china-20260412-092624",
+        "result": "pass",
+        "details": "All 5 pipeline stages completed: photo cache hit (132 photos), HTML generation (384.6KB), HTML validation, GitHub Pages deploy, local deploy. Final file pushed to gh-pages branch at Yugoge/travel-planner-graph.",
+        "evidence": [
+          "Step [2/5]: ✅ Generated: output/travel-plan-china-20260412-092624.html (384.6 KB)",
+          "Step [3/5]: ✅ HTML structure valid",
+          "Step [4/5]: ✅ Pushed to GitHub (commit 5fece54)",
+          "Step [5/5]: ✅ Local: https://travel.life-ai.app/china-20260412-092624/"
+        ]
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "The root cause (5 call sites still reading poi.get('time') after the lookup methods were written) is fully resolved. All 5 call sites in _merge_day_data now invoke _get_meal_time_from_timeline (meals) and _get_timeline_time (attractions/entertainment/shopping/accommodation). Times verified in output HTML match timeline.json exactly."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "python scripts/generate-html-interactive.py china-20260412-092624",
+      "deploy_command": "bash /root/travel-planner/scripts/generate-and-deploy.sh china-20260412-092624",
+      "build_output_summary": "Generated: output/travel-plan-china-20260412-092624.html (384.6 KB). SyntaxWarning on line 1469 (pre-existing invalid escape sequence in a raw string literal) — not introduced by this fix and does not affect output.",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "script_quality_results": [],
+    "regression_test_results": [
+      {
+        "test": "HTML generator produces output without runtime errors",
+        "result": "pass",
+        "details": "Script exits 0, output file is 384.6 KB, no exception tracebacks"
+      },
+      {
+        "test": "Deployment pipeline all stages complete",
+        "result": "pass",
+        "details": "Photo cache, HTML generation, validation, GitHub deploy, local deploy all pass"
+      },
+      {
+        "test": "No remaining poi.get('time') call sites",
+        "result": "pass",
+        "details": "grep returned no matches in generate-html-interactive.py"
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "minor",
+        "category": "other",
+        "location": "scripts/generate-html-interactive.py:1469",
+        "issue": "Pre-existing SyntaxWarning: invalid escape sequence '\\d' in a raw string literal. Not introduced by this iteration's changes.",
+        "recommendation": "Replace the problematic string with a raw string (r\"...\") or escape the backslash. Pre-existing; low priority."
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": false,
+      "skip_reason": "This is a server-side HTML generation pipeline, not an interactive web service. Verification was done by parsing the generated HTML output file directly, which is the correct QA approach for this type of change."
+    },
+    "ui_test_results": [
+      {
+        "scenario": "Day 5 meal times sourced from timeline.json in generated HTML",
+        "url": "file:///root/travel-planner/output/travel-plan-china-20260412-092624.html",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "Read output HTML file",
+          "Located 谭豆花 (breakfast) in embedded JSON — found time.start=11:15, time.end=12:15",
+          "Located 明婷小馆 (lunch) in embedded JSON — found time.start=13:00, time.end=14:30",
+          "Located 饕林 (dinner) in embedded JSON — found time.start=18:30, time.end=21:00"
+        ],
+        "assertions": [
+          {
+            "expected": "谭豆花 breakfast time = {start: '11:15', end: '12:15'}",
+            "actual": "\"time\": {\"start\": \"11:15\", \"end\": \"12:15\"} found in HTML at offset ~95787",
+            "passed": true
+          },
+          {
+            "expected": "明婷小馆 lunch time = {start: '13:00', end: '14:30'}",
+            "actual": "time.start=13:00, time.end=14:30 confirmed by regex extraction",
+            "passed": true
+          },
+          {
+            "expected": "饕林 dinner time = {start: '18:30', end: '21:00'}",
+            "actual": "time.start=18:30, time.end=21:00 confirmed by regex extraction",
+            "passed": true
+          }
+        ],
+        "evidence": "Embedded JSON in output/travel-plan-china-20260412-092624.html parsed via Python regex"
+      }
+    ],
+    "generated_tests": [],
+    "all_findings": [
+      {
+        "severity": "minor",
+        "location": "scripts/generate-html-interactive.py:1469",
+        "issue": "Pre-existing SyntaxWarning for invalid escape sequence '\\d' — not introduced by this change",
+        "recommendation": "Use r-string prefix or escape the backslash. Pre-existing technical debt.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 1,
+      "total_findings": 1,
+      "release_recommendation": "approve"
+    },
+    "self_verification": {
+      "claims_total": 5,
+      "claims_with_evidence": 5,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}

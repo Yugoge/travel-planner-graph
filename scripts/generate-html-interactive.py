@@ -509,16 +509,78 @@ class InteractiveHTMLGenerator:
         
         return brands
 
-    def _merge_day_data(self, day_skeleton: dict) -> dict:
-        """Merge skeleton day with agent data
+    def _get_timeline_time(self, name_base: str, name_local: str, day_timeline: dict) -> dict:
+        """Look up time from timeline.json for a POI by name matching.
+        Returns {"start": "HH:MM", "end": "HH:MM"} or None.
+        """
+        if not day_timeline:
+            return None
+        for item_name in [name_base, name_local]:
+            if not item_name:
+                continue
+            # Tier 1: Exact match
+            if item_name in day_timeline:
+                entry = day_timeline[item_name]
+                if isinstance(entry, dict) and entry.get("start_time"):
+                    return {"start": entry["start_time"], "end": entry.get("end_time", "")}
+        # Tier 2: Base-name match (strip parentheticals)
+        for item_name in [name_base, name_local]:
+            if not item_name:
+                continue
+            item_base = item_name.split("(")[0].strip().split("（")[0].strip()
+            for tl_key, tl_val in day_timeline.items():
+                if not isinstance(tl_val, dict) or tl_val.get("transit"):
+                    continue
+                tl_base = tl_key.split("(")[0].strip().split("（")[0].strip()
+                if item_base.lower() == tl_base.lower():
+                    if tl_val.get("start_time"):
+                        return {"start": tl_val["start_time"], "end": tl_val.get("end_time", "")}
+        # Tier 3: Substring match
+        for item_name in [name_base, name_local]:
+            if not item_name:
+                continue
+            item_base = item_name.split("(")[0].strip().lower()
+            for tl_key, tl_val in day_timeline.items():
+                if not isinstance(tl_val, dict) or tl_val.get("transit"):
+                    continue
+                tl_base = tl_key.split("(")[0].strip().lower()
+                if item_base in tl_key.lower() or tl_base in item_name.lower():
+                    if tl_val.get("start_time"):
+                        return {"start": tl_val["start_time"], "end": tl_val.get("end_time", "")}
+        return None
 
-        Fix #6: Use actual times from timeline.json instead of virtual defaults
-        Root cause: timeline.json loaded but never consumed in merge logic
+    def _get_meal_time_from_timeline(self, meal_type: str, day_timeline: dict) -> dict:
+        """Look up meal time from timeline using meal_ref field.
+        Returns {"start": "HH:MM", "end": "HH:MM"} or None.
+        """
+        if not day_timeline:
+            return None
+        for tl_val in day_timeline.values():
+            if isinstance(tl_val, dict) and tl_val.get("meal_ref") == meal_type:
+                if tl_val.get("start_time"):
+                    return {"start": tl_val["start_time"], "end": tl_val.get("end_time", "")}
+        return None
+
+    def _get_day_timeline(self, day_num: int) -> dict:
+        """Get the timeline dict for a specific day number."""
+        if not self.timeline or "days" not in self.timeline:
+            return {}
+        for day in self.timeline["days"]:
+            if day.get("day") == day_num:
+                return day.get("timeline", {})
+        return {}
+
+    def _merge_day_data(self, day_skeleton: dict) -> dict:
+        """Merge skeleton day with agent data.
+        Time data sourced exclusively from timeline.json (single source of truth).
         """
         day_num = day_skeleton.get("day", 1)
         date = day_skeleton.get("date", "")
-        location_base = day_skeleton.get("location", "Unknown")  # Use location_base instead of location
+        location_base = day_skeleton.get("location", "Unknown")
         location_local = day_skeleton.get("location_local", "")
+
+        # Build timeline lookup for this day
+        day_timeline = self._get_day_timeline(day_num)
 
         merged = {
             "day": day_num,
@@ -556,7 +618,7 @@ class InteractiveHTMLGenerator:
                     meal_currency = meal.get("currency_local", "CNY")
                     cost = self._to_display_currency(cost, meal_currency)
 
-                    meal_time = self._normalize_time(meal.get("time"))
+                    meal_time = self._get_meal_time_from_timeline(meal_type, day_timeline)
 
                     name_base = meal.get("name_base", meal_type)
                     name_local = meal.get("name_local", "")
@@ -641,7 +703,7 @@ class InteractiveHTMLGenerator:
                 for attr in day_attrs["attractions"]:
                     attr_name_base = attr.get("name_base", "")
                     attr_name_local = attr.get("name_local", "")
-                    attr_time = self._normalize_time(attr.get("time"))
+                    attr_time = self._get_timeline_time(attr.get("name_base",""), attr.get("name_local",""), day_timeline)
 
                     # Convert cost to display currency
                     cost = attr.get("cost", 0)
@@ -684,7 +746,7 @@ class InteractiveHTMLGenerator:
                 for ent in day_ent["entertainment"]:
                     ent_name_base = ent.get("name_base", "")
                     ent_name_local = ent.get("name_local", "")
-                    ent_time = self._normalize_time(ent.get("time"))
+                    ent_time = self._get_timeline_time(ent.get("name_base",""), ent.get("name_local",""), day_timeline)
 
                     # Convert cost to display currency
                     cost = ent.get("cost", 0)
@@ -742,7 +804,7 @@ class InteractiveHTMLGenerator:
                     name_base=shop_name_base,
                     name_local=shop_name_local
                 )
-                mall_time = self._normalize_time(shop_item.get("time", {}))
+                mall_time = self._get_timeline_time(shop_item.get("name_base",""), shop_item.get("name_local",""), day_timeline)
 
                 # Single card per shopping item. If brands exist, append brand info to notes.
                 # (Fix for cfc5766 brand-splitting that caused duplicate mall images on every brand card.)
@@ -815,7 +877,7 @@ class InteractiveHTMLGenerator:
                 acc_name_local = acc.get("name_local", "")
 
                 # Time comes from sync-injected item.time; fall back to check_in if absent
-                acc_time = self._normalize_time(acc.get("time"))
+                acc_time = self._get_timeline_time(acc_name_base, acc_name_local, day_timeline)
                 if not acc_time and acc.get("check_in"):
                     acc_time = self._normalize_time(acc.get("check_in"), default_duration_hours=0.5)
 
@@ -2636,10 +2698,19 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
   // Root cause fix: Standardize optional chaining for all day properties
-  if (day.meals?.breakfast) add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
-  if (day.meals?.brunch) add(day.meals.brunch, 'meal', L('cat_brunch', lang));
-  if (day.meals?.lunch) add(day.meals.lunch, 'meal', L('cat_lunch', lang));
-  if (day.meals?.dinner) add(day.meals.dinner, 'meal', L('cat_dinner', lang));
+  // Include alternatives from _options arrays; mark non-primary entries with _isAlternative
+  ['breakfast', 'brunch', 'lunch', 'dinner'].forEach(mealType => {
+    const catKey = 'cat_' + mealType;
+    const options = day.meals?.[mealType + '_options'];
+    if (options && options.length > 0) {
+      options.forEach((opt, i) => {
+        const entry = add(opt, 'meal', L(catKey, lang));
+        if (entry && i > 0) entry._isAlternative = true;
+      });
+    } else if (day.meals?.[mealType]) {
+      add(day.meals[mealType], 'meal', L(catKey, lang));
+    }
+  });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
@@ -2865,17 +2936,17 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         ) : (
                           <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                         )}
-                        {entry.optional && showDetails && (
+                        {(entry.optional || entry._isAlternative) && showDetails && (
                           <span style={{
                             fontSize: `${9 * fontScale}px`,
                             padding: '1px 4px',
-                            background: '#f5f5f3',
+                            background: entry._isAlternative ? '#edf2fc' : '#f5f5f3',
                             borderRadius: '3px',
-                            color: '#9b9a97',
+                            color: entry._isAlternative ? '#2b63b5' : '#9b9a97',
                             marginLeft: '4px',
                             verticalAlign: 'middle'
                           }}>
-                            {L('optional', lang)}
+                            {entry._isAlternative ? (lang === 'local' ? '备选' : 'Alt') : L('optional', lang)}
                           </span>
                         )}
                       </div>

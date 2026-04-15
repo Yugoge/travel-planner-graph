@@ -235,16 +235,10 @@ def _collect_timeline_activities(day: dict) -> list:
 
 
 def _build_meal_act(m: dict, mt: str) -> Optional[dict]:
-    """Build an activity dict from a meal slot, or None if invalid."""
-    t = m.get("time", {})
-    if not (isinstance(t, dict) and t.get("start")):
-        return None
-    return {
-        "ag": "meals", "name": m.get("name_base", mt),
-        "s": t["start"], "e": t.get("end", ""),
-        "optional": m.get("optional", False),
-        "meal_ref": True,
-    }
+    """Build an activity dict from a meal slot, or None.
+    Time fields no longer exist in POI data — conflict detection uses timeline only.
+    """
+    return None
 
 
 def _collect_meal_acts(sib_day: dict) -> list:
@@ -261,17 +255,10 @@ def _collect_meal_acts(sib_day: dict) -> list:
 
 
 def _build_poi_act(poi: dict, agent: str) -> Optional[dict]:
-    """Build an activity dict from a POI, or None if invalid."""
-    if not isinstance(poi, dict):
-        return None
-    t = poi.get("time", {})
-    if not (isinstance(t, dict) and t.get("start")):
-        return None
-    return {
-        "ag": agent, "name": poi.get("name_base", "?"),
-        "s": t["start"], "e": t.get("end", ""),
-        "optional": poi.get("optional", False),
-    }
+    """Build an activity dict from a POI, or None.
+    Time fields no longer exist in POI data — conflict detection uses timeline only.
+    """
+    return None
 
 
 def _collect_poi_acts(sib_day: dict, agent: str) -> list:

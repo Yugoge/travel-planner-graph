@@ -20,7 +20,6 @@ All POI types share a common base structure with type-specific extensions. Field
 | `notes_base` | string | No | English notes |
 | `notes_local` | string | No | Local language notes |
 | `search_results` | array | No | List of search result objects |
-| `time` | object | No | `{start: "HH:MM", end: "HH:MM"}` |
 | `**optional**` | boolean | **Yes** | **Whether this POI is optional to visit** |
 | `links` | object | No | External links (maps, booking, etc.) |
 
@@ -152,7 +151,6 @@ For existing data without the `optional` field, infer from:
   "duration_minutes": 45,
   "type_local": "风景区",
   "notes_local": "火锅晚餐前可选择游览。",
-  "time": {"start": "16:30", "end": "17:15"},
   "opening_hours": "All day",
   "currency_local": "CNY",
   "notes_base": "Optional evening visit before hotpot dinner.",

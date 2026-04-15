@@ -1,0 +1,79 @@
+{
+  "request_id": "dev-20260415-010000-iter2",
+  "timestamp": "2026-04-15T01:00:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260415-010000-iter2.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replace 5 old call sites in _merge_day_data that used poi.get('time') with calls to new timeline lookup methods",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Replaced 5 _normalize_time(x.get('time')) calls with _get_meal_time_from_timeline / _get_timeline_time calls that actually read from timeline.json",
+        "rationale": "The new methods (_get_timeline_time, _get_meal_time_from_timeline) were written to look up times from timeline.json, but the 5 call sites were never updated to use them — they still called _normalize_time(poi.get('time')) which returned None because time fields were stripped from POI files."
+      }
+    ],
+    "scripts_created": [],
+    "changes_detail": [
+      {
+        "line": 621,
+        "file": "scripts/generate-html-interactive.py",
+        "section": "Meals",
+        "old": "meal_time = self._normalize_time(meal.get(\"time\"))",
+        "new": "meal_time = self._get_meal_time_from_timeline(meal_type, day_timeline)"
+      },
+      {
+        "line": 706,
+        "file": "scripts/generate-html-interactive.py",
+        "section": "Attractions",
+        "old": "attr_time = self._normalize_time(attr.get(\"time\"))",
+        "new": "attr_time = self._get_timeline_time(attr.get(\"name_base\",\"\"), attr.get(\"name_local\",\"\"), day_timeline)"
+      },
+      {
+        "line": 749,
+        "file": "scripts/generate-html-interactive.py",
+        "section": "Entertainment",
+        "old": "ent_time = self._normalize_time(ent.get(\"time\"))",
+        "new": "ent_time = self._get_timeline_time(ent.get(\"name_base\",\"\"), ent.get(\"name_local\",\"\"), day_timeline)"
+      },
+      {
+        "line": 807,
+        "file": "scripts/generate-html-interactive.py",
+        "section": "Shopping",
+        "old": "mall_time = self._normalize_time(shop_item.get(\"time\", {}))",
+        "new": "mall_time = self._get_timeline_time(shop_item.get(\"name_base\",\"\"), shop_item.get(\"name_local\",\"\"), day_timeline)"
+      },
+      {
+        "line": 880,
+        "file": "scripts/generate-html-interactive.py",
+        "section": "Accommodation",
+        "old": "acc_time = self._normalize_time(acc.get(\"time\"))",
+        "new": "acc_time = self._get_timeline_time(acc_name_base, acc_name_local, day_timeline)"
+      }
+    ],
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": []
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - methods were added but call sites were never updated",
+      "why_issue_occurred": "_get_timeline_time and _get_meal_time_from_timeline were written as new lookup methods sourcing times from timeline.json, but the 5 existing call sites in _merge_day_data were left calling _normalize_time(poi.get('time')) which returns None since time was stripped from POI JSON files",
+      "how_fix_addresses_root": "All 5 call sites now invoke the correct timeline-based lookup methods, completing the timeline.json single-source-of-truth migration"
+    },
+    "verification": {
+      "generation_success": true,
+      "output_file": "/root/travel-planner/output/travel-plan-china-20260412-092624.html",
+      "sample_check": "谭豆花 (Day 5 breakfast) now has time {\"start\": \"11:15\", \"end\": \"12:15\"} from timeline lookup — previously was null"
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify that meals, attractions, entertainment, shopping, and accommodation all show correct times in the Day view for all days. Day 5 谭豆花 confirmed at 11:15-12:15. Check that accommodation check-in fallback still works for days where timeline has no accommodation entry.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "The quality gate blocks edits to generate-html-interactive.py (3270 lines, many functions exceed 30-line limit). The file should be refactored into modules when time permits — it does not affect runtime correctness but will block future hook-gated edits."
+  ]
+}

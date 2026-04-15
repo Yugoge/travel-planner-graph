@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-14T11:54:56Z*
-**Total entries**: 91
+*Last updated: 2026-04-15T09:04:59Z*
+**Total entries**: 97
 **Convention**: kebab
 
 ## Tree
@@ -34,6 +34,7 @@ dev/
 ├── `ba-spec-20260413-181500.md` - BA Specification: Horizontal Scroll Layout for Category Cards
 ├── `ba-spec-20260413-190000.md` - BA Specification: Fix sync-agent-data.py meal_types Detection Bug
 ├── `ba-spec-20260413-200500.md` - BA Specification: Hard-Blocking Time Conflict Gate in save.py
+├── `ba-spec-20260415-010000.md` - BA Specification: Enforce timeline.json as Single Source of Truth for Scheduling
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -54,6 +55,7 @@ dev/
 ├── `context-20260413-181500.json` - json config
 ├── `context-20260413-190000.json` - json config
 ├── `context-20260413-200500.json` - json config
+├── `context-20260415-010000.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
@@ -76,6 +78,8 @@ dev/
 ├── `dev-report-20260413-070000.json` - json config
 ├── `dev-report-20260413-181500.json` - json config
 ├── `dev-report-20260413-cleanup.json` - json config
+├── `dev-report-20260415-010000-iter2.json` - json config
+├── `dev-report-20260415-010000.json` - json config
 ├── `qa-full-audit-20260413.json` - json config
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
@@ -96,6 +100,8 @@ dev/
 ├── `qa-report-20260413-064500.json` - json config
 ├── `qa-report-20260413-070000.json` - json config
 ├── `qa-report-20260413-181500.json` - json config
+├── `qa-report-20260415-010000-iter2.json` - json config
+├── `qa-report-20260415-010000.json` - json config
 ├── `qa-validation-20260321.json` - json config
 └── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ```

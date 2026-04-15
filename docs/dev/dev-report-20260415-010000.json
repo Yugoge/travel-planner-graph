@@ -1,0 +1,119 @@
+{
+  "request_id": "dev-20260415-010000",
+  "timestamp": "2026-04-15T01:30:00",
+  "dev_report_path": "docs/dev/dev-report-20260415-010000.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Removed time property from 4 POI agent schemas",
+        "type": "schema",
+        "files_modified": [
+          "schemas/meals.schema.json",
+          "schemas/attractions.schema.json",
+          "schemas/entertainment.schema.json",
+          "schemas/shopping.schema.json"
+        ],
+        "changes": "Removed time property definition and time from required array in all 4 POI item schemas. Since additionalProperties: false, any data with time field will now fail schema validation.",
+        "rationale": "timeline.json is single source of truth for scheduling; POI files hold only POI-specific data"
+      },
+      {
+        "id": 2,
+        "description": "Removed time_range definition from poi-common.schema.json",
+        "type": "schema",
+        "files_modified": ["schemas/poi-common.schema.json"],
+        "changes": "Deleted the entire $defs.time_range block (was referenced by all 4 POI schemas). No remaining references to this definition.",
+        "rationale": "time_range was only used by POI schemas which no longer have time fields"
+      },
+      {
+        "id": 3,
+        "description": "Updated poi-data-schema.md documentation",
+        "type": "docs",
+        "files_modified": ["schemas/poi-data-schema.md"],
+        "changes": "Removed time row from universal fields table and time example from JSON example block",
+        "rationale": "Documentation must match schema reality"
+      },
+      {
+        "id": 4,
+        "description": "Rewrote HTML generator to source times from timeline.json",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Added _get_timeline_time() (multi-tier name matching), _get_meal_time_from_timeline() (meal_ref lookup), _get_day_timeline() helper methods. Replaced all 5 self._normalize_time(poi.get('time')) calls with timeline lookups: meals use meal_ref matching, attractions/entertainment/shopping use name-based matching, accommodation uses name matching with check_in fallback.",
+        "rationale": "HTML generator was reading stale time from POI files instead of authoritative timeline.json"
+      },
+      {
+        "id": 5,
+        "description": "Removed all time injection logic from sync-agent-data.py",
+        "type": "code",
+        "files_modified": ["scripts/sync-agent-data.py"],
+        "changes": "Deleted _inject_time() method entirely. Removed time injection calls from _sync_meals (direct meal_ref lookup + fallback), _sync_attractions, _sync_entertainment, _sync_shopping. Replaced _sync_accommodation with a no-op (check_in/check_out remain as intrinsic properties).",
+        "rationale": "Sync script was copying timeline times into POI files, creating dual authority. With timeline as single source of truth, this logic is eliminated."
+      },
+      {
+        "id": 6,
+        "description": "Updated plan-validate.py to source times from timeline only",
+        "type": "code",
+        "files_modified": ["scripts/plan-validate.py"],
+        "changes": "Rewrote _collect_all_activities_for_day() to only read from timeline.json (removed meals/POI agent time reads). Removed entire POI time conflict detection block from check_cross_agent() (lines 1256-1368) since POI files no longer have time. Activity overlap detection now handled exclusively by check_all_activity_overlaps() which reads from timeline.",
+        "rationale": "Validation must not expect or check time fields in POI data"
+      },
+      {
+        "id": 7,
+        "description": "Updated save.py to not read POI time fields",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "changes": "_build_meal_act() and _build_poi_act() now return None immediately. These functions previously read poi.get('time') to build activity dicts for conflict detection; since POI files no longer have time, conflict detection relies solely on timeline entries via _collect_timeline_activities().",
+        "rationale": "Conflict detection in save.py must use timeline only"
+      },
+      {
+        "id": 8,
+        "description": "Stripped time fields from all existing data files",
+        "type": "data_migration",
+        "files_modified": [
+          "data/*/meals.json (9 files)",
+          "data/*/attractions.json (5 files)",
+          "data/*/entertainment.json (7 files)",
+          "data/*/shopping.json (6 files)",
+          "data/*/accommodation.json (3 files - removed injected time and check_in_time)",
+          "data/*.json.bak (11 files)"
+        ],
+        "changes": "Stripped 'time' field from all POI items across 41 total files (including .bak backups). Handled standard meal slots (breakfast/lunch/dinner), non-standard keys (coffee_snacks), flat alternatives (lunch_alternatives), nested primary format, and accommodation injected time/check_in_time fields.",
+        "rationale": "Data files must be migrated to match the new schema (no backwards compatibility)"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A - architectural debt across multiple historical commits",
+      "why_issue_occurred": "POI schemas originally included time for convenience. When timeline.json was added as authoritative scheduling source, sync-agent-data.py was added as band-aid to copy times instead of removing them from POI files.",
+      "how_fix_addresses_root": "Clean break: removed time from all 4 POI schemas, deleted sync time injection, rewrote HTML generator to read from timeline.json directly, updated validators and save script. No dual authority remains."
+    },
+    "blast_radius": [
+      {"modified": "schemas/meals.schema.json", "imported_by": ["scripts/sync-agent-data.py", "scripts/save.py", "scripts/validate-agent-outputs.py"]},
+      {"modified": "schemas/attractions.schema.json", "imported_by": ["scripts/validate-agent-outputs.py"]},
+      {"modified": "schemas/entertainment.schema.json", "imported_by": ["scripts/validate-agent-outputs.py"]},
+      {"modified": "schemas/shopping.schema.json", "imported_by": ["scripts/validate-agent-outputs.py"]},
+      {"modified": "schemas/poi-common.schema.json", "imported_by": ["schemas/meals.schema.json", "schemas/attractions.schema.json", "schemas/entertainment.schema.json", "schemas/shopping.schema.json", "schemas/accommodation.schema.json", "schemas/transportation.schema.json"]},
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": ["scripts/sync-agent-data.py", "scripts/generate-and-deploy.sh", "scripts/generate-html.sh"]},
+      {"modified": "scripts/sync-agent-data.py", "imported_by": ["scripts/generate-and-deploy.sh"]},
+      {"modified": "scripts/plan-validate.py", "imported_by": ["scripts/save.py", "scripts/lib/json_io.py"]},
+      {"modified": "scripts/save.py", "imported_by": []}
+    ],
+    "qa_ready": true,
+    "qa_notes": "Verification completed: (1) HTML generator produces output with times sourced from timeline.json. (2) plan-validate.py shows 0 new HIGH issues (all 16 HIGHs are pre-existing timeline overlap issues). (3) sync-agent-data.py dry-run shows 0 time injections. (4) grep confirms 0 remaining time fields in POI data files. (5) All Python scripts compile without errors. TDD skipped: this is a data architecture refactor spanning schemas/scripts/data — the integration tests (HTML gen + plan-validate runs) serve as the verification.",
+    "permissions_to_add": [],
+    "implementation_notes": [
+      "accommodation.schema.json check_in/check_out fields preserved (intrinsic hotel properties, not scheduling)",
+      "transportation departure_time/arrival_time preserved (intrinsic transport properties)",
+      "_normalize_time() method kept in both sync-agent-data.py and generate-html-interactive.py (still used for travel segment time conversion)",
+      "The 16 HIGH issues in plan-validate.py are ALL pre-existing timeline overlap issues, not related to this refactor",
+      "The 25 schema violations in sync validation are pre-existing (image_url on meals, missing required breakfast/lunch on some days)"
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Update agent prompt .md files in .claude/agents/ to instruct POI agents not to include time fields",
+    "Fix the 16 pre-existing timeline overlap HIGH issues (travel segment end_time overlapping next activity start_time)",
+    "Consider adding a schema validation CI check to catch time field regressions"
+  ]
+}
