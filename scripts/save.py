@@ -41,12 +41,17 @@ DATA_DIR = PROJECT_ROOT / "data"
 PLAN_VALIDATE = PROJECT_ROOT / "scripts" / "plan-validate.py"
 
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lib.meal_utils import get_meal_types_from_schema, get_meal_types
+def _derive_meal_types():
+    """Derive meal types from meals schema."""
+    schema_path = Path(__file__).parent.parent / "schemas" / "meals.schema.json"
+    if schema_path.exists():
+        schema = json.loads(schema_path.read_text())
+        day_props = schema.get("$defs", {}).get("day_entry", {}).get("properties", {})
+        return [k for k, v in day_props.items() if v.get("$ref") == "#/$defs/meal_slot"]
+    return ["breakfast", "lunch", "dinner"]
 
 
-# Derive known meal types from schema (backward compat fallback)
-MEAL_TYPES = get_meal_types_from_schema()
+MEAL_TYPES = _derive_meal_types()
 SCHEDULE_AGENTS = {"timeline", "segment"}
 POI_AGENTS = {"meals", "attractions", "entertainment", "shopping"}
 TIMELINE_FIELD = "timeline"
@@ -70,7 +75,7 @@ def _load_image_fetcher(trip_slug: str):
 def _collect_day_pois(day: dict, agent: str) -> list:
     """Collect POIs from a day entry based on agent type."""
     if agent == "meals":
-        return [day[mt] for mt in get_meal_types(day) if isinstance(day.get(mt), dict)]
+        return [day[mt] for mt in MEAL_TYPES if isinstance(day.get(mt), dict)]
     if agent == "accommodation":
         acc = day.get("accommodation")
         return [acc] if isinstance(acc, dict) else []
@@ -239,7 +244,7 @@ def _build_meal_act(m: dict, mt: str) -> Optional[dict]:
 def _collect_meal_acts(sib_day: dict) -> list:
     """Extract meal activities from a meals day entry."""
     acts = []
-    for mt in get_meal_types(sib_day):
+    for mt in MEAL_TYPES:
         m = sib_day.get(mt, {})
         if not isinstance(m, dict):
             continue

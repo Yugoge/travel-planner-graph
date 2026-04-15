@@ -267,8 +267,8 @@ def _check_coordinate_bounds(data_dir: Path, warnings: List[str]):
     agents_with_coords = {
         "meals": lambda day: [
             (mt, day.get(mt, {}))
-            for mt in day.keys()
-            if mt not in ("day", "date", "location", "notes") and isinstance(day.get(mt), dict) and day.get(mt)
+            for mt in ["breakfast", "lunch", "dinner"]
+            if day.get(mt)
         ],
         "attractions": lambda day: [
             (f"attraction[{i}]", a)

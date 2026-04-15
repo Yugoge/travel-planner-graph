@@ -225,12 +225,13 @@ class TravelPlanHTMLGenerator:
                 days_list = agent_output.get("data", {}).get("days", [])
                 return next((d for d in days_list if d.get("day") == day_number), {})
 
-            # Merge meals — dynamically iterate all meal type keys
+            # Merge meals
             meal_day = find_day_data(meals, day_num)
-            _non_meal_keys = {"day", "date", "location", "notes"}
-            for _mk, _mv in meal_day.items():
-                if _mk not in _non_meal_keys and isinstance(_mv, dict):
-                    day[_mk] = _mv
+            day.update({
+                "breakfast": meal_day.get("breakfast", {}),
+                "lunch": meal_day.get("lunch", {}),
+                "dinner": meal_day.get("dinner", {})
+            })
 
             # Merge other categories
             day["attractions"] = find_day_data(attractions, day_num).get("attractions", [])
@@ -2948,18 +2949,16 @@ class TravelPlanHTMLGenerator:
         html += '</div>';
       }}
 
-      const _nonMealKeys = new Set(['day', 'date', 'location', 'notes', 'attractions', 'entertainment', 'shopping', 'accommodation', 'timeline', 'budget', 'location_change', 'travel_segments', 'restaurants']);
-      const dayMealKeys = Object.keys(day).filter(k => !_nonMealKeys.has(k) && typeof day[k] === 'object' && day[k] !== null && !Array.isArray(day[k]) && day[k].name);
-      if (day.restaurants && day.restaurants.length > 0 || dayMealKeys.length > 0) {{
+      if (day.restaurants && day.restaurants.length > 0 || day.breakfast && day.breakfast.name || day.lunch && day.lunch.name || day.dinner && day.dinner.name) {{
         html += '<h4 style="color: var(--color-accent); margin: 1.5rem 0 1rem;"><i class="fas fa-utensils"></i> Dining</h4>';
         html += '<div class="activity-grid">';
-        dayMealKeys.forEach(meal => {{
+        ['breakfast', 'lunch', 'dinner'].forEach(meal => {{
           if (day[meal] && day[meal].name) {{
             const formattedAddress = formatAddress(day[meal].location || day[meal].address);
             const formattedCategory = formatCategoryLabel(day[meal].category || day[meal].type, 'restaurant');
             const skillIcons = renderSkillIcons(day[meal].search_results);
             html += `<div class="activity-card">
-              <h4>${{meal.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}}: ${{day[meal].name}}${{skillIcons}}</h4>
+              <h4>${{meal.charAt(0).toUpperCase() + meal.slice(1)}}: ${{day[meal].name}}${{skillIcons}}</h4>
               <p><i class="fas fa-map-marker-alt"></i> ${{formattedAddress}}</p>
               ${{formattedCategory ? `<p><i class="fas fa-tag"></i> ${{formattedCategory}}</p>` : ''}}
               <p class="cost"><i class="fas fa-euro-sign"></i> €${{day[meal].cost_eur || day[meal].cost || 0}}</p>

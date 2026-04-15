@@ -112,9 +112,8 @@ class BatchImageFetcher:
                                 c = item.get("coordinates", {})
                                 if c.get("lat") and c.get("lng"):
                                     return (float(c["lng"]), float(c["lat"]))
-                        # Check meal items — dynamically iterate all meal-type keys
-                        _non_meal_coord = {"day", "date", "location", "notes", "attractions", "entertainment", "accommodation", "shopping"}
-                        for mk in [k for k in d if k not in _non_meal_coord and isinstance(d.get(k), dict)]:
+                        # Check meal items
+                        for mk in ["breakfast", "lunch", "dinner"]:
                             meal = d.get(mk, {})
                             if isinstance(meal, dict):
                                 c = meal.get("coordinates", {})
@@ -726,9 +725,8 @@ class BatchImageFetcher:
                             pois.append(poi_dict)
 
                 elif field_name == "meals":
-                    # Meals: dynamically iterate all meal-type keys
-                    _non_meal = {"day", "date", "location", "notes"}
-                    for meal_type in [k for k in day if k not in _non_meal and isinstance(day.get(k), dict)]:
+                    # Meals: breakfast/lunch/dinner with primary/alternatives
+                    for meal_type in ["breakfast", "lunch", "dinner"]:
                         meal_wrapper = day.get(meal_type)
                         if not meal_wrapper or not isinstance(meal_wrapper, dict):
                             continue
@@ -1120,8 +1118,7 @@ class BatchImageFetcher:
 
                 # Process meals (with primary/alternatives structure)
                 elif field_name == "meals":
-                    _non_meal2 = {"day", "date", "location", "notes"}
-                    for meal_type in [k for k in day if k not in _non_meal2 and isinstance(day.get(k), dict)]:
+                    for meal_type in ["breakfast", "lunch", "dinner"]:
                         meal_wrapper = day.get(meal_type)
                         if not meal_wrapper or not isinstance(meal_wrapper, dict):
                             continue

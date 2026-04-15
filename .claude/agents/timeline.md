@@ -139,11 +139,11 @@ For each day in the trip:
 
    | Field | Value | Required on |
    |-------|-------|-------------|
-   | `"meal_ref"` | Any meal type key from meals.json (e.g., `"breakfast"`, `"lunch"`, `"dinner"`, `"afternoon_tea"`, `"mid_morning_cafe"`) | Every meal entry (one per meal type per day) |
+   | `"meal_ref"` | `"breakfast"` \| `"lunch"` \| `"dinner"` | Every meal entry (one per meal type per day) |
    | `"accommodation_ref"` | `true` | The check-in or return-to-accommodation entry |
 
    **Rules:**
-   - Each meal type key present in meals.json must have exactly one timeline entry with `meal_ref` set to that type
+   - Each meal type must have exactly one timeline entry with `meal_ref` set to that type
    - Every day with accommodation must have exactly one entry with `accommodation_ref: true`
    - Works for any accommodation type or meal name — no keyword matching needed
    - `plan-validate.py` reports **HIGH severity** and **blocks saves** if any ref is missing

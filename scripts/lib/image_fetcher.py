@@ -360,17 +360,17 @@ class ImageFetcher:
                                 "location": item.get("location", "")
                             })
 
-                    # Extract meals — dynamically iterate all meal-type keys
-                    _non_meal_keys = {"day", "date", "location", "notes", "attractions", "entertainment", "accommodation", "shopping"}
-                    for meal_type in [k for k in day if k not in _non_meal_keys and isinstance(day.get(k), dict)]:
-                        item = day[meal_type]
-                        all_pois.append({
-                            "type": "meal",
-                            "name": item.get("name", ""),
-                            "gaode_id": item.get("gaode_id"),
-                            "address": item.get("address", ""),
-                            "location": item.get("location", "")
-                        })
+                    # Extract meals
+                    for meal_type in ["breakfast", "lunch", "dinner"]:
+                        if meal_type in day:
+                            item = day[meal_type]
+                            all_pois.append({
+                                "type": "meal",
+                                "name": item.get("name", ""),
+                                "gaode_id": item.get("gaode_id"),
+                                "address": item.get("address", ""),
+                                "location": item.get("location", "")
+                            })
 
                     # Extract entertainment
                     if "entertainment" in day:

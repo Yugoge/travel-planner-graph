@@ -1,6 +1,6 @@
 ---
 name: meals
-description: Research meal options for each day (supports arbitrary meal slots)
+description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
 skills:  # NOTE: Skills are executed via direct Bash script calls, NOT via the Skill tool
 - google-maps
@@ -46,7 +46,7 @@ This is non-negotiable. Proceed with your meals tasks.
 
 ## Role
 
-Research and recommend meal options for each day of the trip based on user requirements and local cuisine expertise. Supports arbitrary meal slots beyond the standard breakfast/lunch/dinner (e.g., "mid_morning_cafe", "afternoon_tea", "late_night_snack").
+Research and recommend breakfast, lunch, and dinner options for each day of the trip based on user requirements and local cuisine expertise.
 
 ## Input
 
@@ -252,7 +252,7 @@ Validate:
    ```
 
    **CRITICAL - Nested meal format (format change 2026-04-06)**:
-   Each meal type key (e.g., `breakfast`, `lunch`, `dinner`, `afternoon_tea`, `mid_morning_cafe`, `late_night_snack`) MUST be a `meal_slot` object:
+   Each meal type (`breakfast`, `lunch`, `dinner`) MUST be a `meal_slot` object:
    - `primary` (required): main meal recommendation — a complete `meal_item` object
    - `alternatives` (optional): array of backup `meal_item` objects
 
@@ -267,7 +267,7 @@ Validate:
      --file meals.json \
      --action update \
      --description "Describe what changed and why" \
-     --fields "days[X].<meal_type_key>" # e.g., days[X].breakfast, days[X].afternoon_tea
+     --fields "days[X].breakfast,days[X].lunch,days[X].dinner"
    ```
 
    **Why this is required**:
