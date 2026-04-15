@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-15T09:04:59Z*
-**Total entries**: 97
+*Last updated: 2026-04-15T20:59:58Z*
+**Total entries**: 100
 **Convention**: kebab
 
 ## Tree
@@ -15,6 +15,7 @@ dev/
 │   └── `01-initial-load.png` - png file
 ├── specs/
 │   └── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
+├── `ba-qa-report-20260415-210000.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -35,6 +36,7 @@ dev/
 ├── `ba-spec-20260413-190000.md` - BA Specification: Fix sync-agent-data.py meal_types Detection Bug
 ├── `ba-spec-20260413-200500.md` - BA Specification: Hard-Blocking Time Conflict Gate in save.py
 ├── `ba-spec-20260415-010000.md` - BA Specification: Enforce timeline.json as Single Source of Truth for Scheduling
+├── `ba-spec-20260415-210000.md` - BA Specification: Independent Cafe POI Type
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -56,6 +58,7 @@ dev/
 ├── `context-20260413-190000.json` - json config
 ├── `context-20260413-200500.json` - json config
 ├── `context-20260415-010000.json` - json config
+├── `context-20260415-210000.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config

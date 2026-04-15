@@ -1,7 +1,7 @@
 # agents
 
-*Last updated: 2026-04-14T09:13:16Z*
-**Total entries**: 8
+*Last updated: 2026-04-15T21:10:50Z*
+**Total entries**: 9
 **Convention**: kebab
 
 ## Tree
@@ -10,6 +10,7 @@ agents/
 ├── `accommodation.md` - Research hotels and lodging options for each location
 ├── `attractions.md` - Research sightseeing and activities based on user requirements
 ├── `budget.md` - Calculate daily budget breakdown and detect overages
+├── `cafe.md` - Research coffee shops, teahouses, and rest/relaxation spots for each day
 ├── `entertainment.md` - Research shows, nightlife, and entertainment options
 ├── `meals.md` - Research breakfast, lunch, and dinner options for each day
 ├── `shopping.md` - Research shopping destinations and retail experiences

@@ -1,7 +1,7 @@
 # schemas
 
-*Last updated: 2026-04-15T08:49:30Z*
-**Total entries**: 12
+*Last updated: 2026-04-15T21:09:54Z*
+**Total entries**: 13
 **Convention**: kebab
 
 ## Tree
@@ -10,6 +10,7 @@ schemas/
 ├── `accommodation.schema.json` - json config
 ├── `attractions.schema.json` - json config
 ├── `budget.schema.json` - json config
+├── `cafe.schema.json` - json config
 ├── `entertainment.schema.json` - json config
 ├── `index.md` - schemas Index
 ├── `meals.schema.json` - json config

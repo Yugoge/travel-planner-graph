@@ -1,0 +1,78 @@
+{
+  "request_id": "dev-20260415-210000",
+  "timestamp": "2026-04-15T21:45:00Z",
+  "type": "ba-validation",
+  "iteration": 2,
+  "verdict": "pass",
+  "summary": "All 6 previous objections adequately addressed; BA corrected save.py generic-branch claim, expanded migration to 3 entries including Day 15 primary, resolved spec/context contradiction, verified line numbers, added agent_item_mapping requirement, and documented additionalProperties nuance. Two new minor findings (imprecise insertion-point line references) do not block.",
+  "previous_objections_verification": {
+    "OBJ-1_CRITICAL": {
+      "status": "RESOLVED",
+      "verification": "save.py lines 75-84 confirmed: line 77 checks meals, line 79 checks accommodation, line 82 checks ['attractions', 'entertainment', 'shopping'], line 84 returns []. BA now correctly states in both spec (requirement #7, line 32) and context JSON (save.py file_contents) that there is NO generic fallback and cafe must be added to the explicit list on line 82. Spec and context are now consistent on this point.",
+      "evidence": "save.py:82 reads: if agent in [\"attractions\", \"entertainment\", \"shopping\"]. BA spec requirement #7 says: change to include 'cafe'. Context JSON says: 'There is NO generic fallback.' Edge cases section repeats same. All three locations consistent and correct."
+    },
+    "OBJ-2_CRITICAL": {
+      "status": "RESOLVED",
+      "verification": "meals.json line 1877 confirmed: METAL HANDS Coffee (Yonghegong) is Day 15 breakfast PRIMARY. BA migration_plan now has 3 entries: Day 1 alternatives[0] VOYAGE COFFEE (line 41), Day 1 alternatives[1] METAL HANDS Qianmen (line 75), Day 15 primary METAL HANDS Yonghegong (line 1877). BA correctly identifies that Day 15 alternative Huguosi Snacks (line 1902) must be promoted to primary. AC5 now explicitly lists all three entries and the Day 15 primary replacement.",
+      "evidence": "meals.json:1877 reads: 'name_base': 'METAL HANDS Coffee (Yonghegong)'. meals.json:1902 reads: 'name_base': 'Huguosi Snacks (Dongdan Branch)'. BA spec requirement #12, AC5, and migration_plan all now cover all 3 entries and the promotion."
+    },
+    "OBJ-3_MAJOR": {
+      "status": "RESOLVED",
+      "verification": "BA spec requirement #7 now says: 'There is NO generic fallback -- line 84 returns [] for unknown agents.' Context JSON save.py entry now says: 'There is NO generic fallback. Cafe must be added to the list on line 82.' Both are consistent -- no contradiction remains.",
+      "evidence": "Spec line 32 and context JSON context.file_contents['scripts/save.py'] both state the same requirement. Edge Cases section also reinforces the same point."
+    },
+    "OBJ-4_MAJOR": {
+      "status": "RESOLVED",
+      "verification": "BA now provides exact line numbers without '-area' suffix for all 14+ modification points in generate-html-interactive.py. Verified representative sample: Line 28 (self.meals load), Line 153 (labels dict), Line 592 (merged day structure), Line 599 (budget init), Lines 1139-1146 (budget total sum), Line 1549 (Donut items), Line 1816 (categoryConfig), Line 2252 (categoryColors), Lines 2333/2335 (Meals Section end / Attractions start), Lines 2571-2576 (budget legend), Lines 2714-2717 (map/calendar data), Lines 3037-3059 (handleBudgetClick). All verified exact.",
+      "evidence": "Each line number checked against actual file content. No '-area' suffixes remain. File is 3269 lines total."
+    },
+    "OBJ-5_MINOR": {
+      "status": "RESOLVED",
+      "verification": "plan-validate.py lines 228-234 confirmed: agent_item_mapping is hardcoded dict with 5 entries. BA now has new Must-Have requirement #10, context JSON manual_registration_required entry, AC7 for AGENTS_WITH_LOCAL, and Edge Cases documentation.",
+      "evidence": "plan-validate.py:228-234 reads: agent_item_mapping = {'meals': 'meal_item', ...}. BA spec requirement #10 says: 'Add cafe: cafe_item to the hardcoded agent_item_mapping dict at lines 228-234'."
+    },
+    "OBJ-6_MINOR": {
+      "status": "RESOLVED",
+      "verification": "budget.schema.json line 83 confirmed: additionalProperties: true. BA now documents this in context JSON file_contents, Edge Cases section, and spec requirement #9 note. Correctly states both schema AND HTML generator sum updates are needed.",
+      "evidence": "budget.schema.json:83 reads: 'additionalProperties': true. BA documents: 'unknown keys pass validation silently but won't be summed unless explicitly added to HTML generator totals'."
+    }
+  },
+  "new_findings": [
+    {
+      "severity": "minor",
+      "id": "NEW-1",
+      "title": "Context JSON says 'After line 700 (after meals processing)' but line 700 is start of attractions processing",
+      "detail": "Context JSON modification_details for generate-html-interactive.py says: 'After line 700 (after meals processing): Add cafe processing loop'. Line 700 actually reads 'if self.attractions and \"days\" in self.attractions:' which is the START of attractions merging. Meals processing ends at line 697-698. The intent is clear and dev will find the correct location.",
+      "impact": "Negligible. Dev will read surrounding code and place correctly.",
+      "blocks": false
+    },
+    {
+      "severity": "minor",
+      "id": "NEW-2",
+      "title": "html_generator.py insertion-point line numbers describe target lines not insertion points",
+      "detail": "Context JSON says 'Line 212 (after shopping load): Add cafe'. Line 212 IS the shopping load line, so cafe should go after it (line 213+). Similarly 'Line 239 (after shopping merge)' -- line 239 IS the shopping merge line. Phrasing is slightly ambiguous but intent is clear.",
+      "impact": "Negligible. Dev will insert at the correct location.",
+      "blocks": false
+    }
+  ],
+  "dimension_assessments": {
+    "evidence_quality": {
+      "grade": "A-",
+      "rationale": "All critical code behavior claims now factually correct. save.py NO-generic-fallback documented consistently. Line numbers for generate-html-interactive.py verified exact. Only minor imprecision in insertion-point references."
+    },
+    "scope_alignment": {
+      "grade": "A",
+      "rationale": "Full migration scope covers all 3 cafe entries across 2 days. Day 15 primary replacement strategy documented. All integration points covered: schema, agent, data, HTML (14+ points), image fetcher (2 lists + 3 branches), save.py, plan-validate.py, sync, budget, 3 agent list scripts."
+    },
+    "investigation_completeness": {
+      "grade": "A-",
+      "rationale": "All previously-missed items now included. 14+ generate-html-interactive.py modification points verified exact. fetch-images-batch.py dual lists and 3 processing branches documented. AGENTS_WITH_LOCAL hardcoded mapping covered."
+    },
+    "affected_file_accuracy": {
+      "grade": "A",
+      "rationale": "All 14 files correctly identified. Line numbers verified for save.py (56, 75-84), plan-validate.py (228-234), fetch-images-batch.py (667, 1061, 794/823/941/970/1184/1216), html_generator.py (198, 208-212, 251, 261-265), and generate-html-interactive.py (all 14+ points)."
+    }
+  },
+  "blocking_issues_count": 0,
+  "non_blocking_issues_count": 2
+}

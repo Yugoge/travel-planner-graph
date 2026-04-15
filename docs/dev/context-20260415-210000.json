@@ -1,0 +1,364 @@
+{
+  "request_id": "dev-20260415-210000",
+  "timestamp": "2026-04-15T21:00:00Z",
+  "revised": "2026-04-15T21:30:00Z",
+  "revision_notes": "Post-QA correction: 6 objections addressed. Fixed _collect_day_pois analysis (NO generic branch), complete migration scope (Day 15 primary included), resolved spec/context contradiction, verified exact line numbers, added agent_item_mapping and budget additionalProperties details.",
+  "requirement": {
+    "original": "Create an independent Cafe POI type in the travel planner system. This is NOT about making meals flexible -- it is about creating a brand new domain alongside meals, attractions, entertainment, shopping, accommodation, and transportation.",
+    "clarified": "Create a complete cafe domain: schema (cafe.schema.json), agent (cafe.md), data file (cafe.json), and integrate with HTML generator, validation, image fetching, save/load, sync, and budget systems. Cafe uses array-based day structure (like entertainment) rather than named-slot structure (like meals). Migrate ALL existing cafe entries from meals.json across ALL days.",
+    "what": "New cafe POI type with full system integration",
+    "why": "Cafe entries (coffee shops, teahouses, rest spots) do not fit the breakfast/lunch/dinner structure of meals. They can happen at any time and deserve their own independent domain.",
+    "where": [
+      "schemas/cafe.schema.json (NEW)",
+      ".claude/agents/cafe.md (NEW)",
+      "data/china-20260412-092624/cafe.json (NEW)",
+      "scripts/lib/html_generator.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/fetch-images-batch.py",
+      "scripts/save.py",
+      "scripts/load.py",
+      "scripts/sync-agent-data.py",
+      "scripts/plan-validate.py",
+      "scripts/update-agent-prompts.py",
+      "scripts/verify-tool-restrictions.py",
+      "scripts/update-agent-docs.sh",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/meals.json"
+    ],
+    "scope": {
+      "included": [
+        "Create cafe.schema.json with array-based day_entry",
+        "Create cafe.md agent prompt",
+        "Create initial cafe.json with ALL migrated cafe data (Day 1 + Day 15)",
+        "Integrate cafe into HTML generator (merge + render, 14+ modification points)",
+        "Integrate cafe into image fetcher (2 agent_files lists + 3 processing branches)",
+        "Integrate cafe into save.py POI_AGENTS AND _collect_day_pois explicit branch",
+        "Integrate cafe into sync-agent-data.py",
+        "Add cafe to budget.schema.json categories",
+        "Add cafe to plan-validate.py agent_item_mapping for AGENTS_WITH_LOCAL",
+        "Update hardcoded AGENTS lists in 3 scripts",
+        "Migrate VOYAGE COFFEE, METAL HANDS Qianmen (Day 1), and METAL HANDS Yonghegong (Day 15) from meals.json to cafe.json",
+        "Remove migrated entries from meals.json and promote Day 15 alternative to primary"
+      ],
+      "excluded": [
+        "Modifying meals schema to be flexible",
+        "Changing timeline schema",
+        "Auto-updating budget agent calculations",
+        "Changing the POI classification decision tree",
+        "Modifying existing meal data (other than removing migrated cafes and promoting Day 15 alternative)"
+      ]
+    },
+    "success_criteria": [
+      "cafe.schema.json validates correctly and auto-registers with plan-validate.py",
+      "save.py can save and load cafe data without errors -- _collect_day_pois returns non-empty for cafe",
+      "fetch-images-batch.py processes cafe entries in both itinerary and bucket-list modes",
+      "generate-html-interactive.py renders cafe section with POI cards, budget donut, legend, and sidebar",
+      "Budget breakdown includes cafe as a separate category in donut, legend, totals, and detail sidebar",
+      "ALL cafe entries migrated: VOYAGE COFFEE + METAL HANDS Qianmen in cafe.json Day 1, METAL HANDS Yonghegong in cafe.json Day 15",
+      "meals.json Day 15 breakfast has promoted Huguosi Snacks as new primary",
+      "plan-validate.py --agent cafe returns zero HIGH issues",
+      "AGENTS_WITH_LOCAL includes cafe (agent_item_mapping updated)"
+    ],
+    "constraints": [
+      "Cafe schema must have exactly 2 $defs (cafe_item + day_entry) for auto-derivation",
+      "Must use array-based structure (like entertainment), NOT named-slot (like meals)",
+      "Must preserve all existing POI fields (bilingual names, coordinates, cost, etc.)",
+      "Must not break existing meal rendering or validation",
+      "save.py _collect_day_pois has NO generic fallback -- cafe must be explicitly added to line 82 list"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Cafe-type POIs (coffee shops, teahouses) forced into meals.json as breakfast alternatives AND primaries with artificial time constraints",
+    "root_cause": "System has no independent cafe domain -- only breakfast/lunch/dinner meal slots exist",
+    "root_cause_commit": "N/A - architectural gap, not a regression",
+    "why_introduced": "Original design assumed all food/drink activities fit into 3 daily meal slots",
+    "why_problematic": "Cafes are not meals -- they can happen at any time and do not map to breakfast/lunch/dinner. Forcing them into meal slots creates scheduling conflicts and semantic confusion. Day 15 has a coffee shop as breakfast PRIMARY, which is semantically wrong.",
+    "timeline": "Pre-existing architectural limitation",
+    "affected_files": [
+      "schemas/meals.schema.json",
+      "data/china-20260412-092624/meals.json"
+    ]
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward architectural extension following established patterns in the codebase (entertainment.schema.json as template)"
+  },
+  "context": {
+    "codebase_state": "Stable, all existing agents functional",
+    "recent_commits": "7eccb74 Auto-commit: 2026-04-15 20:15:02",
+    "file_contents": {
+      "schemas/meals.schema.json": "Named-slot structure: day_entry has breakfast/lunch/dinner properties each referencing meal_slot (which contains primary + alternatives). meal_item has: name_base, name_local, location_base, location_local, coordinates, cost, currency_local, cuisine_base, cuisine_local, signature_dishes_base, signature_dishes_local, notes_base, notes_local, search_results, optional, image_url, is_home",
+      "schemas/entertainment.schema.json": "Array-based structure: day_entry has entertainment property (array of entertainment_item). entertainment_item has: name_base, name_local, location_base, location_local, coordinates, cost, currency_local, type_base, type_local, note_base, note_local, notes_base, notes_local, search_results, optional, image_url, is_home. Required: name_base, name_local, location_base, location_local, cost, currency_local, type_base, optional",
+      "schemas/poi-common.schema.json": "Shared definitions: coordinates ({lat, lng}), search_result, cost_field, currency_code, bilingual_name, bilingual_location, day_header, agent_envelope, image_url",
+      "schemas/budget.schema.json": "budget_categories $def (line 53-84): has properties meals, accommodation, activities, shopping, transportation, total. Required: all 6. CRITICAL: additionalProperties: true (line 83) -- unknown keys pass validation silently but won't be summed unless explicitly added to HTML generator totals.",
+      "scripts/plan-validate.py": "AGENT_CONFIGS auto-derived from schemas via _derive_agent_configs(). Auto-registers any agent with properly structured schema. HOWEVER: agent_item_mapping (line 228-234) is HARDCODED with 5 agents: meals->meal_item, attractions->attraction_item, entertainment->entertainment_item, accommodation->accommodation_item, shopping->shopping_item. This mapping drives AGENTS_WITH_LOCAL (line 75). Cafe must be added: 'cafe': 'cafe_item'.",
+      "scripts/load.py": "Auto-derives agent POI keys from schemas via _derive_agent_poi_keys(). Only timeline has manual overrides. No code change needed for adding cafe.",
+      "scripts/save.py": "POI_AGENTS = {meals, attractions, entertainment, shopping} (line 56). _collect_day_pois (line 75-84) has THREE explicit branches: (1) meals (line 77-78), (2) accommodation (line 79-81), (3) attractions/entertainment/shopping (line 82-83). Line 84 returns [] for ANY agent not in these branches. There is NO generic fallback. Cafe must be added to the list on line 82: change ['attractions', 'entertainment', 'shopping'] to ['attractions', 'entertainment', 'shopping', 'cafe'].",
+      "scripts/fetch-images-batch.py": "TWO agent_files lists: line 667-673 (collect_pois method) and line 1061-1067 (update_images method). BOTH must add ('cafe.json', 'cafe', 'cafe'). Processing uses per-field_name if/elif branches: attractions (line 698/854/1096), meals (line 717), accommodation (line 765), entertainment (line 794/941/1184), shopping (line 823/970/1216). Cafe needs elif branches after shopping in ALL three code paths.",
+      "scripts/lib/html_generator.py": "merge_itinerary_data() (line 198): loads meals, accommodation, attractions, entertainment, shopping, transportation, timeline, budget individually. Merges by day. Must add cafe = self.load_json_safe('cafe.json') and day['cafe'] = find_day_data(cafe, day_num).get('cafe', []). merge_bucket_list_data() (line 251): same pattern, must add cafe.",
+      "scripts/generate-html-interactive.py": "3269 lines. Verified line numbers for all 14+ modification points. See development_approach.modification_details for exact locations.",
+      "scripts/sync-agent-data.py": "Has individual _sync_meals, _sync_attractions, _sync_entertainment, _sync_accommodation, _sync_shopping methods. Must add _sync_cafe method.",
+      "config/validation.json": "Contains level_1_fields, level_2_extra_fields, agent_poi_key_overrides (only timeline). No cafe-specific config needed.",
+      "data/china-20260412-092624/meals.json": "THREE cafe entries across TWO days: (1) Day 1 breakfast alternatives[0]: VOYAGE COFFEE (杨梅竹店) at line 41, (2) Day 1 breakfast alternatives[1]: METAL HANDS (前门店) at line 75, (3) Day 15 breakfast PRIMARY: METAL HANDS Coffee (Yonghegong/雍和宫店) at line 1877. Day 15 has alternative Huguosi Snacks (line 1902) that should be promoted to primary after migration."
+    },
+    "dependencies": {
+      "auto_registration": [
+        "plan-validate.py: auto-derives AGENT_CONFIGS from schemas -- just create schema file",
+        "load.py: auto-derives POI keys from schemas -- just create schema file"
+      ],
+      "manual_registration_required": [
+        "save.py line 56: POI_AGENTS set -- must add 'cafe'",
+        "save.py line 82: _collect_day_pois explicit branch -- must add 'cafe' to list (NO generic fallback)",
+        "plan-validate.py line 228-234: agent_item_mapping -- must add 'cafe': 'cafe_item' for AGENTS_WITH_LOCAL",
+        "fetch-images-batch.py line 667: agent_files list #1 (collect_pois) -- must add entry",
+        "fetch-images-batch.py line 1061: agent_files list #2 (update_images) -- must add entry",
+        "fetch-images-batch.py lines 823/970/1216: processing branches -- must add cafe elif",
+        "html_generator.py line 208-215: merge_itinerary_data -- must add cafe loading",
+        "html_generator.py line 261-266: merge_bucket_list_data -- must add cafe loading",
+        "generate-html-interactive.py: 14+ modification points (see modification_details)",
+        "sync-agent-data.py: must add _sync_cafe method",
+        "update-agent-prompts.py: AGENTS list -- must add 'cafe'",
+        "verify-tool-restrictions.py: AGENTS list -- must add 'cafe'",
+        "update-agent-docs.sh: AGENTS array -- must add 'cafe'",
+        "budget.schema.json line 53-84: budget_categories -- must add 'cafe' property and required"
+      ]
+    },
+    "environment": {
+      "project_root": "/root/travel-planner",
+      "trip_slug": "china-20260412-092624",
+      "python_venv": "venv/bin/activate"
+    }
+  },
+  "development_approach": {
+    "strategy": "Create cafe schema modeled on entertainment.schema.json (array-based) with meal-item fields. Create agent prompt modeled on meals.md. Add cafe to ALL integration points (save.py explicit branch, plan-validate.py agent_item_mapping, fetch-images-batch.py both lists + 3 branches, generate-html-interactive.py 14+ points, html_generator.py 2 merge functions). Migrate ALL THREE cafe entries from meals.json to new cafe.json. Promote Day 15 alternative to primary.",
+    "files_to_create": [
+      "schemas/cafe.schema.json",
+      ".claude/agents/cafe.md",
+      "data/china-20260412-092624/cafe.json"
+    ],
+    "files_to_modify": [
+      "scripts/lib/html_generator.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/fetch-images-batch.py",
+      "scripts/save.py",
+      "scripts/plan-validate.py",
+      "scripts/sync-agent-data.py",
+      "scripts/update-agent-prompts.py",
+      "scripts/verify-tool-restrictions.py",
+      "scripts/update-agent-docs.sh",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/meals.json"
+    ],
+    "modification_details": {
+      "schemas/cafe.schema.json": {
+        "action": "CREATE",
+        "template": "entertainment.schema.json",
+        "key_differences": [
+          "agent const: 'cafe'",
+          "item def: cafe_item (not entertainment_item)",
+          "Fields from meals: cuisine_base, cuisine_local, signature_dishes_base, signature_dishes_local",
+          "Fields from entertainment: type_base, type_local",
+          "Array property: 'cafe' (not 'entertainment')",
+          "Required fields: name_base, name_local, location_base, location_local, cost, currency_local, type_base, optional"
+        ]
+      },
+      ".claude/agents/cafe.md": {
+        "action": "CREATE",
+        "template": "meals.md",
+        "key_differences": [
+          "Specializes in coffee shops, teahouses, rest spots",
+          "No breakfast/lunch/dinner structure -- flat array per day",
+          "type_base field with values: Coffee Shop, Teahouse, Rest Spot, Bakery Cafe",
+          "Gaode category code: 050000 (food/dining) or 120000 (leisure)",
+          "Same save/load workflow using scripts/save.py"
+        ]
+      },
+      "data/china-20260412-092624/cafe.json": {
+        "action": "CREATE",
+        "content": "Agent envelope with days array. Day 1 contains cafe array with VOYAGE COFFEE and METAL HANDS Qianmen (from meals.json Day 1 breakfast alternatives). Day 15 contains cafe array with METAL HANDS Yonghegong (from meals.json Day 15 breakfast primary). All other days have empty cafe arrays."
+      },
+      "scripts/save.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 56: Add 'cafe' to POI_AGENTS set: POI_AGENTS = {'meals', 'attractions', 'entertainment', 'shopping', 'cafe'}",
+          "Line 82: Add 'cafe' to _collect_day_pois explicit list: if agent in ['attractions', 'entertainment', 'shopping', 'cafe']: return list(day.get(agent, []))"
+        ],
+        "critical_note": "Line 82-83 is the ONLY code path that handles array-based agents. Line 84 returns [] for anything not matched. WITHOUT adding cafe to line 82, _collect_day_pois will return [] for cafe, causing extract_image_urls() to skip all cafe POIs silently."
+      },
+      "scripts/plan-validate.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 228-234: Add 'cafe': 'cafe_item' to agent_item_mapping dict in _init_schema_driven_config()"
+        ],
+        "critical_note": "This mapping is NOT auto-derived from schemas. Without adding cafe, AGENTS_WITH_LOCAL (line 75) will not include cafe, and name_local validation will be silently skipped for all cafe entries."
+      },
+      "scripts/fetch-images-batch.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 672: Add ('cafe.json', 'cafe', 'cafe') to agent_files list #1 (collect_pois)",
+          "Line 1066: Add ('cafe.json', 'cafe', 'cafe') to agent_files list #2 (update_images)",
+          "After line 823 (shopping itinerary branch): Add elif field_name == 'cafe': branch (array-based, identical to entertainment pattern at line 794)",
+          "After line 970 (shopping bucket-list branch): Add elif field_name == 'cafe': branch (array-based, identical to entertainment pattern at line 941)",
+          "After line 1216 (shopping update branch): Add elif field_name == 'cafe': branch (array-based, identical to entertainment pattern at line 1184)"
+        ]
+      },
+      "scripts/lib/html_generator.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 212 (after shopping load): Add cafe = self.load_json_safe('cafe.json')",
+          "Line 239 (after shopping merge): Add day['cafe'] = find_day_data(cafe, day_num).get('cafe', [])",
+          "Line 265 (bucket list, after shopping load): Add cafe = self.load_json_safe('cafe.json')",
+          "In bucket list city merge section: Add city cafe data merging"
+        ]
+      },
+      "scripts/generate-html-interactive.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 31 (after self.shopping): Add self.cafe = self._load_json('cafe.json')",
+          "Line 155 (labels dict): Add 'cafe': 'Cafe' and 'cat_cafe': 'Cafe'",
+          "Line 592 (merged day structure): Add 'cafe': [] after 'shopping': []",
+          "Line 599 (budget init): Add 'cafe': 0 after 'shopping': 0",
+          "After line 700 (after meals processing): Add cafe processing loop -- array-based like entertainment (line 743 pattern): iterate self.cafe days, add cost to merged['budget']['cafe']",
+          "Lines 1139-1146 (budget total sum): Add merged['budget'].get('cafe', 0) to sum list",
+          "Line 1242 (bucket list day structure): Add 'cafe': []",
+          "Line 1248 (bucket list budget): Add 'cafe': 0",
+          "Lines 1313-1320 (bucket list budget total): Add day['budget'].get('cafe', 0) to sum list",
+          "Line 1549 (Donut items array): Add { v: budget.cafe || 0, c: '#D4A574', k: 'cafe' }",
+          "Line 1816 (categoryConfig): Add cafe: { icon: 'cafe_icon', label: L('cafe', lang), color: '#D4A574' }",
+          "Line 2252 (categoryColors): Add cafe: '#D4A574'",
+          "After line 2333 (after end of Meals Section, before Attractions at 2335): Add Cafe Section -- array-based card rendering identical to entertainment (line 2379-2421 pattern) but with cafe color and icon",
+          "Lines 2571-2576 (budget legend array): Add { k: 'cafe', l: L('cafe', lang), c: '#D4A574' }",
+          "After line 2717 (after shopping forEach): Add day.cafe?.forEach(c => add(c, 'cafe', L('cat_cafe', lang)))",
+          "Lines 3037-3059 (handleBudgetClick): Add else if (category === 'cafe') { items = dayData.cafe || []; total = dayData.budget.cafe || 0; } before the transportation branch"
+        ]
+      },
+      "scripts/sync-agent-data.py": {
+        "action": "MODIFY",
+        "changes": [
+          "After _sync_shopping(): Add self._sync_cafe(timeline_by_day) call in run()",
+          "Add _sync_cafe method (identical pattern to _sync_entertainment)"
+        ]
+      },
+      "scripts/update-agent-prompts.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 39-48: Add 'cafe' to AGENTS list"
+        ]
+      },
+      "scripts/verify-tool-restrictions.py": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 36-45: Add 'cafe' to AGENTS list"
+        ]
+      },
+      "scripts/update-agent-docs.sh": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 8: Add 'cafe' to AGENTS bash array"
+        ]
+      },
+      "schemas/budget.schema.json": {
+        "action": "MODIFY",
+        "changes": [
+          "Line 56-83 (budget_categories $def): Add 'cafe': { 'type': 'number', 'description': 'Cafe costs for this day.' } to properties",
+          "Line 82 (required array): Add 'cafe' to required list"
+        ],
+        "note": "additionalProperties: true (line 83) means unknown keys pass validation, but without adding cafe to HTML generator sum calculations, costs will be silently excluded from totals"
+      },
+      "data/china-20260412-092624/meals.json": {
+        "action": "MODIFY",
+        "changes": [
+          "Day 1: Remove VOYAGE COFFEE (line 41-72) and METAL HANDS Qianmen (line 75-107) from breakfast alternatives array. Keep Yin San Douzhir (line 109+) as remaining alternative.",
+          "Day 15: Remove METAL HANDS Yonghegong (line 1877-1898) from breakfast primary. Promote Huguosi Snacks (line 1902+) from alternatives[0] to primary. Remove Huguosi from alternatives array."
+        ]
+      }
+    },
+    "validation_approach": "1. Run plan-validate.py --agent cafe to verify schema auto-registration AND AGENTS_WITH_LOCAL includes cafe. 2. Run save.py with cafe test data and verify _collect_day_pois returns non-empty list. 3. Run fetch-images-batch.py to verify image fetching in both collect and update modes. 4. Run generate-html-interactive.py and verify: cafe section renders, donut shows cafe, legend includes cafe, budget sidebar shows cafe items on click. 5. Verify meals.json Day 1 breakfast still has valid primary, Day 15 breakfast has Huguosi Snacks as new primary."
+  },
+  "migration_plan": {
+    "source": "data/china-20260412-092624/meals.json",
+    "target": "data/china-20260412-092624/cafe.json",
+    "entries_to_migrate": [
+      {
+        "current_location": "Day 1 > breakfast > alternatives[0] (line 41)",
+        "name": "VOYAGE COFFEE - Yangmeichu Branch (杨梅竹店) [Morning Cafe]",
+        "name_local": "VOYAGE COFFEE(杨梅竹店)",
+        "action": "Copy to cafe.json Day 1 cafe array, add type_base='Coffee Shop', type_local='咖啡厅', then remove from meals.json Day 1 alternatives"
+      },
+      {
+        "current_location": "Day 1 > breakfast > alternatives[1] (line 75)",
+        "name": "METAL HANDS - Qianmen Branch (铁手咖啡·前门店) [Alternative Cafe]",
+        "name_local": "METAL HANDS(前门店)",
+        "action": "Copy to cafe.json Day 1 cafe array, add type_base='Coffee Shop', type_local='咖啡厅', then remove from meals.json Day 1 alternatives"
+      },
+      {
+        "current_location": "Day 15 > breakfast > primary (line 1877)",
+        "name": "METAL HANDS Coffee (Yonghegong)",
+        "name_local": "METAL HANDS(雍和宫店)",
+        "action": "Copy to cafe.json Day 15 cafe array, add type_base='Coffee Shop', type_local='咖啡厅', then remove from meals.json Day 15 primary AND promote Huguosi Snacks (line 1902) from alternatives[0] to primary"
+      }
+    ],
+    "post_migration_meals_state": {
+      "day_1_breakfast": {
+        "primary": "Tianxingju - Xianyukou Branch (unchanged)",
+        "alternatives": ["Yin San Douzhir (remains, was alternatives[2])"]
+      },
+      "day_15_breakfast": {
+        "primary": "Huguosi Snacks (promoted from alternatives[0])",
+        "alternatives": ["remaining alternatives after Huguosi removal"]
+      }
+    },
+    "field_mapping": {
+      "from_meal_item_to_cafe_item": {
+        "kept_as_is": ["name_base", "name_local", "location_base", "location_local", "coordinates", "cost", "currency_local", "cuisine_base", "cuisine_local", "signature_dishes_base", "signature_dishes_local", "notes_base", "notes_local", "search_results", "optional", "image_url", "is_home"],
+        "added": ["type_base", "type_local"],
+        "removed": []
+      }
+    }
+  },
+  "qa_objection_resolutions": {
+    "OBJ-1_CRITICAL": {
+      "objection": "save.py _collect_day_pois does NOT have a generic branch. Lines 75-84 explicitly check if agent in ['attractions', 'entertainment', 'shopping'] with no generic fallback. Line 84 returns [] for unknown agents.",
+      "verdict": "QA CORRECT. Original context JSON was WRONG.",
+      "evidence": "save.py lines 75-84: Three explicit branches (meals, accommodation, attractions/entertainment/shopping). Line 84: 'return []' catches ALL unmatched agents. No generic array-based fallback exists.",
+      "correction": "Context JSON now states: must add 'cafe' to explicit list on line 82. Changed from claiming 'generic branch handles array agents automatically' to 'NO generic fallback -- cafe must be explicitly added'."
+    },
+    "OBJ-2_CRITICAL": {
+      "objection": "Migration scope incomplete. meals.json line ~1877 has METAL HANDS Coffee (Yonghegong) as Day 15 breakfast PRIMARY.",
+      "verdict": "QA CORRECT. Original analysis missed Day 15 entry entirely.",
+      "evidence": "meals.json line 1877: 'name_base': 'METAL HANDS Coffee (Yonghegong)', line 1878: 'name_local': 'METAL HANDS(雍和宫店)'. This is breakfast PRIMARY (not alternative) for Day 15. cuisine_base: 'Specialty Coffee, Light Breakfast'. It is a coffee shop used as a meal -- exactly what cafe domain should handle.",
+      "correction": "Migration plan now includes 3 entries (not 2): Day 1 alternatives[0] VOYAGE COFFEE, Day 1 alternatives[1] METAL HANDS Qianmen, Day 15 primary METAL HANDS Yonghegong. Day 15 requires promoting Huguosi Snacks (line 1902) to primary."
+    },
+    "OBJ-3_MAJOR": {
+      "objection": "BA spec requirement #7 says add cafe branch to _collect_day_pois, but context JSON contradicts by claiming automatic handling.",
+      "verdict": "QA CORRECT. Spec and context JSON were contradictory.",
+      "evidence": "Original spec requirement #7 said 'add cafe-specific _collect_day_pois branch'. Original context JSON said 'generic branch at line 82-83 handles array agents automatically'. These directly contradict each other.",
+      "correction": "Context JSON now says: 'There is NO generic fallback. cafe must be added to the list on line 82.' Both spec and context JSON now consistently state the explicit branch requirement."
+    },
+    "OBJ-4_MAJOR": {
+      "objection": "12+ modification points in generate-html-interactive.py use approximate line numbers.",
+      "verdict": "QA CORRECT. Line numbers were approximate ('area' suffix).",
+      "evidence": "File is 3269 lines. All line numbers now verified against actual content: self.meals at line 28, labels at line 153, merged structure at line 592, budget init at line 599, budget total at lines 1139-1146, Donut at line 1547-1555, categoryConfig at line 1815-1822, categoryColors at line 2252, Meals Section at lines 2285-2333, Attractions at line 2335, entertainment at line 2379, shopping at line 2423, budget legend at lines 2570-2577, timeline data at lines 2702-2717, handleBudgetClick at lines 3031-3059.",
+      "correction": "All line numbers now exact with file content references, no 'area' suffixes."
+    },
+    "OBJ-5_MINOR": {
+      "objection": "plan-validate.py has AGENTS_WITH_LOCAL hardcoded mapping that won't auto-include cafe.",
+      "verdict": "QA CORRECT. Was missing from original analysis entirely.",
+      "evidence": "plan-validate.py lines 228-234: agent_item_mapping = {'meals': 'meal_item', 'attractions': 'attraction_item', 'entertainment': 'entertainment_item', 'accommodation': 'accommodation_item', 'shopping': 'shopping_item'}. This is a hardcoded dict, NOT auto-derived from schemas. Line 244-245: only agents in this mapping get added to AGENTS_WITH_LOCAL. Without adding cafe, name_local validation is silently skipped.",
+      "correction": "Added new Must-Have requirement #10 and added plan-validate.py to files_to_modify with explicit modification details."
+    },
+    "OBJ-6_MINOR": {
+      "objection": "Budget schema additionalProperties: true nuance needs documentation.",
+      "verdict": "QA CORRECT. Was not documented.",
+      "evidence": "budget.schema.json line 83: 'additionalProperties': true on budget_categories. This means an unknown 'cafe' key would pass schema validation but would NOT be summed in HTML generator totals (lines 1139-1146 are an explicit additive list). This could give a false sense of correctness: validation passes but cafe costs are silently excluded from totals.",
+      "correction": "Added documentation in context JSON file_contents for budget.schema.json and in Edge Cases section. Made clear that both schema AND HTML generator sums must be updated."
+    }
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
