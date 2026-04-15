@@ -37,6 +37,7 @@ AGENTS = [
     "accommodation",
     "attractions",
     "budget",
+    "cafe",
     "entertainment",
     "meals",
     "shopping",

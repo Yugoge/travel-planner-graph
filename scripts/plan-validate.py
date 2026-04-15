@@ -231,6 +231,7 @@ class SchemaRegistry:
             "entertainment": "entertainment_item",
             "accommodation": "accommodation_item",
             "shopping": "shopping_item",
+            "cafe": "cafe_item",
         }
 
         for agent_name, item_key in agent_item_mapping.items():

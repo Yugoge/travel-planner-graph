@@ -1,0 +1,141 @@
+{
+  "request_id": "dev-20260415-210000",
+  "timestamp": "2026-04-15T21:20:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260415-210000.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Created cafe.schema.json with array-based structure",
+        "type": "schema",
+        "files_created": ["schemas/cafe.schema.json"],
+        "rationale": "Cafe uses array-based day_entry (like entertainment) with cafe_item containing all meal-level POI fields plus type_base/type_local. Has exactly 2 $defs (cafe_item + day_entry) for auto-derivation."
+      },
+      {
+        "id": 2,
+        "description": "Created cafe agent definition",
+        "type": "agent",
+        "files_created": [".claude/agents/cafe.md"],
+        "rationale": "Specializes in coffee shops, teahouses, and rest spots. Follows meals.md structure but without time-slot constraints."
+      },
+      {
+        "id": 3,
+        "description": "Created cafe.json with migrated entries from meals.json",
+        "type": "data",
+        "files_created": ["data/china-20260412-092624/cafe.json"],
+        "rationale": "Contains 3 migrated cafe entries: Day 1 (VOYAGE COFFEE, METAL HANDS Qianmen) and Day 15 (METAL HANDS Yonghegong). All 15 days present with empty arrays where no cafe."
+      },
+      {
+        "id": 4,
+        "description": "Added cafe to save.py POI_AGENTS and _collect_day_pois",
+        "type": "integration",
+        "files_modified": ["scripts/save.py"],
+        "changes": "Line 56: Added 'cafe' to POI_AGENTS set. Line 82: Added 'cafe' to explicit agent list in _collect_day_pois (no generic fallback exists).",
+        "rationale": "Without this, _collect_day_pois returns [] for cafe, causing extract_image_urls() to skip all cafe POIs."
+      },
+      {
+        "id": 5,
+        "description": "Added cafe to plan-validate.py agent_item_mapping",
+        "type": "integration",
+        "files_modified": ["scripts/plan-validate.py"],
+        "changes": "Line 228-234: Added 'cafe': 'cafe_item' to agent_item_mapping dict.",
+        "rationale": "Required for AGENTS_WITH_LOCAL to include cafe. Without this, name_local validation is silently skipped."
+      },
+      {
+        "id": 6,
+        "description": "Added cafe to fetch-images-batch.py (5 modifications)",
+        "type": "integration",
+        "files_modified": ["scripts/fetch-images-batch.py"],
+        "changes": "Added ('cafe.json', 'cafe', 'cafe') to both agent_files lists (collect_pois and update_images). Added cafe elif branches in all 3 processing code paths (itinerary days, bucket-list cities, image update).",
+        "rationale": "Both lists and all 3 processing branches must include cafe for image fetching to work."
+      },
+      {
+        "id": 7,
+        "description": "Added cafe merge to html_generator.py",
+        "type": "integration",
+        "files_modified": ["scripts/lib/html_generator.py"],
+        "changes": "Added cafe loading and merging in merge_itinerary_data() and merge_bucket_list_data().",
+        "rationale": "Cafe data must be merged into day/city structures for HTML generation."
+      },
+      {
+        "id": 8,
+        "description": "Added cafe to generate-html-interactive.py (15 modification points)",
+        "type": "integration",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "1) self.cafe loading. 2) 'cafe' and 'cat_cafe' labels. 3) cafe:[] in merged day. 4) cafe:0 in budget init. 5) Cafe processing loop (array-based). 6) cafe in itinerary budget total. 7) cafe in bucket-list day structure. 8) cafe in bucket-list budget total. 9) Donut chart item. 10) categoryConfig entry. 11) categoryColors entry. 12) CafeSection React component. 13) Budget legend entry. 14) Timeline rendering. 15) handleBudgetClick handler.",
+        "rationale": "Complete cafe integration across all UI components: data loading, rendering, budget breakdown, donut chart, legend, timeline, and click handlers."
+      },
+      {
+        "id": 9,
+        "description": "Added _sync_cafe method to sync-agent-data.py",
+        "type": "integration",
+        "files_modified": ["scripts/sync-agent-data.py"],
+        "changes": "Added _sync_cafe() method (array-based like entertainment). Added call in run(). Added 'cafe' to agents_to_check validation list.",
+        "rationale": "Cafe data must be included in sync pipeline for consistency."
+      },
+      {
+        "id": 10,
+        "description": "Added cafe category to budget.schema.json",
+        "type": "schema",
+        "files_modified": ["schemas/budget.schema.json"],
+        "changes": "Added 'cafe': { type: number, description: 'Cafe costs for this day.' } to budget_categories properties.",
+        "rationale": "Budget schema must recognize cafe as a valid category. additionalProperties:true means unknown keys pass but won't be summed."
+      },
+      {
+        "id": 11,
+        "description": "Updated AGENTS lists in 3 scripts",
+        "type": "integration",
+        "files_modified": ["scripts/update-agent-prompts.py", "scripts/verify-tool-restrictions.py", "scripts/update-agent-docs.sh"],
+        "changes": "Added 'cafe' to hardcoded AGENTS arrays in all 3 scripts.",
+        "rationale": "These scripts iterate over all agents and need cafe included."
+      },
+      {
+        "id": 12,
+        "description": "Migrated cafe entries from meals.json",
+        "type": "migration",
+        "files_modified": ["data/china-20260412-092624/meals.json"],
+        "changes": "Day 1: Removed VOYAGE COFFEE and METAL HANDS Qianmen from breakfast alternatives. Yin San Douzhir remains as sole alternative. Day 15: Removed METAL HANDS Yonghegong from breakfast primary. Promoted Huguosi Snacks from alternatives[0] to primary.",
+        "rationale": "Cafe entries do not belong in meals. Day 15 needed a non-cafe primary (Huguosi Snacks promoted)."
+      },
+      {
+        "id": 13,
+        "description": "Removed dead file scripts/lib/meal_utils.py",
+        "type": "cleanup",
+        "files_deleted": ["scripts/lib/meal_utils.py"],
+        "rationale": "Leftover from reverted changes. No imports found."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {"modified": "scripts/save.py", "imported_by": ["scripts/lib/json_io.py"]},
+      {"modified": "scripts/plan-validate.py", "imported_by": ["scripts/lib/json_io.py"]},
+      {"modified": "scripts/fetch-images-batch.py", "imported_by": ["scripts/save.py"]},
+      {"modified": "scripts/lib/html_generator.py", "imported_by": ["scripts/generate-html-interactive.py"]},
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": []},
+      {"modified": "scripts/sync-agent-data.py", "imported_by": []},
+      {"modified": "scripts/update-agent-prompts.py", "imported_by": []},
+      {"modified": "scripts/verify-tool-restrictions.py", "imported_by": []},
+      {"modified": "scripts/update-agent-docs.sh", "imported_by": []}
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A - architectural gap, not a regression",
+      "why_issue_occurred": "System had no independent cafe domain. Coffee shops and teahouses were forced into meals.json as breakfast alternatives/primaries with artificial time constraints.",
+      "how_fix_addresses_root": "Created a complete independent cafe domain with its own schema, agent, data file, and full integration across all system components. Cafe entries use array-based structure (no time slots) and are rendered as a separate category in the UI."
+    },
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "1) cafe.schema.json parses as valid JSON. 2) plan-validate.py --agent cafe returns PASS with 0 HIGH issues. 3) plan-validate.py --agent meals still PASS after migration. 4) generate-html-interactive.py produces valid HTML (391.8 KB) with 49 cafe references. 5) All 6 modified Python files compile cleanly. 6) VOYAGE COFFEE and METAL HANDS appear in generated HTML output."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify in browser: 1) Cafe section appears after Meals in Day 1 and Day 15 with POI cards. 2) Budget donut shows cafe category in warm brown (#D4A574). 3) Clicking cafe donut segment shows cafe items in sidebar. 4) Timeline view shows cafe entries. 5) Day 1 meals section still has Tianxingju as breakfast primary with Yin San Douzhir as sole alternative. 6) Day 15 meals section has Huguosi Snacks as breakfast primary.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Run cafe agent to populate remaining empty days with cafe recommendations",
+    "Update budget agent to include cafe costs in daily budget calculations",
+    "Consider updating POI classification rules to include cafe decision tree"
+  ]
+}

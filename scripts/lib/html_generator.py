@@ -210,6 +210,7 @@ class TravelPlanHTMLGenerator:
         attractions = self.load_json_safe("attractions.json")
         entertainment = self.load_json_safe("entertainment.json")
         shopping = self.load_json_safe("shopping.json")
+        cafe = self.load_json_safe("cafe.json")
         transportation = self.load_json_safe("transportation.json")
         timeline = self.load_json_safe("timeline.json")
         budget = self.load_json_safe("budget.json")
@@ -237,6 +238,7 @@ class TravelPlanHTMLGenerator:
             day["attractions"] = find_day_data(attractions, day_num).get("attractions", [])
             day["entertainment"] = find_day_data(entertainment, day_num).get("entertainment", [])
             day["shopping"] = find_day_data(shopping, day_num).get("shopping", [])
+            day["cafe"] = find_day_data(cafe, day_num).get("cafe", [])
             day["accommodation"] = find_day_data(accommodation, day_num).get("accommodation", {})
             day["timeline"] = find_day_data(timeline, day_num).get("timeline", {})
             day["budget"] = find_day_data(budget, day_num).get("budget", {})
@@ -263,6 +265,7 @@ class TravelPlanHTMLGenerator:
         meals = self.load_json_safe("meals.json")
         entertainment = self.load_json_safe("entertainment.json")
         shopping = self.load_json_safe("shopping.json")
+        cafe = self.load_json_safe("cafe.json")
         transportation = self.load_json_safe("transportation.json")
 
         merged = plan_skeleton.copy()
@@ -282,6 +285,7 @@ class TravelPlanHTMLGenerator:
             city["restaurants"] = find_city_data(meals, city_name).get("restaurants", [])
             city["entertainment"] = find_city_data(entertainment, city_name).get("entertainment", [])
             city["shopping"] = find_city_data(shopping, city_name).get("shopping", [])
+            city["cafe"] = find_city_data(cafe, city_name).get("cafe", [])
             city["transportation"] = find_city_data(transportation, city_name).get("transportation", {})
 
         return merged

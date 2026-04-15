@@ -53,7 +53,7 @@ def _derive_meal_types():
 
 MEAL_TYPES = _derive_meal_types()
 SCHEDULE_AGENTS = {"timeline", "segment"}
-POI_AGENTS = {"meals", "attractions", "entertainment", "shopping"}
+POI_AGENTS = {"meals", "attractions", "entertainment", "shopping", "cafe"}
 TIMELINE_FIELD = "timeline"
 TRAVEL_SEGMENTS_FIELD = "travel_segments"
 
@@ -79,7 +79,7 @@ def _collect_day_pois(day: dict, agent: str) -> list:
     if agent == "accommodation":
         acc = day.get("accommodation")
         return [acc] if isinstance(acc, dict) else []
-    if agent in ["attractions", "entertainment", "shopping"]:
+    if agent in ["attractions", "entertainment", "shopping", "cafe"]:
         return list(day.get(agent, []))
     return []
 

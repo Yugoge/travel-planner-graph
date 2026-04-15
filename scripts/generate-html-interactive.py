@@ -29,6 +29,7 @@ class InteractiveHTMLGenerator:
         self.accommodation = self._load_json("accommodation.json")
         self.entertainment = self._load_json("entertainment.json")
         self.shopping = self._load_json("shopping.json")
+        self.cafe = self._load_json("cafe.json")
         self.transportation = self._load_json("transportation.json")
         self.timeline = self._load_json("timeline.json")
         self.budget = self._load_json("budget.json")
@@ -152,14 +153,14 @@ class InteractiveHTMLGenerator:
         "amenities": "Amenities", "links": "Links",
         "user_plans": "User Plans", "meals": "Meals", "attractions": "Attractions",
         "entertainment": "Entertainment", "accommodation": "Accommodation",
-        "transportation": "Transportation", "shopping": "Shopping", "budget": "Budget", "alternatives": "Also try",
+        "transportation": "Transportation", "shopping": "Shopping", "cafe": "Cafe", "budget": "Budget", "alternatives": "Also try",
         "transport": "Transport",
         "trip_type": "Trip Type", "base_location": "Base Location",
         "period": "Period", "travelers": "Travelers", "budget_trip": "Budget / Trip",
         "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner",
         "cat_breakfast": "Breakfast", "cat_brunch": "Brunch", "cat_lunch": "Lunch", "cat_dinner": "Dinner",
         "cat_attraction": "Attraction", "cat_entertainment": "Entertainment",
-        "cat_shopping": "Shopping", "cat_checkin": "Check-in",
+        "cat_shopping": "Shopping", "cat_cafe": "Cafe", "cat_checkin": "Check-in",
         "kanban_view": "Kanban View", "timeline_view": "Timeline View",
         "prepaid": "Prepaid", "free": "Free", "optional": "Optional",
         "show_less": "Show less", "show_more": "Show more",
@@ -595,12 +596,14 @@ class InteractiveHTMLGenerator:
             "accommodation": None,
             "transportation": None,
             "shopping": [],
+            "cafe": [],
             "budget": {
                 "meals": 0,
                 "attractions": 0,
                 "entertainment": 0,
                 "accommodation": 0,
                 "shopping": 0,
+                "cafe": 0,
                 "transportation": 0,
                 "total": 0
             }
@@ -695,6 +698,51 @@ class InteractiveHTMLGenerator:
                             "links": alt.get("links", {}),
                         })
                     merged["meals"][f"{meal_type}_options"] = options
+
+        # Merge cafe (array-based, like entertainment)
+        if self.cafe and "days" in self.cafe:
+            day_cafe = next((d for d in self.cafe["days"] if d.get("day") == day_num), {})
+            if "cafe" in day_cafe:
+                for cafe_item in day_cafe["cafe"]:
+                    cafe_name_base = cafe_item.get("name_base", "")
+                    cafe_name_local = cafe_item.get("name_local", "")
+                    cafe_time = self._get_timeline_time(cafe_item.get("name_base",""), cafe_item.get("name_local",""), day_timeline)
+
+                    cost = cafe_item.get("cost", 0)
+                    cafe_currency = cafe_item.get("currency_local", "CNY")
+                    cost = self._to_display_currency(cost, cafe_currency)
+
+                    merged["cafe"].append({
+                        "name_base": cafe_name_base,
+                        "name_local": cafe_name_local,
+                        "location_base": cafe_item.get("location_base", ""),
+                        "location_local": cafe_item.get("location_local", ""),
+                        "coordinates": cafe_item.get("coordinates", {}),
+                        "type_base": self._format_type(cafe_item.get("type_base", "")),
+                        "type_local": cafe_item.get("type_local", ""),
+                        "cost": cost,
+                        "cost_local": cafe_item.get("cost", 0),
+                        "cuisine_base": cafe_item.get("cuisine_base", ""),
+                        "cuisine_local": cafe_item.get("cuisine_local", ""),
+                        "signature_dishes_base": cafe_item.get("signature_dishes_base", ""),
+                        "signature_dishes_local": cafe_item.get("signature_dishes_local", ""),
+                        "notes_base": cafe_item.get("notes_base", ""),
+                        "notes_local": cafe_item.get("notes_local", ""),
+                        "optional": cafe_item.get("optional", False),
+                        "image": cafe_item.get("image_url", "") or self._get_placeholder_image(
+                            "cafe",
+                            poi_name=cafe_name_local if cafe_name_local else cafe_name_base,
+                            gaode_id=cafe_item.get("gaode_id", ""),
+                            name_base=cafe_name_base,
+                            name_local=cafe_name_local,
+                            location_base=cafe_item.get("location_base", ""),
+                            location_local=cafe_item.get("location_local", ""),
+                            is_home=self._is_home_location(cafe_item)
+                        ),
+                        "time": cafe_time,
+                        "links": cafe_item.get("links", {})
+                    })
+                    merged["budget"]["cafe"] += cost
 
         # Merge attractions
         if self.attractions and "days" in self.attractions:
@@ -1142,6 +1190,7 @@ class InteractiveHTMLGenerator:
             merged["budget"]["entertainment"],
             merged["budget"]["accommodation"],
             merged["budget"]["shopping"],
+            merged["budget"]["cafe"],
             merged["budget"]["transportation"]
         ])
 
@@ -1244,12 +1293,14 @@ class InteractiveHTMLGenerator:
                 "entertainment": [],
                 "accommodation": None,
                 "shopping": [],
+                "cafe": [],
                 "budget": {
                     "meals": 0,
                     "attractions": 0,
                     "entertainment": 0,
                     "accommodation": 0,
                     "shopping": 0,
+                    "cafe": 0,
                     "transportation": 0,
                     "total": 0
                 }
@@ -1316,6 +1367,7 @@ class InteractiveHTMLGenerator:
                 day["budget"]["entertainment"],
                 day["budget"]["accommodation"],
                 day["budget"]["shopping"],
+                day["budget"]["cafe"],
                 day["budget"]["transportation"]
             ])
 
@@ -1551,6 +1603,7 @@ const Donut = ({ budget, size = 80, onBudgetClick, day }) => {
     { v: budget.entertainment || 0, c: '#9b6dd7', k: 'entertainment' },
     { v: budget.accommodation || 0, c: '#45b26b', k: 'accommodation' },
     { v: budget.shopping || 0, c: '#e07c5a', k: 'shopping' },
+    { v: budget.cafe || 0, c: '#D4A574', k: 'cafe' },
     { v: budget.transportation || 0, c: '#0ea5e9', k: 'transportation' }
   ].filter(i => i.v > 0);
   const t = items.reduce((s, i) => s + i.v, 0);
@@ -1818,6 +1871,7 @@ const BudgetDetailSidebar = ({ category, items, total, onClose, bp, lang }) => {
     entertainment: { icon: '🎭', label: L('entertainment', lang), color: '#9b6dd7' },
     accommodation: { icon: '🏨', label: L('accommodation', lang), color: '#45b26b' },
     shopping: { icon: '🛍️', label: L('shopping', lang), color: '#e07c5a' },
+    cafe: { icon: '\u2615', label: L('cafe', lang), color: '#D4A574' },
     transportation: { icon: '🚄', label: L('transport', lang), color: '#0ea5e9' }
   };
   const cfg = categoryConfig[category] || { icon: '💰', label: L('budget', lang), color: '#37352f' };
@@ -2249,7 +2303,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
           const cardW = sm ? 240 : 280;
           const cardH = sm ? 300 : 320;
           const imgH = sm ? 120 : 140;
-          const categoryColors = { meals: '#e67e22', attractions: '#3498db', entertainment: '#9b59b6', shopping: '#e74c3c', accommodation: '#27ae60', transportation: '#0ea5e9' };
+          const categoryColors = { meals: '#e67e22', attractions: '#3498db', entertainment: '#9b59b6', shopping: '#e74c3c', cafe: '#D4A574', accommodation: '#27ae60', transportation: '#0ea5e9' };
 
           const scrollContainerStyle = {
             display: 'flex', flexWrap: 'nowrap', gap: '12px',
@@ -2331,6 +2385,52 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                   <div style={fadeStyle} />
                 </div>
               </Section>
+
+              {/* Cafe */}
+              {day.cafe && day.cafe.length > 0 && (
+                <Section title={L('cafe', lang)} icon="\u2615">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {day.cafe.map((c, i) => {
+                        const catColor = categoryColors.cafe;
+                        return (
+                          <div key={i} style={cardStyle(catColor, false)}
+                            onClick={() => onItemClick && onItemClick(c, 'cafe')}
+                            onMouseEnter={hoverOn}
+                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                          >
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#faf6f0', flexShrink: 0 }}>
+                              {c.image && <img src={c.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none'; }} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <span>\u2615 {L('cafe', lang)}</span>
+                                {c.optional && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' }}>{L('optional', lang)}</span>}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(c, lang)}
+                                <RedNoteLink name={c.name_local || c.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {c.time && c.time.start !== '00:00' && <div>{c.time.start} \u2013 {c.time.end}{c.cost > 0 ? ' \u00b7 ' + fmtCost(c.cost, undefined, lang) : ''}</div>}
+                                {!c.time && c.cost > 0 && <div>{fmtCost(c.cost, undefined, lang)}</div>}
+                                {getDisplayField(c, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(c, 'type', lang)}</div>}
+                                {getDisplayField(c, 'cuisine', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(c, 'cuisine', lang)}</div>}
+                                {(c.location_base || c.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={c} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && c.notes_local ? c.notes_local : c.notes_base}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={fadeStyle} />
+                  </div>
+                </Section>
+              )}
 
               {/* Attractions */}
               {day.attractions && day.attractions.length > 0 && (
@@ -2573,6 +2673,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         { k: 'entertainment', l: L('entertainment', lang), c: '#9b6dd7' },
                         { k: 'accommodation', l: L('accommodation', lang), c: '#45b26b' },
                         { k: 'shopping', l: L('shopping', lang), c: '#e07c5a' },
+                        { k: 'cafe', l: L('cafe', lang), c: '#D4A574' },
                         { k: 'transportation', l: L('transport', lang), c: '#0ea5e9' }
                       ].filter(r => day.budget[r.k] > 0).map(r => (
                         <div key={r.k} style={{
@@ -2715,6 +2816,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
   day.shopping?.forEach(s => add(s, 'shopping', L('cat_shopping', lang)));
+  day.cafe?.forEach(c => add(c, 'cafe', L('cat_cafe', lang)));
   // Accommodation: time field is set by timeline agent after return-to-hotel travel segment.
   // timeline agent is the single source of truth for check-in time placement.
   if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
@@ -3053,6 +3155,9 @@ function NotionTravelApp() {
     } else if (category === 'shopping') {
       items = dayData.shopping || [];
       total = dayData.budget.shopping || 0;
+    } else if (category === 'cafe') {
+      items = dayData.cafe || [];
+      total = dayData.budget.cafe || 0;
     } else if (category === 'transportation') {
       items = dayData.transportation ? [dayData.transportation] : [];
       total = dayData.budget.transportation || 0;

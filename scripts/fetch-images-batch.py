@@ -670,6 +670,7 @@ class BatchImageFetcher:
             ("accommodation.json", "accommodation", "accommodation"),
             ("entertainment.json", "entertainment", "entertainment"),
             ("shopping.json", "shopping", "shopping"),
+            ("cafe.json", "cafe", "cafe"),
         ]
 
         for filename, field_name, poi_type in agent_files:
@@ -847,6 +848,32 @@ class BatchImageFetcher:
                                 poi_dict["coordinates"] = item["coordinates"]
                             pois.append(poi_dict)
 
+                elif field_name == "cafe":
+                    # Cafe: list of items (array-based like entertainment)
+                    for item in day.get("cafe", []):
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
+
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
+
+                        if name_base:
+                            poi_dict = {
+                                "name_base": name_base,
+                                "name_local": name_local,
+                                "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
+                                "type": poi_type
+                            }
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
+
             # Process cities format (bucket list)
             for city in cities_data:
                 location = city.get("city", "")
@@ -993,6 +1020,31 @@ class BatchImageFetcher:
                                 poi_dict["coordinates"] = item["coordinates"]
                             pois.append(poi_dict)
 
+                elif field_name == "cafe":
+                    for item in city.get("cafe", []):
+                        name_base = item.get("name_base", "")
+                        name_local = item.get("name_local", "")
+                        location_base = item.get("location_base", "")
+                        location_local = item.get("location_local", "")
+
+                        if not name_base:
+                            name_base = item.get("name", "")
+                        if not name_local:
+                            name_local = item.get("name_chinese", "") or self._extract_local_name(name_base)
+
+                        if name_base:
+                            poi_dict = {
+                                "name_base": name_base,
+                                "name_local": name_local,
+                                "city": location,
+                                "location_base": location_base,
+                                "location_local": location_local,
+                                "type": poi_type
+                            }
+                            if item.get("coordinates"):
+                                poi_dict["coordinates"] = item["coordinates"]
+                            pois.append(poi_dict)
+
         print(f"  Found {len(pois)} POIs across all agent files")
 
         fetched = 0
@@ -1064,6 +1116,7 @@ class BatchImageFetcher:
             ("accommodation.json", "accommodation", "accommodation"),
             ("entertainment.json", "entertainment", "entertainment"),
             ("shopping.json", "shopping", "shopping"),
+            ("cafe.json", "cafe", "cafe"),
         ]
 
         for filename, field_name, poi_type in agent_files:
@@ -1227,6 +1280,36 @@ class BatchImageFetcher:
                             cache_key = f"{service}_{name_base}"
 
                         # FALLBACK FIX: Try multiple cache keys including cross-service
+                        cache_keys_to_try = [
+                            cache_key,
+                            f"{service}_{name_base}",
+                        ]
+                        other_service = "google" if service == "gaode" else "gaode"
+                        if name_local:
+                            cache_keys_to_try.append(f"{other_service}_{name_local}")
+                        cache_keys_to_try.append(f"{other_service}_{name_base}")
+
+                        photo_url = next((self.cache["pois"][k] for k in cache_keys_to_try if k in self.cache["pois"]), None)
+
+                        if photo_url:
+                            if "image_url" not in item or item.get("image_url") != photo_url:
+                                item["image_url"] = photo_url
+                                modified = True
+                                updated += 1
+
+                # Process cafe (array-based like entertainment)
+                elif field_name == "cafe":
+                    for item in day.get("cafe", []):
+                        name_base = item.get("name_base") or item.get("name", "")
+                        name_local = item.get("name_local")
+                        if not name_base:
+                            continue
+
+                        if service == "gaode" and name_local:
+                            cache_key = f"{service}_{name_local}"
+                        else:
+                            cache_key = f"{service}_{name_base}"
+
                         cache_keys_to_try = [
                             cache_key,
                             f"{service}_{name_base}",

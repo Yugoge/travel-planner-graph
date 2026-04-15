@@ -96,6 +96,7 @@ class AgentDataSyncer:
         self._sync_entertainment(timeline_by_day)
         self._sync_accommodation(timeline_by_day)
         self._sync_shopping(timeline_by_day)
+        self._sync_cafe(timeline_by_day)
 
         # Post-sync schema validation gate (report but don't fail)
         self._validate_synced_data()
@@ -372,6 +373,32 @@ class AgentDataSyncer:
         else:
             print("  No changes needed")
 
+    def _sync_cafe(self, timeline_by_day: dict):
+        """Sync cafe agent data with timeline."""
+        print("Syncing cafe...")
+        data = self._load_json("cafe.json")
+        if not data or "days" not in data:
+            print("  Skipped (no data)")
+            return
+
+        modified = False
+        for day in data["days"]:
+            day_num = day.get("day", 0)
+            day_tl = timeline_by_day.get(day_num, {})
+            items = day.get("cafe", [])
+
+            for i, cafe_item in enumerate(items):
+                original = deepcopy(cafe_item)
+                # Time injection removed — timeline is single source of truth
+                if cafe_item != original:
+                    items[i] = cafe_item
+                    modified = True
+
+        if modified:
+            self._save_json("cafe.json", data)
+        else:
+            print("  No changes needed")
+
     def _validate_synced_data(self):
         """Validate synced data against JSON schemas (report-only, non-blocking).
 
@@ -398,6 +425,7 @@ class AgentDataSyncer:
             agents_to_check = [
                 "meals", "attractions", "entertainment",
                 "accommodation", "transportation", "timeline", "budget", "shopping",
+                "cafe",
             ]
 
             for agent_name in agents_to_check:

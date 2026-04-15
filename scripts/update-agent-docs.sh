@@ -5,7 +5,7 @@
 set -euo pipefail
 
 AGENTS_DIR=".claude/agents"
-AGENTS=("meals" "attractions" "entertainment" "accommodation" "shopping" "transportation" "timeline" "budget")
+AGENTS=("meals" "attractions" "entertainment" "accommodation" "shopping" "cafe" "transportation" "timeline" "budget")
 
 echo "🔧 Updating agent documentation..."
 echo ""

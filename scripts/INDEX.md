@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-04-06T16:44:04Z*
-**Total entries**: 61
+*Last updated: 2026-04-15T21:12:00Z*
+**Total entries**: 63
 **Convention**: kebab
 
 ## Tree
@@ -23,7 +23,8 @@ scripts/
 ├── lib/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
-│   └── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+│   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+│   └── `meal_utils.py` - Shared meal type utilities — single source of truth for extracting meal types
 ├── todo/
 │   ├── `plan.py` - Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
 │   └── `review.py` - Preloaded TodoList for /review command workflow.
@@ -56,6 +57,7 @@ scripts/
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 ├── `save.py` - Unified Data Saving Script - Batch Validation and Atomic Writes
+├── `save.py.backup` - backup file
 ├── `sync-agent-data.py` - Agent Data Synchronization Script
 ├── `test-load-py.sh` - Description: Comprehensive test suite for scripts/load.py
 ├── `test-unified-workflow.sh` - Test Unified Scripts Architecture
