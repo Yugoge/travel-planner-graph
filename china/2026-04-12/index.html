@@ -2316,8 +2316,8 @@
               "icon": "🚕"
             },
             {
-              "name_base": "Taxi to Fuqipian Restaurant (Zongfu Street)",
-              "name_local": "出租车前往夫妻肺片（总府街）",
+              "name_base": "Taxi to Mingting Xiaoguan (Taikoo Li)",
+              "name_local": "出租车前往明婷小馆（太古里旗舰店）",
               "time": {
                 "start": "12:45",
                 "end": "13:00"
@@ -7345,10 +7345,19 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
   // Root cause fix: Standardize optional chaining for all day properties
-  if (day.meals?.breakfast) add(day.meals.breakfast, 'meal', L('cat_breakfast', lang));
-  if (day.meals?.brunch) add(day.meals.brunch, 'meal', L('cat_brunch', lang));
-  if (day.meals?.lunch) add(day.meals.lunch, 'meal', L('cat_lunch', lang));
-  if (day.meals?.dinner) add(day.meals.dinner, 'meal', L('cat_dinner', lang));
+  // Include alternatives from _options arrays; mark non-primary entries with _isAlternative
+  ['breakfast', 'brunch', 'lunch', 'dinner'].forEach(mealType => {
+    const catKey = 'cat_' + mealType;
+    const options = day.meals?.[mealType + '_options'];
+    if (options && options.length > 0) {
+      options.forEach((opt, i) => {
+        const entry = add(opt, 'meal', L(catKey, lang));
+        if (entry && i > 0) entry._isAlternative = true;
+      });
+    } else if (day.meals?.[mealType]) {
+      add(day.meals[mealType], 'meal', L(catKey, lang));
+    }
+  });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
@@ -7574,17 +7583,17 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         ) : (
                           <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                         )}
-                        {entry.optional && showDetails && (
+                        {(entry.optional || entry._isAlternative) && showDetails && (
                           <span style={{
                             fontSize: `${9 * fontScale}px`,
                             padding: '1px 4px',
-                            background: '#f5f5f3',
+                            background: entry._isAlternative ? '#edf2fc' : '#f5f5f3',
                             borderRadius: '3px',
-                            color: '#9b9a97',
+                            color: entry._isAlternative ? '#2b63b5' : '#9b9a97',
                             marginLeft: '4px',
                             verticalAlign: 'middle'
                           }}>
-                            {L('optional', lang)}
+                            {entry._isAlternative ? (lang === 'local' ? '备选' : 'Alt') : L('optional', lang)}
                           </span>
                         )}
                       </div>
