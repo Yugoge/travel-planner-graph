@@ -1,13 +1,14 @@
 # specs
 
-*Last updated: 2026-04-12T14:13:39Z*
-**Total entries**: 1
+*Last updated: 2026-04-16T17:29:22Z*
+**Total entries**: 2
 **Convention**: kebab
 
 ## Tree
 ```
 specs/
-└── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
+├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
+└── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 ```
 
 ---
