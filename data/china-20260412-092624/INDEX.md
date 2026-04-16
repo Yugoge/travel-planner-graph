@@ -1,8 +1,8 @@
 # china-20260412-092624
 
-*Last updated: 2026-04-15T21:11:48Z*
+*Last updated: 2026-04-16T06:09:43Z*
 **Total entries**: 24
-**Convention**: lower
+**Convention**: kebab
 
 ## Tree
 ```
