@@ -7448,7 +7448,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);
   });
-  // Accommodation check-in: start_time = latest end_time of all other entries (arrives, then checks in)
+  // Accommodation check-in: start after last activity/travel segment ends
   if (day.accommodation) {
     const accEntry = add(day.accommodation, 'accommodation', L('cat_checkin', lang));
     if (accEntry) {
@@ -7459,10 +7459,13 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
           if (m > latestEnd) latestEnd = m;
         }
       });
-      if (latestEnd > 0) {
-        const hh = String(Math.floor(latestEnd / 60)).padStart(2, '0');
-        const mm = String(latestEnd % 60).padStart(2, '0');
-        accEntry.time = { ...accEntry.time, start: hh + ':' + mm };
+      if (latestEnd > 0 && latestEnd >= timeToMinutes(accEntry.time.start)) {
+        const startH = String(Math.floor(latestEnd / 60)).padStart(2, '0');
+        const startM = String(latestEnd % 60).padStart(2, '0');
+        const endMins = latestEnd + 30;
+        const endH = String(Math.floor(endMins / 60)).padStart(2, '0');
+        const endM = String(endMins % 60).padStart(2, '0');
+        accEntry.time = { ...accEntry.time, start: startH + ':' + startM, end: endH + ':' + endM };
       }
     }
   }
