@@ -2314,17 +2314,18 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
             scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent'
           };
 
-          const cardStyle = (catColor, isPrimary) => ({
+          const cardStyle = (catColor, isPrimary, isOptional) => ({
             width: cardW + 'px', minWidth: cardW + 'px', height: cardH + 'px',
             flexShrink: 0, scrollSnapAlign: 'start',
             background: '#fff', borderRadius: '8px',
-            boxShadow: isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)',
+            border: isOptional ? '1.5px dashed ' + catColor + '80' : 'none',
+            boxShadow: isOptional ? '0 1px 3px rgba(0,0,0,0.04)' : (isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'),
             overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer',
             display: 'flex', flexDirection: 'column'
           });
 
           const hoverOn = (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(74,144,217,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; };
-          const hoverOff = (e, catColor, isPrimary) => { e.currentTarget.style.boxShadow = isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; };
+          const hoverOff = (e, catColor, isPrimary, isOptional) => { e.currentTarget.style.boxShadow = isOptional ? '0 1px 3px rgba(0,0,0,0.04)' : (isPrimary ? '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1.5px ' + catColor + '33' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'); e.currentTarget.style.transform = 'translateY(0)'; };
 
           const categoryRowStyle = { position: 'relative' };
           const fadeStyle = {
@@ -2394,10 +2395,10 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {day.cafe.map((c, i) => {
                         const catColor = categoryColors.cafe;
                         return (
-                          <div key={i} style={cardStyle(catColor, false)}
+                          <div key={i} style={cardStyle(catColor, false, c.optional)}
                             onClick={() => onItemClick && onItemClick(c, 'cafe')}
                             onMouseEnter={hoverOn}
-                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                            onMouseLeave={e => hoverOff(e, catColor, false, c.optional)}
                           >
                             <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#faf6f0', flexShrink: 0 }}>
                               {c.image && <img src={c.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -2440,10 +2441,10 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {day.attractions.map((attr, i) => {
                         const catColor = categoryColors.attractions;
                         return (
-                          <div key={i} style={cardStyle(catColor, false)}
+                          <div key={i} style={cardStyle(catColor, false, attr.optional)}
                             onClick={() => onItemClick && onItemClick(attr, 'attraction')}
                             onMouseEnter={hoverOn}
-                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                            onMouseLeave={e => hoverOff(e, catColor, false, attr.optional)}
                           >
                             <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#eef4f9', flexShrink: 0 }}>
                               {attr.image && <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />}
@@ -2484,18 +2485,19 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {day.entertainment.map((ent, i) => {
                         const catColor = categoryColors.entertainment;
                         return (
-                          <div key={i} style={cardStyle(catColor, false)}
+                          <div key={i} style={cardStyle(catColor, false, ent.optional)}
                             onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
                             onMouseEnter={hoverOn}
-                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                            onMouseLeave={e => hoverOff(e, catColor, false, ent.optional)}
                           >
                             <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
                               {ent.image && <img src={ent.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={e => { e.target.style.display = 'none'; }} />}
                             </div>
                             <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
-                                🎭 {L('entertainment', lang)}
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <span>🎭 {L('entertainment', lang)}</span>
+                                {ent.optional && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' }}>{L('optional', lang)}</span>}
                               </div>
                               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                                 {getDisplayName(ent, lang)}
@@ -2528,18 +2530,19 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {day.shopping.map((shop, i) => {
                         const catColor = categoryColors.shopping;
                         return (
-                          <div key={i} style={cardStyle(catColor, false)}
+                          <div key={i} style={cardStyle(catColor, false, shop.optional)}
                             onClick={() => onItemClick && onItemClick(shop, 'shopping')}
                             onMouseEnter={hoverOn}
-                            onMouseLeave={e => hoverOff(e, catColor, false)}
+                            onMouseLeave={e => hoverOff(e, catColor, false, shop.optional)}
                           >
                             <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
                               {shop.image && <img src={shop.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={e => { e.target.style.display = 'none'; }} />}
                             </div>
                             <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
-                                🛍️ {L('shopping', lang)}
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <span>🛍️ {L('shopping', lang)}</span>
+                                {shop.optional && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' }}>{L('optional', lang)}</span>}
                               </div>
                               <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                                 {getDisplayName(shop, lang)}
@@ -2789,7 +2792,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
         && item.time.start !== '00:00'
         && item.time.end !== '00:00'
         && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end)) {
-      entries.push({ ...item, _type: type, _label: label });
+      const e = { ...item, _type: type, _label: label };
+      entries.push(e);
+      return e;
     }
   };
   // Add transportation if exists (Fix Issue #8, #9: bilingual label respects lang toggle)
@@ -2817,17 +2822,35 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Root cause fix: shopping items were missing from timeline - add them here
   day.shopping?.forEach(s => add(s, 'shopping', L('cat_shopping', lang)));
   day.cafe?.forEach(c => add(c, 'cafe', L('cat_cafe', lang)));
-  // Accommodation: time field is set by timeline agent after return-to-hotel travel segment.
-  // timeline agent is the single source of truth for check-in time placement.
-  if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
   // Fix issue #6: Add travel segments from timeline (includes return-to-hotel segment)
   day.travel_segments?.forEach(t => {
     const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);
   });
+  // Accommodation check-in: start after last activity/travel segment ends
+  if (day.accommodation) {
+    const accEntry = add(day.accommodation, 'accommodation', L('cat_checkin', lang));
+    if (accEntry) {
+      let latestEnd = 0;
+      entries.forEach(e => {
+        if (e._type !== 'accommodation') {
+          const m = timeToMinutes(e.time.end);
+          if (m > latestEnd) latestEnd = m;
+        }
+      });
+      if (latestEnd > 0 && latestEnd >= timeToMinutes(accEntry.time.start)) {
+        const startH = String(Math.floor(latestEnd / 60)).padStart(2, '0');
+        const startM = String(latestEnd % 60).padStart(2, '0');
+        const endMins = latestEnd + 30;
+        const endH = String(Math.floor(endMins / 60)).padStart(2, '0');
+        const endM = String(endMins % 60).padStart(2, '0');
+        accEntry.time = { ...accEntry.time, start: startH + ':' + startM, end: endH + ':' + endM };
+      }
+    }
+  }
 
   // Sort by start time
-  entries.sort((a, b) => a.time.start.localeCompare(b.time.start));
+  entries.sort((a, b) => { const cmp = a.time.start.localeCompare(b.time.start); if (cmp !== 0) return cmp; const order = {transportation:0, travel:1, meal:2, attraction:3, cafe:4, entertainment:5, shopping:6, accommodation:7}; return (order[a._type] ?? 99) - (order[b._type] ?? 99); });
 
   // Deduplicate: for optional entertainment/shopping items sharing the same time slot
   // as another entry, keep only the first (primary) one in timeline view
@@ -2988,7 +3011,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                   left: hasColumns ? `calc(10px + ${colLeft}%)` : '10px',
                   width: hasColumns ? `calc(${colWidth}% - 12px)` : 'calc(100% - 20px)',
                   height: entryH - 4,
-                  background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
+                  background: st.bg, borderLeft: `3px ${(entry.optional || entry._isAlternative) ? 'dashed' : 'solid'} ${st.border}`,
                   borderRadius: '6px',
                   padding: sm ? '4px 6px' : '6px 8px',  // Smaller padding for scaled fonts
                   display: 'flex',
@@ -3090,7 +3113,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                             {fmtCost(entry.cost, undefined, lang)}
                           </span>
                         )}
-                        {entry.stars && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
+                        {entry.stars > 0 && <span style={{ color: '#e9b200' }}>{'★'.repeat(entry.stars)}</span>}
                       </div>
                     ))}
                     {showDetails && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}

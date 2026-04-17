@@ -322,13 +322,69 @@ class AgentDataSyncer:
         else:
             print("  No changes needed")
 
+    def _collect_non_accom_end_times(self, day_data: dict) -> list:
+        """Collect end_times from all non-accommodation timeline entries and travel_segments."""
+        end_times = []
+        for key, entry in day_data.get("timeline", {}).items():
+            if entry.get("accommodation_ref"):
+                continue
+            et = entry.get("end_time")
+            if et and isinstance(et, str) and ":" in et:
+                end_times.append(et)
+        for seg in day_data.get("travel_segments", []):
+            et = seg.get("end_time")
+            if et and isinstance(et, str) and ":" in et:
+                end_times.append(et)
+        return end_times
+
+    def _adjust_accom_entry(self, accom_entry: dict, max_end: str, day_num: int) -> bool:
+        """Adjust accommodation entry timing if it starts before max_end. Returns True if modified."""
+        old_start = accom_entry.get("start_time", "")
+        if old_start >= max_end:
+            return False
+        h, m = map(int, max_end.split(":"))
+        m += 30
+        if m >= 60:
+            h += 1
+            m -= 60
+        if h >= 24:
+            h, m = 23, 59
+        print(f"  Day {day_num}: accommodation check-in adjusted from {old_start} to {max_end}")
+        accom_entry["start_time"] = max_end
+        accom_entry["end_time"] = f"{h:02d}:{m:02d}"
+        accom_entry["duration_minutes"] = 30
+        return True
+
+    def _find_accom_entry(self, timeline: dict) -> dict:
+        """Find the accommodation_ref entry in a day's timeline."""
+        for entry in timeline.values():
+            if entry.get("accommodation_ref"):
+                return entry
+        return None
+
     def _sync_accommodation(self, timeline_by_day: dict):
-        """Sync accommodation agent data with timeline.
-        Time injection removed — timeline is single source of truth.
-        Only check_in/check_out (intrinsic hotel properties) remain in accommodation data.
+        """Fix accommodation check-in timing in timeline.json.
+
+        Rule: accommodation start_time = MAX(all non-accommodation entry end_times).
         """
         print("Syncing accommodation...")
-        print("  No time injection needed (timeline is single source of truth)")
+        timeline_data = self._load_json("timeline.json")
+        if not timeline_data or "days" not in timeline_data:
+            print("  Skipped (no timeline data)")
+            return
+        modified = False
+        for day_data in timeline_data["days"]:
+            day_num = day_data.get("day")
+            accom_entry = self._find_accom_entry(day_data.get("timeline", {}))
+            if not accom_entry:
+                continue
+            end_times = self._collect_non_accom_end_times(day_data)
+            if end_times and self._adjust_accom_entry(accom_entry, max(end_times), day_num):
+                modified = True
+        if modified:
+            self._save_json("timeline.json", timeline_data)
+        else:
+            print("  No accommodation timing adjustments needed")
 
     def _sync_shopping(self, timeline_by_day: dict):
         """Sync shopping agent data with timeline."""

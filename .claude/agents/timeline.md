@@ -148,6 +148,13 @@ For each day in the trip:
    - Works for any accommodation type or meal name — no keyword matching needed
    - `plan-validate.py` reports **HIGH severity** and **blocks saves** if any ref is missing
 
+   **Accommodation check-in timing rule (MANDATORY)**:
+   - After generating all timeline entries for a day, set accommodation check-in:
+     - `start_time` = MAX(all non-accommodation entry end_times)
+     - `end_time` = start_time + 30 minutes
+   - The accommodation entry must NEVER overlap with or start before any other activity
+   - This applies to ALL days with accommodation, not just arrival days
+
 3. **Validate timeline**:
    - Check for overlapping activities (conflict detection)
    - Ensure travel time between locations is realistic
