@@ -219,14 +219,15 @@ For each day, research and structure cafe data:
 
 4. **Validate output against schema**: Read `schemas/cafe.schema.json`
 
-5. **Save using scripts/save.py**:
+5. **Save using scripts/save.py** (slot-level merge is automatic when file exists):
    ```bash
    python scripts/save.py \
      --trip {destination-slug} \
      --agent cafe \
      --input /tmp/cafe_update.json
-     --merge-days
    ```
+   Slot-level merge is automatic when the target file exists: sibling keys on the
+   day object are preserved. No merge flag needed.
 
 6. **Verify save succeeded**: Check exit code 0.
 

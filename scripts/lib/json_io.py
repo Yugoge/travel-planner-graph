@@ -184,6 +184,44 @@ def save_skeleton_json(
     _atomic_write(file_path, content)
 
 
+def _batch_validate(saves: List[Tuple[Path, str, dict]]) -> List[Issue]:
+    """Phase 1: validate every entry, return the aggregate issue list."""
+    all_issues: List[Issue] = []
+    for file_path, agent_name, data in saves:
+        envelope = {"agent": agent_name, "status": "complete", "data": data}
+        issues, _ = validate_agent_data(agent_name, envelope, Path(file_path).parent)
+        all_issues.extend(issues)
+    return all_issues
+
+
+def _batch_backup(saves: List[Tuple[Path, str, dict]]) -> None:
+    """Phase 2: create .bak for each entry whose target file already exists."""
+    for file_path, _, _ in saves:
+        path = Path(file_path)
+        if path.exists():
+            _create_backup(path)
+
+
+def _batch_write_tmp(saves: List[Tuple[Path, str, dict]]) -> List[Tuple[Path, Path]]:
+    """Phase 3: write every envelope to a .tmp sibling, return (tmp, final) pairs."""
+    tmp_files: List[Tuple[Path, Path]] = []
+    for file_path, agent_name, data in saves:
+        path = Path(file_path)
+        envelope = {"agent": agent_name, "status": "complete", "data": data}
+        content = json.dumps(envelope, indent=2, ensure_ascii=False) + "\n"
+        tmp_path = path.with_suffix(path.suffix + '.tmp')
+        tmp_path.write_text(content, encoding='utf-8')
+        tmp_files.append((tmp_path, path))
+    return tmp_files
+
+
+def _batch_rollback(tmp_files: List[Tuple[Path, Path]]) -> None:
+    """Delete any .tmp files left behind by a failed batch write."""
+    for tmp_path, _ in tmp_files:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
 def save_agent_batch(
     saves: List[Tuple[Path, str, dict]],
     *,
@@ -201,47 +239,47 @@ def save_agent_batch(
         ValidationError: If any validation fails
         AtomicWriteError: If write operation fails
     """
-    # Phase 1: Validate all
-    all_issues = []
     if validate:
-        for file_path, agent_name, data in saves:
-            envelope = {"agent": agent_name, "status": "complete", "data": data}
-            issues, _ = validate_agent_data(agent_name, envelope, Path(file_path).parent)
-            all_issues.extend(issues)
-
+        all_issues = _batch_validate(saves)
         high_issues = [i for i in all_issues if i.severity == Severity.HIGH]
         if high_issues:
             raise ValidationError(all_issues, {})
 
-    # Phase 2: Backup all
     if create_backup:
-        for file_path, _, _ in saves:
-            file_path = Path(file_path)
-            if file_path.exists():
-                _create_backup(file_path)
+        _batch_backup(saves)
 
-    # Phase 3: Write all to .tmp
-    tmp_files = []
+    tmp_files: List[Tuple[Path, Path]] = []
     try:
-        for file_path, agent_name, data in saves:
-            file_path = Path(file_path)
-            envelope = {"agent": agent_name, "status": "complete", "data": data}
-            content = json.dumps(envelope, indent=2, ensure_ascii=False) + "\n"
-
-            tmp_path = file_path.with_suffix(file_path.suffix + '.tmp')
-            tmp_path.write_text(content, encoding='utf-8')
-            tmp_files.append((tmp_path, file_path))
-
-        # Phase 4: Atomic rename all
+        tmp_files = _batch_write_tmp(saves)
         for tmp_path, final_path in tmp_files:
             tmp_path.replace(final_path)
-
     except Exception as e:
-        # Rollback: delete all .tmp files
-        for tmp_path, _ in tmp_files:
-            if tmp_path.exists():
-                tmp_path.unlink()
+        _batch_rollback(tmp_files)
         raise AtomicWriteError(f"Batch save failed: {e}") from e
+
+
+def _run_validation_pipeline(trip_dir: Path, agent_name: str):
+    """Execute plan-validate pipeline; return ([], {}) when the module isn't loaded."""
+    try:
+        registry = SchemaRegistry()
+        issues, metrics = run_pipeline(
+            trip_dirs=[trip_dir], registry=registry, agent_filter=agent_name
+        )
+        return issues, metrics
+    except (NameError, AttributeError):
+        print("Warning: Validation skipped (plan-validate.py not available)", file=sys.stderr)
+        return [], {}
+
+
+def _restore_or_cleanup(
+    agent_file: Path, backup_existed: bool, backup_content: Optional[str]
+) -> None:
+    """Restore the pre-validation file content, or remove the temp file we created."""
+    if backup_existed and backup_content is not None:
+        agent_file.write_text(backup_content, encoding='utf-8')
+        return
+    if not backup_existed and agent_file.exists():
+        agent_file.unlink()
 
 
 def validate_agent_data(
@@ -260,115 +298,105 @@ def validate_agent_data(
         Tuple of (issues, metrics)
     """
     trip_dir = Path(trip_dir)
-
-    # Write to actual agent file location for validation
-    # plan-validate.py expects files to exist at <trip_dir>/<agent>.json
     agent_file = trip_dir / f"{agent_name}.json"
     backup_existed = agent_file.exists()
-    backup_content = None
-
-    if backup_existed:
-        backup_content = agent_file.read_text(encoding='utf-8')
+    backup_content = agent_file.read_text(encoding='utf-8') if backup_existed else None
 
     try:
-        # Write file temporarily for validation
-        agent_file.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding='utf-8')
-
-        # Try to use plan-validate.py
-        try:
-            registry = SchemaRegistry()
-            issues, metrics = run_pipeline(
-                trip_dirs=[trip_dir],
-                registry=registry,
-                agent_filter=agent_name
-            )
-            return issues, metrics
-        except (NameError, AttributeError):
-            # Fallback if plan-validate.py not available
-            print(f"Warning: Validation skipped (plan-validate.py not available)", file=sys.stderr)
-            return [], {}
-
+        agent_file.write_text(
+            json.dumps(json_data, indent=2, ensure_ascii=False), encoding='utf-8'
+        )
+        return _run_validation_pipeline(trip_dir, agent_name)
     finally:
-        # Restore original file or delete temp file
-        if backup_existed and backup_content is not None:
-            agent_file.write_text(backup_content, encoding='utf-8')
-        elif not backup_existed and agent_file.exists():
-            agent_file.unlink()
+        _restore_or_cleanup(agent_file, backup_existed, backup_content)
 
 
 # ============================================================
 # Utility Functions
 # ============================================================
 
+def _cleanup_tmp(tmp_path: Path) -> None:
+    """Remove a leftover .tmp file if it still exists."""
+    if tmp_path.exists():
+        tmp_path.unlink()
+
+
 def _atomic_write(file_path: Path, content: str) -> None:
     """Write file atomically using temp file + rename."""
     file_path = Path(file_path)
     tmp_path = file_path.with_suffix(file_path.suffix + '.tmp')
-
     try:
         tmp_path.write_text(content, encoding='utf-8')
         tmp_path.replace(file_path)
     except Exception as e:
-        if tmp_path.exists():
-            tmp_path.unlink()
+        _cleanup_tmp(tmp_path)
         raise AtomicWriteError(f"Failed to write {file_path}: {e}") from e
 
 
-def merge_agent_days(
+def merge_agent_slots(
     existing_data: dict,
     update_data: dict,
     agent_name: str
 ) -> dict:
-    """Merge single-day updates into multi-day JSON file.
+    """Merge partial-day updates at the key/slot level within each day.
 
-    Root Cause Fix: Addresses commits b057f26, 579f972, 921f855, 894b008
-    where save.py was documented as merging but only performed full-file replacement,
-    causing timeline data loss (21 days → 1 day).
+    Root Cause Fix (L4): The former merge_agent_days() performed full
+    day-object replacement, silently wiping sibling slots (e.g., saving only
+    `dinner` destroyed `breakfast` and `lunch`). Confirmed data loss: commit
+    47fccd4 (2026-04-13 13:14). This function is now the sole merge path,
+    invoked automatically when the target file exists (no flag needed).
 
-    This function enables incremental updates: agents output single-day data,
-    merge_agent_days() combines it with existing multi-day file, preserving all other days.
+    Merges each update_day key-by-key into the matching existing_day,
+    preserving keys that are NOT present in the update payload.
 
     Args:
         existing_data: Current multi-day data from file (unwrapped, no envelope)
-        update_data: Single-day or multi-day update from agent (unwrapped, no envelope)
-        agent_name: Agent name for day-keyed validation
+        update_data: Partial-day update from agent (unwrapped, no envelope)
+        agent_name: Agent name (kept for API consistency)
 
     Returns:
-        Merged data with updated days replaced, other days preserved
+        Merged data: for each update_day, keys present in the update overwrite
+        existing keys; keys NOT present in update are preserved from existing.
 
-    Merge logic:
-        - Extract day numbers from update_data.days array
-        - For each updated day N: replace existing_data.days[N] with update_data.days[N]
-        - Preserve all days NOT in update_data
-        - Preserve trip metadata (trip_name, destination, etc)
+    Merge semantics:
+        - Named-slot agents (meals, accommodation): update with key `dinner`
+          replaces only `dinner`; `breakfast`, `lunch`, `date`, `location`,
+          etc. survive.
+        - Array-based agents (attractions, entertainment, shopping, cafe): if
+          update has key `attractions`, the whole array is replaced; all other
+          day keys (`date`, `location`, ...) survive. Array-element-level
+          merge is NOT performed (per BA spec Edge Cases).
+        - Days present in existing but not referenced by update are preserved.
+        - Days present in update but not in existing are inserted.
 
     Example:
-        existing: {days: [{day: 1, ...}, {day: 2, ...}, ..., {day: 21, ...}]}
-        update:   {days: [{day: 5, ...}]}
-        result:   {days: [{day: 1, ...}, ..., {day: 5, NEW}, ..., {day: 21, ...}]}
+        existing: {days: [{day: 2, breakfast: A, lunch: B, dinner: C}]}
+        update:   {days: [{day: 2, dinner: D}]}
+        result:   {days: [{day: 2, breakfast: A, lunch: B, dinner: D}]}
     """
-    # Validate inputs
     if not isinstance(existing_data, dict) or "days" not in existing_data:
         raise ValueError(f"existing_data must have 'days' array, got: {list(existing_data.keys())}")
     if not isinstance(update_data, dict) or "days" not in update_data:
         raise ValueError(f"update_data must have 'days' array, got: {list(update_data.keys())}")
 
-    # Start with copy of existing data (preserves metadata)
+    # Preserve trip metadata
     merged = existing_data.copy()
 
-    # Build mapping of day_number → day_data from existing
-    existing_days_map = {day["day"]: day for day in existing_data.get("days", [])}
+    # Dict copy so we can mutate each day independently
+    existing_days_map = {day["day"]: dict(day) for day in existing_data.get("days", [])}
 
-    # Update with days from update_data
     for update_day in update_data.get("days", []):
         if "day" not in update_day:
-            raise ValueError(f"Day object missing 'day' field: {update_day.keys()}")
+            raise ValueError(f"Day object missing 'day' field: {list(update_day.keys())}")
         day_num = update_day["day"]
-        existing_days_map[day_num] = update_day
+        if day_num in existing_days_map:
+            # Overlay only the keys present in update_day; preserve all other keys
+            existing_days_map[day_num].update(update_day)
+        else:
+            # Day not previously present: insert as a copy of the update
+            existing_days_map[day_num] = dict(update_day)
 
-    # Reconstruct days array in sorted order
     merged["days"] = [existing_days_map[day_num] for day_num in sorted(existing_days_map.keys())]
-
     return merged
 
 

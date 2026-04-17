@@ -1,0 +1,167 @@
+{
+  "verdict": "pass",
+  "objections": [
+    {
+      "dimension": "investigation_completeness",
+      "claim": "BA flags transportation.md and budget.md as 'out of scope' because they have a 'different data structure'",
+      "problem": "The 'different data structure' rationale in ba-spec line 55 is not substantiated. Reading transportation.md (and the schema list) shows transportation/budget also use a top-level 'days' array with nested slots — same structural family as POI agents. The real reason they are out of scope is the user's spec Section 5 explicitly enumerates only 6 POI agents and Section 8 note 5 pre-approves Option C (new flag, backward compatible). BA's framing of 'different data structure' is factually weak but the OUT-OF-SCOPE CONCLUSION is correct per spec. Non-blocking — Dev should not change transportation.md/budget.md regardless of rationale.",
+      "required_evidence": "BA should have justified out-of-scope based on spec Section 5 enumerating only 6 agents, not on unverified structural difference. However, final scope decision is correct, so this is an observation, not a blocking objection."
+    },
+    {
+      "dimension": "evidence_quality",
+      "claim": "BA ties data loss to 'commit 47fccd4 (2026-04-13 13:14) removed breakfast + lunch'",
+      "problem": "BA did not provide a git-show diff of commit 47fccd4 in the report itself — only references the spec Section 1 evidence block. The evidence is accepted because the spec author (PM or user) vouched for it, but BA should have independently verified via git show or git log. This is flagged as 'evidence_type: inferred' in context JSON line 71, which is appropriate disclosure. Non-blocking.",
+      "required_evidence": "Optional: run `git -C /root/travel-planner log --all -p -- data/china-20260412-092624/meals.json | grep -A 5 47fccd4` to self-verify. Not required to pass."
+    }
+  ],
+  "dimensional_findings": {
+    "evidence_quality": {
+      "status": "pass",
+      "checks": [
+        {
+          "claim": "scripts/lib/json_io.py:367 contains 'existing_days_map[day_num] = update_day'",
+          "verified": true,
+          "actual_line_367": "existing_days_map[day_num] = update_day",
+          "context": "Full day-object replacement inside for-loop (lines 362-367); BA's evidence is EXACTLY accurate"
+        },
+        {
+          "claim": "6 POI agent .md files contain --merge-days at lines 294/298/292/272/301/228",
+          "verified": true,
+          "verified_files": [
+            "meals.md:294 — confirmed",
+            "accommodation.md:298 — confirmed",
+            "attractions.md:292 — confirmed",
+            "entertainment.md:272 — confirmed",
+            "shopping.md:301 — confirmed",
+            "cafe.md:228 — confirmed"
+          ]
+        },
+        {
+          "claim": "scripts/save.py:16 (docstring) and :623 (argparse) contain --merge-days references",
+          "verified": true,
+          "actual": "save.py:16 — 'python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5.json --merge-days' (docstring); save.py:623 — 'parser.add_argument(\"--merge-days\", action=\"store_true\", help=\"Merge day updates\")' (argparse). Both match."
+        },
+        {
+          "claim": "save.py imports merge_agent_days at line 33",
+          "verified": true,
+          "actual": "Line 33 of save.py: 'merge_agent_days,' inside the from lib.json_io import block (lines 30-37)"
+        },
+        {
+          "claim": "_prepare_agent_data() at save.py:479 routes merge_days to merge",
+          "verified": true,
+          "actual": "Line 479-485 defines _prepare_agent_data(data, agent_file, trip_slug, merge_days); only branches on merge_days (line 482)"
+        }
+      ]
+    },
+    "scope_alignment": {
+      "status": "pass",
+      "spec_section_5_items": 7,
+      "ba_requirements_decomposition_items": 12,
+      "coverage_map": {
+        "spec_item_1_merge_slots_flag": "R1 — CLI flag check",
+        "spec_item_2_merge_agent_slots_function": "R2 — function exists + sibling preservation check",
+        "spec_item_3_six_poi_agents": "R3, R4, R5, R6, R7, R8 — one per agent",
+        "spec_item_4_timeline_unchanged": "R9 — timeline.md still --merge-days",
+        "spec_item_5_verification_test": "R10 (partial update test in acceptance criterion) AND R14 (Should Have integration test in scripts/tests/) AND AC5 (plan-validate.py check)",
+        "spec_item_6_audit_script": "R11 in requirements_decomposition / R13 in MoSCoW Must Have / AC6 in Acceptance Criteria",
+        "spec_item_7_array_based_agents": "R12 — attractions/entertainment/shopping/cafe array key-level merge semantics"
+      },
+      "all_7_spec_items_covered": true
+    },
+    "investigation_completeness": {
+      "status": "pass",
+      "checks": [
+        {
+          "aspect": "Full --merge-days grep performed",
+          "result": "BA found 13 occurrences across .claude/agents/, .claude/commands/, scripts/save.py — matches independent grep result exactly"
+        },
+        {
+          "aspect": "transportation.md:270 flagged",
+          "result": "Correctly marked 'out of scope — not in spec' in scope_expansion.additional_found[0]; explicit Do-Not-Modify in MoSCoW Won't Have and Edge Cases & Risks section"
+        },
+        {
+          "aspect": "budget.md:211 flagged",
+          "result": "Correctly marked 'out of scope — not in spec' in scope_expansion.additional_found[1]; explicit Do-Not-Modify in MoSCoW Won't Have"
+        },
+        {
+          "aspect": "timeline.md:542 flagged",
+          "result": "Correctly marked 'intentionally kept as --merge-days' — R9 + R11 + AC4 + Won't Have"
+        },
+        {
+          "aspect": "review.md:804,1353 flagged",
+          "result": "Correctly marked 'timeline references only — no change needed' in scope_expansion.additional_found[3]; explicit Won't Have entry"
+        },
+        {
+          "aspect": "No silent changes to transportation/budget/review",
+          "result": "BA explicitly forbids modification in three separate places (Scope section, Won't Have, Edge Cases & Risks) — low risk of Dev accidentally changing them"
+        }
+      ]
+    },
+    "affected_file_accuracy": {
+      "status": "pass",
+      "checks": [
+        {
+          "file": "scripts/lib/json_io.py",
+          "claimed_lines": "317-372",
+          "verified": true,
+          "actual": "Line 317 starts 'def merge_agent_days(', line 367 is the full-replacement bug, line 370 reconstructs sorted days, line 372 is the return — exactly matches BA's claim"
+        },
+        {
+          "file": ".claude/agents/meals.md",
+          "claimed_line": 294,
+          "verified": true,
+          "actual": "Line 294 is '     --merge-days' — exact match"
+        },
+        {
+          "file": ".claude/agents/cafe.md",
+          "claimed_line": 228,
+          "verified": true,
+          "actual": "Line 228 is '     --merge-days' — exact match"
+        },
+        {
+          "file": ".claude/agents/accommodation.md",
+          "claimed_line": 298,
+          "verified": true,
+          "actual": "Line 298 is '     --merge-days' — exact match"
+        },
+        {
+          "file": ".claude/agents/attractions.md",
+          "claimed_line": 292,
+          "verified": true,
+          "actual": "Line 292 is '     --merge-days' — exact match"
+        },
+        {
+          "file": ".claude/agents/entertainment.md",
+          "claimed_line": 272,
+          "verified": true,
+          "actual": "Line 272 is '     --merge-days' — exact match"
+        },
+        {
+          "file": ".claude/agents/shopping.md",
+          "claimed_line": 301,
+          "verified": true,
+          "actual": "Line 301 is '     --merge-days' — exact match"
+        },
+        {
+          "file": "scripts/save.py",
+          "claimed_line_623": "argparse definition",
+          "verified": true,
+          "actual": "Line 623: 'parser.add_argument(\"--merge-days\", action=\"store_true\", help=\"Merge day updates\")' — exact match"
+        },
+        {
+          "file": "scripts/save.py",
+          "claimed_line_16": "docstring example",
+          "verified": true,
+          "actual": "Line 16: 'python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5.json --merge-days' — exact match"
+        }
+      ]
+    },
+    "diagnosis_layer_correctness": {
+      "status": "pass",
+      "ba_claim": "L4 (data-flow / logic bug)",
+      "verification": "The bug is a logic deficiency: merge_agent_days() performs full dict replacement (line 367) when it should perform key-level merge for POI agents. This is a DATA-FLOW bug — the data shape is correct at input, but the transformation function discards information. Not a data-shape bug (the JSON schema is fine). Not a rendering bug (no UI). Not a state bug (no runtime state). L4 classification is correct.",
+      "rationale": "Symptom: correct-shape input → function → incorrect-shape output. Root cause: missing key-level merge logic. This is textbook L4."
+    }
+  },
+  "summary": "PASS — BA spec is evidence-grounded, all 7 spec Section 5 items are mapped to R1–R12, every line-number claim matches the actual file, and all 13 --merge-days occurrences are correctly classified (6 to change, 1 timeline keep, 2 out-of-scope agents, 2 review.md references, 2 save.py references); two minor non-blocking observations noted regarding evidentiary rigor."
+}

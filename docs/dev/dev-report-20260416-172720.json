@@ -1,0 +1,258 @@
+{
+  "request_id": "dev-20260416-172720",
+  "timestamp": "2026-04-16T18:05:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260416-172720.json",
+  "attempts": [
+    {
+      "cycle": 1,
+      "target_layer": "L4",
+      "status": "completed",
+      "summary": "Added key-level day merge (merge_agent_slots) + --merge-slots flag + 6 POI agent prompt updates + audit script + integration tests. Backward compatibility preserved: merge_agent_days and --merge-days are unchanged."
+    }
+  ],
+  "dev": {
+    "status": "completed",
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added merge_agent_slots() to scripts/lib/json_io.py (key-level day merge)",
+        "type": "code",
+        "files_modified": ["scripts/lib/json_io.py"],
+        "changes": "New function merge_agent_slots(existing_data, update_data, agent_name). For each update_day, locates matching existing_day by day number; overlays update_day's keys onto existing_day via dict.update() so only keys present in the update are replaced. Named-slot agents (meals, accommodation) get per-slot overwrite; array-based agents (attractions, entertainment, shopping, cafe) get whole-array replacement per key. Days in existing but not referenced by update pass through. Days in update but absent from existing are inserted. Trip-level metadata preserved via existing_data.copy().",
+        "rationale": "Root cause: merge_agent_days performed full day-object replacement (existing_days_map[day_num] = update_day), which silently wipes sibling keys on partial-day updates. This is correct for the timeline agent but wrong for POI agents. Per BA Contract C (tier_2_verified), a NEW function was required -- do not alter merge_agent_days semantics."
+      },
+      {
+        "id": 2,
+        "description": "Added --merge-slots CLI flag to scripts/save.py with full wiring",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "changes": "Added `merge_agent_slots` import. Added _merge_existing_slots() helper parallel to _merge_existing_data(). Added merge_slots kwarg to _prepare_agent_data() and save_single_agent(). Added --merge-slots argparse flag with help text. Added mutual-exclusion guard in _validate_args() preventing --merge-days + --merge-slots combination. Forwarded args.merge_slots through main() -> save_single_agent().",
+        "rationale": "Required by R1, R3, R4 of BA requirements_decomposition. Mutual-exclusion guard required by BA Edge Cases note. Backward compatibility: --merge-days still works unchanged, guarded by BA's pre_existing_guards[0] (batch/agent mutual exclusion pattern reused)."
+      },
+      {
+        "id": 3,
+        "description": "Updated 6 POI agent prompts to use --merge-slots",
+        "type": "docs",
+        "files_modified": [
+          ".claude/agents/meals.md",
+          ".claude/agents/accommodation.md",
+          ".claude/agents/attractions.md",
+          ".claude/agents/entertainment.md",
+          ".claude/agents/shopping.md",
+          ".claude/agents/cafe.md"
+        ],
+        "changes": "Step 3 save command flag changed from --merge-days to --merge-slots in each file. CRITICAL explanatory comment rewritten to describe slot-level merge semantics. cafe.md gained a CRITICAL comment it did not previously have.",
+        "rationale": "R3-R8, R10 of BA requirements_decomposition. Root-Cause-Reference line in each prompt extended with '; slot-level merge added 2026-04-16 to fix data-loss bug at commit 47fccd4' per standards_to_enforce.git_root_cause_reference."
+      },
+      {
+        "id": 4,
+        "description": "Created scripts/audit-data-loss.py git-history auditor",
+        "type": "script",
+        "files_created": ["scripts/audit-data-loss.py"],
+        "changes": "Fully parameterized auditor (no hardcoded trip paths). Iterates git log for each POI JSON per trip, counts populated slots per day per commit, flags decreases not explained by modification log or deletion-action entries. Outputs git show <parent>:<path> restore suggestions.",
+        "rationale": "R11 (Must-Have) of BA requirements_decomposition. Section 8 of spec lists 8 potentially affected trips; the --all flag audits all of them in one invocation. Uses unwrap_envelope to read both enveloped and raw JSON forms."
+      },
+      {
+        "id": 5,
+        "description": "Created integration test suite for merge_agent_slots",
+        "type": "test",
+        "files_created": [
+          "scripts/tests/__init__.py",
+          "scripts/tests/test_merge_agent_slots.py"
+        ],
+        "changes": "8 tests: (a) meals partial-dinner preserves breakfast+lunch+metadata (the 47fccd4 scenario); (b) accommodation partial update preserves date/location; (c) untouched days pass through; (d) attractions array replacement preserves day metadata; (e) array-agent without array key preserves existing array; (f) new day inserted when absent in existing; (g) missing day field raises; (h) merge_agent_days backward-compat regression guard.",
+        "rationale": "R14 of BA requirements_decomposition (Should Have). Test harness runs standalone (no pytest required) so QA can execute with `python scripts/tests/test_merge_agent_slots.py` from any venv. All 8 tests PASS."
+      },
+      {
+        "id": 6,
+        "description": "Forced refactor of pre-existing deeply-nested functions in json_io.py",
+        "type": "refactor",
+        "files_modified": ["scripts/lib/json_io.py"],
+        "changes": "Extracted helpers from save_agent_batch (_batch_validate, _batch_backup, _batch_write_tmp, _batch_rollback), validate_agent_data (_run_validation_pipeline, _restore_or_cleanup), and _atomic_write (_cleanup_tmp). Behavior of these three functions is bit-for-bit identical; only the nesting depth changed.",
+        "rationale": "The pretool-quality-gate.py hook enforces max nesting depth 3. Pre-existing code in json_io.py had scattered depth-4 violations that blocked EVERY Edit/Write to this file. Refactor was strictly necessary to land merge_agent_slots. No functional change to these functions; tests and save.py call sites unaffected."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/audit-data-loss.py",
+        "purpose": "Audit git history for silent POI data loss (unexplained slot-count drops)",
+        "parameters": ["--trip <slug-or-path>", "--agent <name>", "--all", "--project-root <path>"],
+        "usage_examples": [
+          "python scripts/audit-data-loss.py --trip china-20260412-092624",
+          "python scripts/audit-data-loss.py --trip china-20260412-092624 --agent meals",
+          "python scripts/audit-data-loss.py --all"
+        ],
+        "exit_codes": {
+          "0": "Audit ran successfully; findings (if any) printed to stdout",
+          "1": "Invalid arguments or trip directory not found",
+          "2": "Not running inside a git repo"
+        },
+        "no_hardcoded_values": true
+      },
+      {
+        "path": "scripts/tests/test_merge_agent_slots.py",
+        "purpose": "Integration tests for merge_agent_slots; also regression-guards merge_agent_days",
+        "parameters": ["(none -- runs all 8 tests)"],
+        "usage_examples": [
+          "source venv/bin/activate && python scripts/tests/test_merge_agent_slots.py",
+          "source venv/bin/activate && python -m pytest scripts/tests/test_merge_agent_slots.py -v"
+        ],
+        "exit_codes": {
+          "0": "All tests passed",
+          "1": "One or more tests failed"
+        },
+        "no_hardcoded_values": true
+      }
+    ],
+    "functions_added": [
+      {
+        "name": "merge_agent_slots",
+        "file": "scripts/lib/json_io.py",
+        "signature": "merge_agent_slots(existing_data: dict, update_data: dict, agent_name: str) -> dict",
+        "purpose": "Key/slot-level day merge that preserves sibling keys on partial-day updates"
+      },
+      {
+        "name": "_merge_existing_slots",
+        "file": "scripts/save.py",
+        "signature": "_merge_existing_slots(agent_file, agent_data, data) -> dict",
+        "purpose": "save.py helper that loads existing JSON and calls merge_agent_slots"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A (logic deficiency, not a regression). Confirmed data-loss incident at commit 47fccd4 (2026-04-13 13:14): data/china-20260412-092624/meals.json Day 2 breakfast + lunch silently wiped by a meals-agent run that updated only dinner.",
+      "why_issue_occurred": "merge_agent_days() in scripts/lib/json_io.py:367 performed `existing_days_map[day_num] = update_day`, a full day-object replacement. This was designed for the timeline agent (whole-day recalculation is correct there) and then reused unchanged for POI agents whose save payloads contain only the slot(s) the agent updated. Every partial-day POI save therefore destroyed all un-emitted keys on that day.",
+      "how_fix_addresses_root": "Introduces a parallel merge function, merge_agent_slots(), that uses dict.update() at the day level -- only keys present in the update are written; keys absent from the update survive. Gated behind a new --merge-slots CLI flag so the original --merge-days / merge_agent_days path is untouched for the timeline agent. All six POI agent prompts are switched to the new flag."
+    },
+    "diff_stats": {
+      "files_changed": 8,
+      "files_created": 3,
+      "lines_added_modified": 231,
+      "lines_removed_modified": 97,
+      "lines_added_created": 586,
+      "new_symbols_introduced": [
+        "merge_agent_slots",
+        "_merge_existing_slots",
+        "_batch_validate",
+        "_batch_backup",
+        "_batch_write_tmp",
+        "_batch_rollback",
+        "_run_validation_pipeline",
+        "_restore_or_cleanup",
+        "_cleanup_tmp",
+        "--merge-slots CLI flag"
+      ],
+      "minimum_possible_lines_estimate": 60,
+      "justification_for_overage": "Actual feature code is ~60 lines (merge_agent_slots body + save.py wiring + 6 prompt edits). The remaining ~165 lines modified are the forced refactor of save_agent_batch/validate_agent_data/_atomic_write -- required by the project's pretool-quality-gate hook (max nesting depth 3), which blocked every Edit to json_io.py until depth-4 regions in pre-existing code were flattened. Refactored behavior is identical to pre-refactor. New-file totals (586 lines) are the BA-requested audit script (R11) and integration tests (R14), both explicitly in scope."
+    },
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/json_io.py",
+        "imported_by": [
+          "scripts/save.py",
+          "scripts/clean-redundant-fields.py",
+          "tests/test_json_io_direct.py",
+          "tests/test_timeline_workflow.py"
+        ],
+        "impact_note": "Of these, only scripts/save.py exercises merge_* functions. The other three importers use save_agent_json / load_agent_json / ValidationError only; I verified they are not affected by the refactor."
+      },
+      {
+        "modified": "scripts/save.py",
+        "imported_by": [],
+        "impact_note": "CLI entry point; no Python importers. Exercised by agent prompts via the shell."
+      },
+      {
+        "modified": ".claude/agents/meals.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt; consumed by the `meals` subagent at invocation time."
+      },
+      {
+        "modified": ".claude/agents/accommodation.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt."
+      },
+      {
+        "modified": ".claude/agents/attractions.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt."
+      },
+      {
+        "modified": ".claude/agents/entertainment.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt."
+      },
+      {
+        "modified": ".claude/agents/shopping.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt."
+      },
+      {
+        "modified": ".claude/agents/cafe.md",
+        "imported_by": [],
+        "impact_note": "Agent prompt."
+      }
+    ],
+    "guards_touched": [
+      {
+        "file": "scripts/save.py",
+        "guard_line_original": 629,
+        "guard_description": "Mutual exclusion for --batch and --agent",
+        "action": "preserved_unchanged"
+      },
+      {
+        "file": "scripts/save.py",
+        "guard_line_original": 166,
+        "guard_description": "HIGH severity validation guard",
+        "action": "preserved_unchanged"
+      },
+      {
+        "file": "scripts/lib/json_io.py",
+        "guard_line_original": 351,
+        "guard_description": "Input validation for merge_agent_days",
+        "action": "preserved_unchanged; equivalent guard added to merge_agent_slots"
+      }
+    ],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "python3 -m py_compile on all four touched/created Python files: OK. python3 scripts/tests/test_merge_agent_slots.py: 8/8 PASS. python3 scripts/save.py --help: both --merge-days and --merge-slots present. Mutual exclusion guard fires as expected. python3 scripts/audit-data-loss.py --trip china-20260412-092624 --agent meals correctly flags commit 47fccd4 Day 2 drop from 3->1 slots. python3 scripts/audit-data-loss.py --all runs cleanly across 30+ trip directories and surfaces additional historical drops."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verification commands for QA: (1) `python scripts/save.py --help` must show both --merge-days and --merge-slots; (2) `python scripts/tests/test_merge_agent_slots.py` must exit 0 with 8/8 PASS; (3) `grep -c -- --merge-slots .claude/agents/{meals,accommodation,attractions,entertainment,shopping,cafe}.md` should return 1 per file; (4) `grep -c -- --merge-days .claude/agents/timeline.md` should return >=1 (timeline unchanged); (5) `python scripts/audit-data-loss.py --trip china-20260412-092624 --agent meals` must flag commit 47fccd4; (6) Exercise end-to-end: pick any multi-day POI JSON in data/, construct a partial update with only one slot populated for one day, save via --merge-slots, confirm sibling slots are preserved and `plan-validate.py` reports no new HIGH issues.",
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(python scripts/audit-data-loss.py:*)",
+        "reason": "Allow execution of the new data-loss audit script"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(python3 scripts/audit-data-loss.py:*)",
+        "reason": "python3 invocation variant"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(python scripts/tests/test_merge_agent_slots.py:*)",
+        "reason": "Allow execution of the new integration test suite"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(python3 scripts/tests/test_merge_agent_slots.py:*)",
+        "reason": "python3 invocation variant"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(source venv/bin/activate && python scripts/tests/test_merge_agent_slots.py:*)",
+        "reason": "venv-activated test invocation"
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Follow-up (out of this scope): transportation.md:270 and budget.md:211 also use --merge-days. Their data structures differ from the 6 POI agents, so the BA explicitly excluded them. A separate request should evaluate whether they have the same partial-update risk profile.",
+    "Follow-up: run `python scripts/audit-data-loss.py --all` and triage the flagged historical commits across the 8 trips listed in spec Section 8. Several entries involve `ac9660050` which appears to be a multi-agent wipe -- worth investigating.",
+    "Consider adding a regression test that exercises save.py end-to-end with a real trip directory and --merge-slots, to catch issues at the CLI boundary rather than only at the function boundary.",
+    "The pretool-quality-gate.py forced a refactor of three pre-existing functions in json_io.py. Remaining parts of the codebase may harbor similar depth-4 code that will block future edits; a one-off audit + refactor of the scripts/ tree would eliminate this drag."
+  ]
+}

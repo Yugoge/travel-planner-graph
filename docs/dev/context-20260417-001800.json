@@ -1,0 +1,407 @@
+{
+  "request_id": "dev-20260417-001800",
+  "timestamp": "2026-04-17T00:18:00Z",
+  "requirement": {
+    "original": "Unify all agent save behavior — delete --merge-days flag and merge_agent_days function, make slot-level merge the default and only merge behavior in save.py. No flags needed. All 9 agents unified.",
+    "clarified": "Delete merge_agent_days() from json_io.py, delete both --merge-days and --merge-slots argparse flags from save.py, make _merge_existing_slots() fire automatically when target file exists (no flag required), update all 9 agent .md save commands to omit merge flags, update review.md, update tests.",
+    "what": "Simplification refactor: remove two-flag merge system; make slot-level merge the automatic unconditional default behavior",
+    "why": "Two merge paths (--merge-days, --merge-slots) are unnecessary cognitive overhead. merge_agent_slots() is safe for all agent types. Single code path eliminates any risk of future agents using the wrong flag.",
+    "where": [
+      "scripts/save.py",
+      "scripts/lib/json_io.py",
+      "scripts/tests/test_merge_agent_slots.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/commands/review.md"
+    ],
+    "scope": {
+      "included": [
+        "Delete merge_agent_days() from json_io.py",
+        "Delete --merge-days argparse flag from save.py",
+        "Delete --merge-slots argparse flag from save.py",
+        "Delete mutual exclusion guard in _validate_args()",
+        "Delete _merge_existing_data() helper from save.py",
+        "Simplify _prepare_agent_data() — remove flag params, auto-invoke _merge_existing_slots when file exists",
+        "Remove merge_days/merge_slots params from save_single_agent()",
+        "Remove merge_agent_days import from save.py",
+        "Update save.py module docstring usage example",
+        "Update all 9 agent .md save commands to remove merge flag",
+        "Update CRITICAL comments in all 9 agent .md files",
+        "Update review.md lines 804-805 and 1353-1354",
+        "Update test_merge_agent_slots.py: remove merge_agent_days import and backward-compat test, add auto-merge-without-flags test"
+      ],
+      "excluded": [
+        "Changing merge_agent_slots() body or semantics",
+        "Modifying .claude/worktrees/overnight-20260412-c6ec78c9/ (stale worktree)",
+        "Modifying docs/dev historical BA specs or reports",
+        "Adding any new merge strategies"
+      ]
+    },
+    "success_criteria": [
+      "python scripts/save.py --help does NOT show --merge-days or --merge-slots",
+      "grep 'def merge_agent_days' scripts/lib/json_io.py returns no matches",
+      "Partial dinner update saves correctly without any flag, preserving breakfast+lunch",
+      "Full-day timeline save works without any flag, preserving all other days",
+      "grep -r '--merge-days\\|--merge-slots' .claude/agents/ returns no matches",
+      "grep 'merge-days' .claude/commands/review.md returns no matches",
+      "All tests in test_merge_agent_slots.py pass"
+    ],
+    "constraints": [
+      "merge_agent_slots() body must not be changed",
+      "save_batch() is not affected (does not use merge flags)",
+      "Worktree files must not be modified",
+      "File-existence guard in _merge_existing_slots must be preserved (first-save case)"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Two argparse flags (--merge-days, --merge-slots) exist where one automatic behavior suffices. Future agents could use the wrong flag causing silent data loss.",
+    "root_cause": "Cycle 1 added --merge-slots as an additive fix (backward-compatible). The two-flag design was intentional for that cycle but creates ongoing complexity risk. User has now approved removing both flags and making slot-level merge the sole automatic path.",
+    "root_cause_commit": "N/A — this is intentional simplification building on Cycle 1 (no commit yet, changes are staged)",
+    "why_introduced": "Cycle 1 BA spec (ba-spec-20260416-172720) preserved --merge-days for backward compatibility with timeline/transportation/budget agents",
+    "why_problematic": "Two paths = two ways to get it wrong. Any new agent prompt must choose the right flag. merge_agent_slots() produces correct results for complete-day payloads too (dict.update with all keys = replacement), making --merge-days redundant.",
+    "timeline": "Cycle 1 completed 2026-04-16. This cycle (Cycle 2) simplifies the Cycle 1 output.",
+    "affected_files": [
+      "scripts/save.py",
+      "scripts/lib/json_io.py",
+      "scripts/tests/test_merge_agent_slots.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/commands/review.md"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "save.py:653-659 contains two argparse definitions: --merge-days and --merge-slots (inferred: Read tool lines 652-660)",
+      "save.py:674-676 contains mutual exclusion guard (inferred: Read tool lines 674-676)",
+      "save.py:445-454 _merge_existing_data() calls merge_agent_days (inferred: Read tool lines 445-454)",
+      "save.py:498-511 _prepare_agent_data branches on merge_slots then merge_days (inferred: Read tool lines 498-511)",
+      "json_io.py:336-384 merge_agent_days() full function body present (inferred: Read tool lines 336-384)",
+      "json_io.py:387-453 merge_agent_slots() full function body present (inferred: Read tool lines 387-453)",
+      "test_merge_agent_slots.py:22 imports both merge_agent_slots and merge_agent_days (inferred: Read tool line 22)",
+      "test_merge_agent_slots.py:162-171 backward-compat test for merge_agent_days (inferred: Read tool lines 162-171)",
+      "All 6 POI agents use --merge-slots at lines: meals:294, accommodation:298, attractions:292, entertainment:272, shopping:301, cafe:228 (inferred: Read tool)",
+      "timeline:542, transportation:270, budget:211 use --merge-days (inferred: Read tool)",
+      "review.md:804-805 and 1353-1354 reference --merge-days (inferred: Read tool)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only) — backend CLI, no UI to observe; runtime behavior verified in Cycle 1 QA",
+    "complaint_location_keywords": ["merge-days", "merge_agent_days", "merge-slots", "save.py", "json_io.py"],
+    "localization_evidence": "User explicitly named the functions and flags. Grep confirmed all 22 occurrences across 13 files. No runtime reproduction needed — this is a removal/simplification, not a bug investigation.",
+    "located_source": "scripts/save.py:653-676, scripts/lib/json_io.py:336-384",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "Not a regression — this is an intentional simplification task",
+      "reproducibility_verified": null
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "delete --merge-days flag",
+      "acceptance_criterion": "python scripts/save.py --help does NOT contain --merge-days"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "delete --merge-slots flag",
+      "acceptance_criterion": "python scripts/save.py --help does NOT contain --merge-slots"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "delete merge_agent_days function",
+      "acceptance_criterion": "grep 'def merge_agent_days' scripts/lib/json_io.py returns 0 matches"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "make slot-level merge the default and only merge behavior in save.py",
+      "acceptance_criterion": "_prepare_agent_data() calls _merge_existing_slots() when file exists with no flag parameter; no other merge path exists"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "No flags needed",
+      "acceptance_criterion": "save_single_agent() signature has no merge_days or merge_slots parameters"
+    },
+    {
+      "id": "R6",
+      "source_phrase": "All 9 agents unified",
+      "acceptance_criterion": "grep -r '--merge-days\\|--merge-slots' .claude/agents/ returns no matches across all 9 .md files"
+    },
+    {
+      "id": "R7",
+      "source_phrase": "(implied by Section 5 criterion 6) update review.md",
+      "acceptance_criterion": "grep 'merge-days' .claude/commands/review.md returns no matches"
+    },
+    {
+      "id": "R8",
+      "source_phrase": "(implied by Section 5 criterion 7) update tests",
+      "acceptance_criterion": "test file does not import merge_agent_days; all tests pass without any flag"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/save.py",
+      "line_range": "1-719",
+      "role": "CLI entry point — parses flags, calls save_single_agent, which calls _prepare_agent_data",
+      "imports_from": ["scripts/lib/json_io.py"],
+      "evidence": "Read tool lines 30-38: from lib.json_io import merge_agent_days, merge_agent_slots",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/json_io.py",
+      "line_range": "336-453",
+      "role": "Contains merge_agent_days (to delete) and merge_agent_slots (to keep)",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 336-384 (merge_agent_days body) and 387-453 (merge_agent_slots body)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/tests/test_merge_agent_slots.py",
+      "line_range": "1-217",
+      "role": "Integration tests — imports both functions, tests merge behavior",
+      "imports_from": ["scripts/lib/json_io.py"],
+      "evidence": "Read tool line 22: from lib.json_io import merge_agent_slots, merge_agent_days",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/timeline.md",
+      "line_range": "536-545",
+      "role": "Agent prompt — instructs AI to use --merge-days flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 536-545: --merge-days in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/transportation.md",
+      "line_range": "264-273",
+      "role": "Agent prompt — instructs AI to use --merge-days flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 264-273: --merge-days in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/budget.md",
+      "line_range": "205-214",
+      "role": "Agent prompt — instructs AI to use --merge-days flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 205-214: --merge-days in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/meals.md",
+      "line_range": "289-299",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 289-299: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/accommodation.md",
+      "line_range": "292-303",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 292-303: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/attractions.md",
+      "line_range": "286-297",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 286-297: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/entertainment.md",
+      "line_range": "266-277",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 266-277: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/shopping.md",
+      "line_range": "295-306",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 295-306: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/cafe.md",
+      "line_range": "222-232",
+      "role": "Agent prompt — instructs AI to use --merge-slots flag on save command",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 222-232: --merge-slots in bash block",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/commands/review.md",
+      "line_range": "804-805,1353-1354",
+      "role": "Review command — references --merge-days as instruction for timeline saves",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 804-805 and 1353-1354: --merge-days references",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/save.py",
+      "line": 674,
+      "type": "if",
+      "code_snippet": "if args.merge_days and args.merge_slots:\n        print(\"Error: --merge-days and --merge-slots are mutually exclusive\", file=sys.stderr)\n        sys.exit(1)",
+      "purpose": "Prevents using both flags simultaneously",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/save.py",
+      "line": 506,
+      "type": "if",
+      "code_snippet": "if merge_slots and agent_file.exists():\n        agent_data = _merge_existing_slots(agent_file, agent_data, data)\n    elif merge_days and agent_file.exists():\n        agent_data = _merge_existing_data(agent_file, agent_data, data)",
+      "purpose": "Guards merge paths behind explicit flags",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/json_io.py",
+      "line": 445,
+      "type": "if",
+      "code_snippet": "if day_num in existing_days_map:\n            existing_days_map[day_num].update(update_day)\n        else:\n            existing_days_map[day_num] = dict(update_day)",
+      "purpose": "Guard inside merge_agent_slots — inserts new day vs updates existing; must be preserved",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "viewport": "N/A — backend Python CLI",
+    "theme": "N/A",
+    "locale": "N/A",
+    "auth_state": "N/A",
+    "data_state": "existing multi-day JSON files in data/{trip-slug}/",
+    "browser": "N/A",
+    "url_path": "N/A"
+  },
+  "evidence": {
+    "observed": "Unify all agent save behavior — delete --merge-days flag and merge_agent_days function, make slot-level merge the default and only merge behavior in save.py. No flags needed. All 9 agents unified.",
+    "measured": {
+      "value": "2 argparse flags (--merge-days L653, --merge-slots L657); 2 internal helpers (_merge_existing_data L445, _merge_existing_slots L457); 1 branching function (_prepare_agent_data L498); merge_agent_days() L336-384; merge_agent_slots() L387-453; 9 agent .md files with merge flags; 4 review.md lines with --merge-days",
+      "location": "scripts/save.py:653-712, scripts/lib/json_io.py:336-453"
+    },
+    "expected": {
+      "value": "Single merge path: _merge_existing_slots() fires automatically when file exists; no flags; merge_agent_days() absent; all agent .md files have no merge flags",
+      "source": "User's explicit requirement + Section 5 of spec-20260416-192200.md"
+    },
+    "gap": "2 flags to delete, 1 function to delete, 1 helper to delete, 1 function to simplify (params + body), 9 agent files to update, 4 review.md lines to update, 1 test file to update"
+  },
+  "scope_expansion": {
+    "search_pattern": "--merge-days|--merge-slots|merge_days|merge_slots|merge_agent_days",
+    "search_scope": "/root/travel-planner/ (excluding .claude/worktrees/)",
+    "user_reported": [
+      "scripts/save.py",
+      "scripts/lib/json_io.py",
+      ".claude/agents/ (9 files)",
+      ".claude/commands/review.md"
+    ],
+    "additional_found": [
+      "scripts/tests/test_merge_agent_slots.py (imports merge_agent_days, has backward-compat test)"
+    ],
+    "all_occurrences": [
+      "scripts/save.py:16 (usage docstring)",
+      "scripts/save.py:33 (import)",
+      "scripts/save.py:445-454 (_merge_existing_data)",
+      "scripts/save.py:498-511 (_prepare_agent_data branches)",
+      "scripts/save.py:517-518 (save_single_agent params)",
+      "scripts/save.py:528 (_prepare_agent_data call)",
+      "scripts/save.py:653-659 (argparse defs)",
+      "scripts/save.py:674-676 (mutual exclusion guard)",
+      "scripts/save.py:711-712 (main call site)",
+      "scripts/lib/json_io.py:336-384 (merge_agent_days body)",
+      "scripts/tests/test_merge_agent_slots.py:22 (import)",
+      "scripts/tests/test_merge_agent_slots.py:162-171 (backward-compat test)",
+      ".claude/agents/meals.md:289-299",
+      ".claude/agents/accommodation.md:292-303",
+      ".claude/agents/attractions.md:286-297",
+      ".claude/agents/entertainment.md:266-277",
+      ".claude/agents/shopping.md:295-306",
+      ".claude/agents/cafe.md:222-232",
+      ".claude/agents/timeline.md:536-545",
+      ".claude/agents/transportation.md:264-273",
+      ".claude/agents/budget.md:205-214",
+      ".claude/commands/review.md:804-805",
+      ".claude/commands/review.md:1353-1354"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "merge_agent_slots() verified working in Cycle 1 QA. Complete-day payload (timeline) through slot-level merge is safe: dict.update() with all keys is identical to replacement.",
+    "url_or_location": "/root/travel-planner/scripts/lib/json_io.py:387-453",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ba-spec-20260416-172720.md",
+        "proposed_solution": "Add --merge-slots flag alongside existing --merge-days; update 6 POI agents to use --merge-slots; leave timeline/transportation/budget on --merge-days",
+        "actual_change": "Added merge_agent_slots() to json_io.py, _merge_existing_slots() to save.py, --merge-slots argparse flag, mutual-exclusion guard, updated 6 POI agent .md files, created test file",
+        "outcome": "QA PASS — partial dinner update preserved breakfast+lunch; mutual exclusion guard worked; all 8 tests passed. Result: two-flag system in place.",
+        "failure_category": "other — did not fail, but left incomplete simplification",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempt was additive (added a new code path while keeping old one). This attempt is reductive (removes both flags, unifies to single automatic path). Both are L4 (data flow) but the direction is opposite — one added complexity, this one removes it."
+    }
+  },
+  "context": {
+    "codebase_state": "Cycle 1 changes committed on master. merge_agent_slots() functional and tested. merge_agent_days() still present. Both flags still present in argparse.",
+    "recent_commits": "96a715e Auto-commit: 2026-04-16 17:29:46; 5ed7d3d Auto-commit: 2026-04-16 17:28:55 (Cycle 1 work)",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Bottom-up deletion: (1) delete merge_agent_days from json_io.py, (2) simplify save.py internal helpers and _prepare_agent_data, (3) clean up save_single_agent signature, (4) clean up argparse and main(), (5) update all 9 agent .md files, (6) update review.md, (7) update test file",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/save.py",
+      "scripts/lib/json_io.py",
+      "scripts/tests/test_merge_agent_slots.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/commands/review.md"
+    ],
+    "validation_approach": "Run python scripts/save.py --help to verify flags absent; run python scripts/tests/test_merge_agent_slots.py to verify tests pass; grep for --merge-days and --merge-slots across all files to verify complete removal; test with a partial-day payload (no flag) to verify auto-merge"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

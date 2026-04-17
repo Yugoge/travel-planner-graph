@@ -1,7 +1,7 @@
 # lib
 
-*Last updated: 2026-04-15T20:25:28Z*
-**Total entries**: 4
+*Last updated: 2026-04-17T06:37:26Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
@@ -9,8 +9,7 @@
 lib/
 ├── `html_generator.py` - Reusable HTML generator module for travel plans
 ├── `image_fetcher.py` - Image Fetcher Module
-├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
-└── `meal_utils.py` - Shared meal type utilities — single source of truth for extracting meal types
+└── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 ```
 
 ---

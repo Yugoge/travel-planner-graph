@@ -13,7 +13,6 @@ This script replaces all individual save scripts and enforces:
 
 Usage:
   python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json
-  python3 scripts/save.py --trip TRIP_SLUG --agent timeline --input day5.json --merge-days
   cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent meals
   python3 scripts/save.py --trip TRIP_SLUG --batch agents_data.json
 """
@@ -30,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.json_io import (
     save_agent_json,
     load_agent_json,
-    merge_agent_days,
+    merge_agent_slots,
     ValidationError,
     AtomicWriteError,
     validate_agent_data
@@ -441,12 +440,17 @@ def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
     return all_blocks
 
 
-def _merge_existing_data(agent_file, agent_data, data):
-    """Merge single-day update into existing multi-day file."""
+def _merge_existing_slots(agent_file, agent_data, data):
+    """Merge update into existing multi-day file at the slot/key level.
+
+    Automatic default behavior: called whenever the target file exists.
+    Preserves sibling slots and day metadata not present in the update.
+    Safe for both partial-day (POI) and complete-day (timeline) payloads.
+    """
     existing_data = load_agent_json(agent_file, validate=False)
-    merged = merge_agent_days(existing_data, agent_data, agent_file.stem)
+    merged = merge_agent_slots(existing_data, agent_data, agent_file.stem)
     day_count = len(data.get('data', {}).get('days', []))
-    print(f"Merge mode: Merged {day_count} day(s) into existing file", file=sys.stderr)
+    print(f"Merge mode (slots): Merged {day_count} day(s) at slot level", file=sys.stderr)
     return merged
 
 
@@ -476,11 +480,15 @@ def _report_save_warnings(issues: list) -> None:
         print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
 
 
-def _prepare_agent_data(data, agent_file, trip_slug, merge_days):
-    """Unwrap envelope, merge if needed, extract images."""
+def _prepare_agent_data(data, agent_file, trip_slug):
+    """Unwrap envelope, auto-merge if file exists, extract images.
+
+    Slot-level merge is the sole merge path: when the target file already
+    exists on disk, _merge_existing_slots() fires automatically. No flag needed.
+    """
     agent_data = data.get("data") if "data" in data else data
-    if merge_days and agent_file.exists():
-        agent_data = _merge_existing_data(agent_file, agent_data, data)
+    if agent_file.exists():
+        agent_data = _merge_existing_slots(agent_file, agent_data, data)
     extract_image_urls(agent_file.stem, agent_data, trip_slug)
     return agent_data
 
@@ -488,7 +496,7 @@ def _prepare_agent_data(data, agent_file, trip_slug, merge_days):
 def save_single_agent(
     trip_slug: str, agent: str, data: Dict[str, Any],
     skip_validation: bool = False, allow_high: bool = False,
-    create_backup: bool = True, merge_days: bool = False,
+    create_backup: bool = True,
 ) -> bool:
     """Save single agent data with validation."""
     trip_dir = DATA_DIR / trip_slug
@@ -497,7 +505,7 @@ def save_single_agent(
         return False
     agent_file = trip_dir / f"{agent}.json"
     try:
-        agent_data = _prepare_agent_data(data, agent_file, trip_slug, merge_days)
+        agent_data = _prepare_agent_data(data, agent_file, trip_slug)
     except Exception as e:
         print(f"Merge failed: {e}", file=sys.stderr)
         return False
@@ -620,7 +628,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-validate", action="store_true", help="Skip validation")
     parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
     parser.add_argument("--no-backup", action="store_true", help="Skip backups")
-    parser.add_argument("--merge-days", action="store_true", help="Merge day updates")
     return parser
 
 
@@ -669,7 +676,7 @@ def main():
         success = save_single_agent(
             trip_slug=args.trip, agent=args.agent, data=data,
             skip_validation=args.no_validate, allow_high=args.allow_high,
-            create_backup=not args.no_backup, merge_days=args.merge_days,
+            create_backup=not args.no_backup,
         )
     sys.exit(0 if success else 1)
 

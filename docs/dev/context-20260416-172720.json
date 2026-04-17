@@ -1,0 +1,355 @@
+{
+  "request_id": "dev-20260416-172720",
+  "timestamp": "2026-04-16T17:27:20Z",
+  "requirement": {
+    "original": "Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level. Implement --merge-slots flag and merge_agent_slots() function. See spec Section 5 for the 7-item acceptance criterion.",
+    "clarified": "Add --merge-slots CLI flag to scripts/save.py and merge_agent_slots() in scripts/lib/json_io.py that merges at the slot/key level within each day (preserving keys not present in update). Update 6 POI agent prompts to use --merge-slots. Keep --merge-days for timeline. Create audit-data-loss.py script and an integration test.",
+    "what": "Slot-level merge function + CLI flag + 6 agent prompt updates + audit script + integration test",
+    "why": "Partial-day updates from POI agents silently wipe sibling slots due to full day-object replacement in merge_agent_days(). Confirmed data loss: Day 2 breakfast+lunch wiped in data/china-20260412-092624/meals.json (commit 47fccd4).",
+    "where": [
+      "scripts/lib/json_io.py",
+      "scripts/save.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      "scripts/audit-data-loss.py (new)",
+      "scripts/tests/test_merge_slots.py (new)"
+    ],
+    "scope": {
+      "included": [
+        "New merge_agent_slots() function in json_io.py",
+        "New --merge-slots flag in save.py",
+        "Wiring merge_slots through _prepare_agent_data() in save.py",
+        "6 POI agent prompt updates (meals, accommodation, attractions, entertainment, shopping, cafe)",
+        "New scripts/audit-data-loss.py",
+        "New scripts/tests/test_merge_slots.py"
+      ],
+      "excluded": [
+        "Changing merge_agent_days() behavior",
+        "Modifying timeline.md (keep --merge-days)",
+        "Modifying transportation.md or budget.md",
+        "Modifying review.md command references",
+        "Any UI or frontend changes"
+      ]
+    },
+    "success_criteria": [
+      "python scripts/save.py --help shows --merge-slots option",
+      "Partial update of Day 2 dinner only does NOT affect Day 2 breakfast or lunch",
+      "All 6 POI agent prompts use --merge-slots in Step 3 save command",
+      "timeline.md still uses --merge-days unchanged",
+      "plan-validate.py reports no new HIGH severity errors after partial update",
+      "scripts/audit-data-loss.py runs without error and outputs results",
+      "Integration test in scripts/tests/ passes"
+    ],
+    "constraints": [
+      "Backward compatibility: --merge-days semantics must not change",
+      "merge_agent_slots() must handle both named-slot (meals, accommodation) and array-based (attractions, entertainment, shopping, cafe) day structures",
+      "--merge-days and --merge-slots must be mutually exclusive in save.py CLI",
+      "Do not modify transportation.md or budget.md without explicit user approval"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "POI agent partial-day update wipes sibling slots in the same day — e.g., saving only dinner destroys breakfast and lunch",
+    "root_cause": "merge_agent_days() at scripts/lib/json_io.py:367 performs full day-object replacement: existing_days_map[day_num] = update_day. No key-level merge logic exists.",
+    "root_cause_commit": "N/A — logic deficiency present since merge_agent_days() was introduced; not a regression from a single commit",
+    "why_introduced": "merge_agent_days() was designed for timeline agent (whole-day recalculation) and was then reused for POI agents without adapting for partial-day (slot-level) updates",
+    "why_problematic": "POI agents emit only the slots they updated. When this partial day object replaces the full existing day object, all un-emitted slots are destroyed.",
+    "timeline": "Issue was always present in merge_agent_days(). Confirmed data loss instance in commit 47fccd4 (2026-04-13 13:14) for data/china-20260412-092624/meals.json.",
+    "affected_files": [
+      "scripts/lib/json_io.py",
+      "scripts/save.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "scripts/lib/json_io.py:367: existing_days_map[day_num] = update_day — full replacement, inferred from Read tool",
+      "git commit 47fccd4 (2026-04-13 13:14): Day 2 breakfast + lunch absent from meals.json after agent ran with only dinner update — inferred from spec Section 1 evidence block",
+      "modification log recorded changed_fields: ['days[1].dinner'] but actual file lost breakfast and lunch — inferred from spec Section 1"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no runtime/browser observation available for backend pipeline; source code evidence is direct and unambiguous)",
+    "complaint_location_keywords": [
+      "merge_agent_days",
+      "merge_agent_slots",
+      "breakfast",
+      "lunch",
+      "dinner",
+      "meals.json",
+      "Day 2",
+      "--merge-days",
+      "--merge-slots"
+    ],
+    "localization_evidence": "Direct code read of scripts/lib/json_io.py:362-370 shows the full replacement. git history evidence in spec Section 1 confirms real data loss at commit 47fccd4.",
+    "located_source": "scripts/lib/json_io.py:367 (existing_days_map[day_num] = update_day)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "N/A",
+      "commit_message": "N/A — logic deficiency, not a regression from a specific commit",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": "Not a regression — merge_agent_days() never had key-level merge logic. Data loss confirmed from commit 47fccd4 diff, not bisect.",
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "Add `--merge-slots` flag to `scripts/save.py`",
+      "acceptance_criterion": "python scripts/save.py --help shows --merge-slots option"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "Implement `merge_agent_slots()` function in `scripts/lib/json_io.py` — reads existing day object from disk, merges ONLY the keys present in the update",
+      "acceptance_criterion": "Function exists; given existing day with breakfast+lunch+dinner and update with only dinner, result preserves breakfast and lunch"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: meals.md",
+      "acceptance_criterion": ".claude/agents/meals.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: accommodation.md",
+      "acceptance_criterion": ".claude/agents/accommodation.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: attractions.md",
+      "acceptance_criterion": ".claude/agents/attractions.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R6",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: entertainment.md",
+      "acceptance_criterion": ".claude/agents/entertainment.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R7",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: shopping.md",
+      "acceptance_criterion": ".claude/agents/shopping.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R8",
+      "source_phrase": "Update all POI agent prompts to use `--merge-slots` instead of `--merge-days`: cafe.md",
+      "acceptance_criterion": ".claude/agents/cafe.md Step 3 save command uses --merge-slots"
+    },
+    {
+      "id": "R9",
+      "source_phrase": "Keep `--merge-days` for timeline agent — day-level replacement is semantically correct for timeline",
+      "acceptance_criterion": ".claude/agents/timeline.md Step 3 save command still uses --merge-days; merge_agent_days() is unchanged"
+    },
+    {
+      "id": "R10",
+      "source_phrase": "An agent updating ONLY Day 2 dinner must NOT affect Day 2 breakfast or lunch",
+      "acceptance_criterion": "Partial update test passes; post-save file state shows breakfast and lunch intact"
+    },
+    {
+      "id": "R11",
+      "source_phrase": "Create `scripts/audit-data-loss.py` that iterates each meals.json commit in git history, counts populated meal slots, flags decreases without explicit deletion intent, outputs list of affected trips + days + commits, suggests restore commands",
+      "acceptance_criterion": "Script exists, runs without error, outputs findings or no-loss message"
+    },
+    {
+      "id": "R12",
+      "source_phrase": "Apply same fix pattern to array-based POI agents (attractions, entertainment, shopping, cafe): although their structure is arrays not named slots, the same partial-update-wipes-existing bug exists",
+      "acceptance_criterion": "merge_agent_slots() handles array-based agents: if update day has attractions key, array is replaced; if not, existing array preserved"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": ".claude/agents/meals.md",
+      "line_range": "288-298",
+      "role": "Agent prompt Step 3: instructs meals agent to call scripts/save.py --merge-days (to be changed to --merge-slots)",
+      "imports_from": ["scripts/save.py"],
+      "evidence": "grep -n '--merge-days' .claude/agents/meals.md → line 294",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "479-485",
+      "role": "_prepare_agent_data() routes merge_days flag to merge_agent_days(); needs merge_slots branch",
+      "imports_from": ["scripts/lib/json_io.py"],
+      "evidence": "Read scripts/save.py lines 479-485; grep 'merge_agent_days' → line 447",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "610-624",
+      "role": "_build_parser() defines CLI args including --merge-days at line 623; --merge-slots to be added here",
+      "imports_from": ["scripts/lib/json_io.py"],
+      "evidence": "Read scripts/save.py lines 610-624",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "30-37",
+      "role": "Import block: imports merge_agent_days from lib.json_io; merge_agent_slots must be added here",
+      "imports_from": ["scripts/lib/json_io.py"],
+      "evidence": "grep 'merge_agent_days' scripts/save.py → line 33",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/lib/json_io.py",
+      "line_range": "317-372",
+      "role": "merge_agent_days() — existing day-level replacement function; merge_agent_slots() to be added after line 372",
+      "imports_from": ["leaf"],
+      "evidence": "Read scripts/lib/json_io.py lines 317-372",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/save.py",
+      "line": 629,
+      "type": "if",
+      "code_snippet": "if args.batch and args.agent:\n    print(\"Error: Cannot specify both --batch and --agent\", file=sys.stderr)\n    sys.exit(1)",
+      "purpose": "Mutual exclusion guard for --batch and --agent flags",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/save.py",
+      "line": 166,
+      "type": "if",
+      "code_snippet": "if _extract_high_issues(issues) and not allow_high:\n    raise ValidationError(issues, metrics)",
+      "purpose": "HIGH severity validation guard — blocks saves with critical issues",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/json_io.py",
+      "line": 351,
+      "type": "assert",
+      "code_snippet": "if not isinstance(existing_data, dict) or \"days\" not in existing_data:\n    raise ValueError(...)",
+      "purpose": "Input validation guard for merge_agent_days — ensures both inputs have 'days' arrays",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "viewport": "N/A",
+    "theme": "N/A",
+    "locale": "N/A",
+    "auth_state": "N/A",
+    "data_state": "multi-day JSON files with mixed-populated slots",
+    "browser": "N/A",
+    "url_path": "N/A"
+  },
+  "evidence": {
+    "observed": "merge_agent_days replaces entire day object instead of merging at slot level. Day 2 breakfast and lunch were wiped when meals agent updated only dinner (confirmed: commit 47fccd4, 2026-04-13 13:14).",
+    "measured": {
+      "value": "existing_days_map[day_num] = update_day",
+      "location": "scripts/lib/json_io.py:367"
+    },
+    "expected": {
+      "value": "Only keys present in update_day should be merged into existing day object; all other keys preserved",
+      "source": "/root/travel-planner/docs/dev/specs/spec-20260416-172720.md Section 5 (verbatim user requirement)"
+    },
+    "gap": "Zero key-level merge logic exists. Every partial-day update (regardless of how many keys are present) unconditionally replaces the entire day object, destroying all keys not in the update payload."
+  },
+  "scope_expansion": {
+    "search_pattern": "--merge-days",
+    "search_scope": "/root/travel-planner/.claude/agents/**",
+    "user_reported": [
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md"
+    ],
+    "additional_found": [
+      ".claude/agents/transportation.md:270 (out of scope — not in spec)",
+      ".claude/agents/budget.md:211 (out of scope — not in spec)",
+      ".claude/agents/timeline.md:542 (intentionally kept as --merge-days)",
+      ".claude/commands/review.md:804,1353 (timeline references only — no change needed)"
+    ],
+    "all_occurrences": [
+      ".claude/agents/meals.md:294",
+      ".claude/agents/accommodation.md:298",
+      ".claude/agents/attractions.md:292",
+      ".claude/agents/entertainment.md:272",
+      ".claude/agents/shopping.md:301",
+      ".claude/agents/cafe.md:228",
+      ".claude/agents/timeline.md:542",
+      ".claude/agents/transportation.md:270",
+      ".claude/agents/budget.md:211",
+      ".claude/commands/review.md:804",
+      ".claude/commands/review.md:1353",
+      "scripts/save.py:16 (docstring example)",
+      "scripts/save.py:623 (argparse definition)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "User requirement verbatim from spec Section 5 + confirmed git diff evidence of data loss at commit 47fccd4",
+    "url_or_location": "/root/travel-planner/docs/dev/specs/spec-20260416-172720.md lines 89-117",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts exist for this specific bug (Cycle 1)"
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; scripts/save.py and scripts/lib/json_io.py are the primary backend files. All 6 POI agent prompts currently instruct use of --merge-days. No tests/ directory exists yet.",
+    "recent_commits": "579f972 fix: Prevent agent data loss by enforcing scripts/save.py usage; 07556c6 refactor: timeline.json as single source of truth; 976cdbd save.py: fix token filtering; b3fd5ab save.py: extend hotel timeline validation",
+    "file_contents": {
+      "scripts/lib/json_io.py:317-372": "merge_agent_days() function — full day replacement at line 367",
+      "scripts/save.py:479-485": "_prepare_agent_data() — merge_days branch only",
+      "scripts/save.py:610-624": "_build_parser() — --merge-days defined at line 623",
+      "scripts/save.py:30-37": "import block — merge_agent_days imported at line 33"
+    },
+    "dependencies": {
+      "json_io.py_exports": ["save_agent_json", "load_agent_json", "merge_agent_days", "ValidationError", "AtomicWriteError", "validate_agent_data"],
+      "save_py_imports_from_json_io": ["save_agent_json", "load_agent_json", "merge_agent_days", "ValidationError", "AtomicWriteError", "validate_agent_data"]
+    },
+    "environment": {
+      "python": "3.x",
+      "project_root": "/root/travel-planner",
+      "venv": "/root/travel-planner/venv"
+    }
+  },
+  "development_approach": {
+    "strategy": "Add merge_agent_slots() to json_io.py implementing key-level day merge. Add --merge-slots flag to save.py and wire it through _prepare_agent_data(). Update 6 POI agent prompts. Create audit-data-loss.py. Create integration test.",
+    "files_to_create": [
+      "scripts/audit-data-loss.py",
+      "scripts/tests/__init__.py (if needed)",
+      "scripts/tests/test_merge_slots.py"
+    ],
+    "files_to_modify": [
+      "scripts/lib/json_io.py — add merge_agent_slots() after line 372",
+      "scripts/save.py — import merge_agent_slots (line 33), add --merge-slots arg (~line 623), add merge_slots branch in _prepare_agent_data() (~line 482), add mutual exclusion in _validate_args(), update save_single_agent() signature",
+      ".claude/agents/meals.md:294 — --merge-days → --merge-slots",
+      ".claude/agents/accommodation.md:298 — --merge-days → --merge-slots",
+      ".claude/agents/attractions.md:292 — --merge-days → --merge-slots",
+      ".claude/agents/entertainment.md:272 — --merge-days → --merge-slots",
+      ".claude/agents/shopping.md:301 — --merge-days → --merge-slots",
+      ".claude/agents/cafe.md:228 — --merge-days → --merge-slots"
+    ],
+    "validation_approach": "QA should: (1) run python scripts/save.py --help and confirm --merge-slots present; (2) construct a minimal test case with a multi-day meals.json and partial-day update, confirm breakfast/lunch preserved; (3) grep all 6 POI agent prompts for --merge-slots; (4) grep timeline.md confirms --merge-days still present; (5) run python scripts/audit-data-loss.py --trip china-20260412-092624 and confirm output; (6) run scripts/tests/test_merge_slots.py"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fix with clear root cause. The fix approach (key-level dict merge) is unambiguous Python and does not require external research. Architecture is already decided by the user (Option C in spec Section 8 note 5)."
+  }
+}

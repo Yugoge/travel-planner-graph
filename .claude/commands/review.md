@@ -801,8 +801,7 @@ Use Task tool with:
   Recalculate timeline ONLY for Day {N}.
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json** (Day {N} section only).
-  Use scripts/save.py with --merge-days flag as specified in timeline.md Step 4 to preserve multi-day data.
-  Root Cause Reference (commits b057f26, 579f972, 921f855, 894b008): save.py without --merge-days overwrites entire file; --merge-days merges single-day updates.
+  Use scripts/save.py as specified in timeline.md Step 4 to preserve multi-day data (slot-level merge is automatic when file exists).
 
   Detect any new conflicts.
 
@@ -1350,8 +1349,7 @@ Use Task tool with:
   Recalculate timeline for Day {N} only (or all days if multiple domains affected).
 
   **CRITICAL - Save JSON to: data/{destination-slug}/timeline.json**
-  Use scripts/save.py with --merge-days flag as specified in timeline.md Step 4 to preserve multi-day data.
-  Root Cause Reference (commits b057f26, 579f972, 921f855, 894b008): save.py without --merge-days overwrites entire file; --merge-days merges single-day updates.
+  Use scripts/save.py as specified in timeline.md Step 4 to preserve multi-day data (slot-level merge is automatic when file exists).
 
   After completing all tasks, return ONLY the word 'complete'.
   "

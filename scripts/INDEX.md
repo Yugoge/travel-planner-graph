@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-04-15T21:12:00Z*
-**Total entries**: 63
+*Last updated: 2026-04-17T06:35:41Z*
+**Total entries**: 65
 **Convention**: kebab
 
 ## Tree
@@ -23,14 +23,16 @@ scripts/
 ├── lib/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
-│   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
-│   └── `meal_utils.py` - Shared meal type utilities — single source of truth for extracting meal types
+│   └── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+├── tests/
+│   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): scripts/lib/json_io.py:merge_agent_days()
 ├── todo/
 │   ├── `plan.py` - Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
 │   └── `review.py` - Preloaded TodoList for /review command workflow.
 ├── utils/
 │   ├── `fetch-exchange-rate.sh` - Description: Fetch real-time exchange rate between two currencies with cache fallback
 │   └── `load_env.py` - Load environment variables from .env file in project root
+├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
 ├── `check-day-completion.sh` - Validate that all days in requirements-skeleton.json have user_plans populated

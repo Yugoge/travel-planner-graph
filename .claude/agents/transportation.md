@@ -261,16 +261,16 @@ When parsing route data from Gaode Maps API or any mapping service:
    Read and verify your output conforms to: `schemas/transportation.schema.json`
    If validation fails, fix the output structure before proceeding to save.
 
-5. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008):
+5. **Save using scripts/save.py** (Root Cause Reference: b057f26, 579f972, 921f855, 894b008; slot-level merge is automatic when file exists):
    ```bash
    python scripts/save.py \
      --trip {destination-slug} \
      --agent transportation \
      --input /tmp/transportation_update.json
-     --merge-days
    ```
-   **CRITICAL**: `--merge-days` flag merges single-day updates into existing multi-day file,
-   preserving all days NOT in update. Without this flag, entire file is replaced.
+   Slot-level merge is automatic when the target file exists: single-day updates are
+   merged into the existing multi-day file, preserving all days NOT in the update.
+   No merge flag needed.
 
 6. **Verify save succeeded** (MANDATORY):
    Check exit code:
