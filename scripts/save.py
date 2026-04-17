@@ -52,6 +52,7 @@ def _derive_meal_types():
 
 MEAL_TYPES = _derive_meal_types()
 SCHEDULE_AGENTS = {"timeline", "segment"}
+CONTINUITY_AGENTS = {"timeline", "transportation", "plan-skeleton"}
 POI_AGENTS = {"meals", "attractions", "entertainment", "shopping", "cafe"}
 TIMELINE_FIELD = "timeline"
 TRAVEL_SEGMENTS_FIELD = "travel_segments"
@@ -427,6 +428,114 @@ def _print_conflict_results(all_blocks, all_warnings) -> None:
         print(f"{len(all_warnings)} overlap warning(s) (non-blocking)", file=sys.stderr)
 
 
+def _norm_city(name: str) -> str:
+    """Normalize city name for comparison (handles apostrophe variants, spaces)."""
+    s = name.strip().lower()
+    for ch in ("'", "\u2019", "\u2018", "`", " "):
+        s = s.replace(ch, "")
+    return s
+
+
+def _get_day_end_location(day_info: dict, transport_day: dict) -> str:
+    """Determine a day's END location considering location_change."""
+    end = day_info.get("location", "")
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("to_base"):
+        end = t_lc["to_base"]
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("to") or ps_lc.get("to_base")):
+        end = ps_lc.get("to") or ps_lc.get("to_base")
+    return end
+
+
+def _day_has_incoming_lc(day_info: dict, transport_day: dict) -> bool:
+    """Check if a day has a location_change for incoming travel."""
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("from_base"):
+        return True
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("from") or ps_lc.get("from_base")):
+        return True
+    return False
+
+
+def _load_json_file(path) -> dict:
+    """Load a JSON file, returning empty dict on failure."""
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _build_skeleton_day_info(skeleton: dict) -> dict:
+    """Build {day_num: {location, location_change}} from plan-skeleton."""
+    return {
+        d.get("day", 0): {
+            "location": d.get("location", ""),
+            "location_change": d.get("location_change"),
+        }
+        for d in skeleton.get("days", [])
+    }
+
+
+def _check_day_pair_continuity(dn, dn1, day_info, transport_days) -> Optional[str]:
+    """Check one adjacent day pair for a location gap. Returns message or None."""
+    end_loc = _get_day_end_location(day_info[dn], transport_days.get(dn, {}))
+    start_loc = day_info[dn1].get("location", "")
+    if not end_loc or not start_loc:
+        return None
+    if _norm_city(end_loc) == _norm_city(start_loc):
+        return None
+    if _day_has_incoming_lc(day_info[dn1], transport_days.get(dn1, {})):
+        return None
+    return (
+        f"Location continuity gap: Day {dn} ends in {end_loc} "
+        f"but Day {dn1} starts in {start_loc}. "
+        f"Run update-skeleton.py --fix-continuity to repair."
+    )
+
+
+def _find_continuity_gaps(day_info: dict, transport_days: dict) -> list:
+    """Scan adjacent day pairs for location gaps. Returns gap messages."""
+    sorted_nums = sorted(day_info.keys())
+    gaps = []
+    for i in range(len(sorted_nums) - 1):
+        dn, dn1 = sorted_nums[i], sorted_nums[i + 1]
+        if dn1 != dn + 1:
+            continue
+        msg = _check_day_pair_continuity(dn, dn1, day_info, transport_days)
+        if msg:
+            gaps.append(msg)
+    return gaps
+
+
+def _report_continuity_gaps(gaps: list) -> None:
+    """Print continuity gap block messages to stderr."""
+    print(f"\nSAVE BLOCKED: {len(gaps)} location continuity gap(s):", file=sys.stderr)
+    for g in gaps:
+        print(f"  X  {g}", file=sys.stderr)
+
+
+def check_location_continuity(agent: str, agent_data: dict, trip_dir) -> list:
+    """Block saves with location discontinuities. Returns gap messages (non-empty = block)."""
+    if agent not in CONTINUITY_AGENTS:
+        return []
+    skeleton = _load_json_file(trip_dir / "plan-skeleton.json")
+    if not skeleton:
+        return []
+    t_data = agent_data if agent == "transportation" else _load_json_file(
+        trip_dir / "transportation.json")
+    t_days = t_data.get("data", {}).get("days", t_data.get("days", []))
+    transport_days = {d.get("day", 0): d for d in t_days}
+    day_info = _build_skeleton_day_info(skeleton)
+    gaps = _find_continuity_gaps(day_info, transport_days)
+    if gaps:
+        _report_continuity_gaps(gaps)
+    return gaps
+
+
 def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
     """Hard-block saves with non-optional time conflicts."""
     if agent not in SCHEDULE_AGENTS:
@@ -515,6 +624,8 @@ def save_single_agent(
         print(f"\nSave aborted due to validation errors", file=sys.stderr)
         return False
     if check_time_conflicts(envelope, trip_dir, agent):
+        return False
+    if check_location_continuity(agent, envelope, trip_dir):
         return False
     return _do_save(agent_file, agent, agent_data, create_backup, issues)
 

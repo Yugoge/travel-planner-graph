@@ -22,6 +22,7 @@ Operations:
     --set-note "key" "value"                  Set a supplemental note
     --remove-note "key"                       Remove a supplemental note
     --list-notes                              List all supplemental notes
+    --fix-continuity                          Auto-fix location gaps between days
 
 Exit codes:
     0 = success
@@ -771,6 +772,120 @@ def op_remove_day(
     return changes
 
 
+
+def _get_end_location_for_day(day_info: dict, transport_day: dict) -> str:
+    """Determine a day's end location from location_change data."""
+    end = day_info.get("location", "")
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("to_base"):
+        end = t_lc["to_base"]
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("to") or ps_lc.get("to_base")):
+        end = ps_lc.get("to") or ps_lc.get("to_base")
+    return end
+
+
+def _day_has_incoming_lc(day_info: dict, transport_day: dict) -> bool:
+    """Check if a day has an incoming location_change."""
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("from_base"):
+        return True
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("from") or ps_lc.get("from_base")):
+        return True
+    return False
+
+
+def op_fix_continuity(
+    req: Dict[str, Any],
+    plan: Dict[str, Any],
+    data_dir: Path
+) -> List[str]:
+    """Auto-fix location continuity gaps between adjacent days.
+
+    Loads transportation.json for location_change data,
+    then checks each adjacent day pair for gaps.
+    """
+    transport_path = data_dir / "transportation.json"
+    transport_data = {}
+    if transport_path.exists():
+        transport_data = load_json_file(transport_path)
+
+    transport_days = {}
+    for d in transport_data.get("data", {}).get("days", []):
+        transport_days[d.get("day", 0)] = d
+
+    return _find_and_fix_gaps(req, plan, transport_days)
+
+
+def _find_and_fix_gaps(
+    req: Dict[str, Any],
+    plan: Dict[str, Any],
+    transport_days: dict
+) -> List[str]:
+    """Scan adjacent days and fix continuity gaps."""
+    changes = []
+    plan_days = plan.get("days", [])
+    plan_by_num = {d["day"]: d for d in plan_days}
+    req_by_num = {d["day"]: d for d in req.get("days", [])}
+    sorted_nums = sorted(plan_by_num.keys())
+
+    for i in range(len(sorted_nums) - 1):
+        dn, dn1 = sorted_nums[i], sorted_nums[i + 1]
+        if dn1 != dn + 1:
+            continue
+        msg = _fix_one_gap(
+            dn, dn1, plan_by_num, req_by_num, transport_days
+        )
+        if msg:
+            changes.append(msg)
+
+    if not changes:
+        changes.append("No continuity gaps found")
+    else:
+        plan["days"] = redetect_location_changes_preserving_data(plan_days)
+        req["days"] = detect_location_changes(req.get("days", []))
+
+    return changes
+
+
+def _fix_one_gap(
+    dn: int, dn1: int,
+    plan_by_num: dict, req_by_num: dict,
+    transport_days: dict
+) -> Optional[str]:
+    """Check one day pair and fix if gap exists. Returns message or None."""
+    day_n = plan_by_num[dn]
+    day_n1 = plan_by_num[dn1]
+    def norm(s):
+        s = s.strip().lower()
+        for ch in ("'", "\u2019", "\u2018", "`", " "):
+            s = s.replace(ch, "")
+        return s
+
+    end_loc = _get_end_location_for_day(day_n, transport_days.get(dn, {}))
+    start_loc = day_n1.get("location", "")
+
+    if not end_loc or not start_loc:
+        return None
+    if norm(end_loc) == norm(start_loc):
+        return None
+    if _day_has_incoming_lc(day_n1, transport_days.get(dn1, {})):
+        return None
+
+    # Gap found: Day N ends in end_loc, Day N+1 starts in start_loc
+    old_loc = day_n.get("location", "")
+    day_n["location"] = start_loc
+    if dn in req_by_num:
+        req_by_num[dn]["location"] = start_loc
+
+    return (
+        f"Auto-fixed: Day {dn} location_change "
+        f"{old_loc} \u2192 {start_loc} "
+        f"(inferred from Day {dn1} location)"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser with all supported operations.
 
@@ -790,6 +905,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  %(prog)s --destination-slug my-trip --set-note diet 'No shellfish'\n"
             "  %(prog)s --destination-slug my-trip --remove-note diet\n"
             "  %(prog)s --destination-slug my-trip --list-notes\n"
+            "  %(prog)s --destination-slug my-trip --fix-continuity\n"
         )
     )
 
@@ -907,6 +1023,17 @@ def build_parser() -> argparse.ArgumentParser:
         help='List all supplemental notes'
     )
 
+    # Location continuity repair
+    parser.add_argument(
+        '--fix-continuity',
+        action='store_true',
+        help='Auto-fix location continuity gaps between adjacent days. '
+             'When Day N ends in City A but Day N+1 starts in City B '
+             'with no location_change, updates Day N location to City B '
+             'and adds location_change. Reads transportation.json for '
+             'existing location_change data.'
+    )
+
     return parser
 
 
@@ -981,12 +1108,15 @@ def validate_args(args: argparse.Namespace) -> str:
     if args.list_notes:
         operations.append('list_notes')
 
+    if args.fix_continuity:
+        operations.append('fix_continuity')
+
     if len(operations) == 0:
         raise ValueError(
             "No operation specified. Use --update-day, --update-budget, "
             "--update-travelers, --update-preferences, --add-day, "
             "--remove-day, --update-dates, --set-note, --remove-note, "
-            "or --list-notes"
+            "--list-notes, or --fix-continuity"
         )
 
     # Allow multiple non-conflicting summary updates in one call
@@ -1133,6 +1263,9 @@ def main() -> int:
 
         elif operation == 'list_notes':
             all_changes = op_list_notes(req)
+
+        elif operation == 'fix_continuity':
+            all_changes = op_fix_continuity(req, plan, data_dir)
 
         # Determine which files were modified
         # Note operations only affect requirements-skeleton.json

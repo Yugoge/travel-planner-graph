@@ -1,6 +1,6 @@
 # scripts
 
-*Last updated: 2026-04-17T06:35:41Z*
+*Last updated: 2026-04-17T18:23:17Z*
 **Total entries**: 65
 **Convention**: kebab
 
@@ -25,7 +25,7 @@ scripts/
 │   ├── `image_fetcher.py` - Image Fetcher Module
 │   └── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 ├── tests/
-│   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): scripts/lib/json_io.py:merge_agent_days()
+│   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
 ├── todo/
 │   ├── `plan.py` - Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
 │   └── `review.py` - Preloaded TodoList for /review command workflow.

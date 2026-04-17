@@ -1124,6 +1124,85 @@ def check_travel_segment_continuity(all_data: dict, trip: str) -> list:
     return issues
 
 
+
+def _get_day_end_location(day_info: dict, transport_day: dict) -> str:
+    """Determine a day's END location considering location_change."""
+    end = day_info["location"]
+    # Transportation.json uses from_base/to_base
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("to_base"):
+        end = t_lc["to_base"]
+    # Plan-skeleton uses from/to
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("to") or ps_lc.get("to_base")):
+        end = ps_lc.get("to") or ps_lc.get("to_base")
+    return end
+
+
+def _day_has_incoming_location_change(day_info: dict, transport_day: dict) -> bool:
+    """Check if a day has a location_change that accounts for incoming travel."""
+    t_lc = transport_day.get("location_change") if transport_day else None
+    if isinstance(t_lc, dict) and t_lc.get("from_base"):
+        return True
+    ps_lc = day_info.get("location_change")
+    if isinstance(ps_lc, dict) and (ps_lc.get("from") or ps_lc.get("from_base")):
+        return True
+    return False
+
+
+def _build_day_info_map(all_data: dict) -> dict:
+    """Build unified day info map from all agents' day data."""
+    day_info = {}
+    for adata in all_data.values():
+        for d in adata.get("data", {}).get("days", []):
+            dn = d.get("day", 0)
+            if dn not in day_info:
+                day_info[dn] = {
+                    "location": d.get("location", ""),
+                    "location_change": d.get("location_change"),
+                }
+    return day_info
+
+
+def _norm_city(name: str) -> str:
+    """Normalize city name for comparison (handles apostrophe variants, spaces)."""
+    s = name.strip().lower()
+    # Remove all apostrophe variants and spaces for fuzzy match
+    for ch in ("'", "\u2019", "\u2018", "`", " "):
+        s = s.replace(ch, "")
+    return s
+
+
+def check_location_continuity(all_data: dict, trip: str) -> list:
+    """Adjacent day location continuity: Day N end must match Day N+1 start."""
+    issues = []
+    transport_data = all_data.get("transportation", {})
+    transport_days = {
+        d.get("day", 0): d
+        for d in transport_data.get("data", {}).get("days", [])
+    }
+    day_info = _build_day_info_map(all_data)
+    sorted_days = sorted(day_info.keys())
+
+    for i in range(len(sorted_days) - 1):
+        dn, dn1 = sorted_days[i], sorted_days[i + 1]
+        if dn1 != dn + 1:
+            continue
+        end_loc = _get_day_end_location(day_info[dn], transport_days.get(dn, {}))
+        start_loc = day_info[dn1]["location"]
+        if not end_loc or not start_loc or _norm_city(end_loc) == _norm_city(start_loc):
+            continue
+        if _day_has_incoming_location_change(day_info[dn1], transport_days.get(dn1, {})):
+            continue
+        issues.append(Issue(
+            Severity.HIGH, Category.CROSS_AGENT, "transportation", trip, dn,
+            f"Day {dn}-{dn1}", "location_change",
+            f"Day {dn} ends in {end_loc} but Day {dn1} starts in "
+            f"{start_loc}, missing intercity transport"
+        ))
+    return issues
+
+
 def check_cross_agent(all_data: dict, trip: str) -> list:
     """Category 6: Cross-agent consistency."""
     issues = []
@@ -1328,6 +1407,8 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
         if not agent_filter:
             # Travel segment continuity (gap/overlap between segments and activities)
             all_issues.extend(check_travel_segment_continuity(all_data, trip))
+            # Adjacent day location continuity (missing return trips)
+            all_issues.extend(check_location_continuity(all_data, trip))
             # Comprehensive overlap detection across ALL agents (including timeline)
             all_issues.extend(check_all_activity_overlaps(all_data, trip))
             # Legacy cross-agent checks (day count, date, location, budget consistency)
