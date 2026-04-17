@@ -7443,14 +7443,29 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
   // Root cause fix: shopping items were missing from timeline - add them here
   day.shopping?.forEach(s => add(s, 'shopping', L('cat_shopping', lang)));
   day.cafe?.forEach(c => add(c, 'cafe', L('cat_cafe', lang)));
-  // Accommodation: time field is set by timeline agent after return-to-hotel travel segment.
-  // timeline agent is the single source of truth for check-in time placement.
-  if (day.accommodation) add(day.accommodation, 'accommodation', L('cat_checkin', lang));
   // Fix issue #6: Add travel segments from timeline (includes return-to-hotel segment)
   day.travel_segments?.forEach(t => {
     const label = lang === 'local' && t.name_local ? t.name_local : (t.name_base || '');
     add(t, 'travel', label);
   });
+  // Accommodation check-in: start_time = latest end_time of all other entries (arrives, then checks in)
+  if (day.accommodation) {
+    const accEntry = add(day.accommodation, 'accommodation', L('cat_checkin', lang));
+    if (accEntry) {
+      let latestEnd = 0;
+      entries.forEach(e => {
+        if (e._type !== 'accommodation') {
+          const m = timeToMinutes(e.time.end);
+          if (m > latestEnd) latestEnd = m;
+        }
+      });
+      if (latestEnd > 0) {
+        const hh = String(Math.floor(latestEnd / 60)).padStart(2, '0');
+        const mm = String(latestEnd % 60).padStart(2, '0');
+        accEntry.time = { ...accEntry.time, start: hh + ':' + mm };
+      }
+    }
+  }
 
   // Sort by start time
   entries.sort((a, b) => { const cmp = a.time.start.localeCompare(b.time.start); if (cmp !== 0) return cmp; const order = {transportation:0, travel:1, meal:2, attraction:3, cafe:4, entertainment:5, shopping:6, accommodation:7}; return (order[a._type] ?? 99) - (order[b._type] ?? 99); });
