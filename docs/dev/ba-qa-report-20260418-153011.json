@@ -1,0 +1,71 @@
+{
+  "request_id": "dev-20260418-153011",
+  "timestamp": "2026-04-17T23:45:00Z",
+  "verdict": "fail",
+  "summary": "BA's analysis has 3 critical objections: (1) misidentifies accommodation EUR values as CNY values, directly contradicting known user-confirmed fact; (2) claims cafe.md has 'in USD' but it has zero occurrences; (3) does not address transportation dual-cost-field structure in requirements.",
+  "objections": [
+    {
+      "id": "OBJ-1",
+      "dimension": "EVIDENCE_QUALITY",
+      "severity": "critical",
+      "title": "BA claims accommodation costs are already in CNY -- KNOWN TO BE WRONG",
+      "details": "BA context JSON observation line 103 states: 'accommodation costs are 42-60 CNY range (not EUR-scale values)'. BA spec Risk 6 says: 'accommodation.json shows costs already in CNY (42, 48, 60 CNY range)'. This is FACTUALLY WRONG. An Atour Hotel in Chengdu costing 48 CNY (~6 EUR) is impossible -- real Atour prices are 300-500 CNY/night. The 48 is a EUR value mislabeled with currency_local='CNY'. The user confirmed these are EUR values that need to be multiplied by 8.05. BA's R10 acceptance criterion ('No POI has costs < 5 without justification') is a weak heuristic that would PASS the current broken data (42, 44, 48, 60 are all > 5 but are all wrong EUR values). The acceptance criterion must be: 'All accommodation costs in china-20260412 must be multiplied by 8.05 to convert from EUR to CNY'.",
+      "evidence": "Actual data: Day 3 Gaodu Hotel cost=42, Day 5-8 Atour Hotel Chengdu cost=48/60/60/48, Day 9-11 Moxy Xi'an cost=44, Day 12-13 Heishi M+ Hotel cost=48. These are all EUR-scale prices. Real CNY prices: Atour Chengdu ~386 CNY, Moxy Xi'an ~354 CNY, etc.",
+      "recommendation": "Fix R10 acceptance criterion to: 'All accommodation.json costs in china-20260412-092624 that are < 100 and > 0 must be multiplied by 8.05 (EUR→CNY conversion). After fix, costs should be 338-483 CNY range. Remove observation claiming these are already CNY.'"
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "AFFECTED_FILE_ACCURACY",
+      "severity": "major",
+      "title": "cafe.md listed as having 'in USD' but has zero occurrences",
+      "details": "BA spec R4 says 'Remove ALL in USD from 8 agent .md files: accommodation, meals, attractions, entertainment, shopping, transportation, budget, cafe.' BA spec AC2 lists cafe.md as one of the 8 files. BA context JSON lists cafe.md in requirement.where and development_approach.files_to_modify. However, grep confirms cafe.md has ZERO 'in USD' occurrences. cafe.md is 250 lines and only mentions cost in an example JSON snippet at line 130 with 'cost: 45, currency_local: CNY'. There are only 7 agent files with 'in USD', not 8. Actual count: accommodation(2) + meals(1) + attractions(2) + entertainment(2) + shopping(2) + transportation(2) + budget(3) = 14 occurrences in 7 files.",
+      "evidence": "grep -c 'in USD' .claude/agents/cafe.md returns 0. Total 'in USD' count is 14 across 7 files, matching BA's 14 count, but from 7 files not 8.",
+      "recommendation": "Remove cafe.md from R4 file list. Update to '7 agent .md files'. cafe.md may still need a currency_local instruction added (currently has none), but that is a different change from removing 'in USD'."
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "INVESTIGATION_COMPLETENESS",
+      "severity": "major",
+      "title": "Transportation dual-cost-field structure not analyzed or addressed in requirements",
+      "details": "Transportation data has TWO cost fields: 'cost' (EUR-denominated, e.g., 5 for a 35 CNY metro ticket) and 'cost_local' (CNY-denominated, e.g., 35). Both fields coexist with currency_local='CNY'. The 'cost' field is actually in EUR despite currency_local saying CNY. BA's R10 mentions 'transportation.json EUR values x8.05 -> CNY' but doesn't specify which field to convert. The HTML generator's _extract_transport_cost_cny reads the 'cost_cny' field (line 211). BA's analysis doesn't document this dual-field structure or specify whether to: (a) convert 'cost' from EUR to CNY, (b) rename 'cost_local' to 'cost' and drop the EUR field, or (c) some other approach.",
+      "evidence": "Transportation Day 1 route: cost=5, cost_local=35, currency_local='CNY'. 5 EUR * 7.85 ~= 39 CNY, close to cost_local=35. This dual structure exists across all routes.",
+      "recommendation": "BA must specify the target state for transportation cost fields. Options: (1) keep only 'cost' field in CNY (matching currency_local), remove 'cost_local'; (2) keep dual fields with clear semantics. The R10 acceptance criterion needs to cover this explicitly."
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "INVESTIGATION_COMPLETENESS",
+      "severity": "minor",
+      "title": "_extract_transport_cost_cny method not included in R5 removal list",
+      "details": "BA identifies _extract_transport_cost_cny at line 211 in Risk 3 as needing 'renaming/refactoring', but it is not listed in R5's must-have removal set (_to_cny, _load_eur_to_cny_rate, _load_cross_rates_to_cny). This method reads 'cost_cny' field and its name implies CNY-specific logic. If the currency architecture is being redesigned, this method should either be renamed or its handling specified in the requirements.",
+      "evidence": "generate-html-interactive.py line 211: def _extract_transport_cost_cny(self, loc_change: dict) -> float. Called at lines 1046, 1049.",
+      "recommendation": "Either add _extract_transport_cost_cny to R5's removal/rename list as a must-have, or explicitly state it is deferred to a follow-up."
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "SCOPE_ALIGNMENT",
+      "severity": "minor",
+      "title": "R10 acceptance criterion uses weak heuristic instead of explicit conversion requirement",
+      "details": "R10 acceptance criterion says 'No POI in china-20260412-092624 accommodation.json or transportation.json has costs < 5 without corresponding small-denomination justification'. This threshold of 5 is arbitrary and would pass the current broken data (all EUR values are 42-60, well above 5). The user's explicit instruction was to multiply by 8.05, not to check for 'small values'. This is a scope dilution from the original requirement.",
+      "evidence": "Original sub-task 9 says 'Current data fix (EUR x 8.05 -> CNY)'. BA's criterion only checks for values < 5.",
+      "recommendation": "Replace with: 'All non-zero accommodation costs in china-20260412-092624 accommodation.json must be >= 100 CNY after conversion (no hotel in China costs < ~12 EUR). Specifically: original values 42,48,60,44,48 must be multiplied by 8.05 to yield 338,386,483,354,386 respectively.'"
+    }
+  ],
+  "dimension_scores": {
+    "evidence_quality": "fail - BA makes factual claims about accommodation costs being 'already in CNY' without cross-checking against real-world prices. An Atour Hotel at 48 CNY is prima facie wrong.",
+    "scope_alignment": "pass - All 10 sub-tasks from the original requirement are represented in BA's requirements decomposition R1-R10.",
+    "investigation_completeness": "warning - BA correctly identified all files with 'in USD' and verified the 14-occurrence count. However, missed the transportation dual-cost-field structure and the cafe.md false positive.",
+    "affected_file_accuracy": "warning - 14 of 15 file identifications are correct with accurate line numbers. cafe.md is a false positive (listed as having 'in USD' but has zero occurrences)."
+  },
+  "verified_claims": [
+    "config/currency-config.json structure matches BA's description exactly (fallback_exchange_rate:0.128, cross_rates_to_cny present)",
+    "14 'in USD' occurrences across agent files confirmed via grep",
+    "_load_eur_to_cny_rate at line 49, _to_cny at line 119, _load_cross_rates_to_cny at line 103 confirmed",
+    "_to_display_currency at line 129 with multi-hop conversion logic confirmed",
+    "requirements-skeleton.json has no currency_local in trip_summary confirmed",
+    "plan-validate.py currency_re at line 499 confirmed",
+    "save.py has no currency references confirmed",
+    "budget.schema.json day_entry at lines 90-121 has no currency_local confirmed",
+    "poi-common.schema.json currency_code at line 92 confirmed",
+    "scripts/lib/html_generator.py uses currency_symbol_map at line 177 confirmed"
+  ]
+}
