@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-04-17T06:43:11Z*
-**Total entries**: 116
+*Last updated: 2026-04-18T15:37:32Z*
+**Total entries**: 119
 **Convention**: kebab
 
 ## Tree
@@ -43,8 +43,10 @@ dev/
 ├── `ba-spec-20260415-210000.md` - BA Specification: Independent Cafe POI Type
 ├── `ba-spec-20260416-172720.md` - BA Specification: Fix silent data loss bug in POI agents — slot-level merge
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
+├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
+├── `completion-20260417-001800.md` - Development Completion Report
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -69,6 +71,7 @@ dev/
 ├── `context-20260415-210000.json` - json config
 ├── `context-20260416-172720.json` - json config
 ├── `context-20260417-001800.json` - json config
+├── `context-20260418-153011.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
