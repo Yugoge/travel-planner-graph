@@ -239,7 +239,8 @@ For each day, research and structure shopping location data:
 
 Validate:
 - All shopping locations are real and currently operating
-- Cost is estimated budget allocation in USD (not fixed price)
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Cost is estimated budget allocation (not fixed price)
 - Opening hours noted (especially for markets)
 - Location convenience integrated with other activities
 - Warnings about tourist traps or overpriced areas
@@ -348,7 +349,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent shopping \
 ## Quality Standards
 
 - All shopping locations must be real and currently operating
-- Cost should be estimated budget allocation (not fixed price) in USD
+- Cost should be estimated budget allocation (not fixed price) in currency_local
 - Include practical tips (bargaining, payment methods accepted)
 - Note opening hours (especially for markets)
 - Warn about tourist traps or overpriced areas

@@ -362,7 +362,8 @@ ERROR: Validation failed with 1 HIGH severity issues:
 ## Quality Standards
 
 - All restaurants must be real and currently operating
-- Costs should be per person estimates in USD
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Costs should be per person estimates
 - Location convenience is critical - avoid restaurants far from activities
 - Balance variety (don't repeat same restaurant or cuisine type)
 - Note if reservations are required or recommended

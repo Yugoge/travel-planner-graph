@@ -230,7 +230,8 @@ For each day, research and structure attraction data:
 
 Validate:
 - All attractions are real and currently open
-- Costs are per-person admission in USD
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Costs are per-person admission
 - Durations are realistic (include travel/queue time)
 - No over-scheduling (2-4 major attractions per day)
 - Geographic clustering to minimize travel
@@ -339,7 +340,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent attractions \
 ## Quality Standards
 
 - All attractions must be real and currently open
-- Cost should be per person admission in USD (note if free)
+- Cost should be per person admission in currency_local (note if free)
 - Duration estimates should be realistic (include queue time if applicable)
 - Don't over-schedule - allow for travel time between attractions
 - Note if attraction requires advance booking or timed entry

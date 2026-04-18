@@ -236,7 +236,8 @@ For each day, research and structure accommodation data:
 
 Validate:
 - All accommodations are real and bookable
-- Costs are per night for the room (not per person) in USD
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Costs are per night for the room (not per person)
 - For vacation rentals, calculate average per night including fees
 - Location convenience is critical (check distance to attractions)
 - Consider location changes (stay near next day's departure point)
@@ -344,7 +345,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent accommodation \
 ## Quality Standards
 
 - All accommodations must be real and bookable
-- Cost should be per night for the room (not per person) in USD
+- Cost should be per night for the room (not per person) in currency_local
 - For vacation rentals, calculate average per night including all fees
 - Location convenience is critical - check distance to attractions
 - Consider location changes - stay near next day's departure point if changing cities

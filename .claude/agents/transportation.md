@@ -191,7 +191,8 @@ For each location change day, research and structure transportation data:
 Validate:
 - Only process days with location_change object
 - All transportation options are real and currently operating
-- Costs are per person in USD
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Costs are per person
 - Departure time allows for hotel checkout
 - Arrival time allows for hotel check-in and first activity
 - Include airport/station transfer time in total journey
