@@ -536,6 +536,69 @@ def check_location_continuity(agent: str, agent_data: dict, trip_dir) -> list:
     return gaps
 
 
+
+
+def _load_plan_currency(trip_dir) -> str:
+    """Load plan-level currency_local from requirements-skeleton.json."""
+    req_path = trip_dir / 'requirements-skeleton.json'
+    if req_path.exists():
+        try:
+            req = json.loads(req_path.read_text(encoding='utf-8'))
+            return req.get('trip_summary', {}).get('currency_local', '')
+        except (json.JSONDecodeError, OSError):
+            pass
+    return ''
+
+
+def check_currency_mismatch(agent: str, agent_data: dict, trip_dir) -> list:
+    """Block saves where POI currency_local doesn't match plan currency_local."""
+    plan_currency = _load_plan_currency(trip_dir)
+    if not plan_currency:
+        return []
+    mismatches = []
+    days = agent_data.get('data', {}).get('days', agent_data.get('days', []))
+    for day in days:
+        if not isinstance(day, dict):
+            continue
+        dn = day.get('day', '?')
+        # Collect POIs to check
+        pois = []
+        if agent == 'accommodation':
+            acc = day.get('accommodation')
+            if isinstance(acc, dict):
+                pois.append(('accommodation', acc))
+        elif agent == 'meals':
+            for mt in ('breakfast', 'lunch', 'dinner'):
+                m = day.get(mt)
+                if isinstance(m, dict):
+                    primary = m.get('primary', m)
+                    pois.append((mt, primary))
+        elif agent in ('attractions', 'entertainment', 'shopping', 'cafe'):
+            for poi in day.get(agent, []):
+                if isinstance(poi, dict):
+                    pois.append((poi.get('name_base', '?'), poi))
+        elif agent == 'transportation':
+            lc = day.get('location_change')
+            if isinstance(lc, dict) and lc.get('currency_local'):
+                pois.append(('location_change', lc))
+            icr = day.get('intra_city_routes', {})
+            if isinstance(icr, dict):
+                for rk, rv in icr.items():
+                    if isinstance(rv, dict) and rv.get('currency_local'):
+                        pois.append((rk, rv))
+
+        for label, poi in pois:
+            poi_currency = poi.get('currency_local', '')
+            if poi_currency and poi_currency != plan_currency:
+                mismatches.append(
+                    f'Day {dn} {label}: currency_local={poi_currency} != plan {plan_currency}'
+                )
+    if mismatches:
+        print(f"\nSAVE BLOCKED: {len(mismatches)} currency mismatch(es):", file=sys.stderr)
+        for m in mismatches:
+            print(f"  X  {m}", file=sys.stderr)
+    return mismatches
+
 def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
     """Hard-block saves with non-optional time conflicts."""
     if agent not in SCHEDULE_AGENTS:
@@ -626,6 +689,8 @@ def save_single_agent(
     if check_time_conflicts(envelope, trip_dir, agent):
         return False
     if check_location_continuity(agent, envelope, trip_dir):
+        return False
+    if check_currency_mismatch(agent, envelope, trip_dir):
         return False
     return _do_save(agent_file, agent, agent_data, create_backup, issues)
 

@@ -41,72 +41,46 @@ class InteractiveHTMLGenerator:
         self.images_cache = self._load_json("images.json")
 
         # Load currency config for display
-        self._eur_to_cny_rate = self._load_eur_to_cny_rate()
-        self._display_currency, self._display_symbol = self._load_display_currency()
-        self._cross_rates_to_cny = self._load_cross_rates_to_cny()
+        self._exchange_rates = self._load_exchange_rates()
+        self._default_currency, self._display_symbol = self._load_display_currency()
         self._type_display_map = self._load_validation_config()
 
-    def _load_eur_to_cny_rate(self) -> float:
-        """Fetch real-time EUR→CNY rate via fetch-exchange-rate.sh, fallback to config."""
+    def _load_exchange_rates(self) -> dict:
+        """Load exchange rates from config, with real-time override for trip currency."""
+        config_path = self.base_dir / "config" / "currency-config.json"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        rates = dict(config.get("exchange_rates", {}))
+        # Try real-time rate for the trip's currency_local
+        trip_currency = self.requirements.get("trip_summary", {}).get("currency_local", "CNY")
         fetch_script = self.base_dir / "scripts" / "utils" / "fetch-exchange-rate.sh"
         if fetch_script.exists():
             try:
                 result = subprocess.run(
-                    [str(fetch_script), "EUR", "CNY"],
+                    [str(fetch_script), config.get("default_currency", "EUR"), trip_currency],
                     capture_output=True, text=True, check=True, timeout=10
                 )
                 rate = float(result.stdout.strip())
-                print(f"Exchange rate (real-time): 1 EUR = {rate} CNY", file=sys.stderr)
-                return rate
+                print(f"Exchange rate (real-time): 1 {config.get('default_currency', 'EUR')} = {rate} {trip_currency}", file=sys.stderr)
+                rates[trip_currency] = rate
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
                 print(f"Warning: Real-time exchange rate fetch failed: {e}, using config fallback", file=sys.stderr)
-
-        # Fallback to config
-        config_path = self.base_dir / "config" / "currency-config.json"
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            cny_to_eur = config.get("fallback_exchange_rate", 0.128)
-            if cny_to_eur > 0:
-                rate = 1.0 / cny_to_eur
-                print(f"Exchange rate (config fallback): 1 EUR = {rate} CNY", file=sys.stderr)
-                return rate
-            else:
-                raise ValueError("Invalid fallback_exchange_rate in config")
-        except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-            # Final fallback: environment variable override
-            env_rate = os.environ.get('FALLBACK_EUR_CNY_RATE')
-            if env_rate:
-                try:
-                    cny_to_eur = float(env_rate)
-                    if cny_to_eur > 0:
-                        rate = 1.0 / cny_to_eur
-                        print(f"Exchange rate (env FALLBACK_EUR_CNY_RATE): 1 EUR = {rate} CNY", file=sys.stderr)
-                        return rate
-                except (ValueError, ZeroDivisionError):
-                    pass
-            print(f"ERROR: Failed to fetch EUR→CNY exchange rate: {e}", file=sys.stderr)
-            print("Please check network connection or update config/currency-config.json", file=sys.stderr)
-            print("Or set FALLBACK_EUR_CNY_RATE environment variable (e.g., 0.128)", file=sys.stderr)
+        if not rates:
             raise RuntimeError("Exchange rate unavailable - cannot generate accurate budget display")
+        print(f"Exchange rates loaded: {rates}", file=sys.stderr)
+        return rates
 
     def _load_display_currency(self) -> tuple:
         """Load display currency from config/currency-config.json. Raises if config missing."""
         config_path = self.base_dir / "config" / "currency-config.json"
         with open(config_path, 'r') as f:
             config = json.load(f)
-        currency = config["default_display_currency"]
+        currency = config["default_currency"]
         symbol = config["currency_symbol_map"][currency]
         print(f"Display currency: {currency} ({symbol})", file=sys.stderr)
         return currency, symbol
 
-    def _load_cross_rates_to_cny(self) -> dict:
-        """Load foreign→CNY cross rates from config/currency-config.json."""
-        config_path = self.base_dir / "config" / "currency-config.json"
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        return {k: v for k, v in config.get("cross_rates_to_cny", {}).items()
-                if not k.startswith("_") and isinstance(v, (int, float))}
+
 
     def _load_validation_config(self) -> dict:
         """Load display maps from config. Raises if config missing."""
@@ -116,31 +90,16 @@ class InteractiveHTMLGenerator:
             type_cfg = json.load(f)
         return {**type_cfg.get("trip_types", {}), **type_cfg.get("poi_types", {})}
 
-    def _to_cny(self, amount: float, source_currency: str) -> float:
-        """Convert any amount to CNY using config cross rates."""
-        if source_currency == "CNY" or amount == 0:
-            return amount
-        rate = self._cross_rates_to_cny.get(source_currency)
-        if rate:
-            return amount * rate
-        print(f"WARNING: No cross rate for {source_currency}→CNY. Treating as CNY.", file=sys.stderr)
-        return amount
-
-    def _to_display_currency(self, amount: float, source_currency: str = "CNY") -> float:
-        """Convert any amount to display currency using config rates."""
+    def _to_display_currency(self, amount: float, currency_local: str = "CNY") -> float:
+        """Convert amount from local currency to display currency (EUR) via division."""
         if amount == 0:
             return 0
-        if source_currency == self._display_currency:
+        if currency_local == self._default_currency:
             return amount
-        # Normalize to CNY first, then convert to display currency
-        cny = self._to_cny(amount, source_currency)
-        if self._display_currency == "EUR":
-            return cny / self._eur_to_cny_rate if self._eur_to_cny_rate > 0 else 0
-        # Other display currencies: convert CNY→display via inverse of cross_rates_to_cny
-        display_rate = self._cross_rates_to_cny.get(self._display_currency)
-        if display_rate and display_rate > 0:
-            return cny / display_rate
-        return cny
+        rate = self._exchange_rates.get(currency_local)
+        if rate and rate > 0:
+            return amount / rate
+        return amount
 
     # Default UI labels (English only — local translations come from data)
     # These serve as fallback keys when requirements-skeleton doesn't provide a label.
@@ -208,25 +167,23 @@ class InteractiveHTMLGenerator:
                 return (eng, chn)
         return (text, text)
 
-    def _extract_transport_cost_cny(self, loc_change: dict) -> float:
-        """Extract the most accurate CNY cost from transportation data.
+    def _extract_transport_cost(self, loc_change: dict) -> tuple:
+        """Extract cost and currency from transportation data.
 
-        Priority: route_details.verified_train.cost_cny > cost_cny > cost (with currency check)
+        Returns (cost, currency_local) tuple.
+        Priority: cost_cny (legacy) > cost + currency_local
         """
-        # Check route_details for verified cost_cny
+        # Legacy: cost_cny field
         route_details = loc_change.get("route_details", {})
         verified = route_details.get("verified_train") or route_details.get("verified_flight") or {}
         if verified.get("cost_cny"):
-            return float(verified["cost_cny"])
-
-        # Check top-level cost_cny
+            return float(verified["cost_cny"]), "CNY"
         if loc_change.get("cost_cny"):
-            return float(loc_change["cost_cny"])
-
-        # Fallback: use cost field with currency awareness
-        cost = loc_change.get("cost", 0)
-        currency = loc_change.get("currency", "CNY")
-        return self._to_cny(float(cost), currency)
+            return float(loc_change["cost_cny"]), "CNY"
+        # Standard: cost + currency_local
+        cost = float(loc_change.get("cost", 0))
+        currency = loc_change.get("currency_local", "CNY")
+        return cost, currency
 
     def _is_home_location(self, item: dict) -> bool:
         """Check if item is a home/family location via schema field is_home."""
@@ -1042,11 +999,8 @@ class InteractiveHTMLGenerator:
                     "route_number": route_number,
                     "company_base": airline,
                     "company_local": loc_change.get("company_local", ""),
-                    "cost": self._to_display_currency(
-                        self._extract_transport_cost_cny(loc_change),
-                        "CNY"
-                    ),
-                    "cost_local": self._extract_transport_cost_cny(loc_change),
+                    "cost": self._to_display_currency(*self._extract_transport_cost(loc_change)),
+                    "cost_local": self._extract_transport_cost(loc_change)[0],
                     "cost_type_base": loc_change.get("cost_type_base", ""),
                     "cost_type_local": loc_change.get("cost_type_local", ""),
                     "status_base": booking_status,
@@ -1141,7 +1095,7 @@ class InteractiveHTMLGenerator:
                         "company_base": "",
                         "company_local": "",
                         "cost": self._to_display_currency(cost_eur if cost_eur else cost_cny, "EUR" if cost_eur else "CNY"),
-                        "cost_local": cost_cny if cost_cny else 0,
+                        "cost_local": cost_cny if cost_cny else cost_eur,
                         "cost_type_base": "",
                         "cost_type_local": "",
                         "status_base": "RECOMMENDED",

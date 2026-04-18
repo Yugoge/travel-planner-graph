@@ -395,7 +395,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
   - Use Google Maps scripts for international routes outside China
   - No WebSearch fallback - report errors if scripts fail
 - All transportation options must be real and currently operating
-- Cost should be per person in USD (convert from CNY if using Gaode Maps)
+- Cost should be per person in currency_local
 - Times should be realistic (include buffer for delays)
 - Departure time must allow for hotel checkout and arrival at station/airport
 - Arrival time must allow for hotel check-in and day's first activity

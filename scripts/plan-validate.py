@@ -1308,6 +1308,113 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
     return issues
 
 
+
+# Location -> expected currency mapping
+LOCATION_CURRENCY_MAP = {
+    'china': 'CNY', 'beijing': 'CNY', 'shanghai': 'CNY', 'chengdu': 'CNY',
+    'xian': 'CNY', 'datong': 'CNY', 'chongqing': 'CNY', 'lijiang': 'CNY',
+    'guangzhou': 'CNY', 'shenzhen': 'CNY', 'hangzhou': 'CNY', 'nanjing': 'CNY',
+    'japan': 'JPY', 'tokyo': 'JPY', 'osaka': 'JPY', 'kyoto': 'JPY',
+    'korea': 'KRW', 'seoul': 'KRW', 'busan': 'KRW',
+    'uk': 'GBP', 'london': 'GBP', 'edinburgh': 'GBP',
+    'usa': 'USD', 'new york': 'USD', 'los angeles': 'USD',
+}
+
+LEGACY_COST_FIELDS = {'cost_cny', 'cost_usd', 'cost_eur'}
+
+
+def _load_plan_currency(trip_dir: Path) -> str:
+    """Load plan-level currency_local from requirements-skeleton.json."""
+    req_path = trip_dir / 'requirements-skeleton.json'
+    if req_path.exists():
+        try:
+            req = json.loads(req_path.read_text(encoding='utf-8'))
+            return req.get('trip_summary', {}).get('currency_local', '')
+        except (json.JSONDecodeError, OSError):
+            pass
+    return ''
+
+
+def check_currency_consistency(all_data: dict, trip: str, trip_dir: Path) -> list:
+    """Check currency_local consistency across all POI agents.
+
+    1. All POI currency_local fields must match plan-level currency_local.
+    2. Day locations must match expected currency for that country.
+    3. Legacy dual-field cost schemas (cost_cny/cost_usd) get WARNING not ERROR.
+    """
+    issues = []
+    plan_currency = _load_plan_currency(trip_dir)
+    if not plan_currency:
+        return issues  # No plan-level currency to validate against
+
+    poi_agents = ['meals', 'attractions', 'entertainment', 'accommodation', 'shopping', 'cafe', 'transportation']
+
+    for agent_name in poi_agents:
+        adata = all_data.get(agent_name, {})
+        days = adata.get('data', {}).get('days', [])
+        for day in days:
+            dn = day.get('day', 0)
+            location = day.get('location', '')
+
+            # Location-currency validation
+            loc_key = _norm_city(location)
+            expected_currency = LOCATION_CURRENCY_MAP.get(loc_key)
+            if expected_currency and expected_currency != plan_currency:
+                issues.append(Issue(
+                    Severity.HIGH, Category.SEMANTIC, agent_name, trip, dn,
+                    f'Day {dn}', 'currency_local',
+                    f'Location {location} expects {expected_currency} but plan currency_local is {plan_currency}. '
+                    f'Add day-level currency_local override.'
+                ))
+
+            # Collect POIs for this day
+            pois = []
+            if agent_name == 'meals':
+                for mt in ('breakfast', 'lunch', 'dinner'):
+                    m = day.get(mt)
+                    if isinstance(m, dict):
+                        primary = m.get('primary', m)
+                        pois.append((mt, primary))
+            elif agent_name == 'accommodation':
+                acc = day.get('accommodation')
+                if isinstance(acc, dict):
+                    pois.append(('accommodation', acc))
+            elif agent_name == 'transportation':
+                lc = day.get('location_change')
+                if isinstance(lc, dict):
+                    pois.append(('location_change', lc))
+                icr = day.get('intra_city_routes', {})
+                if isinstance(icr, dict):
+                    for rk, rv in icr.items():
+                        if isinstance(rv, dict):
+                            pois.append((rk, rv))
+            else:
+                for poi in day.get(agent_name, []):
+                    if isinstance(poi, dict):
+                        pois.append((poi.get('name_base', '?'), poi))
+
+            # Check each POI's currency_local
+            for label, poi in pois:
+                poi_currency = poi.get('currency_local', '')
+                if poi_currency and poi_currency != plan_currency:
+                    issues.append(Issue(
+                        Severity.HIGH, Category.SEMANTIC, agent_name, trip, dn,
+                        label, 'currency_local',
+                        f'POI currency_local={poi_currency} does not match plan currency_local={plan_currency}'
+                    ))
+
+                # Legacy dual-field cost warning
+                legacy_fields_present = LEGACY_COST_FIELDS & set(poi.keys())
+                if legacy_fields_present:
+                    issues.append(Issue(
+                        Severity.LOW, Category.LEGACY, agent_name, trip, dn,
+                        label, ','.join(sorted(legacy_fields_present)),
+                        f'Legacy cost fields {sorted(legacy_fields_present)} found. '
+                        f'Migrate to single cost + currency_local model.'
+                    ))
+
+    return issues
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
@@ -1413,6 +1520,8 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
             all_issues.extend(check_all_activity_overlaps(all_data, trip))
             # Legacy cross-agent checks (day count, date, location, budget consistency)
             all_issues.extend(check_cross_agent(all_data, trip))
+            # Currency consistency (POI currency_local must match plan/day level)
+            all_issues.extend(check_currency_consistency(all_data, trip, trip_dir))
 
     return all_issues, metrics
 

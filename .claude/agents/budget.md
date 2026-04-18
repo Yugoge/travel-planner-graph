@@ -485,9 +485,10 @@ Return ONLY valid JSON (no ```json wrapper, no explanatory text before/after):
 
 **Required in `summary` object**:
 - `items_added`, `items_modified`, `items_deleted`: Change counts (integer)
-- `total_cost`: Total trip cost in USD (float)
-- `user_budget`: User budget in USD (float)
-- `overage_amount`: Amount over budget in USD (float, negative if under)
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- `total_cost`: Total trip cost in currency_local (float)
+- `user_budget`: User budget in currency_local (float)
+- `overage_amount`: Amount over budget in currency_local (float, negative if under)
 - `overage_percent`: Percentage over budget (float)
 - `key_changes`: Array of human-readable change descriptions
 
