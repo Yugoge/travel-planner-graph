@@ -6,6 +6,7 @@ This repository contains auto-generated travel plans from the travel-planner.
 
 ## Travel Plans
 
+- [Gerardmer - 2026-04-19](https://Yugoge.github.io/travel-planner-graph/gerardmer/2026-04-19/)
 - [Beijing Lijiang Dali - 2026-04-18](https://Yugoge.github.io/travel-planner-graph/beijing-lijiang-dali/2026-04-18/)
 - [China - 2026-04-12](https://Yugoge.github.io/travel-planner-graph/china/2026-04-12/)
 - [Wangfujing Dongdan Beijing - 2026-04-05](https://Yugoge.github.io/travel-planner-graph/wangfujing-dongdan-beijing/2026-04-05/)
@@ -13,4 +14,4 @@ This repository contains auto-generated travel plans from the travel-planner.
 - [China Exchange Bucket List - 2026-02-11](https://Yugoge.github.io/travel-planner-graph/china-exchange-bucket-list/2026-02-11/)
 - [Beijing Exchange Bucket List - 2026-02-11](https://Yugoge.github.io/travel-planner-graph/beijing-exchange-bucket-list/2026-02-11/)
 
-Last updated: 2026-04-19 10:23:31 UTC
+Last updated: 2026-04-19 15:40:11 UTC
