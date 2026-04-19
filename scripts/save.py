@@ -1,29 +1,12 @@
 #!/usr/bin/env python3
-"""
-Unified Data Saving Script - Batch Validation and Atomic Writes
-================================================================
-Single script for all agent data saving with mandatory validation.
-
-This script replaces all individual save scripts and enforces:
-  - Automatic validation (plan-validate.py)
-  - Atomic writes (.tmp to rename)
-  - Automatic backups (.bak)
-  - Batch operations with rollback
-  - HIGH severity issues block saves
-
-Usage:
-  python3 scripts/save.py --trip TRIP_SLUG --agent meals --input data.json
-  cat data.json | python3 scripts/save.py --trip TRIP_SLUG --agent meals
-  python3 scripts/save.py --trip TRIP_SLUG --batch agents_data.json
-"""
+"""Unified Data Saving Script — Batch Validation and Atomic Writes."""
 
 import json
 import sys
 import argparse
 import shutil
-import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.json_io import (
@@ -39,7 +22,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 PLAN_VALIDATE = PROJECT_ROOT / "scripts" / "plan-validate.py"
 
-
 def _derive_meal_types():
     """Derive meal types from meals schema."""
     schema_path = Path(__file__).parent.parent / "schemas" / "meals.schema.json"
@@ -49,14 +31,12 @@ def _derive_meal_types():
         return [k for k, v in day_props.items() if v.get("$ref") == "#/$defs/meal_slot"]
     return ["breakfast", "lunch", "dinner"]
 
-
 MEAL_TYPES = _derive_meal_types()
 SCHEDULE_AGENTS = {"timeline", "segment"}
 CONTINUITY_AGENTS = {"timeline", "transportation", "plan-skeleton"}
 POI_AGENTS = {"meals", "attractions", "entertainment", "shopping", "cafe"}
 TIMELINE_FIELD = "timeline"
 TRAVEL_SEGMENTS_FIELD = "travel_segments"
-
 
 def _load_image_fetcher(trip_slug: str):
     """Load BatchImageFetcher from fetch-images-batch.py. None on failure."""
@@ -71,7 +51,6 @@ def _load_image_fetcher(trip_slug: str):
         print(f"Image fetcher unavailable: {e}", file=sys.stderr)
         return None
 
-
 def _collect_day_pois(day: dict, agent: str) -> list:
     """Collect POIs from a day entry based on agent type."""
     if agent == "meals":
@@ -82,7 +61,6 @@ def _collect_day_pois(day: dict, agent: str) -> list:
     if agent in ["attractions", "entertainment", "shopping", "cafe"]:
         return list(day.get(agent, []))
     return []
-
 
 def _fetch_poi_image(fetcher, poi: dict, city: str) -> bool:
     """Try to fetch image for a single POI. Returns True if updated."""
@@ -98,7 +76,6 @@ def _fetch_poi_image(fetcher, poi: dict, city: str) -> bool:
         return True
     return False
 
-
 def _fill_missing_images(fetcher, pois: list, city: str) -> int:
     """Fetch images for POIs missing image_url. Returns count updated."""
     updated = 0
@@ -108,7 +85,6 @@ def _fill_missing_images(fetcher, pois: list, city: str) -> int:
         if _fetch_poi_image(fetcher, poi, city):
             updated += 1
     return updated
-
 
 def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None:
     """Auto-extract image_url for POIs missing it."""
@@ -124,14 +100,12 @@ def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None
     if total > 0:
         print(f"Auto-extracted {total} image URLs", file=sys.stderr)
 
-
 def _extract_high_issues(issues: list) -> list:
     """Filter HIGH severity issues from a list."""
     def _is_high(i):
         sev = i.severity.value if hasattr(i.severity, 'value') else i.severity
         return sev == "HIGH"
     return [i for i in issues if _is_high(i)]
-
 
 def _report_high_issues(issues: list) -> None:
     """Print HIGH severity issues to stderr."""
@@ -142,7 +116,6 @@ def _report_high_issues(issues: list) -> None:
     if len(high) > 10:
         print(f"  ... and {len(high) - 10} more", file=sys.stderr)
 
-
 def _handle_validation_error(e, allow_high):
     """Handle a ValidationError, returning (success, issues, metrics)."""
     if allow_high:
@@ -150,7 +123,6 @@ def _handle_validation_error(e, allow_high):
         return True, e.issues, e.metrics
     _report_high_issues(e.issues)
     return False, e.issues, e.metrics
-
 
 def validate_data(
     trip_slug: str, agent: str, data: Dict[str, Any],
@@ -169,7 +141,6 @@ def validate_data(
     except ValidationError as e:
         return _handle_validation_error(e, allow_high)
 
-
 def _parse_hhmm(t: str) -> int:
     """Parse HH:MM to minutes since midnight. -1 if invalid."""
     if not t or ":" not in t:
@@ -180,7 +151,6 @@ def _parse_hhmm(t: str) -> int:
     except (ValueError, IndexError):
         return -1
 
-
 def _times_overlap(s1: str, e1: str, s2: str, e2: str) -> bool:
     """Check if two HH:MM ranges overlap (exclusive endpoints)."""
     m1s, m1e = _parse_hhmm(s1), _parse_hhmm(e1)
@@ -189,9 +159,7 @@ def _times_overlap(s1: str, e1: str, s2: str, e2: str) -> bool:
         return False
     return m1s < m2e and m2s < m1e
 
-
 def _build_timeline_act(name: str, d: dict) -> dict:
-    """Build an activity dict from a timeline entry."""
     act = {
         "ag": "timeline", "name": name,
         "s": d["start_time"], "e": d.get("end_time", ""),
@@ -202,18 +170,14 @@ def _build_timeline_act(name: str, d: dict) -> dict:
             act[ref_key] = d[ref_key]
     return act
 
-
 def _collect_timeline_entries(day: dict) -> list:
-    """Collect timeline dict entries as activity dicts."""
     acts = []
     for name, d in day.get(TIMELINE_FIELD, {}).items():
         if isinstance(d, dict) and d.get("start_time"):
             acts.append(_build_timeline_act(name, d))
     return acts
 
-
 def _collect_segment_entries(day: dict) -> list:
-    """Collect travel_segments as activity dicts."""
     acts = []
     for i, seg in enumerate(day.get(TRAVEL_SEGMENTS_FIELD, [])):
         if not (isinstance(seg, dict) and seg.get("start_time")):
@@ -228,21 +192,13 @@ def _collect_segment_entries(day: dict) -> list:
         })
     return acts
 
-
 def _collect_timeline_activities(day: dict) -> list:
-    """Extract activities from a timeline day entry."""
     return _collect_timeline_entries(day) + _collect_segment_entries(day)
 
-
 def _build_meal_act(m: dict, mt: str) -> Optional[dict]:
-    """Build an activity dict from a meal slot, or None.
-    Time fields no longer exist in POI data — conflict detection uses timeline only.
-    """
-    return None
-
+    return None  # Time fields removed from POI data
 
 def _collect_meal_acts(sib_day: dict) -> list:
-    """Extract meal activities from a meals day entry."""
     acts = []
     for mt in MEAL_TYPES:
         m = sib_day.get(mt, {})
@@ -253,38 +209,26 @@ def _collect_meal_acts(sib_day: dict) -> list:
             acts.append(act)
     return acts
 
-
 def _build_poi_act(poi: dict, agent: str) -> Optional[dict]:
-    """Build an activity dict from a POI, or None.
-    Time fields no longer exist in POI data — conflict detection uses timeline only.
-    """
-    return None
-
+    return None  # Time fields removed from POI data
 
 def _collect_poi_acts(sib_day: dict, agent: str) -> list:
-    """Extract POI activities from a day entry."""
     return [a for a in (
         _build_poi_act(poi, agent) for poi in sib_day.get(agent, [])
     ) if a is not None]
 
-
 def _collect_sibling_day_acts(name: str, d: dict) -> list:
-    """Collect activities from a single sibling day."""
     if name == "meals":
         return _collect_meal_acts(d)
     return _collect_poi_acts(d, name)
 
-
 def _find_sibling_day(data: dict, day_num: int) -> Optional[dict]:
-    """Find the day entry matching day_num in sibling data."""
     for d in data.get("data", {}).get("days", []):
         if d.get("day") == day_num:
             return d
     return None
 
-
 def _collect_sibling_acts(siblings: dict, day_num: int) -> list:
-    """Collect activities from sibling agent files for a day."""
     acts = []
     for name, data in siblings.items():
         d = _find_sibling_day(data, day_num)
@@ -292,16 +236,12 @@ def _collect_sibling_acts(siblings: dict, day_num: int) -> list:
             acts.extend(_collect_sibling_day_acts(name, d))
     return acts
 
-
 def _fmt_time(minutes: int) -> str:
-    """Format minutes since midnight back to HH:MM."""
     if minutes < 0:
         return "??:??"
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
-
 def _get_category(act: dict) -> str:
-    """Derive activity category from data."""
     if act.get("meal_ref"):
         return "meal"
     if act.get("transport_ref"):
@@ -316,18 +256,14 @@ def _get_category(act: dict) -> str:
     }
     return cat_map.get(ag, "activity")
 
-
 def _is_fully_contained(a: dict, b: dict) -> bool:
-    """True if b's time range is fully within a's."""
     a_s, a_e = _parse_hhmm(a["s"]), _parse_hhmm(a["e"])
     b_s, b_e = _parse_hhmm(b["s"]), _parse_hhmm(b["e"])
     if min(a_s, a_e, b_s, b_e) < 0:
         return False
     return b_s >= a_s and b_e <= a_e
 
-
 def _classify_overlap(a: dict, b: dict) -> str:
-    """Classify an overlap: 'warn' (containment/transport handoff) or 'block'."""
     if _is_fully_contained(a, b) or _is_fully_contained(b, a):
         return "warn"
     cats = {_get_category(a), _get_category(b)}
@@ -335,9 +271,7 @@ def _classify_overlap(a: dict, b: dict) -> str:
         return "warn"
     return "block"
 
-
 def _check_pair(a: dict, b: dict, day_num: int) -> Optional[tuple]:
-    """Check a pair of activities for conflict. Returns (kind, entry) or None."""
     if not _times_overlap(a["s"], a["e"], b["s"], b["e"]):
         return None
     if a.get("optional") or b.get("optional"):
@@ -345,31 +279,23 @@ def _check_pair(a: dict, b: dict, day_num: int) -> Optional[tuple]:
     kind = _classify_overlap(a, b)
     return (kind, {"day": day_num, "a": a, "b": b})
 
-
 def _activity_pairs(activities: list):
-    """Generate all unique pairs of activities."""
     for i, a in enumerate(activities):
         for b in activities[i + 1:]:
             yield a, b
 
-
 def _check_all_pairs(activities: list, day_num: int) -> list:
-    """Check all activity pairs for conflicts. Returns list of (kind, entry)."""
     return [r for a, b in _activity_pairs(activities)
             for r in [_check_pair(a, b, day_num)] if r]
 
-
 def _detect_conflicts(activities: list, day_num: int) -> tuple:
-    """Detect time conflicts. Returns (blocks, warnings) lists."""
     blocks, warnings = [], []
     pairs = _check_all_pairs(activities, day_num)
     for kind, entry in pairs:
         (blocks if kind == "block" else warnings).append(entry)
     return blocks, warnings
 
-
 def _load_sibling_agents(trip_dir) -> dict:
-    """Load sibling agent JSON files gracefully."""
     result = {}
     for name in POI_AGENTS:
         p = trip_dir / f"{name}.json"
@@ -381,9 +307,7 @@ def _load_sibling_agents(trip_dir) -> dict:
             pass
     return result
 
-
 def _format_warning(w: dict) -> str:
-    """Format a conflict warning as a string."""
     a, b = w["a"], w["b"]
     return (
         f'  Day {w["day"]}: '
@@ -393,17 +317,13 @@ def _format_warning(w: dict) -> str:
         f'- warning only (containment or transport handoff)'
     )
 
-
 def _format_block(c: dict) -> str:
-    """Format a conflict block as a string."""
     a, b = c["a"], c["b"]
     a_range = f'{_fmt_time(_parse_hhmm(a["s"]))}-{_fmt_time(_parse_hhmm(a["e"]))}'
     b_range = f'{_fmt_time(_parse_hhmm(b["s"]))}-{_fmt_time(_parse_hhmm(b["e"]))}'
     return f'  Day {c["day"]}: "{a["name"]}" ({a_range}) overlaps "{b["name"]}" ({b_range})'
 
-
 def _gather_day_conflicts(days, siblings) -> tuple:
-    """Gather all blocks and warnings across all days."""
     all_blocks, all_warnings = [], []
     for day in days:
         day_num = day.get("day", "?")
@@ -414,9 +334,7 @@ def _gather_day_conflicts(days, siblings) -> tuple:
         all_warnings.extend(warnings)
     return all_blocks, all_warnings
 
-
 def _print_conflict_results(all_blocks, all_warnings) -> None:
-    """Print all conflict warnings and blocks to stderr."""
     for w in all_warnings:
         print(f"  W  {_format_warning(w)}", file=sys.stderr)
     for c in all_blocks:
@@ -427,17 +345,13 @@ def _print_conflict_results(all_blocks, all_warnings) -> None:
     if all_warnings:
         print(f"{len(all_warnings)} overlap warning(s) (non-blocking)", file=sys.stderr)
 
-
 def _norm_city(name: str) -> str:
-    """Normalize city name for comparison (handles apostrophe variants, spaces)."""
     s = name.strip().lower()
     for ch in ("'", "\u2019", "\u2018", "`", " "):
         s = s.replace(ch, "")
     return s
 
-
 def _get_day_end_location(day_info: dict, transport_day: dict) -> str:
-    """Determine a day's END location considering location_change."""
     end = day_info.get("location", "")
     t_lc = transport_day.get("location_change") if transport_day else None
     if isinstance(t_lc, dict) and t_lc.get("to_base"):
@@ -447,9 +361,7 @@ def _get_day_end_location(day_info: dict, transport_day: dict) -> str:
         end = ps_lc.get("to") or ps_lc.get("to_base")
     return end
 
-
 def _day_has_incoming_lc(day_info: dict, transport_day: dict) -> bool:
-    """Check if a day has a location_change for incoming travel."""
     t_lc = transport_day.get("location_change") if transport_day else None
     if isinstance(t_lc, dict) and t_lc.get("from_base"):
         return True
@@ -458,9 +370,7 @@ def _day_has_incoming_lc(day_info: dict, transport_day: dict) -> bool:
         return True
     return False
 
-
 def _load_json_file(path) -> dict:
-    """Load a JSON file, returning empty dict on failure."""
     if not path.exists():
         return {}
     try:
@@ -468,9 +378,7 @@ def _load_json_file(path) -> dict:
     except (json.JSONDecodeError, OSError):
         return {}
 
-
 def _build_skeleton_day_info(skeleton: dict) -> dict:
-    """Build {day_num: {location, location_change}} from plan-skeleton."""
     return {
         d.get("day", 0): {
             "location": d.get("location", ""),
@@ -478,7 +386,6 @@ def _build_skeleton_day_info(skeleton: dict) -> dict:
         }
         for d in skeleton.get("days", [])
     }
-
 
 def _check_day_pair_continuity(dn, dn1, day_info, transport_days) -> Optional[str]:
     """Check one adjacent day pair for a location gap. Returns message or None."""
@@ -496,7 +403,6 @@ def _check_day_pair_continuity(dn, dn1, day_info, transport_days) -> Optional[st
         f"Run update-skeleton.py --fix-continuity to repair."
     )
 
-
 def _find_continuity_gaps(day_info: dict, transport_days: dict) -> list:
     """Scan adjacent day pairs for location gaps. Returns gap messages."""
     sorted_nums = sorted(day_info.keys())
@@ -510,13 +416,11 @@ def _find_continuity_gaps(day_info: dict, transport_days: dict) -> list:
             gaps.append(msg)
     return gaps
 
-
 def _report_continuity_gaps(gaps: list) -> None:
     """Print continuity gap block messages to stderr."""
     print(f"\nSAVE BLOCKED: {len(gaps)} location continuity gap(s):", file=sys.stderr)
     for g in gaps:
         print(f"  X  {g}", file=sys.stderr)
-
 
 def check_location_continuity(agent: str, agent_data: dict, trip_dir) -> list:
     """Block saves with location discontinuities. Returns gap messages (non-empty = block)."""
@@ -535,64 +439,74 @@ def check_location_continuity(agent: str, agent_data: dict, trip_dir) -> list:
         _report_continuity_gaps(gaps)
     return gaps
 
-
-
-
 def _load_plan_currency(trip_dir) -> str:
     """Load plan-level currency_local from requirements-skeleton.json."""
-    req_path = trip_dir / 'requirements-skeleton.json'
-    if req_path.exists():
-        try:
-            req = json.loads(req_path.read_text(encoding='utf-8'))
-            return req.get('trip_summary', {}).get('currency_local', '')
-        except (json.JSONDecodeError, OSError):
-            pass
-    return ''
+    req = _load_json_file(trip_dir / 'requirements-skeleton.json')
+    return req.get('trip_summary', {}).get('currency_local', '')
+
+
+def _load_skeleton_day_currencies(trip_dir) -> dict:
+    """Load day-level currency_local overrides from plan-skeleton.json."""
+    skel = _load_json_file(trip_dir / 'plan-skeleton.json')
+    return {d.get('day', 0): d['currency_local'] for d in skel.get('days', []) if d.get('currency_local')}
+
+def _collect_meal_currency_pois(day: dict) -> list:
+    """Collect POIs from meal slots including alternatives."""
+    pois = []
+    for mt in ('breakfast', 'lunch', 'dinner'):
+        m = day.get(mt)
+        if not isinstance(m, dict):
+            continue
+        pois.append((mt, m.get('primary', m)))
+        for i, a in enumerate(m.get('alternatives', [])):
+            if isinstance(a, dict):
+                pois.append((f'{mt}.alt[{i}]', a))
+    return pois
+
+
+def _collect_transport_currency_pois(day: dict) -> list:
+    """Collect currency-bearing POIs from transportation day."""
+    pois = []
+    lc = day.get('location_change')
+    if isinstance(lc, dict) and lc.get('currency_local'):
+        pois.append(('location_change', lc))
+    for rk, rv in (day.get('intra_city_routes') or {}).items():
+        if isinstance(rv, dict) and rv.get('currency_local'):
+            pois.append((rk, rv))
+    return pois
+
+
+def _collect_currency_pois(agent: str, day: dict) -> list:
+    """Collect all POIs needing currency validation from a day."""
+    if agent == 'accommodation':
+        acc = day.get('accommodation')
+        return [('accommodation', acc)] if isinstance(acc, dict) else []
+    if agent == 'meals':
+        return _collect_meal_currency_pois(day)
+    if agent in ('attractions', 'entertainment', 'shopping', 'cafe'):
+        return [(p.get('name_base', '?'), p) for p in day.get(agent, []) if isinstance(p, dict)]
+    if agent == 'transportation':
+        return _collect_transport_currency_pois(day)
+    return []
 
 
 def check_currency_mismatch(agent: str, agent_data: dict, trip_dir) -> list:
-    """Block saves where POI currency_local doesn't match plan currency_local."""
+    """Block saves where POI currency doesn't match plan/day currency."""
     plan_currency = _load_plan_currency(trip_dir)
     if not plan_currency:
         return []
+    day_currencies = _load_skeleton_day_currencies(trip_dir)
     mismatches = []
     days = agent_data.get('data', {}).get('days', agent_data.get('days', []))
     for day in days:
         if not isinstance(day, dict):
             continue
         dn = day.get('day', '?')
-        # Collect POIs to check
-        pois = []
-        if agent == 'accommodation':
-            acc = day.get('accommodation')
-            if isinstance(acc, dict):
-                pois.append(('accommodation', acc))
-        elif agent == 'meals':
-            for mt in ('breakfast', 'lunch', 'dinner'):
-                m = day.get(mt)
-                if isinstance(m, dict):
-                    primary = m.get('primary', m)
-                    pois.append((mt, primary))
-        elif agent in ('attractions', 'entertainment', 'shopping', 'cafe'):
-            for poi in day.get(agent, []):
-                if isinstance(poi, dict):
-                    pois.append((poi.get('name_base', '?'), poi))
-        elif agent == 'transportation':
-            lc = day.get('location_change')
-            if isinstance(lc, dict) and lc.get('currency_local'):
-                pois.append(('location_change', lc))
-            icr = day.get('intra_city_routes', {})
-            if isinstance(icr, dict):
-                for rk, rv in icr.items():
-                    if isinstance(rv, dict) and rv.get('currency_local'):
-                        pois.append((rk, rv))
-
-        for label, poi in pois:
-            poi_currency = poi.get('currency_local', '')
-            if poi_currency and poi_currency != plan_currency:
-                mismatches.append(
-                    f'Day {dn} {label}: currency_local={poi_currency} != plan {plan_currency}'
-                )
+        expected = day_currencies.get(dn, plan_currency)
+        for label, poi in _collect_currency_pois(agent, day):
+            c = poi.get('currency_local', '')
+            if c and c != expected:
+                mismatches.append(f'Day {dn} {label}: currency_local={c} != expected {expected}')
     if mismatches:
         print(f"\nSAVE BLOCKED: {len(mismatches)} currency mismatch(es):", file=sys.stderr)
         for m in mismatches:
@@ -611,7 +525,6 @@ def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
     _print_conflict_results(all_blocks, all_warnings)
     return all_blocks
 
-
 def _merge_existing_slots(agent_file, agent_data, data):
     """Merge update into existing multi-day file at the slot/key level.
 
@@ -624,7 +537,6 @@ def _merge_existing_slots(agent_file, agent_data, data):
     day_count = len(data.get('data', {}).get('days', []))
     print(f"Merge mode (slots): Merged {day_count} day(s) at slot level", file=sys.stderr)
     return merged
-
 
 def _do_save(agent_file, agent, agent_data, create_backup, issues):
     """Perform atomic write and report result. Returns True on success."""
@@ -641,7 +553,6 @@ def _do_save(agent_file, agent, agent_data, create_backup, issues):
     _report_save_warnings(issues)
     return True
 
-
 def _report_save_warnings(issues: list) -> None:
     """Print MEDIUM/LOW warning counts after successful save."""
     if not issues:
@@ -650,7 +561,6 @@ def _report_save_warnings(issues: list) -> None:
     low = len([i for i in issues if i.severity.value == "LOW"])
     if med or low:
         print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
-
 
 def _prepare_agent_data(data, agent_file, trip_slug):
     """Unwrap envelope, auto-merge if file exists, extract images.
@@ -663,7 +573,6 @@ def _prepare_agent_data(data, agent_file, trip_slug):
         agent_data = _merge_existing_slots(agent_file, agent_data, data)
     extract_image_urls(agent_file.stem, agent_data, trip_slug)
     return agent_data
-
 
 def save_single_agent(
     trip_slug: str, agent: str, data: Dict[str, Any],
@@ -694,7 +603,6 @@ def save_single_agent(
         return False
     return _do_save(agent_file, agent, agent_data, create_backup, issues)
 
-
 def _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high):
     """Phase 1: validate all agents. Returns dict of results."""
     print(f"\nPhase 1: Validating {len(batch_data)} agents...", file=sys.stderr)
@@ -705,7 +613,6 @@ def _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high):
         results[agent] = (ok, issues, metrics)
         print("OK" if ok else "FAIL", file=sys.stderr)
     return results
-
 
 def _create_batch_backups(trip_dir, batch_data) -> dict:
     """Phase 2: create backups for existing files."""
@@ -719,7 +626,6 @@ def _create_batch_backups(trip_dir, batch_data) -> dict:
             backups[agent] = backup
             print(f"   {agent}: {backup.name}", file=sys.stderr)
     return backups
-
 
 def _save_batch_agent(trip_dir, agent, data) -> Optional[str]:
     """Save one agent in batch mode. Returns error string or None."""
@@ -735,7 +641,6 @@ def _save_batch_agent(trip_dir, agent, data) -> Optional[str]:
         print(f"   {agent}: FAIL {e}", file=sys.stderr)
         return str(e)
 
-
 def _save_all_agents(trip_dir, batch_data) -> list:
     """Phase 3: save all agents. Returns list of (agent, error) tuples."""
     print(f"\nPhase 3: Saving {len(batch_data)} agents...", file=sys.stderr)
@@ -746,7 +651,6 @@ def _save_all_agents(trip_dir, batch_data) -> list:
             errors.append((agent, err))
     return errors
 
-
 def _rollback_batch(backup_paths, trip_dir) -> None:
     """Phase 4: restore all files from backups."""
     print(f"\nPhase 4: Rolling back...", file=sys.stderr)
@@ -754,7 +658,6 @@ def _rollback_batch(backup_paths, trip_dir) -> None:
         shutil.copy2(backup, trip_dir / f"{agent}.json")
         print(f"   {agent}: restored from backup", file=sys.stderr)
     print(f"\nBatch save failed, all changes rolled back", file=sys.stderr)
-
 
 def _report_batch_warnings(results) -> None:
     """Report total MEDIUM/LOW warnings from batch validation."""
@@ -764,7 +667,6 @@ def _report_batch_warnings(results) -> None:
     )
     if total:
         print(f"   Total warnings: {total}", file=sys.stderr)
-
 
 def save_batch(
     trip_slug: str, batch_data: Dict[str, Any],
@@ -781,6 +683,9 @@ def save_batch(
     if failed:
         print(f"\nValidation failed: {', '.join(failed)}", file=sys.stderr)
         return False
+    for agent, data in batch_data.items():
+        if check_currency_mismatch(agent, data, trip_dir):
+            return False
     backups = _create_batch_backups(trip_dir, batch_data)
     errors = _save_all_agents(trip_dir, batch_data)
     if errors:
@@ -789,7 +694,6 @@ def save_batch(
     print(f"\nBatch save successful: {len(batch_data)} agents", file=sys.stderr)
     _report_batch_warnings(results)
     return True
-
 
 def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
@@ -806,7 +710,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-backup", action="store_true", help="Skip backups")
     return parser
 
-
 def _validate_args(args) -> None:
     """Validate mutually exclusive argument combinations."""
     if args.batch and args.agent:
@@ -819,7 +722,6 @@ def _validate_args(args) -> None:
         print("Error: --batch and --input are mutually exclusive", file=sys.stderr)
         sys.exit(1)
 
-
 def _load_input(args) -> Dict[str, Any]:
     """Load input JSON from --input file or stdin."""
     if args.input:
@@ -831,7 +733,6 @@ def _load_input(args) -> Dict[str, Any]:
             return json.load(f)
     return json.load(sys.stdin)
 
-
 def _run_batch(args) -> bool:
     """Execute batch save mode."""
     batch_path = Path(args.batch)
@@ -840,7 +741,6 @@ def _run_batch(args) -> bool:
         sys.exit(1)
     with open(batch_path, encoding="utf-8") as f:
         return save_batch(args.trip, json.load(f), args.no_validate, args.allow_high)
-
 
 def main():
     args = _build_parser().parse_args()
@@ -855,7 +755,6 @@ def main():
             create_backup=not args.no_backup,
         )
     sys.exit(0 if success else 1)
-
 
 if __name__ == "__main__":
     main()
