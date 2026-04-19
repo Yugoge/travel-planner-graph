@@ -243,6 +243,7 @@ For each day, research and structure cafe data:
 ## Quality Standards
 
 - All cafes must be real and currently operating
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
 - Costs should be per person estimates
 - Location convenience is critical
 - Balance variety (different cafe types across days)

@@ -211,7 +211,8 @@ For each day, research and structure entertainment data:
 
 Validate:
 - All venues and shows are real and scheduled for travel dates
-- Costs are per-person ticket prices in USD
+- All costs MUST be in the trip's currency_local (the destination's local currency, e.g. CNY for China, JPY for Japan). Never store costs in USD, EUR, or any non-local currency. Read currency_local from requirements-skeleton.json trip_summary.
+- Costs are per-person ticket prices
 - Show times don't conflict with dinner/other plans
 - Venue locations are accessible from accommodation
 - Consider energy levels (not every night needs entertainment)
@@ -319,7 +320,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent entertainment \
 ## Quality Standards
 
 - All venues and shows must be real and scheduled for travel dates
-- Cost should be per person ticket price in USD
+- Cost should be per person ticket price in currency_local
 - Time should be start time in 24-hour format
 - Not every day needs entertainment (allow rest days)
 - Consider logistics - late shows mean late return to hotel

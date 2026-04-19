@@ -1,0 +1,144 @@
+{
+  "request_id": "dev-20260418-153011",
+  "timestamp": "2026-04-18T23:05:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260418-153011.json",
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replaced config/currency-config.json with new structure",
+        "type": "config",
+        "files_modified": ["config/currency-config.json"],
+        "changes": "Replaced default_display_currency/default_source_currency/fallback_exchange_rate/cross_rates_to_cny with default_currency: EUR + exchange_rates: {CNY:8.05, JPY:164, USD:1.09, KRW:1450, GBP:0.86}. Retained currency_symbol_map. Removed notes field.",
+        "rationale": "Root cause: fragmented multi-directional currency model (commit 3d5971b). New model: single direction 1 EUR = X local."
+      },
+      {
+        "id": 2,
+        "description": "Added currency_local: CNY to requirements-skeleton.json trip_summary",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/requirements-skeleton.json"],
+        "changes": "Added currency_local: CNY field to trip_summary section",
+        "rationale": "Establishes plan-level currency authority for all agents"
+      },
+      {
+        "id": 3,
+        "description": "Removed 'in USD' from 7 agent .md files, added currency_local instruction to all 8 agents",
+        "type": "agent_prompts",
+        "files_modified": [
+          ".claude/agents/accommodation.md",
+          ".claude/agents/meals.md",
+          ".claude/agents/attractions.md",
+          ".claude/agents/entertainment.md",
+          ".claude/agents/shopping.md",
+          ".claude/agents/transportation.md",
+          ".claude/agents/budget.md",
+          ".claude/agents/cafe.md"
+        ],
+        "changes": "Removed all 14 occurrences of 'in USD' from 7 agent files (cafe.md had zero). Added standardized instruction: 'All costs MUST be in the trip's currency_local...' to all 8 files near existing cost guidance.",
+        "rationale": "Agent prompts instructed LLMs to output USD costs while data expected CNY. Unified instruction contract."
+      },
+      {
+        "id": 4,
+        "description": "Replaced HTML generator currency conversion with simplified model",
+        "type": "code",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Removed _load_eur_to_cny_rate(), _load_cross_rates_to_cny(), _to_cny() methods. Replaced with _load_exchange_rates() that returns dict from config with real-time override via fetch-exchange-rate.sh. Simplified _to_display_currency(amount, currency_local) to single division: amount / exchange_rates[currency_local]. Renamed _extract_transport_cost_cny to _extract_transport_cost returning (cost, currency) tuple. Updated all call sites. Replaced _display_currency with _default_currency. Reads default_currency from config instead of default_display_currency.",
+        "rationale": "Multi-hop conversion (source->CNY->display) replaced with direct division. Root cause: conversion chain added complexity and error-prone intermediate steps."
+      },
+      {
+        "id": 5,
+        "description": "Added currency_local validation to save.py",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "changes": "Added _load_plan_currency() and check_currency_mismatch() functions. Blocks saves where any POI currency_local doesn't match plan-level currency_local. Integrated into save_single_agent() pipeline after check_location_continuity.",
+        "rationale": "Prevents agents from saving data with wrong currency. Enforces data contract."
+      },
+      {
+        "id": 6,
+        "description": "Added currency consistency check to plan-validate.py",
+        "type": "code",
+        "files_modified": ["scripts/plan-validate.py"],
+        "changes": "Added LOCATION_CURRENCY_MAP, LEGACY_COST_FIELDS, _load_plan_currency(), check_currency_consistency() functions. Checks: (1) POI currency_local matches plan-level, (2) day location matches expected currency for country, (3) legacy dual-field cost schemas get WARNING not ERROR. Integrated into run_pipeline cross-agent checks.",
+        "rationale": "Validation gate to catch currency mismatches before HTML generation. Backward compatible with legacy trips."
+      },
+      {
+        "id": 7,
+        "description": "Fixed accommodation.json costs (EUR -> CNY conversion)",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/accommodation.json"],
+        "changes": "Multiplied all non-zero cost values by 8.05. Gaodu Hotel: 42->338, Atour Chengdu: 48->386 (single) / 60->483 (double), Moxy Xi'an: 44->354, Heishi Shanghai: 48->386",
+        "rationale": "Costs were EUR values mislabeled as CNY. Evidence: notes_base says '350 CNY/night' but cost was 42 (42*8.05=338 CNY)."
+      },
+      {
+        "id": 8,
+        "description": "Fixed transportation.json costs (using cost_local field)",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/transportation.json"],
+        "changes": "For all routes (both intra-city and location_change): replaced cost with cost_local value. All routes had cost_local field with correct CNY values from Gaode Maps. Examples: airport subway 5->35, Mutianyu Didi 15->110, Beijing-Datong HSR 20->148, Shanghai-Beijing HSR 76->553.",
+        "rationale": "Per orchestrator correction: transportation.json already has cost_local with correct CNY values. Used cost_local directly instead of multiplying by 8.05."
+      },
+      {
+        "id": 9,
+        "description": "Updated budget.schema.json with currency_local field",
+        "type": "schema",
+        "files_modified": ["schemas/budget.schema.json"],
+        "changes": "Added currency_local property to $defs/day_entry with type:string, pattern:^[A-Z]{3}$, as optional field for day-level currency override.",
+        "rationale": "Schema must reflect the new currency model allowing per-day currency overrides."
+      },
+      {
+        "id": 10,
+        "description": "Updated poi-common.schema.json currency_code description",
+        "type": "schema",
+        "files_modified": ["schemas/poi-common.schema.json"],
+        "changes": "Updated currency_code description to reference currency_local inheritance from plan/day level.",
+        "rationale": "Documentation alignment with new currency model."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "3d5971b — checkpoint 2026-02-03 (first creation of currency-config.json with only fallback_exchange_rate)",
+      "why_issue_occurred": "Initial config designed as quick CNY->EUR scalar. Agent prompts inherited USD from LLM defaults. No central currency_local authority existed.",
+      "how_fix_addresses_root": "Replaced entire currency model: single exchange_rates map, plan-level currency_local authority, unified agent instructions, simplified conversion formula, validation enforcement."
+    },
+    "blast_radius": [
+      {"modified": "config/currency-config.json", "imported_by": ["scripts/generate-html-interactive.py", "scripts/lib/html_generator.py"]},
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": []},
+      {"modified": "scripts/save.py", "imported_by": []},
+      {"modified": "scripts/plan-validate.py", "imported_by": ["scripts/save.py (via validate_agent_data import)"]}
+    ],
+    "diff_stats": {
+      "files_changed": 14,
+      "lines_added": 256,
+      "lines_removed": 121,
+      "new_symbols_introduced": [
+        "_load_exchange_rates",
+        "_extract_transport_cost",
+        "check_currency_consistency",
+        "_load_plan_currency (plan-validate.py)",
+        "LOCATION_CURRENCY_MAP",
+        "LEGACY_COST_FIELDS",
+        "check_currency_mismatch (save.py)",
+        "_load_plan_currency (save.py)"
+      ],
+      "minimum_possible_lines_estimate": 180,
+      "justification_for_overage": "10-task architecture redesign spanning config, 8 agent prompts, 2 data files, 3 scripts, 2 schemas. New validation functions (currency consistency + save guard) require new code. Data file edits are mechanical multiplications."
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "All 3 Python files compile clean (py_compile). sync-agent-data.py ran successfully and deployed to travel.life-ai.app. plan-validate.py runs with no currency-related HIGH issues. Accommodation display prices verified: Gaodu 338 CNY -> 42 EUR, Atour 386 CNY -> 48 EUR, Moxy 354 CNY -> 44 EUR (matches expected range). Pre-existing timeline overlap HIGHs are unrelated to currency changes."
+    },
+    "qa_ready": true,
+    "qa_notes": "Verify: (1) grep -r 'in USD' .claude/agents/ returns only 'Never store costs in USD' occurrences, (2) config/currency-config.json has new structure, (3) HTML displays correct EUR prices (accommodation ~42-60 EUR), (4) plan-validate.py runs without currency-related HIGH issues, (5) save.py blocks currency mismatch. Pre-existing HIGH issues are timeline overlaps, not currency-related.",
+    "permissions_to_add": []
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Run HTML generator and verify live site shows correct EUR prices for all categories",
+    "Test save.py with a POI that has currency_local: USD to verify the block works",
+    "Consider adding currency_local to plan-skeleton.json for multi-currency trips in the future"
+  ]
+}

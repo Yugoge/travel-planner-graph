@@ -1,0 +1,45 @@
+{
+  "request_id": "dev-20260418-153011",
+  "timestamp": "2026-04-18T00:15:00Z",
+  "verdict": "fail",
+  "summary": "OBJ-1/2/3 corrections are properly addressed, but new OBJ-4 (MAJOR): transportation.json already has cost_local field with correct CNY values that BA spec completely ignores — blind x8.05 multiplication of cost field will produce values contradicting existing cost_local data.",
+  "re_validation_results": {
+    "OBJ-1_EUR_mislabeled_as_CNY": {
+      "status": "pass",
+      "detail": "BA now correctly identifies accommodation/transportation costs as EUR mislabeled as CNY. Evidence section observation line 103 (context JSON) is corrected. R10 and AC8 specify exact multiplied values with sanity check. Well-evidenced and correct."
+    },
+    "OBJ-2_cafe_md": {
+      "status": "pass",
+      "detail": "BA correctly states cafe.md has ZERO 'in USD' occurrences (QA verified: grep returns 0). R4 correctly says 7 agent files have 'in USD' to remove. cafe.md gets currency_local instruction added only. AC2 explicitly notes cafe.md already has zero. Accurate."
+    },
+    "OBJ-3_legacy_dual_field": {
+      "status": "pass",
+      "detail": "BA added Risk 7 documenting three legacy dual-field trip directories. AC9 requires WARNING not ERROR for legacy fields. Excluded scope lists directories. Development approach specifies 'do NOT error on legacy trips'. Adequate."
+    }
+  },
+  "new_objections": [
+    {
+      "id": "OBJ-4",
+      "dimension": "INVESTIGATION_COMPLETENESS",
+      "severity": "major",
+      "title": "transportation.json has existing cost_local field with correct CNY values — BA ignores it and prescribes blind x8.05 multiplication",
+      "details": "BA spec R10 and AC8 instruct dev to multiply ALL cost values in transportation.json by 8.05. However, QA verified transportation.json already has BOTH cost (EUR) and cost_local (correct CNY from Gaode Maps API). The actual EUR-to-CNY ratios vary per route (5.0 to 7.5, NOT 8.05). Examples: airport express cost=5, cost_local=35 (ratio 7.0); Didi Mutianyu cost=15, cost_local=110 (ratio 7.33); Beijing-Datong HSR cost=20, cost_local=148 (ratio 7.4); Beijing-Chengdu flight cost=328, cost_local=2380 (ratio 7.26). Blind x8.05 produces wrong values: airport becomes 40.25 (correct is 35), HSR becomes 161 (correct is 148). BA makes ZERO mention of cost_local field anywhere. Accommodation.json does NOT have cost_local — only cost — so x8.05 is appropriate there only.",
+      "recommendation": "Amend R10: (A) accommodation.json — multiply cost by 8.05 (no cost_local exists, correct as-is). (B) transportation.json — replace cost with existing cost_local value, then remove cost_local field. Do NOT multiply by 8.05 — authoritative CNY values already exist. Update AC8 transportation assertions accordingly."
+    }
+  ],
+  "previous_objections_resolved": ["OBJ-1", "OBJ-2", "OBJ-3"],
+  "ten_subtask_coverage": {
+    "status": "pass",
+    "detail": "All 10 original sub-tasks covered by R1-R10. R11 adds legacy field cleanup as bonus."
+  },
+  "acceptance_criteria_quality": {
+    "status": "pass",
+    "detail": "All 9 acceptance criteria use GIVEN/WHEN/THEN format with concrete machine-verifiable conditions."
+  },
+  "dimension_scores": {
+    "evidence_quality": "pass",
+    "scope_alignment": "pass",
+    "investigation_completeness": "fail — transportation.json cost_local field completely unanalyzed",
+    "affected_file_accuracy": "pass"
+  }
+}

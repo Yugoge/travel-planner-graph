@@ -1,0 +1,492 @@
+{
+  "request_id": "dev-20260418-153011",
+  "timestamp": "2026-04-18T15:30:11Z",
+  "requirement": {
+    "original": "Redesign the currency system in the travel-planner project. Systematic architecture fix with 10 sub-tasks.",
+    "clarified": "Replace the fragmented dual-direction currency model (fallback_exchange_rate CNY→EUR + cross_rates_to_cny foreign→CNY + 'in USD' agent prompts) with a unified single-direction model: default_currency=EUR, exchange_rates map (1 EUR = X local), currency_local at plan level and optional day level. Simplify HTML generator conversion to direct division. Update all agent prompts to reference currency_local. Add currency validation to save.py and plan-validate.py. Fix requirements-skeleton.json and update schemas.",
+    "what": "10-part currency system architecture replacement",
+    "why": "Three incompatible currency surfaces (agents say USD, config stores EUR/CNY inverted rate, data files write CNY) cause incorrect budget display and LLM agents producing wrong currency values",
+    "where": [
+      "config/currency-config.json",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/cafe.md",
+      "scripts/generate-html-interactive.py",
+      "scripts/save.py",
+      "scripts/plan-validate.py",
+      "schemas/poi-common.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/requirements-skeleton.json",
+      "data/china-20260412-092624/plan-skeleton.json"
+    ],
+    "scope": {
+      "included": [
+        "config/currency-config.json full rewrite",
+        "8 agent prompt files: remove 'in USD', add currency_local instruction",
+        "generate-html-interactive.py: remove _to_cny, _load_eur_to_cny_rate, _load_cross_rates_to_cny; simplify _to_display_currency",
+        "save.py: add currency_local POI validation",
+        "plan-validate.py: add currency consistency and location-currency checks",
+        "schemas/poi-common.schema.json: update currency_code description",
+        "schemas/budget.schema.json: add currency_local to day_entry",
+        "data/china-20260412-092624/requirements-skeleton.json: add currency_local",
+        "Verify/fix any EUR-denominated costs in accommodation.json and transportation.json"
+      ],
+      "excluded": [
+        "fetch-exchange-rate.sh (retain unchanged as real-time primary source)",
+        "Visual/UI HTML changes",
+        "Data migration of legacy dual-field trips: beijing-exchange-bucket-list-20260202-232405, china-exchange-bucket-list-2026, china-feb-15-mar-7-2026-20260202-195429 (these use cost_cny/cost_usd/cost_eur format — out of scope for migration, but plan-validate.py must emit WARNING not ERROR when encountering them)",
+        "meals.schema.json, attractions.schema.json, entertainment.schema.json (currency handled via poi-common)",
+        "New currency additions beyond CNY/JPY/USD/KRW/GBP"
+      ]
+    },
+    "success_criteria": [
+      "grep -r 'in USD' .claude/agents/ returns zero results",
+      "config/currency-config.json has keys: default_currency, exchange_rates, currency_symbol_map (retained for display); old keys absent",
+      "generate-html-interactive.py has no _to_cny, _load_eur_to_cny_rate, _load_cross_rates_to_cny methods",
+      "_to_display_currency(cost, currency_local) = cost / exchange_rates[currency_local]",
+      "requirements-skeleton.json trip_summary has currency_local: CNY",
+      "budget.schema.json day_entry has currency_local property",
+      "plan-validate.py reports HIGH on currency_local mismatch across agents",
+      "save.py blocks saves with mismatched currency_local"
+    ],
+    "constraints": [
+      "Do not lower validation severity thresholds",
+      "Do not remove currency_symbol_map (used by generate-html-interactive.py:99 and scripts/lib/html_generator.py:177)",
+      "fetch-exchange-rate.sh call must use EUR <currency_local> direction matching new formula",
+      "backward compatible: currency_local optional in schemas (not required) for day-level override"
+    ]
+  },
+  "root_cause_analysis": {
+    "symptom": "Agents produce USD-denominated costs, but data files store CNY, and config converts CNY→EUR via inverted rate (fallback_exchange_rate=0.128 means 1 CNY = 0.128 EUR), causing triple-mismatch: instruction currency, storage currency, display currency are all different",
+    "root_cause": "The currency config was created (commit 3d5971b, 2026-02-03) without a comprehensive data model — `fallback_exchange_rate` was a CNY-to-display scalar, not a currency map. Agent prompts inherited USD from early LLM defaults, never updated when the project moved to CNY-first data. No central currency_local authority existed at plan or day level, so each agent independently interpreted currency requirements.",
+    "root_cause_commit": "3d5971b — checkpoint 2026-02-03 (first creation of currency-config.json with only fallback_exchange_rate, no cross_rates_to_cny; cross_rates_to_cny added later without removing original field)",
+    "why_introduced": "Initial config designed as a quick display-formatting helper (1 number to convert CNY totals to EUR for display). Agent prompts were never centrally updated; USD remained as the LLM's default 'international' currency assumption.",
+    "why_problematic": "Three independent patches (cb6cc4d: data values, f1e0325: HTML rendering, a403e6b: schema normalization) treated symptoms without addressing the model: agent prompts still instruct USD, config still stores CNY-centric inverse rate, no plan-level currency_local authority.",
+    "timeline": "2026-02-03: config created (CNY-centric). 2026-02-09/10: USD→CNY data patches. 2026-03-05: config last_updated but model unchanged. 2026-04-18: full redesign.",
+    "affected_files": [
+      "config/currency-config.json",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/cafe.md",
+      "scripts/generate-html-interactive.py",
+      "scripts/save.py",
+      "scripts/plan-validate.py",
+      "schemas/poi-common.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/requirements-skeleton.json"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "config/currency-config.json contains fallback_exchange_rate:0.128, cross_rates_to_cny:{USD:7.25,EUR:7.85,...} (observed: Read tool)",
+      "accommodation.md:239 contains 'Costs are per night for the room (not per person) in USD' (observed: grep)",
+      "meals.md:365 contains 'Costs should be per person estimates in USD' (observed: grep)",
+      "attractions.md:233,342 contains 'in USD' (observed: grep)",
+      "entertainment.md:214,322 contains 'in USD' (observed: grep)",
+      "shopping.md:242,351 contains 'in USD' (observed: grep)",
+      "transportation.md:194,397 contains 'in USD' (observed: grep)",
+      "budget.md:488-490 contains 'in USD' for total_cost, user_budget, overage_amount (observed: grep)",
+      "generate-html-interactive.py methods _to_cny (line 119), _load_eur_to_cny_rate (line 49), _load_cross_rates_to_cny (line 103) present (observed: grep)",
+      "data/china-20260412-092624/requirements-skeleton.json trip_summary has no currency_local key (observed: python3 inspection)",
+      "data/china-20260412-092624/plan-skeleton.json days have no currency_local key (observed: python3 inspection)",
+      "data/china-20260412-092624/accommodation.json all POIs have currency_local: CNY field already — BUT the numeric cost values are EUR amounts mislabeled as CNY (observed: python3 inspection + notes_base cross-check)",
+      "data/china-20260412-092624/transportation.json all routes have currency_local: CNY field already — BUT the numeric cost values are EUR amounts mislabeled as CNY (observed: python3 inspection)",
+      "CORRECTED OBJ-1: accommodation costs 42-60 are EUR values not CNY — evidence: Gaodu Hotel notes_base says '350 CNY/night' but cost=42 (42*8.05=338 CNY, consistent); Atour Chengdu cost=48 (48*8.05=386 CNY = real Atour price); Moxy Xi'an notes_base says '304 CNY/night' with cost=44 (44*8.05=354 CNY, consistent); airport subway cost=5 impossible in CNY (5*8.05=40 CNY = correct airport express fare); Didi to Mutianyu cost=15 CNY impossible for 80km (15*8.05=121 CNY = correct range); full-day driver cost=41, notes say '500-600 CNY total' (41*8.05=330 CNY for solo driver) (observed: python3 + grep cross-check)",
+      "OBJ-2 VERIFIED: cafe.md has ZERO occurrences of 'in USD' (observed: grep returned no matches); cafe.md cost instruction at line 246 says 'Costs should be per person estimates' without USD; example JSON at line 130 already shows currency_local: CNY",
+      "generate-html-interactive.py:1143 uses cost_eur/cost_cny legacy fields; 1323,1347 use ticket_price_eur, price_range_eur_low (observed: grep)",
+      "scripts/lib/html_generator.py:177 uses currency_symbol_map from config (observed: grep) — must be retained in new config",
+      "currency_symbol_map referenced at generate-html-interactive.py:99 (observed: grep)"
+    ],
+    "diagnosis_completeness": "complete (has observations)",
+    "complaint_location_keywords": ["currency", "USD", "EUR", "CNY", "exchange_rate", "currency_local", "fallback_exchange_rate"],
+    "localization_evidence": "Grepped and read all affected files directly. No runtime reproduction needed — this is a data model and config architecture issue, not a runtime rendering bug.",
+    "located_source": "config/currency-config.json (root authority), .claude/agents/*.md (instruction contract), scripts/generate-html-interactive.py (conversion logic)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "3d5971b",
+      "commit_message": "checkpoint: Auto-save at 2026-02-03 12:49:12 (first creation of currency-config.json)",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "Replace default_display_currency+default_source_currency+fallback_exchange_rate+cross_rates_to_cny with default_currency: \"EUR\" + exchange_rates: {CNY: 8.05, JPY: 164, USD: 1.09, KRW: 1450, GBP: 0.86}",
+      "acceptance_criterion": "config/currency-config.json has exactly {default_currency, exchange_rates, currency_symbol_map, last_updated}; old keys absent"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "Add currency_local: \"CNY\" to requirements-skeleton.json trip_summary",
+      "acceptance_criterion": "data/china-20260412-092624/requirements-skeleton.json trip_summary.currency_local == 'CNY'"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Support optional per-day currency_local in plan-skeleton.json days. Inherits from plan-level if not set.",
+      "acceptance_criterion": "plan-skeleton.json days may have currency_local; HTML generator reads day.currency_local ?? requirements.trip_summary.currency_local"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "Remove ALL 'in USD' from agent .md files. Replace with 'cost must be in trip's currency_local'",
+      "acceptance_criterion": "grep -r 'in USD' .claude/agents/ returns zero results; all 8 agent files (including cafe.md) have currency_local instruction. NOTE: cafe.md has ZERO 'in USD' occurrences (grep-verified) — do NOT claim it has 'in USD' to remove; only add currency_local instruction"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "Simplify _to_display_currency() to cost ÷ exchange_rates[currency_local]. Remove _to_cny(), _load_eur_to_cny_rate(). Keep fetch-exchange-rate.sh for real-time rates as primary, config as fallback.",
+      "acceptance_criterion": "_to_cny, _load_eur_to_cny_rate, _load_cross_rates_to_cny absent from generate-html-interactive.py; _to_display_currency uses exchange_rates[currency_local] division"
+    },
+    {
+      "id": "R6",
+      "source_phrase": "Update poi-common.schema.json, add currency_local to budget.schema.json",
+      "acceptance_criterion": "budget.schema.json $defs.day_entry.properties has currency_local with type:string pattern:^[A-Z]{3}$; poi-common.schema.json currency_code description mentions currency_local inheritance"
+    },
+    {
+      "id": "R7",
+      "source_phrase": "Validate currency_local on POIs matches plan/day currency_local (save.py)",
+      "acceptance_criterion": "save.py blocks saves where POI currency_local != resolved plan/day currency_local with descriptive error"
+    },
+    {
+      "id": "R8",
+      "source_phrase": "Currency consistency check across all agent outputs (plan-validate.py)",
+      "acceptance_criterion": "plan-validate.py Category.SEMANTIC check reports HIGH when any POI currency_local mismatches plan/day currency_local"
+    },
+    {
+      "id": "R9",
+      "source_phrase": "Location-currency validation — check each day's location matches currency_local, ERROR if mismatch requires day-level override",
+      "acceptance_criterion": "plan-validate.py reports HIGH when day location is in country X but currency_local doesn't match expected currency for X without explicit day override"
+    },
+    {
+      "id": "R10",
+      "source_phrase": "accommodation.json and transportation.json EUR values ×8.05 → CNY",
+      "acceptance_criterion": "All cost values in accommodation.json and transportation.json multiplied by 8.05; Gaodu Hotel cost=338 (was 42); Atour Chengdu cost=386 (was 48); Moxy Xi'an cost=354 (was 44); airport subway cost=40 (was 5); Didi to Mutianyu cost=121 (was 15); all currency_local fields remain CNY"
+    },
+    {
+      "id": "R11",
+      "source_phrase": "Update legacy field references ticket_price_eur, price_range_eur_low, cost_eur in generate-html-interactive.py",
+      "acceptance_criterion": "Fields ticket_price_eur, price_range_eur_low, cost_eur absent from active code paths in generate-html-interactive.py; replaced with cost + currency_local lookups"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "config/currency-config.json",
+      "line_range": "1-20",
+      "role": "Single source of truth for currency model — defines display currency and conversion rates",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: file contents show fallback_exchange_rate, cross_rates_to_cny, default_display_currency",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/requirements-skeleton.json",
+      "line_range": "1-60",
+      "role": "Trip-level currency authority — trip_summary.currency_local becomes the default for all days",
+      "imports_from": ["leaf"],
+      "evidence": "python3 inspection: trip_summary has no currency_local key currently",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/plan-skeleton.json",
+      "line_range": "days array",
+      "role": "Day-level optional currency override — each day may specify currency_local",
+      "imports_from": ["leaf"],
+      "evidence": "python3 inspection: day fields list has no currency_local",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/accommodation.md",
+      "line_range": "239, 347",
+      "role": "LLM agent instruction — tells agent which currency to use for cost fields",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 239, 347",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/meals.md",
+      "line_range": "365",
+      "role": "LLM agent instruction — cost currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at line 365",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/attractions.md",
+      "line_range": "233, 342",
+      "role": "LLM agent instruction — cost currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 233, 342",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/entertainment.md",
+      "line_range": "214, 322",
+      "role": "LLM agent instruction — cost currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 214, 322",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/shopping.md",
+      "line_range": "242, 351",
+      "role": "LLM agent instruction — cost currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 242, 351",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/transportation.md",
+      "line_range": "194, 397",
+      "role": "LLM agent instruction — cost currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 194, 397",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/budget.md",
+      "line_range": "488, 489, 490",
+      "role": "LLM agent instruction — budget totals currency directive",
+      "imports_from": ["leaf"],
+      "evidence": "grep: 'in USD' at lines 488, 489, 490 (total_cost, user_budget, overage_amount)",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "49-143, 621-922, 1114-1361",
+      "role": "HTML generator — loads config, applies currency conversion to all cost fields before rendering",
+      "imports_from": ["config/currency-config.json", "scripts/utils/fetch-exchange-rate.sh"],
+      "evidence": "grep: _load_eur_to_cny_rate (line 49), _to_cny (119), _load_cross_rates_to_cny (103), _to_display_currency (129); call sites at 621, 712, 758, 801, 840, 921, 1045, 1143, 1323, 1347",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "1-80+",
+      "role": "Save/validation gate — enforces data constraints before writing agent files",
+      "imports_from": ["scripts/lib/json_io.py", "scripts/plan-validate.py"],
+      "evidence": "Read tool: no currency validation currently in save.py; grep confirms no currency reference",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/plan-validate.py",
+      "line_range": "494-518",
+      "role": "Validation engine — checks currency_local format; needs new consistency check",
+      "imports_from": ["schemas/*.schema.json", "config/validation.json"],
+      "evidence": "Read tool lines 494-518: currency_re validates ^[A-Z]{3}$ format only; no cross-agent currency consistency check exists",
+      "verified_via": "both"
+    },
+    {
+      "file": "schemas/poi-common.schema.json",
+      "line_range": "86-96",
+      "role": "Schema definition — currency_code and cost_field definitions shared by all agent schemas",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: currency_code at line 92, description says 'REQUIRED on every entry with a cost'",
+      "verified_via": "Read"
+    },
+    {
+      "file": "schemas/budget.schema.json",
+      "line_range": "90-122",
+      "role": "Budget day schema — day_entry definition; needs currency_local property added",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool lines 90-122: day_entry has day, date, location, budget, breakdown, notes; no currency_local",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/plan-validate.py",
+      "line": 499,
+      "type": "validator",
+      "code_snippet": "currency_re = re.compile(r'^[A-Z]{3}$')",
+      "purpose": "Validates currency_local field format — must be 3-letter ISO code",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/plan-validate.py",
+      "line": 46,
+      "type": "validator",
+      "code_snippet": "LEGACY_FIELD_MAP = {\"currency\": \"currency_local\", ...}",
+      "purpose": "Detects use of legacy 'currency' field name (HIGH severity)",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/save.py",
+      "line": 1,
+      "type": "validator",
+      "code_snippet": "HIGH severity issues block saves (from docstring)",
+      "purpose": "Prevents corrupt data from being saved",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 91,
+      "type": "assert",
+      "code_snippet": "raise RuntimeError(\"Exchange rate unavailable - cannot generate accurate budget display\")",
+      "purpose": "Blocks HTML generation if exchange rate is unavailable",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "viewport": "N/A — no UI changes",
+    "theme": "N/A",
+    "locale": "en + zh (bilingual unchanged)",
+    "auth_state": "N/A",
+    "data_state": "Active trip data: data/china-20260412-092624/",
+    "browser": "N/A",
+    "url_path": "N/A"
+  },
+  "evidence": {
+    "observed": "Currency system is confused — agents write USD, data stores CNY, display converts via EUR, config has old fallback_exchange_rate and cross_rates_to_cny",
+    "measured": {
+      "value": "config has: default_display_currency=EUR, fallback_exchange_rate=0.128, cross_rates_to_cny={USD:7.25,EUR:7.85,GBP:9.15,JPY:0.048,KRW:0.0053}; 14 'in USD' occurrences in 8 agent files; _to_cny/_load_eur_to_cny_rate/_load_cross_rates_to_cny methods in HTML generator; no currency_local in requirements-skeleton.json trip_summary",
+      "location": "config/currency-config.json:1-20, .claude/agents/*.md (multiple lines), scripts/generate-html-interactive.py:49-143"
+    },
+    "expected": {
+      "value": "config has: default_currency=EUR, exchange_rates={CNY:8.05,JPY:164,USD:1.09,KRW:1450,GBP:0.86}; zero 'in USD' in agents; _to_display_currency uses division; requirements-skeleton.json trip_summary.currency_local=CNY",
+      "source": "User-confirmed design specification (tier_2_verified)"
+    },
+    "gap": "11 component surfaces require changes; 14 'in USD' occurrences to replace in 7 agent files (cafe.md has 0); 3 generator methods to remove; 1 config file to rewrite; 2 schema files to update; 2 validation scripts to extend; 1 skeleton data file to update; 2 data files (accommodation.json + transportation.json) require EUR→CNY cost conversion (multiply by 8.05)"
+  },
+  "scope_expansion": {
+    "search_pattern": "in USD|fallback_exchange_rate|cross_rates_to_cny|_to_cny|_load_eur_to_cny_rate",
+    "search_scope": "/root/travel-planner/",
+    "user_reported": [
+      "config/currency-config.json",
+      "scripts/generate-html-interactive.py",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/cafe.md",
+      "schemas/poi-common.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/requirements-skeleton.json",
+      "scripts/save.py",
+      "scripts/plan-validate.py"
+    ],
+    "additional_found": [
+      "scripts/lib/html_generator.py (uses currency_symbol_map — must be retained in new config)",
+      "scripts/utils/fetch-exchange-rate.sh (already correct direction EUR→CNY for real-time, no changes needed)",
+      "scripts/generate-html-interactive.py lines 1114,1143,1323,1333,1347,1361 (legacy fields: ticket_price_eur, price_range_eur_low, cost_eur, cost_cny)"
+    ],
+    "all_occurrences": [
+      ".claude/agents/accommodation.md:239,347 (has 'in USD')",
+      ".claude/agents/meals.md:365 (has 'in USD')",
+      ".claude/agents/attractions.md:233,342 (has 'in USD')",
+      ".claude/agents/entertainment.md:214,322 (has 'in USD')",
+      ".claude/agents/shopping.md:242,351 (has 'in USD')",
+      ".claude/agents/transportation.md:194,397 (has 'in USD')",
+      ".claude/agents/budget.md:488,489,490 (has 'in USD')",
+      ".claude/agents/cafe.md:246 (cost instruction present but NO 'in USD' — grep confirmed 0 matches; needs currency_local instruction added only)",
+      "scripts/generate-html-interactive.py:49,69,75,103,108,119,123,129,136,138,139,140,229",
+      "scripts/generate-html-interactive.py:1114-1115,1143-1144,1323-1324,1333,1347-1348,1361",
+      "config/currency-config.json:1-20 (full file)",
+      "schemas/budget.schema.json:90-122 (day_entry missing currency_local)",
+      "data/china-20260412-092624/requirements-skeleton.json:trip_summary (missing currency_local)",
+      "data/china-20260412-092624/accommodation.json:all cost fields (EUR mislabeled as CNY — multiply by 8.05)",
+      "data/china-20260412-092624/transportation.json:all cost fields (EUR mislabeled as CNY — multiply by 8.05)"
+    ],
+    "legacy_dual_field_trips_out_of_scope": [
+      "data/beijing-exchange-bucket-list-20260202-232405/transportation.json (format: cost+cost_usd)",
+      "data/china-exchange-bucket-list-2026/transportation.json (format: cost_cny+cost_eur, no cost field)",
+      "data/china-feb-15-mar-7-2026-20260202-195429/transportation.json (format: cost_cny+cost_usd)",
+      "data/china-feb-15-mar-7-2026-20260202-195429/accommodation.json (format: cost_eur in summary.breakdown)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "User-confirmed design decisions provided directly in prompt. Exchange rates are user-supplied approximates for config defaults (not authoritative market rates).",
+    "url_or_location": "Prompt context section 'FULL CONTEXT FROM USER (design already confirmed)'",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "git_log",
+    "attempts": [
+      {
+        "artifact_path": "cb6cc4d",
+        "proposed_solution": "Convert budget.json cost values from USD to CNY post-hoc by multiplying",
+        "actual_change": "budget.json values multiplied by exchange rate; $ symbols replaced with ¥",
+        "outcome": "Data fixed for budget.json only; agent prompts still said USD; config model unchanged; next agent run would re-introduce USD values",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L3"
+      },
+      {
+        "artifact_path": "f1e0325",
+        "proposed_solution": "Fix 18 HTML rendering issues including currency display in HTML generator",
+        "actual_change": "HTML generator display logic updated; bilingual rendering fixed; image cache corrected",
+        "outcome": "Rendering improved for existing data; underlying config (fallback_exchange_rate/cross_rates_to_cny) unchanged; agent prompts still USD; currency confusion propagated to next planning cycle",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "Both prior attempts fixed symptoms (data values, rendering) without touching the data model contracts (config structure), agent instruction contract (USD prompts), or conversion algorithm. This attempt changes all three upstream sources: the config model (L3 data schema), the agent prompts (L4 logic/instruction), and the conversion algorithm (L4 logic). It also adds enforcement via schema + validation scripts."
+    }
+  },
+  "context": {
+    "codebase_state": "modified: .claude/worktrees/overnight-20260412-c6ec78c9",
+    "recent_commits": "a6d697c fix: atomic save for all agents — slot-level merge as default, delete --merge-days; 9a742cb feat: Implement unified scripts architecture with 100% structure validation",
+    "file_contents": {
+      "config/currency-config.json": "current: {default_display_currency, default_source_currency, fallback_exchange_rate:0.128, currency_symbol_map, cross_rates_to_cny:{USD:7.25,EUR:7.85,GBP:9.15,JPY:0.048,KRW:0.0053}}",
+      "target_config": "{default_currency:'EUR', exchange_rates:{CNY:8.05,JPY:164,USD:1.09,KRW:1450,GBP:0.86}, currency_symbol_map:{EUR:'€',USD:'$',GBP:'£',CNY:'¥',JPY:'¥',KRW:'₩'}}"
+    },
+    "dependencies": {
+      "scripts/lib/html_generator.py": "uses currency_symbol_map from config — must be retained",
+      "scripts/utils/fetch-exchange-rate.sh": "fetches EUR→target rate; output is 1 EUR = N target; compatible with new formula"
+    },
+    "environment": {
+      "python": "3.x",
+      "project_root": "/root/travel-planner"
+    }
+  },
+  "development_approach": {
+    "strategy": "Atomic top-down replacement: (1) config file first as the schema authority, (2) agent prompts as instruction contract, (3) HTML generator conversion logic, (4) skeleton data files, (5) schema files, (6) validation scripts. Each step is independently verifiable.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "config/currency-config.json",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/cafe.md (add currency_local instruction only — grep confirmed ZERO 'in USD' occurrences; do NOT claim or attempt to remove 'in USD' from this file)",
+      "scripts/generate-html-interactive.py",
+      "scripts/save.py",
+      "scripts/plan-validate.py (add currency consistency check + WARNING for legacy cost_cny/cost_usd/cost_eur dual-field format — do NOT error on legacy trips)",
+      "schemas/poi-common.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/requirements-skeleton.json",
+      "data/china-20260412-092624/accommodation.json (multiply ALL cost fields by 8.05 — values are EUR mislabeled as CNY)",
+      "data/china-20260412-092624/transportation.json (multiply ALL cost fields by 8.05 — values are EUR mislabeled as CNY)"
+    ],
+    "validation_approach": "After changes: (1) grep -r 'in USD' .claude/agents/ — must return zero; (2) python3 scripts/plan-validate.py china-20260412-092624 — must return no HIGH severity issues; (3) python3 scripts/generate-html-interactive.py china-20260412-092624 — must complete without error; (4) json schema validation of config/currency-config.json against expected structure"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "User confirmed all design decisions; this is an implementation task with a fully-specified target state, not an exploratory architectural decision"
+  }
+}

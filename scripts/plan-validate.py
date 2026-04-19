@@ -1308,6 +1308,132 @@ def check_cross_agent(all_data: dict, trip: str) -> list:
     return issues
 
 
+
+# Location -> expected currency mapping (keys normalized via _norm_city: no spaces/apostrophes)
+LOCATION_CURRENCY_MAP = {
+    'china': 'CNY', 'beijing': 'CNY', 'shanghai': 'CNY', 'chengdu': 'CNY',
+    'xian': 'CNY', 'datong': 'CNY', 'chongqing': 'CNY', 'lijiang': 'CNY',
+    'guangzhou': 'CNY', 'shenzhen': 'CNY', 'hangzhou': 'CNY', 'nanjing': 'CNY',
+    'japan': 'JPY', 'tokyo': 'JPY', 'osaka': 'JPY', 'kyoto': 'JPY',
+    'korea': 'KRW', 'seoul': 'KRW', 'busan': 'KRW',
+    'uk': 'GBP', 'london': 'GBP', 'edinburgh': 'GBP',
+    'usa': 'USD', 'newyork': 'USD', 'losangeles': 'USD',
+}
+
+LEGACY_COST_FIELDS = {'cost_cny', 'cost_usd', 'cost_eur'}
+
+
+def _load_plan_currency(trip_dir: Path) -> str:
+    """Load plan-level currency_local from requirements-skeleton.json."""
+    req_path = trip_dir / 'requirements-skeleton.json'
+    if req_path.exists():
+        try:
+            req = json.loads(req_path.read_text(encoding='utf-8'))
+            return req.get('trip_summary', {}).get('currency_local', '')
+        except (json.JSONDecodeError, OSError):
+            pass
+    return ''
+
+
+def _load_skeleton_day_currencies(trip_dir: Path) -> dict:
+    """Load day-level currency_local overrides from plan-skeleton.json."""
+    skel_path = trip_dir / 'plan-skeleton.json'
+    if not skel_path.exists():
+        return {}
+    try:
+        skel = json.loads(skel_path.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return {d.get('day', 0): d['currency_local'] for d in skel.get('days', []) if d.get('currency_local')}
+
+
+def _collect_validate_meal_pois(day: dict) -> list:
+    """Collect POIs from meal slots including alternatives for currency check."""
+    pois = []
+    for mt in ('breakfast', 'lunch', 'dinner'):
+        m = day.get(mt)
+        if not isinstance(m, dict):
+            continue
+        pois.append((mt, m.get('primary', m)))
+        for i, a in enumerate(m.get('alternatives', [])):
+            if isinstance(a, dict):
+                pois.append((f'{mt}.alt[{i}]', a))
+    return pois
+
+
+def _collect_validate_pois(agent_name: str, day: dict) -> list:
+    """Collect all POIs needing currency validation from a day."""
+    if agent_name == 'meals':
+        return _collect_validate_meal_pois(day)
+    if agent_name == 'accommodation':
+        acc = day.get('accommodation')
+        return [('accommodation', acc)] if isinstance(acc, dict) else []
+    if agent_name == 'transportation':
+        pois = []
+        lc = day.get('location_change')
+        if isinstance(lc, dict):
+            pois.append(('location_change', lc))
+        for rk, rv in (day.get('intra_city_routes') or {}).items():
+            if isinstance(rv, dict):
+                pois.append((rk, rv))
+        return pois
+    return [(p.get('name_base', '?'), p) for p in day.get(agent_name, []) if isinstance(p, dict)]
+
+
+def _check_poi_currency(poi, label, expected, agent_name, trip, dn, issues):
+    """Check a single POI's currency_local and legacy cost fields."""
+    poi_currency = poi.get('currency_local', '')
+    if poi_currency and poi_currency != expected:
+        issues.append(Issue(
+            Severity.HIGH, Category.SEMANTIC, agent_name, trip, dn,
+            label, 'currency_local',
+            f'POI currency_local={poi_currency} does not match expected currency_local={expected}'
+        ))
+    legacy_fields_present = LEGACY_COST_FIELDS & set(poi.keys())
+    if legacy_fields_present:
+        issues.append(Issue(
+            Severity.LOW, Category.LEGACY, agent_name, trip, dn,
+            label, ','.join(sorted(legacy_fields_present)),
+            f'Legacy cost fields {sorted(legacy_fields_present)} found. '
+            f'Migrate to single cost + currency_local model.'
+        ))
+
+
+def check_currency_consistency(all_data: dict, trip: str, trip_dir: Path) -> list:
+    """Check currency_local consistency across all POI agents.
+
+    Resolution order: day.currency_local (plan-skeleton) -> plan.trip_summary.currency_local
+    """
+    issues = []
+    plan_currency = _load_plan_currency(trip_dir)
+    day_currencies = _load_skeleton_day_currencies(trip_dir)
+    if not plan_currency and not day_currencies:
+        return issues
+    poi_agents = ['meals', 'attractions', 'entertainment', 'accommodation', 'shopping', 'cafe', 'transportation']
+
+    for agent_name in poi_agents:
+        adata = all_data.get(agent_name, {})
+        for day in adata.get('data', {}).get('days', []):
+            dn = day.get('day', 0)
+            effective_currency = day_currencies.get(dn, plan_currency)
+
+            # Location-currency validation
+            loc_key = _norm_city(day.get('location', ''))
+            expected_for_loc = LOCATION_CURRENCY_MAP.get(loc_key)
+            if expected_for_loc and expected_for_loc != effective_currency:
+                issues.append(Issue(
+                    Severity.HIGH, Category.SEMANTIC, agent_name, trip, dn,
+                    f'Day {dn}', 'currency_local',
+                    f'Location {day.get("location", "")} expects {expected_for_loc} '
+                    f'but effective currency_local is {effective_currency}. '
+                    f'Add day-level currency_local override.'
+                ))
+
+            for label, poi in _collect_validate_pois(agent_name, day):
+                _check_poi_currency(poi, label, effective_currency, agent_name, trip, dn, issues)
+
+    return issues
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
@@ -1413,6 +1539,8 @@ def run_pipeline(trip_dirs: list, registry: SchemaRegistry,
             all_issues.extend(check_all_activity_overlaps(all_data, trip))
             # Legacy cross-agent checks (day count, date, location, budget consistency)
             all_issues.extend(check_cross_agent(all_data, trip))
+            # Currency consistency (POI currency_local must match plan/day level)
+            all_issues.extend(check_currency_consistency(all_data, trip, trip_dir))
 
     return all_issues, metrics
 
