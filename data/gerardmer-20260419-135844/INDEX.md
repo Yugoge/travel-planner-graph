@@ -1,8 +1,8 @@
 # gerardmer-20260419-135844
 
-*Last updated: 2026-04-19T19:28:18Z*
+*Last updated: 2026-04-19T19:31:47Z*
 **Total entries**: 15
-**Convention**: lower
+**Convention**: kebab
 
 ## Tree
 ```
