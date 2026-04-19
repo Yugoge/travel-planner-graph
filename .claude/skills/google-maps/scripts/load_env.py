@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 """
 Load environment variables from .env file in project root.
-This is called by all skill scripts to ensure API keys are available.
 
 DEPRECATED: This file is kept for backwards compatibility.
-All skills now use the centralized version at .claude/skills/shared/load_env.py
+All skills use the centralized version at .claude/skills/shared/load_env.py.
+
+This shim loads the shared module by absolute path via importlib so it does
+not depend on sys.path ordering (callers like places.py insert this
+directory first into sys.path, which used to cause a circular
+`from load_env import load_env` against this very file).
 """
 
-import sys
+import importlib.util
 from pathlib import Path
 
-# Import centralized load_env from skills shared
-shared_path = Path(__file__).parent.parent.parent / 'shared'
-if str(shared_path) not in sys.path:
-    sys.path.insert(0, str(shared_path))
+_shared_path = Path(__file__).parent.parent.parent / 'shared' / 'load_env.py'
+_spec = importlib.util.spec_from_file_location('_shared_load_env', _shared_path)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
 
-from load_env import load_env
-
-# Re-export for backwards compatibility
+# The shared module auto-runs load_env() on import (side-effect contract).
+# Re-export the function for callers that invoke it explicitly.
+load_env = _mod.load_env
 __all__ = ['load_env']
