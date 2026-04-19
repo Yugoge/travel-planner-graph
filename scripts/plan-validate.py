@@ -1406,9 +1406,9 @@ def check_currency_consistency(all_data: dict, trip: str, trip_dir: Path) -> lis
     """
     issues = []
     plan_currency = _load_plan_currency(trip_dir)
-    if not plan_currency:
-        return issues
     day_currencies = _load_skeleton_day_currencies(trip_dir)
+    if not plan_currency and not day_currencies:
+        return issues
     poi_agents = ['meals', 'attractions', 'entertainment', 'accommodation', 'shopping', 'cafe', 'transportation']
 
     for agent_name in poi_agents:
