@@ -298,6 +298,32 @@ test -f data/{destination-slug}/accommodation.json && echo "accommodation.json v
 
 ---
 
+### Step 3: Ensure City Covers Are Fetched
+
+Root cause reference: `/review` previously assumed `/plan` had already populated `images.json.city_covers`. For projects where /plan skipped city covers (e.g., `location_local` empty for non-Chinese destinations, or /review run standalone), this left the HTML without city hero images.
+
+Check if city covers exist; fetch if missing:
+
+```bash
+source venv/bin/activate && python -c "
+import json, sys
+try:
+    d = json.load(open('data/{destination-slug}/images.json'))
+    sys.exit(0 if d.get('city_covers') else 1)
+except FileNotFoundError:
+    sys.exit(1)
+" 2>/dev/null && echo "City covers present" || {
+  echo "City covers missing — fetching..."
+  python scripts/fetch-images-batch.py {destination-slug} 5 0
+}
+```
+
+- Runs only when `city_covers` dict is empty or `images.json` doesn't exist
+- Fetches up to 5 city covers, 0 POIs (POIs fetched per-day later)
+- Non-blocking: if fetch returns 0/N (rare, e.g., no city coordinates), proceed anyway
+
+---
+
 ### Phase 4: Validation and Conflict Review
 
 

@@ -521,12 +521,13 @@ class BatchImageFetcher:
             skeleton = json.load(f)
 
         # Build city mapping: English name -> local name
+        # Fall back to English name when location_local is missing (e.g., non-Chinese destinations)
         city_local_map = {}
         for day in skeleton.get("days", []):
             loc = day.get("location")
             loc_local = day.get("location_local")
-            if loc and loc_local:
-                city_local_map[loc] = loc_local
+            if loc:
+                city_local_map[loc] = loc_local or loc
 
         cities = set(city_local_map.keys())
 
