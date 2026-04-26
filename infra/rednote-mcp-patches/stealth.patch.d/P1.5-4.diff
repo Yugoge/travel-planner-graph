@@ -1,0 +1,35 @@
+# P1.5-4: screen.colorDepth/pixelDepth = 30, window.devicePixelRatio = 2 (macOS Retina)
+#
+# Scope (ONE issue): Spoof screen.colorDepth, screen.pixelDepth, and
+# window.devicePixelRatio via Object.defineProperty inside addInitScript to
+# match a typical macOS Retina display (30-bit color depth + DPR=2). Xvfb
+# defaults to 24-bit colorDepth and DPR=1, which contradicts the macOS UA set
+# by P0-1.
+#
+# screen.width and screen.height are NOT overridden -- Playwright's viewport
+# (1920x1080 set by P0-1) controls the CSS layout grid. Changing screen.width
+# would create a second mismatch. Setting DPR=2 while keeping 1920x1080
+# viewport simulates a 3840x2160 physical Retina display rendering into 1920x1080
+# CSS pixels, which is a common macOS configuration.
+#
+# Anchor: post-P1.5-3 output of rednoteTools.js. Same stacking pattern as
+# other P1.5-N rednoteTools hunks (inserts new try/catch before closing `});`
+# of addInitScript).
+#
+# Red lines: No fetch/XHR/cookie overrides. No screen.width/height override
+# (would break layout grid). No viewport change in newContext (owned by P0-1).
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -183,5 +183,11 @@
+                     }
+                 } catch (e) {}
++                try {
++                    // P1.5-4: screen.colorDepth / pixelDepth -> 30, window.devicePixelRatio -> 2 (macOS Retina)
++                    Object.defineProperty(screen, 'colorDepth', { get: () => 30, configurable: true });
++                    Object.defineProperty(screen, 'pixelDepth', { get: () => 30, configurable: true });
++                    Object.defineProperty(window, 'devicePixelRatio', { get: () => 2, configurable: true });
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

@@ -1,0 +1,21 @@
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -189,9 +189,15 @@ class AuthManager {
+                     await this.context.close();
+                 retryCount++;
+                 if (retryCount < maxRetries) {
+-                    logger_1.default.info(`Retrying login in 2 seconds (${retryCount}/${maxRetries})`);
+-                    await new Promise(resolve => setTimeout(resolve, 2000));
+-                }
++                    // stealth.patch P0-3b: exponential back-off (base 2s, cap 30s, additive jitter)
++                    // LESSONS red-line #9: 禁止在 ≥ 日 100 次调用下启用自动重试 —— 错误退避必须指数递增
++                    const baseMs = 2000;
++                    const maxMs = 30000;
++                    const attemptIndex = retryCount - 1;
++                    const backoffMs = Math.min(baseMs * Math.pow(2, attemptIndex), maxMs) + Math.random() * baseMs;
++                    logger_1.default.info(`Retrying login in ${Math.round(backoffMs)}ms (${retryCount}/${maxRetries})`);
++                    await new Promise(resolve => setTimeout(resolve, backoffMs));
++                }
+                 else {
+                     logger_1.default.error('Login failed after maximum retries');
+                     throw new Error('Login failed after maximum retries');

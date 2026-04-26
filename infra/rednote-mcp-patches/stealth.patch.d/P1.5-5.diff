@@ -1,0 +1,35 @@
+# P1.5-5: WebGPU suppression (navigator.gpu = undefined)
+#
+# Scope (ONE issue): Set navigator.gpu to undefined via Object.defineProperty
+# inside addInitScript. Chrome 145 enables WebGPU by default, and
+# navigator.gpu.requestAdapter() leaks the host GPU vendor (in our case, the
+# server's Intel/AMD GPU or SwiftShader CPU renderer), which contradicts the
+# macOS UA + spoofed Intel Iris WebGL vendor set by P0-2.
+#
+# Setting gpu to undefined is a safer spoof than faking an Apple M1/M2 adapter:
+# a minority of real macOS users (older/corporate Macs with WebGPU disabled)
+# also see undefined, so this is a plausible real-browser state. Faking an
+# M1/M2 adapter would require matching limits/features/device-info surface,
+# which is substantially more code and failure-prone.
+#
+# Anchor: post-P1.5-4 output of rednoteTools.js. Same stacking pattern --
+# inserts a new try/catch before the closing `});` of addInitScript.
+#
+# Red lines: No fetch/XHR/cookie overrides. No Object.defineProperty on
+# Navigator.prototype.gpu (would be visible on the prototype chain); we only
+# override the `navigator` instance.
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -188,6 +188,11 @@
+                     Object.defineProperty(screen, 'pixelDepth', { get: () => 30, configurable: true });
+                     Object.defineProperty(window, 'devicePixelRatio', { get: () => 2, configurable: true });
+                 } catch (e) {}
++                try {
++                    // P1.5-5: navigator.gpu -> undefined (suppress WebGPU adapter fingerprint leak)
++                    Object.defineProperty(navigator, 'gpu', { get: () => undefined, configurable: true });
++                    if ('gpu' in Navigator.prototype) { try { delete Navigator.prototype.gpu; } catch (e) {} }
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

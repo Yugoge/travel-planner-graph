@@ -1,0 +1,45 @@
+# P1.5-7: Battery API randomization (navigator.getBattery)
+#
+# Scope (ONE issue): Override navigator.getBattery() inside addInitScript to
+# return a randomized-but-session-stable BatteryManager. Real headful Chrome
+# 145 on a desktop often exposes `charging: true, level: 1.0` (AC powered),
+# but this precise combo is a bot signal when seen across many sessions.
+# Real-user distributions span both charging states and levels 0.3-0.95.
+#
+# Randomization happens ONCE at addInitScript time (per page load), so both
+# the charging state and level are stable within a single session but vary
+# across sessions -- this matches real-user behavior where a battery reading
+# barely moves during a short browsing session.
+#
+# Anchor: post-P1.5-6 output of rednoteTools.js. Same stacking pattern --
+# inserts a new try/catch before the closing `});` of addInitScript.
+#
+# Red lines: No fetch/XHR/cookie overrides. No BatteryManager prototype
+# modification (only replaces the getBattery() promise). chargingTime /
+# dischargingTime are Infinity per MDN typical behavior for a plugged-in
+# desktop or fully-known battery.
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -207,6 +207,21 @@
+                         speechSynthesis.getVoices = function () { return macVoices; };
+                     }
+                 } catch (e) {}
++                try {
++                    // P1.5-7: navigator.getBattery() -- per-session randomized {charging, level}; stable during session
++                    const battCharging = Math.random() < 0.5;
++                    const battLevel = Math.round((0.3 + Math.random() * 0.65) * 100) / 100; // [0.30, 0.95]
++                    const fakeBattery = {
++                        charging: battCharging,
++                        chargingTime: battCharging ? 0 : Infinity,
++                        dischargingTime: battCharging ? Infinity : Math.round(3600 + Math.random() * 18000),
++                        level: battLevel,
++                        addEventListener: function () {},
++                        removeEventListener: function () {},
++                        dispatchEvent: function () { return true; }
++                    };
++                    navigator.getBattery = function () { return Promise.resolve(fakeBattery); };
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

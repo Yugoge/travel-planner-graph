@@ -1,0 +1,35 @@
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -37,7 +37,8 @@
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.AuthManager = void 0;
+-const playwright_1 = require("playwright");
++// stealth.patch P1-1: drop-in swap to Patchright (closes JA4/Runtime.Enable leaks).
++const playwright_1 = require("patchright");
+ const cookieManager_1 = require("./cookieManager");
+ const dotenv = __importStar(require("dotenv"));
+ const fs = __importStar(require("fs"));
+@@ -74,8 +75,11 @@
+         logger_1.default.info('Launching browser');
+         // 始终创建新的浏览器实例，不复用之前的
+         // stealth.patch P0-1: launch args + ignoreDefaultArgs (Patchright/stealth baseline)
++        // stealth.patch P1-1: channel:'chrome' borrows real-Chrome TLS stack (JA4 alignment).
++        // System Chrome stable channel at /opt/google/chrome (147.x as of 2026-04-25 deploy).
+         this.browser = await playwright_1.chromium.launch({
+             headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
++            channel: 'chrome',
+             args: [
+                 '--disable-blink-features=AutomationControlled',
+                 '--no-first-run',
+@@ -94,8 +98,10 @@
+         logger_1.default.info(`Starting login process with timeout: ${timeoutSeconds}s`);
+         const timeoutMs = timeoutSeconds * 1000;
+         // stealth.patch P0-1: same launch args on login() path for fingerprint parity with getBrowser()
++        // stealth.patch P1-1: same channel:'chrome' on login() path for parity with getBrowser().
+         this.browser = await playwright_1.chromium.launch({
+             headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
++            channel: 'chrome',
+             timeout: timeoutMs,
+             args: [
+                 '--disable-blink-features=AutomationControlled',

@@ -1,0 +1,165 @@
+# P0-9-W5-composed-ctx: composed rednoteTools.js initialize() context hunk
+#
+# Filename note: logically a Wave-5 aggregation product but prefixed `P0-9-` so
+# that `sort -V` orders it AFTER the P0-* / P0-4-clicks fragments and BEFORE
+# the P1.5-* fragments. P1.5-1..P1.5-7 anchor on the post-P0-2 addInitScript
+# state, and this composed hunk carries P0-2's full 93-line evasion body, so
+# it MUST apply before any P1.5-* fragment touches that addInitScript region.
+#
+# Aggregates four mutually-exclusive hunks that all targeted vanilla
+# rednoteTools.js:24 `const ctx = ... newContext({ serviceWorkers: 'block' })`:
+#
+#   - P0-2.diff hunk @@ -21,13 +21,106 @@  (serviceWorkers flip + 93-line addInitScript body)
+#   - P0-4.diff hunk1 @@ -21,7 +21,7 @@   (serviceWorkers flip — duplicate of P0-2)
+#   - P1.5-14.diff hunk2 @@ -21,7 +21,16 @@ (Object.assign proxy wrapper)
+#   - P1.5-3.diff hunk3 @@ -22,6 +22,14 @@  (extraHTTPHeaders 4 keys)
+#
+# Rationale: GNU patch with default fuzz cannot apply four hunks anchored on
+# the same vanilla line in any order — sequential apply was structurally
+# impossible. Composing them into a single hunk produces the merged final
+# state that all four fragments intended jointly.
+#
+# Source fragments moved to stealth.patch.d/aggregator-input/ (P0-2.diff,
+# P0-4.diff, P1.5-14.diff). P1.5-3.diff hunk3 removed from that file (hunks 1
+# and 2 retained). P0-4 hunks 2+3 (close-circle) extracted to P0-4-clicks.diff.
+# P1.5-14 hunk1 (authManager.js proxy at line 99) extracted to P1.5-14-auth.diff.
+#
+# All header values copied verbatim from existing fragments — Sec-CH-UA strings
+# byte-identical to P1.5-3.diff hunk1, proxyConfig pattern from P1.5-14.diff,
+# addInitScript body from P0-2.diff lines 33-131.
+#
+# Strip level: -p1 -d /  (header is a/usr/lib/node_modules/rednote-mcp/dist/...)
+#
+# References:
+#   - close-report-20260424-210207.md — actionable gaps 1-3
+#   - ba-spec-20260424-230451.md — composed_hunk_spec
+#   - architect-stealth-pipeline-review-20260424-230451.json — Q3 Option B
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -21,13 +21,124 @@
+             throw new Error('Failed to initialize browser');
+         }
+         try {
+-            const ctx = this.browser.contexts()[0] || await this.browser.newContext({ serviceWorkers: 'block' });
++            // W5-composed-ctx: aggregates P0-2 (serviceWorkers+addInitScript), P0-4 hunk1
++            // (serviceWorkers alias), P1.5-14 hunk2 (proxy Object.assign), P1.5-3 hunk3
++            // (extraHTTPHeaders). Source fragments moved to aggregator-input/.
++            const proxyUrl = process.env.REDNOTE_PROXY_URL;
++            const proxyConfig = proxyUrl ? {
++                server: proxyUrl,
++                username: process.env.REDNOTE_PROXY_USER,
++                password: process.env.REDNOTE_PROXY_PASS,
++                bypass: 'localhost,127.0.0.1,xhs.life-ai.app',
++            } : undefined;
++            const ctx = this.browser.contexts()[0] || await this.browser.newContext(Object.assign({
++                serviceWorkers: 'allow',
++                extraHTTPHeaders: {
++                    'accept-language': 'zh-CN,zh;q=0.9',
++                    'sec-ch-ua': '"Chromium";v="145", "Not=A?Brand";v="99", "Google Chrome";v="145"',
++                    'sec-ch-ua-mobile': '?0',
++                    'sec-ch-ua-platform': '"macOS"',
++                },
++            }, proxyConfig ? { proxy: proxyConfig } : {}));
+             this.page = await ctx.newPage();
+             await this.page.addInitScript(() => {
+                 const s = document.createElement('style');
+                 s.textContent = '.cookie-banner-overlay,.cookie-banner,[class*="cookie-banner"]{display:none!important;pointer-events:none!important;opacity:0!important;z-index:-1!important}';
+                 (document.head || document.documentElement).appendChild(s);
+                 new MutationObserver(() => { if (!document.head.contains(s)) (document.head || document.documentElement).appendChild(s); }).observe(document.documentElement, { childList: true, subtree: true });
++                // --- P0-2 baseline stealth evasions (NO fetch/XHR/cookie overrides) ---
++                try {
++                    // (1) navigator.webdriver -> undefined
++                    Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => undefined, configurable: true });
++                } catch (e) {}
++                try {
++                    // (2) window.chrome shim -- minimum surface that bot.sannysoft.com inspects
++                    if (!window.chrome) {
++                        window.chrome = {
++                            runtime: {},
++                            loadTimes: function () {
++                                return {
++                                    commitLoadTime: Date.now() / 1000 - 1,
++                                    connectionInfo: 'h2',
++                                    finishDocumentLoadTime: Date.now() / 1000 - 0.5,
++                                    finishLoadTime: Date.now() / 1000,
++                                    firstPaintAfterLoadTime: 0,
++                                    firstPaintTime: Date.now() / 1000 - 0.8,
++                                    navigationType: 'Other',
++                                    npnNegotiatedProtocol: 'h2',
++                                    requestTime: Date.now() / 1000 - 1.2,
++                                    startLoadTime: Date.now() / 1000 - 1.2,
++                                    wasAlternateProtocolAvailable: false,
++                                    wasFetchedViaSpdy: true,
++                                    wasNpnNegotiated: true
++                                };
++                            },
++                            csi: function () {
++                                return { onloadT: Date.now(), pageT: Date.now() - 500, startE: Date.now() - 1000, tran: 15 };
++                            },
++                            app: { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' }, RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' } }
++                        };
++                    }
++                } catch (e) {}
++                try {
++                    // (3) navigator.languages -> zh-CN primary
++                    Object.defineProperty(Navigator.prototype, 'languages', { get: () => ['zh-CN', 'zh'], configurable: true });
++                } catch (e) {}
++                try {
++                    // (4) plugins / mimeTypes -- typical Chrome PDF viewer set, non-empty arrays
++                    const fakePlugins = [
++                        { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++                        { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++                        { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++                        { name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++                        { name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }
++                    ];
++                    Object.defineProperty(Navigator.prototype, 'plugins', { get: () => fakePlugins, configurable: true });
++                    const fakeMimes = [
++                        { type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' },
++                        { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }
++                    ];
++                    Object.defineProperty(Navigator.prototype, 'mimeTypes', { get: () => fakeMimes, configurable: true });
++                } catch (e) {}
++                try {
++                    // (5) permissions.query -- match real browser behavior: notifications reflects Notification.permission
++                    const origQuery = navigator.permissions && navigator.permissions.query ? navigator.permissions.query.bind(navigator.permissions) : null;
++                    if (origQuery) {
++                        navigator.permissions.query = (parameters) => {
++                            if (parameters && parameters.name === 'notifications') {
++                                return Promise.resolve({ state: (typeof Notification !== 'undefined' && Notification.permission) ? Notification.permission : 'prompt', onchange: null });
++                            }
++                            return origQuery(parameters);
++                        };
++                    }
++                } catch (e) {}
++                try {
++                    // (6) WebGL vendor/renderer -- typical macOS Intel Iris
++                    const getParam = WebGLRenderingContext.prototype.getParameter;
++                    WebGLRenderingContext.prototype.getParameter = function (param) {
++                        // UNMASKED_VENDOR_WEBGL = 37445, UNMASKED_RENDERER_WEBGL = 37446
++                        if (param === 37445) return 'Intel Inc.';
++                        if (param === 37446) return 'Intel Iris OpenGL Engine';
++                        return getParam.call(this, param);
++                    };
++                    if (typeof WebGL2RenderingContext !== 'undefined') {
++                        const getParam2 = WebGL2RenderingContext.prototype.getParameter;
++                        WebGL2RenderingContext.prototype.getParameter = function (param) {
++                            if (param === 37445) return 'Intel Inc.';
++                            if (param === 37446) return 'Intel Iris OpenGL Engine';
++                            return getParam2.call(this, param);
++                        };
++                    }
++                } catch (e) {}
++                try {
++                    // (7) Intl.DateTimeFormat timezone -> Asia/Shanghai if not already set
++                    const origResolved = Intl.DateTimeFormat.prototype.resolvedOptions;
++                    Intl.DateTimeFormat.prototype.resolvedOptions = function () {
++                        const opts = origResolved.call(this);
++                        if (!opts.timeZone || opts.timeZone === 'UTC' || opts.timeZone === 'Etc/UTC') opts.timeZone = 'Asia/Shanghai';
++                        return opts;
++                    };
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(
