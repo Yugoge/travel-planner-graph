@@ -1,0 +1,83 @@
+# P1.5-3: Sec-CH-UA Client Hints aligned with UA + navigator.userAgentData override
+#
+# Scope (ONE issue): Add sec-ch-ua, sec-ch-ua-platform, sec-ch-ua-mobile headers
+# to extraHTTPHeaders (authManager.js, hunk 1) AND override
+# navigator.userAgentData.getHighEntropyValues() to return matching macOS /
+# Chrome 145 values (rednoteTools.js addInitScript, hunk 2). Without this, the
+# browser advertises a macOS UA in the string but a Linux CH-UA in the headers
+# and high-entropy API -- a trivial mismatch for bot detectors.
+#
+# Anchor:
+#   Hunk 1: P0-1 output state of authManager.js. Before this patch, the
+#   newContext({... extraHTTPHeaders: { 'accept-language': ... } ...}) block
+#   has 1 header. This hunk expands it to 4 headers by inserting 3 new keys
+#   after the existing accept-language line, before the closing `},` of
+#   extraHTTPHeaders.
+#
+#   Hunk 2: post-P1.5-2 output state of rednoteTools.js. Stacks like other
+#   P1.5-N rednoteTools hunks (inserts new try/catch before the `});` closing
+#   addInitScript and the `await this.page.route('**://edith.xiaohongshu.com/**'`
+#   line that follows it).
+#
+# Red lines: No fetch/XHR/cookie overrides. No Origin/Referer override
+# (LESSONS §"DO NOT override Origin/Referer for edith"). The `brands` array
+# order matches real Chrome 145 GREASE (Chromium middle, "Not=A?Brand" decoy).
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -124,6 +124,9 @@
+                     timezoneId: 'Asia/Shanghai',
+                     extraHTTPHeaders: {
+                         'accept-language': 'zh-CN,zh;q=0.9',
++                        'sec-ch-ua': '"Chromium";v="145", "Not=A?Brand";v="99", "Google Chrome";v="145"',
++                        'sec-ch-ua-mobile': '?0',
++                        'sec-ch-ua-platform': '"macOS"',
+                     },
+                 });
+                 this.page = await this.context.newPage();
+# History (cycle 20260424-230451): a third hunk anchored on vanilla
+# rednoteTools.js:24 was previously present here to inject extraHTTPHeaders on
+# the search path. That hunk collided with P0-2 / P0-4 / P1.5-14 on the same
+# vanilla anchor and has been absorbed into stealth.patch.d/W5-composed-ctx.diff.
+# This file now contains only the two non-colliding hunks (authManager Sec-CH-UA
+# headers + rednoteTools userAgentData override).
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -151,7 +151,37 @@
+                             })));
+                         };
+                     }
+                 } catch (e) {}
++                try {
++                    // P1.5-3: navigator.userAgentData.getHighEntropyValues() override -- aligned with Sec-CH-UA headers (Chrome 145 macOS)
++                    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
++                        const brands = [
++                            { brand: 'Chromium',       version: '145' },
++                            { brand: 'Not=A?Brand',    version: '99'  },
++                            { brand: 'Google Chrome',  version: '145' }
++                        ];
++                        const fullValueMap = {
++                            brands: brands,
++                            mobile: false,
++                            platform: 'macOS',
++                            architecture: 'arm',
++                            bitness: '64',
++                            model: '',
++                            platformVersion: '15.0.0',
++                            uaFullVersion: '145.0.0.0',
++                            fullVersionList: brands.map(b => ({ brand: b.brand, version: b.version + '.0.0.0' })),
++                            wow64: false
++                        };
++                        navigator.userAgentData.getHighEntropyValues = function (hints) {
++                            const out = {};
++                            (hints || []).forEach(h => { if (h in fullValueMap) out[h] = fullValueMap[h]; });
++                            return Promise.resolve(out);
++                        };
++                        Object.defineProperty(navigator.userAgentData, 'brands',   { get: () => brands,  configurable: true });
++                        Object.defineProperty(navigator.userAgentData, 'mobile',   { get: () => false,   configurable: true });
++                        Object.defineProperty(navigator.userAgentData, 'platform', { get: () => 'macOS', configurable: true });
++                    }
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

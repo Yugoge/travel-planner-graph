@@ -1,0 +1,108 @@
+--- a/dist/tools/rednoteTools.js
++++ b/dist/tools/rednoteTools.js
+@@ -127,7 +127,7 @@
+             // Navigate to search page
+             logger_1.default.info('Navigating to search page');
+             await this.page.goto(`https://xhs.life-ai.app/search_result?keyword=${encodeURIComponent(keywords)}`);
+-            await this.page.waitForTimeout(500);
++            await this.randomDelay(0.3, 1.2);
+             // Wait for search results to load
+             logger_1.default.info('Waiting for search results');
+             await this.page.waitForSelector('.feeds-container', {
+@@ -148,7 +148,7 @@
+                     await this.page.waitForSelector('#noteContainer', {
+                         timeout: 30000
+                     });
+-                    await this.randomDelay(0.5, 1.5);
++                    await this.randomDelay(1.0, 3.5);
+                     // Extract note content
+                     const note = await this.page.evaluate(() => {
+                         const article = document.querySelector('#noteContainer');
+@@ -186,7 +186,7 @@
+                         notes.push(note);
+                     }
+                     // Add random delay before closing
+-                    await this.randomDelay(0.5, 1);
++                    await this.randomDelay(1.0, 3.5);
+                     // Close note by clicking the close button
+                     const closeButton = await this.page.$('.close-circle');
+                     if (closeButton) {
+@@ -214,7 +214,7 @@
+                 }
+                 finally {
+                     // Add random delay before next note
+-                    await this.randomDelay(0.5, 1.5);
++                    await this.randomDelay(2.0, 30.0);
+                 }
+             }
+             logger_1.default.info(`Successfully processed ${notes.length} notes`);
+@@ -283,15 +283,66 @@
+             await this.cleanup();
+         }
+     }
++    /**
++     * Sample from a Weibull distribution using inverse-CDF method.
++     * Provides heavy-tail, right-skewed delays that mirror real human action timing
++     * (occasional long pauses, clustered short bursts). See spec view dev.md §8.
++     * @param shape Weibull shape parameter k (>1 => peaked, heavy tail rightward)
++     * @param scale Weibull scale parameter lambda in seconds
++     * @returns sampled delay in seconds
++     */
++    _weibullSample(shape, scale) {
++        const u = Math.random();
++        // Guard against u=0 which would give log(1)=0 then pow(0, 1/k)=0 — still valid, but
++        // guard against u=1 edge which would produce Infinity.
++        const uSafe = u >= 1 ? 0.999999 : u;
++        return scale * Math.pow(-Math.log(1 - uSafe), 1 / shape);
++    }
+     /**
+      * Wait for a random duration between min and max seconds
+-     * @param min Minimum seconds to wait
+-     * @param max Maximum seconds to wait
++     * Uses Weibull(shape=1.5, scale=0.8s) sampling × circadian multiplier.
++     * The min/max args define the allowed clamp window — the Weibull sample
++     * is rescaled so its expected range fits [min, max].
++     * @param min Minimum seconds to wait (clamp floor)
++     * @param max Maximum seconds to wait (clamp ceiling)
+      */
+     async randomDelay(min, max) {
+-        const delay = Math.random() * (max - min) + min;
++        // Circadian rhythm: Asia/Shanghai human attention/activity by hour-of-day.
++        // Index 0 = 00:00 local, Index 23 = 23:00. Peak 19-20, trough 02-04.
++        const circadianWeight = [
++            0.10, 0.08, 0.05, 0.05, 0.05, 0.08,
++            0.15, 0.30, 0.50, 0.60, 0.65, 0.70,
++            0.75, 0.70, 0.70, 0.75, 0.80, 0.85,
++            0.90, 1.00, 0.95, 0.85, 0.60, 0.30,
++        ];
++        const hour = new Date().getHours();
++        const weight = circadianWeight[hour] || 0.5;
++        // Weibull(1.5, 0.8) has expected value ~0.72s, 95th percentile ~1.7s.
++        // We sample a normalized Weibull, then map into [min, max] and apply circadian scale.
++        // Low-activity hours (deep night) produce delays skewed toward `min`;
++        // peak hours allow full [min, max] range.
++        const raw = this._weibullSample(1.5, 0.8); // typical 0.2-2.5s
++        // Normalize raw against an expected reference span of ~2.5s, then rescale to [min,max].
++        const normalized = Math.min(raw / 2.5, 1.0);
++        const span = max - min;
++        // Circadian weight compresses the upper half of the range during low-activity hours.
++        const delay = min + span * normalized * weight + span * (1 - weight) * 0.2 * Math.random();
+         logger_1.default.debug(`Adding random delay of ${delay.toFixed(2)} seconds`);
+         await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+     }
++    /**
++     * Long-form page-dwell delay modelling "lost in reading" behavior.
++     * Weibull(shape=1.2, scale=30s) has heavy right tail — most samples 5-60s,
++     * occasional 2-5 minute dwells. Does NOT apply circadian multiplier because
++     * dwelling users have already committed attention; reduce call frequency instead.
++     * Used between page navigations / after note consumption.
++     */
++    async randomPageDwell() {
++        const delay = this._weibullSample(1.2, 30);
++        // Safety cap at 180s to avoid runaway tail samples blocking the process.
++        const clamped = Math.min(delay, 180);
++        logger_1.default.debug(`Page dwell (Weibull 1.2, 30s): ${clamped.toFixed(2)}s`);
++        await new Promise((resolve) => setTimeout(resolve, clamped * 1000));
++    }
+ }
+ exports.RedNoteTools = RedNoteTools;

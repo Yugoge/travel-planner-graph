@@ -1,0 +1,40 @@
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -99,7 +99,16 @@ class AuthManager {
+         while (retryCount < maxRetries) {
+             try {
+                 logger_1.default.info(`Login attempt ${retryCount + 1}/${maxRetries}`);
+-                this.context = await this.browser.newContext();
++                // P1.5-14: IPRoyal per-context proxy from env (optional, direct connection when unset)
++                const proxyUrl = process.env.REDNOTE_PROXY_URL;
++                const proxyConfig = proxyUrl ? {
++                    server: proxyUrl,
++                    username: process.env.REDNOTE_PROXY_USER,
++                    password: process.env.REDNOTE_PROXY_PASS,
++                    bypass: 'localhost,127.0.0.1,xhs.life-ai.app',
++                } : undefined;
++                // NOTE: merges with P0-1 context config (userAgent/viewport/locale/timezone/extraHTTPHeaders)
++                this.context = await this.browser.newContext(proxyConfig ? { proxy: proxyConfig } : {});
+                 this.page = await this.context.newPage();
+                 await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                     const url = route.request().url().replace(
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -21,7 +21,16 @@ class RedNoteTools {
+             throw new Error('Failed to initialize browser');
+         }
+         try {
+-            const ctx = this.browser.contexts()[0] || await this.browser.newContext({ serviceWorkers: 'block' });
++            // P1.5-14: IPRoyal per-context proxy from env (optional, direct connection when unset)
++            const proxyUrl = process.env.REDNOTE_PROXY_URL;
++            const proxyConfig = proxyUrl ? {
++                server: proxyUrl,
++                username: process.env.REDNOTE_PROXY_USER,
++                password: process.env.REDNOTE_PROXY_PASS,
++                bypass: 'localhost,127.0.0.1,xhs.life-ai.app',
++            } : undefined;
++            // NOTE: merges with P0-1 context config; P0-4 may flip serviceWorkers to 'allow'
++            const ctx = this.browser.contexts()[0] || await this.browser.newContext(Object.assign({ serviceWorkers: 'block' }, proxyConfig ? { proxy: proxyConfig } : {}));
+             this.page = await ctx.newPage();
+             await this.page.addInitScript(() => {
+                 const s = document.createElement('style');

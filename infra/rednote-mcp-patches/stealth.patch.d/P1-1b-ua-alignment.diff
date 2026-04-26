@@ -1,0 +1,91 @@
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -119,10 +119,11 @@
+         while (retryCount < maxRetries) {
+             try {
+                 logger_1.default.info(`Login attempt ${retryCount + 1}/${maxRetries}`);
+-                // stealth.patch P0-1: newContext fingerprint config (macOS Chrome 145
+-                // aligned with jackwener/xhs-cli). extraHTTPHeaders does NOT set Origin —
+-                // Origin stays per-request from page context to match x-s-common
+-                // (LESSONS §"Origin/Referer for edith: DO NOT override").
++                // stealth.patch P0-1 (corrected by P1-1b 20260426): newContext
++                // fingerprint config (Chrome 147 Linux — aligned with the Patchright
++                // + system Chrome 147 runtime delivered by P1-1). extraHTTPHeaders
++                // does NOT set Origin — Origin stays per-request from page context
++                // to match x-s-common (LESSONS §"Origin/Referer for edith: DO NOT override").
+                 // P1.5-14-auth: IPRoyal per-context proxy from env (optional, direct
+                 // connection when unset). Merges with P0-1 fingerprintConfig via spread.
+                 const proxyUrl = process.env.REDNOTE_PROXY_URL;
+@@ -133,15 +134,15 @@
+                     bypass: 'localhost,127.0.0.1,xhs.life-ai.app',
+                 } : undefined;
+                 this.context = await this.browser.newContext({
+-                    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
++                    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+                     viewport: { width: 1920, height: 1080 },
+                     locale: 'zh-CN',
+                     timezoneId: 'Asia/Shanghai',
+                     extraHTTPHeaders: {
+                         'accept-language': 'zh-CN,zh;q=0.9',
+-                        'sec-ch-ua': '"Chromium";v="145", "Not=A?Brand";v="99", "Google Chrome";v="145"',
++                        'sec-ch-ua': '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+                         'sec-ch-ua-mobile': '?0',
+-                        'sec-ch-ua-platform': '"macOS"',
++                        'sec-ch-ua-platform': '"Linux"',
+                     },
+                     ...(proxyConfig ? { proxy: proxyConfig } : {}),
+                 });
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -35,9 +35,9 @@
+                 serviceWorkers: 'allow',
+                 extraHTTPHeaders: {
+                     'accept-language': 'zh-CN,zh;q=0.9',
+-                    'sec-ch-ua': '"Chromium";v="145", "Not=A?Brand";v="99", "Google Chrome";v="145"',
++                    'sec-ch-ua': '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+                     'sec-ch-ua-mobile': '?0',
+-                    'sec-ch-ua-platform': '"macOS"',
++                    'sec-ch-ua-platform': '"Linux"',
+                 },
+             }, proxyConfig ? { proxy: proxyConfig } : {}));
+             this.page = await ctx.newPage();
+@@ -171,22 +171,22 @@
+                     }
+                 } catch (e) {}
+                 try {
+-                    // P1.5-3: navigator.userAgentData.getHighEntropyValues() override -- aligned with Sec-CH-UA headers (Chrome 145 macOS)
++                    // P1.5-3 (corrected by P1-1b 20260426): navigator.userAgentData.getHighEntropyValues() override -- aligned with Sec-CH-UA headers (Chrome 147 Linux)
+                     if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                         const brands = [
+-                            { brand: 'Chromium',       version: '145' },
+-                            { brand: 'Not=A?Brand',    version: '99'  },
+-                            { brand: 'Google Chrome',  version: '145' }
++                            { brand: 'Google Chrome',  version: '147' },
++                            { brand: 'Not.A/Brand',    version: '8'   },
++                            { brand: 'Chromium',       version: '147' }
+                         ];
+                         const fullValueMap = {
+                             brands: brands,
+                             mobile: false,
+-                            platform: 'macOS',
+-                            architecture: 'arm',
++                            platform: 'Linux',
++                            architecture: 'x86',
+                             bitness: '64',
+                             model: '',
+-                            platformVersion: '15.0.0',
+-                            uaFullVersion: '145.0.0.0',
++                            platformVersion: '6.8.0',
++                            uaFullVersion: '147.0.7727.116',
+                             fullVersionList: brands.map(b => ({ brand: b.brand, version: b.version + '.0.0.0' })),
+                             wow64: false
+                         };
+@@ -197,7 +197,7 @@
+                         };
+                         Object.defineProperty(navigator.userAgentData, 'brands',   { get: () => brands,  configurable: true });
+                         Object.defineProperty(navigator.userAgentData, 'mobile',   { get: () => false,   configurable: true });
+-                        Object.defineProperty(navigator.userAgentData, 'platform', { get: () => 'macOS', configurable: true });
++                        Object.defineProperty(navigator.userAgentData, 'platform', { get: () => 'Linux', configurable: true });
+                     }
+                 } catch (e) {}
+                 try {

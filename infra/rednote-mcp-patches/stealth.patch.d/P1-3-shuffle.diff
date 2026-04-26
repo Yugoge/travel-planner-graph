@@ -1,0 +1,120 @@
+# P1-3: searchNotes shuffle + text-length-dependent dwell + page.mouse.wheel injection
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md lines 1476-1482 (T2-2 / P1-3 spec)
+#            + lines 1742-1748 (Section 8 detection-risk table; row 4 sequential
+#            order "(0,1,2,3) -> random jumps" and row 5 timing "too narrow")
+#            + lines 1791-1800 (parameter table: Weibull / Log-normal scale shapes)
+#            + lines 1697-1704 (Cycle 20260426-000600 retro: T2-2 zero-prereq next-eligible)
+#
+# Cycle: dev-20260426-170000 (first L4 / control-flow escalation in this spec lineage).
+# Couples to: P0-3 (randomDelay Weibull definition; we REUSE not modify) and
+#             W1's randomPageDwell helper (defined L554-559 for "future P1-3 use",
+#             this fragment finally wires it as the lost-in-reading group tail).
+# Independent of: P1-1 / P1-1b / P1-1c family (touches a different region of the
+#             same file: searchNotes body L335-444 and class-tail helper insertion at L560).
+# Intent:    Close the "sequential order" + "narrow timing" + "no scroll-injection"
+#            detection signals (Section 8 rows 4-5) by (a) Fisher-Yates shuffling
+#            the index iteration order, (b) making per-note inter-iteration dwell
+#            scale with extracted text length (3-15s base + +/-30% jitter), and
+#            (c) injecting page.mouse.wheel scrolls every 3-7 notes to simulate
+#            "go back to list and scroll" behavior with a 30% randomPageDwell tail.
+# Hunks (3): #1 searchNotes for-loop header L351-359 (replace mechanical sequential
+#                 iterator with shuffled-index iterator)
+#            #2 searchNotes inner finally L427-434 (replace fixed randomDelay with
+#                 mid-loop wheel scroll + text-length-dependent dwell + page-dwell tail)
+#            #3 _shuffleIndices helper appended after randomPageDwell L558-562
+#                 (insert before class-close brace)
+# Constraint: DOES NOT touch addInitScript block (W9). DOES NOT touch
+#             auth/authManager.js (W8). DOES NOT modify randomDelay or
+#             randomPageDwell DEFINITIONS (W7; reuse only). DOES NOT introduce a
+#             new module file (W10; helper lives as private method).
+# Downstream-consumer note: returned notes[] array is now in click-shuffled order,
+#             not result-list order. Existing upstream consumer (travel-planner agent)
+#             treats the array as an unordered set per BA Edge-Cases audit. The
+#             original code did NOT assign positional rank to notes (verified by Read
+#             of L367-397 -- the per-note evaluate() returns {title, content, url,
+#             author, likes, collects, comments} with no rank/index field). Safe.
+# Acceptance: STATIC ONLY for this cycle (grep + node --check + marker integrity).
+#             Runtime AC ("100x search Pearson autocorrelation < 0.3", spec line 1481)
+#             EXPLICITLY DEFERRED to TIER-L runtime cycle (gated on T0'-1 cookie
+#             refresh + T0'-2 IP strategy). Same precedent as P1-1c, P1-1b, P1-1,
+#             P1.5-14, W3 7-fragment stack -- all closed on static-only QA.
+# Idempotency: apply.sh reverse-patch detection emits [SKIP] on re-apply.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -351,9 +351,20 @@
+             let noteItems = await this.page.$$('.feeds-container .note-item');
+             logger_1.default.info(`Found ${noteItems.length} note items`);
+             const notes = [];
+-            // Process each note
+-            for (let i = 0; i < Math.min(noteItems.length, limit); i++) {
+-                logger_1.default.info(`Processing note ${i + 1}/${Math.min(noteItems.length, limit)}`);
++            // P1-3 (shuffle): iterate in randomized order to defeat the mechanical
++            // sequential (0,1,2,3) bot signature flagged in spec Section 8 row 4.
++            // Returned notes[] is in click-shuffled order, NOT result-list order;
++            // downstream consumers must treat the array as an unordered set.
++            const totalToProcess = Math.min(noteItems.length, limit);
++            const shuffledIndices = this._shuffleIndices(noteItems.length).slice(0, totalToProcess);
++            logger_1.default.info(`Shuffled note order: [${shuffledIndices.join(',')}]`);
++            // Mid-loop scroll grouping: 3-7 notes per group between page.mouse.wheel
++            // injections (per spec line 1478: every 3-7 notes inject a wheel scroll).
++            let groupSize = 3 + Math.floor(Math.random() * 5);
++            let processedInGroup = 0;
++            for (let idx = 0; idx < shuffledIndices.length; idx++) {
++                const i = shuffledIndices[idx];
++                logger_1.default.info(`Processing note ${idx + 1}/${totalToProcess} (orig index ${i})`);
+                 try {
+                     // Click on the note cover to open detail
+                     await noteItems[i].$eval('a.cover.mask.ld', (el) => el.click());
+@@ -427,8 +438,29 @@
+                     }
+                 }
+                 finally {
+-                    // Add random delay before next note
+-                    await this.randomDelay(2.0, 30.0);
++                    // P1-3 mid-loop scroll: simulate "go back to list and scroll" between groups.
++                    // Fires AFTER the close-dialog waitForSelector completes (i.e., the
++                    // detail view is gone) so wheel scrolls the result list, not a note.
++                    processedInGroup++;
++                    if (processedInGroup >= groupSize && idx < shuffledIndices.length - 1) {
++                        try {
++                            const deltaY = (Math.random() < 0.5 ? -1 : 1) * (200 + Math.random() * 400);
++                            await this.page.mouse.wheel(0, deltaY);
++                        } catch (e) { /* wheel best-effort; non-fatal */ }
++                        processedInGroup = 0;
++                        groupSize = 3 + Math.floor(Math.random() * 5);
++                        // Lost-in-reading tail: 30% probability per group boundary.
++                        if (Math.random() < 0.3) {
++                            await this.randomPageDwell();
++                        }
++                    }
++                    // Text-length-dependent inter-note dwell (spec line 1479: 3-15s
++                    // scaled by extracted text length). Falls back to base 3s when
++                    // no note was extracted (e.g., per-iteration error path).
++                    const lastNote = notes[notes.length - 1];
++                    const textLen = lastNote ? ((lastNote.title?.length || 0) + (lastNote.content?.length || 0)) : 0;
++                    const dwellSec = 3 + Math.min(textLen / 50, 12);
++                    await this.randomDelay(dwellSec * 0.7, dwellSec * 1.3);
+                 }
+             }
+             logger_1.default.info(`Successfully processed ${notes.length} notes`);
+@@ -558,5 +590,19 @@
+         logger_1.default.debug(`Page dwell (Weibull 1.2, 30s): ${clamped.toFixed(2)}s`);
+         await new Promise((resolve) => setTimeout(resolve, clamped * 1000));
+     }
++    /**
++     * Fisher-Yates shuffle. Returns a permuted [0..n-1] index array.
++     * Per P1-3 spec (line 1476-1482): defeats mechanical sequential (0,1,2,3)
++     * iteration bot signature in searchNotes. Runtime AC (100x search Pearson
++     * autocorrelation < 0.3) DEFERRED to TIER-L cycle.
++     */
++    _shuffleIndices(n) {
++        const indices = Array.from({ length: n }, (_, i) => i);
++        for (let i = n - 1; i > 0; i--) {
++            const j = Math.floor(Math.random() * (i + 1));
++            [indices[i], indices[j]] = [indices[j], indices[i]];
++        }
++        return indices;
++    }
+ }
+ exports.RedNoteTools = RedNoteTools;

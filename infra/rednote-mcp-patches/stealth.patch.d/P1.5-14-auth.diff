@@ -1,0 +1,47 @@
+# P1.5-14-auth: extracted hunk1 from P1.5-14.diff (authManager.js login proxy)
+#
+# Source: P1.5-14.diff (now in aggregator-input/) — hunk1 only.
+# Hunk 2 (rednoteTools.js Object.assign serviceWorkers wrapper) collided on
+# the vanilla rednoteTools.js:24 line and is absorbed into W5-composed-ctx.diff.
+#
+# Anchor adjustment vs. original P1.5-14 hunk1:
+#   The original anchored on the VANILLA bare `this.context = await this.browser.newContext();`
+#   single line. After P0-1.diff applies first (in sort -V order), that single
+#   line becomes a 9-line `newContext({ userAgent, viewport, locale, timezoneId,
+#   extraHTTPHeaders: { 'accept-language': ... } })` block. Naive extraction would
+#   collide with P0-1; this re-anchored form merges the proxy option into the
+#   post-P0-1 options object using object spread (per parent spec Section 4
+#   line 289 design intent: nested spread, not duplicate key).
+#
+# Strip level: -p1 -d /  (a/usr/lib/... headers; same as parent P1.5-14.diff)
+#
+# Reference: ba-spec-20260424-230451.md scope (R4 collider quarantine);
+#            ba-qa-report-20260424-230451.json objection #1 (AC5 hidden collision)
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -116,7 +116,16 @@
+                 // stealth.patch P0-1: newContext fingerprint config (macOS Chrome 145
+                 // aligned with jackwener/xhs-cli). extraHTTPHeaders does NOT set Origin —
+                 // Origin stays per-request from page context to match x-s-common
+                 // (LESSONS §"Origin/Referer for edith: DO NOT override").
++                // P1.5-14-auth: IPRoyal per-context proxy from env (optional, direct
++                // connection when unset). Merges with P0-1 fingerprintConfig via spread.
++                const proxyUrl = process.env.REDNOTE_PROXY_URL;
++                const proxyConfig = proxyUrl ? {
++                    server: proxyUrl,
++                    username: process.env.REDNOTE_PROXY_USER,
++                    password: process.env.REDNOTE_PROXY_PASS,
++                    bypass: 'localhost,127.0.0.1,xhs.life-ai.app',
++                } : undefined;
+                 this.context = await this.browser.newContext({
+                     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
+                     viewport: { width: 1920, height: 1080 },
+@@ -124,6 +133,7 @@
+                     extraHTTPHeaders: {
+                         'accept-language': 'zh-CN,zh;q=0.9',
+                     },
++                    ...(proxyConfig ? { proxy: proxyConfig } : {}),
+                 });
+                 this.page = await this.context.newPage();
+                 await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {

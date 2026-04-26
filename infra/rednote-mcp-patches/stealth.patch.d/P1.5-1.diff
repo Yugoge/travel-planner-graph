@@ -1,0 +1,40 @@
+# P1.5-1: Font enumeration spoof (macOS Helvetica/Menlo/SF Pro list)
+#
+# Scope (ONE issue): Override document.fonts.check() inside addInitScript so the
+# page advertises the macOS-typical font set (matching the macOS UA set by P0-1).
+# Prevents a fingerprint mismatch: Xvfb Linux cannot physically install macOS
+# fonts, but bot detectors probe fonts.check() in JS -- so a JS-layer override is
+# sufficient for the browser-side check.
+#
+# Anchor: P0-2 output -- the last try/catch block added by P0-2 is the
+# Intl.DateTimeFormat timezone spoof ending with `} catch (e) {}`. This diff
+# inserts a new try/catch immediately after that line, before the closing `});`
+# of addInitScript. Stacks cleanly on top of P0-2.
+#
+# Red lines: No fetch/XHR/cookie overrides. No document.fonts.ready modification
+# (only check()). No attempt to actually load fonts on disk.
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -122,5 +122,21 @@
+                     };
+                 } catch (e) {}
++                try {
++                    // P1.5-1: document.fonts.check() spoof -- macOS typical font set (Chrome 145 / macOS 15)
++                    const macFonts = new Set([
++                        'Helvetica', 'Helvetica Neue', 'Arial', 'Arial Black', 'Times', 'Times New Roman',
++                        'Courier', 'Courier New', 'Georgia', 'Verdana', 'Menlo', 'Monaco',
++                        'SF Pro Display', 'SF Pro Text', 'SF Mono', 'Apple SD Gothic Neo', 'PingFang SC',
++                        'Hiragino Sans GB', 'Heiti SC', 'STHeiti', 'Lucida Grande'
++                    ]);
++                    if (document.fonts && document.fonts.check) {
++                        const origCheck = document.fonts.check.bind(document.fonts);
++                        document.fonts.check = function (font, text) {
++                            try { for (const f of macFonts) { if (String(font).indexOf(f) !== -1) return true; } } catch (e) {}
++                            return origCheck(font, text);
++                        };
++                    }
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

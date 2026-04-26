@@ -1,0 +1,104 @@
+# P1-1c: macOS residual cleanup — flip JS-API surfaces to Linux Chrome 147.
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md Cycle 20260426-000600
+#            retro lines 1635-1646 (T1 P1-1c carve-out table; user-ratified).
+# Couples to: P1-1b-ua-alignment.diff (sort -V applies P1-1b BEFORE P1-1c).
+#             P1-1b set headers (UA, sec-ch-ua, userAgentData) to Linux+Chrome 147
+#             but deliberately left 4 page-injected JS-API surfaces speaking macOS.
+# Intent:    Close the 5-layer consistency gap so document.fonts /
+#            getParameter(UNMASKED_RENDERER) / screen.colorDepth /
+#            speechSynthesis.getVoices all match the Linux header surface.
+# Hunks (4): WebGL renderer/vendor (was P0-9 macOS Intel Iris)
+#            macFonts list           (was P1.5-1 SF Pro/Apple SD Gothic)
+#            screen DPR triple       (was P1.5-4 colorDepth=30 Retina)
+#            speechSynthesis voices  (was P1.5-6 Samantha/Alex Siri set)
+# Constraint: addInitScript MUST NOT touch fetch/XMLHttpRequest (LESSONS red-line).
+# Idempotency: apply.sh reverse-patch detection emits [SKIP] on re-apply.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -113,20 +113,21 @@
+                     }
+                 } catch (e) {}
+                 try {
+-                    // (6) WebGL vendor/renderer -- typical macOS Intel Iris
++                    // (6) WebGL vendor/renderer (corrected by P1-1c 20260426: Mesa Linux,
++                    //     aligned with P1-1b's Linux+Chrome 147 header pivot)
+                     const getParam = WebGLRenderingContext.prototype.getParameter;
+                     WebGLRenderingContext.prototype.getParameter = function (param) {
+                         // UNMASKED_VENDOR_WEBGL = 37445, UNMASKED_RENDERER_WEBGL = 37446
+-                        if (param === 37445) return 'Intel Inc.';
+-                        if (param === 37446) return 'Intel Iris OpenGL Engine';
++                        if (param === 37445) return 'Intel Open Source Technology Center';
++                        if (param === 37446) return 'Mesa Intel(R) UHD Graphics (CFL GT2)';
+                         return getParam.call(this, param);
+                     };
+                     if (typeof WebGL2RenderingContext !== 'undefined') {
+                         const getParam2 = WebGL2RenderingContext.prototype.getParameter;
+                         WebGL2RenderingContext.prototype.getParameter = function (param) {
+-                            if (param === 37445) return 'Intel Inc.';
+-                            if (param === 37446) return 'Intel Iris OpenGL Engine';
++                            if (param === 37445) return 'Intel Open Source Technology Center';
++                            if (param === 37446) return 'Mesa Intel(R) UHD Graphics (CFL GT2)';
+                             return getParam2.call(this, param);
+                         };
+                     }
+                 } catch (e) {}
+@@ -141,11 +142,15 @@
+                 } catch (e) {}
+                 try {
+-                    // P1.5-1: document.fonts.check() spoof -- macOS typical font set (Chrome 145 / macOS 15)
+-                    const macFonts = new Set([
+-                        'Helvetica', 'Helvetica Neue', 'Arial', 'Arial Black', 'Times', 'Times New Roman',
+-                        'Courier', 'Courier New', 'Georgia', 'Verdana', 'Menlo', 'Monaco',
+-                        'SF Pro Display', 'SF Pro Text', 'SF Mono', 'Apple SD Gothic Neo', 'PingFang SC',
+-                        'Hiragino Sans GB', 'Heiti SC', 'STHeiti', 'Lucida Grande'
++                    // P1.5-1 (corrected by P1-1c 20260426): document.fonts.check() spoof —
++                    // canonical Linux desktop font set (Debian/Ubuntu defaults), aligned with
++                    // P1-1b's Linux+Chrome 147 header pivot. Variable name 'macFonts' kept
++                    // to avoid drift in the consumer below.
++                    const macFonts = new Set([
++                        'DejaVu Sans', 'DejaVu Sans Mono', 'DejaVu Serif',
++                        'Liberation Sans', 'Liberation Mono', 'Liberation Serif',
++                        'Noto Sans CJK SC', 'Noto Sans Mono CJK SC', 'Noto Sans', 'Noto Serif',
++                        'Ubuntu', 'Ubuntu Mono', 'Ubuntu Condensed',
++                        'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'
+                     ]);
+                     if (document.fonts && document.fonts.check) {
+                         const origCheck = document.fonts.check.bind(document.fonts);
+@@ -201,10 +206,11 @@
+                     }
+                 } catch (e) {}
+                 try {
+-                    // P1.5-4: screen.colorDepth / pixelDepth -> 30, window.devicePixelRatio -> 2 (macOS Retina)
+-                    Object.defineProperty(screen, 'colorDepth', { get: () => 30, configurable: true });
+-                    Object.defineProperty(screen, 'pixelDepth', { get: () => 30, configurable: true });
+-                    Object.defineProperty(window, 'devicePixelRatio', { get: () => 2, configurable: true });
++                    // P1.5-4 (corrected by P1-1c 20260426): Linux X11/Xvfb non-HiDPI standard
++                    // (24-bit truecolor, DPR=1), aligned with P1-1b's Linux+Chrome 147 header pivot.
++                    Object.defineProperty(screen, 'colorDepth',      { get: () => 24, configurable: true });
++                    Object.defineProperty(screen, 'pixelDepth',      { get: () => 24, configurable: true });
++                    Object.defineProperty(window, 'devicePixelRatio',{ get: () => 1,  configurable: true });
+                 } catch (e) {}
+                 try {
+                     // P1.5-5: navigator.gpu -> undefined (suppress WebGPU adapter fingerprint leak)
+@@ -213,15 +219,11 @@
+                 } catch (e) {}
+                 try {
+-                    // P1.5-6: speechSynthesis.getVoices() -- macOS typical voice list (en-US + zh-CN subset)
++                    // P1.5-6 (corrected by P1-1c 20260426): empty voice list (Linux Hetzner
++                    // server with no TTS package — credible alibi; aligned with P1-1b's
++                    // Linux+Chrome 147 header pivot). Variable name 'macVoices' kept to avoid
++                    // drift in the consumer below.
+                     if (typeof speechSynthesis !== 'undefined' && speechSynthesis.getVoices) {
+-                        const macVoices = [
+-                            { voiceURI: 'Samantha', name: 'Samantha', lang: 'en-US', localService: true,  default: true  },
+-                            { voiceURI: 'Alex',     name: 'Alex',     lang: 'en-US', localService: true,  default: false },
+-                            { voiceURI: 'Fred',     name: 'Fred',     lang: 'en-US', localService: true,  default: false },
+-                            { voiceURI: 'Victoria', name: 'Victoria', lang: 'en-US', localService: true,  default: false },
+-                            { voiceURI: 'Daniel',   name: 'Daniel',   lang: 'en-GB', localService: true,  default: false },
+-                            { voiceURI: 'Ting-Ting',name: 'Ting-Ting',lang: 'zh-CN', localService: true,  default: false }
+-                        ];
++                        const macVoices = [];
+                         speechSynthesis.getVoices = function () { return macVoices; };
+                     }
+                 } catch (e) {}

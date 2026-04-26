@@ -1,0 +1,56 @@
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -73,8 +73,15 @@
+     async getBrowser() {
+         logger_1.default.info('Launching browser');
+         // 始终创建新的浏览器实例，不复用之前的
++        // stealth.patch P0-1: launch args + ignoreDefaultArgs (Patchright/stealth baseline)
+         this.browser = await playwright_1.chromium.launch({
+             headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
++            args: [
++                '--disable-blink-features=AutomationControlled',
++                '--no-first-run',
++                '--disable-dev-shm-usage',
++            ],
++            ignoreDefaultArgs: ['--enable-automation'],
+         });
+         return this.browser;
+     }
+@@ -86,9 +93,16 @@
+         const timeoutSeconds = options?.timeout || 10;
+         logger_1.default.info(`Starting login process with timeout: ${timeoutSeconds}s`);
+         const timeoutMs = timeoutSeconds * 1000;
++        // stealth.patch P0-1: same launch args on login() path for fingerprint parity with getBrowser()
+         this.browser = await playwright_1.chromium.launch({
+             headless: process.env.REDNOTE_HEADLESS === '1' ? true : false,
+             timeout: timeoutMs,
++            args: [
++                '--disable-blink-features=AutomationControlled',
++                '--no-first-run',
++                '--disable-dev-shm-usage',
++            ],
++            ignoreDefaultArgs: ['--enable-automation'],
+         });
+         if (!this.browser) {
+             logger_1.default.error('Failed to launch browser');
+@@ -99,7 +113,19 @@
+         while (retryCount < maxRetries) {
+             try {
+                 logger_1.default.info(`Login attempt ${retryCount + 1}/${maxRetries}`);
+-                this.context = await this.browser.newContext();
++                // stealth.patch P0-1: newContext fingerprint config (macOS Chrome 145
++                // aligned with jackwener/xhs-cli). extraHTTPHeaders does NOT set Origin —
++                // Origin stays per-request from page context to match x-s-common
++                // (LESSONS §"Origin/Referer for edith: DO NOT override").
++                this.context = await this.browser.newContext({
++                    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
++                    viewport: { width: 1920, height: 1080 },
++                    locale: 'zh-CN',
++                    timezoneId: 'Asia/Shanghai',
++                    extraHTTPHeaders: {
++                        'accept-language': 'zh-CN,zh;q=0.9',
++                    },
++                });
+                 this.page = await this.context.newPage();
+                 await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                     const url = route.request().url().replace(

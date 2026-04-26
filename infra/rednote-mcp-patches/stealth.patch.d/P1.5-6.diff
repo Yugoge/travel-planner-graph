@@ -1,0 +1,42 @@
+# P1.5-6: speechSynthesis.getVoices() spoof (macOS typical voice list)
+#
+# Scope (ONE issue): Override speechSynthesis.getVoices() inside addInitScript
+# to return the typical macOS Chrome 145 voice list. Server has no TTS voices,
+# so a real call returns [] -- an immediate mismatch against the macOS UA.
+# Modern bot detectors (creepjs, fpcollect) probe getVoices() synchronously
+# and cross-reference against UA platform.
+#
+# Voice list: the 5-8 most common macOS Chrome voices that are stable across
+# OS versions (Samantha, Alex, Fred, Victoria, Karen, Daniel, Moira, Tessa).
+# Per spec Section 7 P1.5-6 and MDN SpeechSynthesisVoice examples.
+#
+# Anchor: post-P1.5-5 output of rednoteTools.js. Same stacking pattern --
+# inserts a new try/catch before the closing `});` of addInitScript.
+#
+# Red lines: No fetch/XHR/cookie overrides. No speechSynthesis.speak override
+# (read-only voices list is sufficient). Synchronous replacement is correct:
+# bot probes call getVoices() expecting a pre-loaded list.
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -193,6 +193,20 @@
+                     Object.defineProperty(navigator, 'gpu', { get: () => undefined, configurable: true });
+                     if ('gpu' in Navigator.prototype) { try { delete Navigator.prototype.gpu; } catch (e) {} }
+                 } catch (e) {}
++                try {
++                    // P1.5-6: speechSynthesis.getVoices() -- macOS typical voice list (en-US + zh-CN subset)
++                    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.getVoices) {
++                        const macVoices = [
++                            { voiceURI: 'Samantha', name: 'Samantha', lang: 'en-US', localService: true,  default: true  },
++                            { voiceURI: 'Alex',     name: 'Alex',     lang: 'en-US', localService: true,  default: false },
++                            { voiceURI: 'Fred',     name: 'Fred',     lang: 'en-US', localService: true,  default: false },
++                            { voiceURI: 'Victoria', name: 'Victoria', lang: 'en-US', localService: true,  default: false },
++                            { voiceURI: 'Daniel',   name: 'Daniel',   lang: 'en-GB', localService: true,  default: false },
++                            { voiceURI: 'Ting-Ting',name: 'Ting-Ting',lang: 'zh-CN', localService: true,  default: false }
++                        ];
++                        speechSynthesis.getVoices = function () { return macVoices; };
++                    }
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

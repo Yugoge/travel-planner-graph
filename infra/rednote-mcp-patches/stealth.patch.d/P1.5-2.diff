@@ -1,0 +1,44 @@
+# P1.5-2: navigator.mediaDevices.enumerateDevices() spoof
+#
+# Scope (ONE issue): Override navigator.mediaDevices.enumerateDevices() inside
+# addInitScript to return 3 stable fake devices (audioinput, videoinput,
+# audiooutput) with fixed per-account-stable deviceIds and empty labels
+# (unauthorized = empty string is the real-browser behavior).
+#
+# The server has no physical camera/microphone but a real macOS Chrome 145
+# always surfaces 2-4 devices. A fingerprinter that calls enumerateDevices()
+# and gets [] treats the context as a bot. Fixed deviceIds simulate "consistent
+# account identity" -- real browsers return stable IDs as long as permissions
+# don't change.
+#
+# Anchor: stacks on top of P0-2 + P1.5-1. Prev diff (P1.5-1) ends with its
+# document.fonts.check try/catch block. This diff inserts a new try/catch for
+# mediaDevices immediately after, before the closing `});` of addInitScript.
+#
+# Red lines: No fetch/XHR/cookie overrides. `label` deliberately empty string
+# (authentic unauthorized behavior). No getUserMedia override.
+#
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -137,6 +137,21 @@
+                         };
+                     }
+                 } catch (e) {}
++                try {
++                    // P1.5-2: mediaDevices.enumerateDevices() -- 3 stable fake devices (audioinput/videoinput/audiooutput)
++                    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
++                        const fakeDevices = [
++                            { kind: 'audioinput',  deviceId: 'a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890', groupId: 'grp-default-audio', label: '' },
++                            { kind: 'videoinput',  deviceId: 'b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f678901', groupId: 'grp-default-video', label: '' },
++                            { kind: 'audiooutput', deviceId: 'c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890123', groupId: 'grp-default-audio', label: '' }
++                        ];
++                        navigator.mediaDevices.enumerateDevices = function () {
++                            return Promise.resolve(fakeDevices.map(d => Object.assign({}, d, {
++                                toJSON: function () { return { kind: this.kind, deviceId: this.deviceId, groupId: this.groupId, label: this.label }; }
++                            })));
++                        };
++                    }
++                } catch (e) {}
+             });
+             await this.page.route('**://edith.xiaohongshu.com/**', async (route) => {
+                 const url = route.request().url().replace(

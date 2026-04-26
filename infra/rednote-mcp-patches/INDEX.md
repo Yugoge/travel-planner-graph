@@ -1,15 +1,34 @@
 # rednote-mcp-patches
 
-*Last updated: 2026-04-14T18:45:53Z*
-**Total entries**: 5
+*Last updated: 2026-04-25T11:18:44Z*
+**Total entries**: 24
 **Convention**: kebab
 
 ## Tree
 ```
 rednote-mcp-patches/
-├── `apply.sh` - Apply rednote-mcp patches for XHS proxy support
+├── stealth.patch.d/
+│   ├── aggregator-input/
+│   │   ├── `P0-2.diff` - diff file
+│   │   ├── `P0-4.diff` - diff file
+│   │   └── `P1.5-14.diff` - diff file
+│   ├── `P0-1.diff` - diff file
+│   ├── `P0-3.diff` - diff file
+│   ├── `P0-3b.diff` - diff file
+│   ├── `P0-4-clicks.diff` - diff file
+│   ├── `P0-9-W5-composed-ctx.diff` - diff file
+│   ├── `P1.5-1.diff` - diff file
+│   ├── `P1.5-14-auth.diff` - diff file
+│   ├── `P1.5-2.diff` - diff file
+│   ├── `P1.5-3.diff` - diff file
+│   ├── `P1.5-4.diff` - diff file
+│   ├── `P1.5-5.diff` - diff file
+│   ├── `P1.5-6.diff` - diff file
+│   └── `P1.5-7.diff` - diff file
+├── `apply.sh` - Apply rednote-mcp patches for XHS proxy support + stealth fragments
 ├── `authManager.js.patched` - patched file
 ├── `authManager.patch` - patch file
+├── `proxy.env.example` - example file
 ├── `rednoteTools.js.patched` - patched file
 └── `rednoteTools.patch` - patch file
 ```
