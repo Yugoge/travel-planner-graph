@@ -1,0 +1,181 @@
+# P1.5-8: humanType + _gammaKeyDelayMs — stealth-grade keystroke helpers
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md
+#            Section 7 lines 1334-1339 (mandatory parameters: Gamma(2.5, 50ms),
+#                                        8% typo, burst pause, REDNOTE_KEYSTROKE_LOG)
+#            Section 7 lines 1534-1539 (T2-3 fragment-name + AC)
+#            Section 7 line 1422 (Anderson-Darling AC — DEFERRED to TIER-L cycle)
+#            Section 7 line 1538 ("新 fragment: P1.5-8-humantype.diff")
+#
+# Cycle: dev-20260427-010000 (iter-3 of /redev for spec-20260423-080000;
+#        cycle 1 of 5 in user's "thoroughly complete spec" sweep:
+#        T2-3 -> T2-6 -> T2-7 -> T2-8 -> T2-4).
+#
+# Couples to: P1-3-shuffle.diff (just-prior cycle's _shuffleIndices is the
+#             after-context anchor for THIS hunk; iter-2 added L593-606 JSDoc +
+#             body). This T2-3 inserts BEFORE that JSDoc opener and AFTER the
+#             randomPageDwell close brace at L592.
+# Independent of: P1-1 / P1-1b / P1-1c family (different region — addInitScript
+#                 block at L40-280, never touched here).
+#
+# Intent:    Close spec Section 7 line 1538 fragment-artifact expectation by
+#            landing two new helper methods on the RedNoteTools class:
+#              - humanType(page, selector, text)  (public; for future call sites)
+#              - _gammaKeyDelayMs()               (private; per-key delay sampler)
+#            Behavior is stealth-grade keyboard rhythm: per-char dispatch with
+#            US-printable -> page.keyboard.press(char) and non-US (CJK / accented)
+#            -> page.keyboard.insertText(char). Inter-key delay sampled from
+#            Gamma(shape=2.5, scale=50ms) clamped to [60, 180] ms. 8% per-ASCII-char
+#            typo (QWERTY-adjacent) with 150-350ms wait + Backspace + correct char.
+#            Burst pause 200-900ms uniform every N chars where N is uniform [3,8].
+#            Optional REDNOTE_KEYSTROKE_LOG=1 emits per-key timestamps via
+#            logger_1.default.debug ONLY (no info/warn/error/console/stdout).
+#
+# Honest scope statement (post-codex-OBJ-4): this fragment lands the helper
+# ARTIFACT only. It does NOT close the runtime keyboard-rhythm detection signal
+# because no interactive-typing call site exists in the current dist tree
+# (searchNotes navigates via page.goto(URL?keyword=...) at L343, URL-param
+# injection — verified by pre-flight grep for keyboard\.type|\.type( returning
+# 0 matches across the entire dist/). The runtime detection gap stays OPEN
+# until a future cycle wires this helper into a call site (search-box typing
+# migration, comment posting, or login form filling).
+#
+# Hunks (1): #1 helper-region insertion at L592-593 boundary
+#                (between randomPageDwell close brace L592 and _shuffleIndices
+#                JSDoc /** opener L593). Adds humanType + _gammaKeyDelayMs.
+#
+# Constraint: DOES NOT touch addInitScript block (W4 / LESSONS red-line).
+#             DOES NOT touch fetch / XMLHttpRequest in any region.
+#             DOES NOT modify auth/authManager.js (W2; single-task scope).
+#             DOES NOT modify any existing function body (helper-only land; W1).
+#             DOES NOT modify apply.sh (W3; auto-discovers via sort -V).
+#             DOES NOT introduce a new module file (W6; methods on existing
+#             RedNoteTools class).
+#             DOES NOT introduce any new call site (W5; helper-only land,
+#             pre-flight grep already returned 0 for keyboard\.type|\.type(
+#             so there is nothing to migrate this cycle).
+#             Bulk page.keyboard.type(text) is FORBIDDEN — it bypasses
+#             per-char Gamma timing.
+#             page.keyboard.press(char) is UNSAFE for non-US-layout chars
+#             (CJK, accented) — Playwright USKeyboardLayout map raises
+#             NonRecoverableDOMError. Helper splits dispatch per-char.
+#
+# Acceptance: STATIC ONLY this cycle (grep + node --check + marker integrity +
+#             MD5 baselines + idempotent re-apply). Runtime AC ("log 输出键击
+#             timestamp 序列做 Anderson-Darling test fit Gamma(2.5, 50ms)",
+#             spec line 1539) EXPLICITLY DEFERRED to TIER-L runtime cycle
+#             gated on T0'-1 (cookie refresh) + T0'-2 (IP strategy). Same
+#             precedent as P1-1, P1-1b, P1-1c, P1-3, P1.5-1..7, P1.5-14
+#             (6 prior cycles all closed on static-only QA).
+#
+# Idempotency: apply.sh forward-dry-run + reverse-dry-run + marker file gate.
+#              Second apply.sh run emits [SKIP] line; zero MD5 drift.
+#
+# Sibling-cycle collision warning (post-codex-OBJ-3 / E8b): codex implementation
+# plan A.2 for the FUTURE T2-6 P1.5-11 window-events cycle also names "after
+# randomPageDwell()" as its insertion site. THIS T2-3 cycle consumes the
+# L592-L593 corridor; the future T2-6 BA spec MUST re-grep the post-T2-3 file
+# for a new boundary (e.g., insert AFTER _gammaKeyDelayMs but BEFORE the
+# _shuffleIndices JSDoc, OR move elsewhere in the helper region between
+# _weibullSample and randomDelay). Advisory for future cycle, not enforced here.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -591,6 +591,98 @@
+         await new Promise((resolve) => setTimeout(resolve, clamped * 1000));
+     }
+     /**
++     * Sample inter-keystroke delay (ms) from Gamma(shape=2.5, scale=50ms),
++     * clamped to [60, 180] ms. Per spec lines 1336+1536 (P1.5-8 keyboard rhythm).
++     * Uses Marsaglia & Tsang acceptance-rejection for shape>1; the [60,180]ms
++     * clamp dominates correctness over sampler precision (mean ~125ms target).
++     */
++    _gammaKeyDelayMs() {
++        const shape = 2.5;
++        const scale = 50;
++        // Marsaglia & Tsang 2000 method for shape >= 1.
++        const d = shape - 1 / 3;
++        const c = 1 / Math.sqrt(9 * d);
++        let x, v, u;
++        // Box-Muller for the standard normal sample inside the loop.
++        while (true) {
++            do {
++                const u1 = Math.random() || 1e-12;
++                const u2 = Math.random();
++                x = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
++                v = 1 + c * x;
++            } while (v <= 0);
++            v = v * v * v;
++            u = Math.random();
++            if (u < 1 - 0.0331 * x * x * x * x) break;
++            if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) break;
++        }
++        const sampledMs = d * v * scale;
++        return Math.max(60, Math.min(180, sampledMs));
++    }
++    /**
++     * Stealth-grade per-character typing into a focused input element.
++     * Per spec lines 1336-1339 + 1534-1539 (T2-3 / P1.5-8). Helper-only land
++     * this cycle — no call sites yet. Anderson-Darling fit verification
++     * (spec line 1539) DEFERRED to TIER-L runtime cycle.
++     *
++     * Behavior:
++     *   1. Click `selector` to focus the input (caller responsible for valid selector).
++     *   2. For each char in `text`:
++     *      - US-printable (\x20-\x7E): page.keyboard.press(char). With P=0.08,
++     *        first emit a QWERTY-adjacent typo char, wait 150-350ms uniform,
++     *        emit Backspace, then emit the real char.
++     *      - Non-US (CJK, accented, full-width): page.keyboard.insertText(char).
++     *        Skips typo branch (typo P=0).
++     *   3. Sleep _gammaKeyDelayMs() ms between chars.
++     *   4. Every uniform [3, 8] chars insert a uniform [200, 900] ms burst pause.
++     *   5. If process.env.REDNOTE_KEYSTROKE_LOG === '1', emit per-key timestamp
++     *      via logger_1.default.debug() ONLY (never info/warn/error/console/stdout).
++     *      Bumps logger.level to 'debug' on first env-flagged call so the
++     *      winston combined-DailyRotateFile transport actually receives the
++     *      records (utils/logger.js hardcodes level='info' by default, which
++     *      would otherwise filter debug() to /dev/null).
++     */
++    async humanType(page, selector, text) {
++        const ADJ = { a:'sq', b:'vn', c:'xv', d:'sf', e:'wr', f:'dg', g:'fh', h:'gj', i:'uo', j:'hk', k:'jl', l:'k', m:'n', n:'bm', o:'ip', p:'o', q:'aw', r:'et', s:'ad', t:'ry', u:'yi', v:'cb', w:'qe', x:'zc', y:'tu', z:'x', '1':'2', '2':'13', '3':'24', '4':'35', '5':'46', '6':'57', '7':'68', '8':'79', '9':'80', '0':'9' };
++        const logEnabled = process.env.REDNOTE_KEYSTROKE_LOG === '1';
++        // Winston logger is hardcoded at level='info' in utils/logger.js; bump
++        // to 'debug' when env flag is set so debug() actually reaches transports.
++        // No-op when flag absent — preserves default info threshold for production.
++        if (logEnabled && logger_1.default.level !== 'debug') logger_1.default.level = 'debug';
++        const logKey = (label) => { if (logEnabled) logger_1.default.debug(`[humanType] t=${Date.now()} ${label}`); };
++        await page.click(selector);
++        let burstBudget = 3 + Math.floor(Math.random() * 6);
++        for (let i = 0; i < text.length; i++) {
++            const ch = text[i];
++            const isUsPrintable = /^[\x20-\x7E]$/.test(ch);
++            if (isUsPrintable) {
++                const lower = ch.toLowerCase();
++                if (Math.random() < 0.08 && Object.prototype.hasOwnProperty.call(ADJ, lower)) {
++                    const adj = ADJ[lower];
++                    const typoChar = adj[Math.floor(Math.random() * adj.length)];
++                    await page.keyboard.press(typoChar);
++                    logKey(`typo=${typoChar} for=${ch}`);
++                    await page.waitForTimeout(150 + Math.floor(Math.random() * 201));
++                    await page.keyboard.press('Backspace');
++                    logKey('backspace');
++                    await page.waitForTimeout(this._gammaKeyDelayMs());
++                }
++                await page.keyboard.press(ch);
++            } else {
++                await page.keyboard.insertText(ch);
++            }
++            logKey(`char=${ch} us=${isUsPrintable}`);
++            await page.waitForTimeout(this._gammaKeyDelayMs());
++            burstBudget--;
++            if (burstBudget <= 0 && i < text.length - 1) {
++                const burstMs = 200 + Math.floor(Math.random() * 701);
++                logKey(`burst=${burstMs}`);
++                await page.waitForTimeout(burstMs);
++                burstBudget = 3 + Math.floor(Math.random() * 6);
++            }
++        }
++    }
++    /**
+      * Fisher-Yates shuffle. Returns a permuted [0..n-1] index array.
+      * Per P1-3 spec (line 1476-1482): defeats mechanical sequential (0,1,2,3)
+      * iteration bot signature in searchNotes. Runtime AC (100x search Pearson
