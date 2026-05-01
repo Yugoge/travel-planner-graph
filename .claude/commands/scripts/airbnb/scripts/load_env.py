@@ -3,12 +3,10 @@
 Load environment variables from .env file in project root.
 
 DEPRECATED: This file is kept for backwards compatibility.
-All skills use the centralized version at .claude/skills/shared/load_env.py.
+All skills use the centralized version at .claude/commands/scripts/shared/load_env.py.
 
 This shim loads the shared module by absolute path via importlib so it does
-not depend on sys.path ordering (callers like places.py insert this
-directory first into sys.path, which used to cause a circular
-`from load_env import load_env` against this very file).
+not depend on sys.path ordering.
 """
 
 import importlib.util
@@ -19,7 +17,5 @@ _spec = importlib.util.spec_from_file_location('_shared_load_env', _shared_path)
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
-# The shared module auto-runs load_env() on import (side-effect contract).
-# Re-export the function for callers that invoke it explicitly.
 load_env = _mod.load_env
 __all__ = ['load_env']

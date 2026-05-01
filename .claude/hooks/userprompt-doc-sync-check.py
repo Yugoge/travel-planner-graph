@@ -27,7 +27,7 @@ WATCHED_DIRS: set[str] = {
     '.claude/commands',
     '.claude/agents',
     '.claude/hooks',
-    '.claude/skills',
+    '.claude/commands/scripts',
     '.claude/scripts',
 }
 SKIP_FILES: set[str] = {'INDEX.md', 'README.md', '__init__.py', '.DS_Store'}

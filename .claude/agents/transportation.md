@@ -76,7 +76,7 @@ For each location change day:
    - Use Duffel Flights for comprehensive flight search
    - Real-time pricing, global airlines (including China domestic carriers)
    - Parse JSON output for pricing, schedules, airline details
-   - See `.claude/skills/duffel-flights/SKILL.md`
+   - See `.claude/commands/scripts/duffel-flights/skill.md`
    - Check baggage policies and total journey time
    - Supports IATA airport codes (e.g., PEK, SHA, CDG, LHR)
    - **Confirmed**: Works for China domestic flights (tested PEK→SHA)
@@ -88,7 +88,7 @@ For each location change day:
    - ⚠️ **YOU MUST divide by 60** to convert to minutes for timeline
    - ⚠️ Failure to convert causes 60x errors in timeline planning
    - Supports both English and Chinese location names
-   - See `.claude/skills/gaode-maps/SKILL.md` for usage
+   - See `.claude/commands/scripts/gaode-maps/skill.md` for usage
 
    **For International Routes Outside China**:
    - Use Google Maps for driving, transit, walking routes
@@ -334,7 +334,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - On failure: Report error to user, no fallback
 - Always include data source in output: "duffel_flights"
 
-**See**: `.claude/skills/duffel-flights/SKILL.md` for complete example
+**See**: `.claude/commands/scripts/duffel-flights/skill.md` for complete example
 
 ---
 
@@ -348,7 +348,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 
 1. Parse JSON output for segments (train, bus, walk)
 2. Extract: departure/arrival times, cost, duration, station names
-3. Optionally compare with driving route (see `.claude/skills/gaode-maps/SKILL.md` for routing usage)
+3. Optionally compare with driving route (see `.claude/commands/scripts/gaode-maps/skill.md` for routing usage)
 4. Select best option based on user preferences
 5. Save structured data to transportation.json
 
@@ -357,7 +357,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - On failure: Report error to user, no fallback
 - Always include data source in output: "gaode_maps"
 
-**See**: `.claude/skills/gaode-maps/examples/inter-city-route.md` for complete example
+**See**: `.claude/commands/scripts/gaode-maps/examples/inter-city-route.md` for complete example
 
 ---
 
@@ -384,7 +384,7 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent transportation \
 - On failure: Report error to user, no fallback
 - Always include data source in output: "google_maps"
 
-**See**: `.claude/skills/google-maps/examples/route-planning.md` for complete example
+**See**: `.claude/commands/scripts/google-maps/examples/route-planning.md` for complete example
 
 ## Quality Standards
 

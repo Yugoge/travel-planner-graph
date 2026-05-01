@@ -42,7 +42,7 @@ All tools are accessed via Python scripts in the `scripts/` directory that commu
 
 Execute scripts from the skill directory:
 ```bash
-cd /root/travel-planner/.claude/skills/rednote
+cd /root/travel-planner/.claude/commands/scripts/rednote
 source /root/.claude/venv/bin/activate && python3 scripts/search.py <keyword> [--limit LIMIT]
 ```
 
@@ -281,7 +281,7 @@ Edit `~/.config/Claude/claude_desktop_config.json`:
 
 **Step 1: Search for relevant content**
 ```bash
-cd /root/travel-planner/.claude/skills/rednote
+cd /root/travel-planner/.claude/commands/scripts/rednote
 source /root/.claude/venv/bin/activate && python3 scripts/search.py "西安旅游三天" --limit 20
 ```
 
@@ -319,7 +319,7 @@ source /root/.claude/venv/bin/activate && python3 scripts/search.py "西安旅�
 ```bash
 # In attractions agent
 # Search RedNote for hidden gems
-cd /root/travel-planner/.claude/skills/rednote
+cd /root/travel-planner/.claude/commands/scripts/rednote
 source /root/.claude/venv/bin/activate && python3 scripts/search.py "北京小众景点" --limit 20
 
 # In meals agent

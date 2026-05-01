@@ -33,7 +33,7 @@ Gaode Maps (高德地图/AMap) provides comprehensive mapping and location servi
 
 Execute scripts from the skill directory:
 ```bash
-cd /root/travel-planner/.claude/skills/gaode-maps
+cd /root/travel-planner/.claude/commands/scripts/gaode-maps
 source /root/.claude/venv/bin/activate && python3 scripts/<category>.py <function> <arguments>
 ```
 

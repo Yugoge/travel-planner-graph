@@ -76,11 +76,11 @@ For each day in the trip:
    - **For global destinations**: Use Google Maps (see skill docs for usage)
    - **For China destinations**: Use Gaode Maps POI search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<entertainment_query>" "<city>" "080000"
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<entertainment_query>" "<city>" "080000"
      ```
    - **For local entertainment recommendations (China)**: Use RedNote search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<search_keyword>" --limit 20
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
      ```
    - Check local event calendars for travel dates
    - Research venues and show times
@@ -332,9 +332,9 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent entertainment \
 
 **Skill Integration Notes** (all skills called via direct Bash script execution, NOT the Skill tool):
 - For global destinations: Use Google Maps skill scripts
-- For China destinations: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<query>" "<city>" "<category>"`
-- For Chinese entertainment insights: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<keyword>" --limit 20`
-- For routing: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/routing.py transit "<origin_lng,lat>" "<dest_lng,lat>" "<city>" 0`
+- For China destinations: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<query>" "<city>" "<category>"`
+- For Chinese entertainment insights: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<keyword>" --limit 20`
+- For routing: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/routing.py transit "<origin_lng,lat>" "<dest_lng,lat>" "<city>" 0`
 - See individual SKILL.md files for detailed usage patterns
 
 

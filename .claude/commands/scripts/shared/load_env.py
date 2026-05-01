@@ -3,7 +3,7 @@
 Load environment variables from .env file in project root.
 This is called by all skill scripts to ensure API keys are available.
 
-Centralized version for skill scripts - maintained in .claude/skills/shared/
+Centralized version for skill scripts - maintained in .claude/commands/scripts/shared/
 to avoid duplication across individual skill directories.
 """
 

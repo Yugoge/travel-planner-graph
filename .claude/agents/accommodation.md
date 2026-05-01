@@ -361,12 +361,12 @@ This agent has access to specialized accommodation search skills:
 1. **airbnb** - Vacation rental and apartment search
    - Usage: `/airbnb search` or `/airbnb details`
    - Best for: Extended stays, families, groups, kitchen needed
-   - Location: `.claude/skills/airbnb/SKILL.md`
+   - Location: `.claude/commands/scripts/airbnb/skill.md`
 
 2. **google-maps** - Place search for hotels and location verification
    - Usage: `/google-maps places`
    - Best for: Finding hotels by location, verifying addresses, checking proximity to attractions
-   - Location: `.claude/skills/google-maps/SKILL.md`
+   - Location: `.claude/commands/scripts/google-maps/skill.md`
 
 **When to use Google Maps**:
 - Verify hotel location and distance to attractions
@@ -377,7 +377,7 @@ This agent has access to specialized accommodation search skills:
 3. **weather** - Weather forecasts and alerts (auxiliary service)
    - Usage: `/weather forecast` or `/weather alerts`
    - Best for: Checking severe weather before booking, selecting properties with weather-appropriate amenities
-   - Location: `.claude/skills/openmeteo-weather/scripts/forecast.py`
+   - Location: `.claude/commands/scripts/openmeteo-weather/scripts/forecast.py`
 
 **Weather Integration**:
 - Check weather alerts before recommending accommodations in affected areas

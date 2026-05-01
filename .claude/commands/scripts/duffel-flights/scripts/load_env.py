@@ -3,7 +3,7 @@
 Load environment variables from .env file in project root.
 
 DEPRECATED: This file is kept for backwards compatibility.
-All skills use the centralized version at .claude/skills/shared/load_env.py.
+All skills use the centralized version at .claude/commands/scripts/shared/load_env.py.
 
 This shim loads the shared module by absolute path via importlib so it does
 not depend on sys.path ordering.

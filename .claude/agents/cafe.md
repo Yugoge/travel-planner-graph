@@ -80,11 +80,11 @@ For each day in the trip:
    - **For global destinations**: Use Google Maps
    - **For China destinations**: Use Gaode Maps POI search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<cafe_query>" "<city>" "050000"
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<cafe_query>" "<city>" "050000"
      ```
    - **For authentic recommendations (China)**: Use RedNote search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<search_keyword>" --limit 20
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
      ```
    - Search for cafes near planned activities or accommodation
    - Consider: Ratings (>=4.0 stars), atmosphere, location convenience, price range

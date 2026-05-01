@@ -48,4 +48,4 @@ ip_location()
 - Batch geocoding strategies
 - Validation techniques
 
-**See**: [skills/gaode-maps/tools/geocoding.md](../../../skills/gaode-maps/tools/geocoding.md)
+**See**: [commands/scripts/gaode-maps/tools/geocoding.md](../../../commands/scripts/gaode-maps/tools/geocoding.md)

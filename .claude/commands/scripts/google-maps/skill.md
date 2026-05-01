@@ -27,7 +27,7 @@ International mapping and location services using Google Maps API via MCP server
 
 Execute scripts from skill directory:
 ```bash
-cd /root/travel-planner/.claude/skills/google-maps
+cd /root/travel-planner/.claude/commands/scripts/google-maps
 source /root/.claude/venv/bin/activate && python3 scripts/<script_name>.py <arguments>
 ```
 

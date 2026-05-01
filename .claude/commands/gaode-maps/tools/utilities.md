@@ -52,4 +52,4 @@ weather_info({ city: "成都", extensions: "all" })
 - Caching strategies
 - Integration with timeline/budget agents
 
-**See**: [skills/gaode-maps/tools/utilities.md](../../../skills/gaode-maps/tools/utilities.md)
+**See**: [commands/scripts/gaode-maps/tools/utilities.md](../../../commands/scripts/gaode-maps/tools/utilities.md)

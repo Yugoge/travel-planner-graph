@@ -51,4 +51,4 @@ Use `transit_route` for inter-city travel to get:
 - Cost estimation formulas
 - Integration with transportation workflow
 
-**See**: [skills/gaode-maps/tools/routing.md](../../../skills/gaode-maps/tools/routing.md)
+**See**: [commands/scripts/gaode-maps/tools/routing.md](../../../commands/scripts/gaode-maps/tools/routing.md)
