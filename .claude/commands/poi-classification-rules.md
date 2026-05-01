@@ -1,5 +1,6 @@
 ---
 description: "Decision tree and rules for POI classification across domains"
+disable-model-invocation: true
 ---
 
 # POI Classification Rules
