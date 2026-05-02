@@ -15,24 +15,24 @@ International mapping and location services using Google Maps API via MCP server
 **Usage**:
 ```bash
 # Place search
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py "restaurants in Paris" 5
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/places.py "restaurants in Paris" 5
 
 # Directions (driving)
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py "New York, NY" "Boston, MA"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/routing.py "New York, NY" "Boston, MA"
 
 # Transit directions
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py "San Francisco" "Los Angeles" transit
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/routing.py "San Francisco" "Los Angeles" transit
 
 # Geocoding
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/geocoding.py geocode "Eiffel Tower, Paris"
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/geocoding.py geocode "Eiffel Tower, Paris"
 
 # Reverse geocoding
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/geocoding.py reverse 48.8584 2.2945
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/geocoding.py reverse 48.8584 2.2945
 ```
 
 ## Available Scripts
 
-All scripts are in `/root/travel-planner/.claude/skills/google-maps/scripts/` and require `GOOGLE_MAPS_API_KEY` environment variable.
+All scripts are in `/root/travel-planner/.claude/commands/scripts/google-maps/scripts/` and require `GOOGLE_MAPS_API_KEY` environment variable.
 
 1. **places.py** - Search for places
    - `places.py "<query>" [limit] [location_bias]`

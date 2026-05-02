@@ -23,7 +23,7 @@ Agent → Bash Tool → Python Script → npx → MCP Server → Google Maps API
 ## Directory Structure
 
 ```
-.claude/skills/google-maps/
+.claude/commands/scripts/google-maps/
 ├── SKILL.md                    # Main skill documentation with usage
 ├── scripts/
 │   ├── mcp_client.py          # Base MCP client (JSON-RPC 2.0)
@@ -56,21 +56,21 @@ Agent → Bash Tool → Python Script → npx → MCP Server → Google Maps API
 #### Search Places
 
 ```bash
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/places.py \
   "restaurants in San Francisco" 10
 ```
 
 #### Compute Routes
 
 ```bash
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/routing.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/routing.py \
   "New York, NY" "Boston, MA" TRANSIT
 ```
 
 #### Lookup Weather
 
 ```bash
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/weather.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/weather.py \
   "Tokyo, Japan"
 ```
 
@@ -188,7 +188,7 @@ User: "Find restaurants in Paris"
 
 Agent executes:
 ```bash
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/google-maps/scripts/places.py \
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/google-maps/scripts/places.py \
   "restaurants in Paris" 5
 ```
 

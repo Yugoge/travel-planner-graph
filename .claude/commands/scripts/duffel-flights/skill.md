@@ -26,7 +26,7 @@ Search for flights worldwide with real-time pricing, availability, and booking i
 
 Execute scripts from skill directory:
 ```bash
-cd /root/travel-planner/.claude/skills/duffel-flights
+cd /root/travel-planner/.claude/commands/scripts/duffel-flights
 source /root/.claude/venv/bin/activate && python3 scripts/<script_name>.py <arguments>
 ```
 
@@ -218,7 +218,7 @@ Get API key from: https://duffel.com/
 
 **Verified Working Example**:
 ```bash
-cd /root/travel-planner/.claude/skills/duffel-flights
+cd /root/travel-planner/.claude/commands/scripts/duffel-flights
 source /root/.claude/venv/bin/activate && python3 scripts/search_flights.py PEK SHA 2026-03-15
 ```
 

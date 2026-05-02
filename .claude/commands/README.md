@@ -1,3 +1,7 @@
+---
+disable-model-invocation: true
+---
+
 # commands
 
 <!-- AUTO:readme-stats -->

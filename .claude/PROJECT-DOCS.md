@@ -120,7 +120,7 @@ Multi-agent travel planning orchestrator. Invokes agents: meals, accommodation, 
 ### `gaode-maps`
 - **Pattern**: progressive_disclosure
 - **Main file**: `.claude/commands/gaode-maps.md` (~200 tokens)
-- **Canonical docs**: `.claude/skills/gaode-maps/tools/` (routing.md, poi-search.md, geocoding.md, utilities.md — ~8000 tokens)
+- **Canonical docs**: `.claude/commands/scripts/gaode-maps/tools/` (routing.md, poi-search.md, geocoding.md, utilities.md — ~8000 tokens)
 - **Quick reference**: `.claude/commands/gaode-maps/tools/` (~1000 tokens stubs)
 - **Load strategy**: Load main file initially, load categories on demand
 - **Token savings**: 85–98% vs loading all tools upfront

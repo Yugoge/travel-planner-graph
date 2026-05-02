@@ -1,3 +1,7 @@
+---
+disable-model-invocation: true
+---
+
 # commands
 
 *Last updated: 2026-04-21T06:23:52Z*

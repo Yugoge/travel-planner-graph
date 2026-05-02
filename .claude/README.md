@@ -67,7 +67,7 @@ Configuration directory for Claude Code containing MCP skills, subagents, slash 
 **skills/**:
 - MCP skill integrations for external APIs
 - Each skill is self-contained
-- See `.claude/skills/README.md` for details
+- See `.claude/commands/scripts/README.md` for details
 - Progressive disclosure pattern (no context pollution)
 
 **agents/**:
@@ -135,7 +135,7 @@ Configuration directory for Claude Code containing MCP skills, subagents, slash 
 
 ## Skill System
 
-**See `.claude/skills/README.md` for comprehensive documentation.**
+**See `.claude/commands/scripts/README.md` for comprehensive documentation.**
 
 **Quick summary**:
 - 7 MCP skills (Airbnb, Duffel, Google Maps, Gaode, RedNote, Weather, Test)
@@ -207,7 +207,7 @@ User: Review interactive trip plan
 
 ### Skills
 
-See `.claude/skills/README.md`
+See `.claude/commands/scripts/README.md`
 
 ## Git Analysis
 

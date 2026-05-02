@@ -73,11 +73,11 @@ For each day in the trip:
    - **For global destinations**: Use Google Maps (see Google Maps Integration section below)
    - **For China destinations**: Use Gaode Maps POI search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/gaode-maps/scripts/poi_search.py keyword "<restaurant_query>" "<city>" "050000"
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<restaurant_query>" "<city>" "050000"
      ```
    - **For authentic local recommendations (China)**: Use RedNote search via Bash:
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "<search_keyword>" --limit 20
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
      ```
    - Breakfast: Search cafes near accommodation
    - Lunch: Search restaurants near planned attractions
@@ -392,7 +392,7 @@ ERROR: Validation failed with 1 HIGH severity issues:
 - On permanent failure: report error to user
 - Always include data source in output (google_maps or gaode_maps)
 
-**See**: `.claude/skills/google-maps/examples/place-search.md` for complete example
+**See**: `.claude/commands/scripts/google-maps/examples/place-search.md` for complete example
 
 ---
 
@@ -405,7 +405,7 @@ ERROR: Validation failed with 1 HIGH severity issues:
 - When POI details in Chinese required
 
 **Workflow with Gaode Maps**:
-1. See `.claude/skills/gaode-maps/SKILL.md` for POI search usage
+1. See `.claude/commands/scripts/gaode-maps/skill.md` for POI search usage
 2. Call `poi_search_keyword` with Chinese keywords and city
 3. Use category code: "050000" (food & dining)
 4. Filter by rating (≥4.0), cost within budget
@@ -418,7 +418,7 @@ ERROR: Validation failed with 1 HIGH severity issues:
 - On permanent failure: report error to user
 - Always include data source in output (gaode_maps or fallback)
 
-**See**: `.claude/skills/gaode-maps/SKILL.md` for category codes and search patterns
+**See**: `.claude/commands/scripts/gaode-maps/skill.md` for category codes and search patterns
 
 ---
 

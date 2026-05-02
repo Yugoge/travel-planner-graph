@@ -15,18 +15,18 @@ Search RedNote (小红书/Xiaohongshu) for authentic Chinese user-generated trav
 **Usage**:
 ```bash
 # Search for notes by keyword
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "北京必去景点" --limit 20
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "北京必去景点" --limit 20
 
 # Search for restaurant recommendations
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "成都本地人推荐美食" --limit 15
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "成都本地人推荐美食" --limit 15
 
 # Search for shopping tips
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "上海购物必去" --limit 10
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "上海购物必去" --limit 10
 ```
 
 ## Available Scripts
 
-All scripts are in `/root/travel-planner/.claude/skills/rednote/scripts/` and output JSON to stdout.
+All scripts are in `/root/travel-planner/.claude/commands/scripts/rednote/scripts/` and output JSON to stdout.
 
 1. **search.py** - Search RedNote notes by keyword
    - `search.py <keyword> [--limit LIMIT]`
@@ -62,13 +62,13 @@ Configured for: attractions, meals, shopping, entertainment agents.
 
 ```bash
 # Attractions agent — hidden gems
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "北京小众景点" --limit 20
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "北京小众景点" --limit 20
 
 # Meals agent — authentic local food
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "成都本地人推荐美食" --limit 15
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "成都本地人推荐美食" --limit 15
 
 # Shopping agent — local markets
-source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/skills/rednote/scripts/search.py "上海购物必去" --limit 10
+source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "上海购物必去" --limit 10
 ```
 
 ## Authentication

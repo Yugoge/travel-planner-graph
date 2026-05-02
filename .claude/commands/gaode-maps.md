@@ -17,20 +17,20 @@ Access Gaode Maps API via MCP server for accurate route planning, POI search, an
 **Usage**:
 ```bash
 # Geocoding
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区" "北京"
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/geocoding.py regeocode "116.481488,39.990464"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/geocoding.py geocode "北京市朝阳区" "北京"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/geocoding.py regeocode "116.481488,39.990464"
 
 # Routing
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/routing.py driving "北京市" "上海市"
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/routing.py driving "北京市" "上海市"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/routing.py transit "重庆市" "成都市" "重庆" "成都"
 
 # POI Search
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "火锅" "重庆"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/poi_search.py nearby "104.065735,30.659462" "餐厅" "" 500
 
 # Utilities
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/utilities.py weather "成都" "all"
-source /root/.claude/venv/bin/activate && python .claude/skills/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/utilities.py weather "成都" "all"
+source /root/.claude/venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/utilities.py distance "116.481488,39.990464" "121.473701,31.230416" 1
 ```
 
 ## Script Categories
@@ -59,14 +59,14 @@ This skill provides Python scripts for direct execution:
 
 ## Script Execution
 
-All scripts are located in `.claude/skills/gaode-maps/scripts/` and can be executed directly:
+All scripts are located in `.claude/commands/scripts/gaode-maps/scripts/` and can be executed directly:
 
 ```bash
 # Full path execution
-source venv/bin/activate || source .venv/bin/activate && python .claude/skills/gaode-maps/scripts/geocoding.py geocode "北京市"
+source venv/bin/activate || source .venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/geocoding.py geocode "北京市"
 
 # Relative path execution (from project root)
-source venv/bin/activate || source .venv/bin/activate && python .claude/skills/gaode-maps/scripts/routing.py driving "北京" "上海"
+source venv/bin/activate || source .venv/bin/activate && python .claude/commands/scripts/gaode-maps/scripts/routing.py driving "北京" "上海"
 ```
 
 ## Coordinate System

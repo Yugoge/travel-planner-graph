@@ -10,13 +10,13 @@ disable-model-invocation: true
 
 ## Summary
 
-Consolidated ~1,700 lines of duplicate documentation between `commands/gaode-maps/tools/` and `skills/gaode-maps/tools/` directories.
+Consolidated ~1,700 lines of duplicate documentation between `commands/gaode-maps/tools/` and `commands/scripts/gaode-maps/tools/` directories.
 
 ## Changes Made
 
 ### 1. Canonical Location Established
 
-**skills/gaode-maps/tools/** is now the single source of truth:
+**commands/scripts/gaode-maps/tools/** is now the single source of truth:
 - `geocoding.md` - 475 lines (complete reference)
 - `poi-search.md` - 433 lines (complete reference)
 - `routing.md` - 371 lines (complete reference)
@@ -71,7 +71,7 @@ Consolidated ~1,700 lines of duplicate documentation between `commands/gaode-map
 
 ### Skills Directory (Canonical Documentation)
 ```
-.claude/skills/gaode-maps/tools/
+.claude/commands/scripts/gaode-maps/tools/
 ├── geocoding.md       (475 lines - complete MCP reference)
 ├── poi-search.md      (433 lines - complete MCP reference)
 ├── routing.md         (371 lines - complete MCP reference)
@@ -132,7 +132,7 @@ Each stub file contains:
 ```bash
 # Verify line counts
 wc -l .claude/commands/gaode-maps/tools/*.md
-wc -l .claude/skills/gaode-maps/tools/*.md
+wc -l .claude/commands/scripts/gaode-maps/tools/*.md
 
 # Expected output:
 #   48 geocoding.md (commands)

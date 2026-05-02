@@ -53,4 +53,4 @@ poi_detail({ id: "B000A7BD6C" })
 - Result enrichment patterns
 - Multi-language support
 
-**See**: [skills/gaode-maps/tools/poi-search.md](../../../skills/gaode-maps/tools/poi-search.md)
+**See**: [commands/scripts/gaode-maps/tools/poi-search.md](../../../commands/scripts/gaode-maps/tools/poi-search.md)
