@@ -1,0 +1,105 @@
+# P1.5-10: sampledCap enforcement on top of P1.5-9-search-intent.
+# (Originally drafted as P1.5-9b during iter2 dev; renamed to P1.5-10 so
+#  sort -V ordering keeps it strictly AFTER P1.5-9 — fresh-install ordering
+#  must apply 9 first, then 10. With the 9b name, sort -V placed 9b BEFORE
+#  9-search-intent which would break fresh-install dependency.)
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md
+#            Section 7 lines 1469-1481 (P1.5-9 mandatory parameters: same-theme
+#                                       allow 3-5 calls per theme run).
+#            BA spec 永久彻底修复-20260502-201141 + iter1 QA report
+#            (qa-report-永久彻底修复-20260502-201141.json) AC5+AC7 warning:
+#            sampledCap sampled but never enforced; same-theme cap mandated by
+#            spec lines 1477-1480 ("同主题... 允许 3-5 次") was unenforced at
+#            iter1 static-helper level.
+#
+# Cycle: 永久彻底修复-20260502-201141-iter2 (cycle 10 iter 2; first iter2
+#        cycle in chain; sibling fragment to P1.5-9 — additive only).
+#
+# Couples to: rednoteTools.js _checkSearchIntent same-theme branch only.
+#             P1.5-9 already lands the function body, fs/path/os imports,
+#             constructor field, and entry-wiring at searchNotes().
+#             This fragment adds ONE conditional + throw + side-effect persist
+#             inside the existing if (sameTheme) { ... } block.
+# Independent of: P1-1 / P1-1b / P1-1c family (different region — addInitScript
+#             at L40-280, never touched here). P1.5-13 soft-rc cooldown,
+#             P1.5-12 a1-persist, P1.5-11 window-events all separate regions.
+#             Helper-tail region also untouched (per codex point #14 from
+#             iter1 — uncrowded zone preferred).
+#
+# Intent:    Enforce the sampledCap [3,5] cap on same-theme calls. Hard rule
+#            (verbatim from spec line 1477-1480 + iter1 QA finding):
+#              - When state.callsInTheme exceeds state.sampledCap (which was
+#                sampled at theme-change time and persisted by P1.5-9),
+#                throw new Error("Cool-down active: same-theme cap (...)
+#                exceeded for theme \"...\"; switch theme or wait")
+#                BEFORE the final state persist line.
+#              - The throw branch performs an explicit fs.writeFileSync to
+#                clamp callsInTheme = sampledCap and persist the cap-tripped
+#                state, so a retry without theme switch immediately re-throws
+#                (no bypass-by-retry).
+#              - logger_1.default.debug emits the diagnostic
+#                'sampled_cap_exceeded' tag per BA spec iter2 contract.
+#
+# State semantic (post-iter2, same-theme branch):
+#   - state.callsInTheme starts at 1 on theme change (set by P1.5-9 line 619).
+#   - increments by 1 each subsequent same-theme call (P1.5-9 line 601).
+#   - cap=3 allows calls 1, 2, 3 and throws on call 4 (codex iter2 point #2 —
+#     verified the "允许 3-5 次" semantic match).
+#
+# Codex feedback incorporated (iter2 codex consult):
+#   #1 — fs.writeFileSync 3rd arg: 'utf8' string (not numeric 4 from prompt
+#        typo); matches sibling helper write call at line 623.
+#   #2 — Insertion point AFTER state.callsInTheme increment; cap=3 -> calls
+#        1,2,3 pass; call 4 throws. Matches "允许 3-5 次".
+#   #3 — `state.sampledCap && ...` guards initial state.sampledCap=0 case
+#        (no theme set yet → no cap to check; theme-change branch will sample
+#        cap on next call's miss path). Acceptable for production path.
+#   #4 — Throw before final state.lastCallAt = now is correct control flow;
+#        explicit fs.writeFileSync inside throw branch persists clamped state
+#        before rethrowing.
+#   #5 — Cool-down active prefix preserved for sibling consistency with
+#        line 608 (cross-theme cooldown) and line 614 (session theme cap).
+#        sampled_cap_exceeded tag emitted via logger.debug per BA contract.
+#   #6 — sampledCap orthogonal to Weibull(1.2, 180s) — no coupling needed.
+#
+# Constraint: DOES NOT touch addInitScript block (red-line #1 protection).
+#             DOES NOT touch fetch/XHR/cookie descriptor in any region (#1).
+#             DOES NOT modify auth/authManager.js (single-file scope).
+#             DOES NOT modify any existing helper or function body except
+#             the targeted same-theme branch within _checkSearchIntent.
+#             DOES NOT introduce new module file under dist/lib/.
+#             DOES NOT alter sampledCap sampling expression (state.sampledCap
+#             = 3 + Math.floor(Math.random() * 3) on theme-change path —
+#             P1.5-9 owns that line; this fragment only READS sampledCap).
+#
+# Acceptance: STATIC ONLY this iter2 (grep + node --check + marker integrity).
+#             Runtime AC ("同主题超过 sampledCap 必须返回 cool-down 错误")
+#             DEFERRED to TIER-L runtime cycle gated on T0'-1 cookie refresh
+#             + T0'-2 IPRoyal session live + T0'-3 ghost-cursor installed.
+#             ALL 3 gates fail at this iter2 run time (precondition_gated).
+#
+# Idempotency: apply.sh forward-dry-run + reverse-dry-run + marker file gate.
+#              Second apply.sh run emits [SKIP] line; zero MD5 drift.
+#              Marker grows 24 → 25 entries on first apply.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -599,6 +599,18 @@
+         if (sameTheme) {
+             // Within-theme call: increment, log under-target gap as info if any.
+             state.callsInTheme = (state.callsInTheme || 0) + 1;
++            // P1.5-9b: sampledCap enforcement — same-theme cap [3,5] from spec
++            // lines 1477-1480 ("同主题... 允许 3-5 次"). state.sampledCap was
++            // sampled by P1.5-9 on theme change and persisted; iter1 left this
++            // unenforced (QA AC5/AC7 warning). Throw BEFORE final state write,
++            // but explicitly persist the clamped state so retry without theme
++            // switch immediately re-throws.
++            if (state.sampledCap && state.callsInTheme > state.sampledCap) {
++                logger_1.default.debug(`[intent] sampled_cap_exceeded: theme="${state.currentTheme}" callsInTheme=${state.callsInTheme} cap=${state.sampledCap}`);
++                state.callsInTheme = state.sampledCap;
++                try { fs.writeFileSync(file, JSON.stringify(state, null, 2), 'utf8'); } catch (e) { /* best-effort */ }
++                throw new Error(`Cool-down active: same-theme cap (${state.sampledCap}) exceeded for theme "${state.currentTheme}"; switch theme or wait`);
++            }
+             const gapMs = now - (state.lastCallAt || now);
+             if (gapMs < 60000) logger_1.default.info(`[intent] same-theme rapid call: gap=${gapMs}ms (Weibull target ~180s)`);
+         } else {

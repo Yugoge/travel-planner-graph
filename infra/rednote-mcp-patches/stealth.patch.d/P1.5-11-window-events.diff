@@ -1,0 +1,129 @@
+# P1.5-11: simulateWindowEvents (resize event generation, no synthetic blur/focus)
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md
+#            Section 7 lines 1493-1496 (P1.5-11 mandatory parameters: resize
+#                                       1920±100 × 1080±100, every 10-30 min;
+#                                       blur/focus burst 2-5% probability per 60s)
+#            Section 8 lines 2014-2032 (Weibull 1.5 0.8 / circadian; not
+#                                       enforced as wall-clock here — only
+#                                       interval period uses uniform 600-1800s)
+#
+# Cycle: 永久彻底修复-20260502-201141 (cycle 10).
+# Order: applied AFTER P1.5-9-search-intent.diff (sort -V → 9 < 11). Anchors
+#        therefore reflect post-P1.5-9 file state.
+#
+# Couples to: dist/tools/rednoteTools.js initialize() (interval setup) and
+#             cleanup() (interval clear). Uses class field
+#             this._windowEventsHandle reserved by P1.5-9 (so this fragment
+#             doesn't add the field again — only assigns to it).
+# Independent of: P1-1, P1-1b, P1-1c (addInitScript region untouched).
+#                 P1-3-shuffle (searchNotes body untouched).
+#                 P1.5-8-humantype (helper-tail region untouched).
+#                 P1.5-12-a1-persist (touches authManager.js — different file).
+#                 P1.5-13-soft-rc (touches searchNotes() entry — different region).
+#
+# Intent:    Land L4-wiring fragment that schedules a periodic
+#            page.setViewportSize() resize on a uniform-sampled 600-1800s
+#            (10-30 min) interval. Per spec line 1496:
+#              setViewportSize({ width: 1920 ± 100, height: 1080 ± 100 })
+#
+# Codex feedback incorporated:
+#   #1 — _windowEventsHandle reserved in constructor by P1.5-9 sibling cycle;
+#        this fragment uses (assigns/clears) but does not redefine.
+#   #12 — interval period in MILLISECONDS (sampleSeconds * 1000); page.isClosed()
+#         guard inside the interval callback prevents post-close fire; cleanup()
+#         clears the interval BEFORE await page.close() to prevent the in-flight
+#         tick from racing the close.
+#   #13 — synthetic blur/focus events skipped this cycle (isTrusted=false is
+#         itself detectable — codex flagged this risk; spec line 1495 mandates
+#         "2-5% probability dispatchEvent(new Event('blur'))" but codex
+#         observation is correct that synthetic dispatch is detectable. We
+#         implement viewport-resize ONLY; honest declaration recorded that the
+#         spec-line-1495 blur/focus burst is INTENTIONALLY NOT IMPLEMENTED on
+#         the same-cycle as the helper landing pending a "trusted focus
+#         change" technique investigation. Section 4 cycle entry will record this.)
+#
+# Hunks (3):
+#   #1 initialize() wiring: after newPage() at L49, schedule the interval
+#      and store handle on this._windowEventsHandle.
+#   #2 cleanup() wiring: clearInterval(this._windowEventsHandle) BEFORE
+#      this.page.close() (codex point #12 race guard).
+#   #3 _simulateWindowEvents method inserted between extractRedBookUrl
+#      close-brace (L411) and _ensureMcpDir JSDoc (L412 in post-P1.5-9 file).
+#
+# Constraint: DOES NOT touch addInitScript block. DOES NOT touch fetch/XHR/cookie
+#             descriptor in any region. DOES NOT modify auth/authManager.js.
+#             DOES NOT modify searchNotes() body. DOES NOT modify any helper
+#             definition that prior cycles landed (Fisher-Yates, _shuffleIndices,
+#             humanType, _gammaKeyDelayMs, _weibullSample, randomDelay,
+#             randomPageDwell — all untouched).
+#
+# Acceptance: STATIC ONLY (grep + node --check + marker integrity).
+#             Runtime AC ("0 resize / permanent focus" closure) DEFERRED to
+#             TIER-L cycle gated on T0' preconditions.
+#
+# Idempotency: apply.sh marker file gate.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -46,6 +46,9 @@
+                     'sec-ch-ua-platform': '"Linux"',
+                 },
+             }, proxyConfig ? { proxy: proxyConfig } : {}));
+             this.page = await ctx.newPage();
++            // P1.5-11: schedule periodic viewport-resize to defeat the "0 resize"
++            // signal flagged by spec line 1494. Handle stored on this; cleared in cleanup().
++            this._windowEventsHandle = this._simulateWindowEvents(this.page);
+             await this.page.addInitScript(() => {
+                 const s = document.createElement('style');
+@@ -377,6 +380,12 @@
+     async cleanup() {
+         logger_1.default.info('Cleaning up browser resources');
+         try {
++            // P1.5-11: clear window-events interval BEFORE page.close() to
++            // prevent in-flight tick from racing close (codex point #12).
++            if (this._windowEventsHandle) {
++                try { clearInterval(this._windowEventsHandle); } catch (e) { /* best-effort */ }
++                this._windowEventsHandle = null;
++            }
+             if (this.page) {
+                 await this.page.close().catch(err => logger_1.default.error('Error closing page:', err));
+                 this.page = null;
+@@ -408,6 +416,38 @@
+             return xiaohongshuMatch[1];
+         }
+         return shareText;
+     }
++    /**
++     * P1.5-11: simulateWindowEvents — schedules a periodic page.setViewportSize()
++     * resize event to defeat the "0 resize during session" detection signal flagged
++     * by spec lines 1493-1496. Period: uniform 600-1800s (10-30 min). Resize delta:
++     * 1920 ± 100 × 1080 ± 100 (per spec line 1496).
++     *
++     * NOT IMPLEMENTED THIS CYCLE: synthetic blur/focus burst (spec line 1495).
++     * Rationale (codex point #13): window.dispatchEvent(new Event('blur')) produces
++     * isTrusted=false events, which is itself a detectable signal in 2026 WAFs.
++     * Honest declaration: helper covers viewport-resize half of P1.5-11 only;
++     * trusted-focus-change technique (e.g., page.bringToFront() in a multi-tab
++     * context) is deferred to a future cycle.
++     *
++     * Returns interval handle for caller to store + cleanup. Callback is guarded
++     * by page.isClosed() check; all setViewportSize errors are swallowed
++     * (best-effort behavioral coloring, not a correctness path).
++     */
++    _simulateWindowEvents(page) {
++        const sampleMs = () => (600 + Math.floor(Math.random() * 1201)) * 1000; // 600-1800s in ms
++        const tick = async () => {
++            try {
++                if (!page || (typeof page.isClosed === 'function' && page.isClosed())) return;
++                const w = 1920 + Math.floor(Math.random() * 201) - 100; // 1920 ± 100
++                const h = 1080 + Math.floor(Math.random() * 201) - 100; // 1080 ± 100
++                await page.setViewportSize({ width: w, height: h });
++                logger_1.default.debug(`[windowEvents] resize ${w}x${h}`);
++            } catch (e) { /* best-effort; log at debug only */ }
++        };
++        const handle = setInterval(tick, sampleMs());
++        if (typeof handle.unref === 'function') handle.unref(); // do not keep event loop alive on its own
++        return handle;
++    }
+     /**
+      * P1.5-9 helper: ensure /root/.mcp/rednote/ exists (mkdirSync recursive).

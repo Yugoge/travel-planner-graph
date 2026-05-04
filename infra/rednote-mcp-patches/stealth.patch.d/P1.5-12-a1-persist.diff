@@ -1,0 +1,161 @@
+# P1.5-12: a1 cookie persistence + restore (device-fingerprint stability)
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md
+#            Section 7 lines 1498-1502 (P1.5-12 mandatory parameters: a1 is
+#                                       52-bit device fingerprint; persist
+#                                       across logins to /root/.mcp/rednote/
+#                                       a1.txt; force-inject on subsequent
+#                                       login to override XHS re-issuance)
+#            Section 8 红线 #2 (NO login-flow modification — additive cookie
+#                              I/O at the safe edges only; verified below)
+#
+# Cycle: 永久彻底修复-20260502-201141 (cycle 10).
+# Order: independent of P1.5-9 / P1.5-11 / P1.5-13 (different file).
+#
+# Couples to: dist/auth/authManager.js login() method. Operates on
+#             this.context (Patchright BrowserContext) and uses fs/path/os
+#             (already imported via __importStar in authManager.js — no new
+#             imports needed; codex point #2 guard).
+# Independent of: rednoteTools.js entirely (different file). All other
+#             cycles in this set (P1.5-9, P1.5-11, P1.5-13) target
+#             rednoteTools.js — no overlap.
+#
+# Intent:    Land a1 cookie persistence + restore as additive helpers on
+#            AuthManager class. Two helpers:
+#              - _restoreA1Cookie(context): if a1.txt exists, addCookies()
+#                an a1 cookie object onto the context; else NO-OP.
+#              - _persistA1Cookie(cookies): extract first a1-named cookie
+#                from cookies array, write its value to a1.txt; on absent
+#                or corrupt, NO-OP.
+#            Both are best-effort wrapped in try/catch (codex point #9 —
+#            a1 helpers MUST NOT throw or red-line #2 is breached: a
+#            successful QR/SMS login must not become a failed login attempt
+#            because of a1 file I/O failure).
+#
+# Codex feedback incorporated:
+#   #9 — best-effort try/catch envelope; helpers never throw.
+#   #10 — _restoreA1Cookie synthesizes full Playwright cookie object
+#         (name, value, domain, path, secure, sameSite); for _persistA1Cookie
+#         deduplicates by domain (prefers .xiaohongshu.com > others).
+#   #11 — uses path.join(homedir, '.mcp', 'rednote') and mkdirSync recursive
+#         before write so missing directory does not fail.
+#
+# Hunks (4):
+#   #1 helper region: 2 new methods inserted between getCookies close-brace
+#      (L95) and async login (L96):
+#        - _restoreA1Cookie(context)
+#        - _persistA1Cookie(cookies)
+#   #2 login() wiring (already-logged-in path): after addCookies block
+#      at L176-177, before "Navigate to explore page" comment at L178 —
+#      add await this._restoreA1Cookie(this.context).
+#   #3 login() persist on already-logged-in success: after saveCookies(newCookies)
+#      at L195, add this._persistA1Cookie(newCookies).
+#   #4 login() persist on fresh-login success: after saveCookies(newCookies)
+#      at L226, add this._persistA1Cookie(newCookies).
+#
+# Constraint: DOES NOT touch QR/SMS waitForSelector chain (L201-213) —
+#             red-line #2 protected; this is the protected region of the
+#             login flow that mustn't change. This fragment ONLY adds
+#             cookie I/O at the unprotected edges (after addCookies; after
+#             saveCookies — those are not control-flow lines, they're
+#             effect-only lines). Codex point #9 confirms additive cookie
+#             I/O does not breach red-line #2.
+#             DOES NOT modify cli.js / index.js (MCP tool schema, red-line #7).
+#             DOES NOT touch fetch/XHR/cookie descriptor anywhere (red-line #1).
+#             DOES NOT modify rednoteTools.js (single-file scope).
+#             DOES NOT introduce a new module file under dist/.
+#
+# Acceptance: STATIC ONLY (grep + node --check + marker integrity).
+#             Runtime AC ("a1 持久化 verify: 删 cookie 后重启, a1 值不变",
+#             spec line 1552) DEFERRED to TIER-L cycle gated on T0' preconditions.
+#
+# Idempotency: apply.sh marker file gate.
+--- a/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js
+@@ -92,7 +92,55 @@
+     async getCookies() {
+         logger_1.default.info('Loading cookies');
+         return await this.cookieManager.loadCookies();
+     }
++    /**
++     * P1.5-12: restore persisted a1 cookie value into the active browser context.
++     * Per spec lines 1498-1502: a1 is the 52-bit device fingerprint; persisting
++     * it across logins keeps the same-account device identity stable.
++     *
++     * Best-effort (codex point #9) — never throws. Missing a1.txt = NO-OP.
++     * Cookie metadata synthesized to Playwright cookie shape (codex point #10).
++     */
++    async _restoreA1Cookie(context) {
++        try {
++            const dir = path.join(os.homedir(), '.mcp', 'rednote');
++            const file = path.join(dir, 'a1.txt');
++            if (!fs.existsSync(file)) return;
++            const value = String(fs.readFileSync(file, 'utf8') || '').trim();
++            if (!value) return;
++            await context.addCookies([{
++                name: 'a1', value, domain: '.xiaohongshu.com', path: '/',
++                expires: -1, httpOnly: false, secure: true, sameSite: 'Lax'
++            }]);
++            logger_1.default.info('[a1] restored persisted a1 cookie into context');
++        } catch (e) {
++            logger_1.default.debug(`[a1] restore best-effort skipped: ${e && e.message}`);
++        }
++    }
++    /**
++     * P1.5-12: persist current a1 cookie value to disk for next-session restore.
++     * Per codex point #10: dedupe by domain (prefer .xiaohongshu.com > others).
++     * Per codex point #11: ensure /root/.mcp/rednote/ exists before write.
++     * Best-effort wrapper (codex point #9) — never throws.
++     */
++    _persistA1Cookie(cookies) {
++        try {
++            if (!Array.isArray(cookies) || !cookies.length) return;
++            const a1s = cookies.filter(c => c && c.name === 'a1');
++            if (!a1s.length) return;
++            // Prefer .xiaohongshu.com domain over alternatives.
++            const preferred = a1s.find(c => c.domain === '.xiaohongshu.com') || a1s[0];
++            const value = String(preferred.value || '').trim();
++            if (!value) return;
++            const dir = path.join(os.homedir(), '.mcp', 'rednote');
++            fs.mkdirSync(dir, { recursive: true });
++            const file = path.join(dir, 'a1.txt');
++            fs.writeFileSync(file, value, 'utf8');
++            logger_1.default.info(`[a1] persisted a1 cookie value (${value.length} chars) to ${file}`);
++        } catch (e) {
++            logger_1.default.debug(`[a1] persist best-effort skipped: ${e && e.message}`);
++        }
++    }
+     async login(options) {
+         const timeoutSeconds = options?.timeout || 10;
+         logger_1.default.info(`Starting login process with timeout: ${timeoutSeconds}s`);
+@@ -174,7 +222,9 @@
+                         .filter(c => c.domain === 'www.xiaohongshu.com' || c.domain === '.www.xiaohongshu.com')
+                         .map(c => ({ ...c, domain: '.xiaohongshu.com' }));
+                     await this.context.addCookies([...cookies, ...extraCookies]);
+                 }
++                // P1.5-12: restore persisted a1 cookie BEFORE navigation
++                await this._restoreA1Cookie(this.context);
+                 // Navigate to explore page
+                 logger_1.default.info('Navigating to explore page');
+                 await this.page.goto('https://xhs.life-ai.app/explore', {
+@@ -191,8 +239,10 @@
+                     if (isLoggedIn) {
+                         logger_1.default.info('Already logged in');
+                         // Already logged in, save cookies and return
+                         const newCookies = await this.context.cookies();
+                         await this.cookieManager.saveCookies(newCookies);
++                        // P1.5-12: persist a1 after already-logged-in success
++                        this._persistA1Cookie(newCookies);
+                         return;
+                     }
+                 }
+@@ -223,7 +271,9 @@
+                 logger_1.default.info('Login successful, saving cookies');
+                 // Save cookies after successful login
+                 const newCookies = await this.context.cookies();
+                 await this.cookieManager.saveCookies(newCookies);
++                // P1.5-12: persist a1 after fresh-login success
++                this._persistA1Cookie(newCookies);
+                 return;
+             }
+             catch (error) {
