@@ -333,6 +333,47 @@ def _atomic_write(file_path: Path, content: str) -> None:
         raise AtomicWriteError(f"Failed to write {file_path}: {e}") from e
 
 
+# Protected fields where an empty dict `{}` from an update must NEVER overwrite
+# a populated existing dict. RC-2: silent data loss occurred when an agent
+# submitted `timeline: {}`, naive dict.update() wiped Days 8-11. Intentional
+# clearing requires an explicit deletion code path, not an empty dict overwrite.
+PROTECTED_FIELDS = frozenset({
+    'timeline', 'meals', 'attractions', 'transportation',
+    'accommodation', 'entertainment', 'shopping',
+})
+
+
+def _is_destructive_empty_overwrite(key: str, new_value, existing_value) -> bool:
+    """True iff `new_value` is an empty dict that would wipe a populated
+    protected field on `existing_value`. RC-2 guard."""
+    if key not in PROTECTED_FIELDS:
+        return False
+    if not (isinstance(new_value, dict) and not new_value):
+        return False
+    return isinstance(existing_value, dict) and bool(existing_value)
+
+
+def _warn_empty_overwrite(day_num, key: str, existing_value) -> None:
+    """Log RC-2 protection warning when an empty dict overwrite is refused."""
+    print(
+        f"[json_io.merge_agent_slots] WARNING: Day {day_num}: refusing to "
+        f"overwrite populated '{key}' ({len(existing_value)} entries) with "
+        f"empty dict (use explicit delete)",
+        file=sys.stderr,
+    )
+
+
+def _safe_overlay(existing_day: dict, update_day: dict, day_num) -> None:
+    """Overlay update_day keys onto existing_day; refuse to wipe protected
+    populated dicts with empty dicts. Mutates existing_day in place."""
+    for key, new_value in update_day.items():
+        existing_value = existing_day.get(key)
+        if _is_destructive_empty_overwrite(key, new_value, existing_value):
+            _warn_empty_overwrite(day_num, key, existing_value)
+            continue
+        existing_day[key] = new_value
+
+
 def merge_agent_slots(
     existing_data: dict,
     update_data: dict,
@@ -346,6 +387,11 @@ def merge_agent_slots(
     47fccd4 (2026-04-13 13:14). This function is now the sole merge path,
     invoked automatically when the target file exists (no flag needed).
 
+    Root Cause Fix (RC-2, 2026-05-04): Naive dict.update() also allowed an
+    empty dict `{}` from an update to wipe a populated protected field
+    (timeline, meals, etc.). PROTECTED_FIELDS guard now refuses such
+    overwrites and logs a warning. See _safe_overlay().
+
     Merges each update_day key-by-key into the matching existing_day,
     preserving keys that are NOT present in the update payload.
 
@@ -357,6 +403,8 @@ def merge_agent_slots(
     Returns:
         Merged data: for each update_day, keys present in the update overwrite
         existing keys; keys NOT present in update are preserved from existing.
+        Protected fields with populated existing values are NEVER overwritten
+        by empty dicts.
 
     Merge semantics:
         - Named-slot agents (meals, accommodation): update with key `dinner`
@@ -368,6 +416,10 @@ def merge_agent_slots(
           merge is NOT performed (per BA spec Edge Cases).
         - Days present in existing but not referenced by update are preserved.
         - Days present in update but not in existing are inserted.
+        - Protected fields (timeline, meals, attractions, transportation,
+          accommodation, entertainment, shopping): an incoming empty dict
+          `{}` will NOT overwrite an existing populated dict. A warning is
+          logged to stderr and the existing value is preserved.
 
     Example:
         existing: {days: [{day: 2, breakfast: A, lunch: B, dinner: C}]}
@@ -390,8 +442,9 @@ def merge_agent_slots(
             raise ValueError(f"Day object missing 'day' field: {list(update_day.keys())}")
         day_num = update_day["day"]
         if day_num in existing_days_map:
-            # Overlay only the keys present in update_day; preserve all other keys
-            existing_days_map[day_num].update(update_day)
+            # Overlay only the keys present in update_day; preserve all other keys.
+            # Protected-field empty-dict guard prevents silent data loss (RC-2).
+            _safe_overlay(existing_days_map[day_num], update_day, day_num)
         else:
             # Day not previously present: insert as a copy of the update
             existing_days_map[day_num] = dict(update_day)
