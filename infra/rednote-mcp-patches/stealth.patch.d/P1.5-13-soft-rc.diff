@@ -1,0 +1,160 @@
+# P1.5-13: soft risk-control detection + cooldown enforcement
+#
+# Authority: docs/dev/specs/spec-20260423-080000.md
+#            Section 7 lines 1506-1509 (P1.5-13 mandatory parameters: each
+#                                       search_notes return checks
+#                                       results.length === 0 + HTTP 200,
+#                                       triggers cookie snapshot rollback +
+#                                       30-min cool-down)
+#            Section 7 lines 1545-1554 (验收升级)
+#
+# Cycle: 永久彻底修复-20260502-201141 (cycle 10).
+# Order: applied AFTER P1.5-9 / P1.5-11 (sort -V → 13 > 11 > 9). Anchors
+#        therefore reflect post-P1.5-9 + post-P1.5-11 file state.
+#
+# Couples to: dist/tools/rednoteTools.js searchNotes() entry-gate region
+#             (cooldown check) and return path (detection trigger).
+#             Reuses the fs/path/os/this._ensureMcpDir() helpers introduced
+#             by P1.5-9 — does NOT redefine them (codex point #4).
+# Independent of: addInitScript, P1-1/1b/1c, P1-3-shuffle (searchNotes body
+#                 untouched — only entry prelude and return-path edge),
+#                 P1.5-8-humantype helper definition, P1.5-12-a1 (different file).
+#
+# Intent:    Land soft-rc detection + 30-min cooldown gate as additive
+#            class methods on RedNoteTools. Two helpers:
+#              - _checkSoftRcCooldown(): reads
+#                /root/.mcp/rednote/soft-rc-cooldown.json; if cooldown
+#                active, throws Error("Soft-rc cooldown active: ...").
+#              - _detectSoftRiskControl(notesLength): if notesLength === 0,
+#                writes cooldown timestamp to soft-rc-cooldown.json with
+#                next-allowed-at = now + 30min. Logs warn-level via
+#                logger_1.default.warn (NOT a quiet best-effort — this
+#                triggers operational attention).
+#
+# Codex feedback incorporated:
+#   #4 — soft-rc cooldown gate runs BEFORE _checkSearchIntent (state
+#         mutation). If cooldown active, intent.json is NOT updated — fail
+#         fast preserves the prior intent state for forensic value.
+#   #7 — soft-rc detection runs at the searchNotes() return path, AFTER
+#         the .feeds-container waitForSelector resolved. If
+#         waitForSelector throws (XHS hard-gates the container), the
+#         catch path runs and bypasses _detectSoftRiskControl — that
+#         is the correct semantic ("hard-rc", not "soft-rc"). Soft-rc
+#         specifically targets the "200 OK + empty container" failure
+#         mode, which is the spec's documented signal at line 1509.
+#   #8 — page.goto() success does NOT imply HTTP 200 strictly; we keep
+#         the simplification AS DOCUMENTED (notes.length === 0 alone)
+#         because: (a) Patchright page.goto throws on non-200 by default
+#         when accompanied by waitForSelector('.feeds-container') —
+#         which would route to the hard-rc catch path; (b) the spec's
+#         actual signal is "results.length === 0", not "HTTP-200 == X".
+#         Honest declaration in JSDoc records the semantic.
+#
+# Hunks (3):
+#   #1 helper region: 2 new methods inserted between _simulateWindowEvents
+#      close-brace (L452 in post-P1.5-11 file) and _ensureMcpDir JSDoc (L453):
+#        - _checkSoftRcCooldown()
+#        - _detectSoftRiskControl(notesLength)
+#   #2 searchNotes() entry wiring: await this._checkSoftRcCooldown() BEFORE
+#      await this._checkSearchIntent(keywords) (codex point #4 ordering).
+#   #3 searchNotes() return-path wiring: this._detectSoftRiskControl(notes.length)
+#      before "return notes;".
+#
+# Constraint: DOES NOT touch addInitScript block. DOES NOT touch
+#             fetch/XHR/cookie descriptor in any region. DOES NOT modify
+#             auth/authManager.js. DOES NOT modify any prior-cycle helper
+#             definition (Fisher-Yates, _shuffleIndices, humanType,
+#             _gammaKeyDelayMs, _weibullSample, randomDelay, randomPageDwell,
+#             _simulateWindowEvents, _checkSearchIntent, _ensureMcpDir,
+#             _levenshtein, _hammingHanOverlap — all untouched).
+#
+# Acceptance: STATIC ONLY (grep + node --check + marker integrity).
+#             Runtime AC ("软风控触发后立即回退上次 cookie snapshot, 停调 30 分钟",
+#             spec line 1509) DEFERRED to TIER-L cycle gated on T0' preconditions.
+#             Note: this fragment does NOT implement cookie-snapshot
+#             rollback this cycle — that is a separate L4 deliverable
+#             requiring CookieManager API extension. Honest declaration:
+#             only the 30-min cool-down gate ships here; rollback
+#             deferred to a follow-up cycle (P1.5-13b or T2-9).
+#
+# Idempotency: apply.sh marker file gate.
+--- a/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
++++ b/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js
+@@ -449,6 +449,57 @@
+         const handle = setInterval(tick, sampleMs());
+         if (typeof handle.unref === 'function') handle.unref(); // do not keep event loop alive on its own
+         return handle;
+     }
++    /**
++     * P1.5-13: soft-rc cooldown gate — reads soft-rc-cooldown.json and
++     * throws if a previously-detected soft risk control window is still
++     * active. Per spec line 1509: "立即回退上次 cookie snapshot, 停调
++     * 30 分钟". This fragment ships the 30-min stop-call half only;
++     * cookie-snapshot rollback is deferred (see fragment header).
++     *
++     * Throws Error("Soft-rc cooldown active: ...") if now < nextAllowedAt.
++     * NO-OP if file missing or cooldown expired (codex point #4 — fail
++     * fast before _checkSearchIntent state mutation).
++     */
++    async _checkSoftRcCooldown() {
++        try {
++            const dir = this._ensureMcpDir();
++            const file = path.join(dir, 'soft-rc-cooldown.json');
++            if (!fs.existsSync(file)) return;
++            const state = JSON.parse(fs.readFileSync(file, 'utf8'));
++            const now = Date.now();
++            if (state && state.nextAllowedAt && now < state.nextAllowedAt) {
++                const remainingSec = Math.round((state.nextAllowedAt - now) / 1000);
++                throw new Error(`Soft-rc cooldown active: ${remainingSec}s remaining`);
++            }
++        } catch (e) {
++            // Re-throw cooldown-active errors; swallow file/parse errors.
++            if (e && /Soft-rc cooldown active/.test(e.message)) throw e;
++        }
++    }
++    /**
++     * P1.5-13: soft-rc detection — called from searchNotes() return path.
++     * If notesLength === 0, write soft-rc-cooldown.json with
++     * nextAllowedAt = now + 30min. Per spec line 1509 ("results.length === 0
++     * 且 HTTP 200 → 视为软风控触发"). HTTP-200 implicit (codex point #8 —
++     * waitForSelector('.feeds-container') would have thrown for non-200).
++     * Logs warn-level (operational attention; not a quiet best-effort).
++     */
++    _detectSoftRiskControl(notesLength) {
++        try {
++            if (notesLength !== 0) return false;
++            const dir = this._ensureMcpDir();
++            const file = path.join(dir, 'soft-rc-cooldown.json');
++            const now = Date.now();
++            const COOLDOWN_MS = 30 * 60 * 1000;
++            const state = { detectedAt: now, nextAllowedAt: now + COOLDOWN_MS, reason: 'empty-results-after-200' };
++            fs.writeFileSync(file, JSON.stringify(state, null, 2), 'utf8');
++            logger_1.default.warn(`[soft-rc] detected: empty results; cooldown 30min until ${new Date(state.nextAllowedAt).toISOString()}`);
++            return true;
++        } catch (e) {
++            logger_1.default.debug(`[soft-rc] detection best-effort skipped: ${e && e.message}`);
++            return false;
++        }
++    }
+     /**
+      * P1.5-9 helper: ensure /root/.mcp/rednote/ exists (mkdirSync recursive).
+@@ -574,6 +625,9 @@
+     async searchNotes(keywords, limit = 10) {
+         logger_1.default.info(`Searching notes with keywords: ${keywords}, limit: ${limit}`);
++        // P1.5-13: soft-rc cooldown gate — runs BEFORE _checkSearchIntent
++        // so the intent state is preserved on cooldown-active throw (codex point #4).
++        await this._checkSoftRcCooldown();
+         // P1.5-9: search-intent gate — runs BEFORE the try/finally that owns
+         // cleanup(), so a Cool-down throw here does NOT close an unrelated
+         // active page on a shared instance (codex point #3).
+         await this._checkSearchIntent(keywords);
+@@ -708,6 +762,9 @@
+                 }
+             }
+             logger_1.default.info(`Successfully processed ${notes.length} notes`);
++            // P1.5-13: soft-rc detection on return path — empty results after
++            // a 200/feeds-container resolved means soft risk control engaged.
++            this._detectSoftRiskControl(notes.length);
+             return notes;
+         }
+         catch (error) {
