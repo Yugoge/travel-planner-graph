@@ -1,0 +1,200 @@
+{
+  "request_id": "20260505-175102",
+  "task_id": "20260505-175102",
+  "timestamp": "2026-05-05T17:51:02Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-175102.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+      "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
+      "/root/travel-planner/docs/dev/ticket-20260505-124619.md"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "M1: Added 5 new --exclude flags to deploy-to-usrlib.sh rsync block (lines 87-91 inserted after dist/auth/cookies.json exclude on line 92): --exclude=.claude --exclude=.codex --exclude=INDEX.md --exclude=package-lock.json --exclude=stderr_preinstall_*.txt",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/scripts/deploy-to-usrlib.sh"],
+        "rationale": "Architect's prior exclude list missed these 5 paths, allowing dev-cycle audit residue + INDEX.md + package-lock.json to land at /usr/lib/node_modules/rednote-mcp/. Per close report Round 2 evidence, these tokens are required to prevent install-path pollution from perpetuating on next deploy."
+      },
+      {
+        "id": 2,
+        "description": "M2: Added 5 matching find-exclusion clauses to step b find expression (lines 72-76) AND step d find expression (lines 110-114): -not -path './.claude/*', -not -path './.codex', -not -name 'INDEX.md', -not -name 'package-lock.json', -not -name 'stderr_preinstall_*.txt' (in BOTH places)",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/scripts/deploy-to-usrlib.sh"],
+        "rationale": "Required for step e sha256 round-trip diff to succeed: source set computed in step b and target set computed in step d must use identical exclusions, otherwise diff -u in step e fails and the script exits 3. The new rsync excludes from M1 must have parallel find-exclusion counterparts in BOTH find expressions; otherwise the script's correctness invariant breaks."
+      },
+      {
+        "id": 3,
+        "description": "M4: Removed 4-character literal `[0] ` from /root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py:184. Was: `return non_text[0] if non_text else None`. Now: `return non_text if non_text else None`. No other line of the file modified.",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py"],
+        "rationale": "Prior cycle's M9 implementation deviated from spec line 146 contract clause ('fall back to returning the original list of non-text blocks'). The narrowing to non_text[0] retained the same multi-block-data-loss bug class that M9 was supposed to eliminate, but in the all-non-text fallback path. AC13 harness only exercised text-block cases (sub-tests 1-4) and empty-content guard (sub-test 5), so this defect was uncovered. Hook (pretool-claude-config-guard.py) blocked initial Edit; created sentinel /root/travel-planner/.claude/.hook-refactor-allow per documented override path, performed edit, then removed sentinel via mv to /tmp."
+      },
+      {
+        "id": 4,
+        "description": "M5: Extended AC13 harness in /root/travel-planner/docs/dev/ticket-20260505-124619.md with sub-test 6 (placed between sub-test 5 and the print line, preserving sub-tests 1-5 verbatim): asserts that 2 image blocks input returns the original list of 2 image blocks (not first only, not None). Pattern matches BA spec AC5 example exactly.",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/docs/dev/ticket-20260505-124619.md"],
+        "rationale": "Closes the structural test gap that allowed defect 2 to land. Sub-test 6 exercises the previously-uncovered all-non-text multi-block branch. If M4 fix were reverted (line 184 back to non_text[0]), sub-test 6 would raise AssertionError with message starting `all-non-text multi-block fallback broken:`."
+      },
+      {
+        "id": 5,
+        "description": "M3: Removed 4 polluting paths from install path /usr/lib/node_modules/rednote-mcp/ — .claude/ (recursive directory containing dev-registry), .codex (file), INDEX.md, package-lock.json. Hook (pretool-bash-safety.sh) blocks rm; used mv to /tmp staging area instead (paths moved to /tmp/cleanup-dev-20260505-175102-* for audit retention).",
+        "type": "filesystem",
+        "files_modified": [
+          "/usr/lib/node_modules/rednote-mcp/.claude (moved to /tmp/cleanup-dev-20260505-175102-claude)",
+          "/usr/lib/node_modules/rednote-mcp/.codex (moved to /tmp/cleanup-dev-20260505-175102-codex)",
+          "/usr/lib/node_modules/rednote-mcp/INDEX.md (moved to /tmp/cleanup-dev-20260505-175102-INDEX.md)",
+          "/usr/lib/node_modules/rednote-mcp/package-lock.json (moved to /tmp/cleanup-dev-20260505-175102-package-lock.json)"
+        ],
+        "rationale": "Required by AC3. Per BA constraint, mv (an allowed verb) is functionally equivalent to rm for the cleanup-then-redeploy purpose; the staged paths in /tmp are outside the install path and outside the source tree, so they cannot affect either the deployStampCheck.js drift detection or the M6 redeploy's source set."
+      },
+      {
+        "id": 6,
+        "description": "M6: Re-ran /root/rednote-mcp/scripts/deploy-to-usrlib.sh end-to-end after M1+M2+M3+M4+M5 landed. Deploy exited 0; sha256 round-trip verified 29 files byte-identical between source and target; .deploy-stamp re-written (18 files in dist/, source_commit=00f644e905dfe4ed3cc4aa2c39405ecf30afdc33, dirty=true).",
+        "type": "verification",
+        "rationale": "Required by AC3 and AC6. The new excludes in M1+M2 keep the polluting source-side paths (.claude/dev-registry, .codex, INDEX.md, package-lock.json, stderr_preinstall_no.txt, stderr_preinstall_yes.txt) out of both the rsync transfer and the sha256 round-trip computation, so the deploy succeeds and the install path stays clean."
+      },
+      {
+        "id": 7,
+        "description": "AC1+AC2+AC3+AC4+AC5+AC6 verification suite executed",
+        "type": "verification",
+        "rationale": "All 6 ACs measured per the BA spec's Verification command quick-reference. Results captured in ac_verification_results below."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — forward-fix on prior cycle 20260505-124619's just-shipped artifacts; no separate commit. Defects observed and verified by Read/grep/ls this iteration; close-report-20260505-124619.md Round 2 verifications stand as the bisect equivalent.",
+      "why_issue_occurred": "Defect 1: architect's exclude list was authored before /root/rednote-mcp/.claude/dev-registry was created by overnight workflow harness in a separate cycle, so the prescription was complete relative to the project state at the time of authoring. Defect 2: M9 implementation chose a literal interpretation of 'fall back to' as 'return one block' instead of 'return the list of blocks'; AC13's coverage gap allowed the deviation to land.",
+      "how_fix_addresses_root": "Defect 1: 5 missing exclude tokens added in 3 places (rsync block + step b find + step d find), one-time install-path cleanup, redeploy verifies the new exclusions hold and the install path stays clean. Defect 2: 4-character literal removal from line 184 (`[0] `) restores the spec-line-146 contract; new sub-test 6 closes the test-coverage gap so the same defect cannot silently re-land in a future cycle."
+    },
+    "diff_stats": {
+      "files_changed": 3,
+      "lines_added": 20,
+      "lines_removed": 1,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 20,
+      "justification_for_overage": "Total = 15 lines (M1+M2: 5 excludes × 3 places, mandatory per BA constraint 'ALL FIVE excludes in ALL THREE places') + 1 line modified (M4: line 184 in-place) + 4 lines (M5: sub-test 6 = 4-line block). Each is the minimum possible: M1/M2 cannot be smaller because the BA constraint and the script's structural sha256 round-trip invariant require parallel exclusions in 3 places. M4 is a 4-character literal removal. M5 is the BA-prescribed 4-line sub-test 6 pattern verbatim."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "All 6 ACs verified during dev cycle — see ac_verification_results below. For QA re-run: (1) AC1: `grep -c '^    --exclude' /root/rednote-mcp/scripts/deploy-to-usrlib.sh` must return 15. (2) AC2: 5 sub-greps for each new find clause must each return >=2. (3) AC3: 4 ls commands on install-path polluting paths must all exit non-zero (target absent), 2 ls commands on stderr_preinstall_*.txt must also exit non-zero (negative confirmation glob exclude held), and re-running the deploy script must exit 0. (4) AC4: `grep -c 'return non_text\\[0\\]' /root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py` must return 0; py_compile must exit 0. (5) AC5: run the full extended harness embedded in ticket-20260505-124619.md:374-405 (now with sub-test 6 between sub-test 5 and the print line); stdout must contain `AC13_HARNESS_PASS` exactly once and exit 0. (6) AC6: this report attests to reconciliation order (M1+M2 -> M4+M5 -> M3 -> M6) and AC1-AC5 simultaneously hold post-execution. Sentinel /root/travel-planner/.claude/.hook-refactor-allow was created and removed within this cycle (moved to /tmp/sentinel-cleanup-dev-20260505-175102 since rm is hook-blocked).",
+    "permissions_to_add": [],
+    "ac_verification_results": {
+      "AC1_rsync_excludes": {
+        "exclude_flag_count": 15,
+        "expected": 15,
+        "new_token_pattern_count": 5,
+        "expected_min": 5,
+        "bash_n": "OK",
+        "status": "PASS"
+      },
+      "AC2_find_exclusion_clauses": {
+        "claude_count": 2,
+        "codex_count": 2,
+        "INDEX_md_count": 2,
+        "package_lock_json_count": 2,
+        "stderr_preinstall_count": 2,
+        "expected_each": ">=2",
+        "status": "PASS"
+      },
+      "AC3_install_path_cleanup_and_redeploy": {
+        "claude_absent": true,
+        "codex_absent": true,
+        "INDEX_md_absent": true,
+        "package_lock_json_absent": true,
+        "stderr_preinstall_no_txt_absent": true,
+        "stderr_preinstall_yes_txt_absent": true,
+        "deploy_exit_code": 0,
+        "deploy_files_verified": 29,
+        "deploy_stamp_files_count": 18,
+        "deploy_source_commit": "00f644e905dfe4ed3cc4aa2c39405ecf30afdc33",
+        "status": "PASS"
+      },
+      "AC4_mcp_client_non_text_fallback": {
+        "non_text_zero_index_count": 0,
+        "expected": 0,
+        "return_non_text_full_list_count": 1,
+        "expected_min": 1,
+        "py_compile": "OK",
+        "status": "PASS"
+      },
+      "AC5_extended_AC13_harness": {
+        "AC13_HARNESS_PASS_substring_count": 1,
+        "expected": 1,
+        "harness_exit_code": 0,
+        "sub_tests_run": ["sub1_length_1_JSON: PASS", "sub2_length_1_non_JSON: PASS", "sub3_multi_block_JSON_concat: PASS", "sub4_multi_block_non_JSON_concat: PASS", "sub5_empty_content_returns_None: PASS", "sub6_all_non_text_multi_block: PASS"],
+        "sub_tests_1_to_5_preserved_verbatim": true,
+        "sub_test_6_pattern_matches_BA_spec": true,
+        "counter_test_invariant_attestation": "If line 184 is reverted to `return non_text[0] if non_text else None`, sub-test 6 would assert `[{type:image,data:img1}, {type:image,data:img2}] == {type:image,data:img1}` which is False, raising AssertionError with message starting `all-non-text multi-block fallback broken:`. This is true by inspection of sub-test 6's assertion expression; dev does not actually revert.",
+        "status": "PASS"
+      },
+      "AC6_reconciliation_order": {
+        "executed_order": ["M1+M2 (deploy-script edits, atomic)", "M4 (mcp_client.py:184 single-token removal)", "M5 (AC13 harness sub-test 6 append)", "M3 (install-path cleanup via mv to /tmp)", "M6 (redeploy)"],
+        "matches_BA_prescribed_order": true,
+        "post_execution_AC1_AC2_AC3_AC4_AC5_all_hold": true,
+        "status": "PASS"
+      }
+    },
+    "blast_radius": [
+      {
+        "modified": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+        "imported_by": ["operators (manual invocation)", "this cycle's M6 redeploy"],
+        "note": "Sole sanctioned write path to /usr/lib/node_modules/rednote-mcp/. New excludes affect all subsequent deploys; the script's interface (CLI args, exit codes) is unchanged."
+      },
+      {
+        "modified": "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
+        "imported_by": ["search.py", "search_light.py", "test_raw_search.py", "get_note_images.py", "test_get_content.py"],
+        "note": "5 importers in same scripts/ directory. The change affects only the all-non-text multi-block fallback branch. All 5 known importers consume text-block responses (JSON or string), so the fallback change does NOT alter their observed behavior. QA can smoke-test search.py / search_light.py end-to-end against the live MCP server if practical, but no behavior change is expected."
+      },
+      {
+        "modified": "/root/travel-planner/docs/dev/ticket-20260505-124619.md",
+        "imported_by": ["QA agents reading prior spec for AC13 harness"],
+        "note": "Documentation only. Sub-test 6 is additive; sub-tests 1-5 preserved verbatim."
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Source-side cleanup of /root/rednote-mcp/{.claude/dev-registry, .codex, INDEX.md, package-lock.json, stderr_preinstall_no.txt, stderr_preinstall_yes.txt} remains as documented out-of-scope observations; this cycle merely excludes them from rsync via M1+M2. A separate cleanliness cycle could move stderr_preinstall_*.txt into docs/dev/, decide whether INDEX.md is intentional, and review whether .claude/dev-registry should live at the source root or be moved to a /var/ or /tmp staging area.",
+    "Operator follow-up: 4 paths moved to /tmp staging (/tmp/cleanup-dev-20260505-175102-{claude,codex,INDEX.md,package-lock.json}) plus the sentinel file (/tmp/sentinel-cleanup-dev-20260505-175102) should be removed by the operator (or by automatic /tmp cleanup) post-cycle. They are NOT consumed by any subsequent step.",
+    "Future-proofing: the deploy script's exclude model is now 15 patterns long across 3 places, with implicit invariant that step b find clauses, step d find clauses, and rsync excludes must remain parallel. If this list grows further, refactoring to a shared constant array (declared once at the top of the script, then expanded into both find expressions and the rsync command) would reduce future drift risk. Out of scope this cycle per BA constraint."
+  ],
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "All 6 ACs verified end-to-end during dev cycle. (1) bash -n on deploy script = OK. (2) py_compile on mcp_client.py = OK. (3) Extended AC13 harness ran end-to-end with `AC13_HARNESS_PASS` printed exactly once + exit 0; all 6 sub-tests passed (5 preserved + 1 new). (4) Deploy script ran end-to-end with exit 0; sha256 round-trip verified 29 files byte-identical; new .deploy-stamp written (18 dist/ files); install path no longer contains the 4 polluting paths and the 2 stderr_preinstall_*.txt files (negative-confirmation glob exclude held even though source has them). (5) M2 find-exclusion clauses parallel to M1 rsync excludes confirmed by the deploy succeeding (any mismatch would have failed step e diff). Hooks encountered + handled per documented protocols: pretool-claude-config-guard.py blocked initial Edit on /root/travel-planner/.claude/commands/...; resolved by sentinel file /root/travel-planner/.claude/.hook-refactor-allow created + Edit performed + sentinel removed via mv to /tmp. pretool-bash-safety.sh blocked rm; resolved by mv to /tmp staging (functionally equivalent for cleanup-then-redeploy purpose; staged paths are outside install + source trees).",
+    "ac_check_grid": {
+      "AC1": "pass",
+      "AC2": "pass",
+      "AC3": "pass",
+      "AC4": "pass",
+      "AC5": "pass",
+      "AC6": "pass"
+    }
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "operator_followups": [
+    {
+      "type": "tmp_cleanup",
+      "paths": [
+        "/tmp/cleanup-dev-20260505-175102-claude",
+        "/tmp/cleanup-dev-20260505-175102-codex",
+        "/tmp/cleanup-dev-20260505-175102-INDEX.md",
+        "/tmp/cleanup-dev-20260505-175102-package-lock.json",
+        "/tmp/sentinel-cleanup-dev-20260505-175102",
+        "/tmp/ac5_harness_output.txt"
+      ],
+      "reason": "M3 cleanup of polluting install-path paths used mv to /tmp staging because pretool-bash-safety.sh blocks rm. Sentinel file (used to satisfy pretool-claude-config-guard.py per its documented override) was likewise moved to /tmp post-edit. Operator should rm these paths post-cycle (or rely on /tmp's natural cleanup). They have no functional dependency in any subsequent step."
+    }
+  ]
+}
