@@ -2640,11 +2640,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               )}
 
               {/* Accommodation */}
-              {day.accommodation && (
+              {(day.accommodation || day.accommodation_jade) && (
                 <Section title={L('accommodation', lang)} icon="🏨">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
-                      {[day.accommodation].map((acc, i) => {
+                      {(day.accommodation ? [day.accommodation] : []).map((acc, i) => {
                         const catColor = categoryColors.accommodation;
                         return (
                           <div key={i} style={cardStyle(catColor, false)}
