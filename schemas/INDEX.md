@@ -1,6 +1,6 @@
 # schemas
 
-*Last updated: 2026-04-19T10:22:14Z*
+*Last updated: 2026-05-04T23:43:56Z*
 **Total entries**: 13
 **Convention**: kebab
 

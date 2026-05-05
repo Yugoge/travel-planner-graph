@@ -44,13 +44,13 @@ def _check_day_overlaps(day_num, timeline: dict) -> tuple[list, list]:
     hard_conflicts: list[str] = []
     soft_conflicts: list[str] = []
 
-    # Collect non-transit entries that have valid time fields
+    # Collect non-transit entries that have valid time fields.
+    # RC-3: isinstance-guarded against non-dict values.
     entries = []
     for name, entry in timeline.items():
-        if entry.get("transit"):
+        if not isinstance(entry, dict) or entry.get("transit"):
             continue
-        start = entry.get("start_time")
-        end = entry.get("end_time")
+        start, end = entry.get("start_time"), entry.get("end_time")
         if not start or not end:
             continue
         entries.append((name, entry, start, end))
