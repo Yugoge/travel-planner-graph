@@ -181,7 +181,7 @@ def _parse_content_blocks(content: List[Dict[str, Any]]) -> Any:
         except json.JSONDecodeError:
             return joined
     non_text = [b for b in content if b.get("type") != "text"]
-    return non_text[0] if non_text else None
+    return non_text if non_text else None
 
 
 def format_json_output(data: Any) -> str:
