@@ -139,24 +139,8 @@ class MCPClient:
             "name": name,
             "arguments": arguments
         })
-
         result = response.get("result", {})
-        content = result.get("content", [])
-
-        if not content:
-            return None
-
-        # Parse first content item
-        first_content = content[0]
-        if first_content.get("type") == "text":
-            text = first_content.get("text", "")
-            # Try to parse as JSON
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                return text
-
-        return first_content
+        return _parse_content_blocks(result.get("content", []))
 
     def close(self) -> None:
         """Close connection to MCP server."""
@@ -168,6 +152,36 @@ class MCPClient:
                 self.process.kill()
                 self.process.wait()
             self.process = None
+
+
+def _parse_content_blocks(content: List[Dict[str, Any]]) -> Any:
+    """
+    Parse MCP tools/call result content blocks.
+
+    Iterates ALL content blocks per MCP spec (content is List[ContentBlock]).
+    Text blocks are concatenated in order. For length-1 lists this yields a
+    string equal to the sole text block's text, so existing JSON-load callers
+    (search.py, search_light.py) see byte-identical payloads. For length>1
+    this preserves blocks 1..N that the previous single-block access dropped.
+
+    Args:
+        content: List of MCP ContentBlock dicts.
+
+    Returns:
+        Parsed JSON value if joined text parses, else the joined string; falls
+        back to the first non-text block, or None for empty content.
+    """
+    if not content:
+        return None
+    text_parts = [b.get("text", "") for b in content if b.get("type") == "text"]
+    if text_parts:
+        joined = "".join(text_parts)
+        try:
+            return json.loads(joined)
+        except json.JSONDecodeError:
+            return joined
+    non_text = [b for b in content if b.get("type") != "text"]
+    return non_text[0] if non_text else None
 
 
 def format_json_output(data: Any) -> str:

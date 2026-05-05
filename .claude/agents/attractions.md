@@ -80,10 +80,11 @@ For each day in the trip:
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<attraction_query>" "<city>" "110000"
      ```
-   - Use RedNote for authentic local recommendations and hidden gems:
+   - Use RedNote light search for authentic local recommendations and hidden gems (faster — list-card metadata only, no per-note detail fetch):
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py "<search_keyword>"
      ```
+     For full-text verification of a specific note URL, follow up with `mcp__rednote__get_note_content`.
 
    **For global destinations**:
    - Use Google Maps (see Google Maps Integration section in skill docs)

@@ -14,7 +14,7 @@ user-invocable: true
 RedNote (小红书/Xiaohongshu) is China's premier lifestyle and social commerce platform with rich user-generated travel content including reviews, recommendations, photo guides, and authentic experiences from Chinese travelers.
 
 **MCP Server**: `rednote-mcp` (npm based)
-**API Coverage**: 3/3 tools (100%)
+**API Coverage**: 5/5 tools (100%)
 **Authentication**: Cookie-based (manual login via `rednote-mcp init`)
 **Content Language**: Primarily Chinese with some English
 **Coverage**: Focused on Chinese destinations and Chinese travelers' global experiences
@@ -27,12 +27,13 @@ Complements: Google Maps (international), Gaode Maps (China POI), Duffel (flight
 
 ## Available MCP Tools
 
-RedNote MCP provides 4 tools for searching and accessing content:
+RedNote MCP provides 5 tools for searching and accessing content:
 
-1. **mcp__rednote__search_notes** - Search notes by keyword
-2. **mcp__rednote__get_note_content** - Get note content via URL
-3. **mcp__rednote__get_note_comments** - Get comments from note URL
-4. **mcp__rednote__login** - Manual authentication (prefer CLI `rednote-mcp init`)
+1. **mcp__rednote__search_notes** - Search notes by keyword (full search, opens detail panes)
+2. **mcp__rednote__search_notes_light** - Lightweight search returning list-card metadata only (faster; no per-note detail fetch)
+3. **mcp__rednote__get_note_content** - Get note content via URL
+4. **mcp__rednote__get_note_comments** - Get comments from note URL
+5. **mcp__rednote__login** - Manual authentication (prefer CLI `rednote-mcp init`)
 
 All tools are accessed via Python scripts in the `scripts/` directory that communicate with the RedNote MCP server.
 
@@ -47,7 +48,8 @@ source /root/.claude/venv/bin/activate && python3 scripts/search.py <keyword> [-
 ```
 
 Available scripts:
-- `scripts/search.py` - Search RedNote notes by keyword
+- `scripts/search.py` - Search RedNote notes by keyword (full search; opens detail panes)
+- `scripts/search_light.py` - Lightweight search returning list-card metadata only (faster; no per-note detail fetch)
 
 All scripts return JSON output to stdout.
 
@@ -101,7 +103,46 @@ mcp__rednote__search_notes({
 
 Use Chinese keywords (e.g., "北京"), add modifiers ("推荐", "攻略"), set limit 20-50 for coverage.
 
-### 2. Get Note Content by URL
+### 2. Lightweight Search (List-Card Metadata Only)
+
+**Tool**: `mcp__rednote__search_notes_light`
+
+Lightweight version of `search_notes` that reuses the same real search/sign flow but returns the `/search/notes` list-card metadata directly — without clicking covers or opening detail panes. Use this for fast first-pass discovery; fall back to `search_notes` (or `get_note_content` with a chosen URL) when you need full-text verification of a specific POI.
+
+**Parameters**:
+- `keywords` (required): 搜索关键词 (Search keyword, Chinese recommended)
+
+**Returns**:
+- List-card metadata for matching notes:
+  - Note ID and URL (with `xsec_token`)
+  - Title and short description
+  - Author handle
+  - Engagement counts (likes, comments)
+  - Cover image URL
+
+**Example usage**:
+```bash
+# Bash invocation (preferred from agents)
+source /root/.claude/venv/bin/activate && python3 scripts/search_light.py "北京小众景点"
+```
+
+```javascript
+// MCP tool invocation
+mcp__rednote__search_notes_light({
+  keywords: "北京小众景点"
+})
+```
+
+When to use:
+- First-pass discovery: scanning many keywords quickly
+- Hidden-gem hunting: scoring engagement metrics across a wide net before drilling in
+- Latency-sensitive paths: agents that fan out >5 keyword queries
+
+When NOT to use:
+- Need full note text or images: use `get_note_content` with a URL from `search_notes_light` results
+- Need comments: use `get_note_comments` (still ~50% reliability — see Section 4)
+
+### 3. Get Note Content by URL
 
 **Tool**: `mcp__rednote__get_note_content`
 
@@ -144,7 +185,7 @@ mcp__rednote__get_note_content({
 - Typical timeout: 30 seconds (may fail for very slow network)
 
 
-### 3. Get Comments by URL
+### 4. Get Comments by URL
 
 **Tool**: `mcp__rednote__get_note_comments`
 
@@ -191,7 +232,7 @@ mcp__rednote__get_note_comments({
 
 Recommended: Use engagement metrics from search_notes instead of reading comments.
 
-### 4. Login (Manual Authentication)
+### 5. Login (Manual Authentication)
 
 **Tool**: `mcp__rednote__login`
 

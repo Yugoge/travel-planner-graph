@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T16:01:14Z*
-**Total entries**: 148
+*Last updated: 2026-05-05T16:13:47Z*
+**Total entries**: 151
 **Convention**: kebab
 
 ## Tree
@@ -13,6 +13,8 @@ dev/
 │   └── screenshots/
 ├── playwright-screenshots/
 │   └── `01-initial-load.png` - png file
+├── screenshots/
+│   └── dev-20260505-123425/
 ├── specs/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
@@ -148,6 +150,7 @@ dev/
 ├── `qa-report-20260418-153011.json` - json config
 ├── `qa-report-20260505-060527.json` - json config
 ├── `qa-report-20260505-061047.json` - json config
+├── `qa-report-20260505-123425.json` - json config
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
