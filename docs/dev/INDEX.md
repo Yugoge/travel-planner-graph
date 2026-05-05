@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T10:18:43Z*
-**Total entries**: 140
+*Last updated: 2026-05-05T13:04:21Z*
+**Total entries**: 145
 **Convention**: kebab
 
 ## Tree
@@ -17,6 +17,7 @@ dev/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 │   └── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
+├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `ba-qa-report-20260415-210000.json` - json config
 ├── `ba-qa-report-20260416-172720.json` - json config
@@ -24,6 +25,7 @@ dev/
 ├── `ba-qa-report-20260418-153011.json` - json config
 ├── `ba-qa-report-20260505-060527.json` - json config
 ├── `ba-qa-report-20260505-061047.json` - json config
+├── `ba-qa-report-20260505-123425.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -82,6 +84,7 @@ dev/
 ├── `context-20260418-153011.json` - json config
 ├── `context-20260505-060527.json` - json config
 ├── `context-20260505-061047.json` - json config
+├── `context-20260505-123425.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
@@ -146,7 +149,9 @@ dev/
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
-└── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
+├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
+├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
+└── `ticket-20260505-124619.md` - BA Specification: Complete search_notes_light deployment for production use (practical-value + defense-in-depth bundle)
 ```
 
 ---
