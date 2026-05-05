@@ -81,6 +81,56 @@ class AtomicWriteError(JSONIOError):
     """Atomic write operation failed."""
     pass
 
+class StockImageRejected(JSONIOError):
+    """Persistence layer refused a payload because it contains stock-image
+    URLs or http://-protocol image_url values. User-accepted Google Maps
+    `key=AIzaSy...` URLs are explicitly NOT rejected (per spec 5.1)."""
+    pass
+
+# Stock-image domains the persistence layer permanently rejects on NEW writes.
+# Picked from spec section 5.2 / W3 worker scope. Order is irrelevant.
+_STOCK_IMAGE_DOMAINS = (
+    'images.unsplash.com',
+    'picsum.photos',
+    'placeholder.com',
+    'via.placeholder.com',
+    'loremflickr',
+    'placekitten',
+)
+
+
+def _check_payload_for_stock_urls(payload_text: str) -> Optional[str]:
+    """Return the first stock-image domain found in ``payload_text``, or None.
+    Used by save_agent_json to refuse new writes containing stock URLs."""
+    for domain in _STOCK_IMAGE_DOMAINS:
+        if domain in payload_text:
+            return domain
+    return None
+
+
+def _check_payload_for_http_image_url(payload_text: str) -> bool:
+    """Return True iff ``payload_text`` contains an image_url with http:// scheme."""
+    import re
+    return bool(re.search(r'"image_url"\s*:\s*"http://', payload_text))
+
+
+def _reject_unsafe_image_payloads(envelope: dict) -> None:
+    """Raise StockImageRejected when the JSON-serialized envelope contains
+    stock-image URLs or http:// image_url values. ``key=AIzaSy...`` is
+    explicitly allowed (user-accepted current state, spec 5.1)."""
+    payload_text = json.dumps(envelope, ensure_ascii=False)
+    stock_hit = _check_payload_for_stock_urls(payload_text)
+    if stock_hit is not None:
+        raise StockImageRejected(
+            f"Persistence layer refused payload: stock-image domain '{stock_hit}' "
+            f"is permanently blocked from new writes (spec 5.1 / W3)."
+        )
+    if _check_payload_for_http_image_url(payload_text):
+        raise StockImageRejected(
+            'Persistence layer refused payload: image_url with http:// scheme '
+            'is permanently blocked from new writes (spec 5.1 / W3).'
+        )
+
 # ============================================================
 # Core I/O Functions
 # ============================================================

@@ -19,14 +19,8 @@ from typing import Any, Dict, List, Optional
 class MCPClient:
     """Base client for MCP server communication via JSON-RPC 2.0."""
 
-    def __init__(self, package: str, env: Optional[Dict[str, str]] = None):
-        """
-        Initialize MCP client.
-
-        Args:
-            package: NPM package name (e.g., "@amap/amap-maps-mcp-server")
-            env: Environment variables (e.g., {"AMAP_MAPS_API_KEY": "key"})
-        """
+    def __init__(self, package: Optional[str] = None, env: Optional[Dict[str, str]] = None):
+        """Initialize MCP client. ``package`` is optional for lifecycle tests."""
         self.package = package
         self.env = env or {}
         self.process = None
@@ -36,11 +30,10 @@ class MCPClient:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Best-effort cleanup of subprocess if any
+        # Best-effort cleanup: route through close() which uses the canonical
+        # self.process attribute. Earlier code referenced a stale self._proc.
         try:
-            if hasattr(self, "_proc") and self._proc:
-                self._proc.terminate()
-                self._proc.wait(timeout=5)
+            self.close()
         except Exception:
             pass
         return False
