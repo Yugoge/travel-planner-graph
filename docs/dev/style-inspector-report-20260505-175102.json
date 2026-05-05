@@ -1,90 +1,105 @@
 {
   "request_id": "20260505-175102",
-  "timestamp": "2026-05-05T17:51:02Z",
+  "timestamp": "2026-05-05T18:30:00Z",
   "inspector": "style-inspector",
   "mode": "changed-files-cycle-diff",
-  "scope_contract": "Line-level findings restricted to cycle diff's changed-line ranges; pre-existing violations on untouched lines are out of scope per AC-2.6(b).",
+  "rerun": true,
+  "rerun_reason": "/do in-session root fix: --delete-excluded flag + 4 --filter='P ...' rules + 7-line comment block added to deploy-to-usrlib.sh",
+  "scope_contract": "Line-level findings restricted to cycle diff's changed-line ranges per AC-2.6(b). docs/ excluded from audit per scope rules.",
   "cycle_context": {
     "task_id": "20260505-175102",
     "kind": "forward-fix",
     "fixes_prior_cycle": "20260505-124619",
-    "defects_addressed": 2,
-    "total_diff_files": 3,
-    "total_lines_added": 20,
-    "total_lines_modified": 1
+    "do_fix_description": "Added --delete-excluded flag to rsync invocation; added 4 --filter='P ...' rules protecting node_modules, node_modules/***, dist/.deploy-stamp, dist/auth/cookies.json from --delete-excluded pruning; added 7-line comment block (lines 87-92) explaining the rationale."
   },
   "changed_files_audited": [
     {
       "path": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
-      "changed_line_ranges": ["73-77", "98-102", "121-125"],
-      "change_summary": "Defect 1 fix: added 5 new exclusion tokens (.claude, .codex, INDEX.md, package-lock.json, stderr_preinstall_*.txt) at 3 mirrored locations (step b find, step c rsync, step d find) = 15 added lines."
+      "changed_line_ranges": ["86-97", "93-97"],
+      "change_summary": "/do fix: added --delete-excluded to rsync call (line 93); added 4 --filter='P ...' rsync args (lines 94-97); added 7-line comment block (lines 87-92) explaining --delete-excluded and P-filter semantics. Full file read confirmed (222 lines total)."
     },
     {
       "path": "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
-      "changed_line_ranges": ["184"],
-      "change_summary": "Defect 2 fix: 4-character literal removal — `non_text[0]` -> `non_text` so all-non-text fallback returns the full list instead of just the first block."
+      "changed_line_ranges": ["157-184"],
+      "change_summary": "M9 fix (prior cycle): call_tool() now iterates all content blocks. Current state confirmed via full file read (198 lines). No new changes introduced by /do fix."
     },
     {
       "path": "/root/travel-planner/docs/dev/ticket-20260505-124619.md",
-      "changed_line_ranges": ["402-405"],
-      "change_summary": "AC13 harness sub-test 6 appended (4 lines) — covers all-non-text multi-block fallback. Sub-tests 1-5 preserved verbatim. NOTE: file is under docs/ which is per-spec OUT OF SCOPE for style-inspector audit."
+      "changed_line_ranges": ["N/A - docs/ excluded"],
+      "change_summary": "Under docs/ directory — excluded from style-inspector audit per scope rules. Not audited."
     }
   ],
+  "pre_scan_results": {
+    "detect_hardcoded_paths": {
+      "tool": "~/.claude/scripts/detect-hardcoded-paths.sh",
+      "findings_raw": [
+        {"file": "./deploy-to-usrlib.sh", "line": 2, "path": "/root/rednote-mcp/", "disposition": "DISMISSED - comment line (usage docblock)"},
+        {"file": "./deploy-to-usrlib.sh", "line": 4, "path": "/root/rednote-mcp)", "disposition": "DISMISSED - comment line (usage docblock)"},
+        {"file": "./deploy-to-usrlib.sh", "line": 11, "path": "/root/rednote-mcp/", "disposition": "DISMISSED - comment line (architect note)"},
+        {"file": "./deploy-to-usrlib.sh", "line": 15, "path": "/root/rednote-mcp", "disposition": "DISMISSED - default value with CLI override via --source flag (lines 20-21)"}
+      ],
+      "confirmed_violations": 0
+    },
+    "detect_merge_conflicts": {
+      "tool": "~/.claude/scripts/detect-merge-conflicts.sh",
+      "findings": 0
+    }
+  },
   "standards_evaluated_against_changed_lines": [
     {
       "standard": "no-inline-code",
       "result": "pass",
-      "rationale": "deploy-to-usrlib.sh and mcp_client.py changes are within executable scripts (correct location for code). ticket-20260505-124619.md is under docs/ and excluded from audit; the added bash block is a TEST HARNESS specification embedded in a ticket spec, not orchestration logic in a command/agent file."
+      "rationale": "deploy-to-usrlib.sh and mcp_client.py are executable scripts — correct location for code. The /do fix adds rsync flags and a comment block to a shell script, not inline code to a command/agent .md file."
     },
     {
       "standard": "no-hardcoded-values",
       "result": "pass",
-      "rationale": "The 5 new tokens added to deploy-to-usrlib.sh (.claude, .codex, INDEX.md, package-lock.json, stderr_preinstall_*.txt) are rsync/find EXCLUSION PATTERN CONSTANTS — they enumerate well-known artifact filenames that must not propagate from source-tree to install-tree. They follow the IDENTICAL constant-token convention already established in the file by pre-existing entries (node_modules, .git, src, tests, jest.config.*, tsconfig.json, .gitignore, *.bak, dist/.deploy-stamp, dist/auth/cookies.json). Parameterizing per-pattern would add zero portability value; this is the same class as `node_modules` in package managers."
+      "rationale": "The 4 new --filter='P ...' values (node_modules, node_modules/***, dist/.deploy-stamp, dist/auth/cookies.json) are rsync P-filter protocol constants. They name fixed structural artifacts in the Node.js/rednote-mcp deploy contract: node_modules is a universal Node.js constant; dist/.deploy-stamp and dist/auth/cookies.json are the fixed contract paths defined by arch-prop-2 and arch-prop-3. These follow the identical convention of the pre-existing --exclude tokens already in the file. All are intrinsic to the operation and cannot meaningfully be parameterized. --delete-excluded is a boolean behavioral flag, not a value. detect-hardcoded-paths.sh flagged only pre-existing default values (lines 2, 4, 11, 15), all dismissed: lines 2/4/11 are comments; line 15 is a default overridable via --source (line 20)."
     },
     {
       "standard": "use-source-venv",
       "result": "pass",
-      "rationale": "No Python invocations introduced in any changed line. mcp_client.py is a Python source file, not a Python invocation site."
+      "rationale": "No python3 invocations in any cycle-diff changed line. mcp_client.py is a Python source module, not a Python invocation site."
     },
     {
       "standard": "integer-step-numbering",
       "result": "pass",
-      "rationale": "No step numbering introduced in the diff. Pre-existing 'Step a/b/c/d/e/f' lettering in deploy-to-usrlib.sh is on UNCHANGED lines (out of cycle diff scope)."
+      "rationale": "No step numbering introduced by the /do fix. The 7-line comment block uses bullet-style prose (dashes), not step numbers. Pre-existing 'Step a/b/c/d/e/f' letter-scheme in the script is on unchanged lines outside cycle diff scope."
     },
     {
       "standard": "meaningful-naming",
       "result": "pass",
-      "rationale": "No new files, functions, or variables introduced. The 5 added exclusion tokens are filename literals matching real artifacts on disk."
+      "rationale": "No new files, variables, or function names introduced. The P-filter path literals match real directory/file names in the deploy contract."
     },
     {
       "standard": "english-only",
       "result": "pass",
-      "rationale": "All added/modified content is ASCII English. No CJK characters in any cycle-diff line."
+      "rationale": "grep '[一-龟]' on both audited files returned 0 matches. All content in the cycle diff is ASCII English."
     },
     {
       "standard": "merge-similar-scripts",
       "result": "pass",
-      "rationale": "No new scripts created in this cycle. deploy-to-usrlib.sh and mcp_client.py both pre-existed."
+      "rationale": "No new scripts created by the /do fix. The change is an enhancement to the existing deploy-to-usrlib.sh."
     },
     {
       "standard": "concise-documentation",
       "result": "pass",
-      "rationale": "ticket-20260505-124619.md is under docs/ and per-spec OUT OF SCOPE for style-inspector. The 4-line test-harness append is a single concrete test case mirroring sub-tests 1-5's compact format (1 comment + 1 stub + 1 call + 1 assertion). No marketing language, no repetitive examples, no narrative prose introduced anywhere."
+      "rationale": "The 7-line comment block (lines 87-92) added by the /do fix is concise and technical: one line explains --delete-excluded purpose, one example names the orphan files it prunes, one line introduces the P-filters section, and three bullet lines give the specific rationale for each protected path. No marketing language, no repetitive examples, no narrative prose. ticket-20260505-124619.md is under docs/ and excluded."
     },
     {
       "standard": "parameterized-scripts",
       "result": "pass",
-      "rationale": "Same disposition as no-hardcoded-values: exclusion-pattern tokens are by-design constants enumerating well-known artifact names. The script's actual configurable surface (--source/--target) was already parameterized via getopt in pre-existing lines 18-25 (out of diff scope)."
+      "rationale": "Same disposition as no-hardcoded-values. The rsync filter/exclude tokens are structural constants of the deploy operation, not variable thresholds or configurable values. The script's parameterizable surface (source/target directories) has been parameterized via --source/--target since the original authoring."
     },
     {
       "standard": "dangling-references",
       "result": "pass",
-      "rationale": "No script-to-script references added. The mcp_client.py edit is internal logic. The deploy script's exclusion tokens reference filename PATTERNS (not script invocations) — they intentionally match files that may or may not exist in any given clone, by design."
+      "rationale": "The /do fix adds no script-to-script references. P-filter paths (node_modules, dist/.deploy-stamp, dist/auth/cookies.json) are rsync pattern targets — they intentionally match filesystem paths that may or may not exist on any given run. mcp_client.py imports are all stdlib (json, subprocess, sys, time, typing, os). No broken references."
     },
     {
       "standard": "merge-conflicts",
       "result": "pass",
-      "rationale": "detect-merge-conflicts.sh confirmed clean for both /root/rednote-mcp and /root/travel-planner. No conflict markers anywhere in the cycle-diff line ranges."
+      "rationale": "detect-merge-conflicts.sh returned 0 findings for /root/rednote-mcp/scripts/ and /root/travel-planner/.claude/commands/scripts/rednote/scripts/. Direct grep for conflict markers on all 3 changed files returned no matches."
     }
   ],
   "violations": [],
@@ -105,15 +120,10 @@
     "standards_checked": 11,
     "violations_found": 0,
     "critical": 0,
-    "files_audited": 3,
-    "files_total": 3,
+    "files_audited": 2,
+    "files_total_in_scope": 3,
+    "files_excluded_docs": 1,
     "rounds_completed": 1,
     "verdict": "CLEAN"
-  },
-  "diff_newness_attestation": {
-    "method": "Cycle-diff line-range overlap + pre-diff baseline comparison",
-    "deploy_to_usrlib_sh": "File was untracked at cycle start; the 15 added exclusion tokens are unambiguously NEW lines (no pre-diff baseline counterpart). Audited only those 15 lines.",
-    "mcp_client_py": "Verified diff via `git diff e116f35~1 e116f35` — confirms ONLY line 184 changed (`non_text[0]` -> `non_text`). Other lines untouched by this cycle and out of scope.",
-    "ticket_md": "Verified diff via `git diff e116f35~1 e116f35` — confirms ONLY lines 402-405 added. File under docs/ which is out of scope regardless."
   }
 }
