@@ -2,10 +2,12 @@
   "request_id": "20260505-174743",
   "task_id": "20260505-174743",
   "timestamp": "2026-05-05T17:47:43Z",
+  "iter": 2,
+  "iter_2_changelog": "Iter 2 addresses QA blocking objections OBJ-1 (evidence_quality: missed timeline.json:664 and :665) + OBJ-2 (spec_text_vs_execution_drift: AC2 case-sensitive regex misses uppercase SUPERSEDED) + non-blocking OBJ-3 (placeholder/TBD/to-plan dev-workflow phrases inside warnings[]). Changes: (a) added W1.5 + W1.6 evidence rows for timeline.json:664/665; (b) updated M5 to delete lines 663+664+665; (c) added M5b/M6b/M12b/M13b for OBJ-3 dev-workflow placeholders inside warnings[] (lines 666, 797, 798, 799, 1587, 1634); (d) reformulated AC1+AC2+M15 grep to use grep -iE (case-insensitive) with explicit alternations covering 本期|本计划|本次|本轮|out of scope|OUT OF SCOPE|superseded|SUPERSEDED|OLD timeline|OLD transportation|STRUCTURAL CHANGE|structural change|has been removed entirely|Previous split_day|next session|next cycle|自理（|不渲染|to plan in Day [0-9]+ review|to be planned during Day [0-9]+ review|All activities placeholder|All specific (activities|restaurant); (e) recorded activity-key (to plan in Day N review) name occurrences as out-of-scope observations (NOT user-rendered, NOT in warnings[]).",
   "requirement": {
     "original": "彻底清理",
     "clarified": "Eliminate every dev-cycle / harness-internal phrase that leaked from prior development cycles into the trip data files at data/china-20260412-092624/, leaving only user-facing trip content. Mathilde's restored Xi'an content (Days 9-11 meals/attractions/entertainment/shopping/accommodation) must remain intact; this cycle scrubs the leftover narrative on top of that state.",
-    "what": "Subtractive/replacement cleanup of dev-cycle phrases ('本期不渲染', 'out of scope', 'out of session scope', 'STRUCTURAL CHANGE', 'OLD timeline ... superseded', 'next session', 'replaced with placeholder', 'to be planned in Day N review') from transportation.json notes_base/notes_local strings (4 occurrences) and timeline.json warnings[] arrays (16 occurrences across 9 days)",
+    "what": "Subtractive/replacement cleanup of dev-cycle phrases ('本期不渲染', 'out of scope', 'out of session scope', 'STRUCTURAL CHANGE', 'OLD timeline ... superseded' (case-insensitive), 'has been removed entirely', 'Previous split_day', 'next session', 'replaced with placeholder', 'to be planned in Day N review', 'All activities placeholder', 'All specific restaurants TBD') from transportation.json notes_base/notes_local strings (4 occurrences) and timeline.json warnings[] arrays (22 dev-narrative + dev-workflow occurrences across 9 days)",
     "why": "Prior dev cycle 20260505-123425 restored Mathilde's Days 9-11 Xi'an content but did NOT scrub the older notes/warnings that still tell the user her Xi'an is 'out of scope'. Self-contradiction: data has Mathilde's Xi'an attractions/meals AND notes telling the user those days are out of scope. Cannot be 'perfect 可用 state' with both true. Codex /close audit caught the contradiction and returned CLOSE: NO.",
     "where": ["data/china-20260412-092624/transportation.json", "data/china-20260412-092624/timeline.json", "data/china-20260412-092624/modification-log.json (append-only forward entry)"],
     "scope": {
@@ -14,15 +16,15 @@
         "transportation.json line 571 Day 8 3U8893 notes_local — replace string",
         "transportation.json line 649 Day 12 G5 notes_base — replace string",
         "transportation.json line 650 Day 12 G5 notes_local — replace string",
-        "timeline.json line 663 Day 5 warnings[] — delete STRUCTURAL CHANGE entry",
-        "timeline.json lines 794-795 Day 6 warnings[] — delete STRUCTURAL CHANGE + OLD timeline entries",
+        "timeline.json Day 5 warnings[] lines 663, 664, 665 — delete all three dev-narrative entries (W1, W1.5, W1.6); line 666 — delete (M5b OBJ-3 PLACEHOLDERS workflow); preserve line 667 location-anchor",
+        "timeline.json Day 6 warnings[] lines 794, 795 — delete STRUCTURAL CHANGE + OLD timeline entries (M6); preserve line 796 booking-window fact; lines 797, 798 — REWRITE to keep trip facts and drop 'To plan in Day 6 review' / 'Placeholder' workflow phrasing (M6b); line 799 — delete (TBD workflow narrative)",
         "timeline.json line 851 Day 7 warnings[] — delete OLD timeline entry",
         "timeline.json lines 975, 981 Day 8 warnings[] — delete STRUCTURAL CHANGE + OLD timeline entries",
         "timeline.json lines 1108, 1110, 1111 Day 9 warnings[] — delete all 3 dev-narrative entries; optionally replace with one neutral fact entry",
         "timeline.json lines 1228, 1229 Day 10 warnings[] — delete out-of-scope entries",
         "timeline.json lines 1356, 1357 Day 11 warnings[] — delete out-of-scope entries",
-        "timeline.json lines 1585, 1586 Day 14 warnings[] — delete OLD timeline + 'Day 14 review' entries (or rewrite without dev-workflow phrasing)",
-        "timeline.json line 1635 Day 15 warnings[] — delete OLD timeline / Day 15 review entry",
+        "timeline.json Day 14 warnings[] line 1585 (OLD timeline) + line 1586 (placeholder workflow) — delete entirely (M12); line 1587 ('Matilde's Beijing accommodation TBD') — REWRITE or DELETE per M12b dev choice",
+        "timeline.json Day 15 warnings[] line 1634 (placeholder workflow) — delete (M13b); line 1635 (OLD timeline) — delete (M13); preserve line 1633 (departure-day 'flight details TBD' is legitimate booking-status fact); preserve line 1636 (accommodation_ref)",
         "modification-log.json — append one new entry recording this cleanup"
       ],
       "excluded": [
@@ -33,11 +35,13 @@
         "budget.json line 398 'Previous Day 4 ... superseded' — same; KEEP",
         "meals.json line 155 '本次外卖' — legitimate Chinese consumer phrase; KEEP",
         "modification-log.json existing historical entries (lines 1518, 1689, 1692) — these ARE the change-history of record; rewriting history is revisionism; forward-correct via new entry only",
-        "All other trip plans' data directories (data/gerardmer-*, etc.)"
+        "All other trip plans' data directories (data/gerardmer-*, etc.)",
+        "timeline.json activity-key NAMES like '(to plan in Day N review)' on Days 5/6/7/8/12/13/14/15 (activity-keys lines 620/626/631/637/675/709/715/738/807/813/818/824/861/882/914/919/1375/1391/1402/1407/1456/1462/1467/1488/1541/1547/1552/1558/1596/1602/1607/1618) — NOT in warnings[], NOT user-rendered (renderer name-matches POIs, not activity-keys; verified 0 HTML hits); KEEP as legitimate plan-status data-of-record marker for unplanned slots",
+        "timeline.json line 1633 'Day 15: Departure day. Matilde departs China (flight details TBD). Jade stays at home.' — 'TBD' here is a legitimate booking-status fact (departure flight is genuinely not yet booked); NOT dev-workflow leakage; KEEP"
       ]
     },
     "success_criteria": [
-      "Grep for `本期|本计划范围|out of scope|out of session|superseded|STRUCTURAL CHANGE|OLD timeline|next session|next cycle|不渲染|自理（本` against transportation.json + timeline.json returns ZERO matches",
+      "Case-insensitive grep with explicit alternations against transportation.json + timeline.json returns ZERO matches: grep -iE \"本期|本计划|本次|本轮|out of scope|OUT OF SCOPE|superseded|SUPERSEDED|OLD timeline|OLD transportation|STRUCTURAL CHANGE|structural change|has been removed entirely|Previous split_day|next session|next cycle|自理（|不渲染|to plan in Day [0-9]+ review|to be planned during Day [0-9]+ review|All activities placeholder|All specific (activities|restaurant)\". Note: the 'to plan in Day N review' alternation is intended to fire only inside warnings[]; if dev's edits inadvertently leave a match in non-warnings[] keys, dev MUST narrow the verification to warnings[] (e.g., via jq) — see M15 for canonical command + scoping",
       "Mathilde's Days 9-11 Xi'an content (attractions/meals/entertainment/shopping/accommodation files) is byte-identical to pre-cycle baseline (no regression)",
       "transportation.json + timeline.json validate against their schemas (no fabricated fields, no schema drift)",
       "Live https://travel.life-ai.app/china/2026-04-12/ — Day 8 and Day 12 transport cards show no dev-cycle internal phrases (verified via Playwright at desktop 1440x900 + mobile 390x844 with screenshot evidence)",
@@ -48,7 +52,8 @@
       "Preserve all real user-facing booking info (route numbers, times, locations, names) in replacement strings",
       "JSON syntactic correctness preserved (escape quotes properly; valid JSON after edits)",
       "warnings[] array MAY shrink to fewer items or empty array — DO NOT remove the warnings key itself",
-      "Match tone of sibling notes in transportation.json (neutral booking-fact prose) for replacement strings"
+      "Match tone of sibling notes in transportation.json (neutral booking-fact prose) for replacement strings",
+      "DO NOT touch activity-key NAMES like '(to plan in Day N review)' that live OUTSIDE warnings[] (those are out-of-scope per requirements.scope.excluded)"
     ]
   },
   "scope_boundary": {
@@ -61,7 +66,9 @@
     "out_of_path_observed_but_not_touched": [
       "data/china-20260412-092624/budget.json",
       "data/china-20260412-092624/meals.json",
-      "data/china-20260412-092624/modification-log.json (historical entries 1518/1689/1692 — only the new append entry is in scope)"
+      "data/china-20260412-092624/modification-log.json (historical entries 1518/1689/1692 — only the new append entry is in scope)",
+      "data/china-20260412-092624/timeline.json activity-key (to plan in Day N review) NAMES (32 occurrences across Days 5/6/7/8/12/13/14/15) — NOT in warnings[], NOT user-rendered",
+      "data/china-20260412-092624/timeline.json:1633 (Day 15 departure-day flight TBD) — legitimate booking-status fact, NOT dev-workflow"
     ]
   },
   "out_of_scope_observations": [
@@ -118,11 +125,29 @@
       "observation": "Historical entry about schema additionalProperties tightening 'next session'. Same KEEP-as-history reasoning.",
       "in_user_path": false,
       "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T18:30:00Z",
+      "task_id": "20260505-174743",
+      "file": "data/china-20260412-092624/timeline.json",
+      "line": null,
+      "observation": "Activity-key NAMES '(to plan in Day N review)' on lines 620, 626, 631, 637 (Day 5), 675, 709, 715, 738 (Day 6), 807, 813, 818, 824 (Day 7), 861, 882, 914, 919 (Day 8), 1375, 1391, 1402, 1407 (Day 12), 1456, 1462, 1467, 1488 (Day 13), 1541, 1547, 1552, 1558 (Day 14), 1596, 1602, 1607, 1618 (Day 15). These are KEYS inside the timeline activities object (NOT inside warnings[]), and the renderer name-matches POIs from attractions/meals/entertainment/shopping/cafe to look up time data — verified 0 HTML occurrences of 'to plan in Day' in output/travel-plan-china-20260412-092624.html. Therefore these activity-key NAMES are data-of-record markers communicating 'this slot is unplanned' (legitimate plan-status), not dev-workflow leakage that ships to the user. KEEP.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T18:30:00Z",
+      "task_id": "20260505-174743",
+      "file": "data/china-20260412-092624/timeline.json",
+      "line": 1633,
+      "observation": "'Day 15: Departure day. Matilde departs China (flight details TBD). Jade stays at home.' — 'TBD' here describes a legitimate booking-status fact (Mathilde's departure flight is genuinely not yet booked), NOT dev-workflow leakage. KEEP entire entry.",
+      "in_user_path": false,
+      "security_relevant": false
     }
   ],
   "root_cause_analysis": {
-    "symptom": "After prior cycle's data restoration, transportation.json and timeline.json still carry dev-cycle internal narrative phrases ('out of scope', '本期不渲染', 'STRUCTURAL CHANGE', 'OLD timeline ... superseded') that contradict the restored Mathilde Xi'an content and that codex audit flagged in /close cycle 20260505-123425.",
-    "root_cause": "Prior cycle 20260505-123425's grep pattern targeted FABRICATED FIELDS (e.g., accommodation_jade, out_of_scope as a key, passengers_jade) and RESTORED CONTENT (e.g., Days 9-11 attractions). It did not enumerate dev-cycle PROSE PHRASES embedded inside legitimate string-typed fields (notes_base, notes_local, warnings[]). The strings were authored during incremental rebuild cycles when those days WERE planned to be out-of-scope, and were never refactored when the decision was reversed.",
+    "symptom": "After prior cycle's data restoration, transportation.json and timeline.json still carry dev-cycle internal narrative phrases ('out of scope', '本期不渲染', 'STRUCTURAL CHANGE', 'OLD timeline ... superseded' (case-insensitive — uppercase SUPERSEDED at timeline.json:665 was missed by iter 1's case-sensitive regex), 'has been removed entirely', 'Previous split_day', 'PLACEHOLDERS — to be planned during Day N review', 'TBD — to be planned during Day N review') that contradict the restored Mathilde Xi'an content and that codex audit flagged in /close cycle 20260505-123425. Iter 1 BA spec used a case-sensitive regex that missed timeline.json:665 ('is SUPERSEDED' uppercase) and missed timeline.json:664 ('Previous split_day ... removed entirely') outright.",
+    "root_cause": "Prior cycle 20260505-123425's grep pattern targeted FABRICATED FIELDS (e.g., accommodation_jade, out_of_scope as a key, passengers_jade) and RESTORED CONTENT (e.g., Days 9-11 attractions). It did not enumerate dev-cycle PROSE PHRASES embedded inside legitimate string-typed fields (notes_base, notes_local, warnings[]). The strings were authored during incremental rebuild cycles when those days WERE planned to be out-of-scope, and were never refactored when the decision was reversed. Iter 1 of THIS cleanup cycle (BA spec rev1) under-enumerated by missing two adjacent dev-narrative entries (timeline.json:664/665) and used case-sensitive regex.",
     "root_cause_commit": "N/A - this is a textual residue from cycle 20260505-123425's incomplete cleanup, not a single introducing commit",
     "why_introduced": "During the multi-day rebuild between 2026-05-04 21:58 and 2026-05-05 10:19, sub-agents authored notes/warnings reflecting the then-current 'Mathilde Xi'an out of scope' planning decision. When the user reversed that decision (restore Xi'an content), the prior /redo cycle restored data structures and content but did not edit the textual notes/warnings.",
     "why_problematic": "Live website now ships notes that tell the user her Xi'an itinerary is 'out of scope' while the same plan contains her full Xi'an attractions/meals — direct self-contradiction. User explicitly demanded 'perfect 可用 state' with no internal dev-cycle terminology visible.",
@@ -138,17 +163,28 @@
       "data/china-20260412-092624/transportation.json:571 contains '不在本计划范围' on Day 8 notes_local (observed: Read tool)",
       "data/china-20260412-092624/transportation.json:649 contains '(out of session scope)' on Day 12 G5 notes_base (observed: Read tool)",
       "data/china-20260412-092624/transportation.json:650 contains '本期不渲染' on Day 12 G5 notes_local (observed: Read tool)",
-      "data/china-20260412-092624/timeline.json contains 16 dev-cycle phrases across warnings[] arrays on Days 5/6/7/8/9/10/11/14/15 (observed: Grep tool, full enumeration in ticket Evidence W1-W16)",
-      "output/travel-plan-china-20260412-092624.html lines 2960, 4193-4194 contain the leaked transportation.json strings verbatim (observed: Grep tool) — confirms LIVE rendering surfaces these to user",
+      "data/china-20260412-092624/timeline.json:663 contains 'Day 5: STRUCTURAL CHANGE — Day 5 is NO LONGER a split day. ...' (observed: Read tool, lines 658-668)",
+      "data/china-20260412-092624/timeline.json:664 contains 'Day 5: Previous split_day structure ... has been removed entirely.' (observed: Read tool, lines 658-668; iter 2 — was missed in iter 1)",
+      "data/china-20260412-092624/timeline.json:665 contains 'Day 5: OLD transportation.json entry (3U8900 ...) is SUPERSEDED ...' (observed: Read tool; iter 2 — was missed in iter 1; uppercase SUPERSEDED slipped past case-sensitive regex)",
+      "data/china-20260412-092624/timeline.json:666 contains 'Day 5: All specific activities, meals, and restaurants are PLACEHOLDERS — to be planned during Day 5 review.' (observed: Read tool; iter 2 — added under OBJ-3 expansion)",
+      "data/china-20260412-092624/timeline.json:797 contains 'Day 6: ... To plan in Day 6 review.' suffix (observed: Read tool; iter 2 — REWRITE not DELETE because legit lunch-overlap fact precedes the workflow phrase)",
+      "data/china-20260412-092624/timeline.json:798 contains 'Day 6: ... Placeholder 玉林路宵夜.' suffix (observed: Read tool; iter 2 — REWRITE)",
+      "data/china-20260412-092624/timeline.json:799 contains 'Day 6: All specific restaurant names are TBD — to be planned during Day 6 review.' (observed: Read tool; iter 2 — added under OBJ-3 expansion)",
+      "data/china-20260412-092624/timeline.json contains 16 dev-cycle phrases across warnings[] arrays on Days 5/6/7/8/9/10/11/14/15 from initial enumeration (observed: Grep tool, iter 1) PLUS additional dev-narrative on Day 5 lines 664/665 (iter 2 OBJ-1) PLUS dev-workflow placeholders on Days 5/6/14/15 (iter 2 OBJ-3) — total 22 in-scope timeline.json warnings[] occurrences",
+      "data/china-20260412-092624/timeline.json:1587 contains 'Day 14: Matilde's Beijing accommodation TBD ...' — REWRITE or DELETE per M12b (observed: Read tool; iter 2 OBJ-3 expansion)",
+      "data/china-20260412-092624/timeline.json:1634 contains 'Day 15: All activities placeholder — to be planned during Day 15 review.' — DELETE (observed: Read tool; iter 2 OBJ-3 expansion)",
+      "data/china-20260412-092624/timeline.json:1633 contains 'Day 15: Departure day. Matilde departs China (flight details TBD). Jade stays at home.' — KEEP (legitimate flight-status fact; observed: Read tool; iter 2)",
+      "output/travel-plan-china-20260412-092624.html lines 2960, 2961, 4193, 4194 contain the leaked transportation.json strings verbatim (observed: Grep tool, QA verified) — confirms LIVE rendering surfaces these to user",
       "scripts/generate-html-interactive.py contains zero references to 'warnings' (observed: Grep) — confirms timeline.json warnings[] are NOT rendered to HTML; cleanup is for data-of-record cleanliness only",
+      "scripts/generate-html-interactive.py renderer is name-match-based for timeline-time lookup (observed: Read scripts/generate-html-interactive.py:470-528) — activity-key NAMES like '(to plan in Day 5 review)' are NOT used for user-display; verified 0 HTML hits for 'to plan in Day'",
       "scripts/generate-html-interactive.py contains zero references to 'modification-log' (observed: Grep) — confirms modification-log.json is not rendered; historical entries are pure dev-record",
       "budget.json:241 and 398 'superseded' usage is in budget-revision context (observed: Read tool) — legitimate user-facing change explanation",
       "meals.json:155 '本次外卖' is legitimate Chinese consumer phrase distinguishing this delivery from Day 14 dinner branch (observed: Read tool)"
     ],
     "diagnosis_completeness": "complete",
-    "complaint_location_keywords": ["彻底清理", "本期", "out of scope", "STRUCTURAL CHANGE", "OLD timeline", "Mathilde Xi'an", "Day 8", "Day 12", "Days 9-11"],
-    "localization_evidence": "Symptom reproduced via direct grep over data files (search seed pattern '本期|本计划|out of scope|superseded|STRUCTURAL CHANGE|OLD timeline|next session|next cycle|不渲染|自理（'); 20 hits enumerated by file:line in ticket Evidence; cross-validated against rendered HTML (output/travel-plan-china-20260412-092624.html) to confirm which leaks reach user (transportation.json hits ARE rendered; timeline.json warnings[] are NOT rendered but are still data-of-record contradicting the restored Xi'an content).",
-    "located_source": "data/china-20260412-092624/transportation.json:570,571,649,650 + data/china-20260412-092624/timeline.json:663,794,795,851,975,981,1108,1110,1111,1228,1229,1356,1357,1585,1586,1635",
+    "complaint_location_keywords": ["彻底清理", "本期", "out of scope", "STRUCTURAL CHANGE", "OLD timeline", "SUPERSEDED", "Previous split_day", "has been removed entirely", "PLACEHOLDERS", "TBD", "Mathilde Xi'an", "Day 5", "Day 8", "Day 12", "Days 9-11"],
+    "localization_evidence": "Symptom reproduced via direct case-insensitive grep over data files (search seed pattern includes both lowercase and uppercase variants of every keyword); 30 hits in transportation.json + timeline.json per QA independent count (22 in-scope dev-narrative + dev-workflow inside warnings[] + 4 transportation.json + 4 mixed entries needing rewrite at 797/798/1587 — already counted within 22; remainder are out-of-warnings[] activity-key names and legitimate fact entries already classified out-of-scope); cross-validated against rendered HTML (output/travel-plan-china-20260412-092624.html) to confirm which leaks reach user (transportation.json hits ARE rendered; timeline.json warnings[] are NOT rendered but are still data-of-record contradicting the restored Xi'an content).",
+    "located_source": "data/china-20260412-092624/transportation.json:570,571,649,650 + data/china-20260412-092624/timeline.json:663,664,665,666,794,795,797,798,799,851,975,981,1108,1110,1111,1228,1229,1356,1357,1585,1586,1587,1634,1635",
     "localization_blocked": null,
     "git_bisect_result": {
       "triggered": false,
@@ -183,17 +219,17 @@
     {
       "file": "data/china-20260412-092624/timeline.json",
       "line_range": "662-668",
-      "role": "Day 5 warnings[] array — contains 1 STRUCTURAL CHANGE entry",
+      "role": "Day 5 warnings[] array — contains 4 dev-narrative/workflow entries (lines 663, 664, 665, 666) + 1 legitimate location-anchor entry (line 667)",
       "imports_from": "leaf",
-      "evidence": "Read 658-669; line 663 verbatim 'Day 5: STRUCTURAL CHANGE — Day 5 is NO LONGER a split day. ...'",
+      "evidence": "Iter 2 Read 658-668: line 663 STRUCTURAL CHANGE, line 664 'Previous split_day ... removed entirely', line 665 'OLD transportation.json entry ... is SUPERSEDED', line 666 'PLACEHOLDERS — to be planned during Day 5 review'; line 667 location-anchor (KEEP)",
       "verified_via": "Read"
     },
     {
       "file": "data/china-20260412-092624/timeline.json",
       "line_range": "793-800",
-      "role": "Day 6 warnings[] array — contains 1 STRUCTURAL CHANGE entry + 1 OLD timeline entry",
+      "role": "Day 6 warnings[] array — contains 1 STRUCTURAL CHANGE entry + 1 OLD timeline entry + 2 mixed-content (legit fact + workflow phrase) entries + 1 pure workflow entry",
       "imports_from": "leaf",
-      "evidence": "Read 790-799; lines 794-795 verbatim",
+      "evidence": "Read 790-800; lines 794-795 dev-narrative (M6 delete); line 796 legitimate booking-window fact (KEEP); lines 797, 798 mixed (M6b REWRITE); line 799 pure workflow (M6b DELETE)",
       "verified_via": "Read"
     },
     {
@@ -239,33 +275,33 @@
     {
       "file": "data/china-20260412-092624/timeline.json",
       "line_range": "1583-1589",
-      "role": "Day 14 warnings[] array — contains 1 OLD timeline entry + 1 dev-workflow phrase",
+      "role": "Day 14 warnings[] array — contains 1 G26-arrival fact (KEEP) + 1 OLD timeline entry (M12 DELETE) + 1 placeholder workflow (M12 DELETE) + 1 'accommodation TBD' mixed entry (M12b REWRITE/DELETE) + 1 accommodation_ref fact (KEEP)",
       "imports_from": "leaf",
-      "evidence": "Read 1580-1589; lines 1585, 1586 verbatim",
+      "evidence": "Iter 2 Read 1582-1591; line 1584 G26-arrival fact KEEP; line 1585 OLD timeline DELETE; line 1586 placeholder workflow DELETE; line 1587 'accommodation TBD' REWRITE/DELETE; line 1588 accommodation_ref KEEP",
       "verified_via": "Read"
     },
     {
       "file": "data/china-20260412-092624/timeline.json",
       "line_range": "1632-1637",
-      "role": "Day 15 warnings[] array — contains 1 OLD timeline entry",
+      "role": "Day 15 warnings[] array — contains 1 legitimate departure-day fact (line 1633), 1 placeholder workflow entry (line 1634), 1 OLD timeline entry (line 1635), 1 accommodation_ref fact (line 1636)",
       "imports_from": "leaf",
-      "evidence": "Read 1630-1638; line 1635 verbatim",
+      "evidence": "Iter 2 Read 1628-1638; line 1633 'Departure day ... flight details TBD' KEEP (legit booking-status); line 1634 'placeholder — to be planned during Day 15 review' M13b DELETE; line 1635 OLD timeline M13 DELETE; line 1636 accommodation_ref KEEP",
       "verified_via": "Read"
     },
     {
       "file": "scripts/generate-html-interactive.py",
-      "line_range": "N/A",
-      "role": "Renderer (consulted to confirm WHICH leaked strings reach user)",
+      "line_range": "470-528",
+      "role": "Renderer (consulted to confirm WHICH leaked strings reach user) — name-match-based timeline lookup",
       "imports_from": "leaf",
-      "evidence": "Grep 'warnings' returned 0 matches; Grep 'modification.log' returned 0 matches — confirms only transportation.json strings are user-rendered",
-      "verified_via": "grep"
+      "evidence": "Read 470-528 + Grep 'warnings' returned 0 matches; Grep 'modification.log' returned 0 matches; Renderer uses _get_timeline_time which name-matches POIs against day_timeline keys (lines 470-509) — confirms only transportation.json strings are user-rendered; activity-key NAMES are not user-displayed",
+      "verified_via": "grep+Read"
     },
     {
       "file": "output/travel-plan-china-20260412-092624.html",
-      "line_range": "2960, 4193-4194",
+      "line_range": "2960, 2961, 4193, 4194",
       "role": "Rendered HTML — confirms transportation.json leaked strings appear verbatim",
       "imports_from": "leaf",
-      "evidence": "Grep '本期|out of scope|out of session|不渲染' returned 3 hits at those lines",
+      "evidence": "Grep '本期|out of scope|out of session|不渲染' returned 4 hits at those lines (QA verified); Grep 'to plan in Day|placeholder|TBD' returned 0 hits — confirms timeline.json warnings[] and activity-key NAMES are NOT user-rendered",
       "verified_via": "grep"
     }
   ],

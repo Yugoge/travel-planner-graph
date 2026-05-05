@@ -1,0 +1,308 @@
+{
+  "request_id": "20260505-175102",
+  "task_id": "20260505-175102",
+  "timestamp": "2026-05-05T20:30:00Z",
+  "qa": {
+    "status": "pass",
+    "user_verbatim_complaint": "立即修复",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-05T20:30:00Z",
+        "file": "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
+        "line": "171-172",
+        "observation": "Docstring at lines 171-172 still reads 'falls back to the first non-text block' but the actual behavior at line 184 now returns the full list of non-text blocks. Strictly speaking BA constraint M4 forbids editing any line of mcp_client.py other than 184, so dev correctly did not touch the docstring this cycle. Observed for a future cleanliness cycle: the docstring should be updated to read 'falls back to the original list of non-text blocks' to match the line 146 normative contract and the runtime behavior.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-05T20:30:00Z",
+        "file": "/root/rednote-mcp/",
+        "line": null,
+        "observation": "Source tree /root/rednote-mcp/ contains the same 6 untracked polluting paths (.claude/, .codex, INDEX.md, package-lock.json, stderr_preinstall_no.txt, stderr_preinstall_yes.txt) per `git status --short`. This cycle excludes them from rsync via M1+M2 but does NOT delete from source. Source-side cleanup remains a separate cleanliness concern explicitly excluded by BA scope (Won't Have).",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-05T20:30:00Z",
+        "file": "/tmp/cleanup-dev-20260505-175102-{claude,codex,INDEX.md,package-lock.json}, /tmp/sentinel-cleanup-dev-20260505-175102, /tmp/ac5_harness_output.txt",
+        "line": null,
+        "observation": "Dev's M3 cleanup used `mv` to /tmp staging because pretool-bash-safety.sh blocks `rm`. These paths are outside install path and outside source tree; per dev's operator_followups, they should be removed by operator (or natural /tmp cleanup) post-cycle. They do not affect any subsequent step.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "spec_section_updates": null,
+    "verified_location_keywords": [
+      "deploy-to-usrlib.sh",
+      "mcp_client.py",
+      ".claude",
+      ".codex",
+      "INDEX.md",
+      "package-lock.json",
+      "stderr_preinstall",
+      "non_text",
+      "AC13"
+    ],
+    "location_overlap": [
+      "deploy-to-usrlib.sh",
+      "mcp_client.py",
+      ".claude",
+      ".codex",
+      "INDEX.md",
+      "package-lock.json",
+      "stderr_preinstall",
+      "non_text",
+      "AC13"
+    ],
+    "complaint_resolution_evidence": "User said 立即修复 referring to the prior CLOSE: NO close report's two source-of-truth-real defects. Defect 1 (install pollution from M6 widening): verified resolved — deploy-to-usrlib.sh now contains 15 --exclude flags (5 new tokens added: .claude, .codex, INDEX.md, package-lock.json, stderr_preinstall_*.txt) AND matching find-exclusion clauses in step b and step d; install path /usr/lib/node_modules/rednote-mcp/ no longer contains any of the 4 polluting paths post one-time cleanup AND post-redeploy (verified by ls absence checks both before and after the redeploy). Defect 2 (mcp_client.py:184 non-text fallback narrowing): verified resolved — line 184 now reads `return non_text if non_text else None` (the [0] indexing was removed, restoring the spec line 146 normative contract). Counter-test invariant proven: simulating the reverted code in-process raises AssertionError with the exact message the new sub-test 6 expects, confirming sub-test 6 actually exercises the previously-uncovered branch.",
+    "complaint_element_pointer": {
+      "selector": "N/A — non-UI; backend filesystem + Python script changes",
+      "how_located": "file:line refs verified by Read + grep + sed",
+      "found_in_dom": true,
+      "page_url": "N/A"
+    },
+    "element_screenshots": {
+      "before_selector": "N/A — non-UI",
+      "before_path": null,
+      "after_path": null,
+      "same_element_verified": true
+    },
+    "overall_assessment": "All 6 acceptance criteria pass. Both prior CLOSE: NO defects are genuinely resolved: (1) install pollution sealed by 5 new --exclude tokens × 3 places (15 token additions) + one-time install-path cleanup + redeploy; (2) mcp_client.py:184 narrowing reverted with surgical 4-character literal removal AND new AC13 sub-test 6 closes the regression-coverage gap. Reconciliation order honored end-to-end (M1+M2 → M4+M5 → M3 → M6). Redeploy succeeded with 29 files byte-identical sha256 round-trip and exit 0.",
+    "success_criteria_results": [
+      {
+        "requirement_id": "R1",
+        "source_phrase": "立即修复",
+        "criterion": "AC1+AC2+AC3+AC4+AC5+AC6 — defect 1 (deploy script + cleanup + redeploy) and defect 2 (mcp_client.py + harness extension) both close; reconciliation order honored end-to-end.",
+        "verification_method": "Per-AC grep / ls / py_compile / harness execution per BA spec Verification command quick-reference; counter-test invariant simulation in-process to prove sub-test 6 exercises the previously-uncovered branch.",
+        "status": "pass",
+        "result": "pass",
+        "details": "All 6 ACs pass with concrete measurements (see AC1-AC6 individual verification entries below). User-need (close prior CLOSE: NO blockers) is satisfied at both axes (defense deepening = install path stays clean across redeploy; known-bug fix = mcp_client non-text fallback restored to spec contract).",
+        "evidence": "AC1: grep -c '^    --exclude' deploy-to-usrlib.sh = 15 (expected 15). AC2: each new token's find-clause count = 2 (expected >=2 each). AC3: 6 ls absence checks PASS post-cleanup AND post-redeploy; deploy script exit code = 0; sha256 round-trip 29 files byte-identical. AC4: grep non_text[0] = 0; grep return non_text full = 1; py_compile exit 0. AC5: extended harness prints AC13_HARNESS_PASS exactly once + exit 0; counter-test invariant proven in-process. AC6: dev report attests reconciliation order; AC1-AC5 simultaneously hold post-execution (re-verified)."
+      }
+    ],
+    "_success_criteria_rule": "BA's requirements_decomposition has 1 entry (R1 covering all 6 ACs); QA produces 1 entry per the 1:1 mapping rule. Per-AC granular results captured in ac_verification below.",
+    "ac_verification": {
+      "AC1_rsync_excludes": {
+        "exclude_flag_count_actual": 15,
+        "exclude_flag_count_expected": 15,
+        "new_token_pattern_count_actual": 5,
+        "new_token_pattern_count_expected_min": 5,
+        "bash_n_exit_code": 0,
+        "evidence": "grep -c '^    --exclude' /root/rednote-mcp/scripts/deploy-to-usrlib.sh = 15. grep -cE 'exclude=(\\.claude|\\.codex|INDEX\\.md|package-lock\\.json|stderr_preinstall_\\*\\.txt)' = 5. bash -n exit 0.",
+        "status": "pass"
+      },
+      "AC2_find_exclusion_clauses": {
+        "claude_count": 2,
+        "codex_count": 2,
+        "INDEX_md_count": 2,
+        "package_lock_json_count": 2,
+        "stderr_preinstall_count": 2,
+        "expected_each_min": 2,
+        "evidence": "5 grep counts: each new token's find-clause appears exactly 2 times (once in step b lines 62-78, once in step d lines 110-126). This keeps the sha256 round-trip exclusion sets parallel between source and target as required for step e diff invariant.",
+        "status": "pass"
+      },
+      "AC3_install_path_cleanup_and_redeploy": {
+        "claude_absent_pre_redeploy": true,
+        "codex_absent_pre_redeploy": true,
+        "INDEX_md_absent_pre_redeploy": true,
+        "package_lock_json_absent_pre_redeploy": true,
+        "stderr_preinstall_no_txt_absent_pre_redeploy": true,
+        "stderr_preinstall_yes_txt_absent_pre_redeploy": true,
+        "claude_absent_post_redeploy": true,
+        "codex_absent_post_redeploy": true,
+        "INDEX_md_absent_post_redeploy": true,
+        "package_lock_json_absent_post_redeploy": true,
+        "stderr_preinstall_no_txt_absent_post_redeploy": true,
+        "stderr_preinstall_yes_txt_absent_post_redeploy": true,
+        "deploy_exit_code": 0,
+        "deploy_files_verified_count": 29,
+        "deploy_stamp_files_count": 18,
+        "deploy_source_commit": "00f644e905dfe4ed3cc4aa2c39405ecf30afdc33",
+        "deploy_source_dirty": true,
+        "evidence": "Pre-redeploy: 6 ls checks all returned non-zero (paths absent post M3 cleanup). QA re-ran the deploy script end-to-end at 2026-05-05T20:25:57Z; output: step a (node --check) OK, step b/d (sha256 sets), step c (rsync), step e (round-trip 29 files byte-identical), step f (.deploy-stamp 18 files). Post-redeploy: same 6 ls checks all returned non-zero (negative confirmation that the new excludes successfully blocked the source-side polluting paths from landing at install path).",
+        "status": "pass"
+      },
+      "AC4_mcp_client_non_text_fallback": {
+        "non_text_zero_index_count_actual": 0,
+        "non_text_zero_index_count_expected": 0,
+        "return_non_text_full_list_count_actual": 1,
+        "return_non_text_full_list_count_expected_min": 1,
+        "py_compile_exit_code": 0,
+        "line_184_verbatim": "    return non_text if non_text else None",
+        "git_diff_scope_check": "Last commit (e116f35) shows mcp_client.py diff = 1 insertion + 1 deletion at line 182, exactly matches BA constraint 'no other line of mcp_client.py may change'. Token removed: `[0] ` (4 characters).",
+        "evidence": "grep -c 'return non_text\\[0\\]' = 0. grep -cE 'return non_text if non_text else None' = 1. python3 -m py_compile exit 0. sed -n '183,184p' shows lines 183-184 = expected verbatim. Git diff confirms minimal scope.",
+        "status": "pass"
+      },
+      "AC5_extended_AC13_harness": {
+        "AC13_HARNESS_PASS_substring_count": 1,
+        "expected_min": 1,
+        "harness_exit_code": 0,
+        "sub_tests_run": [
+          "sub1_length_1_JSON: PASS (returns {'k': 1})",
+          "sub2_length_1_non_JSON: PASS (returns 'hello')",
+          "sub3_multi_block_JSON_concat: PASS (returns [{'a': 1}, {'a': 2}])",
+          "sub4_multi_block_non_JSON_concat: PASS (returns 'alpha beta gamma')",
+          "sub5_empty_content_returns_None: PASS (returns None)",
+          "sub6_all_non_text_multi_block: PASS (returns [{type:image,data:img1}, {type:image,data:img2}])"
+        ],
+        "sub_tests_1_to_5_preserved_verbatim": true,
+        "sub_test_6_pattern_matches_BA_spec": true,
+        "counter_test_invariant_attestation": "Counter-test executed in-process: replicated call_tool's logic with line 184 reverted to `return non_text[0] if non_text else None`, then ran sub-test 6's assertion against r6 = first image block. Result: AssertionError raised with message 'all-non-text multi-block fallback broken: got {\\'type\\': \\'image\\', \\'data\\': \\'img1\\'}' — exactly matching sub-test 6's f-string template. This proves sub-test 6 actually exercises the previously-uncovered branch and would catch a regression of M4.",
+        "harness_location": "/root/travel-planner/docs/dev/ticket-20260505-124619.md:374-407 (sub-test 6 inserted at lines 402-405 between sub-test 5 and the print line)",
+        "evidence": "QA executed extended harness with all 6 sub-tests; stdout = 'AC13_HARNESS_PASS' exactly once; exit code 0. Sub-tests 1-5 labels confirmed verbatim by grep; sub-test 6 label confirmed present.",
+        "status": "pass"
+      },
+      "AC6_reconciliation_order": {
+        "executed_order_per_dev_report": [
+          "M1+M2 (deploy-script edits, atomic)",
+          "M4 (mcp_client.py:184 single-token removal)",
+          "M5 (AC13 harness sub-test 6 append)",
+          "M3 (install-path cleanup via mv to /tmp)",
+          "M6 (redeploy)"
+        ],
+        "matches_BA_prescribed_order": true,
+        "post_execution_AC1_AC2_AC3_AC4_AC5_all_hold_simultaneously": true,
+        "QA_re_verification_post_execution": "QA re-ran deploy script independently (after dev's M6) and re-checked all install-path absences: all 6 paths still absent; deploy still exits 0 with 29-file sha256 round-trip. AC1-AC5 grep / ls / harness measurements re-confirmed in this QA cycle.",
+        "evidence": "Dev report ac_verification_results.AC6_reconciliation_order documents executed_order matching BA prescription. QA independently re-verified by running deploy script at 2026-05-05T20:25:57Z (clean exit + clean install path), running extended harness (AC13_HARNESS_PASS once + exit 0), and re-checking all grep counts. All 6 ACs hold simultaneously after M6.",
+        "status": "pass"
+      }
+    },
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Defect 1 root cause was 'architect's exclude list was authored before .claude/dev-registry was created in a separate cycle, missing 5 polluting paths at the install path'. Fix addresses root: 5 explicit --exclude flags added in 3 structurally-required places (rsync block + step b find + step d find), preserving the sha256 round-trip invariant that step e enforces. Verified by 2 independent deploy runs (dev's M6 + QA's re-run) both producing clean install path. Defect 2 root cause was 'M9 implementation chose literal interpretation of fall back to as return one block instead of return list, AC13 coverage gap let it ship'. Fix addresses root: literal 4-character removal of `[0] ` from line 184 + new AC13 sub-test 6 that exercises the previously-uncovered all-non-text multi-block branch. Counter-test invariant proves sub-test 6 actually catches the regression."
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+      "deploy_command": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh (same script handles build + deploy)",
+      "build_output_summary": "step a node --check OK; step b sha256 source set; step c rsync --checksum --delete OK; step d sha256 target set; step e round-trip 29 files byte-identical; step f wrote .deploy-stamp (18 dist/ files, source_commit=00f644e905dfe4ed3cc4aa2c39405ecf30afdc33, dirty=true).",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "script_quality_results": [
+      {
+        "script": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": []
+      }
+    ],
+    "regression_test_results": [
+      {
+        "test": "deploy-to-usrlib.sh end-to-end",
+        "result": "pass",
+        "details": "Deploy executed cleanly with exit 0; sha256 round-trip 29 files byte-identical between source and target; no rsync errors; no node --check errors; .deploy-stamp written successfully."
+      },
+      {
+        "test": "mcp_client.py syntactic correctness (py_compile)",
+        "result": "pass",
+        "details": "python3 -m py_compile exit 0; no syntax errors."
+      },
+      {
+        "test": "mcp_client.py importer compatibility (sub-tests 1-5 of AC13 harness)",
+        "result": "pass",
+        "details": "All 5 prior text-block test cases continue to pass (length-1 JSON, length-1 non-JSON, multi-block JSON concat, multi-block non-JSON concat, empty-content guard). Backward compat for search.py / search_light.py / test_raw_search.py / get_note_images.py / test_get_content.py preserved (these all consume text-block responses; non-text fallback change does not affect them)."
+      },
+      {
+        "test": "Install path cleanliness post-redeploy (negative confirmation)",
+        "result": "pass",
+        "details": "All 6 polluting paths (.claude, .codex, INDEX.md, package-lock.json, stderr_preinstall_no.txt, stderr_preinstall_yes.txt) confirmed absent at /usr/lib/node_modules/rednote-mcp/ both before and after redeploy."
+      }
+    ],
+    "code_quality_findings": [],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": [],
+      "rationale": "Dev report permissions_to_add is empty; no new scripts created this cycle; only existing scripts edited."
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 3,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      },
+      "rationale": "Files modified: deploy-to-usrlib.sh (existing exclude pattern style preserved; new tokens are literal exclude values that match the existing pattern style on adjacent lines), mcp_client.py (4-character literal removal, no new tokens), ticket-20260505-124619.md (markdown documentation, sub-test 6 added in fenced code block). No new hardcoded paths/URLs/credentials introduced."
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "absent",
+      "violations": [],
+      "rationale": "No project CLAUDE.md role-token table applies to this cycle (filesystem + Python script changes only; no CTA / body / brand-token decisions). Standards check skipped per Step 5a.2 'gated on role table existing' clause."
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": false,
+      "skip_reason": "Non-UI cycle: pure backend (deploy script + Python module + markdown doc). No frontend, no rendered UI, no Playwright applicable."
+    },
+    "ui_test_results": [],
+    "output_quality_verification": {
+      "checked": true,
+      "output_type": "deploy_artifact + Python module behavior",
+      "completeness": "all expected outputs verified",
+      "quality_assessment": "good",
+      "specific_checks": [
+        {"check": "deploy script produces clean install path (no polluting files)", "result": "pass", "details": "6 ls absence checks passed post-deploy"},
+        {"check": "deploy script writes valid .deploy-stamp", "result": "pass", "details": "18 dist files, sha256 hashes for each, source_commit recorded"},
+        {"check": "mcp_client.py call_tool returns full list of non-text blocks for all-non-text content", "result": "pass", "details": "AC13 sub-test 6 confirms 2 image blocks input → list of 2 image blocks output (not first only)"},
+        {"check": "mcp_client.py preserves text-block backward compatibility", "result": "pass", "details": "AC13 sub-tests 1-5 all PASS; length-1 / multi-block / empty cases all yield expected returns"}
+      ],
+      "verdict": "pass"
+    },
+    "focus_criteria_results": {
+      "criteria_provided": true,
+      "criteria_count": 3,
+      "results": [
+        {"criterion": "Defect 1 (M6 install pollution) genuinely fixed — install path clean", "result": "pass", "evidence": "6 ls absence checks at /usr/lib/node_modules/rednote-mcp/ all return non-zero post-cleanup AND post-redeploy. Deploy exit 0 with 29-file sha256 round-trip.", "severity": "critical"},
+        {"criterion": "Defect 2 (mcp_client.py non-text narrowing) genuinely fixed — returns list per BA spec line 146 contract", "result": "pass", "evidence": "Line 184 verbatim = 'return non_text if non_text else None'. AC13 sub-test 6 returns the original list of 2 image blocks (not first only). Counter-test invariant proves the assertion would fail under reverted code.", "severity": "critical"},
+        {"criterion": "AC13 harness now covers the non-text fallback (regression coverage for future cycles)", "result": "pass", "evidence": "Sub-test 6 inserted at lines 402-405 of /root/travel-planner/docs/dev/ticket-20260505-124619.md (between sub-test 5 and the print line). Sub-tests 1-5 preserved verbatim. Extended harness runs end-to-end with AC13_HARNESS_PASS printed exactly once + exit 0.", "severity": "critical"}
+      ],
+      "all_passed": true
+    },
+    "generated_tests": [],
+    "all_findings": [],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    },
+    "self_verification": {
+      "claims_total": 14,
+      "claims_with_evidence": 14,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high",
+      "notes": "Every PASS claim is backed by either (a) executed grep with reported count, (b) executed ls with reported exit, (c) executed deploy script with full stdout captured, (d) executed Python harness with reported stdout + exit, (e) executed counter-test simulation with reported AssertionError text, or (f) git log/diff inspection with reported scope. No claim relies on code-reading-only or assumption."
+    }
+  },
+  "live_verification_setup_attempt": {
+    "attempted_create_via_ui": false,
+    "ui_action_taken": "N/A — non-UI cycle",
+    "result": "N/A",
+    "screenshots_of_attempt": [],
+    "skip_reason": "Cycle is pure backend (deploy script + Python module + markdown doc). UI verification not applicable."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
