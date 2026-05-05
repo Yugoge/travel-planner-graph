@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T16:14:50Z*
-**Total entries**: 152
+*Last updated: 2026-05-05T16:22:38Z*
+**Total entries**: 157
 **Convention**: kebab
 
 ## Tree
@@ -124,6 +124,11 @@ dev/
 ├── `dev-report-20260505-124619.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `qa-full-audit-20260413.json` - json config
+├── `qa-output-ac10-envvar-stderr.txt` - txt file
+├── `qa-output-ac10-envvar-stdout.txt` - txt file
+├── `qa-output-ac10-noenv-stderr.txt` - txt file
+├── `qa-output-ac10-noenv-stdout.txt` - txt file
+├── `qa-output-tamper-bak-20260505-124619.js` - js file
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
 ├── `qa-report-20260405-201500.json` - json config
