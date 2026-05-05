@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T09:49:48Z*
-**Total entries**: 137
+*Last updated: 2026-05-05T10:02:18Z*
+**Total entries**: 139
 **Convention**: kebab
 
 ## Tree
@@ -48,6 +48,7 @@ dev/
 ├── `ba-spec-20260416-172720.md` - BA Specification: Fix silent data loss bug in POI agents — slot-level merge
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
+├── `cleanliness-inspector-report-20260505-061047.json` - json config
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
@@ -111,6 +112,7 @@ dev/
 ├── `dev-report-20260504-234535-rc-defensive-fixes.json` - json config
 ├── `dev-report-20260505-060527.json` - json config
 ├── `dev-report-20260505-061047.json` - json config
+├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `qa-full-audit-20260413.json` - json config
 ├── `qa-report-20260320-213000.json` - json config
 ├── `qa-report-20260321-155000.json` - json config
