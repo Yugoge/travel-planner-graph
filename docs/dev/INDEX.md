@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T17:15:10Z*
-**Total entries**: 162
+*Last updated: 2026-05-05T17:19:27Z*
+**Total entries**: 166
 **Convention**: kebab
 
 ## Tree
@@ -54,6 +54,7 @@ dev/
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
 ├── `cleanliness-inspector-report-20260505-061047.json` - json config
+├── `cleanliness-inspector-report-20260505-123425.json` - json config
 ├── `cleanliness-inspector-report-20260505-124619.json` - json config
 ├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
@@ -126,6 +127,7 @@ dev/
 ├── `dev-report-20260505-123425.json` - json config
 ├── `dev-report-20260505-124619.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
+├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
 ├── `qa-full-audit-20260413.json` - json config
 ├── `qa-output-ac10-envvar-stderr.txt` - txt file
@@ -165,6 +167,8 @@ dev/
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
+├── `style-inspector-report-20260505-123425.json` - json config
+├── `style-inspector-report-20260505-124619.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
