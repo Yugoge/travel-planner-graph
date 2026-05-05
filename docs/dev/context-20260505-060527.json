@@ -1,0 +1,472 @@
+{
+  "request_id": "20260505-060527",
+  "task_id": "20260505-060527",
+  "timestamp": "2026-05-05T06:05:27Z",
+  "requirement": {
+    "original": "做好你妈逼，没有一点修复。为什么城市名给你改成了大同到玉林？没有一点规范没有一点逼数？为什么timeline空空如也？为什么没有我book的任何东西显示在timeline？为什么还有很多没有照片？北京jade是你哪门子城市？我对你异常失望。到底是怎么回事，已经给你无数次机会了，你已经彻底丧失了我的信任。用户就根本性彻底修复一切bug",
+    "clarified": "Resolve a 7-bug cluster on the China itinerary HTML page (https://travel.life-ai.app/china/2026-04-12/) with one comprehensive end-to-end pass: (A) sidebar group names must be pure city names; (B) Days 9-11 stale Xi'an content removed; (C) sidebar must not show '北京（Jade）' or '西安' for Beijing-Jade days; (D) timeline view must surface all booked transport/attractions; (E) timeline meal alternatives must collapse to primary-only with badge; (F) all in-scope POIs must have an image or graceful placeholder; (G) Matilde-自行 phantom accommodation cards must be suppressed.",
+    "what": "Comprehensive renderer + data fix for sidebar grouping, timeline completeness, stale Xi'an cleanup, meal-alternatives collapsing, image audit, and Matilde-phantom suppression.",
+    "why": "User has lost trust after multiple partial iterations. Page must show every booked item the user paid for, with pure-city sidebar grouping and zero stale content from previous trip-scope iterations.",
+    "where": [
+      "scripts/generate-html-interactive.py",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/plan-skeleton.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/images.json"
+    ],
+    "scope": {
+      "included": [
+        "Renderer: TimelineView intra_routes iteration",
+        "Renderer: _group_days_by_location pure-city normalization",
+        "Renderer: meal alternatives timeline collapse",
+        "Renderer: accommodation 自行 suppression",
+        "Renderer: header_subtitle field for transit-day subtitle (separate from location_base)",
+        "Data: Days 9-11 Xi'an cleanup across meals/attractions/entertainment/shopping",
+        "Data: Day 4 transportation.json location_short semantics",
+        "Data: plan-skeleton.json Day 9 location + Days 10/11 location_local cleanup",
+        "Data: accommodation.json Days 9-14 Matilde-自行 entries → set null OR add out_of_scope flag",
+        "Data: images.json cache entries for 7 BUG-F POIs"
+      ],
+      "excluded": [
+        "Matilde standalone Xi'an itinerary planning (out of scope per user)",
+        "Removing G5/G26/3U8893/DR5010 booking entries (paid bookings)",
+        "Days 1-8 cafe/entertainment/shopping content changes",
+        "New framework / state library / build system",
+        "Reverting recent commits (forward-fix only)",
+        "Renderer support for split_day shared/jade/matilde sub-sections (separate future cycle)"
+      ]
+    },
+    "success_criteria": [
+      "Sidebar group names match pure city set: {Beijing, Datong, Chengdu, Shanghai} / {北京, 大同, 成都, 上海}",
+      "All 12+ booked transport entries (BD05565, DR5010, 川ACW7906, G5415, G8562, 大熊猫, 送/接机专车, 3U8893, G5, G26) visible in timeline view at booked times",
+      "Zero Xi'an POIs in Days 9-11 across meals/attractions/entertainment/shopping",
+      "Timeline shows exactly 1 meal card per slot (alternatives badged)",
+      "No '跳过' / 'skip' meal entries anywhere",
+      "No '马蒂尔德 ... 自行安排' accommodation cards visible",
+      "Every in-scope POI has image OR graceful no-photo placeholder",
+      "No JavaScript console errors on Playwright load"
+    ],
+    "constraints": [
+      "Single PR / single cycle (data + renderer co-evolution per Contract D)",
+      "No destructive git verbs (no revert, no force-push)",
+      "Tier-2 reference: use user's verbatim booking list",
+      "Forward-fix only; minimal diffs",
+      "Placeholder image fallback must be a styled pill, never blank <img src=''>",
+      "Keep accommodation_jade (Days 8-15 Jade home/hotel) intact"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/generate-html-interactive.py:606-629",
+      "scripts/generate-html-interactive.py:716-757",
+      "scripts/generate-html-interactive.py:992-1022",
+      "scripts/generate-html-interactive.py:1259-1285",
+      "scripts/generate-html-interactive.py:2871-2944",
+      "data/china-20260412-092624/transportation.json (Day 4 location_short fields)",
+      "data/china-20260412-092624/plan-skeleton.json (Day 9 location; Days 10/11 location_local)",
+      "data/china-20260412-092624/meals.json (Days 9-11)",
+      "data/china-20260412-092624/attractions.json (Days 9-11)",
+      "data/china-20260412-092624/entertainment.json (Days 9-11)",
+      "data/china-20260412-092624/shopping.json (Day 11)",
+      "data/china-20260412-092624/accommodation.json (Days 9-14)",
+      "data/china-20260412-092624/images.json (7 cache entries)"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/generate-html-interactive.py:241-270 (_get_cover_image — relies on city name; verify still works after sidebar fix)",
+      "scripts/generate-html-interactive.py:272-339 (_get_placeholder_image — referenced by image audit)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "data/china-20260412-092624/budget.json (recompute later; not blocking)",
+      "data/china-20260412-092624/timeline.json Day 8/9/10/11 split_day/shared/jade/matilde sections (dead data; future cycle)",
+      "data/china-20260412-092624/transportation.json Days 7/10/11/15 missing entries (consistency-only nit)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-05T06:05:27Z",
+      "task_id": "20260505-060527",
+      "file": "data/china-20260412-092624/budget.json",
+      "line": null,
+      "observation": "Budget file may need recalculation after Days 9-11 stale Xi'an POIs are removed; €amounts will drop. Out of this fix's scope.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:05:27Z",
+      "task_id": "20260505-060527",
+      "file": "data/china-20260412-092624/timeline.json",
+      "line": null,
+      "observation": "Day 8/9/10/11 contain split_day/shared/jade/matilde sub-sections that the renderer never reads. Either remove or build renderer support — out of this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:05:27Z",
+      "file": "scripts/generate-html-interactive.py",
+      "line": 1027,
+      "task_id": "20260505-060527",
+      "observation": "Renderer has accommodation_jade slot but no symmetric accommodation_matilde. If Matilde ever gets a separate Beijing accommodation in scope, the asymmetry will need addressing.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:05:27Z",
+      "file": "data/china-20260412-092624/transportation.json",
+      "line": null,
+      "task_id": "20260505-060527",
+      "observation": "Days 7, 10, 11, 15 absent from transportation.json days[] array. Renderer falls through gracefully but inconsistency is cosmetic debt.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Page shows broken sidebar, empty timelines, stale Xi'an content, and grey-box phantom cards.",
+    "root_cause": "Multiple decoupled root causes share a meta-pattern: each prior iteration changed ONE side of the data↔renderer contract without updating the other side. (a) BUG-A/C: transportation.json injected location_short, but _inject_intra_routes overrode location_base used by sidebar grouping; (b) BUG-D: intra_routes built into kanban data but TimelineView never iterates it; (c) BUG-B: scope-out declared in plan-skeleton location strings but stale Xi'an POIs left in 4 sibling data files; (d) BUG-E: meal _options array built for kanban but TimelineView blindly iterates all options as parallel entries; (e) BUG-G: accommodation_jade slot added but Matilde 自行 placeholder still occupies primary accommodation slot and renders as phantom card.",
+    "root_cause_commit": "N/A — multi-iteration drift; no single commit identified. Recent auto-commits 4e90833 / c74b6a4 / 0231e17 / 99e1c7a / 3e08398 are likely cumulative",
+    "why_introduced": "Each iteration tackled a sub-problem in isolation: split_day shape, intra_routes for booked transports, accommodation_jade for Jade home, plan-skeleton scope-out. Each change landed without verifying end-to-end render.",
+    "why_problematic": "Renderer treats data fields literally; never warns when a new field is unused or when a field's intended consumer differs from its actual consumer. No end-to-end QA gate. Lost trust accumulated.",
+    "timeline": "Recent iterations 2026-04-26 → 2026-05-05 (per git auto-commits). User reported full-cluster failure on 2026-05-05 06:00.",
+    "affected_files": [
+      "scripts/generate-html-interactive.py",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/plan-skeleton.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/images.json"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "BUG-A inferred: transportation.json Day 4 has location_short='Datong → Chengdu' (Read of file); renderer line 612-613 sets merged.location_base = location_short; renderer line 1268 groups by location_base. (Source-code reading.)",
+      "BUG-A observed indirect: user screenshot IMG_1602 shows '大同 → 成都（玉林西路）' as sidebar group name — matches the predicted output of the inferred path.",
+      "BUG-B observed: bash extraction via Python json parse over meals.json Day 9-11 lists 9 stale Xi'an entries with their exact name_local strings — matches user IMG_1600/1601 screenshots verbatim ('郑记biangbiang面（钟楼店）', '永兴坊', etc.).",
+      "BUG-C inferred: plan-skeleton.json Days 10/11 have location_local='北京（Jade）'; renderer line 1268+1274 groups by location_base AND name_local. Combined with Day 9 plan-skeleton location='Xi an', the sidebar shows '西安' for Day 9 and '北京（Jade）' for Day 10/11.",
+      "BUG-C observed indirect: IMG_1602 shows exactly '西安 (1 day)' and '北京（Jade）(2 days)' — matches inferred output.",
+      "BUG-D inferred: TimelineView at line 2891-2920 iterates day.transportation, day.meals, day.attractions, day.entertainment, day.shopping, day.cafe, day.travel_segments, day.accommodation; does NOT iterate day.intra_routes. transportation.json Day 6 has G5415/G8562 in intra_city_routes, which flow to merged.intra_routes (line 629), not consumed by TimelineView.",
+      "BUG-D observed indirect: IMG_1597 Day 6 timeline omits G5415/乐山大佛/G8562 — matches inferred output.",
+      "BUG-E inferred: line 716-757 builds meals[mealType+'_options'] with each alternative receiving time = primary.time. Line 2899-2906 (TimelineView) iterates _options and adds each as separate entry.",
+      "BUG-E observed indirect: IMG_1593 shows 3 dinner cards at same 17:51-19:25 slot — matches inferred output.",
+      "BUG-F observed: cache simulation script (Python) returns 7 in-scope POIs with no image_url AND no images.json cache hit.",
+      "BUG-G inferred + observed: accommodation.json Days 9-14 contain {name_local: '马蒂尔德西安住宿待定（自行安排）', image_url: '', cost: 0}; renderer line 992-1022 writes this unconditionally to merged.accommodation; user screenshots IMG_1600/1601 show empty grey accommodation cards on those days."
+    ],
+    "diagnosis_completeness": "complete (mixed observations + source-code inference; user screenshots provide runtime confirmation for each inferred path)",
+    "complaint_location_keywords": [
+      "城市名",
+      "大同到玉林",
+      "timeline",
+      "book",
+      "照片",
+      "北京jade"
+    ],
+    "localization_evidence": "Reproduced symptoms by reading data files + tracing renderer code paths. Each user complaint maps to a specific (file, line-range) pair. Runtime browser repro deferred to dev/QA cycle (Playwright will verify the fixes).",
+    "located_source": "scripts/generate-html-interactive.py:606-629 (BUG-A/C), 716-757 (BUG-E), 992-1022 (BUG-G), 1259-1285 (BUG-A/C grouping), 2871-2944 (BUG-D); data/china-20260412-092624/{meals,attractions,entertainment,shopping}.json Days 9-11 (BUG-B); data/china-20260412-092624/accommodation.json Days 9-14 (BUG-G)",
+    "localization_blocked": null,
+    "git_bisect_result": null
+  },
+  "diagnosis_layer": "L3 + L4 (data semantics + renderer logic; Contract D novelty: must be co-changed)",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "为什么城市名给你改成了大同到玉林", "acceptance_criterion": "AC1: Sidebar group names match pure city set {Beijing, Datong, Chengdu, Shanghai}/{北京, 大同, 成都, 上海} only; no '→', '(', '（' allowed."},
+    {"id": "R2", "source_phrase": "为什么timeline空空如也", "acceptance_criterion": "AC4: Timeline view for Days 4/6/8/12/13 shows all booked transport + attractions at booked times."},
+    {"id": "R3", "source_phrase": "为什么没有我book的任何东西显示在timeline", "acceptance_criterion": "AC4 (subset): All 12+ booked items (BD05565, DR5010, 川ACW7906, G5415, G8562, 乐山大佛, 大熊猫, 送/接机专车, 3U8893, G5, G26) appear in timeline view."},
+    {"id": "R4", "source_phrase": "为什么还有很多没有照片", "acceptance_criterion": "AC7: Every in-scope POI has image_url OR cache hit OR graceful placeholder pill."},
+    {"id": "R5", "source_phrase": "北京jade是你哪门子城市", "acceptance_criterion": "AC1: Sidebar group is 'Beijing'/'北京' for all Beijing-Jade days; never '北京（Jade）'."},
+    {"id": "R6", "source_phrase": "用户就根本性彻底修复一切bug", "acceptance_criterion": "Umbrella: AC1-AC8 all pass in single cycle; QA may not declare partial success."},
+    {"id": "R7", "source_phrase": "已经给你无数次机会了，你已经彻底丧失了我的信任", "acceptance_criterion": "(no AC; sentiment — informs Contract D novelty requirement: data + renderer co-changed)"},
+    {"id": "R8", "source_phrase": "做好你妈逼，没有一点修复", "acceptance_criterion": "(no AC; sentiment — Contract D triggered)"}
+  ],
+  "component_chain": [
+    {
+      "file": "data/china-20260412-092624/plan-skeleton.json",
+      "line_range": "Day 9 line ~440 (location='Xi an'); Days 10/11 line ~503,555 (location_local='北京（Jade）')",
+      "role": "Source of day-level location strings consumed by renderer's _merge_day_data",
+      "imports_from": "leaf",
+      "evidence": "grep 'location' showed location_local='北京（Jade）' on lines 503 and 555; Python json dump showed Day 9 location='Xi an'",
+      "verified_via": "both"
+    },
+    {
+      "file": "data/china-20260412-092624/transportation.json",
+      "line_range": "Day 4 entry (location_short='Datong → Chengdu', location_local='大同 → 成都（玉林西路）')",
+      "role": "Override source for renderer _inject_intra_routes which sets merged.location_base",
+      "imports_from": "leaf",
+      "evidence": "Python json dump confirms Day 4 location_short and location_local",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "606-629 (_inject_intra_routes); 1244 (call site)",
+      "role": "Overrides merged.location_base from transportation.json location_short",
+      "imports_from": "scripts/generate-html-interactive.py:1259-1285",
+      "evidence": "Read of lines 606-629 confirms 'merged[\"location_base\"] = loc_short' on line 613",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "1259-1285 (_group_days_by_location)",
+      "role": "Groups days into sidebar trip blocks keyed by location_base",
+      "imports_from": "leaf",
+      "evidence": "Read of lines 1259-1285 confirms 'location_base = day.get(\"location_base\", \"Unknown\")' as group key",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "716-757 (meal _options build); 2899-2906 (TimelineView meal iteration)",
+      "role": "BUG-E: builds parallel _options array consumed by TimelineView as parallel entries",
+      "imports_from": "leaf",
+      "evidence": "Read of both ranges confirms each option receives time = primary.time and TimelineView add() each",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "2871-2944 (TimelineView)",
+      "role": "BUG-D: iterates day.{transportation,meals,attractions,entertainment,shopping,cafe,travel_segments,accommodation} but NOT day.intra_routes",
+      "imports_from": "leaf",
+      "evidence": "Read of lines 2891-2920 — exhaustive list confirms intra_routes is absent",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "992-1022 (accommodation merge)",
+      "role": "BUG-G: writes Matilde 自行 placeholder unconditionally to merged.accommodation",
+      "imports_from": "leaf",
+      "evidence": "Read of lines 990-1022 confirms no guard against name containing '自行安排'",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/{meals,attractions,entertainment,shopping}.json",
+      "line_range": "Days 9-11 entries",
+      "role": "BUG-B: stale Xi'an POIs left from prior trip-scope iteration",
+      "imports_from": "leaf",
+      "evidence": "Python script grepped 13+ stale Xi'an entries with verbatim names matching IMG_1600/1601",
+      "verified_via": "grep"
+    },
+    {
+      "file": "data/china-20260412-092624/accommodation.json",
+      "line_range": "Days 9-14 entries",
+      "role": "BUG-G data side: Matilde 自行 placeholders with image_url='' cost=0",
+      "imports_from": "leaf",
+      "evidence": "Python json walk confirmed 6 entries Days 9-14",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/images.json",
+      "line_range": "pois map (162 entries today)",
+      "role": "BUG-F: cache lookup for placeholder fallback; 7 in-scope POIs miss",
+      "imports_from": "leaf",
+      "evidence": "Python cache simulation enumerated 7 specific in-scope POIs returning empty",
+      "verified_via": "grep"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 612,
+      "type": "if",
+      "code_snippet": "if loc_short and isinstance(loc_short, str): merged[\"location_base\"] = loc_short",
+      "purpose": "Conditional override of location_base only when location_short is a non-empty string. The BUG-A fix must keep this guard but route the override to a NEW field (e.g., header_subtitle) rather than overwriting location_base.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 1026,
+      "type": "if",
+      "code_snippet": "if isinstance(acc_jade, dict) and acc_jade.get(\"name_base\"): merged[\"accommodation_jade\"] = ...",
+      "purpose": "Guards accommodation_jade write so empty/missing data does not produce a phantom Jade card. Mirror this pattern for accommodation primary slot in BUG-G fix.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 2882,
+      "type": "if",
+      "code_snippet": "if (item?.time?.start && item?.time?.end && item.time.start !== '00:00' && item.time.end !== '00:00' && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end))",
+      "purpose": "TimelineView add() guard against degenerate time entries. New intra_routes entries (BUG-D fix) must satisfy this — verify each intra_route card has start/end and both differ.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 2948,
+      "type": "if",
+      "code_snippet": "const seen = new Set(); ... if (e.optional && seen.has(key)) return false;",
+      "purpose": "Optional-entry dedup. The BUG-E fix should layer on top of this, not replace it.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop AND 390x844 mobile",
+    "theme": "light",
+    "locale": "zh (verify both lang='base' and lang='local')",
+    "auth_state": "logged-out",
+    "data_state": "with-data (15 days populated)",
+    "browser": "Safari iOS (user) + Chrome desktop (orchestrator verification)",
+    "url_path": "https://travel.life-ai.app/china/2026-04-12/"
+  },
+  "evidence": {
+    "observed": "User screenshots IMG_1593..1602 show: sidebar group '大同 → 成都（玉林西路）' (BUG-A); Day 10 lunch '郑记biangbiang面（钟楼店）' / dinner '永兴坊' (BUG-B Day 10); Day 11 '清真·回坊大...', '老刘家泡馍...', '三根电杆陕菜馆' (BUG-B Day 11); sidebar 'Day 10 西安 (1 day)' AND 'Day 11/12 北京（Jade）(2 days)' (BUG-C); Day 6 timeline missing G5415/乐山大佛/G8562 (BUG-D); Day 8 timeline missing 大熊猫/3U8893/送-接机 (BUG-D); Day 4 17:51-19:25 shows 3 parallel dinner cards including 跳过 alt €2.5 (BUG-E); 'many photos missing' (BUG-F).",
+    "measured": {
+      "value": {
+        "sidebar_groups_today": ["Beijing(1-2)", "Datong(3)", "Datong → Chengdu(4)", "Chengdu(5-8)", "Xi'an(9)", "北京（Jade）(10-11)", "Shanghai(12-13)", "Beijing(14-15)"],
+        "day_4_location_local": "大同 → 成都（玉林西路）",
+        "day_4_location_short": "Datong → Chengdu",
+        "day_9_skeleton_location": "Xi an",
+        "days_10_11_skeleton_location_local": "北京（Jade）",
+        "days_9_11_xian_meal_count": 9,
+        "days_9_11_xian_attractions_count": 8,
+        "days_9_11_xian_entertainment_count": 4,
+        "days_11_xian_shopping_count": 1,
+        "days_9_14_phantom_accommodation_count": 6,
+        "in_scope_pois_with_no_image": 7,
+        "booked_items_missing_from_timeline": ["BD05565 Day4", "DR5010 Day4", "川ACW7906 Day4", "G5415 Day6", "乐山大佛 Day6", "G8562 Day6", "大熊猫 Day8", "送机专车 Day8", "3U8893 Day8", "接机专车 Day8", "G5 Day12", "G26 Day13"],
+        "timeline_meal_alternative_count_day4_dinner": 3
+      },
+      "location": "scripts/generate-html-interactive.py:606-629,716-757,992-1022,1259-1285,2871-2944; data/china-20260412-092624/{plan-skeleton,transportation,meals,attractions,entertainment,shopping,accommodation,images}.json"
+    },
+    "expected": {
+      "value": {
+        "sidebar_groups_target": ["Beijing(1-2)", "Datong(3)", "Chengdu(4-8)", "Beijing(9-11)", "Shanghai(12-13)", "Beijing(14-15)"],
+        "day_4_header_subtitle": "Datong → Chengdu (DR5010)",
+        "day_4_sidebar_group": "Chengdu",
+        "day_9_skeleton_location": "Beijing",
+        "days_10_11_skeleton_location_local": "北京",
+        "days_9_11_xian_meal_count": 0,
+        "days_9_11_xian_attractions_count": 0,
+        "days_9_11_xian_entertainment_count": 0,
+        "days_11_xian_shopping_count": 0,
+        "days_9_14_phantom_accommodation_count": 0,
+        "in_scope_pois_with_no_image": 0,
+        "booked_items_missing_from_timeline": [],
+        "timeline_meal_alternative_count_day4_dinner": 1
+      },
+      "source": "User invocation prompt + verbatim booking list + Jade memory file (~/.claude/projects/-root-travel-planner/memory/user_jade_infj.md) + trip memory file (~/.claude/projects/-root-travel-planner/memory/user_matilde_jade_trip.md)"
+    },
+    "gap": "8 sidebar groups today vs 6 expected (2 wrong groups, 1 fragmented Chengdu); 22 stale Xi'an POIs across 4 files for Days 9-11; 6 phantom accommodation cards Days 9-14; 7 in-scope POIs missing images; 12 booked items invisible in timeline; meal alternative count 3 vs expected 1 (Day 4 dinner)."
+  },
+  "scope_expansion": {
+    "search_pattern": "intra_routes|_inject_intra_routes|_group_days_by_location|location_short|location_local|meal_options|_isAlternative|accommodation|自行安排|Xi an|兵马俑|回民街|钟楼|永兴坊|biangbiang",
+    "search_scope": "scripts/generate-html-interactive.py + data/china-20260412-092624/*.json",
+    "user_reported": [
+      "transportation.json (sidebar string)",
+      "meals.json (Day 10/11 Xi'an entries)",
+      "accommodation.json (北京jade reference)",
+      "scripts/generate-html-interactive.py (timeline empty / sidebar grouping)"
+    ],
+    "additional_found": [
+      "entertainment.json Day 9-11 stale Xi'an entries",
+      "shopping.json Day 11 stale Xi'an entry",
+      "plan-skeleton.json Day 9 location='Xi an' + Days 10/11 location_local='北京（Jade）'",
+      "images.json: 7 in-scope POI cache misses",
+      "attractions.json Day 9-11 stale Xi'an entries"
+    ],
+    "all_occurrences": [
+      "scripts/generate-html-interactive.py:606-629,716-757,992-1022,1027,1259-1285,2871-2944",
+      "data/china-20260412-092624/transportation.json:Day4(location_short,location_local)",
+      "data/china-20260412-092624/plan-skeleton.json:Day9(location),Days10-11(location_local)",
+      "data/china-20260412-092624/meals.json:Days9-11",
+      "data/china-20260412-092624/attractions.json:Days9-11",
+      "data/china-20260412-092624/entertainment.json:Days9-11",
+      "data/china-20260412-092624/shopping.json:Day11",
+      "data/china-20260412-092624/accommodation.json:Days9-14",
+      "data/china-20260412-092624/images.json:pois (need 7 additions)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "User's verbatim invocation prompt + canonical booking list + memory files (Jade INFJ preferences, Matilde-Jade trip notes)",
+    "url_or_location": "BA invocation prompt; ~/.claude/projects/-root-travel-planner/memory/user_jade_infj.md; ~/.claude/projects/-root-travel-planner/memory/user_matilde_jade_trip.md",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "/root/travel-planner/CLAUDE.md (no role table); project has no design-token contract"
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "transportation.json (Day 4 location_short/location_local injection); inferred from data shape, no explicit ba-spec found",
+        "proposed_solution": "Display transit indication on Day 4 by adding location_short field",
+        "actual_change": "Added location_short='Datong → Chengdu' and location_local='大同 → 成都（玉林西路）' to transportation.json Day 4",
+        "outcome": "Sidebar grouping consumed location_short via _inject_intra_routes override → BUG-A",
+        "failure_category": "wrong_scope",
+        "target_layer": "L3"
+      },
+      {
+        "artifact_path": "timeline.json Days 5-15 rebuild + split_day shape; inferred from current data; no explicit ba-spec",
+        "proposed_solution": "Add split_day/shared/jade/matilde sub-sections for Days 8-11 to support per-traveler timelines",
+        "actual_change": "timeline.json Days 8-11 contain split_day:true + shared/jade/matilde sub-sections",
+        "outcome": "Renderer never consumes these → dead data; BUG-D persists; BUG-B persists because sibling data files (meals/attractions/entertainment/shopping) were not cleaned",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L3"
+      },
+      {
+        "artifact_path": "accommodation_jade slot addition (renderer line 1025-1027); inferred from existing code",
+        "proposed_solution": "Separate Jade home accommodation from primary",
+        "actual_change": "Added accommodation_jade field consumption in renderer; populated in accommodation.json Days 8-15",
+        "outcome": "Jade card renders correctly BUT Matilde-自行 placeholder still occupies primary accommodation slot → BUG-G phantom card",
+        "failure_category": "wrong_scope",
+        "target_layer": "L3"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3 + L4 (data cleanup AND renderer logic in same cycle)",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempts modified ONE side of the data↔renderer contract per cycle (data shape changed without renderer support, OR renderer changed without data cleanup). This cycle mandates BOTH sides change in lockstep for each bug, with QA verifying via Playwright that each AC's measured value matches the expected value. The novelty is the COUPLING discipline, not the surface-level fix."
+    }
+  },
+  "context": {
+    "codebase_state": "branch=master; many recent auto-commits 2026-04-26→2026-05-05",
+    "recent_commits": "f740b3b Auto-commit 2026-05-05 00:27:49; 37fe6d1 checkpoint 2026-05-04 23:40:36; 3e08398/0231e17/0578c9a/99e1c7a/e0851a9/c74b6a4 Auto-commit 2026-05-04 evening — accumulated iteration on this bug cluster",
+    "file_contents": {},
+    "dependencies": {
+      "renderer_python_version": "python3 (system)",
+      "datasource_files": 9,
+      "image_cache_entries": 162
+    },
+    "environment": {
+      "deployed_url": "https://travel.life-ai.app/china/2026-04-12/",
+      "static_html_path": "(generated by scripts/generate-html-interactive.py)"
+    }
+  },
+  "development_approach": {
+    "strategy": "Bug-by-bug minimal fix with Contract D coupling discipline (data + renderer co-evolved per bug). Order recommended: BUG-G (renderer guard, smallest blast radius) → BUG-A/C (introduce header_subtitle field; revert location_base override) → BUG-B (data cleanup, mechanical) → BUG-D (TimelineView intra_routes iteration + dedup) → BUG-E (TimelineView meal-primary-only with badge) → BUG-F (Gaode POI search for 7 entries + graceful no-photo pill).",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/plan-skeleton.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/images.json"
+    ],
+    "validation_approach": "Playwright on https://travel.life-ai.app/china/2026-04-12/ at desktop 1440x900 AND mobile 390x844; per-AC measured-vs-expected diff; screenshot evidence saved to docs/dev/screenshots/dev-20260505-060527-*.png; HTML grep audit for empty <img src=''>; sidebar text extraction; timeline entry count per day."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "data_renderer_coupling": true,
+    "no_destructive_git_verbs": true,
+    "playwright_live_verification_required": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Bug cluster is project-internal; root causes are direct file-and-line mismatches between data shape and renderer iteration. No design-pattern decision requires external research. Existing project patterns (accommodation_jade as separate slot, _options array for kanban alternatives) provide the templates."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

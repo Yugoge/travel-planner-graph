@@ -1,0 +1,423 @@
+{
+  "request_id": "20260505-061047",
+  "task_id": "20260505-061047",
+  "timestamp": "2026-05-05T06:10:47Z",
+  "requirement": {
+    "original": "这是因为你彻底搞错了修复对象。一切修复只能在root/rednote-mcp然后部署到你说的位置。好好检讨你到底做错了什么。必须两边同步并且root/rednote-mcp是唯一真相来源",
+    "clarified": "Restore /root/rednote-mcp as the single source of truth for the rednote-mcp runtime. The substantive feature delta (search_notes_light + supporting helpers + smart-retry + cover-selector minfix + telemetry) currently orphaned in /usr/lib/node_modules/rednote-mcp/dist/* must be migrated back into the source repo verbatim, and the minimum structural primitive (a sanctioned deploy script with sha256 round-trip verification) must be added so future writes always originate in source and propagate to install via the deploy mechanism — not the reverse.",
+    "what": "Reverse-sync the working installed runtime into the source repo for two specific files (rednoteTools.js, cli.js); append a manifest line; add a deploy script (scripts/deploy-to-usrlib.sh) that performs node --check + rsync --checksum --delete + sha256 round-trip verification; update MIGRATION-20260503.md to name the deploy mechanism; add a 1-2 line operator note to CLAUDE.md.",
+    "why": "Per /root/rednote-mcp/MIGRATION-20260503.md the source repo at /root/rednote-mcp/dist/* has been the single source of truth since 2026-05-03. The prior orchestrator session edited the install path /usr/lib/node_modules/rednote-mcp/dist/* directly, which inverts the source-of-truth direction (architect-named anti-pattern: edit-the-installed-artifact instead of edit-the-source). The working delta (~22KB) is one npm install away from being silently wiped, and git has no record of it. The user's explicit binding need is that source and installed must be in sync AND source must be the canonical write target.",
+    "where": [
+      "/root/rednote-mcp/dist/tools/rednoteTools.js",
+      "/root/rednote-mcp/dist/cli.js",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments",
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh (new)",
+      "/root/rednote-mcp/MIGRATION-20260503.md",
+      "/root/rednote-mcp/CLAUDE.md",
+      "/usr/lib/node_modules/rednote-mcp/dist/* (rewritten by the deploy script during M5 verification — bytes are already identical except for the manifest's new line and removal of rednoteTools.js.orig)"
+    ],
+    "scope": {
+      "included": [
+        "Verbatim byte-copy of installed rednoteTools.js (132984 B, sha256 e8a45165...) into source",
+        "Verbatim byte-copy of installed cli.js (10175 B, sha256 8965dec6...) into source",
+        "node --check validation on both copied files",
+        "Append one manifest line (T-1-search_notes_light-and-minfix or equivalent) to .stealth-applied-fragments",
+        "Create scripts/deploy-to-usrlib.sh implementing architect arch-prop-1 (node --check + rsync --checksum --delete + sha256 round-trip + refuse exit-0 on mismatch)",
+        "Run the deploy script once at end-of-cycle to verify the round-trip",
+        "Update MIGRATION-20260503.md lines 36 + 67 to name the deploy script",
+        "Append 1-2 line operator note to /root/rednote-mcp/CLAUDE.md"
+      ],
+      "excluded": [
+        "Re-implementation, re-design, or refactor of the search_notes_light feature itself",
+        "Touching the historical patch farm at /root/travel-planner/infra/rednote-mcp-patches/stealth.patch.d/",
+        "Introducing a src/ directory or any TypeScript build pipeline",
+        "Relocating /root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py into rednote-mcp",
+        "Modifying /usr/lib/node_modules/rednote-mcp/dist/* BEFORE source repo is updated and committed (mandatory order)",
+        "Architect arch-prop-2 (launch-time drift check) — deferred to a follow-up cycle (launcher wrapper location not committed in this repo)",
+        "Architect arch-prop-3 (preinstall guard in package.json) — deferred to a follow-up cycle (breaking_changes: true; needs pre-flight grep)",
+        "Architect arch-7 README banner about npm install ban — deferred (pairs with arch-prop-3)",
+        "Any destructive git verb (revert, reset --hard, force-push, branch deletion)"
+      ]
+    },
+    "success_criteria": [
+      "sha256 of /root/rednote-mcp/dist/tools/rednoteTools.js equals e8a451657563800e6a77ab9e9a1a17480dbde10686d61ed6b9fead3a99b86c0e",
+      "sha256 of /root/rednote-mcp/dist/cli.js equals 8965dec6e837c3e08004f58bc1939ece07f84abcd8cf7bd6cbd98fb0ea4de29d",
+      "node --check exits 0 on both files",
+      "scripts/deploy-to-usrlib.sh exists, is executable, and refuses exit-0 on sha256 mismatch",
+      "Post-deploy diff of source dist sha256 set vs installed dist sha256 set is empty",
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig does not exist",
+      "Manifest .stealth-applied-fragments has 26 lines (was 25), with the new line documenting the addition",
+      "MIGRATION doc no longer contains 'Deploy mechanism out of scope' and now references scripts/deploy-to-usrlib.sh",
+      "/root/rednote-mcp/CLAUDE.md contains the 'never edit /usr/lib/node_modules/rednote-mcp' guidance"
+    ],
+    "constraints": [
+      "Verbatim byte copy only — no re-implementation",
+      "Reconciliation order is mandatory: read installed -> write source -> commit source -> add deploy script -> run deploy script (do NOT run deploy first)",
+      "node --check is a hard gate — if it fails, fix in source then re-deploy; do NOT bypass",
+      "rsync --checksum --delete is the required primitive (architect arch-prop-1) — not cp, not npm pack && npm install -g, not npm link",
+      "Deploy script MUST exit non-zero on sha256 mismatch (this is what makes it 'verified' rather than 'blind')",
+      "No destructive git verbs anywhere"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "/root/rednote-mcp/dist/tools/rednoteTools.js",
+      "/root/rednote-mcp/dist/cli.js",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments",
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+      "/root/rednote-mcp/MIGRATION-20260503.md",
+      "/root/rednote-mcp/CLAUDE.md",
+      "/usr/lib/node_modules/rednote-mcp/dist/*"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": [
+      "/root/rednote-mcp/package.json (no preinstall guard — architect arch-prop-3 deferred)",
+      "/root/rednote-mcp/README.md (no npm-install warning banner — architect arch-7 deferred)",
+      "/root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py (cross-repo consumer — architect arch-5; not relocated this cycle)",
+      "Launcher wrapper for rednote-mcp (architect arch-prop-2 launch-time drift check — wrapper location not committed in this repo)",
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig (will be removed by rsync --delete; not a separate edit)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "/root/rednote-mcp/package.json",
+      "line": "10-16",
+      "observation": "scripts section has build/start/dev/test/prepublishOnly — no preinstall guard. Architect arch-prop-3 recommends adding a preinstall script that exits non-zero unless REDNOTE_DEPLOY_OK=1 is set, to refuse npm install -g rednote-mcp from upstream registry (which would silently wipe the 25 stealth fragments + search_notes_light). Deliberately deferred this cycle because it is breaking_changes: true and requires pre-flight grep across /root/.mcp, /root/deploy/, /etc/systemd/system, dotfiles, and adjacent project package.json scripts.",
+      "in_user_path": false,
+      "security_relevant": true
+    },
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "Launcher wrapper for rednote-mcp",
+      "line": null,
+      "observation": "Architect arch-prop-2 recommends a launch-time drift-detection check via dist/.deploy-stamp. Wrapper file location is referenced in MIGRATION-20260503.md line 79 but not authoritatively committed in this repo, so the check belongs in a separate cycle once the wrapper is identified or created.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "/root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py",
+      "line": "15",
+      "observation": "Python wrapper hardcodes the MCP tool name 'search_notes_light' as a string. Cross-repo contract between travel-planner (consumer) and rednote-mcp (tool). Architect arch-5 confirms the dependency direction is correct as-is; the consumer should NOT be relocated into the tool repo. Recommend documenting the cross-repo contract in this consumer's INDEX.md and in rednote-mcp's README.md as a follow-up cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig",
+      "line": null,
+      "observation": "Hand-edit backup file (54562 B, dated 2026-05-02) left by the orchestrator's editor when it first hand-patched the installed file. Will be removed by rsync --delete in the new deploy script (M4). Not a separate fix.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "/root/rednote-mcp/dist/.stealth-applied-fragments",
+      "line": null,
+      "observation": "Architect arch-6 proposes a richer P-* / T-* / F-* naming convention for manifest entries (P = stealth, T = tool feature, F = non-tool feature). This cycle adopts only the conservative T-1- prefix as a single new line; a fuller naming-convention adoption is its own future cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T06:10:47Z",
+      "task_id": "20260505-061047",
+      "file": "/root/rednote-mcp/README.md",
+      "line": null,
+      "observation": "Architect arch-7 recommends a prominent 'INSTALL: do not use npm install. Run scripts/deploy-to-usrlib.sh from this repo.' banner. Skipped this cycle because it pairs with the preinstall guard (arch-prop-3); shipping the banner alone without the guard is asymmetric advice.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "The user's stated user-facing symptom is that prior fixes were made in /usr/lib/node_modules/rednote-mcp/dist/* (the install path) instead of /root/rednote-mcp/dist/* (the source-of-truth repo). Concretely: 21598 B of feature code orphaned in install path on rednoteTools.js; 753 B on cli.js; source repo carries no record of the substantive search_notes_light addition; manifest has 25 entries when it should have 26.",
+    "root_cause": "Architect-named anti-pattern: 'edit-the-installed-artifact instead of edit-the-source' (a sub-class of 'reverse-direction sync' / 'install-path-as-source-of-truth'). The orchestrator in the prior session edited the install path because (a) edits there have immediate observable effect with zero ceremony; (b) the source-of-truth direction (cd /root/rednote-mcp && edit && commit && deploy) was incomplete in MIGRATION-20260503.md — the doc explicitly defers 'deploy mechanism' to 'out of scope' (lines 36 + 67), so each deploy is improvised, which is how reverse-direction in-place edits leak in; (c) the working delta produced no immediate signal that source was stale (the symptom only appears at the next deploy/install/wipe). The structural root cause is the absence of a sanctioned deploy mechanism — without one, in-place edits are operationally easier than edit-then-deploy, which guarantees the anti-pattern recurs.",
+    "root_cause_commit": "N/A (no commit landed for the orphaned delta — the commits are missing from /root/rednote-mcp git log; that is the symptom)",
+    "why_introduced": "Working under deadline pressure or context-recovery shortcut, the prior orchestrator session needed search_notes_light to ship and verified it works against the live runtime by editing the runtime directly. The migration doc's 'cd /root/rednote-mcp && edit && commit' loop has only three verbs; the missing fourth verb (deploy) made the source-first path feel incomplete, so the install-first path was taken instead.",
+    "why_problematic": "Inverts source-of-truth polarity: the install path (a deploy artifact) becomes the de facto upstream, the git-tracked repo becomes downstream and stale. Three concrete consequences: (1) any future npm install -g rednote-mcp from upstream registry would atomically replace dist/ and erase the working delta — the 2026-04-04 happy-server incident shape (CLAUDE.md global section), but for rednote-mcp; (2) git carries no record so any new orchestrator session reads the source repo as ground truth and proceeds from a stale baseline; (3) the audit trail (.stealth-applied-fragments manifest) goes out of sync with what's actually deployed, so future archeologists cannot attribute the 21598 B delta to any documented fragment.",
+    "timeline": "Pre-2026-05-03: 3-place layout (fork snapshot + patch farm + installed runtime), explicit sync ceremony required. 2026-05-03: MIGRATION-20260503.md establishes /root/rednote-mcp/dist/* as single source of truth. Lines 36 + 67 explicitly defer 'deploy mechanism' to out-of-scope. Some unknown later date (immediately prior to current session): orchestrator hand-edits installed rednoteTools.js + cli.js to add search_notes_light + minfix + smart-retry. The .orig backup file (rednoteTools.js.orig, 54562 B, dated 2026-05-02) marks the moment of the first hand-patch. Source repo never receives the changes. 2026-05-05 (now): user invokes BA cycle to reconcile.",
+    "affected_files": [
+      "/root/rednote-mcp/dist/tools/rednoteTools.js (must receive 21598 B delta from install)",
+      "/root/rednote-mcp/dist/cli.js (must receive 753 B delta from install)",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments (must receive +1 line)",
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh (must be created)",
+      "/root/rednote-mcp/MIGRATION-20260503.md (must update lines 36 + 67)",
+      "/root/rednote-mcp/CLAUDE.md (must receive operator note)",
+      "/usr/lib/node_modules/rednote-mcp/dist/* (rewritten by deploy script — bytes mostly identical, .orig removed, manifest gains 1 line)"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "sha256 of /root/rednote-mcp/dist/tools/rednoteTools.js = 1dcf8e2351b5f3c5b870adc66ef1b4db7bfaa0b17a20be6b63411a973a2c0dad, 111386 bytes (observed via sha256sum + wc -c, this BA cycle)",
+      "sha256 of /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js = e8a451657563800e6a77ab9e9a1a17480dbde10686d61ed6b9fead3a99b86c0e, 132984 bytes (observed via sha256sum + wc -c, this BA cycle); confirms architect's recorded values",
+      "sha256 of /root/rednote-mcp/dist/cli.js = 74a4ad2273db027f7468816e2cb2ea8d9600b119cab93069cba0d89c6215694c, 9422 bytes (observed)",
+      "sha256 of /usr/lib/node_modules/rednote-mcp/dist/cli.js = 8965dec6e837c3e08004f58bc1939ece07f84abcd8cf7bd6cbd98fb0ea4de29d, 10175 bytes (observed)",
+      "sha256 of authManager.js = 49fed707c1bf9c0f478455219fee602f4b69f19fb4af3580b33814e7761dccaf (identical between source and installed; observed)",
+      "grep -c 'search_notes_light|searchNotesLight|_waitForNoteDetail|_searchNotesEmptyTelemetry|_bumpTelemetry' on source rednoteTools.js = 0 (observed)",
+      "Same grep on installed rednoteTools.js = 19 (observed)",
+      "Same grep on source cli.js = 0 (observed)",
+      "Same grep on installed cli.js = 2 (observed)",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments and /usr/lib/node_modules/rednote-mcp/dist/.stealth-applied-fragments are byte-identical (sha256 b056b7fb...; observed)",
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig exists, 54562 bytes, dated 2026-05-02 (observed via ls -la)",
+      "/root/rednote-mcp/scripts/ contains only tier-l-* test runners + INDEX.md + README.md — no deploy.sh equivalent (observed via ls)",
+      "/root/rednote-mcp/package.json scripts section: build, start, dev, test, prepublishOnly (no preinstall) (observed via Read)",
+      "MIGRATION-20260503.md line 36 explicitly says 'mechanism out of scope for this note' (observed via Read; canonical statement)",
+      "Architect specialist confirms the source-of-truth violation and names the anti-pattern 'edit-the-installed-artifact' in /root/travel-planner/docs/dev/architect-rednote-mcp-source-of-truth-20260505-061800.json (inferred from the architect's structured findings — read this BA cycle)",
+      "The functional fix in install path WORKS (limit=20: ~100% success, runtime ~1m30s) per orchestrator's prior-session brief (inferred — not verified live in this BA cycle, but stated in the BA invocation prompt and consistent with the install-path delta containing the named symbols)"
+    ],
+    "diagnosis_completeness": "complete (sha256 + byte-size + grep-symbol-count + manifest-content + architect-corroboration are all observed via filesystem inspection in this BA cycle; the runtime-success metric is inherited from the prior orchestrator brief but not separately reproduced — that is acceptable here because the user's binding need is structural reconciliation, not re-verification of the functional behavior)",
+    "complaint_location_keywords": ["root/rednote-mcp", "搞错了修复对象", "你说的位置", "两边同步", "唯一真相来源"],
+    "localization_evidence": "User's verbatim text names /root/rednote-mcp as the canonical location and 'the location you mentioned' (i.e., /usr/lib/node_modules/rednote-mcp/, which is the install path the prior orchestrator session correctly identified as the deploy target). Both filesystem locations confirmed via ls + sha256sum + grep — files exist, sha256 differs by exactly the size of the install-path-only delta. Located source: /root/rednote-mcp/dist/tools/rednoteTools.js (the file that should have received the delta but didn't).",
+    "located_source": "/root/rednote-mcp/dist/tools/rednoteTools.js + /root/rednote-mcp/dist/cli.js (the two source files missing the delta) AND /root/rednote-mcp/scripts/ (the directory missing the deploy script that would prevent recurrence) — these share token 'root/rednote-mcp' with complaint_location_keywords",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "manual-reproduction (sha256 deltas + grep symbol counts + manifest comparison + architect specialist independent corroboration)",
+      "bisect_blocked": "N/A — this is not a regression in code that previously worked; it is a source-of-truth violation where the working delta never landed in source. There is no commit to bisect because the commit was never made.",
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L5",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "这是因为你彻底搞错了修复对象",
+      "classification": "background (corrective sentiment / Contract D trigger)",
+      "acceptance_criterion": null
+    },
+    {
+      "id": "R2",
+      "source_phrase": "一切修复只能在root/rednote-mcp然后部署到你说的位置",
+      "classification": "user-need",
+      "acceptance_criterion": "All future writes originate in /root/rednote-mcp/dist/* and propagate to /usr/lib/node_modules/rednote-mcp/dist/* via scripts/deploy-to-usrlib.sh; this cycle reverses the one-time drift first (M1, M2) then re-deploys via the new script (M5)"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "好好检讨你到底做错了什么",
+      "classification": "background (corrective sentiment)",
+      "acceptance_criterion": null
+    },
+    {
+      "id": "R4",
+      "source_phrase": "必须两边同步",
+      "classification": "user-need",
+      "acceptance_criterion": "After cycle close, sha256(source dist/*) equals sha256(installed dist/*) for every file in dist/; the deploy script enforces this via post-rsync sha256 set comparison (M4 step e + M5)"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "root/rednote-mcp是唯一真相来源",
+      "classification": "user-need",
+      "acceptance_criterion": "Deploy script is the only sanctioned write path to /usr/lib/node_modules/rednote-mcp/; documented in CLAUDE.md (S3) and migration doc (S2); manifest updated to account for the previously-unaccounted addition (S1). Architect-recommended preinstall guard (C2) and launch-time drift check (C1) are deferred — out of THIS cycle's scope but documented for follow-up."
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "/root/rednote-mcp/dist/tools/rednoteTools.js",
+      "line_range": "entire file",
+      "role": "RedNoteTools class — the substantive feature carrier; missing search_notes_light + helpers in source",
+      "imports_from": "leaf (read by /root/rednote-mcp/dist/cli.js via require)",
+      "evidence": "sha256 mismatch with installed copy; grep returns 0 hits for 5 named symbols (searchNotesLight, _waitForNoteDetail, _searchNotesEmptyTelemetry, _bumpTelemetry, smart-retry-related)",
+      "verified_via": "both"
+    },
+    {
+      "file": "/root/rednote-mcp/dist/cli.js",
+      "line_range": "entire file",
+      "role": "MCP server entry — registers the search_notes_light tool via server.tool(...) in the installed copy",
+      "imports_from": "/root/rednote-mcp/dist/tools/rednoteTools.js (via require)",
+      "evidence": "sha256 mismatch with installed copy; grep returns 0 hits for 'search_notes_light' in source vs 2 hits in installed",
+      "verified_via": "both"
+    },
+    {
+      "file": "/root/rednote-mcp/dist/.stealth-applied-fragments",
+      "line_range": "1-25",
+      "role": "Audit-trail manifest — flat list of fragment names. Currently byte-identical between source and installed (25 lines). Missing entry for the search_notes_light addition.",
+      "imports_from": "leaf (informational only; not loaded by node)",
+      "evidence": "sha256 b056b7fb... matches in both locations; line count 25 (verified via Read)",
+      "verified_via": "both"
+    },
+    {
+      "file": "/root/rednote-mcp/scripts/",
+      "line_range": "directory listing",
+      "role": "Scripts directory — currently contains only tier-l-* test runners + INDEX.md + README.md; missing the deploy script that would be the sanctioned write path to install",
+      "imports_from": "leaf",
+      "evidence": "ls output shows no deploy.sh / install.sh / sync.sh equivalent (verified via ls)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/rednote-mcp/MIGRATION-20260503.md",
+      "line_range": "36, 67",
+      "role": "Canonical architecture doc — explicitly defers deploy mechanism as out-of-scope, which is the policy gap the architect identified",
+      "imports_from": "leaf (documentation)",
+      "evidence": "Read this BA cycle: line 36 contains 'deploy mechanism' clause, line 67 contains 'mechanism out of scope for this note'",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/rednote-mcp/CLAUDE.md",
+      "line_range": "1-11",
+      "role": "Project CLAUDE.md — currently 11 lines with auto-inventory placeholders; no operator-facing note about edit-source-not-installed",
+      "imports_from": "leaf",
+      "evidence": "Read this BA cycle: file is 11 lines, contains AUTO:claude-inventory placeholder, no edit-source guidance",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "/root/rednote-mcp/dist/tools/rednoteTools.js",
+      "line": 0,
+      "type": "n/a",
+      "code_snippet": "(no pre-existing guards in source — file will be wholesale-replaced by installed bytes)",
+      "purpose": "The reverse-sync replaces the entire file with installed bytes (which themselves have all original guards plus the new ones from the orchestrator session); no guard needs preserving in the OLD source bytes since they are being discarded.",
+      "removal_authorized": true
+    },
+    {
+      "file": "/root/rednote-mcp/dist/cli.js",
+      "line": 0,
+      "type": "n/a",
+      "code_snippet": "(no pre-existing guards in source — file will be wholesale-replaced by installed bytes)",
+      "purpose": "Same — verbatim byte copy from installed; the installed file already contains the original guards plus the new tool registration.",
+      "removal_authorized": true
+    },
+    {
+      "file": "/root/rednote-mcp/MIGRATION-20260503.md",
+      "line": 36,
+      "type": "policy-statement",
+      "code_snippet": "Deploy mechanism out of scope for this note",
+      "purpose": "This was a deliberate scope-deferral when the migration doc was written. We are now closing that deferral by naming scripts/deploy-to-usrlib.sh as the deploy mechanism. The replacement is the architect-sanctioned closure of the deferral, not a removal of a guard.",
+      "removal_authorized": true
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- pure backend; cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, or (4) screenshot evidence",
+    "viewport": null,
+    "theme": null,
+    "locale": null,
+    "auth_state": null,
+    "data_state": null,
+    "browser": null,
+    "url_path": null
+  },
+  "evidence": {
+    "observed": "User states verbatim 这是因为你彻底搞错了修复对象。一切修复只能在root/rednote-mcp然后部署到你说的位置 ... 必须两边同步并且root/rednote-mcp是唯一真相来源 — declaring that prior fixes landed at the wrong target and demanding source-of-truth alignment.",
+    "measured": {
+      "value": "/root/rednote-mcp/dist/tools/rednoteTools.js sha256=1dcf8e23... 111386B; /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js sha256=e8a45165... 132984B; delta=21598B. /root/rednote-mcp/dist/cli.js sha256=74a4ad22... 9422B; /usr/lib/node_modules/rednote-mcp/dist/cli.js sha256=8965dec6... 10175B; delta=753B. grep symbol counts: source=0, installed=19+2 for the search_notes_light family.",
+      "location": "verified via sha256sum + wc -c + grep at /root/rednote-mcp/dist/* and /usr/lib/node_modules/rednote-mcp/dist/* in this BA cycle"
+    },
+    "expected": {
+      "value": "Source dist/* sha256 set EQUALS installed dist/* sha256 set for every file in dist/. /root/rednote-mcp/dist/tools/rednoteTools.js sha256=e8a451657563800e6a77ab9e9a1a17480dbde10686d61ed6b9fead3a99b86c0e, 132984B. /root/rednote-mcp/dist/cli.js sha256=8965dec6e837c3e08004f58bc1939ece07f84abcd8cf7bd6cbd98fb0ea4de29d, 10175B. Manifest line count 26 (was 25). Deploy script /root/rednote-mcp/scripts/deploy-to-usrlib.sh exists, executable, sha256-verified.",
+      "source": "/root/rednote-mcp/MIGRATION-20260503.md (canonical architecture doc, lines 22-26 source-of-truth statement) + /root/travel-planner/docs/dev/architect-rednote-mcp-source-of-truth-20260505-061800.json (specialist findings + 3 architecture proposals)"
+    },
+    "gap": "21598 B feature delta orphaned in install rednoteTools.js + 753 B in install cli.js + 1 unaccounted manifest entry + 0 deploy scripts (vs 1 required) + 0 drift-detection mechanisms (vs 1 deferred to follow-up cycle) + 0 npm-install guards (vs 1 deferred to follow-up cycle)"
+  },
+  "scope_expansion": {
+    "search_pattern": "search_notes_light|searchNotesLight|_waitForNoteDetail|_searchNotesEmptyTelemetry|_bumpTelemetry",
+    "search_scope": "/root/rednote-mcp/** + /usr/lib/node_modules/rednote-mcp/**",
+    "user_reported": [
+      "/root/rednote-mcp/* (canonical source-of-truth side per user verbatim)",
+      "/usr/lib/node_modules/rednote-mcp/* (the install/deploy target the user implied as 'the location you mentioned')"
+    ],
+    "additional_found": [
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig (54562 B backup file from hand-patch)",
+      "/root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py (cross-repo consumer; out of path, recorded only)"
+    ],
+    "all_occurrences": [
+      "/root/rednote-mcp/dist/tools/rednoteTools.js (delta needed)",
+      "/root/rednote-mcp/dist/cli.js (delta needed)",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments (manifest +1 line)",
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh (new file)",
+      "/root/rednote-mcp/MIGRATION-20260503.md:36 (update)",
+      "/root/rednote-mcp/MIGRATION-20260503.md:67 (update)",
+      "/root/rednote-mcp/CLAUDE.md (append)",
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js (source of bytes; rewritten by deploy script — same bytes back)",
+      "/usr/lib/node_modules/rednote-mcp/dist/cli.js (source of bytes; rewritten by deploy script — same bytes back)",
+      "/usr/lib/node_modules/rednote-mcp/dist/.stealth-applied-fragments (rewritten by deploy script — gains the new manifest line)",
+      "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig (removed by rsync --delete)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "The working installed runtime at /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js (sha256 e8a45165..., 132984 B) and /usr/lib/node_modules/rednote-mcp/dist/cli.js (sha256 8965dec6..., 10175 B). These were edited in a prior orchestrator session, are functionally verified end-to-end (limit=20: 1/20 -> ~100% success, 8m24s -> 1m30s per the BA invocation prompt), and represent the authoritative content that must land in source. Verbatim byte copy is mandatory; no re-implementation. Architecturally also drawing on /root/travel-planner/docs/dev/architect-rednote-mcp-source-of-truth-20260505-061800.json (specialist findings; tier_2 because produced this session by the architect subagent).",
+    "url_or_location": "/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js + /usr/lib/node_modules/rednote-mcp/dist/cli.js (read directly via cp/rsync); /root/travel-planner/docs/dev/architect-rednote-mcp-source-of-truth-20260505-061800.json (architect findings); /root/rednote-mcp/MIGRATION-20260503.md (canonical migration doc).",
+    "copy_allowed": true,
+    "role_table": null
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "no spec — direct in-place edit of /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js + /usr/lib/node_modules/rednote-mcp/dist/cli.js in the prior session",
+        "proposed_solution": "Add search_notes_light MCP tool + _waitForNoteDetail + _searchNotesEmptyTelemetry + _bumpTelemetry + smart-retry loop + cover-selector multi-fallback to fix 1/20 success @ 8m24s symptom",
+        "actual_change": "21598 bytes added to install-path rednoteTools.js; 753 bytes added to install-path cli.js; source repo /root/rednote-mcp/dist/* untouched; .orig backup file rednoteTools.js.orig (54562 B, dated 2026-05-02) created by editor",
+        "outcome": "Feature WORKS in production (limit=20: ~100%; 8m24s -> 1m30s per orchestrator brief). HOWEVER the source-of-truth invariant from MIGRATION-20260503.md is violated; the working delta is one npm install -g away from being silently wiped; git has no record; manifest doesn't account for it.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L5"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L5",
+      "differs_from_all_priors": true,
+      "rationale": "Attempt 1 wrote bytes to the install path (the deploy target — wrong direction). This attempt (a) reverses that one-way drift by reading installed bytes back into source first, then (b) adds a sanctioned deploy script as the only legitimate source->install write path, then (c) leaves the architectural close-out (preinstall guard + launch-time drift check) deliberately deferred to follow-up cycles. The deliverable shape is structurally inverse to Attempt 1: source-first, sha256-verified, audit-trail-updated, with a script primitive that makes the next in-place edit fail loudly via the deploy round-trip. A pure 'remember not to do this' tone fix would NOT differ from Attempt 1 structurally — humans forget — so this attempt invests in the minimum structural primitive (architect arch-prop-1) that makes the anti-pattern self-disclosing on the next deploy."
+    }
+  },
+  "context": {
+    "codebase_state": "/root/rednote-mcp branch: master; recent commits: 00f644e (chore deps + TIER-L runners), 4c9234e (P-1 row 4 ReaJason framework), 3be63ae (5 P1.5 helpers + collapse to single-source repo), d202a12 (20 patch fragments from travel-planner stealth chain), 3f3feaa (cookie-banner-overlay fix), 35fda09 (Patched rednote-mcp 0.2.3 for Hetzner). Untracked in source repo: .claude/, .codex, CLAUDE.md, INDEX.md, scripts/INDEX.md, scripts/README.md.",
+    "recent_commits": "git -C /root/rednote-mcp log --oneline -10 (verified this BA cycle; no commits relevant to search_notes_light because the work never committed)",
+    "file_contents": {
+      "MIGRATION-20260503.md_line_36": "Deploy mechanism out of scope for this note (verbatim from line 36 + 67 of the migration doc — this is the policy gap that enabled the anti-pattern)",
+      "package.json_scripts": "build, start, dev, test, prepublishOnly (no preinstall guard — architect arch-prop-3 deferred)",
+      "CLAUDE.md_size": "11 lines, contains AUTO:claude-inventory placeholder, no operator-facing edit-source-not-installed guidance"
+    },
+    "dependencies": {
+      "@modelcontextprotocol/sdk": "^1.9.0",
+      "patchright": "^1.57.0",
+      "ghost-cursor-play": "npm:playwright-ghost-cursor@^1.0.2",
+      "playwright": "^1.42.1",
+      "ghost_cursor_play_resolved": "Local repo dep per MIGRATION-20260503.md ghost-cursor-play section (no global install — 2026-04-04 incident precedent)"
+    },
+    "environment": {
+      "node_install_location": "/usr/lib/node_modules/rednote-mcp/ (real directory, NOT a symlink — confirmed via ls -la)",
+      "rednote_mcp_version": "0.2.4 in source package.json",
+      "patch_farm_status": "Historical as of 2026-05-03 per MIGRATION-20260503.md line 30; NOT to be touched this cycle"
+    }
+  },
+  "development_approach": {
+    "strategy": "Sequential, mandatory-order reverse-sync: (1) cp installed bytes back into source for two specific files (rednoteTools.js, cli.js); (2) verify with sha256 + node --check; (3) append manifest line; (4) write deploy script implementing architect arch-prop-1; (5) run deploy script ONCE end-to-end (first run is near-no-op for installed because bytes already match, plus removes .orig backup); (6) update migration doc + CLAUDE.md note; (7) commit source. Verbatim byte copy only — no re-implementation. The deploy script is the structural close-out that makes future in-place edits self-disclosing via the sha256 round-trip.",
+    "files_to_create": [
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh"
+    ],
+    "files_to_modify": [
+      "/root/rednote-mcp/dist/tools/rednoteTools.js (overwrite from installed)",
+      "/root/rednote-mcp/dist/cli.js (overwrite from installed)",
+      "/root/rednote-mcp/dist/.stealth-applied-fragments (append 1 line)",
+      "/root/rednote-mcp/MIGRATION-20260503.md (edit line 36 + line 67)",
+      "/root/rednote-mcp/CLAUDE.md (append 1-2 lines)",
+      "/usr/lib/node_modules/rednote-mcp/dist/* (rewritten by deploy script; bytes mostly identical, manifest +1 line, .orig removed)"
+    ],
+    "validation_approach": "QA verifies: (a) sha256 of source rednoteTools.js + cli.js match the captured installed sha256 (AC1, AC2); (b) node --check exits 0 on both (AC3); (c) deploy script exists + executable + refuses exit-0 on deliberately introduced sha256 drift (AC4); (d) post-deploy diff of source dist sha256 set vs installed dist sha256 set is empty AND .orig file is removed (AC5); (e) manifest has 26 lines (AC6); (f) migration doc names the deploy script + no longer says 'out of scope' (AC7); (g) CLAUDE.md contains the operator note (AC8); (h) install-path runtime sha256 unchanged for the two key files = no regression (AC9)."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Architect specialist already completed an independent investigation this session (8 issues, 3 architecture proposals, 12 files examined). The finding is unambiguous (source-of-truth violation; install-path-as-source-of-truth anti-pattern; architect arch-prop-1 deploy script with sha256 round-trip is the canonical close-out). External best-practice search would not materially refine the change set beyond what the architect already grounded in the project's own MIGRATION-20260503.md."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
