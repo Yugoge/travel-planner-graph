@@ -29,6 +29,12 @@ from copy import deepcopy
 
 CHECKIN_WINDOW_MINUTES = 60  # Default check-in duration for accommodation
 
+# Sub-keys for split_day timeline structures (RC-3, 2026-05-04). When a day
+# has `split_day: true`, parallel `shared`/`matilde`/`jade` dicts carry
+# timeline entries in addition to (or instead of) `timeline`. These are
+# merged into a single per-day timeline view by _build_timeline_by_day().
+SPLIT_DAY_TIMELINE_KEYS = ("shared", "matilde", "jade")
+
 
 class AgentDataSyncer:
     """Synchronize agent data using timeline.json as Single Source of Truth."""
@@ -67,6 +73,35 @@ class AgentDataSyncer:
             "meal_types": meal_types,
         }
 
+    def _merge_split_day_timeline(self, day_data: dict, base_tl: dict) -> dict:
+        """Fold split_day sub-key timelines into the base view (RC-3)."""
+        merged = dict(base_tl)
+        for sk in SPLIT_DAY_TIMELINE_KEYS:
+            sub = day_data.get(sk)
+            if isinstance(sub, dict):
+                merged.update(sub)
+        return merged
+
+    def _extract_day_timeline(self, day_data: dict) -> dict:
+        """Per-day timeline dict, including split_day sub-keys when present.
+        RC-3 isinstance-guarded against non-dict timeline values."""
+        base_tl = day_data.get("timeline") or {}
+        if not isinstance(base_tl, dict):
+            base_tl = {}
+        if day_data.get("split_day") is True:
+            return self._merge_split_day_timeline(day_data, base_tl)
+        return base_tl
+
+    def _build_timeline_by_day(self, days: list) -> dict:
+        """Build {day_num: merged_timeline_dict} for all days (RC-3)."""
+        timeline_by_day = {}
+        for day_data in days:
+            day_num = day_data.get("day")
+            if day_num is None:
+                continue
+            timeline_by_day[day_num] = self._extract_day_timeline(day_data)
+        return timeline_by_day
+
     def run(self, skip_html: bool = False) -> dict:
         """Execute full sync pipeline."""
         print(f"{'[DRY RUN] ' if self.dry_run else ''}Syncing agent data for: {self.plan_id}")
@@ -82,11 +117,7 @@ class AgentDataSyncer:
             self.report["errors"].append("timeline.json missing or has no 'days' array")
             return self.report
 
-        timeline_by_day = {}
-        for day_data in timeline["days"]:
-            day_num = day_data.get("day")
-            if day_num is not None:
-                timeline_by_day[day_num] = day_data.get("timeline", {})
+        timeline_by_day = self._build_timeline_by_day(timeline["days"])
 
         print(f"Loaded timeline: {len(timeline_by_day)} days")
 
@@ -188,9 +219,9 @@ class AgentDataSyncer:
                     pass
         return None
 
-    def _is_transit(self, key: str, val: dict) -> bool:
-        """Check if a timeline entry is a transit/travel segment (not a POI)."""
-        return val.get("transit") is True
+    def _is_transit(self, key: str, val) -> bool:
+        """Transit-segment check; RC-3 isinstance-guarded against non-dict val."""
+        return isinstance(val, dict) and val.get("transit") is True
 
     def _find_timeline_item(self, item_name: str, day_timeline: dict) -> dict:
         """Find timeline entry for item name using precise multi-tier matching.
@@ -322,18 +353,33 @@ class AgentDataSyncer:
         else:
             print("  No changes needed")
 
-    def _collect_non_accom_end_times(self, day_data: dict) -> list:
-        """Collect end_times from all non-accommodation timeline entries and travel_segments."""
-        end_times = []
-        for key, entry in day_data.get("timeline", {}).items():
-            if entry.get("accommodation_ref"):
+    def _valid_end_time(self, entry) -> str:
+        """Return entry.end_time if dict + valid HH:MM, else ''. RC-3 guard."""
+        if not isinstance(entry, dict):
+            return ""
+        et = entry.get("end_time")
+        return et if et and isinstance(et, str) and ":" in et else ""
+
+    def _timeline_end_times(self, day_data: dict) -> list:
+        """End times from non-accommodation timeline dict entries (RC-3)."""
+        timeline = day_data.get("timeline", {})
+        if not isinstance(timeline, dict):
+            return []
+        out = []
+        for entry in timeline.values():
+            if isinstance(entry, dict) and entry.get("accommodation_ref"):
                 continue
-            et = entry.get("end_time")
-            if et and isinstance(et, str) and ":" in et:
-                end_times.append(et)
+            et = self._valid_end_time(entry)
+            if et:
+                out.append(et)
+        return out
+
+    def _collect_non_accom_end_times(self, day_data: dict) -> list:
+        """Collect end_times from non-accommodation timeline + travel_segments."""
+        end_times = self._timeline_end_times(day_data)
         for seg in day_data.get("travel_segments", []):
-            et = seg.get("end_time")
-            if et and isinstance(et, str) and ":" in et:
+            et = self._valid_end_time(seg)
+            if et:
                 end_times.append(et)
         return end_times
 
@@ -355,11 +401,11 @@ class AgentDataSyncer:
         accom_entry["duration_minutes"] = 30
         return True
 
-    def _find_accom_entry(self, timeline: dict) -> dict:
-        """Find the accommodation_ref entry in a day's timeline."""
-        for entry in timeline.values():
-            if entry.get("accommodation_ref"):
-                return entry
+    def _find_accom_entry(self, timeline) -> dict:
+        """Find accommodation_ref entry; RC-3 guarded against non-dict timeline/entries."""
+        for e in (timeline or {}).values() if isinstance(timeline, dict) else ():
+            if isinstance(e, dict) and e.get("accommodation_ref"):
+                return e
         return None
 
     def _sync_accommodation(self, timeline_by_day: dict):

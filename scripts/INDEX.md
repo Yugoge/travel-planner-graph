@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-04-17T18:23:17Z*
-**Total entries**: 65
+*Last updated: 2026-05-04T23:43:32Z*
+**Total entries**: 66
 **Convention**: kebab
 
 ## Tree
@@ -46,6 +46,7 @@ scripts/
 ├── `generate-and-deploy.sh` - Generate interactive React HTML and deploy to GitHub Pages
 ├── `generate-booking-checklist.py` - Extract booking items from timeline/budget warnings and generate actionable checklist
 ├── `generate-html-interactive.py` - Interactive React Travel Plan Generator
+├── `generate-html-interactive.py.bak` - bak file
 ├── `generate-html.sh` - Generate travel HTML using Python html_generator.py
 ├── `generate-plan-slug.py` - Addresses root cause from commit 77dca06 where {destination-slug} was used
 ├── `generate-skeletons.py` - Addresses root cause from dev-20260204-141257: Orchestrator architectural constraint
@@ -58,7 +59,7 @@ scripts/
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
-├── `save.py` - Unified Data Saving Script - Batch Validation and Atomic Writes
+├── `save.py` - Unified Data Saving Script — Batch Validation and Atomic Writes.
 ├── `save.py.backup` - backup file
 ├── `sync-agent-data.py` - Agent Data Synchronization Script
 ├── `test-load-py.sh` - Description: Comprehensive test suite for scripts/load.py

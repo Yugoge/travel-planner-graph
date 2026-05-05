@@ -528,6 +528,106 @@ class InteractiveHTMLGenerator:
                 return day.get("timeline", {})
         return {}
 
+    def _build_jade_acc_card(self, aj, day_timeline):
+        n_b = aj.get("name_base", "")
+        n_l = aj.get("name_local", "")
+        cost = self._to_display_currency(aj.get("cost", 0), aj.get("currency_local", "CNY"))
+        t = self._get_timeline_time(n_b, n_l, day_timeline)
+        if not t and aj.get("check_in"):
+            t = self._normalize_time(aj.get("check_in"), default_duration_hours=0.5)
+        return {
+            "name_base": n_b, "name_local": n_l,
+            "type_base": self._format_type(aj.get("type_base", "")), "type_local": aj.get("type_local", ""),
+            "location_base": aj.get("location_base", "") or aj.get("address_base", ""),
+            "location_local": aj.get("location_local", "") or aj.get("address_local", ""),
+            "coordinates": aj.get("coordinates", {}),
+            "cost": cost, "cost_local": aj.get("cost", 0), "stars": aj.get("stars", 0),
+            "check_in": aj.get("check_in", "") or aj.get("check_in_date", ""),
+            "check_out": aj.get("check_out", "") or aj.get("check_out_date", ""),
+            "notes_base": aj.get("notes_base", ""), "notes_local": aj.get("notes_local", ""),
+            "optional": aj.get("optional", False), "time": t, "guest_label": "Jade",
+            "image": aj.get("image_url", "") or self._get_placeholder_image("accommodation",
+                poi_name=n_l if n_l else n_b, gaode_id=aj.get("gaode_id", ""),
+                name_base=n_b, name_local=n_l,
+                location_base=aj.get("location_base", ""), location_local=aj.get("location_local", ""),
+                is_home=self._is_home_location(aj))
+        }
+
+    def _intra_icon(self, route):
+        rt = (route.get("type_base") or "").lower()
+        rtl = route.get("type_local") or ""
+        if "flight" in rt: return "✈️"
+        if "train" in rt or "hsr" in rt or "高铁" in rtl: return "🚄"
+        if "chartered" in rt or "专车" in rtl: return "🚗"
+        if "taxi" in rt: return "🚕"
+        if "metro" in rt or "subway" in rt or "地铁" in rtl: return "🚇"
+        return route.get("icon", "🚌")
+
+    def _intra_pax_label(self, pax):
+        if not isinstance(pax, list) or not pax: return ""
+        sj = any("JADE" in str(p).upper() for p in pax)
+        sm = any(("MATHILDE" in str(p).upper() or "MATILDE" in str(p).upper()) for p in pax)
+        if sj and not sm: return "仅 Jade"
+        if sm and not sj: return "仅 Matilde"
+        if sj and sm: return "两人同乘"
+        return ""
+
+    def _build_intra_card(self, r):
+        n_b = r.get("name_base", ""); n_l = r.get("name_local", "")
+        booking = r.get("booking_status", "")
+        rcost = self._to_display_currency(r.get("cost", 0), r.get("currency_local", "CNY"))
+        org = r.get("origin"); dst = r.get("destination")
+        from_b = r.get("from_base", "") or (org.get("name", "") if isinstance(org, dict) else "")
+        to_b = r.get("to_base", "") or (dst.get("name", "") if isinstance(dst, dict) else "")
+        return {
+            "name_base": n_b, "name_local": n_l,
+            "from_base": from_b, "to_base": to_b,
+            "from_local": r.get("from_local", ""), "to_local": r.get("to_local", ""),
+            "departure_point_base": r.get("departure_point_base", "") or from_b,
+            "departure_point_local": r.get("departure_point_local", "") or r.get("from_local", ""),
+            "arrival_point_base": r.get("arrival_point_base", "") or to_b,
+            "arrival_point_local": r.get("arrival_point_local", "") or r.get("to_local", ""),
+            "type_base": r.get("type_base", ""), "type_local": r.get("type_local", ""),
+            "icon": self._intra_icon(r),
+            "route_number": r.get("route_number", "") or r.get("vehicle_id", ""),
+            "vehicle_id": r.get("vehicle_id", ""),
+            "company_base": r.get("airline_base", "") or r.get("company_base", ""),
+            "company_local": r.get("airline_local", "") or r.get("company_local", ""),
+            "cost": rcost, "cost_local": r.get("cost", 0),
+            "status_base": booking,
+            "status_local": r.get("status_local", "") or ("已订" if booking == "BOOKED" else ""),
+            "passengers": r.get("passengers", []),
+            "pax_label": self._intra_pax_label(r.get("passengers", [])),
+            "notes_base": r.get("notes_base", ""), "notes_local": r.get("notes_local", ""),
+            "time": {"start": r.get("start_time", "") or r.get("departure_time", "") or r.get("pickup_time", ""),
+                     "end": r.get("end_time", "") or r.get("arrival_time", "")}
+        }
+
+    def _inject_intra_routes(self, merged, day_num):
+        if not (self.transportation and "days" in self.transportation): return
+        dt = next((d for d in self.transportation["days"] if d.get("day") == day_num), {})
+        loc = dt.get("location")
+        loc_short = dt.get("location_short") or dt.get("location_base_short")
+        loc_local = dt.get("location_local")
+        if loc_short and isinstance(loc_short, str):
+            merged["location_base"] = loc_short
+        elif loc and isinstance(loc, str):
+            merged["location_base"] = loc
+        if loc_local and isinstance(loc_local, str):
+            merged["location_local"] = loc_local
+        intra_raw = dt.get("intra_city_routes")
+        if isinstance(intra_raw, dict):
+            intra = list(intra_raw.values())
+        elif isinstance(intra_raw, list):
+            intra = intra_raw
+        else:
+            return
+        if not intra:
+            return
+        cards = [self._build_intra_card(r) for r in intra if isinstance(r, dict)]
+        if cards:
+            merged["intra_routes"] = cards
+
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data.
         Time data sourced exclusively from timeline.json (single source of truth).
@@ -909,7 +1009,7 @@ class InteractiveHTMLGenerator:
                     "optional": acc.get("optional", False),
                     "time": acc_time,
                     "links": acc.get("links", {}),
-                    "image": self._get_placeholder_image(
+                    "image": acc.get("image_url", "") or self._get_placeholder_image(
                         "accommodation",
                         poi_name=acc_name_local if acc_name_local else acc_name_base,
                         gaode_id=acc.get("gaode_id", ""),
@@ -921,6 +1021,10 @@ class InteractiveHTMLGenerator:
                     )
                 }
                 merged["budget"]["accommodation"] = cost
+
+            acc_jade = day_acc.get("accommodation_jade")
+            if isinstance(acc_jade, dict) and acc_jade.get("name_base"):
+                merged["accommodation_jade"] = self._build_jade_acc_card(acc_jade, day_timeline)
 
         # Merge transportation (Fix Issue #8: transportation missing from HTML)
         # Root cause: transportation.json loaded but never processed in _merge_day_data
@@ -1136,6 +1240,8 @@ class InteractiveHTMLGenerator:
         # Add transportation cost to budget (from merged transportation data)
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
             merged["budget"]["transportation"] = merged["transportation"]["cost"]
+
+        self._inject_intra_routes(merged, day_num)
 
         # Calculate total budget (includes all categories)
         merged["budget"]["total"] = sum([
@@ -2560,17 +2666,48 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           </div>
                         );
                       })}
+                      {day.accommodation_jade && (() => {
+                        const acj = day.accommodation_jade;
+                        const cc = categoryColors.accommodation;
+                        return (
+                          <div key="acc-jade" style={cardStyle(cc, false)}
+                            onClick={() => onItemClick && onItemClick(acj, 'accommodation')}
+                            onMouseEnter={hoverOn} onMouseLeave={e => hoverOff(e, cc, false)}>
+                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                              {acj.image && <img src={acj.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none'; }} />}
+                            </div>
+                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '700', color: cc, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
+                                🏨 Jade 住
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {getDisplayName(acj, lang)}
+                                <RedNoteLink name={acj.name_local || acj.name_base} />
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                                {acj.check_in && <div>{L('checkin', lang)}: {acj.check_in}{acj.check_out ? ' · ' + L('checkout', lang) + ': ' + acj.check_out : ''}</div>}
+                                {acj.cost > 0 && <div>{fmtCost(acj.cost, undefined, lang)}</div>}
+                                {(acj.location_base || acj.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={acj} lang={lang} mapProvider={mapProvider} /></div>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                                {lang === 'local' && acj.notes_local ? acj.notes_local : acj.notes_base}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </Section>
               )}
 
               {/* Transportation */}
-              {day.transportation && (
-                <Section title={L('transportation', lang)} icon={day.transportation.icon}>
+              {(day.transportation || (day.intra_routes && day.intra_routes.length > 0)) && (
+                <Section title={L('transportation', lang)} icon={(day.transportation && day.transportation.icon) || '✈️'}>
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
-                      {[day.transportation].map((tr, i) => {
+                      {[...(day.transportation ? [day.transportation] : []), ...(day.intra_routes || [])].map((tr, i) => {
                         const catColor = categoryColors.transportation;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), height: 'auto', minHeight: sm ? '160px' : '180px'}}

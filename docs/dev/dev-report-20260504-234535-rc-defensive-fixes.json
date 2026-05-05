@@ -1,0 +1,144 @@
+{
+  "request_id": "20260504-234535-rc-defensive-fixes",
+  "task_id": "20260504-234535-rc-defensive-fixes",
+  "timestamp": "2026-05-04T23:45:35Z",
+  "dev_report_path": "docs/dev/dev-report-20260504-234535-rc-defensive-fixes.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/lib/json_io.py",
+      "scripts/sync-agent-data.py",
+      "scripts/validate-timeline-data.py",
+      "schemas/timeline.schema.json"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "RC-2: Empty-dict guard for protected fields in merge_agent_slots",
+        "type": "code",
+        "files_modified": ["scripts/lib/json_io.py"],
+        "rationale": "Naive dict.update() in _merge_existing_slots silently overwrote populated timeline/meals/etc with empty dicts when an agent submitted `{}`. This caused Days 8-11 timeline to be wiped silently. Added PROTECTED_FIELDS frozenset + _is_destructive_empty_overwrite + _safe_overlay helper that refuses such overwrites and logs to stderr."
+      },
+      {
+        "id": 2,
+        "description": "RC-3: isinstance guards + split_day support in sync-agent-data.py",
+        "type": "code",
+        "files_modified": ["scripts/sync-agent-data.py"],
+        "rationale": "Five sites iterated timeline.items()/values() without checking entry type. A boolean (split_day) accidentally living in a timeline dict would crash entry.get('transit') with AttributeError. Added isinstance(entry, dict) guards in _is_transit, _collect_non_accom_end_times, _find_accom_entry. Also added _build_timeline_by_day + _extract_day_timeline + _merge_split_day_timeline so split_day:true days now merge their `shared`/`matilde`/`jade` sub-keys into the timeline view."
+      },
+      {
+        "id": 3,
+        "description": "RC-3: isinstance guard in validate-timeline-data.py:49",
+        "type": "code",
+        "files_modified": ["scripts/validate-timeline-data.py"],
+        "rationale": "_check_day_overlaps iterated timeline.items() and called entry.get('transit') without type check. Added `if not isinstance(entry, dict)` guard."
+      },
+      {
+        "id": 4,
+        "description": "RC-4: Tighten day_entry.additionalProperties from true to false",
+        "type": "schema",
+        "files_modified": ["schemas/timeline.schema.json"],
+        "rationale": "day_entry was permissive (additionalProperties: true) which let typo'd or unknown keys leak silently into production data. Enumerated all 11 keys actually present in production timeline.json (day, date, location, location_local, timeline, travel_segments, warnings, split_day, shared, matilde, jade), declared them in properties{}, then set additionalProperties: false. Schema validates existing data with zero new day_entry errors."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — defensive fixes for silent data loss pattern; root cause is naive dict.update() in merge function",
+      "why_issue_occurred": "Single-shot edits in three layers (merge function, sync iteration, schema permissiveness) combined to allow an empty agent payload to silently wipe populated data without error or warning",
+      "how_fix_addresses_root": "Defense in depth: (1) merge layer refuses empty-dict overwrites of protected fields, (2) iteration layer guards against non-dict entries so a malformed value can't crash sync, (3) schema layer rejects unknown keys at the day_entry level so typos surface immediately"
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": 122,
+      "lines_removed": 24,
+      "new_symbols_introduced": [
+        "json_io.PROTECTED_FIELDS",
+        "json_io._is_destructive_empty_overwrite",
+        "json_io._warn_empty_overwrite",
+        "json_io._safe_overlay",
+        "sync-agent-data.SPLIT_DAY_TIMELINE_KEYS",
+        "AgentDataSyncer._merge_split_day_timeline",
+        "AgentDataSyncer._extract_day_timeline",
+        "AgentDataSyncer._build_timeline_by_day",
+        "AgentDataSyncer._valid_end_time",
+        "AgentDataSyncer._timeline_end_times"
+      ],
+      "minimum_possible_lines_estimate": 60,
+      "justification_for_overage": "Quality-gate no-net-worsening requirement forced extraction of inline guards into named helpers (_is_destructive_empty_overwrite, _warn_empty_overwrite, _valid_end_time, _timeline_end_times, _merge_split_day_timeline, _extract_day_timeline, _build_timeline_by_day). Without these extractions, edits would have inflated existing functions past their pre-edit line counts and been rejected. The schema also expanded to enumerate all 11 day_entry keys (RC-4 explicit allowlist requirement)."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Three layers of defense applied. Verification commands and results below.",
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "All four files compile. sync-agent-data.py runs to completion on china-20260412-092624 (15 days, no AttributeError). validate-timeline-data.py runs to completion (reports pre-existing Day 6 hard conflict but no crash). End-to-end empty-dict guard test: submitted timeline:{} for Days 8 and 9 via save.py; warnings logged for both days; entry counts preserved (Day 8: 13 entries, Day 9: 6 entries unchanged). Schema produces zero new day_entry-level errors against existing production data; the 11 HIGH issues plan-validate reports are pre-existing travel_segment additional_properties violations unrelated to this change."
+    },
+    "blast_radius": [
+      {"modified": "scripts/lib/json_io.py", "imported_by": ["scripts/save.py"]},
+      {"modified": "scripts/sync-agent-data.py", "imported_by": []},
+      {"modified": "scripts/validate-timeline-data.py", "imported_by": []},
+      {"modified": "schemas/timeline.schema.json", "imported_by": ["scripts/validate-agent-outputs.py", "scripts/plan-validate.py"]}
+    ],
+    "permissions_to_add": [],
+    "verification_results": {
+      "compile_check": "python3 -m py_compile scripts/lib/json_io.py scripts/sync-agent-data.py scripts/validate-timeline-data.py — All compile OK",
+      "schema_syntax": "python3 -c 'import json; json.load(open(\"schemas/timeline.schema.json\"))' — Schema OK",
+      "sync_run": "python3 scripts/sync-agent-data.py china-20260412-092624 --dry-run --skip-html — Loaded timeline: 15 days; all 6 sub-syncs completed; no AttributeError",
+      "validate_run": "python3 scripts/validate-timeline-data.py data/china-20260412-092624/timeline.json — completed; reports pre-existing Day 6 hard conflict + 4 soft conflicts; no crash",
+      "empty_dict_e2e": "Submitted timeline:{} for Days 8,9 via save.py. WARNINGS logged. Day 8 preserved 13 entries; Day 9 preserved 6 entries. PASS.",
+      "schema_against_data": "jsonschema validation: 0 new day_entry-level errors; 11 pre-existing travel_segment errors (unrelated to RC-4 day_entry tightening)"
+    },
+    "before_after": [
+      {
+        "file": "scripts/lib/json_io.py",
+        "location": "new code at lines ~336-365 + modified merge_agent_slots body",
+        "before": "existing_days_map[day_num].update(update_day)  # naive dict.update wipes protected fields with {}",
+        "after": "_safe_overlay(existing_days_map[day_num], update_day, day_num)  # refuses to overwrite populated PROTECTED_FIELDS with empty dict; logs warning"
+      },
+      {
+        "file": "scripts/sync-agent-data.py",
+        "location": "lines 76-104 (new helpers) + lines ~91 (run uses _build_timeline_by_day)",
+        "before": "timeline_by_day[day_num] = day_data.get('timeline', {})  # only reads .timeline; ignores split_day sub-keys",
+        "after": "timeline_by_day = self._build_timeline_by_day(timeline['days'])  # merges shared/matilde/jade sub-keys when split_day:true; isinstance-guarded"
+      },
+      {
+        "file": "scripts/sync-agent-data.py",
+        "location": "_is_transit (line ~222), _collect_non_accom_end_times (line ~376), _find_accom_entry (line ~409)",
+        "before": "return val.get('transit') is True  # crashes if val is non-dict",
+        "after": "return isinstance(val, dict) and val.get('transit') is True  # RC-3 guarded"
+      },
+      {
+        "file": "scripts/validate-timeline-data.py",
+        "location": "_check_day_overlaps line ~49",
+        "before": "for name, entry in timeline.items(): if entry.get('transit'): continue  # crashes on non-dict entry",
+        "after": "for name, entry in timeline.items(): if not isinstance(entry, dict) or entry.get('transit'): continue  # RC-3 guarded"
+      },
+      {
+        "file": "schemas/timeline.schema.json",
+        "location": "$defs.day_entry",
+        "before": "additionalProperties: true  // permits any unknown key silently",
+        "after": "additionalProperties: false + explicit allowlist of 11 keys (day, date, location, location_local, timeline, travel_segments, warnings, split_day, shared, matilde, jade)"
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "remaining_concerns": [
+    "Pre-existing 11 HIGH issues in travel_segments (origin/destination/route_details/optional fields not in travel_segment $def). These predate this change and were unrelated to the four RC fixes. Recommend a separate ticket to either widen the travel_segment schema or strip these fields at the timeline-agent layer.",
+    "The TodoWrite hook in this project enforces a canonical 10-step /review todo set; my 5-step dev-task todo was rejected each call. I proceeded with inline progress tracking instead. This may be a hook-config mismatch (the dev-task workflow was being judged against a /review canonical todo set). Surface to user/orchestrator if it recurs.",
+    "Quality-gate refactoring (extracting _safe_overlay, _valid_end_time, _timeline_end_times, _build_timeline_by_day, _extract_day_timeline, _merge_split_day_timeline, _is_destructive_empty_overwrite, _warn_empty_overwrite) added more helper functions than the minimal patch would have used. This satisfies the no-net-worsening hook policy and improves testability, but the surface area is wider than a 'pure' minimum diff."
+  ],
+  "recommendations": [
+    "Add a unit test for merge_agent_slots empty-dict guard so regressions are caught in CI.",
+    "Add a CI check that runs `python3 scripts/sync-agent-data.py <slug> --dry-run --skip-html` against any committed plan slug to catch crashes before merge.",
+    "Open a follow-up ticket for the travel_segment schema mismatch (origin/destination/route_details fields)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
