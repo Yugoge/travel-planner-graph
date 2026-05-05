@@ -75,10 +75,11 @@ For each day in the trip:
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<restaurant_query>" "<city>" "050000"
      ```
-   - **For authentic local recommendations (China)**: Use RedNote search via Bash:
+   - **For authentic local recommendations (China)**: Use RedNote light search via Bash (faster — list-card metadata only, no per-note detail fetch):
      ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
+     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py "<search_keyword>"
      ```
+     For full-text verification of a specific note URL, follow up with `mcp__rednote__get_note_content`.
    - Breakfast: Search cafes near accommodation
    - Lunch: Search restaurants near planned attractions
    - Dinner: Search restaurants matching cuisine preferences

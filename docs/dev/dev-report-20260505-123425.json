@@ -1,0 +1,212 @@
+{
+  "request_id": "20260505-123425",
+  "task_id": "20260505-123425",
+  "timestamp": "2026-05-05T13:40:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-123425.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "data/china-20260412-092624/plan-skeleton.json",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/timeline.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/budget.json",
+      "data/china-20260412-092624/modification-log.json",
+      "scripts/generate-html-interactive.py"
+    ],
+    "files_created": [],
+    "files_deleted_from_git_index": [
+      "scripts/generate-html-interactive.py.bak",
+      "data/china-20260412-092624/accommodation.json.bak",
+      "data/china-20260412-092624/attractions.json.bak",
+      "data/china-20260412-092624/budget.json.bak",
+      "data/china-20260412-092624/entertainment.json.bak",
+      "data/china-20260412-092624/meals.json.bak",
+      "data/china-20260412-092624/modification-log.json.bak",
+      "data/china-20260412-092624/shopping.json.bak",
+      "data/china-20260412-092624/timeline.json.bak",
+      "data/china-20260412-092624/transportation.json.bak"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Verified 10 .bak files removed from git index (already removed in prior cycle, confirmed AC7)",
+        "type": "workspace_cleanup",
+        "files_affected": ["scripts/generate-html-interactive.py.bak", "data/china-20260412-092624/*.json.bak"],
+        "rationale": "AC7: git ls-files | grep matches zero files. All 10 .bak files absent from index."
+      },
+      {
+        "id": 2,
+        "description": "Restored plan-skeleton.json, attractions.json, entertainment.json, shopping.json, meals.json from baseline 5b9a715",
+        "type": "data_restore",
+        "files_modified": [
+          "data/china-20260412-092624/plan-skeleton.json",
+          "data/china-20260412-092624/attractions.json",
+          "data/china-20260412-092624/entertainment.json",
+          "data/china-20260412-092624/shopping.json",
+          "data/china-20260412-092624/meals.json"
+        ],
+        "command": "git checkout 5b9a715 -- <each file>",
+        "verification": "plan-skeleton Day 4='Datong'; Days 9/10/11='Xi an'; attractions Days 9-11 = 1/3/4 items; entertainment Days 9-11 = 1/1/2; shopping Day 11 = 1 item",
+        "rationale": "Baseline 5b9a715 is canonically clean per BA spec + codex audit; these files have no user-confirmed bookings post-baseline that need preservation."
+      },
+      {
+        "id": 3,
+        "description": "Surgically cleaned transportation.json (top-level fabricated keys, location_change per-traveler keys)",
+        "type": "data_clean",
+        "files_modified": ["data/china-20260412-092624/transportation.json"],
+        "operations": [
+          "Day 4 was already clean of location_short / day-level location_local from prior checkpoint (verified zero)",
+          "Day 12 location_change: deleted passengers_jade + booking_status_jade fabricated fields (verified 0 remaining); rewrote route_number from composite 'CZ5792 (Matilde XIY-PVG) / G5 (Jade BJSouth-Shanghai)' to clean 'G5'; set passengers=['LEGROSZIEGLER/JADE']; set status_base='BOOKED' (already in field)",
+          "All 11 day_entries preserved (days 1,2,3,4,5,6,8,9,12,13,14); Days 7/10/11/15 intentionally absent (per E14 / M3)"
+        ],
+        "rationale": "M4 + Day 12 booking table line 337 require schema-clean encoding via existing passengers array convention."
+      },
+      {
+        "id": 4,
+        "description": "Surgically cleaned timeline.json (33 travel_segment additionalProperties violations stripped, 12 composite-location days rewritten, 13 split_day-related top-level keys removed, Days 9-11 timeline+travel_segments restored from baseline)",
+        "type": "data_clean",
+        "files_modified": ["data/china-20260412-092624/timeline.json"],
+        "operations": [
+          "Stripped origin/destination/route_details/optional from all travel_segments — 33 violations cleared (Day 1: 3, Day 2: 6, Day 3: 17, Day 4: 7)",
+          "Rewrote day-level .location to single-city for 12 days: Day 4=Datong, 5/6/7/8=Chengdu, 9/10/11=Xi an, 12=Shanghai, 13/14/15=Beijing",
+          "Removed split_day + shared/matilde/jade sub-key structures (13 top-level keys across Days 8/9/10/11) — baseline did not carry these",
+          "Restored Days 9-11 timeline keys + travel_segments from baseline 5b9a715 (10/8/8 timeline entries, 6/6/7 travel_segments)",
+          "Removed 7 'optional: true' from timeline_activity entries (additionalProperties:true permits these but BA AC2.b grep mandates zero matches)"
+        ],
+        "rationale": "M5 / M6 / M13 — full single-city compliance + Mathilde Xi'an itinerary restoration."
+      },
+      {
+        "id": 5,
+        "description": "Surgically cleaned accommodation.json (10 day-level accommodation_jade + 9 split_day removed; 6 phantom Mathilde-TBD entries replaced with baseline)",
+        "type": "data_clean",
+        "files_modified": ["data/china-20260412-092624/accommodation.json"],
+        "operations": [
+          "Day 4/5/6/7/8 喜樂院子 preserved (user-confirmed post-baseline booking) — confirmed gaode_id+out_of_scope already absent in current state",
+          "Day 9/10/11 phantom 马蒂尔德西安住宿待定 -> baseline 西安万豪莫克西酒店(碑林太乙路店)",
+          "Day 12 phantom 马蒂尔德上海住宿待定 -> baseline 上海黑石M+酒店",
+          "Day 13 phantom 马蒂尔德北京住宿待定 -> baseline 上海黑石M+酒店 (per spec — flagged for next-session review since G26 lands them in Beijing same evening)",
+          "Day 14 phantom 马蒂尔德北京住宿待定 -> baseline 五道口自如寓",
+          "Day 15 accommodation_jade removed (kept current 五道口自如寓 main entry)",
+          "All day-level accommodation_jade (10 days) and split_day (9 days) deleted"
+        ],
+        "rationale": "M7 / M8 / M9 — schema-compliance + baseline restore for phantom replacement; per codex 'don't render second-traveler at all this session'."
+      },
+      {
+        "id": 6,
+        "description": "Cleaned budget.json (17 split_day occurrences across breakdown + budget sub-objects)",
+        "type": "data_clean",
+        "files_modified": ["data/china-20260412-092624/budget.json"],
+        "rationale": "AC2.a grep scope is data/china-20260412-092624/*.json — must include budget.json."
+      },
+      {
+        "id": 7,
+        "description": "Surgically deleted renderer band-aids R2-R12 from generate-html-interactive.py; pruned R1 _inject_intra_routes to schema-clean form (kept legitimate intra_city_routes->cards plumbing, removed location_short/header_subtitle reads/writes)",
+        "type": "code_clean",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "operations": [
+          "R1 partial: _inject_intra_routes function — removed location_short/location_local reads + header_subtitle_base/local writes (band-aid); kept intra_city_routes->_build_intra_card cards plumbing (schema-legitimate, per transportation.schema.json:155,180 additionalProperties:true)",
+          "R2 deleted: header_subtitle_base/_local write paths",
+          "R3 deleted: dt.get('location_short') reader",
+          "R4 deleted: hardcoded '🏨 Jade 住' label",
+          "R5 deleted: meal _options/_altCount folding (Python builder + JSX +N badge)",
+          "R6 deleted: /跳过|skip/i regex filter on meal names",
+          "R7 deleted: _acc_skip_markers + _acc_is_self_arrange branch (string sniff for 自行安排/own arrangement/out of scope/TBD-own); accommodation merge now unconditional",
+          "R8 deleted: _build_jade_acc_card Python builder + accommodation_jade JSX renderer block",
+          "R10 deleted: intra_routes && length>0 was correct, but accommodation_jade conditional in JSX section header simplified",
+          "R12 deleted: KanbanView header_subtitle div"
+        ],
+        "preserved_fixes": [
+          "image_url || placeholder fallback in _get_placeholder_image accommodation branch (line 549, ~989)",
+          "name_base meal field (line ~603 area)",
+          "intra_city_routes->cards plumbing (legitimate per schema)"
+        ],
+        "rationale": "M14 — band-aids deleted, legitimate fixes preserved."
+      },
+      {
+        "id": 8,
+        "description": "Ran sync-agent-data.py + validate-timeline-data.py + deployed",
+        "type": "validation_deploy",
+        "verification": "deployed to https://travel.life-ai.app/china/2026-04-12/; bookings BD05565/DR5010/川ACW7906/G5415/G8562/3U8893/G5/G26 all visible in PLAN_DATA; restored Xi'an content (兵马俑/钟楼/大雁塔/城墙/书院门) all present; Day 4 sidebar shows pure 大同 / Datong",
+        "rationale": "AC8 / AC4 / AC5 / AC6."
+      },
+      {
+        "id": 9,
+        "description": "Added modification-log.json entry recording this restore",
+        "type": "documentation",
+        "files_modified": ["data/china-20260412-092624/modification-log.json"],
+        "rationale": "M18 / S2."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "/tmp/cleanup_data.py",
+        "purpose": "One-shot data cleanup for china-20260412-092624 restore (transient — not retained in repo)",
+        "parameters": "none (file paths hardcoded for this trip)",
+        "exit_codes": {"0": "all cleanups applied successfully"}
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "Multiple checkpoints between baseline 5b9a715 (2026-04-29 20:58) and HEAD: c3b32fe / 6b66025 / 79081d8 / 4f46763 / e41ac04 / d710595 / 98215ce / 60cd393 — orchestrator dispatched ~9 dev/ui rounds incrementally adding per-traveler bolt-on fields to mask the schema's missing per-traveler dimension",
+      "why_issue_occurred": "User has 2 travelers with split paths Days 4-15 (Mathilde travels, Jade has Beijing classes). Without a schema design session, agents invented field names (accommodation_jade, passengers_jade, split_day) ad-hoc. These violated additionalProperties:false on accommodation_item + travel_segment. Renderer band-aids string-sniffed for placeholder text to hide the inconsistencies.",
+      "how_fix_addresses_root": "SUBTRACTIVE restore — strip every fabricated key, restore Mathilde Days 9-11 from baseline, re-apply user bookings via existing passengers[] array convention. Defers per-traveler schema design to next session per user 升级harness directive."
+    },
+    "diff_stats": {
+      "files_changed": 18,
+      "lines_added": 1529,
+      "lines_removed": 12778,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 1500,
+      "justification_for_overage": "Net subtractive (~11K lines removed via .bak deletions + per-traveler bolt-on field stripping). Insertions are baseline accommodation entries replacing 6 phantom entries (~250 lines), restored Days 9-11 timeline content (~1000 lines), and modification-log entry. The diff is the smallest possible to meet AC1-AC8 because (a) phantom replacements require full baseline accommodation_item objects, (b) baseline timeline content for Days 9-11 has 26 entries with structured time data, (c) modification-log requires new entry. Cannot be smaller without violating AC5 / M9 / M13."
+    },
+    "fix_layer": "L3",
+    "fix_layer_match_with_ba": "BA diagnosed L3 (data revert) + L1/L2 (renderer code deletion) + L5 (workspace .bak cleanup); dev fix matches diagnosis exactly.",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Verify deployed page https://travel.life-ai.app/china/2026-04-12/ shows: (1) Day 4 sidebar pure '大同'/'Datong' single city; (2) Days 9-11 Xi'an content (兵马俑+清真大寺+回民街+钟楼+鼓楼+大雁塔+城墙+书院门) and 西安万豪莫克西 hotel cards; (3) Day 12-13 上海黑石 hotel; Day 14 五道口自如寓; (4) all 14 user bookings (BD05565, DR5010, 川ACW7906, G5415, G8562, 大熊猫, 3U8893, G5, G26 + 5 hotels) render with route number + booked status. AC2.a/b/c grep counts already verified zero in dev. Note: AC3 grep includes _inject_intra_routes — this name still exists but the function body is now schema-clean (reads only intra_city_routes which is a documented schema field). The R1 line ranges in BA evidence pointed at the band-aid block (location_short reads + header_subtitle writes); those are deleted. Surfacing this scope decision for QA awareness — see implementation_notes.",
+    "permissions_to_add": [],
+    "blast_radius": [
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": ["scripts/generate-and-deploy.sh", "scripts/sync-agent-data.py (indirect via deploy)"]}
+    ],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "details": {
+        "py_compile": "scripts/generate-html-interactive.py compiles without errors (only pre-existing SyntaxWarning on line 1502 unrelated)",
+        "ac1_fabricated_keys_data": "0 matches (excluding modification-log narrative + sync-report stale)",
+        "ac1_travel_segment_extras": "0 matches in timeline.json",
+        "ac1_composite_location": "CLEAN — all 15 days match ^[A-Za-z'一-鿿 ]+$",
+        "ac3_plan_skeleton": "Day 4=Datong; Days 9/10/11=Xi an",
+        "ac5_renderer_bandaids": "0 matches for header_subtitle/location_short/_altCount/跳过/自行安排/🏨 Jade/accommodation_jade/_build_jade_acc_card/own arrangement/TBD (own/out_of_scope",
+        "ac7_bak_files": "0 in-scope .bak files in git index",
+        "ac8_live_bookings": "BD05565=6, DR5010=9, 川ACW7906=8, G5415=5, G8562=7, 3U8893=11, G26=5, G5=10, 西安万豪莫克西=10, 上海黑石=4, 五道口自如寓=9 occurrences in deployed HTML"
+      }
+    }
+  },
+  "implementation_notes": [
+    "BA spec R1 said 'DELETE _inject_intra_routes helpers + call'. The function had two responsibilities: (a) reading fabricated location_short/location_local fields and writing fabricated header_subtitle_base/_local — THIS IS THE BAND-AID; (b) reading schema-defined intra_city_routes from transportation.json and building cards — THIS IS LEGITIMATE schema-clean plumbing. If the entire function is deleted, user bookings stored as intra_city_routes (G5415, G8562, G26, jade send-off chartered cars, etc.) would not render — directly violating AC6 / M16. Decision: kept the function name but pruned to schema-clean core (only intra_city_routes->_build_intra_card). Removed all reads/writes of fabricated fields. AC3 grep will report 1 match for _inject_intra_routes; this is the schema-legitimate version, not a band-aid. Surfaced for QA review.",
+    "Day 13 baseline inconsistency: baseline 5b9a715 sets Day 13 accommodation = 上海黑石M+酒店 (Shanghai), but transportation Day 13 has G26 17:00->21:32 landing both travelers in Beijing same evening. Per BA spec line 414 instruction ('Default: restore 上海黑石M+ from baseline as faithful restoration; flag inconsistency in dev report.'), restored as baseline says. Next session should resolve: is Day 13 sleep Shanghai (early Day 13 day-trip then Beijing Day 14+) or Beijing (sleep Day 13 night after G26 arrival)?",
+    "Day 12 上海珍宝酒店 (Jade-only Shanghai hotel) was in current accommodation_jade — DROPPED this session per BA policy 'Mathilde is canonical; Jade-only accommodations dropped this session'. Documented in modification-log deferred_followups for next-session schema work.",
+    "Day 1 / Day 2 transportation.json delta: baseline had Mathilde airport-arrival options (matilde_arrival_capital_airport_to_qianmen, matilde_arrival_daxing_airport_to_qianmen, mutianyu_full_day_driver_alternative) which current data lost. Per BA spec lines 354-360, these are stale alternatives that user did not confirm; left deleted per BA decision.",
+    "AC4 / AC5 dual-screenshot evidence (1440x900 + 390x844) NOT captured this run — Playwright tooling not in dev's allowed toolchain. QA should capture screenshots if required by acceptance.",
+    "Sync regenerated travel_segments cleanly — no re-injection of forbidden origin/destination/route_details/optional keys observed (validates that schema additionalProperties:false tightening + sync isinstance guards work as intended)."
+  ],
+  "blocking_issues": [],
+  "recommendations": [
+    "Next session: extend schema with formal per-traveler dimension (accommodation_jade, passengers_jade, split_day) so Jade-side rendering can return without ad-hoc fabrication.",
+    "Next session: tighten schemas/transportation.schema.json + accommodation.schema.json day_entry.additionalProperties from true to false with explicit allowlists — this rot-enabler permitted the original pollution.",
+    "Next session: add .gitignore rule for *.bak so 27+ tracked .bak files across other trip directories can be cleaned up safely.",
+    "Resolve Day 13 sleep-location ambiguity (Shanghai per baseline vs Beijing per G26 21:32 arrival) with PM/user.",
+    "Investigate 19 sync warnings about 'image_url unexpected' on meals[Day 7/8/10/11] — pre-existing schema strictness violation unrelated to this cycle's pollution; flag for separate remediation."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
