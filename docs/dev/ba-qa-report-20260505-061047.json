@@ -1,0 +1,89 @@
+{
+  "request_id": "20260505-061047",
+  "task_id": "20260505-061047",
+  "timestamp": "2026-05-05T06:25:00Z",
+  "mode": "ba-validation",
+  "verdict": "fail",
+  "summary": "BA spec is structurally sound and chain-of-custody on architect findings is intact (all cited sha256 / byte / grep evidence reproduces against real filesystem), BUT (a) AC7's literal grep pattern is a vacuous tautology that passes WITHOUT any edit being made (drift between AC literal text and what the file actually contains), (b) BA missed a SECOND hand-patch backup file `/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js.orig` (13384 B) which proves there were TWO hand-patch episodes (rednoteTools AND authManager), not one as BA's narrative implies, and (c) AC8 misstates CLAUDE.md as 11 lines when it is 10. Items (a) and (b) require BA spec revision before dev can proceed; (c) is a minor literal-text correction.",
+  "objections": [
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "claim": "AC7: GIVEN MIGRATION-20260503.md line 36 currently reads 'Deploy mechanism out of scope for this note' (and line 67 carries the same deferral) ... THEN `grep -c \"Deploy mechanism out of scope\" /root/rednote-mcp/MIGRATION-20260503.md` MUST return 0",
+      "problem": "The literal substring 'Deploy mechanism out of scope' does NOT appear in MIGRATION-20260503.md as written — not at line 36, not at line 67, not anywhere. Verified: `grep -c 'Deploy mechanism out of scope' /root/rednote-mcp/MIGRATION-20260503.md` returns 0 RIGHT NOW, before any edit. Line 36 actually says 'kept in sync with this repo by whatever deploy mechanism is chosen ... That deploy step is separate from this migration and is not addressed here.' Line 67 actually says '5. Deploy to `/usr/lib/node_modules/rednote-mcp/` (mechanism out of scope for this note).' The exact substring is 'mechanism out of scope' (lowercase m, no 'Deploy' prefix) and only appears on line 67. AC7 as written is a vacuous tautology — dev can do nothing and AC7's grep check passes. This violates the AC's intent: the AC is supposed to PROVE that the deferral text was removed and replaced with a reference to the deploy script.",
+      "required_evidence": "BA must rewrite AC7 to use a literal substring that genuinely appears in the file pre-edit and would NOT appear post-edit. Suggested replacement: (a) `grep -c 'mechanism out of scope' /root/rednote-mcp/MIGRATION-20260503.md` MUST return 0 post-edit (was 1 pre-edit) — this is the actual substring on line 67; AND (b) `grep -ci 'deploy step is separate from this migration' /root/rednote-mcp/MIGRATION-20260503.md` MUST return 0 post-edit (was 1 pre-edit) — this is the substantive content on line 36 that needs replacing; AND (c) `grep -c 'deploy-to-usrlib.sh' /root/rednote-mcp/MIGRATION-20260503.md` MUST return >= 1 post-edit. BA must also re-verify line numbers — the canonical 'out of scope' text is on line 67 alone; line 36 has different deferral language ('That deploy step is separate ... not addressed here'). The Goal/Reference Source sections at line 38 and 109 of the BA spec also reference 'line 36 + line 67' which is partially incorrect."
+    },
+    {
+      "dimension": "affected_file_accuracy",
+      "claim": "BA's affected_files / out_of_scope_observations / Edge Cases R2 mentions only ONE backup file: `/usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js.orig` (54562 B) as the artifact to be removed by rsync --delete.",
+      "problem": "There is a SECOND `.orig` file BA missed: `/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js.orig`, 13384 bytes, dated 2026-04-26, sha256 8a839a0fadcf7875c97b55bdcebf68e78fb40ea68f21d1565568babd70ae61d9. Verified via `find /usr/lib/node_modules/rednote-mcp/dist -type f` and `ls -la /usr/lib/node_modules/rednote-mcp/dist/auth/`. This is material because: (1) it proves there were AT LEAST TWO independent hand-patch episodes against the install path (one on tools/rednoteTools.js, one on auth/authManager.js), not one as BA's narrative implies — the architect's anti-pattern story names a single recent incident but the filesystem evidence shows the install path has been hand-edited at least twice; (2) `rsync --checksum --delete` will silently remove BOTH .orig files in one shot, which is the correct behavior, but the deploy summary should disclose both removals, not just one (R2 currently says 'the file is a hand-edit artifact, not part of the canonical dist tree' — singular); (3) BA's Edge Case R6 explicitly says 'auth/authManager.js are in sync (no action)' — true for the .js, but the .orig sibling implies authManager.js itself was hand-patched at some prior point too (the .js source/installed sha256 NOW match — 49fed707... — so a prior round-trip already happened, but the .orig backup was never cleaned up). Architect missed this too (architect's evidence.byte_sizes only records `orig_backup_path` singular).",
+      "required_evidence": "BA must (a) update Out-of-Scope Observations table to add `/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js.orig` (13384 B, 2026-04-26) alongside the rednoteTools.js.orig entry; (b) update Edge Case R2 wording from 'The installed copy currently carries [one] backup' to 'The installed copy currently carries TWO backups: rednoteTools.js.orig (54562 B) and auth/authManager.js.orig (13384 B); both will be removed by rsync --delete'; (c) optionally add a note in the AC5 GIVEN/THEN that the post-deploy installed dist/ tree should contain ZERO files matching `*.orig` (a stronger negative assertion that catches both, and any future hand-patch backup, in one check). Suggested additional check inside AC5: `find /usr/lib/node_modules/rednote-mcp/dist -name '*.orig' | wc -l` MUST return 0 post-deploy."
+    },
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "claim": "AC8: GIVEN /root/rednote-mcp/CLAUDE.md is currently 11 lines ...",
+      "problem": "Verified via `wc -l /root/rednote-mcp/CLAUDE.md`: file is 10 lines, not 11. Read of full file confirms: 10 lines including the trailing newline. The 'currently 11 lines' baseline in AC8's GIVEN clause is factually wrong by 1 line. This does not break the verification logic of AC8 (the THEN clauses are grep-based, not line-count-based), but it is a literal-text inaccuracy that could mislead dev about the post-edit expected line count and propagates into any future cycle that re-reads this spec.",
+      "required_evidence": "BA must correct the AC8 GIVEN clause from 'currently 11 lines' to 'currently 10 lines'. No change to the THEN clauses required (grep -c checks are independent of line count)."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "claim": "BA's Reconciliation Order (W5 + Technical Hints step 1-6) accepts the architect's prescribed order ('read installed → write source → commit → add deploy → run deploy') as feasible without independently verifying the installed bytes pass `node --check` BEFORE prescribing them as the source-of-truth content.",
+      "problem": "Edge Case R3 acknowledges this risk ('node --check may surface latent syntax issues ... if any prior edit left an unbalanced brace it would fail node --check here. Mitigation: M3 makes this a hard gate'). But the mitigation is reactive: if `node --check` fails on the copied file, dev is left with stale source AND broken would-be-source bytes AND no clear forward path (the spec says 'fix the syntax in source ... do NOT bypass node --check' but doesn't say WHAT syntax fix is acceptable — re-implementation is forbidden by W1, so the only path is to find and fix a single byte typo by hand, which violates the verbatim-copy constraint). BA could have eliminated this risk by running `node --check` on the installed files in the BA cycle itself and reporting the result. I verified this just now: `node --check /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js` exits 0 cleanly, and `node --check /usr/lib/node_modules/rednote-mcp/dist/cli.js` exits 0 cleanly. So the risk is empirically zero, but BA did not pre-validate this and left M3 as a gate without proving the gate would be satisfied.",
+      "required_evidence": "BA should add to Evidence (Contract A) Measured section: '`node --check /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js` exits 0; `node --check /usr/lib/node_modules/rednote-mcp/dist/cli.js` exits 0 (verified in BA cycle)'. This pre-validation reduces R3 from 'risk to be mitigated reactively' to 'verified-clean upfront, M3 is a sanity check rather than a discovery point'. This is a BA-side investigation gap, not a critical defect — adding the verification line closes it."
+    },
+    {
+      "dimension": "scope_alignment",
+      "claim": "R5 acceptance criterion: 'Deploy script is the only sanctioned write path to /usr/lib/node_modules/rednote-mcp/; documented in CLAUDE.md (S3) and migration doc (S2); manifest updated (S1). Architect-recommended preinstall guard (C2) and launch-time drift check (C1) are deferred — out of THIS cycle's scope but documented for follow-up.'",
+      "problem": "The user's verbatim demand is 'root/rednote-mcp是唯一真相来源' (root/rednote-mcp is the SINGLE source of truth). The user's binding need has TWO dimensions: (a) directional rule (writes originate in source) — R5 addresses this via the deploy script; (b) ENFORCEABLE rule (the rule cannot be silently violated). BA acknowledges in Anti-Pattern Discussion (Context line 15-16, Novelty Check rationale, Edge Case R8) that the structural enforcement is INCOMPLETE without arch-prop-2 (launch-time drift check) and arch-prop-3 (preinstall guard) — and explicitly defers both to follow-up cycles. Architect rated arch-prop-3 as 'critical' severity (single most important guardrail per architect arch-7 observation_notes). The deferral is justified by C2's `breaking_changes: true` flag (needs pre-flight grep), but the user's `必须两边同步` requires BIDIRECTIONAL enforceable sync, and the post-cycle state is: (i) deploy script is the only WRITE path during a sanctioned deploy — yes; (ii) deploy script can detect drift on next run via sha256 round-trip — yes; (iii) BUT a future hand-edit of the install path between deploys is undetectable until the next deploy attempt or next launch (and the launch-time check is C1, deferred). So an orchestrator could STILL hand-edit /usr/lib/node_modules/rednote-mcp/dist/* between this cycle and the next deploy without any structural barrier. Edge Case R8 names this as 'the highest-impact residual risk'. The scope decision is reasonable per spec-20260503-091826 §5.1 minimum-safest-precise, but BA must surface this trade-off to the user EXPLICITLY rather than only as a Could-Have item — the user said 'must be sync'd', and BA is shipping 'will be sync'd at deploy time but not in between'.",
+      "required_evidence": "BA spec is acceptable as-is on this dimension if the user is on the loop for the deferred follow-up cycles. To improve transparency, BA should add to the Goal section a single clarifying sentence: 'This cycle delivers the directional rule and the deploy-time enforcement. Continuous (between-deploy) enforcement requires the architect-recommended C1 launch-time drift check + C2 preinstall guard, which are deferred to a follow-up cycle pending pre-flight coordination per architect arch-prop-3 migration_strategy.' This preserves the minimum-safest-precise scope choice while making the residual risk visible to the user at the top of the spec, not buried in Edge Case R8. Also: BA should add a note to AC9 or as a new AC10 that the install-path runtime is verified UNCHANGED for the two key files post-deploy (which AC9 already does for sha256). No spec rewrite required, just a residual-risk callout in the Goal."
+    }
+  ],
+  "evidence_verified": {
+    "sha256_hashes_match_filesystem": true,
+    "byte_sizes_match_filesystem": true,
+    "grep_counts_match_filesystem": true,
+    "manifest_sha256_match": true,
+    "manifest_line_count_match": true,
+    "rednoteTools_orig_exists_at_cited_size": true,
+    "details": [
+      "sha256 /root/rednote-mcp/dist/tools/rednoteTools.js = 1dcf8e2351b5f3c5b870adc66ef1b4db7bfaa0b17a20be6b63411a973a2c0dad (matches BA citation)",
+      "sha256 /usr/lib/node_modules/rednote-mcp/dist/tools/rednoteTools.js = e8a451657563800e6a77ab9e9a1a17480dbde10686d61ed6b9fead3a99b86c0e (matches)",
+      "sha256 /root/rednote-mcp/dist/cli.js = 74a4ad2273db027f7468816e2cb2ea8d9600b119cab93069cba0d89c6215694c (matches)",
+      "sha256 /usr/lib/node_modules/rednote-mcp/dist/cli.js = 8965dec6e837c3e08004f58bc1939ece07f84abcd8cf7bd6cbd98fb0ea4de29d (matches)",
+      "sha256 authManager.js (both locations) = 49fed707c1bf9c0f478455219fee602f4b69f19fb4af3580b33814e7761dccaf (matches; in sync)",
+      "byte sizes: source rednoteTools.js=111386, installed=132984 (delta 21598; matches); source cli.js=9422, installed=10175 (delta 753; matches)",
+      "grep symbol counts: source rednoteTools=0, installed=19; source cli=0, installed=2 (matches BA citations exactly)",
+      "manifest sha256 b056b7fbad934b8520814521f8b58c0a0a1be68320e1f6383ef2a410ca2e014c (both locations identical; matches)",
+      "manifest line count 25 in both locations (matches)",
+      "rednoteTools.js.orig: 54562 B at /usr/lib/node_modules/rednote-mcp/dist/tools/ (matches)",
+      "node --check on installed rednoteTools.js: exit 0 (independently re-verified by QA)",
+      "node --check on installed cli.js: exit 0 (independently re-verified by QA)"
+    ]
+  },
+  "evidence_missed_by_ba": {
+    "second_orig_file": {
+      "path": "/usr/lib/node_modules/rednote-mcp/dist/auth/authManager.js.orig",
+      "size_bytes": 13384,
+      "sha256": "8a839a0fadcf7875c97b55bdcebf68e78fb40ea68f21d1565568babd70ae61d9",
+      "date": "2026-04-26",
+      "implication": "Proves at least 2 hand-patch episodes against install path (rednoteTools 2026-05-02 + authManager 2026-04-26), not 1. rsync --delete will incidentally clean both up but BA's spec only documents one. Architect also missed this (only mentions singular orig_backup_path)."
+    }
+  },
+  "ac_mechanical_verifiability_audit": [
+    {"ac": "AC1", "verifiable": true, "command": "sha256sum /root/rednote-mcp/dist/tools/rednoteTools.js | grep e8a451657563800e6a77ab9e9a1a17480dbde10686d61ed6b9fead3a99b86c0e", "drift": false},
+    {"ac": "AC2", "verifiable": true, "command": "sha256sum /root/rednote-mcp/dist/cli.js | grep 8965dec6e837c3e08004f58bc1939ece07f84abcd8cf7bd6cbd98fb0ea4de29d", "drift": false},
+    {"ac": "AC3", "verifiable": true, "command": "node --check ... && echo OK", "drift": false},
+    {"ac": "AC4", "verifiable": true, "command": "test -x /root/rednote-mcp/scripts/deploy-to-usrlib.sh; bash deploy-to-usrlib.sh; echo $?", "drift": false},
+    {"ac": "AC5", "verifiable": true, "command": "diff <(...sha256sum sort) <(...sha256sum sort)", "drift": false, "note": "would benefit from added `find ... -name '*.orig' | wc -l == 0` check to catch BOTH .orig files explicitly"},
+    {"ac": "AC6", "verifiable": true, "command": "wc -l manifest; sha256sum cmp", "drift": false},
+    {"ac": "AC7", "verifiable": false, "command": "grep -c 'Deploy mechanism out of scope' MIGRATION...md", "drift": true, "note": "PASSES VACUOUSLY — that exact substring does not exist in the file before any edit. AC literal text must be revised to match real file content."},
+    {"ac": "AC8", "verifiable": true, "command": "grep -c 'deploy-to-usrlib.sh' CLAUDE.md && grep -c 'never edit /usr/lib/node_modules/rednote-mcp' CLAUDE.md", "drift": "minor", "note": "GIVEN clause says '11 lines' but file is 10 lines; THEN clauses are grep-based and unaffected; literal-text correction needed"},
+    {"ac": "AC9", "verifiable": true, "command": "sha256sum /usr/lib/.../tools/rednoteTools.js | grep e8a45165... and likewise for cli.js", "drift": false}
+  ],
+  "summary_table": {
+    "evidence_quality_dimension": "PASS — chain of custody intact, all sha256/byte/grep evidence reproducible against filesystem",
+    "scope_alignment_dimension": "PASS-WITH-CALLOUT — directional rule + deploy-time enforcement covered; continuous enforcement deferred to follow-up cycles per architect arch-prop-2 / arch-prop-3 (this is a defensible scope choice but should be surfaced in Goal section, not buried in Edge Case R8)",
+    "investigation_completeness_dimension": "PASS-WITH-MINOR-GAP — BA inherited architect's reconciliation order verbatim; should have pre-validated `node --check` on installed files (verified clean by QA: both pass)",
+    "affected_file_accuracy_dimension": "FAIL — BA missed /usr/lib/.../auth/authManager.js.orig (13384 B). One-line fix in Out-of-Scope Observations + Edge Case R2 wording.",
+    "spec_text_vs_execution_drift_dimension": "FAIL — AC7 literal grep pattern does not match the actual file substring; AC7 currently passes vacuously without any edit. AC8 GIVEN clause has minor line-count error (10 not 11)."
+  }
+}
