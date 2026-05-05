@@ -1,0 +1,657 @@
+{
+  "role": "architect",
+  "timestamp": "2026-05-05T23:10:00Z",
+  "spec_id": "spec-20260505-221501",
+  "plan_id": "spec-20260505-221501",
+  "scope": "Codex-signed harness upgrade — full 10-step plan; observations only",
+  "constraints_honored": {
+    "user_5_1": "No retroactive scrub or rotation of leaked Google Maps API key.",
+    "user_5_2": "Scope is the saved Codex consensus plan in Section 5.2.",
+    "codex_rejected": "No bespoke per-symptom hooks proposed; default position is to extend single verify-plan-integrity.py.",
+    "no_files_modified": true
+  },
+  "app_understanding": {
+    "e2e_flow_executed": false,
+    "app_not_running": true,
+    "rationale": "This is a build-time codebase audit per Codex consensus plan; no live service to navigate. Static review of schemas, scripts, agents, commands, and one live trip's data files (data/china-20260412-092624/)."
+  },
+  "live_testing": {
+    "performed": false,
+    "rationale": "No HTTP service in scope. Static read-only audit per spec."
+  },
+  "quality_gate_results": {
+    "all_gates_passed": false,
+    "gate_details": {
+      "console_errors_checked": {"required": true, "actual": false, "passed": false, "note": "Out of scope per spec — no live app to instrument."},
+      "network_requests_analyzed": {"required": true, "actual": false, "passed": false, "note": "Out of scope per spec."},
+      "pages_visited": {"required": 5, "actual": 0, "passed": false, "note": "Out of scope per spec."},
+      "code_files_reviewed": {"required": 10, "actual": 18, "passed": true,
+        "files": [
+          "schemas/transportation.schema.json",
+          "schemas/accommodation.schema.json",
+          "schemas/poi-common.schema.json",
+          "schemas/timeline.schema.json",
+          "schemas/meals.schema.json",
+          "scripts/lib/json_io.py",
+          "scripts/save.py",
+          "scripts/fetch-images-batch.py",
+          "scripts/generate-html-interactive.py",
+          "scripts/generate-and-deploy.sh",
+          ".claude/agents/accommodation.md",
+          ".claude/agents/transportation.md",
+          ".claude/commands/INDEX.md",
+          ".claude/commands/review.md",
+          ".claude/commands/plan.md",
+          "data/china-20260412-092624/transportation.json",
+          "data/china-20260412-092624/meals.json",
+          "data/china-20260412-092624/modification-log.json"
+        ]
+      },
+      "runtime_metrics_collected": {"required": true, "actual": false, "passed": false, "note": "Out of scope per spec."},
+      "bundle_size_checked": {"required": true, "actual": false, "passed": false, "note": "Out of scope per spec."},
+      "security_patterns_checked": {"required": true, "actual": true, "passed": true,
+        "note": "API-key leak surface verified; user-accepted state per Section 5.1; new defenses target NEW writes."},
+      "performance_benchmarked": {"required": true, "actual": false, "passed": false, "note": "Out of scope per spec."}
+    }
+  },
+
+  "architectural_findings": {
+
+    "concern_1_per_traveler_dimension": {
+      "title": "Per-traveler dimension — extend, don't drop",
+      "recommendation": "EXTEND schemas to formalize per-traveler dimension (Codex's 'half-extension is the disease' wording, Section 8).",
+      "rationale": [
+        "Live evidence: data/china-20260412-092624/modification-log.json:1641-1653 records eight separate edits to fabricated `accommodation_jade` keys across Days 4,7-15 — the field has been re-introduced and re-removed three times across cycles. Half-extension repeatedly snaps back.",
+        "Live evidence: spec Section 5.2 A4 documents `passengers_jade`/`booking_status_jade` fabricated on transportation.json Day 12 — same shape (suffix `_jade`), same root cause: schema lacks the dimension.",
+        "Live evidence: timeline.schema.json:161-194 has ALREADY taken the extend path (split_day:bool, shared/matilde/jade objects, additionalProperties:false on day_entry). Dropping second-traveler rendering would invalidate that ratified work and erase the Mathilde+Jade scenario the user is actively planning (per Beijing Wudaokou memory).",
+        "User context (memory/MEMORY.md): 'Matilde & Jade Trip — 15-day China trip, Jade lives in Beijing Wudaokou'. The two-traveler split-day case is the primary use case, not an edge case.",
+        "Codex's binding statement: 'Half-extension is the disease' — partial bolt-on fields keep being fabricated because the schema validates around them. Either commit to the dimension or commit to the single-traveler view."
+      ],
+      "concrete_schema_extension": {
+        "poi_common.schema.json": {
+          "add_def_traveler_enum": "Add to $defs: traveler_enum = {\"type\":\"string\",\"enum\":[\"shared\",\"matilde\",\"jade\"]}.",
+          "add_def_split_day_block": "Add to $defs: split_day_marker = {\"type\":\"object\",\"properties\":{\"split_day\":{\"type\":\"boolean\"}},\"required\":[\"split_day\"]}.",
+          "rationale": "Centralizing the enum allows attractions/meals/entertainment/shopping/cafe to opt in via $ref without each schema redefining."
+        },
+        "accommodation.schema.json": {
+          "accommodation_item.add_property_traveler": {
+            "field": "traveler",
+            "ref": "poi-common.schema.json#/$defs/traveler_enum",
+            "default": "shared",
+            "required": false,
+            "rationale": "Eliminates `accommodation_jade` bolt-on. Day_entry now contains an array of accommodation_item objects, each tagged with traveler. Existing single-accommodation days remain valid because traveler defaults to 'shared'."
+          },
+          "day_entry.shape_change": "Replace `accommodation: {$ref: accommodation_item}` with `accommodation: {type: array, items: {$ref: accommodation_item}}`. Backwards-compat: a single-object payload should be auto-wrapped by save.py into a one-element array, OR deprecate single-object writes and run a one-time migration. Recommend the migration path because the auto-wrap reproduces the same dual-format pollution that motivated this spec.",
+          "day_entry.add_split_day": "Add `split_day: {type: boolean, default: false}` at day_entry level. additionalProperties:false (see concern 2) prevents fabricated `accommodation_jade` from being written."
+        },
+        "transportation.schema.json": {
+          "location_change.add_property_passengers": {
+            "field": "passengers",
+            "type": "array",
+            "items": "poi-common.schema.json#/$defs/traveler_enum",
+            "default": "[\"shared\"]",
+            "rationale": "Eliminates `passengers_jade` bolt-on. A flight that only Jade takes is `passengers: [\"jade\"]`; both travelers is `passengers: [\"matilde\",\"jade\"]` or `[\"shared\"]`."
+          },
+          "day_entry.shape_change": "Replace `location_change: {$ref: location_change}` with `location_change: {type: array, items: {$ref: location_change}}`. Same rationale as accommodation: needed when the two travelers take different transports on the same day (spec 5.2 A4 evidence).",
+          "day_entry.add_split_day": "Add `split_day: {type: boolean, default: false}`."
+        },
+        "timeline.schema.json": {
+          "status": "Already extended (lines 161-194: split_day, shared, matilde, jade). No change required; this is the reference pattern other schemas should match.",
+          "minor_consistency_fix": "Replace inline `traveler` enum-like block with the new $ref to poi-common's traveler_enum to keep one source of truth."
+        },
+        "meals.schema.json_attractions_etc": {
+          "decision": "DEFER per-traveler tagging on these schemas to a follow-up cycle.",
+          "rationale": "Section 5.2 bug accounting (A6, A7, A9-A12) shows that meals/attractions/entertainment/shopping fabrications were location-confusion (Wudaokou vs Xi'an) rather than per-traveler split. Adding traveler:enum here without evidence creates the very 'fabricated bolt-on' Codex warned against. Re-evaluate ONLY if a second cycle reproduces split-day fabrications on those POI types."
+        }
+      },
+      "non_recommended_path_drop_second_traveler": {
+        "rejected": true,
+        "reason": "Would invalidate timeline.schema.json:161-194 (already extended), erase the user's primary use case (Mathilde+Jade), and force a parallel single-view rendering pipeline that duplicates the existing split-day timeline branch. Cost > benefit."
+      },
+      "evidence_locations": [
+        "data/china-20260412-092624/modification-log.json:1641-1653",
+        "schemas/timeline.schema.json:161-194 (reference pattern)",
+        "docs/dev/specs/spec-20260505-221501.md:236 (Section 8 Codex binding wording)"
+      ]
+    },
+
+    "concern_2_additional_properties_flips": {
+      "title": "additionalProperties:false flips + cleanup of current data",
+      "exact_lines_to_flip": [
+        {"file": "schemas/accommodation.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object — outer properties bag"},
+        {"file": "schemas/accommodation.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope (top-level agent output)"},
+        {"file": "schemas/accommodation.schema.json", "line": 75, "current": "true", "new": "false", "scope": "day_entry — THIS IS THE ONE THAT BLOCKS `accommodation_jade` and `split_day` from being silently accepted; required after concern_1 introduces the formal split_day field"},
+        {"file": "schemas/transportation.schema.json", "line": 27, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/transportation.schema.json", "line": 34, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/transportation.schema.json", "line": 155, "current": "true", "new": "false", "scope": "location_change — blocks `passengers_jade`, `booking_status_jade` (Section 5.2 A4)"},
+        {"file": "schemas/transportation.schema.json", "line": 180, "current": "true", "new": "false", "scope": "intra_city_routes — currently freeform; flipping to false requires defining its shape first; if not feasible THIS cycle, leave true and flag for follow-up. Spec 5.2 A3 (`location_short` fabrication) sits here."},
+        {"file": "schemas/transportation.schema.json", "line": 184, "current": "true", "new": "false", "scope": "day_entry — blocks day-level `location_short`, `location_local`, `accommodation_jade` (Section 5.2 A2, A3)"},
+        {"file": "schemas/attractions.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/attractions.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/attractions.schema.json", "line": 67, "current": "true", "new": "false", "scope": "day_entry"},
+        {"file": "schemas/cafe.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/cafe.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/cafe.schema.json", "line": 74, "current": "true", "new": "false", "scope": "day_entry"},
+        {"file": "schemas/entertainment.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/entertainment.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/entertainment.schema.json", "line": 72, "current": "true", "new": "false", "scope": "day_entry"},
+        {"file": "schemas/meals.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/meals.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/shopping.schema.json", "line": 16, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/shopping.schema.json", "line": 21, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/shopping.schema.json", "line": 80, "current": "true", "new": "false", "scope": "day_entry"},
+        {"file": "schemas/timeline.schema.json", "line": 27, "current": "true", "new": "false", "scope": "data object"},
+        {"file": "schemas/timeline.schema.json", "line": 34, "current": "true", "new": "false", "scope": "envelope"},
+        {"file": "schemas/timeline.schema.json", "line": 71, "current": "true", "new": "false", "scope": "timeline_activity — currently allows free fields; tightening this is what would have blocked spec 5.2 A5 (33 travel_segment extras: origin/destination/route_details/optional)"},
+        {"file": "schemas/poi-common.schema.json", "line": 143, "current": "true", "new": "false", "scope": "agent_envelope — central definition; flipping here propagates to everything that $refs it"},
+        {"file": "schemas/budget.schema.json", "lines": [43, 50, 87, 112, 125], "current": "true", "new": "false", "scope": "all five sites — budget is computed downstream, no business case for permissive shape"}
+      ],
+      "current_data_cleanups_required_before_flip": {
+        "rationale": "Stage A of Codex Top-5 control 2: fix current data first, THEN tighten schemas globally. Otherwise the deploy gate trips on the very file it's protecting.",
+        "items": [
+          {"location": "transportation.json all days where authored", "field": "day-level `location_short` and day-level `location_local`", "spec_evidence": "5.2 A2, A3", "action": "Remove (these are NOT in transportation.schema.json#/$defs/day_entry properties)"},
+          {"location": "transportation.json Day 12", "field": "`passengers_jade`, `booking_status_jade`", "spec_evidence": "5.2 A4", "action": "After concern_1 introduces formal `passengers: []`, migrate booking-status into existing `status_base/status_local` fields and reify the Jade-only flight as a separate location_change with passengers:['jade']"},
+          {"location": "transportation.json all days", "field": "composite-prose `location` (when written as 'X, then Y')", "spec_evidence": "5.2 A3", "action": "Split into base location + intra-day events; intra_city_routes already has freeform shape"},
+          {"location": "accommodation.json all days", "field": "day-level `accommodation_jade`, `split_day`, `out_of_scope`, `gaode_id`", "spec_evidence": "5.2 A6, A7", "action": "After concern_1 migrates accommodation→array, fold accommodation_jade into a second array element with traveler:'jade'; remove out_of_scope (replace with notes_base/local); gaode_id moves into search_results entry"},
+          {"location": "accommodation.json", "field": "phantom `自行安排` entries", "spec_evidence": "5.2 A8", "action": "Delete (these are placeholder strings not real POIs)"},
+          {"location": "timeline.json all days where present", "field": "travel_segment extras (origin, destination, route_details, optional)", "spec_evidence": "5.2 A5 (33 instances)", "action": "Remove. travel_segment.additionalProperties is already false (timeline.schema.json:113); the data file is currently passing because of envelope additionalProperties:true at line 27/34. Flipping the outer levels will surface these."}
+        ]
+      },
+      "anti_patterns_to_avoid": [
+        "Do NOT add a per-symptom hook that greps for `_jade` or `_matilde` — Codex rejected this as 'papering over symptoms'. The schema is the gate.",
+        "Do NOT relax additionalProperties to a custom 'allowedExtraFields' list — that re-introduces the 'half-extension is the disease' anti-pattern.",
+        "Do NOT batch the schema flip with the data cleanup in a single commit. Stage A (data) must complete and pass validation BEFORE Stage B (schema flip)."
+      ]
+    },
+
+    "concern_3_renderer_consistency": {
+      "title": "Renderer consistency — pick path B (cache as sole source)",
+      "recommendation": "PATH B: image_url is NEVER written into agent JSON; cache (data/<trip>/images.json) is the single source of truth.",
+      "rationale": [
+        "Live evidence: scripts/generate-html-interactive.py inconsistently honors `item.image_url`. Honored at lines 715 (cafe), 832 (shopping), 938 (accommodation). IGNORED at lines 669/1308 (meals), 756 (attractions), 802 (entertainment) — those branches go straight to `_get_placeholder_image` which reads images.json. So even if image_url is written, half the renderer ignores it.",
+        "Live evidence: data/china-20260412-092624/{meals,attractions,entertainment,cafe,shopping,accommodation}.json contain 134 image_url fields total (counts: meals 64, attractions 34, entertainment 13, accommodation 10, shopping 10, cafe 3). Each one is a redundant copy of a value already in images.json — and each one is a NEW vector for a `key=AIzaSy...` URL leak. Path A would multiply the leak surface 134x; path B keeps it bounded to images.json.",
+        "Live evidence: TWO write paths exist for image_url into agent JSON: (a) scripts/fetch-images-batch.py:1166-1334 writes via raw `json.dump` (line 1334) — bypassing scripts/lib/json_io.save_agent_json validation entirely; (b) scripts/save.py:65-101 (`extract_image_urls` → `_fetch_poi_image` → `poi['image_url'] = photo_url` line 75) — invoked unconditionally on every save (line 574). Both paths must be removed under path B.",
+        "Codex Top-5 control 4 binding requirement: 'No agent (any type) may directly write image_url field; images go through scripts/fetch-images-batch.py only.' Path A (renderer honors image_url for ALL POI types) would require keeping the image_url field as a valid schema property; path B removes it from the schema and from the data, which is strictly easier to enforce.",
+        "Path B aligns with the existing `_get_placeholder_image()` cache lookup which is already implemented for all POI categories (lines 272-339)."
+      ],
+      "concrete_changes_under_path_b": {
+        "schemas": [
+          "schemas/poi-common.schema.json:146-150 — REMOVE the image_url $def entirely.",
+          "schemas/meals.schema.json:49 — REMOVE image_url property.",
+          "schemas/accommodation.schema.json:52-56 — REMOVE image_url property.",
+          "schemas/attractions.schema.json — REMOVE image_url property if present (verify; not yet read).",
+          "schemas/cafe.schema.json — REMOVE image_url property if present.",
+          "schemas/entertainment.schema.json — REMOVE image_url property if present.",
+          "schemas/shopping.schema.json — REMOVE image_url property if present.",
+          "After concern_2 flips additionalProperties:false, the schema auto-rejects any future image_url writes."
+        ],
+        "renderer_generate_html_interactive_py": [
+          "Line 715 — change from `cafe_item.get('image_url', '') or self._get_placeholder_image(...)` to just `self._get_placeholder_image(...)`.",
+          "Line 832 — same simplification for shopping `mall_image`.",
+          "Line 938 — same simplification for accommodation. The other call sites (669, 756, 802, 1308, 1336) already do this — they become consistent."
+        ],
+        "scripts_save_py": [
+          "Lines 65-101 — REMOVE `_fetch_poi_image`, `_fill_missing_images`, `extract_image_urls` and the call at line 574. These are the in-line write path. The corresponding image fetch should be a separate, explicit `python scripts/fetch-images-batch.py` invocation (already the canonical, per `.claude/commands/review.md` lines 510-540)."
+        ],
+        "scripts_fetch_images_batch_py": [
+          "Lines 1095-1334 — REMOVE the 'Update agent JSON files with image_url fields' block (the comment 'CRITICAL FIX' on line 1095 is the regression that introduced path A in the first place). The script should write ONLY to images.json (line 227 already does this).",
+          "Lines 390 and 416 — fix path: `.claude/skills/gaode-maps/scripts/poi_search.py` does NOT exist; canonical path is `.claude/commands/scripts/gaode-maps/scripts/poi_search.py` (verified by file existence check). This is a separate, narrow fix unrelated to path A vs B."
+        ],
+        "current_data_cleanup": [
+          "Run a one-time strip of `image_url` from data/*/[meals|attractions|cafe|entertainment|shopping|accommodation].json. The information is recoverable from images.json (or refetchable). 134 fields removed across the live trip. After strip, schema flip in concern_2 will block re-introduction."
+        ]
+      },
+      "non_recommended_path_a_rationale_against": [
+        "Path A (renderer honors image_url everywhere) requires keeping image_url in 6 schemas + the field has been the vector for unsplash/http/key=AIzaSy leaks (E6-E8 in spec). Each preserved field is a future leak.",
+        "Path A keeps the dual write paths (fetch-images-batch + save.py extract_image_urls), and the spec's Top-5 control 4 forbids agents writing image_url at all. Path A makes the lock harder, not easier."
+      ],
+      "evidence_locations": [
+        "scripts/generate-html-interactive.py:715,832,938 (path A sites)",
+        "scripts/generate-html-interactive.py:669,756,802,1308,1336 (path B sites — already de facto)",
+        "scripts/generate-html-interactive.py:272-339 (_get_placeholder_image implementation)",
+        "scripts/fetch-images-batch.py:1095-1334 (raw write to agent JSON)",
+        "scripts/save.py:65-101,574 (extract_image_urls inline write)",
+        "data/china-20260412-092624/meals.json (64 image_url instances)"
+      ]
+    },
+
+    "concern_4_verifier_integration_point": {
+      "title": "verify-plan-integrity.py integration point in generate-and-deploy.sh",
+      "recommendation": "Insert a new Step 1.5 (renumber subsequent steps to [2.5/6] etc., or use an explicit '[VERIFY]' tag) AFTER image fetch (current line 154) and BEFORE HTML generation (current line 156-159).",
+      "exact_insertion_point": {
+        "file": "scripts/generate-and-deploy.sh",
+        "after_line": 154,
+        "before_line": 156,
+        "current_line_154_content": "echo \"\"  (blank line that ends the image-fetch block)",
+        "current_line_156_content": "# Step 2: Generate interactive React HTML",
+        "shape_of_inserted_block": [
+          "echo -e \"${BLUE}[1.5/5]${NC} Verifying plan integrity (deploy-blocking)...\"",
+          "VERIFY_EXIT=0",
+          "python \"$SCRIPT_DIR/verify-plan-integrity.py\" \"$PLAN_ID\" || VERIFY_EXIT=$?",
+          "if [ \"$VERIFY_EXIT\" -ne 0 ]; then",
+          "    echo -e \"${RED}DEPLOY BLOCKED: plan integrity verifier failed (exit $VERIFY_EXIT)${NC}\"",
+          "    exit \"$VERIFY_EXIT\"",
+          "fi",
+          "echo -e \"${GREEN}OK${NC} Plan integrity verified\""
+        ]
+      },
+      "rationale": [
+        "Verifier must run AFTER image fetch because checks include (per spec 5.2 control 1): 'Stock-image-URL grep' and 'HTTP-protocol grep on image_url' — those checks are meaningful only against the post-fetch state of images.json + agent JSON.",
+        "Verifier must run BEFORE HTML generation (line 159) so a failed verify aborts before deploy-relevant artifacts are produced. Spec 5.2 control 1 wording: 'Called by: scripts/generate-and-deploy.sh BEFORE HTML generation'.",
+        "The HTML-rendered scan (last item in Codex's 6-in-1 verifier) requires a SECOND invocation AFTER line 168 (post-generation, pre-deploy line 184). The single-script approach is to expose two CLI modes: `verify-plan-integrity.py <plan-id>` (data-only) and `verify-plan-integrity.py <plan-id> --html-also <output-file>` (data + rendered HTML). Recommend the orchestrator dispatch invokes the data mode at line 155 and the html mode at line 168.5.",
+        "Per Section 5.2 user-accept clause (5.1), the API-key grep `key=AIzaSy[A-Za-z0-9_-]{30,}` runs in WARN mode only — verifier emits a yellow notice but exits 0 for that check alone. All other checks (forbidden tokens, stock URLs, http://, schema) exit non-zero on FAIL.",
+        "The retry helper `fetch_images_with_retry` (lines 88-117) wraps image-fetch failures and continues the pipeline with `IMAGE_FETCH_STATUS=FAILED`. The verifier MUST detect this state and abort even if the helper returned 0 — recommend exporting `IMAGE_FETCH_STATUS` and having verify-plan-integrity.py read it as an env signal."
+      ],
+      "anti_pattern_to_avoid": "Do NOT call verify-plan-integrity.py from within plan-validate.py or json_io.py (write-time hook). The verifier is a deploy gate, not a write gate — write-time validation is concern_2's job. Mixing them produces the 'hook stack' Codex rejected (HK-11)."
+    },
+
+    "concern_5_frontmatter_contract": {
+      "title": "Command frontmatter contract + INDEX regen",
+      "minimum_field_set": {
+        "name": "string — kebab-case command name (e.g. 'review', 'plan'). Required when the file is a command entry point; optional for nested skill subdocs.",
+        "description": "string — single-line. Already present in 5/7 commands.",
+        "allowed-tools": "comma-separated or YAML list — already present in plan.md, review.md, gaode-maps.md, google-maps.md, rednote.md.",
+        "uses_scripts": "YAML list of repo-relative script paths the command's CANONICAL invocations call (e.g. ['scripts/fetch-images-batch.py','scripts/generate-and-deploy.sh','scripts/save.py']). Empty list if none.",
+        "dispatches": "YAML list of agent names the command dispatches via Task (e.g. ['meals','attractions','timeline']). Empty list if none.",
+        "mutates_files": "YAML list of glob patterns the command's canonical invocations write to (e.g. ['data/{slug}/*.json','output/travel-plan-*.html']). Empty list if read-only.",
+        "model": "string — already present in some agents; keep as-is for agents that override default.",
+        "disable-model-invocation": "boolean — already used in INDEX.md and individual commands; keep."
+      },
+      "discovery_preamble_binding_text": {
+        "where_to_document": ".claude/commands/INDEX.md (top of body), AND .claude/commands/plan.md + review.md (Orchestrator Discipline section).",
+        "verbatim_block_to_add": [
+          "Defense Layer 0 — Mandatory discovery preamble:",
+          "Before any task action, the orchestrator MUST run:",
+          "  1. ls .claude/commands/",
+          "  2. read .claude/commands/INDEX.md",
+          "  3. read .claude/commands/<matching-keyword>.md (frontmatter + body)",
+          "  4. grep <user-keyword> scripts/*.{py,sh}",
+          "Skipping this preamble is a process-level defect even if the resulting work is correct.",
+          "Source of truth for canonical script invocations is the command body (e.g. /review L510-540 for fetch-images-batch.py)."
+        ]
+      },
+      "index_regen_integration": {
+        "approach": "Extend a SINGLE existing hook, not a new one (Codex binding default).",
+        "preferred_hook": "~/.claude/hooks/posttool-doc-sync.py (referenced in INDEX.md auto-generated banner: 'Auto-generated by doc-sync hook.'). Verify it exists; if it doesn't, repurpose the most adjacent hook in ~/.claude/hooks/.",
+        "trigger": "PostToolUse on Edit/Write/NotebookEdit when target path matches `.claude/commands/*.md` or `.claude/agents/*.md`.",
+        "behavior": "Re-parse all command frontmatter, regenerate the Tree section in INDEX.md, write atomically.",
+        "fallback": "If the hook does not exist or cannot be safely modified, expose a single explicit script `scripts/regen-command-index.py` invoked by a single posttool wrapper. Either way, ONE hook entry, not 30."
+      },
+      "concrete_starter_frontmatter_examples": {
+        ".claude/commands/plan.md": {
+          "name": "plan",
+          "description": "Multi-agent travel planning with specialized subagents and interactive HTML generation",
+          "allowed-tools": "Task, Read, Write, TodoWrite, Skill, Bash",
+          "uses_scripts": ["scripts/init-plan-skeleton.sh", "scripts/init-requirements-skeleton.sh", "scripts/save.py", "scripts/load.py", "scripts/generate-and-deploy.sh", "scripts/plan-validate.py", "scripts/sync-agent-data.py"],
+          "dispatches": ["plan-skeleton", "transportation", "accommodation", "meals", "attractions", "entertainment", "shopping", "cafe", "timeline", "budget"],
+          "mutates_files": ["data/{slug}/plan-skeleton.json", "data/{slug}/requirements-skeleton.json", "data/{slug}/*.json", "output/travel-plan-*.html"]
+        },
+        ".claude/commands/review.md": {
+          "name": "review",
+          "description": "Multi-day iterative review command with incremental workflow",
+          "allowed-tools": "Task, Read, Write, TodoWrite, Bash, Skill",
+          "uses_scripts": ["scripts/fetch-images-batch.py", "scripts/save.py", "scripts/load.py", "scripts/generate-html-interactive.py", "scripts/generate-and-deploy.sh"],
+          "dispatches": ["meals", "attractions", "entertainment", "shopping", "cafe", "transportation", "accommodation", "timeline"],
+          "mutates_files": ["data/{slug}/*.json", "output/travel-plan-*.html"]
+        }
+      },
+      "anti_patterns_to_avoid": [
+        "Do NOT invent a separate 'parallel paper trail' contract doc (Codex REJECTED CT-1/CT-2). Frontmatter goes in the existing command files; INDEX is auto-regenerated.",
+        "Do NOT validate frontmatter via a separate semantic-purpose-matching hook (Codex REJECTED HK-1). Mechanical YAML parse + 'is this script path real on disk' check is sufficient."
+      ]
+    },
+
+    "concern_6_agent_ownership_owned_files_regex": {
+      "title": "Per-agent owned_files regex shape + pretool-write hook integration",
+      "owned_files_field_shape": {
+        "key": "owned_files",
+        "value": "YAML list of regex strings (Python `re` flavor, anchored — pattern is implicitly ^...$ on the repo-relative path).",
+        "rationale": "Regex (not glob) because the patterns must distinguish e.g. `data/.+/meals\\.json` from `data/.+/meals\\.json\\.bak` and need character-class precision."
+      },
+      "concrete_examples": {
+        ".claude/agents/meals.md": ["^data/[^/]+/meals\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/accommodation.md": ["^data/[^/]+/accommodation\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/transportation.md": ["^data/[^/]+/transportation\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/attractions.md": ["^data/[^/]+/attractions\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/entertainment.md": ["^data/[^/]+/entertainment\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/shopping.md": ["^data/[^/]+/shopping\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/cafe.md": ["^data/[^/]+/cafe\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/timeline.md": ["^data/[^/]+/timeline\\.json$", "^data/[^/]+/sync-report\\.json$", "^data/[^/]+/modification-log\\.json$"],
+        ".claude/agents/budget.md": ["^data/[^/]+/budget\\.json$", "^data/[^/]+/modification-log\\.json$"]
+      },
+      "shared_writer_modification_log": {
+        "issue": "modification-log.json is written by every agent (per existing review.md and agent files prescribing `python scripts/log-modification.py`).",
+        "resolution": "All agents legitimately own modification-log.json; the regex appears in every agent's owned_files list. Hook implementation: a path is allowed if ANY active agent's owned_files regex matches."
+      },
+      "global_universal_deny": {
+        "field": "data\\..+\\.json (image_url at any nesting depth)",
+        "rationale": "Codex Top-5 control 4: 'No agent (any type) may directly write image_url'. Implementation: pretool-write hook scans the proposed JSON payload BEFORE write, rejects if the diff introduces an `image_url` key on any object that previously didn't have one or that has a different value. Match by Python json walker, not regex on raw text (safer with embedded quotes/newlines).",
+        "exception": "scripts/fetch-images-batch.py (system tool, runs as user/orchestrator, NOT as agent) — but per concern_3 path B, fetch-images-batch.py is also forbidden from writing image_url into agent JSON; the only writer of image_url is data/<trip>/images.json which has no image_url field, only `pois: {key: url}`. So the universal deny becomes a clean 'no agent and no script writes image_url anywhere except images.json'."
+      },
+      "hook_integration_point": {
+        "hook_file": "Single hook: ~/.claude/hooks/pretool-write.py (or whatever the existing pretool-write hook is named for this project — verify before extending).",
+        "behavior": [
+          "On Write/Edit/NotebookEdit/Bash-with-redirection events:",
+          "1. If agent_id is unset (orchestrator), skip — orchestrator is governed by the orchestrator-gate hook.",
+          "2. Look up the calling subagent's `owned_files` from .claude/agents/<agent>.md frontmatter.",
+          "3. Check target path against owned_files regex list. If no match → exit 2 with diagnostic.",
+          "4. Additionally: parse JSON body, walk for `image_url` keys; if any found → exit 2 with diagnostic (this is the universal deny).",
+          "5. Cache parsed frontmatter for the session; bust cache on .claude/agents/*.md mtime change."
+        ],
+        "extends_not_creates": "Reuse the existing orchestrator-gate / safety hook scaffolding; do NOT add a 30-hook stack. This is a single new check inside one existing hook."
+      },
+      "anti_patterns_to_avoid": [
+        "Do NOT define owned_files as a glob list (e.g. 'data/**/meals.json'). Glob doesn't anchor and bak files would slip through.",
+        "Do NOT make the universal-deny a separate hook (Codex REJECTED 'one hook per symptom'). It's one extra check in the same pretool-write hook.",
+        "Do NOT permit agents to write to images.json. fetch-images-batch.py is the sole writer; that script is invoked by the orchestrator/user, not by an agent dispatch.",
+        "Do NOT enforce owned_files via the prompt-purity hook — that hook checks orchestrator dispatch text; this hook checks the actual filesystem write."
+      ]
+    },
+
+    "pattern_inconsistencies_with_existing_codebase": [
+      {
+        "id": "PI-1",
+        "title": "scripts/save.py:65-101 directly writes image_url, contradicting Codex Top-5 control 4",
+        "severity": "major",
+        "location": "scripts/save.py:65-101 (`extract_image_urls`, `_fetch_poi_image`, `_fill_missing_images`)",
+        "observation_notes": "Line 75: `poi['image_url'] = photo_url`. Invoked unconditionally on every save via `_prepare_agent_data` line 574. This is a third image-url write path beyond fetch-images-batch.py and any agent that ignores the prohibition.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-2",
+        "title": "save_agent_json called with validate=False inside save.py:546",
+        "severity": "major",
+        "location": "scripts/save.py:544-547",
+        "observation_notes": "Line 546: `validate=False`. The validation IS performed by save_single_agent's separate `validate_data` call at line 594 — but the architectural duplication means a future caller of save_agent_json directly (bypassing save.py's outer wrapper) writes WITHOUT validation, even though the json_io contract claims 'validates against schema before save' (per cp-03 contract).",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-3",
+        "title": "fetch-images-batch.py path string references non-existent .claude/skills/...",
+        "severity": "major",
+        "location": "scripts/fetch-images-batch.py:390 and 416",
+        "observation_notes": "Path string `.claude/skills/gaode-maps/scripts/poi_search.py` does not exist on disk. Real path is `.claude/commands/scripts/gaode-maps/scripts/poi_search.py` (verified by ls). The lookup silently no-ops via except-pass on lines 410 and 436, masking the failure.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-4",
+        "title": "Renderer image_url honoring is inconsistent across POI types",
+        "severity": "major",
+        "location": "scripts/generate-html-interactive.py:715,832,938 honor; 669,756,802,1308,1336 do not",
+        "observation_notes": "cafe (715), shopping (832), accommodation (938) honor `item.image_url`; meals (669, 1336), attractions (756, 1308), entertainment (802) ignore it and route through `_get_placeholder_image`. Net effect: 134 image_url fields in current data are partially observable, partially dead — fertile ground for divergence.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "medium"
+      },
+      {
+        "id": "PI-5",
+        "title": "Agent files have CRITICAL CONSTRAINT WRITE-FORBIDDEN sections but no positive ownership declaration",
+        "severity": "major",
+        "location": ".claude/agents/accommodation.md:19-46, .claude/agents/transportation.md:19-46 (and likely all others)",
+        "observation_notes": "Every agent file blocks Write/Edit verbosely but neither declares which files it OWNS nor which files it MUST NOT touch beyond the blanket 'data/**/*.json' (which is too coarse — meals agent shouldn't touch attractions.json). Negative-only declarations cannot drive a hook.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-6",
+        "title": "timeline.schema.json:113 already has additionalProperties:false on travel_segment, but parent (line 27/34) is true — extras leak via envelope",
+        "severity": "major",
+        "location": "schemas/timeline.schema.json:27 (data) and 34 (envelope)",
+        "observation_notes": "travel_segment $def is locked down (line 113), but the data and envelope above it are wide-open, so spec 5.2 A5's 33 fabricated travel_segment extras flowed in via the parent objects' additionalProperties:true windows, never reaching the strict $def. Tightening only the inner $def gave a false sense of security.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-7",
+        "title": "Schema deeply nested with $ref poi-common.schema.json#/$defs/coordinates that already has additionalProperties:false (poi-common:58) — but parents inherit the loose top-level setting",
+        "severity": "minor",
+        "location": "schemas/poi-common.schema.json:143 (agent_envelope additionalProperties:true)",
+        "observation_notes": "The poi-common agent_envelope $def is permissive at the top, contradicting Codex's 'permanently additionalProperties:false' wording. Concern 2 list includes this line.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-8",
+        "title": "fetch-images-batch.py:1166-1334 raw json.dump bypasses scripts/lib/json_io schema-aware write contract",
+        "severity": "major",
+        "location": "scripts/fetch-images-batch.py:1334",
+        "observation_notes": "Raw `json.dump(data, f, ensure_ascii=False, indent=2)` — no save_agent_json call, no validation, no atomic write, no backup. This contradicts the cp-03 contract directly. After concern_3 path B is adopted this code path is removed entirely; until then it's an architectural exception that should never have existed.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-9",
+        "title": ".claude/commands/INDEX.md auto-generated banner promises a doc-sync hook that is not visible in the project tree",
+        "severity": "minor",
+        "location": ".claude/commands/INDEX.md:33 ('Auto-generated by doc-sync hook.')",
+        "observation_notes": "Banner asserts auto-regen, but INDEX.md content lacks the new commands' frontmatter listing because the frontmatter contract (concern 5) does not yet exist. The banner is a promise the codebase doesn't currently keep.",
+        "category": "technical-debt",
+        "estimated_effort": "small"
+      },
+      {
+        "id": "PI-10",
+        "title": "Agent prose says 'Validate output against schemas/<agent>.schema.json before saving' but no agent has tooling to actually run the schema check pre-save",
+        "severity": "minor",
+        "location": ".claude/agents/accommodation.md:289-291, transportation.md:261-263 (likely all others)",
+        "observation_notes": "Step 4 of the numbered checklist instructs the agent to 'Read and verify your output conforms to: schemas/accommodation.schema.json. If validation fails, fix the output structure before proceeding to save.' This is informal — agent has no programmatic schema validator. The actual gate is save.py validation. The prose creates a false sense of pre-save check.",
+        "category": "pattern-inconsistency",
+        "estimated_effort": "small"
+      }
+    ],
+
+    "anti_patterns_to_avoid_summary_per_codex_rejected": [
+      "DO NOT propose 30+ bespoke hooks (one per symptom). Default = extend single verify-plan-integrity.py.",
+      "DO NOT propose semantic 'purpose-matching' HK-1; structural mechanical checks only.",
+      "DO NOT propose hard-block timeline-POI HK-8; report-only validator initially.",
+      "DO NOT propose hook-stack HK-11 'verifies-promised'; one verifier, two CLI modes.",
+      "DO NOT propose CT-1/CT-2 separate parallel contract docs; embed in cycle artifact.",
+      "DO NOT propose OA-4 alias for amap-maps; fix the path string in fetch-images-batch.py:390,416.",
+      "DO NOT propose full-ban on `placeholder` token; scope to dispatch-prompt positive authorization only (per CMD-3 boundary).",
+      "DO NOT propose Google Maps API key rotation or retroactive scrub of 396 instances (user 5.1).",
+      "DO NOT split related schema flips across separate cycles — concern_2's list is one atomic unit, gated by Stage A data cleanup."
+    ]
+  },
+
+  "summary": {
+    "files_examined": 18,
+    "issues_found": 10,
+    "runtime_health": "n/a (build-time audit)",
+    "clean_areas": [
+      "schemas/timeline.schema.json:161-194 — split-day reference pattern is a model for accommodation/transportation extension.",
+      "scripts/lib/json_io.py — clean separation between save_agent_json (validate+atomic) and merge_agent_slots (RC-2 protected fields). Solid foundation for the schema-aware write contract; only outside callers (save.py, fetch-images-batch.py) need to stop bypassing it.",
+      "schemas/timeline.schema.json:113 (travel_segment additionalProperties:false), schemas/meals.schema.json:56,69,84 (already false), schemas/poi-common.schema.json:58,83 (coordinates and search_result locked) — these are the existing strict examples to follow."
+    ],
+    "key_recommendations_one_liner": [
+      "Concern 1: EXTEND schemas (do not drop second-traveler).",
+      "Concern 2: Flip 26 additionalProperties:true → false sites across 8 schema files; precede with documented Stage-A data cleanup.",
+      "Concern 3: PATH B (cache as sole image source); remove image_url from schemas, data, save.py, and fetch-images-batch.py write block.",
+      "Concern 4: Insert verify-plan-integrity.py call at scripts/generate-and-deploy.sh between current line 154 and line 156, with a second invocation between line 168 and 184 for HTML scan.",
+      "Concern 5: Add frontmatter (uses_scripts/dispatches/mutates_files) to .claude/commands/*.md; INDEX regen via existing posttool-doc-sync hook.",
+      "Concern 6: owned_files = list of anchored regexes per agent + universal image_url deny inside ONE pretool-write hook (no new hook stack)."
+    ]
+  },
+
+  "architecture_proposals": [
+    {
+      "id": "arch-prop-1",
+      "title": "Single source of truth for image data: cache only (path B)",
+      "current_state": "Three independent write paths populate image_url: (a) scripts/fetch-images-batch.py:1166-1334 raw json.dump; (b) scripts/save.py:65-101 inline fetch+write on every save; (c) any agent that ignores the WRITE-FORBIDDEN section. Renderer honors image_url for 3 POI types (cafe/shopping/accommodation), ignores it for 4 (meals/attractions/entertainment + duplicate accommodation site). 134 image_url fields in current trip data, each a copy of an images.json entry. Each is also a leak vector for unsplash/http/key=AIzaSy (E6, E7, E8 in spec).",
+      "proposed_state": "image_url removed from all schemas and from all agent data. Sole image source is data/<trip>/images.json (already populated by fetch-images-batch.py:227). Renderer reads images.json via existing _get_placeholder_image() (lines 272-339), which already covers all POI categories. Agents may not write image_url under any circumstance (universal-deny in pretool-write hook).",
+      "measurable_benefit": "Eliminates 134 redundant fields from current trip data (and proportionally more on other trips). Reduces image-leak surface from 134+1 sites to 1 site (images.json). Removes 3 of 3 write paths, leaving 1. Removes ~50 lines from save.py, ~240 lines from fetch-images-batch.py, ~5 schema fields, simplifies renderer to a single uniform code path.",
+      "risk_if_ignored": "Future agent dispatch with mistaken image_url (or copy-pasted from a previous cycle) re-introduces the 'fabricated bolt-on' anti-pattern. Each new trip multiplies the leak surface. The renderer's split behavior means image bugs surface on half the categories and are masked on the other half — same false-PASS pattern as the cycle 123425 placeholder regression.",
+      "affected_files": [
+        "schemas/poi-common.schema.json",
+        "schemas/meals.schema.json",
+        "schemas/accommodation.schema.json",
+        "schemas/attractions.schema.json",
+        "schemas/cafe.schema.json",
+        "schemas/entertainment.schema.json",
+        "schemas/shopping.schema.json",
+        "scripts/save.py",
+        "scripts/fetch-images-batch.py",
+        "scripts/generate-html-interactive.py",
+        "data/<trip>/{meals,attractions,cafe,entertainment,shopping,accommodation}.json"
+      ],
+      "estimated_effort": "medium",
+      "breaking_changes": false,
+      "migration_strategy": "Stage 1: strip image_url from all current data files (one-time script). Stage 2: simplify renderer (3 line changes). Stage 3: remove extract_image_urls block from save.py (50 lines). Stage 4: remove agent-JSON write block from fetch-images-batch.py (240 lines). Stage 5: remove image_url from 6 schemas. Stage 6: flip additionalProperties:false (concern 2) — at this point the schema enforces non-rewriting. Each stage independently passes the existing validators."
+    },
+    {
+      "id": "arch-prop-2",
+      "title": "Per-traveler dimension as first-class schema concept",
+      "current_state": "schema/timeline.schema.json:161-194 has the dimension formally (split_day, shared, matilde, jade); accommodation.schema.json and transportation.schema.json do not. Result: every multi-traveler cycle re-fabricates `accommodation_jade`/`passengers_jade`/`booking_status_jade` at day-level (Section 5.2 A2, A4, A6). modification-log.json:1638-1689 records three full add-then-remove cycles across the same fields.",
+      "proposed_state": "poi-common.schema.json adds `traveler_enum` ($defs). accommodation_item gains `traveler` field (default 'shared'). day_entry's accommodation field becomes an array (one item per traveler). Same for transportation: location_change gains `passengers` array; day_entry's location_change becomes an array. day_entry adds `split_day:bool`. additionalProperties:false on day_entry rejects fabricated `_jade` suffixes.",
+      "measurable_benefit": "Eliminates a recurring failure class (3 documented re-fabrication cycles → 0). Gives the renderer a uniform traveler dimension to consume, replacing ad hoc `_inject_intra_routes` band-aid (spec Section 1, deferred defect 8) which exists precisely because the data shape is ambiguous.",
+      "risk_if_ignored": "Section 8 ('Half-extension is the disease') comes due again next cycle: a new variant of `accommodation_jade` will appear. The orchestrator's prompt-purity hook is warning-only (Section 1, deferred defect 4) so it cannot block.",
+      "affected_files": [
+        "schemas/poi-common.schema.json",
+        "schemas/accommodation.schema.json",
+        "schemas/transportation.schema.json",
+        "scripts/generate-html-interactive.py (multi-traveler render branches)",
+        "data/<trip>/accommodation.json (one-time migration from {accommodation: {...}} to {accommodation: [...]})",
+        "data/<trip>/transportation.json (one-time migration)"
+      ],
+      "estimated_effort": "large",
+      "breaking_changes": true,
+      "migration_strategy": "Stage 1: write the schema changes alongside a `scripts/migrate-traveler-dimension.py` that converts day_entry.accommodation: {} → day_entry.accommodation: [{...,traveler:'shared'}] and folds existing accommodation_jade into a second array element with traveler:'jade'. Stage 2: run the migration on china-20260412-092624 (the only multi-traveler trip in current data) and validate that the rendered output is unchanged. Stage 3: ship the schema flip + renderer update together. Stage 4: the additionalProperties:false flip from concern 2 then permanently locks out the bolt-on pattern."
+    },
+    {
+      "id": "arch-prop-3",
+      "title": "Single deploy verifier with two CLI modes (data + html), no hook stack",
+      "current_state": "No verifier exists. scripts/generate-and-deploy.sh runs image fetch → HTML generate → deploy without an integrity gate. Per Codex audit the live trip has 27 schema validation failures + 13 warnings that would block a verified deploy but do not block this script.",
+      "proposed_state": "scripts/verify-plan-integrity.py with two modes: `verify-plan-integrity.py <plan-id>` (data-only: schema validation, forbidden-token grep on data, stock-image grep, http:// grep, key=AIzaSy WARN-only grep) and `verify-plan-integrity.py <plan-id> --html-also <output-file>` (the above PLUS forbidden-token grep on the rendered HTML). generate-and-deploy.sh invokes mode 1 between current lines 154 and 156, mode 2 between current lines 168 and 184.",
+      "measurable_benefit": "Replaces the 30+ rejected bespoke hooks with one script. Catches all 6 documented failure classes from spec 5.2 control 1 in one place. Mode 1 fails fast (before HTML gen), mode 2 catches renderer-introduced regressions (e.g. C1-C10 band-aid effects). One file to maintain, one CLI to learn.",
+      "risk_if_ignored": "Each future cycle re-discovers a subset of the same checks ad hoc, the way cycles 123425 and 174743 re-discovered placeholder regression three times before AC2 grep alternations were complete. Without one canonical gate, 'PASS' verdicts diverge across subagents.",
+      "affected_files": [
+        "scripts/verify-plan-integrity.py (new file)",
+        "scripts/generate-and-deploy.sh (two new invocation points)"
+      ],
+      "estimated_effort": "medium",
+      "breaking_changes": false,
+      "migration_strategy": "Stage 1: implement the script using existing scripts/plan-validate.py (already running 27-failures detection per Section 1). Stage 2: wire into generate-and-deploy.sh with a temporary `--allow-existing-failures` flag during the data-cleanup window (concern_2 Stage A). Stage 3: remove the flag after data is clean. Stage 4: reuse the script's data-mode as the source-of-truth check in subagent acceptance reports (Codex Top-5 control 5)."
+    }
+  ],
+
+  "issues": [
+    {
+      "id": "arch-1",
+      "title": "Per-traveler bolt-on fields keep being fabricated because schema lacks the dimension",
+      "description": "modification-log.json shows three cycles of add-then-remove on accommodation_jade/passengers_jade. The fields are not in the schema, so additionalProperties:true silently permits them; concern_1 + concern_2 together close this loop.",
+      "severity": "critical",
+      "location": "schemas/accommodation.schema.json (no traveler dim), schemas/transportation.schema.json (no passengers dim), data/china-20260412-092624/modification-log.json:1641-1653",
+      "category": "pattern-inconsistency",
+      "estimated_effort": "large",
+      "observation_notes": "Section 8 of spec calls this the 'recurring root architecture problem'. Live data confirms.",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-2",
+      "title": "26 additionalProperties:true sites across 8 schema files allow silent fabrication",
+      "description": "Concrete line list under concern_2.exact_lines_to_flip. envelope+data+day_entry on attractions/meals/cafe/entertainment/shopping/transportation/accommodation/timeline/budget/poi-common.",
+      "severity": "critical",
+      "location": "see concern_2.exact_lines_to_flip",
+      "category": "config-issue",
+      "estimated_effort": "medium",
+      "observation_notes": "Stage A (data cleanup) must precede Stage B (schema flip) or deploy gate trips on legacy data.",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-3",
+      "title": "Renderer image_url honoring is split (3 POI types honor, 4 ignore) — inconsistent contract",
+      "description": "scripts/generate-html-interactive.py:715/832/938 vs 669/756/802/1308/1336. Recommended fix: path B (cache only).",
+      "severity": "major",
+      "location": "scripts/generate-html-interactive.py:715,832,938",
+      "category": "pattern-inconsistency",
+      "estimated_effort": "medium",
+      "observation_notes": "134 image_url fields in current trip data are partially observed by the renderer.",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-4",
+      "title": "Three independent write paths populate image_url, contradicting Codex Top-5 control 4",
+      "description": "fetch-images-batch.py:1334 (raw json.dump), save.py:75 (extract_image_urls call from line 574), and any agent that bypasses the prohibition. None of them goes through scripts/lib/json_io.save_agent_json validation.",
+      "severity": "critical",
+      "location": "scripts/fetch-images-batch.py:1095-1334; scripts/save.py:65-101,574",
+      "category": "pattern-inconsistency",
+      "estimated_effort": "medium",
+      "observation_notes": "Adopting concern_3 path B removes ALL three.",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-5",
+      "title": "fetch-images-batch.py path string references non-existent .claude/skills/...",
+      "description": "Lines 390 and 416 reference '.claude/skills/gaode-maps/scripts/poi_search.py' which does not exist. Real path: '.claude/commands/scripts/gaode-maps/scripts/poi_search.py'. Silent no-op via except-pass on lines 410, 436.",
+      "severity": "major",
+      "location": "scripts/fetch-images-batch.py:390,416",
+      "category": "config-issue",
+      "estimated_effort": "small",
+      "observation_notes": "Two-line string fix; not a hook problem; not an alias problem (Codex REJECTED OA-4).",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-6",
+      "title": "scripts/generate-and-deploy.sh has no integrity verifier between image fetch and HTML generate",
+      "description": "Insertion point: after current line 154, before current line 156. See concern_4 for shape.",
+      "severity": "major",
+      "location": "scripts/generate-and-deploy.sh (between lines 154 and 156)",
+      "category": "config-issue",
+      "estimated_effort": "small",
+      "observation_notes": "Verifier itself is concern_4's content; this issue is the integration gap.",
+      "pm_tier": 1
+    },
+    {
+      "id": "arch-7",
+      "title": ".claude/commands/*.md and .claude/agents/*.md lack uses_scripts/dispatches/mutates_files frontmatter",
+      "description": "Searched all command and agent files — none declare these three fields. Discovery preamble (cycle's most important lesson) cannot be mechanical without them.",
+      "severity": "major",
+      "location": ".claude/commands/*.md, .claude/agents/*.md",
+      "category": "technical-debt",
+      "estimated_effort": "medium",
+      "observation_notes": "Concern_5 specifies starter frontmatter for plan.md and review.md.",
+      "pm_tier": 2
+    },
+    {
+      "id": "arch-8",
+      "title": "Agents have no positive owned_files declaration, only blanket WRITE-FORBIDDEN prose",
+      "description": "Cannot drive a hook from negative-only declarations. Concern_6 specifies regex shape.",
+      "severity": "major",
+      "location": ".claude/agents/*.md (frontmatter sections)",
+      "category": "technical-debt",
+      "estimated_effort": "small",
+      "observation_notes": "9 agent files × ~2 regex strings each = 18 lines of frontmatter to add.",
+      "pm_tier": 2
+    },
+    {
+      "id": "arch-9",
+      "title": "lib/json_io.save_agent_json is bypassed by save.py:546 (validate=False) and by fetch-images-batch.py:1334 (raw json.dump)",
+      "description": "cp-03 contract says 'validate before save, reject on violation'. Two callers either disable or bypass validation.",
+      "severity": "major",
+      "location": "scripts/save.py:544-547; scripts/fetch-images-batch.py:1334",
+      "category": "pattern-inconsistency",
+      "estimated_effort": "small",
+      "observation_notes": "save.py compensates with its own validate_data call (line 594) — semantically equivalent but architecturally fragile.",
+      "pm_tier": 2
+    },
+    {
+      "id": "arch-10",
+      "title": "Untracked .bak files in workspace (Section 1 deferred defect 7)",
+      "description": "Live grep finds .bak files for accommodation.json, attractions.json, meals.json, entertainment.json, modification-log.json across multiple trips. The prompt-purity hook is warning-only.",
+      "severity": "minor",
+      "location": "data/china-20260412-092624/*.bak (5 files), data/beijing-lijiang-dali-20260418-100846/*.bak (5 files), etc.",
+      "category": "technical-debt",
+      "estimated_effort": "small",
+      "observation_notes": "Add to .gitignore (already may be), and rely on json_io's atomic .tmp pattern instead of .bak files post-cleanup. Or formalize .bak retention as a backup directory rather than sibling files.",
+      "pm_tier": 3
+    }
+  ],
+
+  "runtime_findings": [],
+
+  "footnote_constraint_acknowledgment": [
+    "User acceptance Section 5.1 (verbatim): '取消 google api key 轮换，就用现在' — no key rotation, no scrub of 396 leaked instances. Verifier flags but does not block on key=AIzaSy[A-Za-z0-9_-]{30,}. New writes still discouraged.",
+    "User acceptance Section 5.2 (verbatim): '将以上保存为 spec' — entire Section 5.2 is the binding plan. This report scopes recommendations to the architectural concerns enumerated by orchestrator and stays within Codex-rejected boundaries.",
+    "Section 8 binding: 'extend single verify-plan-integrity.py rather than write a new hook'. All concerns satisfied by extending verify-plan-integrity.py + ONE pretool-write hook + ONE existing posttool-doc-sync hook. No new hook proliferation."
+  ]
+}
