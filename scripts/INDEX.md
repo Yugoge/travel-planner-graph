@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-04T23:43:32Z*
-**Total entries**: 66
+*Last updated: 2026-05-05T15:56:38Z*
+**Total entries**: 65
 **Convention**: kebab
 
 ## Tree
@@ -46,7 +46,6 @@ scripts/
 ├── `generate-and-deploy.sh` - Generate interactive React HTML and deploy to GitHub Pages
 ├── `generate-booking-checklist.py` - Extract booking items from timeline/budget warnings and generate actionable checklist
 ├── `generate-html-interactive.py` - Interactive React Travel Plan Generator
-├── `generate-html-interactive.py.bak` - bak file
 ├── `generate-html.sh` - Generate travel HTML using Python html_generator.py
 ├── `generate-plan-slug.py` - Addresses root cause from commit 77dca06 where {destination-slug} was used
 ├── `generate-skeletons.py` - Addresses root cause from dev-20260204-141257: Orchestrator architectural constraint
