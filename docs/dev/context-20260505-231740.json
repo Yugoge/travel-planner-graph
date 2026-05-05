@@ -8,12 +8,12 @@
     "original": "取消 google api key 轮换，就用现在 ; 将以上保存为 spec",
     "clarified": "Land the full Codex-signed 10-step harness upgrade from spec-20260505-221501.md Section 5.2 (item 2 CANCELED per 5.1). Implement single deploy-blocking verifier, schema-aware writes with strict additionalProperties:false, command-discovery contract via frontmatter, agent ownership + universal image_url deny, hard prompt-purity block, cycle contract embedded in existing artifact. Use ONE extended verify-plan-integrity.py + ONE extended pretool-write hook + ONE existing posttool-doc-sync hook. NO bespoke per-symptom hooks. NO API key rotation/scrub.",
     "what": "Travel-planner harness upgrade: verifier + schema flips + data cleanup + image-pipeline path B + frontmatter contract + prompt-purity block + agent ownership + cycle-contract section. 10 steps from Codex consensus, item 2 CANCELED.",
-    "why": "Closes the 27 schema validation failures + 134 image_url leak vectors + 26 additionalProperties:true gaps + 396 key=AIzaSy URLs (USER ACCEPTED) + 30+ placeholder regression + 12 data pollution categories that the prior cycle session 20260505 surfaced. Codex-signed; user explicitly saved as binding spec.",
+    "why": "Closes the 27 schema validation failures + 134 image_url leak vectors + 31 additionalProperties:true gaps (QA-verified 2026-05-05T23:38Z; supersedes Codex audit's count of 26) + 174 key=AIzaSy URLs (QA-verified; supersedes Codex audit's count of 396; USER ACCEPTED) + 30+ placeholder regression + 12 data pollution categories that the prior cycle session 20260505 surfaced. Codex-signed; user explicitly saved as binding spec.",
     "where": [
       "scripts/verify-plan-integrity.py (new)",
       "scripts/generate-and-deploy.sh (verifier wire-up at L154/L168)",
-      "schemas/{poi-common, accommodation, transportation, attractions, cafe, entertainment, meals, shopping, timeline, budget}.schema.json (26 flip sites)",
-      "scripts/fetch-images-batch.py:390,416 + mcp_client cleanup + L1095-1334 block removal",
+      "schemas/{poi-common, accommodation, transportation, attractions, cafe, entertainment, meals, shopping, timeline, budget}.schema.json (31 flip sites across 10 files — QA-verified 2026-05-05T23:38Z; supersedes Codex audit's 26)",
+      "scripts/fetch-images-batch.py:390,416 + mcp_client cleanup + call-site L1095-1099 + function _update_agent_jsons L1101-1339 removal (function-name-anchored, not line-anchored)",
       "scripts/save.py:65-101,574 (extract_image_urls removal)",
       "scripts/generate-html-interactive.py:715,832,938 (renderer PATH B simplification)",
       "data/china-20260412-092624/*.json (Stage A cleanup + 134 image_url strip)",
@@ -50,8 +50,8 @@
     },
     "success_criteria": [
       "scripts/verify-plan-integrity.py exists with 2 CLI modes; invoked by generate-and-deploy.sh between L154↔L156 and L168↔L184",
-      "python scripts/validate-agent-outputs.py china-20260412-092624 exits 0",
-      "grep 'additionalProperties\": *true' schemas/*.schema.json returns 0 (or only the 1 explicitly justified)",
+      "python3 scripts/validate-agent-outputs.py data/china-20260412-092624 exits 0",
+      "grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l returns 0 (or only justified holdouts; current count is 31, post-flip target is 0)",
       "grep '\"image_url\"' data/china-20260412-092624/*.json returns 0",
       "grep '\"image_url\"' schemas/{meals,accommodation,attractions,cafe,entertainment,shopping}.schema.json returns 0",
       "grep '.claude/skills/gaode-maps' scripts/fetch-images-batch.py returns 0",
@@ -186,7 +186,11 @@
       "134 image_url field count (observed: grep -c '\"image_url\"' data/china-20260412-092624/*.json on 2026-05-05T23:17:40Z = 10+34+3+13+64+10 = 134)",
       "9 agent files exist in .claude/agents/ (observed: ls 2026-05-05T23:17:40Z = accommodation, attractions, budget, cafe, entertainment, meals, shopping, timeline, transportation)",
       "7 command files exist beyond INDEX/README (observed: ls .claude/commands/)",
-      "26 additionalProperties:true sites (inferred from architect concern_2.exact_lines_to_flip; verified by architect line-by-line read)",
+      "31 additionalProperties:true sites across 10 schema files (observed: grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l = 31 on 2026-05-05T23:38Z; per-file: accommodation=3, attractions=3, budget=5, cafe=3, entertainment=3, meals=2, poi-common=1, shopping=3, timeline=3, transportation=5; supersedes spec body's older count of 26)",
+      "174 key=AIzaSy URLs across 8 trips' images.json (observed: grep -roE 'AIzaSy[A-Za-z0-9_-]{30,}' data/*/images.json | wc -l = 174 on 2026-05-05T23:38Z; per-trip: 47+1+0+0+77+0+49+0; canary china-20260412-092624 = 0; supersedes spec body's older count of 396)",
+      "fetch-images-batch.py block boundary: call-site L1095-1099 + function _update_agent_jsons L1101-1339 (observed: grep -n '    def _update_agent_jsons|^def main' scripts/fetch-images-batch.py = 1101: def _update_agent_jsons; 1340: def main on 2026-05-05T23:38Z)",
+      "_jade live-data investigation: ZERO _jade fields in china-20260412-092624 live data (observed: grep -rln '_jade|accommodation_jade|passengers_jade' data/china-20260412-092624/ returns ONLY modification-log.json on 2026-05-05T23:38Z); ZERO in beijing-lijiang-dali (observed: grep returns no files); cleanup confirmed performed in cycle 20260505-123425",
+      "no docs/dev/cycle-*.md file exists (observed: ls docs/dev/cycle-*.md returns 'No such file or directory' on 2026-05-05T23:38Z); M10 must CREATE docs/dev/cycle-20260505-231740.md",
       "verifier wire-up insertion point lines 154↔156 and 168↔184 (observed: Read scripts/generate-and-deploy.sh L154-L184)",
       "Codex REJECTED items list (observed: spec 5.2 verbatim)",
       "User 5.1 binding (observed: spec 5.1 verbatim)"
@@ -321,30 +325,112 @@
       "value": {
         "schema_failures": 27,
         "image_url_count_china_trip": 134,
-        "additionalProperties_true_sites": 26,
-        "key_AiAiSy_instances": 396,
+        "image_url_per_file_china_trip": {"accommodation.json": 10, "attractions.json": 34, "cafe.json": 3, "entertainment.json": 13, "meals.json": 64, "shopping.json": 10, "_total": 134, "_other_files_zero": ["budget.json", "images.json", "modification-log.json", "plan-skeleton.json", "requirements-skeleton.json", "route-optimization.json", "sync-report.json", "timeline.json", "transportation.json"]},
+        "additionalProperties_true_sites": 31,
+        "additionalProperties_true_per_file": {"accommodation.schema.json": 3, "attractions.schema.json": 3, "budget.schema.json": 5, "cafe.schema.json": 3, "entertainment.schema.json": 3, "meals.schema.json": 2, "poi-common.schema.json": 1, "shopping.schema.json": 3, "timeline.schema.json": 3, "transportation.schema.json": 5, "_total": 31},
+        "additionalProperties_true_lines": {"accommodation": [16, 21, 75], "attractions": [16, 21, 67], "budget": [43, 50, 87, 112, 125], "cafe": [16, 21, 74], "entertainment": [16, 21, 72], "meals": [16, 21], "poi-common": [143], "shopping": [16, 21, 80], "timeline": [27, 34, 71], "transportation": [27, 34, 155, 180, 184]},
+        "key_AIzaSy_instances": 174,
+        "key_AIzaSy_per_trip": {"beijing-exchange-bucket-list-20260202-232405": 47, "china-feb-15-mar-7-2026-20260202-195429": 1, "wangfujing-dongdan-beijing-20260405-192905": 0, "qa-new-format-test": 0, "china-exchange-bucket-list-2026": 77, "beijing-lijiang-dali-20260418-100846": 0, "gerardmer-20260419-135844": 49, "china-20260412-092624": 0, "_total": 174, "_canary_count": 0},
+        "key_AIzaSy_spec_body_audit_count_superseded": 396,
         "command_files_to_frontmatter": 7,
         "agent_files_for_owned_files": 9,
         "verifier_insertion_lines": [154, 168],
-        "wrong_path_string_lines": [390, 416]
+        "wrong_path_string_lines": [390, 416],
+        "fetch_images_batch_block_boundary": {"call_site_lines": [1095, 1099], "function_def_lines": [1101, 1339], "function_name": "_update_agent_jsons", "next_function": "main", "next_function_line": 1340}
       },
-      "location": "spec-20260505-221501.md Section 5.2 + docs/dev/architect-report-init.json + grep on data/china-20260412-092624/*.json"
+      "location": "spec-20260505-221501.md Section 5.2 + docs/dev/architect-report-init.json + verbatim grep/awk on data/, schemas/, scripts/ at 2026-05-05T23:38Z"
     },
     "expected": {
       "value": {
         "schema_failures": 0,
         "image_url_count_china_trip": 0,
-        "additionalProperties_true_sites": "0 (or only justified holdouts)",
-        "key_AiAiSy_instances": 396,
+        "additionalProperties_true_sites": "0 (or only justified holdouts e.g. transportation.schema.json:180 intra_city_routes)",
+        "key_AIzaSy_instances": 174,
         "command_files_with_frontmatter": 7,
         "agent_files_with_owned_files": 9,
         "verifier_invocations": 2,
         "wrong_path_strings": 0
       },
-      "source": "docs/dev/specs/spec-20260505-221501.md Section 5.2 verbatim + architect report"
+      "source": "docs/dev/specs/spec-20260505-221501.md Section 5.2 verbatim + architect report + QA-verified live counts (2026-05-05T23:38Z)"
     },
-    "gap": "27→0 schema failures; 134→0 image_url; 26→0 additionalProperties:true; 396 unchanged (USER ACCEPTED); 0→7 command frontmatters; 0→9 agent owned_files; 0→2 verifier invocations; 2→0 wrong paths."
+    "gap": "27→0 schema failures; 134→0 image_url; 31→0 additionalProperties:true (NOT 26 — count corrected per QA verification); 174 unchanged (NOT 396 — count corrected per QA verification; USER ACCEPTED); 0→7 command frontmatters; 0→9 agent owned_files; 0→2 verifier invocations; 2→0 wrong paths."
   },
+  "qa_objections_addressed": [
+    {
+      "objection_id": 1,
+      "category": "evidence_quality",
+      "qa_finding": "additionalProperties:true count is 31 not 26",
+      "investigation_command": "grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l",
+      "investigation_result": "31 (verified)",
+      "per_file_breakdown": {"accommodation": 3, "attractions": 3, "budget": 5, "cafe": 3, "entertainment": 3, "meals": 2, "poi-common": 1, "shopping": 3, "timeline": 3, "transportation": 5, "total": 31},
+      "resolution": "Updated M3, AC3, evidence.measured.value, worker partition, technical hints, and gap field across BOTH spec markdown and context JSON from 26 to 31. Per-file enumeration added to spec body and Acceptance Evidence section. Original BA claim was WRONG and has been CORRECTED.",
+      "ba_position": "corrected"
+    },
+    {
+      "objection_id": 2,
+      "category": "evidence_quality",
+      "qa_finding": "key=AIzaSy URL count is 174 not 396",
+      "investigation_command": "grep -roE 'AIzaSy[A-Za-z0-9_-]{30,}' data/*/images.json | wc -l",
+      "investigation_result": "174 (verified)",
+      "per_trip_breakdown": {"beijing-exchange-bucket-list-20260202-232405": 47, "china-feb-15-mar-7-2026-20260202-195429": 1, "wangfujing-dongdan-beijing-20260405-192905": 0, "qa-new-format-test": 0, "china-exchange-bucket-list-2026": 77, "beijing-lijiang-dali-20260418-100846": 0, "gerardmer-20260419-135844": 49, "china-20260412-092624": 0, "total": 174},
+      "canary_count": 0,
+      "resolution": "Updated all 396 references to 174 across spec body Context, Evidence, Gap, Out-of-Scope Observations, and context JSON evidence.measured.value. Footnote added explaining the spec body's 396 was the Codex audit's older count. Canary trip's 0-count noted in AC1 context (verifier WARN check fires on no-canary URLs; canary is clean).",
+      "ba_position": "corrected"
+    },
+    {
+      "objection_id": 3,
+      "category": "affected_file_accuracy",
+      "qa_finding": "docs/dev/cycle-20260505-230534.md does not exist; AC10 GIVEN clause is unsatisfiable",
+      "investigation_command": "ls docs/dev/cycle-*.md",
+      "investigation_result": "ls: cannot access 'docs/dev/cycle-*.md': No such file or directory (no matches)",
+      "resolution": "Reformulated M10 + AC10 + R-J + worker W7 + technical hints to instruct dev to CREATE docs/dev/cycle-20260505-231740.md (using THIS cycle's task-id, not 230534). AC10 GIVEN clause now validates creation of the new file rather than existence of a prior one. The single new file IS the cycle artifact, NOT a parallel contract doc — CT-1/CT-2 still REJECTED.",
+      "ba_position": "corrected"
+    },
+    {
+      "objection_id": 4,
+      "category": "spec_text_vs_execution_drift",
+      "qa_finding": "AC2 forbidden-token grep regex has quoting bug — leading quote attaches only to first alternative, trailing quote to last; causes false positives",
+      "investigation_command_buggy_pattern": "grep -c '\"to plan\\|placeholder\\|TBD\\|...\"'",
+      "investigation_command_corrected_pattern": "grep -rE '\"(to plan|placeholder|TBD|本期不渲染|out of scope|superseded|STRUCTURAL CHANGE|OLD timeline|next session|next cycle|自理（|不渲染)\"' data/china-20260412-092624/*.json --exclude=modification-log.json --exclude=plan-skeleton.json --exclude=requirements-skeleton.json",
+      "current_state_with_corrected_grep": "0 hits (verified 2026-05-05T23:38Z)",
+      "resolution": "AC2 reformulated with single regex group `\"(...)\"` so the quote-pair brackets every alternative. Excludes modification-log.json (historical audit references are legitimate), plan-skeleton.json + requirements-skeleton.json (skeletons by design contain `\"method\": \"TBD\"` rows). Documented in spec rationale block.",
+      "ba_position": "corrected"
+    },
+    {
+      "objection_id": 5,
+      "category": "investigation_completeness",
+      "qa_finding": "spec contains zero current-state grep output for AC1-AC10 pre-state per Section 5.2 control 5",
+      "investigation_actions": "Ran every grep/awk/python command requested by QA; captured verbatim output for AC1, AC2, AC3, AC4, AC5, AC6, AC7, AC8, AC9, AC10, plus key=AIzaSy and _jade investigation",
+      "resolution": "Added new 'Acceptance Evidence (current state)' section to BA spec markdown (~150 lines of verbatim grep/python output) covering all 10 ACs + AC11 (key=AIzaSy state) + _jade live-data investigation. Each AC has its current-state evidence cited verbatim before the BDD acceptance criterion lands.",
+      "ba_position": "addressed"
+    },
+    {
+      "objection_id": 6,
+      "category": "scope_alignment",
+      "qa_finding": "S2 deferral conflicts with architect's Stage-A migration suggestion to fold accommodation_jade content; without S2, dev must DELETE _jade content (information loss)",
+      "investigation_command_china": "grep -rln '_jade\\|accommodation_jade\\|passengers_jade' data/china-20260412-092624/",
+      "investigation_result_china": "ONLY data/china-20260412-092624/modification-log.json contains _jade references (audit log only)",
+      "investigation_command_beijing": "grep -rln '_jade\\|accommodation_jade\\|passengers_jade' data/beijing-lijiang-dali-20260418-100846/",
+      "investigation_result_beijing": "no output (zero files)",
+      "live_data_jade_field_count": 0,
+      "historical_audit_log_jade_references_count": "modification-log.json contains historical references at lines 1413, 1638, 1641-1653, 1679, 1684, 1689 — all describing PRIOR cycles' cleanup actions, no live data",
+      "resolution": "Confirmed live data has ZERO _jade fields (cleanup performed in cycle 20260505-123425 per modification-log.json:1679 'Subtractive restore' entry). M2 Stage A cleanup does NOT need to handle _jade migration. S2 deferral is SAFE because there is no live _jade content to migrate. M3 (additionalProperties:false) + M9 (universal write hook) prevent future bolt-on attempts. Spec updated with explicit note in R-K and Out-of-Scope Observations table. Recommendation (b) deferral with confirmation note adopted. NO scope expansion needed.",
+      "ba_position": "corrected_with_evidence"
+    },
+    {
+      "objection_id": 7,
+      "category": "evidence_quality",
+      "qa_finding": "fetch-images-batch.py block boundary ambiguity (architect cited both 1095-1334 and 1166-1334)",
+      "investigation_command": "grep -n '    def _update_agent_jsons\\|^def main' scripts/fetch-images-batch.py",
+      "investigation_result": "1101: def _update_agent_jsons; 1340: def main",
+      "function_name": "_update_agent_jsons",
+      "call_site_lines": [1095, 1099],
+      "function_def_lines": [1101, 1339],
+      "next_function_boundary": "def main() at line 1340",
+      "resolution": "Reformulated M5 + AC5 + technical hints + worker W2 to reference the function NAME `_update_agent_jsons` (not literal line numbers) so the AC remains valid even if surrounding code shifts during edits. Spec now documents: call-site at L1095-1099 (the print + invocation block) PLUS the entire function definition L1101-1339 (with def main() at L1340 as the next-function boundary). Total removal: 5 lines (call-site) + 239 lines (function def) = 244 lines + 1 blank line at L1100.",
+      "ba_position": "corrected"
+    }
+  ],
   "scope_expansion": {
     "search_pattern": "additionalProperties.*true|\"image_url\"|\\.claude/skills/gaode-maps|positively authorize|placeholder|TBD",
     "search_scope": "schemas/, scripts/, data/china-20260412-092624/, .claude/commands/, .claude/agents/, ~/.claude/hooks/",
