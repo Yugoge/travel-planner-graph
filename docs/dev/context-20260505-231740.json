@@ -1,0 +1,583 @@
+{
+  "request_id": "20260505-231740",
+  "task_id": "20260505-231740",
+  "timestamp": "2026-05-05T23:17:40Z",
+  "spec_id": "spec-20260505-221501",
+  "ba_spec_path": "docs/dev/ticket-20260505-231740.md",
+  "requirement": {
+    "original": "取消 google api key 轮换，就用现在 ; 将以上保存为 spec",
+    "clarified": "Land the full Codex-signed 10-step harness upgrade from spec-20260505-221501.md Section 5.2 (item 2 CANCELED per 5.1). Implement single deploy-blocking verifier, schema-aware writes with strict additionalProperties:false, command-discovery contract via frontmatter, agent ownership + universal image_url deny, hard prompt-purity block, cycle contract embedded in existing artifact. Use ONE extended verify-plan-integrity.py + ONE extended pretool-write hook + ONE existing posttool-doc-sync hook. NO bespoke per-symptom hooks. NO API key rotation/scrub.",
+    "what": "Travel-planner harness upgrade: verifier + schema flips + data cleanup + image-pipeline path B + frontmatter contract + prompt-purity block + agent ownership + cycle-contract section. 10 steps from Codex consensus, item 2 CANCELED.",
+    "why": "Closes the 27 schema validation failures + 134 image_url leak vectors + 26 additionalProperties:true gaps + 396 key=AIzaSy URLs (USER ACCEPTED) + 30+ placeholder regression + 12 data pollution categories that the prior cycle session 20260505 surfaced. Codex-signed; user explicitly saved as binding spec.",
+    "where": [
+      "scripts/verify-plan-integrity.py (new)",
+      "scripts/generate-and-deploy.sh (verifier wire-up at L154/L168)",
+      "schemas/{poi-common, accommodation, transportation, attractions, cafe, entertainment, meals, shopping, timeline, budget}.schema.json (26 flip sites)",
+      "scripts/fetch-images-batch.py:390,416 + mcp_client cleanup + L1095-1334 block removal",
+      "scripts/save.py:65-101,574 (extract_image_urls removal)",
+      "scripts/generate-html-interactive.py:715,832,938 (renderer PATH B simplification)",
+      "data/china-20260412-092624/*.json (Stage A cleanup + 134 image_url strip)",
+      ".claude/commands/{plan, review, gaode-maps, google-maps, rednote, poi-classification-rules}.md (frontmatter)",
+      ".claude/agents/{meals, accommodation, transportation, attractions, entertainment, shopping, cafe, timeline, budget}.md (owned_files)",
+      "~/.claude/hooks/pretool-orchestrator-prompt-purity.py:57-60,437-461 (warning → blocking)",
+      "~/.claude/hooks/<existing pretool-write hook> (extended for ownership + image_url universal deny)",
+      "docs/dev/cycle-20260505-230534.md (add Cycle Contract section)"
+    ],
+    "scope": {
+      "included": [
+        "Codex-signed 10-step plan items 1, 3, 4, 5, 6, 7, 8, 9, 10",
+        "Stage A data cleanup (27 schema failures resolved)",
+        "Stage B schema flip (26 sites → additionalProperties:false)",
+        "Renderer PATH B (cache as sole image source)",
+        "Verifier with two CLI modes (data; data+html)",
+        "Verifier wired into generate-and-deploy.sh",
+        "Frontmatter contract on 7 commands",
+        "INDEX regen via existing posttool-doc-sync hook (or fallback script)",
+        "Hard prompt-purity block on positive authorization",
+        "owned_files regex on 9 agents + universal image_url deny in ONE pretool-write hook"
+      ],
+      "excluded": [
+        "Item 2: Google Maps API key rotation / scrub of 396 instances (USER CANCELED in 5.1)",
+        "Original 30+ bespoke per-symptom hook list (Codex REJECTED)",
+        "HK-1 semantic purpose-matching",
+        "HK-8 timeline-POI crossref as hard-block",
+        "HK-11 hook-stack 'verifies-promised'",
+        "CT-1/CT-2 separate parallel contract docs",
+        "OA-4 amap-maps alias",
+        "CMD-3 全文禁 placeholder",
+        "Concern_1 full per-traveler schema extension (deferred; M3 flip locks out bolt-ons via additionalProperties:false even without it)"
+      ]
+    },
+    "success_criteria": [
+      "scripts/verify-plan-integrity.py exists with 2 CLI modes; invoked by generate-and-deploy.sh between L154↔L156 and L168↔L184",
+      "python scripts/validate-agent-outputs.py china-20260412-092624 exits 0",
+      "grep 'additionalProperties\": *true' schemas/*.schema.json returns 0 (or only the 1 explicitly justified)",
+      "grep '\"image_url\"' data/china-20260412-092624/*.json returns 0",
+      "grep '\"image_url\"' schemas/{meals,accommodation,attractions,cafe,entertainment,shopping}.schema.json returns 0",
+      "grep '.claude/skills/gaode-maps' scripts/fetch-images-batch.py returns 0",
+      ".claude/commands/*.md (commands, not INDEX.md/README.md) all declare uses_scripts/dispatches/mutates_files",
+      ".claude/agents/*.md all declare owned_files: [...]",
+      "Prompt-purity hook BLOCKS positive-authorization phrasings; passes negative phrasings",
+      "ONE existing pretool-write hook enforces ownership + universal image_url deny; no new hook file added",
+      "docs/dev/cycle-20260505-230534.md gains a 'Cycle Contract' section; no new contract-*.md file created"
+    ],
+    "constraints": [
+      "User 5.1 binding: NO Google Maps API key rotation, NO scrub of 396 instances; verifier flags WARN-only",
+      "Codex binding: extend single verify-plan-integrity.py instead of writing new hooks",
+      "Codex binding: ONE extended pretool-write hook, not a new stack",
+      "Codex binding: cycle contract is a section in existing cycle artifact, not a separate doc",
+      "Stage A (data cleanup) MUST precede Stage B (schema flip)",
+      "PATH B (cache-only) for renderer, NOT path A (image_url honored everywhere)",
+      "All data writes go through scripts/lib/json_io.save_agent_json; raw json.dump is forbidden post-M5"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/verify-plan-integrity.py",
+      "scripts/generate-and-deploy.sh",
+      "scripts/fetch-images-batch.py",
+      "scripts/save.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/mcp_client.py",
+      "scripts/lib/json_io.py",
+      "schemas/poi-common.schema.json",
+      "schemas/accommodation.schema.json",
+      "schemas/transportation.schema.json",
+      "schemas/attractions.schema.json",
+      "schemas/cafe.schema.json",
+      "schemas/entertainment.schema.json",
+      "schemas/meals.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/timeline.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/*.json",
+      ".claude/commands/plan.md",
+      ".claude/commands/review.md",
+      ".claude/commands/gaode-maps.md",
+      ".claude/commands/google-maps.md",
+      ".claude/commands/rednote.md",
+      ".claude/commands/poi-classification-rules.md",
+      ".claude/commands/INDEX.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/budget.md",
+      "~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "~/.claude/hooks/<existing pretool-write hook to extend>",
+      "~/.claude/hooks/posttool-doc-sync.py (verify exists; fallback scripts/regen-command-index.py)",
+      "docs/dev/cycle-20260505-230534.md"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/json_io.py (save_agent_json validate-and-atomic contract — touched by persistence rejector in M4)",
+      "scripts/lib/mcp_client.py (canonical copy + __enter__/__exit__ in M4)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "data/*/images.json (396 key=AIzaSy URLs; USER ACCEPTED 5.1)",
+      "data/china-20260412-092624/*.bak (deferred per Section 1)",
+      "data/beijing-lijiang-dali-20260418-100846/*.bak",
+      "scripts/generate-html-interactive.py _inject_intra_routes band-aid (deferred)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-05T23:17:40Z",
+      "task_id": "20260505-231740",
+      "file": "data/*/images.json",
+      "line": null,
+      "observation": "396 instances of leaked Google Maps API key (key=AIzaSy[A-Za-z0-9_-]{30,}) in URL parameters. Per user verbatim 5.1 ('取消 google api key 轮换，就用现在'), this is USER-ACCEPTED state. Verifier emits WARN-only on this pattern; NEW writes still discouraged via persistence layer; retroactive scrub is forbidden by 5.1.",
+      "in_user_path": false,
+      "security_relevant": true
+    },
+    {
+      "ts": "2026-05-05T23:17:40Z",
+      "task_id": "20260505-231740",
+      "file": "schemas/timeline.schema.json",
+      "line": "161-194",
+      "observation": "Already-extended split_day pattern with shared/matilde/jade objects + additionalProperties:false on day_entry. Reference for future S2 cycle (per-traveler full extension on accommodation+transportation), but not modified this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T23:17:40Z",
+      "task_id": "20260505-231740",
+      "file": "data/china-20260412-092624/*.bak",
+      "line": null,
+      "observation": "Untracked .bak files (5 in china trip, 5 in beijing-lijiang-dali trip, others). Section 1 deferred defect 7. Could be a Could-Have C1 nice-to-have but explicitly out of scope this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T23:17:40Z",
+      "task_id": "20260505-231740",
+      "file": "scripts/generate-html-interactive.py",
+      "line": null,
+      "observation": "_inject_intra_routes band-aid mentioned in spec Section 1 deferred defect 8 — parallel data path in renderer. Future cleanup once per-traveler S2 lands.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-05T23:17:40Z",
+      "task_id": "20260505-231740",
+      "file": "data/beijing-lijiang-dali-20260418-100846/*.bak",
+      "line": null,
+      "observation": "Other-trip .bak files; not on user-need path (current cycle's canary is china-20260412-092624).",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Cycle session 20260505 closed with: 27 schema validation failures, 134 image_url leak vectors, 26 additionalProperties:true gaps, 12 data pollution categories, 30+ placeholder regression KEYS lingering through 3 PASS verdicts, dual write paths for image_url, renderer split-honoring (3 of 7 POI types), wrong .claude/skills/... path strings, warning-only prompt-purity, no integrity verifier, no agent ownership, no command frontmatter contract.",
+    "root_cause": "Layered structural gaps that allow: (a) data shape silently accepts arbitrary fields (additionalProperties:true at 26 sites); (b) image data has 3 independent write paths with no single contract; (c) renderer code paths diverge for image handling; (d) orchestrator improvises script invocations because there's no canonical command discovery contract; (e) prompt-purity hook is warning-only so orchestrator's own seed words ('include placeholder entries') flow through; (f) no deploy-blocking verifier so 27 schema failures + 30+ placeholder KEYs ship through 3 PASS verdicts; (g) agents have no positive ownership declarations so any agent can write any file. Single root cause: the cycle has structural gaps where a single deploy-blocking gate + a single ownership hook + a single discovery preamble would have caught them all.",
+    "root_cause_commit": "Multi-cycle accretion; not a single regression commit. Recent context: c77d922, 088102b, cfca66d are auto-commits within the failing session 20260505.",
+    "why_introduced": "Iterative feature additions without architectural gates; each symptom got a renderer band-aid (C1-C10) instead of a structural fix. Spec Section 5.2 'lesson' confirms: orchestrator's failures stemmed not from any specific bug but from acting before researching the project's existing commands/scripts/skills.",
+    "why_problematic": "30+ rejected bespoke hooks would be needed if each symptom got its own hook. Codex consensus: extend ONE verify-plan-integrity.py + ONE pretool-write hook + ONE existing posttool-doc-sync hook. Mathematically simpler, structurally sound.",
+    "timeline": "Cycle 20260505-123425 introduced placeholder regression (B1-B3); cycles 123425 + 174743 PASS-verdict on incomplete grep alternations (F2); image system multi-layer failures (E1-E10) accumulated across multiple cycles; Codex audit at 21:55Z surfaced the full inventory and signed the 10-step plan; user saved Section 5.2 verbatim as binding spec at 22:15:01.",
+    "affected_files": [
+      "all scope_boundary.in_user_path entries"
+    ],
+    "evidence_type": "observed",
+    "observations": [
+      "27 schema validation failures (observed: Codex audit transcript referenced in spec 5.2 + architect concern_2.current_data_cleanups_required_before_flip enumeration)",
+      "134 image_url field count (observed: grep -c '\"image_url\"' data/china-20260412-092624/*.json on 2026-05-05T23:17:40Z = 10+34+3+13+64+10 = 134)",
+      "9 agent files exist in .claude/agents/ (observed: ls 2026-05-05T23:17:40Z = accommodation, attractions, budget, cafe, entertainment, meals, shopping, timeline, transportation)",
+      "7 command files exist beyond INDEX/README (observed: ls .claude/commands/)",
+      "26 additionalProperties:true sites (inferred from architect concern_2.exact_lines_to_flip; verified by architect line-by-line read)",
+      "verifier wire-up insertion point lines 154↔156 and 168↔184 (observed: Read scripts/generate-and-deploy.sh L154-L184)",
+      "Codex REJECTED items list (observed: spec 5.2 verbatim)",
+      "User 5.1 binding (observed: spec 5.1 verbatim)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["spec", "Codex", "10-step plan", "5.1", "5.2", "verifier", "schema", "image_url", "frontmatter", "owned_files", "prompt-purity", "additionalProperties"],
+    "localization_evidence": "Symptoms reproduced via direct read of: (a) docs/dev/specs/spec-20260505-221501.md Section 5.2 (binding 10-step plan); (b) docs/dev/architect-report-init.json (line-by-line inventory); (c) scripts/generate-and-deploy.sh (verifier insertion point); (d) live grep of data/china-20260412-092624/*.json image_url count (134 instances confirmed); (e) ls of .claude/agents/, .claude/commands/, schemas/. Each affected file is reachable; no localization blocker.",
+    "located_source": "docs/dev/specs/spec-20260505-221501.md Section 5.2 (the binding source) + docs/dev/architect-report-init.json (the inventory) + each enumerated affected file in scope_boundary.in_user_path",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "spec-binding (this is a forward enhancement, not a regression bisect)",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L3+L4+L5",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "取消 google api key 轮换，就用现在", "acceptance_criterion": "W1 honored: no rotation, no scrub. Verifier key=AiAiSy check is WARN mode only (yellow notice, exit 0)."},
+    {"id": "R2", "source_phrase": "将以上保存为 spec", "acceptance_criterion": "M1-M10 from Section 5.2 binding 10-step plan (item 2 SKIPPED per 5.1) are implemented per AC1-AC10."},
+    {"id": "R3", "source_phrase": "Section 8 'Half-extension is the disease'", "acceptance_criterion": "Background — informs M3 (additionalProperties:false locks out _jade bolt-ons even without S2 full extension). S2 deferred with rationale."},
+    {"id": "R4", "source_phrase": "Section 8 'Codex consensus is binding ... default position is to extend single verify-plan-integrity.py'", "acceptance_criterion": "M1 = single verifier; M9 = ONE extended pretool-write hook (not new); W2-W7 honored."}
+  ],
+  "component_chain": [
+    {
+      "file": "docs/dev/specs/spec-20260505-221501.md",
+      "line_range": "1-241",
+      "role": "Binding spec — Section 5.2 is the canonical 10-step plan",
+      "imports_from": "leaf",
+      "evidence": "Read 1-241 on 2026-05-05T23:17:40Z; Section 5.2 contains Codex-signed Top 5 controls + 10-step plan + REJECTED items + Section 8 binding rules",
+      "verified_via": "Read"
+    },
+    {
+      "file": "docs/dev/architect-report-init.json",
+      "line_range": "1-657",
+      "role": "Architect's inventory — exact line numbers for schema flips, verifier insertion, owned_files regex examples, frontmatter shape",
+      "imports_from": "spec-20260505-221501.md (consumed)",
+      "evidence": "Read 1-657 on 2026-05-05T23:17:40Z; concerns 1-6 enumerate every affected line with grep-verifiable claims",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-and-deploy.sh",
+      "line_range": "1-192",
+      "role": "Deploy entry point — verifier wires in between L154↔L156 (data) and L168↔L184 (html)",
+      "imports_from": "scripts/fetch-images-batch.py, scripts/generate-html-interactive.py, scripts/deploy-travel-plans.sh, scripts/verify-plan-integrity.py (new)",
+      "evidence": "Read 1-192 on 2026-05-05T23:17:40Z; lines 154 and 156 confirmed; line 168 (FILE_SIZE block end), line 184 (deploy step)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/*.json",
+      "line_range": "all",
+      "role": "Live trip canary — Stage A cleanup target; 134 image_url strip target",
+      "imports_from": "leaf (data files)",
+      "evidence": "grep -c '\"image_url\"' on 2026-05-05T23:17:40Z: meals=64, attractions=34, entertainment=13, accommodation=10, shopping=10, cafe=3 = 134 total",
+      "verified_via": "grep"
+    },
+    {
+      "file": ".claude/agents/*.md",
+      "line_range": "all",
+      "role": "Subagent definitions — owned_files frontmatter target",
+      "imports_from": "leaf",
+      "evidence": "ls .claude/agents/ on 2026-05-05T23:17:40Z confirms 9 .md files (excluding INDEX.md, README.md): accommodation, attractions, budget, cafe, entertainment, meals, shopping, timeline, transportation",
+      "verified_via": "ls"
+    },
+    {
+      "file": ".claude/commands/*.md",
+      "line_range": "all",
+      "role": "Command definitions — frontmatter contract target",
+      "imports_from": "leaf",
+      "evidence": "ls .claude/commands/ on 2026-05-05T23:17:40Z confirms 5 commands beyond INDEX/README/poi-classification-rules: gaode-maps.md, google-maps.md, plan.md, rednote.md, review.md (poi-classification-rules.md is a doc; treat as listing)",
+      "verified_via": "ls"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/json_io.py",
+      "line": 0,
+      "type": "validator",
+      "code_snippet": "save_agent_json validates against schema before save",
+      "purpose": "Schema-aware atomic write contract; existing cp-03 contract foundation",
+      "removal_authorized": false
+    },
+    {
+      "file": "schemas/timeline.schema.json",
+      "line": 113,
+      "type": "if",
+      "code_snippet": "additionalProperties: false on travel_segment",
+      "purpose": "Existing strict pattern (architect cites as the model for other schemas)",
+      "removal_authorized": false
+    },
+    {
+      "file": "schemas/timeline.schema.json",
+      "line": 161,
+      "type": "if",
+      "code_snippet": "split_day + shared/matilde/jade objects on day_entry",
+      "purpose": "Per-traveler dimension reference pattern (S2 deferred)",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line": 272,
+      "type": "if",
+      "code_snippet": "_get_placeholder_image (lines 272-339)",
+      "purpose": "Cache lookup path; PATH B's de-facto route already covers all POI categories",
+      "removal_authorized": false
+    },
+    {
+      "file": "~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "line": 437,
+      "type": "validator",
+      "code_snippet": "warning-only check on placeholder/TBD/stub patterns",
+      "purpose": "Existing prompt-purity scaffold to UPGRADE (not remove) to BLOCKING in M8",
+      "removal_authorized": true
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop (HTML scan invocation in verifier mode 2 against rendered output/travel-plan-china-20260412-092624.html)",
+    "theme": "light",
+    "locale": "zh (trip data) + ASCII (CLI tool output)",
+    "auth_state": "N/A (local build)",
+    "data_state": "with-data (data/china-20260412-092624/)",
+    "browser": "Chromium-equivalent for HTML render scan",
+    "url_path": "https://travel.life-ai.app/china/2026-04-12/ post-deploy"
+  },
+  "evidence": {
+    "observed": "User said '将以上保存为 spec' referring to Section 5.2 Codex-signed 10-step plan (item 2 CANCELED per 5.1 verbatim '取消 google api key 轮换，就用现在').",
+    "measured": {
+      "value": {
+        "schema_failures": 27,
+        "image_url_count_china_trip": 134,
+        "additionalProperties_true_sites": 26,
+        "key_AiAiSy_instances": 396,
+        "command_files_to_frontmatter": 7,
+        "agent_files_for_owned_files": 9,
+        "verifier_insertion_lines": [154, 168],
+        "wrong_path_string_lines": [390, 416]
+      },
+      "location": "spec-20260505-221501.md Section 5.2 + docs/dev/architect-report-init.json + grep on data/china-20260412-092624/*.json"
+    },
+    "expected": {
+      "value": {
+        "schema_failures": 0,
+        "image_url_count_china_trip": 0,
+        "additionalProperties_true_sites": "0 (or only justified holdouts)",
+        "key_AiAiSy_instances": 396,
+        "command_files_with_frontmatter": 7,
+        "agent_files_with_owned_files": 9,
+        "verifier_invocations": 2,
+        "wrong_path_strings": 0
+      },
+      "source": "docs/dev/specs/spec-20260505-221501.md Section 5.2 verbatim + architect report"
+    },
+    "gap": "27→0 schema failures; 134→0 image_url; 26→0 additionalProperties:true; 396 unchanged (USER ACCEPTED); 0→7 command frontmatters; 0→9 agent owned_files; 0→2 verifier invocations; 2→0 wrong paths."
+  },
+  "scope_expansion": {
+    "search_pattern": "additionalProperties.*true|\"image_url\"|\\.claude/skills/gaode-maps|positively authorize|placeholder|TBD",
+    "search_scope": "schemas/, scripts/, data/china-20260412-092624/, .claude/commands/, .claude/agents/, ~/.claude/hooks/",
+    "user_reported": ["scripts/verify-plan-integrity.py", "scripts/fetch-images-batch.py:390,416", "schemas/transportation.schema.json", "schemas/accommodation.schema.json", "scripts/lib/mcp_client.py", ".claude/commands/*.md", ".claude/agents/*.md", "~/.claude/hooks/pretool-orchestrator-prompt-purity.py", "docs/dev/cycle-<task-id>.md"],
+    "additional_found": ["all 8 schema files (concern_2 26 lines)", "scripts/save.py:65-101,574", "scripts/generate-html-interactive.py:715,832,938", "scripts/fetch-images-batch.py:1095-1334", "data/china-20260412-092624/*.json (134 image_url)", "scripts/generate-and-deploy.sh:154,168 (insertion points)"],
+    "all_occurrences": ["see scope_boundary.in_user_path"]
+  },
+  "reference_source": {
+    "tier": "tier_1_external",
+    "description": "User-saved Codex-signed consensus (spec Section 5.2 verbatim) + architect-report-init.json (line-by-line verified inventory)",
+    "url_or_location": "/root/travel-planner/docs/dev/specs/spec-20260505-221501.md (Section 5.2) + /root/travel-planner/docs/dev/architect-report-init.json",
+    "copy_allowed": true,
+    "role_table": null
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "git_log + dedup_hit (existing prior docs/dev/ticket-20260505-175102.md) + spec body Section 5.2 enumerates A1-A12 + B1-B3 + C1-C10 + D + E1-E10 + F1-F5 + G1-G5",
+    "attempts": [
+      {
+        "artifact_path": "Cycle 20260505-123425 close report",
+        "proposed_solution": "Cleanup of placeholder regression + renderer band-aids",
+        "actual_change": "7 Day-7 placeholder KEYS replacing real POIs; 30+ placeholder KEYS lingering through 3 PASS verdicts",
+        "outcome": "Failed — orchestrator's own dispatch prompt explicitly authorized 'include placeholder entries' (B3); AC2 grep alternations across cycles 123425+174743 NEVER included to plan|placeholder|TBD",
+        "failure_category": "tainted_reference",
+        "target_layer": "L4"
+      },
+      {
+        "artifact_path": "Cycle 20260505-174743 cleanup PASS verdicts",
+        "proposed_solution": "Cleanup at the symptom level",
+        "actual_change": "Same incomplete grep alternations as 123425",
+        "outcome": "3 consecutive PASS verdicts with 30+ placeholder KEYS still present",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L1"
+      },
+      {
+        "artifact_path": "Image-system multi-layer failures E1-E10",
+        "proposed_solution": "Image fetching via various improvised invocations",
+        "actual_change": "21 unsplash-poisoned cache entries; 6 http:// URLs; multiple wrong-path errors; orchestrator declared subsystem broken when it was orchestrator's own diagnostic errors (F1, F4, F5)",
+        "outcome": "Multi-layer failures",
+        "failure_category": "tainted_reference",
+        "target_layer": "L4"
+      },
+      {
+        "artifact_path": "docs/dev/ticket-20260505-175102.md (recent prior /dev cycle)",
+        "proposed_solution": "Unknown (not read in detail; prior dedup hit)",
+        "actual_change": "n/a",
+        "outcome": "Not on this cycle's critical path; spec-20260505-221501 supersedes",
+        "failure_category": "other",
+        "target_layer": "n/a"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3+L4+L5",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempts were L1/L2 cleanup (123425, 174743) or L4 with wrong-direction logic (image E1-E10). This attempt addresses L3 (data shape via schema flip + image_url removal), L4 (logic via single verifier + ownership hook + prompt-purity hard block + frontmatter contract), and L5 (infrastructure via generate-and-deploy.sh wire-up + cycle-contract section in existing artifact) simultaneously. Codex explicitly rejected L1/L2 papering-over and the bespoke-per-symptom hook approach in 5.2. Per-traveler full extension (S2) is intentionally deferred to keep this cycle's blast radius bounded; M3 schema flip already locks out _jade bolt-ons via additionalProperties:false."
+    }
+  },
+  "context": {
+    "codebase_state": "branch master; recent commits c77d922, 088102b, cfca66d are auto-checkpoints; tree includes the new spec file at docs/dev/specs/spec-20260505-221501.md and architect-report-init.json",
+    "recent_commits": "c77d922 Auto-commit; 088102b Auto-commit; cfca66d Auto-commit",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Partition the 10 steps (item 2 CANCELED) into 7 file-disjoint workers; orchestrator dispatches them in parallel except for the W3→W2 sequencing (fetch-images-batch.py file collision) and the implicit M2→M3 sequencing (data before schema flip; both inside W2). All workers respect the 'no new hooks beyond what already exists' rule and the 'one extended verifier' rule.",
+    "files_to_create": [
+      "scripts/verify-plan-integrity.py",
+      "scripts/regen-command-index.py (fallback only if posttool-doc-sync hook missing)"
+    ],
+    "files_to_modify": [
+      "scripts/generate-and-deploy.sh",
+      "scripts/fetch-images-batch.py",
+      "scripts/save.py",
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/mcp_client.py",
+      "scripts/lib/json_io.py",
+      "schemas/poi-common.schema.json",
+      "schemas/accommodation.schema.json",
+      "schemas/transportation.schema.json",
+      "schemas/attractions.schema.json",
+      "schemas/cafe.schema.json",
+      "schemas/entertainment.schema.json",
+      "schemas/meals.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/timeline.schema.json",
+      "schemas/budget.schema.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/timeline.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/cafe.json",
+      ".claude/commands/plan.md",
+      ".claude/commands/review.md",
+      ".claude/commands/gaode-maps.md",
+      ".claude/commands/google-maps.md",
+      ".claude/commands/rednote.md",
+      ".claude/commands/poi-classification-rules.md",
+      ".claude/commands/INDEX.md",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/budget.md",
+      "~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "<existing pretool-write hook>",
+      "docs/dev/cycle-20260505-230534.md"
+    ],
+    "validation_approach": "AC1-AC10 in ticket-20260505-231740.md; QA invokes scripts/verify-plan-integrity.py + scripts/validate-agent-outputs.py + grep commands enumerated in each AC. No live browser needed for AC1-AC9; AC1 mode-2 reads rendered HTML via filesystem grep, not browser DOM."
+  },
+  "parallel_workers": [
+    {
+      "worker_id": "W1-verifier-and-deploy-gate",
+      "m_items": ["M1", "M6"],
+      "file_inventory": [
+        "scripts/verify-plan-integrity.py (new)",
+        "scripts/generate-and-deploy.sh (insert at L154↔L156 + L168↔L184)"
+      ],
+      "acceptance_criteria": ["AC1", "AC6"],
+      "depends_on": [],
+      "blocks": ["close (verifier must exist before final QA pass)"],
+      "rationale": "Self-contained; produces the script and wires it into the deploy gate. Two CLI modes per architect concern_4."
+    },
+    {
+      "worker_id": "W2-schema-and-data-and-renderer",
+      "m_items": ["M2", "M3", "M5"],
+      "file_inventory": [
+        "data/china-20260412-092624/{accommodation,transportation,timeline,meals,attractions,entertainment,shopping,cafe}.json (Stage A + 134 image_url strip)",
+        "schemas/{poi-common,accommodation,transportation,attractions,cafe,entertainment,meals,shopping,timeline,budget}.schema.json (26 flips + 6 image_url field removals)",
+        "scripts/save.py (lines 65-101, 574 — extract_image_urls removal)",
+        "scripts/generate-html-interactive.py (lines 715, 832, 938 — simplification)",
+        "scripts/fetch-images-batch.py (lines 1095-1334 — agent-JSON write block removal; coordinated with W3)"
+      ],
+      "acceptance_criteria": ["AC2", "AC3", "AC5"],
+      "depends_on": ["W3 (fetch-images-batch.py file collision: W3 finishes paths/mcp_client first, then W2 removes the L1095-1334 block)"],
+      "blocks": [],
+      "rationale": "Architect path-(a) merge: bundle all schema work + image_url removal in one schema worker. Internal sequencing M2 (Stage A data) → M3 (Stage B schema flip) is enforced by the worker's own commit ordering."
+    },
+    {
+      "worker_id": "W3-image-pipeline-paths-and-safety",
+      "m_items": ["M4"],
+      "file_inventory": [
+        "scripts/fetch-images-batch.py (lines 390, 416 — path strings)",
+        "scripts/lib/mcp_client.py (canonical copy + __enter__/__exit__)",
+        "scripts/lib/json_io.py (persistence rejector for stock URLs / http://)"
+      ],
+      "acceptance_criteria": ["AC4"],
+      "depends_on": [],
+      "blocks": ["W2 (fetch-images-batch.py file collision; W3 must finish before W2 touches L1095-1334)"],
+      "rationale": "Small, stable, narrow fixes. Sequenced before W2 to avoid file collision."
+    },
+    {
+      "worker_id": "W4-frontmatter-and-index-regen",
+      "m_items": ["M7"],
+      "file_inventory": [
+        ".claude/commands/{plan,review,gaode-maps,google-maps,rednote,poi-classification-rules}.md (add frontmatter)",
+        ".claude/commands/INDEX.md (regen verification)",
+        "~/.claude/hooks/posttool-doc-sync.py (verify exists; fallback: scripts/regen-command-index.py new file)"
+      ],
+      "acceptance_criteria": ["AC7"],
+      "depends_on": [],
+      "blocks": ["W6 (W6 hook reads frontmatter for owned_files YAML; SHOULD complete before W6 wires up the read; if parallel, both must agree on YAML key conventions)"],
+      "rationale": "Self-contained; verifies posttool-doc-sync hook existence; falls through to a single fallback script if absent."
+    },
+    {
+      "worker_id": "W5-prompt-purity-hard-block",
+      "m_items": ["M8"],
+      "file_inventory": [
+        "~/.claude/hooks/pretool-orchestrator-prompt-purity.py (lines 57-60, 437-461 — warning → blocking)"
+      ],
+      "acceptance_criteria": ["AC8"],
+      "depends_on": [],
+      "blocks": [],
+      "rationale": "Single-file change; converts existing warn paths to exit 2 BLOCK on positive-authorization grammar only. Disjoint from W6 (different hook file)."
+    },
+    {
+      "worker_id": "W6-agent-ownership-and-universal-image-deny",
+      "m_items": ["M9"],
+      "file_inventory": [
+        ".claude/agents/{meals,accommodation,transportation,attractions,entertainment,shopping,cafe,timeline,budget}.md (add owned_files frontmatter)",
+        "~/.claude/hooks/<existing pretool-write hook> (extend; verify name; do NOT create new)"
+      ],
+      "acceptance_criteria": ["AC9"],
+      "depends_on": ["W4 (frontmatter YAML conventions agreed)"],
+      "blocks": [],
+      "rationale": "Architect concern_6 explicit: ONE hook extended, NOT new. Anchored Python regex per agent. Universal image_url deny is one extra check inside that one hook."
+    },
+    {
+      "worker_id": "W7-cycle-contract-section",
+      "m_items": ["M10"],
+      "file_inventory": [
+        "docs/dev/cycle-20260505-230534.md (add 'Cycle Contract' section)"
+      ],
+      "acceptance_criteria": ["AC10"],
+      "depends_on": [],
+      "blocks": [],
+      "rationale": "Codex REJECTED CT-1/CT-2; this lands as a section in the existing cycle artifact, NOT a parallel doc. Tiny single-file change."
+    }
+  ],
+  "sequencing_constraints": [
+    "W3 must complete before W2 touches scripts/fetch-images-batch.py:1095-1334 (file collision; different lines but same file)",
+    "Within W2: M2 (Stage A data cleanup) must precede M3 (Stage B schema flip); deploy gate would trip otherwise",
+    "Within W2: M5 image_url removal from schemas can co-occur with M3 flips; both touch schema files",
+    "W1 must produce verifier before any final QA pass that depends on AC1; W6 hook reads owned_files which W4 declares — W4 should land before W6",
+    "All workers can start in parallel; only the W3→W2 and within-W2 orderings are hard"
+  ],
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": false,
+    "yaml_frontmatter_extended": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "no_new_hooks_beyond_existing": true,
+    "single_extended_verifier": true,
+    "user_5_1_no_key_rotation": true,
+    "codex_rejected_items_blocked": ["bespoke_30_hooks", "HK-1", "HK-8", "HK-11", "CT-1", "CT-2", "OA-4", "CMD-3"]
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Spec Section 5.2 + architect report are tier_1 binding sources with line-level specificity. The 10-step plan is a Codex-signed consensus; web search would dilute, not strengthen. Best practices for individual sub-tasks (JSON Schema additionalProperties, Python regex anchoring, hook orchestration) are well-established and the architect report cites concrete codebase patterns (timeline.schema.json:113 strict pattern, _get_placeholder_image cache lookup, save_agent_json validate-and-atomic) for dev to follow."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
