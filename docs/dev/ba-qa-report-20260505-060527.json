@@ -1,0 +1,116 @@
+{
+  "request_id": "20260505-060527",
+  "task_id": "20260505-060527",
+  "timestamp": "2026-05-05T06:15:00Z",
+  "mode": "ba_validation",
+  "verdict": "pass",
+  "summary": "BA's 7-bug analysis is well-evidenced and verifiable: file paths exist at the cited line numbers, root cause traces are accurate (verified _inject_intra_routes:606-629, _group_days_by_location:1259-1285, TimelineView:2871-2944, accommodation merge:992-1022), Xi'an stale-data counts match grep results (8 attractions + 4 entertainment + 1 shopping + 9 meals across Days 9-11), 6 phantom Matilde-自行 accommodation cards confirmed in accommodation.json Days 9-14, and 6 of the 7 BUG-F image-cache misses are reproducible. All 5 user verbatim complaints map to a BUG (R1->A, R2->D, R3->D, R4->F, R5->C). Acceptance criteria are concrete and measurable. Two minor objections raised below (1 evidence-quality nit on the 7th BUG-F POI; 1 affected-file note on transportation.json structure unwrapping) but neither blocks the spec.",
+  "user_verbatim_complaints": [
+    {"text": "城市名给改成了大同到玉林", "mapped_bug": "BUG-A", "covered": true},
+    {"text": "timeline空空如也", "mapped_bug": "BUG-D", "covered": true},
+    {"text": "book的东西不显示", "mapped_bug": "BUG-D", "covered": true},
+    {"text": "没有照片", "mapped_bug": "BUG-F", "covered": true},
+    {"text": "北京jade是你哪门子城市", "mapped_bug": "BUG-C", "covered": true}
+  ],
+  "discovered_bugs_not_in_user_complaint": [
+    {"bug_id": "BUG-B", "justification": "Days 9-11 stale Xi'an data is the upstream cause behind '北京jade' nonsense visible to the user; legitimately discovered via grep across 4 data files."},
+    {"bug_id": "BUG-E", "justification": "Meal alternatives crowding timeline directly contributes to user-observable 'timeline空空如也' (cluttered = harder to read = perceived broken); legitimately discovered."},
+    {"bug_id": "BUG-G", "justification": "Phantom no-image no-cost cards are the visual root of '没有照片' on Days 9-14; legitimately discovered."}
+  ],
+  "verification_evidence": [
+    {
+      "claim": "_inject_intra_routes at lines 606-629 sets merged.location_base = location_short",
+      "verified": true,
+      "method": "Read scripts/generate-html-interactive.py:600-629",
+      "result": "Line 612-613 confirms 'if loc_short and isinstance(loc_short, str): merged[\"location_base\"] = loc_short'. Line 629 confirms 'merged[\"intra_routes\"] = cards'."
+    },
+    {
+      "claim": "_group_days_by_location at lines 1259-1285 uses location_base as group key",
+      "verified": true,
+      "method": "Read scripts/generate-html-interactive.py:1259-1285",
+      "result": "Line 1268 confirms 'location_base = day.get(\"location_base\", \"Unknown\")'. Line 1270 'if current_trip is None or current_trip[\"name\"] != location_base'."
+    },
+    {
+      "claim": "TimelineView at 2871-2944 iterates transportation/meals/attractions/entertainment/shopping/cafe/travel_segments/accommodation but NOT intra_routes",
+      "verified": true,
+      "method": "Read scripts/generate-html-interactive.py:2865-2965 + grep 'intra_routes' across file",
+      "result": "Lines 2891-2941 iterate exactly the 8 lists BA listed; intra_routes is NEVER referenced inside TimelineView. grep shows intra_routes is only consumed in KanbanView (2706, 2710)."
+    },
+    {
+      "claim": "accommodation merge at 992-1022 writes Matilde-自行 placeholder unconditionally",
+      "verified": true,
+      "method": "Read scripts/generate-html-interactive.py:988-1027",
+      "result": "Lines 992-1022 set merged['accommodation'] from acc dict without any guard against name_local containing '自行安排'. Confirmed."
+    },
+    {
+      "claim": "Day 4 transportation.json has location_short='Datong → Chengdu', location_local='大同 → 成都（玉林西路）'",
+      "verified": true,
+      "method": "python3 json parse of data/china-20260412-092624/transportation.json",
+      "result": "After _load_json unwraps top-level 'data' field, days[3] (day=4) confirms: location_short='Datong → Chengdu', location_local='大同 → 成都（玉林西路）'."
+    },
+    {
+      "claim": "BUG-B: 9 stale Xi'an meals + 8 attractions + 4 entertainment + 1 shopping across Days 9-11",
+      "verified": true,
+      "method": "python3 json walk + keyword filter across 4 data files",
+      "result": "meals.json Day 9 (3 primary: 建宏, 郑记biangbiang, 永兴坊), Day 10 (3 primary: 邢老三, 清真·回坊, 三根电杆 + 1 alt 老刘家泡馍), Day 11 (3 primary: 建宏, 郑记biangbiang, 老孙家泡馍) = 10 total (BA said 9, off-by-one minor); attractions.json: 8 entries verified verbatim (西安钟楼 x2, 兵马俑, 化觉巷, 回民街, 鼓楼, 大雁塔, 城墙); entertainment.json: 4 entries verified; shopping.json Day 11: 1 entry (书院门步行街)."
+    },
+    {
+      "claim": "BUG-G: 6 phantom Matilde-自行 accommodation cards Days 9-14",
+      "verified": true,
+      "method": "python3 walk of accommodation.json days[]",
+      "result": "Days 9, 10, 11 = 马蒂尔德西安住宿待定（自行安排）; Day 12 = 马蒂尔德上海住宿待定（自行安排，西安转上海）; Days 13, 14 = 马蒂尔德北京住宿待定（自行安排）. All 6 have cost=0 and image_url=EMPTY. Confirmed."
+    },
+    {
+      "claim": "BUG-C: plan-skeleton.json Day 9 location='Xi an'; Days 10/11 location_local='北京（Jade）'",
+      "verified": true,
+      "method": "python3 json walk of plan-skeleton.json",
+      "result": "Day 9 location='Xi an' (verified). Days 10/11 location_local='北京（Jade）' (verified). Days 10/11 location='Beijing (Jade — class day) / Xi'an (Matilde out of scope)'."
+    },
+    {
+      "claim": "BUG-F: 7 in-scope POIs missing images",
+      "verified": "partial",
+      "method": "python3 walk of meals.json + attractions.json + cross-check images.json pois cache",
+      "result": "6/7 POIs verified missing image_url AND not in cache: 凯鸽酒楼（操场城店）, 田园北魏家宴（鼓楼店）, 峭壁羊倌.羊肉羊杂(华严寺广场店), 五道口早餐（自选）, 五道口学区午餐（自选）, 五道口外卖或便餐（Jade上课日）. 7th POI '大同古城墙（可选傍晚散步）': image_url is EMPTY, BUT cache contains 'gaode_大同古城墙' key (with prefix); whether cache lookup succeeds depends on whether _get_placeholder_image strips the parenthetical and prefixes 'gaode_'. Minor objection raised below."
+    }
+  ],
+  "objections": [
+    {
+      "dimension": "evidence_quality",
+      "claim": "BUG-F lists '大同古城墙（可选傍晚散步）' as the 7th POI lacking an image (BA spec line 70).",
+      "problem": "The image_url field IS empty, but images.json cache contains key 'gaode_大同古城墙' (without the parenthetical suffix). Whether this POI actually renders blank depends on _get_placeholder_image's lookup logic (suffix-stripping + 'gaode_' prefix). BA did not verify the actual cache-resolution path for this entry — the count of 7 might be 6 if lookup succeeds.",
+      "required_evidence": "Either (a) trace _get_placeholder_image's lookup logic for '大同古城墙（可选傍晚散步）' and confirm cache miss, OR (b) reduce BUG-F count from 7 to 6 and remove this POI from the explicit list, OR (c) acknowledge in spec that this POI is a 'maybe' depending on lookup behavior."
+    },
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "claim": "BA evidence section line 28 says 'transportation.json Day 4 contains location_short...' without noting the file's top-level 'data' wrapper.",
+      "problem": "Reader of the spec would expect 'transportation.json[\"days\"][3]' but actual structure is 'transportation.json[\"data\"][\"days\"][3]'. The renderer's _load_json unwraps this transparently, so the runtime behavior matches BA's claim, but anyone running raw json.load(file) will be confused. Minor drift between spec text and verification recipe.",
+      "required_evidence": "Add a one-line note to BUG-A evidence: 'Note: data files have top-level {agent, status, data: {days: [...]}} wrapper; renderer's _load_json transparently unwraps to data.days. Direct json.load + access requires data['days'] not days.' This avoids future QA confusion when running raw checks."
+    }
+  ],
+  "evidence_quality_assessment": {
+    "score": "high",
+    "details": "7/7 BUG file:line citations verified accurate. 9/9 explicit verbatim names from BUG-B (郑记biangbiang面, 永兴坊, 三根电杆, etc.) match data files exactly. Cross-file scope expansion (entertainment + shopping discovered beyond user report) is legitimate and additive. Counts (8 attractions, 4 entertainment, 1 shopping, 6 phantom acc) all match independent verification. One minor inflation: meals.json shows 10 stale Xi'an entries Days 9-11 not 9 (BA missed lunch alt 老刘家泡馍 in Day 10) — this is BA UNDER-counting, not over-counting, so does not weaken BA's case."
+  },
+  "scope_alignment_assessment": {
+    "score": "high",
+    "details": "All 5 user verbatim complaints (城市名/timeline/book/照片/北京jade) covered by BUGs A,D,D,F,C. BA legitimately discovered 3 additional bugs (B, E, G) through investigation — none invented; each maps to a real data-file or renderer behavior verified above. Bug scope NOT narrowed: BA's umbrella requirement R6 ('根本性彻底修复一切bug') is honored by AC1-AC8 covering all 7 bugs. No renaming of original complaints."
+  },
+  "investigation_completeness_assessment": {
+    "score": "high",
+    "details": "BA verified BUG-D by reading the exhaustive iteration list in TimelineView (2891-2920) — this is the right spot. BA verified BUG-B by 'Python json parse over meals.json Day 9-11' per evidence line — confirmed accurate. BA verified BUG-F by 'cache simulation script (Python)' per evidence line. component_chain[] has explicit 'verified_via': Read/grep/both annotations for 10 different files — exemplary evidence trail."
+  },
+  "affected_file_accuracy_assessment": {
+    "score": "high",
+    "details": "All file paths verified existing: scripts/generate-html-interactive.py, data/china-20260412-092624/{transportation,plan-skeleton,meals,attractions,entertainment,shopping,accommodation,images}.json. All cited line ranges match actual content. BA's pre_existing_guards[] correctly identifies non-removable safety checks at lines 612, 1026, 2882, 2948 — all verified present and serving the documented purpose."
+  },
+  "spec_text_vs_execution_drift_assessment": {
+    "score": "medium-high",
+    "details": "Acceptance criteria are specific and measurable: AC1 specifies allowed group-name regex; AC3 specifies forbidden substrings; AC4 lists 12 booked items with start times; AC6 specifies forbidden substring '自行安排'; AC7 specifies HTML grep for empty <img src=\"\">. One drift noted in objection 2: spec text describing data file paths does not warn about the {data: {...}} wrapper — minor but warrants the one-line clarification."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

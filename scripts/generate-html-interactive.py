@@ -606,15 +606,14 @@ class InteractiveHTMLGenerator:
     def _inject_intra_routes(self, merged, day_num):
         if not (self.transportation and "days" in self.transportation): return
         dt = next((d for d in self.transportation["days"] if d.get("day") == day_num), {})
-        loc = dt.get("location")
         loc_short = dt.get("location_short") or dt.get("location_base_short")
         loc_local = dt.get("location_local")
-        if loc_short and isinstance(loc_short, str):
-            merged["location_base"] = loc_short
-        elif loc and isinstance(loc, str):
-            merged["location_base"] = loc
-        if loc_local and isinstance(loc_local, str):
-            merged["location_local"] = loc_local
+        # BUG-A/C fix dev-20260505-060527: route transit annotations to header_subtitle
+        # NOT location_base. location_base comes from plan-skeleton (pure city).
+        if loc_short and isinstance(loc_short, str) and ("→" in loc_short or "->" in loc_short):
+            merged["header_subtitle_base"] = loc_short
+        if loc_local and isinstance(loc_local, str) and ("→" in loc_local or "->" in loc_local or "（" in loc_local):
+            merged["header_subtitle_local"] = loc_local
         intra_raw = dt.get("intra_city_routes")
         if isinstance(intra_raw, dict):
             intra = list(intra_raw.values())
@@ -989,38 +988,44 @@ class InteractiveHTMLGenerator:
                 # Parse stars from explicit field
                 stars = acc.get("stars", 0)
 
-                merged["accommodation"] = {
-                    "name_base": acc_name_base,
-                    "name_local": acc_name_local,
-                    "type_base": self._format_type(acc.get("type_base", "")),
-                    "type_local": acc.get("type_local", ""),
-                    "location_base": acc.get("location_base", ""),
-                    "location_local": acc.get("location_local", ""),
-                    "coordinates": acc.get("coordinates", {}),
-                    "cost": cost,
-                    "cost_local": acc.get("cost", 0),
-                    "stars": stars if stars else 0,
-                    "amenities_base": acc.get("amenities_base", []),
-                    "amenities_local": acc.get("amenities_local", []),
-                    "check_in": acc.get("check_in", ""),
-                    "check_out": acc.get("check_out", ""),
-                    "notes_base": acc.get("notes_base", ""),
-                    "notes_local": acc.get("notes_local", ""),
-                    "optional": acc.get("optional", False),
-                    "time": acc_time,
-                    "links": acc.get("links", {}),
-                    "image": acc.get("image_url", "") or self._get_placeholder_image(
-                        "accommodation",
-                        poi_name=acc_name_local if acc_name_local else acc_name_base,
-                        gaode_id=acc.get("gaode_id", ""),
-                        name_base=acc_name_base,
-                        name_local=acc_name_local,
-                        location_base=acc.get("location_base", ""),
-                        location_local=acc.get("location_local", ""),
-                        is_home=self._is_home_location(acc)
-                    )
-                }
-                merged["budget"]["accommodation"] = cost
+                # BUG-G fix dev-20260505-060527: skip Matilde 自行安排 / TBD-own-arrangement
+                # placeholders so they do not render as phantom no-image cards.
+                _acc_skip_markers = ("自行安排", "own arrangement", "out of scope", "TBD (own", "out_of_scope")
+                _acc_combined = (acc_name_base or "") + " " + (acc_name_local or "") + " " + (acc.get("notes_base","") or "") + " " + (acc.get("notes_local","") or "")
+                _acc_is_self_arrange = acc.get("out_of_scope") or any(m in _acc_combined for m in _acc_skip_markers)
+                if not _acc_is_self_arrange:
+                    merged["accommodation"] = {
+                        "name_base": acc_name_base,
+                        "name_local": acc_name_local,
+                        "type_base": self._format_type(acc.get("type_base", "")),
+                        "type_local": acc.get("type_local", ""),
+                        "location_base": acc.get("location_base", ""),
+                        "location_local": acc.get("location_local", ""),
+                        "coordinates": acc.get("coordinates", {}),
+                        "cost": cost,
+                        "cost_local": acc.get("cost", 0),
+                        "stars": stars if stars else 0,
+                        "amenities_base": acc.get("amenities_base", []),
+                        "amenities_local": acc.get("amenities_local", []),
+                        "check_in": acc.get("check_in", ""),
+                        "check_out": acc.get("check_out", ""),
+                        "notes_base": acc.get("notes_base", ""),
+                        "notes_local": acc.get("notes_local", ""),
+                        "optional": acc.get("optional", False),
+                        "time": acc_time,
+                        "links": acc.get("links", {}),
+                        "image": acc.get("image_url", "") or self._get_placeholder_image(
+                            "accommodation",
+                            poi_name=acc_name_local if acc_name_local else acc_name_base,
+                            gaode_id=acc.get("gaode_id", ""),
+                            name_base=acc_name_base,
+                            name_local=acc_name_local,
+                            location_base=acc.get("location_base", ""),
+                            location_local=acc.get("location_local", ""),
+                            is_home=self._is_home_location(acc)
+                        )
+                    }
+                    merged["budget"]["accommodation"] = cost
 
             acc_jade = day_acc.get("accommodation_jade")
             if isinstance(acc_jade, dict) and acc_jade.get("name_base"):
@@ -2894,18 +2899,27 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
-  // Root cause fix: Standardize optional chaining for all day properties
-  // Include alternatives from _options arrays; mark non-primary entries with _isAlternative
+  // BUG-D fix dev-20260505-060527: include booked intra-city routes (G5415, G8562,
+  // 3U8893, 送/接机专车, BD05565, etc.) so they appear in the clock view.
+  day.intra_routes?.forEach(r => {
+    const label = (lang === 'local' && r.name_local) ? r.name_local : (r.name_base || r.route_number || '');
+    add(r, 'transportation', label);
+  });
+  // BUG-E fix dev-20260505-060527: timeline shows ONLY the primary meal per slot;
+  // alternatives are shown as a +N badge in kanban view but suppressed here.
+  // Also drop "跳过" / "skip" alternatives entirely.
   ['breakfast', 'brunch', 'lunch', 'dinner'].forEach(mealType => {
     const catKey = 'cat_' + mealType;
-    const options = day.meals?.[mealType + '_options'];
-    if (options && options.length > 0) {
-      options.forEach((opt, i) => {
-        const entry = add(opt, 'meal', L(catKey, lang));
-        if (entry && i > 0) entry._isAlternative = true;
-      });
-    } else if (day.meals?.[mealType]) {
-      add(day.meals[mealType], 'meal', L(catKey, lang));
+    const primary = day.meals?.[mealType];
+    if (primary) {
+      const pname = (primary.name_base || '') + ' ' + (primary.name_local || '');
+      if (!/跳过|skip/i.test(pname)) {
+        const entry = add(primary, 'meal', L(catKey, lang));
+        const opts = day.meals?.[mealType + '_options'];
+        if (entry && opts && opts.length > 1) {
+          entry._altCount = opts.length - 1;
+        }
+      }
     }
   });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
