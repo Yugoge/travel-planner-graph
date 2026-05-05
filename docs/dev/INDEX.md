@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T23:26:43Z*
-**Total entries**: 191
+*Last updated: 2026-05-05T23:35:32Z*
+**Total entries**: 193
 **Convention**: kebab
 
 ## Tree
@@ -17,7 +17,8 @@ dev/
 │   └── dev-20260505-123425/
 ├── specs/
 │   ├── spec-20260505-221501/
-│   │   └── views/
+│   │   ├── views/
+│   │   └── `ba-report-init.json` - json config
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 │   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
@@ -35,6 +36,7 @@ dev/
 ├── `ba-qa-report-20260505-124619.json` - json config
 ├── `ba-qa-report-20260505-174743.json` - json config
 ├── `ba-qa-report-20260505-175102.json` - json config
+├── `ba-qa-report-20260505-231740.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
