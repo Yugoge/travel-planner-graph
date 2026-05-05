@@ -25,9 +25,10 @@
         "Restore plan-skeleton.json Day 4 location to Datong, Days 9-11 to Xi an from baseline 5b9a715",
         "Strip fabricated day-level fields from transportation.json (location_short, day-level location_local; composite-prose location strings on Day 4 and Day 14)",
         "Strip fabricated per-traveler fields from transportation.json location_change entries (passengers_jade, booking_status_jade)",
-        "Strip travel_segment extras (origin, destination, route_details, optional) from timeline.json — 11+ instances Days 1-4",
-        "Strip accommodation_item extras (gaode_id, out_of_scope) from all accommodation.json items",
-        "Strip day-level accommodation_jade and split_day from accommodation.json — 9 days affected",
+        "Strip travel_segment extras (origin, destination, route_details, optional) from timeline.json — 33 instances verified (Day 1=3, Day 2=6, Day 3=17, Day 4=7); dev must scan ALL 15 days",
+        "Strip accommodation_item extras (gaode_id 6 instances on Days 4-8 喜樂院子 + Day 12 accommodation_jade[0] 上海珍宝; out_of_scope 6 instances on Days 9-14 phantom Mathilde TBD)",
+        "Strip day-level accommodation_jade (10 days: 4,5,8,9,10,11,12,13,14,15) and split_day (9 days: 4,5,8,9,10,11,12,13,14) from accommodation.json",
+        "Strip composite-prose day-level locations from timeline.json — 12 days affected (Days 4,5,6,7,8,9,10,11,12,13,14,15) — target single-city values per M5",
         "Delete 6 phantom 'Mathilde TBD own arrangement' accommodation entries (Days 9, 10, 11, 12, 13, 14)",
         "Restore Days 9-11 Xi'an content from baseline 5b9a715: attractions (1/3/4 items), entertainment (1/1/2 items), shopping Day 11 (1 item), accommodation (西安万豪莫克西酒店), timeline keys",
         "Delete 10 renderer band-aid blocks R1-R12 from scripts/generate-html-interactive.py while preserving 2 legitimate fixes (line 603 meal_name→name_base, image_url||placeholder fallback)",
@@ -120,9 +121,12 @@
     "evidence_type": "observed",
     "observations": [
       "(observed: jq/python read of plan-skeleton.json) Day 4 .location = 'Chengdu', Days 9/10/11 .location = 'Beijing' — should be Datong / Xi an per baseline",
-      "(observed: jq/python read of transportation.json) Day 4 has location_short='Datong → Chengdu' + day-level location_local='大同 → 成都（玉林西路）'; Day 14 .location = 'Beijing (both — arrived previous night G26)' (composite prose)",
-      "(observed: python read of timeline.json) Days 1/2/3/4 travel_segments contain 11 instances of forbidden keys origin/destination/route_details/optional (additionalProperties:false in schemas/timeline.schema.json:113)",
-      "(observed: python read of accommodation.json) Days 4/5/8/9/10/11/12/13/14 carry day-level accommodation_jade and split_day; Day 9-14 carry phantom 'Mathilde TBD own arrangement' entries; baseline shows real hotels for those days (Moxy Xi'an for 9-11, 上海黑石M+ for 12-13, 自如寓 for 14)",
+      "(observed: jq/python read of transportation.json) Day 4 has location_short='Datong → Chengdu' + day-level location_local='大同 → 成都（玉林西路）'; Day 14 .location = 'Beijing (both — arrived previous night G26)' (composite prose); current has 11 day_entries (days 1,2,3,4,5,6,8,9,12,13,14); baseline 5b9a715 has 10 (same minus Day 13); Days 7/10/11/15 intentionally absent in BOTH — DO NOT add empty days",
+      "(observed: python deep-walk of timeline.json) Days 1/2/3/4 travel_segments contain 33 instances of forbidden keys origin/destination/route_details/optional (Day 1=3, Day 2=6, Day 3=17, Day 4=7) — additionalProperties:false in schemas/timeline.schema.json:113",
+      "(observed: python deep-walk of timeline.json day-level location) 12 days have composite-prose / parenthetical / arrow / em-dash / slash content: Days 4,5,6,7,8,9,10,11,12,13,14,15 — verbatim values listed in ticket Evidence E6",
+      "(observed: python deep-walk of accommodation.json) Days 4/5/8/9/10/11/12/13/14 carry day-level split_day; Days 4/5/8/9/10/11/12/13/14/15 carry day-level accommodation_jade; Day 9-14 carry phantom 'Mathilde TBD own arrangement' entries; baseline shows real hotels (Moxy Xi'an for 9-11, 上海黑石M+ for 12-13, 自如寓 for 14)",
+      "(observed: python deep-walk of accommodation.json) gaode_id appears 6 times: Days 4-8 喜樂院子 (5 instances) + Day 12 accommodation_jade[0] 上海珍宝 (1 instance). out_of_scope appears 6 times: Days 9-14 phantom Mathilde TBD entries. Prior spec line numbers (210,259,308,355,402,477,552,627,702,749) were stale — refer dev to deep-walk by NAME not pinned line numbers.",
+      "(observed: python deep-walk of transportation.json) passengers array convention is established: 9 instances on Days 4 (3x), 6 (2x), 8 (3x), 13 (1x). Single-traveler entries use 1-element array (e.g. ['LEGROSZIEGLER/JADE']); both-traveler entries use 2-element. passengers_jade fabrication: 1 instance, Day 12 location_change. booking_status_jade fabrication: 1 instance, Day 12 location_change. Schema permits passengers via additionalProperties:true on location_change (line 155) and intra_city_routes (line 180). STRATEGY CORRECTION: use passengers array, NOT notes_* parallel convention.",
       "(observed: python read of attractions/entertainment/shopping.json) Days 9-11 contain 0 items each — baseline 5b9a715 has 1+3+4 attractions, 1+1+2 entertainment, 0+0+1 shopping (西安钟楼; 兵马俑+清真大寺+回民街; 钟楼+鼓楼+大雁塔+城墙; etc.)",
       "(observed: grep on scripts/generate-html-interactive.py) 10 band-aid code paths located: lines 606-628 _inject_intra_routes; 612-616 header_subtitle writes; 609 location_short reader; 2693-2695 hardcoded 🏨 Jade 住; 715-756 + 2419 + 2927 _options/_altCount; 2915-2923 跳过|skip regex; 991-996 自行安排 sniff; 531-554 + 997-1028 + 2647-2711 _build_jade_acc_card pipeline; 2344-2346 KanbanView header_subtitle div; 2718-2723 intra_routes JSX",
       "(observed: ls + git ls-files) 9 .bak files in data/china-20260412-092624/ + 1 scripts/generate-html-interactive.py.bak — all tracked in git",
@@ -189,14 +193,14 @@
   "evidence": {
     "observed": "立刻先修复全部错误内容 — orchestrator/codex enumerated: plan-skeleton wrong locations, transportation fabricated fields + composite prose, timeline travel_segment extras, accommodation per-traveler bolt-ons + phantom entries, Xi'an content wiped Days 9-11, 10 renderer band-aids, 10 .bak files",
     "measured": {
-      "value": "39 fabricated-field instances + 6 phantom accommodation entries + 11 travel_segment violations + 10 renderer band-aid blocks + 10 .bak files (working tree + git index)",
-      "location": "data/china-20260412-092624/*.json + scripts/generate-html-interactive.py:606-2723 (10 ranges) + 10 .bak file paths"
+      "value": "33 travel_segment additionalProperties violations (timeline.json Days 1-4: 3+6+17+7) + 12 days of composite-prose day-level location strings (timeline.json Days 4-15) + 10 days of accommodation_jade + 9 days of split_day + 6 gaode_id (5 喜樂院子 + 1 accommodation_jade 上海珍宝) + 6 out_of_scope (phantom Days 9-14) + 6 phantom Mathilde TBD accommodation entries + 1 passengers_jade + 1 booking_status_jade (both Day 12 location_change) + Day 4 location_short + Day 4 day-level location_local + 11 renderer band-aid groups + 10 tracked .bak files",
+      "location": "data/china-20260412-092624/timeline.json + accommodation.json + transportation.json + plan-skeleton.json; scripts/generate-html-interactive.py lines 531/606/609/614/616/991/993/1032/1249/2344/2346/2694/2917/2923/2927; 10 .bak file paths"
     },
     "expected": {
       "value": "Zero fabricated keys; zero phantom entries; Xi'an content for Days 9-11 matching baseline 5b9a715 (Moxy hotel + 1/3/4 attractions + 1/1/2 entertainment + 1 shopping); renderer reads ONLY schema-declared fields; zero .bak files in git index",
       "source": "git baseline 5b9a715 (2026-04-29 20:58 UTC) + schemas/{timeline,accommodation,transportation}.schema.json additionalProperties constraints + codex audit verdict"
     },
-    "gap": "Diff between current HEAD and target = (a) 11 plan-skeleton location wrong values, (b) 39 fabricated-field instances across 4 data files, (c) 6 phantom accommodation entries, (d) 9 days missing Xi'an content (counts: 8 attractions, 4 entertainment, 1 shopping), (e) 10 renderer code blocks, (f) 10 tracked .bak files"
+    "gap": "Diff between current HEAD and target = (a) plan-skeleton 4 wrong location values (Day 4 + Days 9/10/11), (b) timeline.json: 33 travel_segment violations + 12 composite-prose day-level locations, (c) accommodation.json: 6 gaode_id + 6 out_of_scope + 10 accommodation_jade + 9 split_day + 6 phantom Mathilde TBD entries, (d) transportation.json: Day 4 location_short + day-level location_local + Day 12 passengers_jade + Day 12 booking_status_jade + Day 14 composite-prose location, (e) 3 days missing Xi'an content (Days 9-11: -8 attractions, -4 entertainment, -1 shopping), (f) 11 renderer band-aid groups, (g) 10 tracked .bak files"
   },
   "scope_expansion": {
     "search_pattern": "accommodation_jade|passengers_jade|booking_status_jade|location_short|out_of_scope|\"split_day\"|gaode_id|header_subtitle|\"origin\"\\s*:|\"destination\"\\s*:|\"route_details\"\\s*:|_inject_intra_routes|_build_jade_acc_card|_altCount|跳过|自行安排|马蒂尔德.{0,4}住宿待定|TBD .own arrangement.|🏨 Jade",
@@ -271,19 +275,21 @@
     "surgical_clean_no_revert": [
       {
         "path": "data/china-20260412-092624/transportation.json",
+        "day_entry_count_check": "Current has 11 day_entries (days 1,2,3,4,5,6,8,9,12,13,14); baseline 5b9a715 has 10 (same minus Day 13). Days 7,10,11,15 intentionally absent in BOTH. Dev MUST NOT add empty day entries for 7/10/11/15 during restoration.",
         "operations": [
           "Day 4: delete top-level keys 'location_short' and 'location_local' (the day-level field; do NOT delete intra_city_routes[*].location_local since those are item-level not day-level)",
           "Day 4: keep day-level 'location' = 'Datong' (currently 'Chengdu' — change to 'Datong'); the inter-city flight is expressed via location_change (or via the booked DR5010 entry in intra_city_routes), NOT via a composite-prose location string",
           "Day 14: change day-level 'location' from 'Beijing (both — arrived previous night G26)' to 'Beijing'",
-          "All days: scan every location_change object and item-level intra_city_routes entry; delete any 'passengers_jade' or 'booking_status_jade' fields. Move that traveler info into 'notes_base' / 'notes_local' (e.g. 'Jade only — Mathilde stays Chengdu')",
-          "Preserve all 11 user-booked intra_city_routes entries enumerated below (BD05565, DR5010, 川ACW7906, G5415, G8562, 3U8893, send-off/pickup chartered cars, G5, G26)"
+          "Day 12 location_change: DELETE the fabricated 'passengers_jade' (1 instance) and 'booking_status_jade' (1 instance) fields. ADD passengers: ['LEGROSZIEGLER/JADE'] using the existing convention (already used 9x on Days 4/6/8/13). Booking status remains in the existing 'status_base' field on the location_change object.",
+          "DO NOT introduce any 'notes_base' / 'notes_local' for traveler attribution — the established convention is the 'passengers' array (additionalProperties:true permits it on location_change line 155 and intra_city_routes line 180).",
+          "Preserve all user-booked intra_city_routes entries (BD05565, DR5010, 川ACW7906, G5415, G8562, 3U8893, jade send-off/pickup chartered cars, G26 on Day 13) — all already correctly use the passengers array; do not change their passengers values."
         ]
       },
       {
         "path": "data/china-20260412-092624/timeline.json",
         "operations": [
-          "All days: scan every travel_segments[*] entry; delete keys 'origin', 'destination', 'route_details', 'optional' (verified 11 instances on Days 1-4; scan all 15 days to catch any others)",
-          "All days: day-level 'location' must be a single city string. Days 4 = 'Datong'; Days 9-11 = 'Xi an' or 'Xi'an' (match plan-skeleton.json baseline string form); Day 14 = 'Beijing'. Strip composite prose strings.",
+          "All days: scan every travel_segments[*] entry; delete keys 'origin', 'destination', 'route_details', 'optional' — VERIFIED 33 instances (Day 1=3, Day 2=6, Day 3=17, Day 4=7); scan ALL 15 days because sync may have added more.",
+          "All 12 affected days: rewrite day-level 'location' to a SINGLE CITY string. Target values: Day 4='Datong'; Day 5='Chengdu'; Day 6='Chengdu'; Day 7='Chengdu'; Day 8='Chengdu'; Day 9/10/11='Xi an' (or 'Xi'an' — match plan-skeleton baseline); Day 12='Shanghai'; Day 13='Beijing'; Day 14='Beijing'; Day 15='Beijing'. The location string MUST match regex ^[A-Za-z'一-鿿 ]+$ (no parens, slash, arrow, em-dash, hyphen).",
           "Days 9-11: rebuild Mathilde's Xi'an timeline. Use baseline 5b9a715 as reference (`git show 5b9a715:data/china-20260412-092624/timeline.json` to read). Remove any 'JADE: Wudaokou' entries on those days; the trip plan does not enumerate Jade's Beijing class-day routine.",
           "Re-running scripts/sync-agent-data.py after data restore should regenerate travel_segments cleanly; if it re-injects forbidden keys, that's a sync-script bug surface — surface as a separate finding (NOT patched in data)"
         ]
@@ -291,8 +297,8 @@
       {
         "path": "data/china-20260412-092624/accommodation.json",
         "operations": [
-          "All days: delete day-level keys 'accommodation_jade' and 'split_day' (per codex 'don't render second-traveler at all this session'). Affects Days 4,5,8,9,10,11,12,13,14,15.",
-          "All accommodation items: delete keys 'gaode_id' and 'out_of_scope' (HARD additionalProperties:false violations on accommodation_item)",
+          "All days: delete day-level key 'accommodation_jade' (10 days: 4,5,8,9,10,11,12,13,14,15) and 'split_day' (9 days: 4,5,8,9,10,11,12,13,14) per codex 'don't render second-traveler at all this session'.",
+          "All accommodation items: delete 'gaode_id' (6 instances: Day 4-8 喜樂院子 + Day 12 accommodation_jade[0] 上海珍宝 — the latter becomes moot once accommodation_jade is removed) and 'out_of_scope' (6 instances: Days 9-14 phantom Mathilde TBD entries — these whole entries get replaced per next op). HARD additionalProperties:false violations on accommodation_item.",
           "Days 9,10,11: replace current phantom 'Mathilde Xi'an TBD own arrangement' entry with baseline 5b9a715's '西安万豪莫克西酒店(碑林太乙路店)' entry (cost 354 CNY/night, notes describe 万豪 boutique design 古城核心区 etc.)",
           "Day 12: replace current phantom 'Mathilde Shanghai TBD own arrangement' entry with baseline '上海黑石M+酒店' (preserve any image_url if present)",
           "Day 13: replace current phantom 'Mathilde Beijing TBD own arrangement' with baseline '上海黑石M+酒店' (Day 13 baseline = 上海黑石M+酒店 — Mathilde returns to Beijing via G26 on evening of Day 13 then sleeps Day 14 in Beijing). Verify against baseline.",
@@ -351,10 +357,10 @@
     {"day": 6, "type": "intra_city_route", "key": "g8562_leshan_to_chengdu_south", "route_number": "G8562", "departure_time": "19:06", "from_local": "乐山", "to_local": "成都南", "passengers": ["LEGROSZIEGLER JADE", "NICOLAS MATHILDE"], "status_base": "BOOKED", "encoding": "preserve current entry"},
     {"day": 6, "type": "attraction_booked_slot", "name_local": "乐山大佛", "time_slot": "10:30-14:30", "encoding": "attractions.json Day 6 entry — re-apply notes_base/notes_local indicating booked time slot if baseline restore loses this detail"},
     {"day": 8, "type": "attraction_booked_slot", "name_local": "大熊猫繁育研究基地", "time_slot": "上午场 (morning slot)", "encoding": "attractions.json Day 8 entry — preserve booked-slot note in notes_*"},
-    {"day": 8, "type": "intra_city_route", "key": "jade_chartered_car_to_shuangliu", "departure_time": "14:44", "from_local": "喜樂院子", "to_local": "成都双流T1", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "preserve as standalone intra_city_routes entry; traveler attribution in notes_base='Jade only — Mathilde stays Chengdu' / notes_local='仅 Jade 乘机；Matilde 留成都'. NO passengers_jade field."},
-    {"day": 8, "type": "intra_city_route", "key": "jade_3u8893_chengdu_to_beijing", "route_number": "3U8893", "departure_time": "16:30", "arrival_time": "19:00", "from_local": "成都", "to_local": "北京", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "same — standalone intra_city_routes with notes_*"},
-    {"day": 8, "type": "intra_city_route", "key": "jade_chartered_car_from_capital_airport", "departure_time": "19:35", "from_local": "首都T2", "to_local": "自如寓五道口", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "same — standalone intra_city_routes with notes_*"},
-    {"day": 12, "type": "location_change", "route_number": "G5", "departure_time": "07:59", "arrival_time": "12:32", "from_local": "北京南", "to_local": "上海", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "transportation.json Day 12 location_change — single transport entry; 'Jade only — Mathilde stays Xi an Day 12 morning' in notes_base/notes_local. DELETE passengers_jade/booking_status_jade. Note: per user prompt 'Mathilde IS in Xi an Days 9-11' implies Day 12 morning Mathilde is still in Xi an + travels to Shanghai independently; if so, baseline Day 12 Mathilde-side Shanghai logistics need a separate non-booked transport entry showing Mathilde's path. Dev to inspect baseline 5b9a715 transportation.json Day 12 + render the canonical path."},
+    {"day": 8, "type": "intra_city_route", "key": "jade_chartered_car_to_shuangliu", "departure_time": "14:44", "from_local": "喜樂院子", "to_local": "成都双流T1", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "ALREADY CORRECTLY ENCODED in current data (verified): preserve as-is; passengers array already holds single name 'LEGROSZIEGLER/JADE' — that single-element array IS the Jade-only attribution. NO notes_* needed for traveler attribution. NO passengers_jade field. Status in status_base."},
+    {"day": 8, "type": "intra_city_route", "key": "jade_3u8893_chengdu_to_beijing", "route_number": "3U8893", "departure_time": "16:30", "arrival_time": "19:00", "from_local": "成都", "to_local": "北京", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "ALREADY CORRECTLY ENCODED: preserve as-is; single-element passengers array already conveys Jade-only."},
+    {"day": 8, "type": "intra_city_route", "key": "jade_chartered_car_from_capital_airport", "departure_time": "19:35", "from_local": "首都T2", "to_local": "自如寓五道口", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "ALREADY CORRECTLY ENCODED: preserve as-is; single-element passengers array already conveys Jade-only."},
+    {"day": 12, "type": "location_change", "route_number": "G5", "departure_time": "07:59", "arrival_time": "12:32", "from_local": "北京南", "to_local": "上海", "passengers": ["LEGROSZIEGLER/JADE"], "status_base": "BOOKED", "encoding": "transportation.json Day 12 location_change. STRATEGY CORRECTION (per QA objection #6): DELETE the fabricated 'passengers_jade' and 'booking_status_jade' fields. ADD passengers: ['LEGROSZIEGLER/JADE'] using the existing convention (matches 9 other entries on Days 4/6/8/13). Booking status uses the existing 'status_base' field (already on the location_change object). NO notes_* introduction. Note: per user prompt 'Mathilde IS in Xi an Days 9-11' implies Day 12 morning Mathilde is still in Xi an + travels to Shanghai independently; if so, baseline Day 12 Mathilde-side Shanghai logistics need a separate non-booked transport entry showing Mathilde's path. Dev to inspect baseline 5b9a715 transportation.json Day 12 + render the canonical path."},
     {"day": 12, "type": "accommodation", "name_local": "上海珍宝酒店 (Jade-only) OR baseline 上海黑石M+酒店 (Mathilde — canonical)", "encoding": "POLICY: Mathilde is canonical this session; Jade-only accommodations are dropped this session. So Day 12 accommodation = Mathilde's Shanghai hotel. Use baseline '上海黑石M+酒店' UNLESS user-authorized list contains an explicit Mathilde Day 12 Shanghai booking. 珍宝酒店 (Jade-only) is NOT rendered this session per codex 'don't render second-traveler at all'."},
     {"day": 13, "type": "location_change", "route_number": "G26", "departure_time": "17:00", "arrival_time": "21:32", "from_local": "上海虹桥", "to_local": "北京南", "passengers": ["LEGROS ZIEGLER JADE MELDY", "NICOLAS MATHILDE JACQUELINE LO"], "status_base": "BOOKED", "encoding": "transportation.json Day 13 location_change — single inter-city transport, both travelers; standard encoding"}
   ],
@@ -412,5 +418,105 @@
     "status": "not_requested",
     "feedback_summary": null,
     "feedback_incorporated": null
+  },
+  "qa_objections_addressed": {
+    "iteration": 2,
+    "previous_qa_report": "docs/dev/ba-qa-report-20260505-123425.json",
+    "resolutions": [
+      {
+        "objection_index": 1,
+        "dimension": "affected_file_accuracy",
+        "ba_previous_claim": "11+ travel_segment violations Days 1-4",
+        "qa_evidence": "33 instances actual (Day 1=3, Day 2=6, Day 3=17, Day 4=7)",
+        "ba_resolution": "Updated Evidence E5 to '33 instances total' with per-day breakdown; updated root_cause_analysis observation #3; updated M6 to require ALL 15 days scanned with the verified 33-instance count surfaced",
+        "verified_by": "python deep-walk of timeline.json travel_segments — output: Total=33, per_day={1:3, 2:6, 3:17, 4:7}"
+      },
+      {
+        "objection_index": 2,
+        "dimension": "affected_file_accuracy",
+        "ba_previous_claim": "10 line-pinned gaode_id/out_of_scope instances at lines 210/259/308/355/402/477/552/627/702/749",
+        "qa_evidence": "6 gaode_id (Days 4-8 喜樂院子 + Day 12 accommodation_jade[0] 上海珍宝) + 6 out_of_scope (Days 9-14 phantom)",
+        "ba_resolution": "Updated Evidence E8 to specify 6 gaode_id + 6 out_of_scope by NAME (not stale line numbers); updated M7 to instruct dev to use deep-walk grep instead of line numbers; updated context.json measured.value",
+        "verified_by": "python deep-walk of accommodation.json — gaode_id=6, out_of_scope=6, locations enumerated by day+name"
+      },
+      {
+        "objection_index": 3,
+        "dimension": "evidence_quality",
+        "ba_previous_claim": "(missing) — BA did not flag transportation.json's 11-day-entry structure",
+        "qa_evidence": "Current 11 day_entries (days 1,2,3,4,5,6,8,9,12,13,14); missing days 7,10,11,15",
+        "ba_resolution": "Added Evidence E14 documenting current=11 / baseline=10 / Day 13 is legitimate post-baseline addition (G26) / Days 7/10/11/15 absent in BOTH baseline and current = INTENTIONAL structural omission. Added M3 explicit instruction 'DO NOT add empty day entries for 7/10/11/15'. Added day_entry_count_check field to files_strategy.surgical_clean.transportation.",
+        "verified_by": "python read of baseline 5b9a715 transportation.json (10 day_entries: 1,2,3,4,5,6,8,9,12,14) and current (11 day_entries: same + Day 13)"
+      },
+      {
+        "objection_index": 4,
+        "dimension": "evidence_quality",
+        "ba_previous_claim": "5 timeline.json composite-location days at lines 573,1245,1332,1419,1506 (Days 4,9-11,14)",
+        "qa_evidence": "12 days affected (4,5,6,7,8,9,10,11,12,13,14,15) with parenthetical/arrow/em-dash/slash content",
+        "ba_resolution": "Updated Evidence E6 to enumerate all 12 days verbatim with their composite-prose values; updated M5 to specify single-city target value per day for ALL 12; added regex acceptance ^[A-Za-z'一-鿿 ]+$; added AC2.c (python regex check) and AC9 (live screenshot verification across all 12 days)",
+        "verified_by": "python deep-walk of timeline.json day-level location field — 12 days flagged with composite content; verbatim values captured"
+      },
+      {
+        "objection_index": 5,
+        "dimension": "spec_text_vs_execution_drift",
+        "ba_previous_claim": "Single AC2 grep including \"optional\"\\s*: which false-positives on legitimate accommodation_item.optional",
+        "qa_evidence": "accommodation.schema.json lines 47-51 require optional:false on every accommodation_item — every accommodation entry would match, polluting AC2",
+        "ba_resolution": "Re-authored AC2 as TWO scoped greps: (a) AC2.a fabricated-key scan across all data files (no schema-legitimate field in this list); (b) AC2.b travel_segment additionalProperties scan SCOPED TO timeline.json ONLY (where these keys are forbidden); plus added AC2.c python-regex composite-location check. All three are literal-text directly runnable without false positives.",
+        "verified_by": "manual inspection of accommodation.schema.json:47-51 confirms required optional:false; new AC2.b grep scoped to timeline.json eliminates false-positive surface"
+      },
+      {
+        "objection_index": 6,
+        "dimension": "evidence_quality",
+        "ba_previous_claim": "Use notes_base/notes_local for Jade-only traveler attribution; DO NOT add passengers_jade",
+        "qa_evidence": "Existing data already uses passengers:[...] array convention (9 instances on Days 4,6,8,13). Schema permits via additionalProperties:true on intra_city_routes (line 180) and location_change (line 155). Day 8 jade_* entries already correctly use passengers:['LEGROSZIEGLER/JADE'].",
+        "ba_resolution": "Rewrote M4 to mandate the EXISTING passengers array convention (not notes_*); updated bookings_to_reapply Day 8 jade_* entries to ALREADY-CORRECTLY-ENCODED status; rewrote Day 12 G5 booking entry to: DELETE passengers_jade + booking_status_jade, ADD passengers:['LEGROSZIEGLER/JADE'], rely on existing status_base; updated M16 to reference passengers convention; updated Authorized Bookings table column header to 'Schema-clean encoding (passengers array)'; updated transportation surgical_clean operations.",
+        "verified_by": "python deep-walk of transportation.json: passengers array confirmed on 9 entries (Day 4 BD05565, DR5010, 川ACW7906; Day 6 G5415, G8562; Day 8 jade_chartered_car_to_shuangliu, jade_3u8893_chengdu_to_beijing, jade_chartered_car_from_capital_airport; Day 13 G26). Single-element form on 3 Day-8 jade_* entries. Schema check: intra_city_routes additionalProperties:true line 180; location_change additionalProperties:true line 155."
+      },
+      {
+        "objection_index": 7,
+        "dimension": "investigation_completeness",
+        "ba_previous_claim": "Strategy says 'surgically clean' but no per-entry classification of post-baseline additions",
+        "qa_evidence": "Without diff, dev may preserve pollution thinking it's a real booking, OR delete a real booking thinking it's pollution",
+        "ba_resolution": "Added two full diff classification tables to ticket Markdown: (1) Baseline-vs-Current Diff Classification (transportation.json) with per-day intra_city_routes / location_change classification (KEEP/REMOVE/RESTORE); (2) Baseline-vs-Current Diff Classification (accommodation.json) with per-day decision matrix. Each entry classified as LEGITIMATE post-baseline booking (KEEP), POLLUTION (REMOVE), or DELETED-FROM-BASELINE (RESTORE / surface-as-observation).",
+        "verified_by": "python diff of git show 5b9a715:transportation.json vs current; python diff of accommodation.json baseline vs current; both diffs run inline during this BA iteration; results enumerated per-day in ticket Markdown"
+      }
+    ]
+  },
+  "baseline_diff_classification": {
+    "transportation_json": {
+      "baseline_days": [1, 2, 3, 4, 5, 6, 8, 9, 12, 14],
+      "current_days": [1, 2, 3, 4, 5, 6, 8, 9, 12, 13, 14],
+      "intentionally_absent": [7, 10, 11, 15],
+      "post_baseline_legitimate_additions": ["Day 13 entry with intra_city_routes.g26_shanghai_hongqiao_to_beijing_south (G26 booking)"],
+      "fields_to_delete": ["Day 4 top-level location_short", "Day 4 top-level location_local", "Day 12 location_change.passengers_jade", "Day 12 location_change.booking_status_jade"],
+      "fields_to_change": ["Day 4 .location 'Chengdu' -> 'Datong'", "Day 14 .location 'Beijing (both — arrived previous night G26)' -> 'Beijing'", "Day 12 location_change ADD passengers:['LEGROSZIEGLER/JADE']"],
+      "lost_baseline_entries_to_surface_as_observation_not_restore": [
+        "Day 1 intra_city_routes.matilde_arrival_capital_airport_to_qianmen (Mathilde alternate airport arrival; user-confirmed Mathilde uses Beijing South Station so this option is stale)",
+        "Day 1 intra_city_routes.matilde_arrival_daxing_airport_to_qianmen (same)",
+        "Day 2 intra_city_routes.mutianyu_full_day_driver_alternative (driver alternative; user did not request)",
+        "Day 6 intra_city_routes.jade_beijing_to_chengdu (baseline had Jade flying to Chengdu Day 6; user's actual plan is Day 8 3U8893)"
+      ]
+    },
+    "accommodation_json": {
+      "baseline_days": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "current_days": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "intentionally_absent": [],
+      "per_day_decision": {
+        "1": "KEEP (baseline=current=五道口自如寓)",
+        "2": "KEEP (baseline=current=五道口自如寓)",
+        "3": "KEEP (baseline=current=屿悦民宿(大同古城店))",
+        "4": "REPLACE pollution: keep current 喜樂院子 (user-confirmed booking); STRIP gaode_id; STRIP day-level accommodation_jade and split_day. Baseline 鹪鹩 was original placeholder; user's actual booking is 喜樂院子 5 nights.",
+        "5": "Same as Day 4: keep 喜樂院子; STRIP gaode_id + accommodation_jade + split_day",
+        "6": "Same: keep 喜樂院子; STRIP gaode_id (baseline 亚朵 superseded by user's 5-night 喜樂院子)",
+        "7": "Same: keep 喜樂院子; STRIP gaode_id",
+        "8": "Same: keep 喜樂院子; STRIP gaode_id + accommodation_jade + split_day",
+        "9": "DELETE phantom 马蒂尔德西安住宿待定; RESTORE baseline 西安万豪莫克西酒店(碑林太乙路店); STRIP accommodation_jade + split_day",
+        "10": "Same as Day 9: DELETE phantom; RESTORE 西安万豪莫克西酒店",
+        "11": "Same as Day 9: DELETE phantom; RESTORE 西安万豪莫克西酒店",
+        "12": "DELETE phantom 马蒂尔德上海住宿待定; RESTORE baseline 上海黑石M+酒店; STRIP accommodation_jade (drops Jade-only 珍宝酒店 per codex 'don't render second-traveler at all this session'); STRIP split_day; gaode_id removal becomes moot since accommodation_jade is deleted entirely",
+        "13": "DELETE phantom 马蒂尔德北京住宿待定; RESTORE baseline 上海黑石M+酒店; STRIP accommodation_jade + split_day. NOTE: dev should cross-check baseline Day 13 — if baseline says 上海黑石M+ AND G26 evening arrival lands in Beijing, the baseline itself may be inconsistent; surface as finding in dev report.",
+        "14": "DELETE phantom 马蒂尔德北京住宿待定; RESTORE baseline 五道口自如寓; STRIP accommodation_jade + split_day",
+        "15": "KEEP current 自如寓·五道口店（出发日，无需过夜）OR restore baseline 五道口自如寓 string per dev preference; STRIP accommodation_jade"
+      }
+    }
   }
 }
