@@ -1,0 +1,148 @@
+{
+  "request_id": "20260505-231740",
+  "task_id": "20260505-231740",
+  "timestamp": "2026-05-05T23:30:00Z",
+  "mode": "ba_validation",
+  "verdict": "fail",
+  "summary": "BA spec is structurally sound and Codex-aligned (correct partition, correct scope inclusion/exclusion of items 1-10 with item 2 canceled), BUT three numerical claims are unverified or wrong (additionalProperties:true: 31 actual vs 26 claimed; key=AIzaSy: 174 actual vs 396 claimed), the cycle artifact AC10 claims as existing does not exist, and AC2's literal grep regex has a quoting bug that causes false positives. Acceptance evidence per spec Section 5.2 control 5 (verbatim grep output per AC) is also missing — BA provides commands but no current-output verification.",
+  "objections": [
+    {
+      "dimension": "evidence_quality",
+      "claim": "BA repeats 'additionalProperties:true sites = 26' across spec, M3, AC3, evidence.measured.value, and the worker partition (W2 file_inventory says 26 flips).",
+      "problem": "The actual grep count is 31, not 26. Per-file: accommodation 3, attractions 3, budget 5, cafe 3, entertainment 3, meals 2, poi-common 1, shopping 3, timeline 3, transportation 5 = 31. Architect's exact_lines_to_flip array also enumerates a smaller set than the actual grep. AC3 grep `grep -c '\"additionalProperties\": *true' schemas/*.schema.json` will return 31 lines, contradicting BA's '26 sites' framing. This is exactly the under-counting failure-class the spec flagged in F3 ('BA spec inventories under-counted').",
+      "required_evidence": "Verbatim output of `grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l` (=31) plus a corrected enumeration of all 31 sites (not 26). Update M3, AC3, evidence.measured.value.additionalProperties_true_sites, and W2's '26 flips + 6 image_url field removals' wording."
+    },
+    {
+      "dimension": "evidence_quality",
+      "claim": "BA repeats 'key=AIzaSy URL count = 396' from spec verbatim across multiple fields (R1 acceptance, evidence.measured/expected, R-E, out_of_scope_observations).",
+      "problem": "The actual count via `grep -roE 'AIzaSy[A-Za-z0-9_-]{30,}' data/*/images.json | wc -l` is 174, not 396. Per-file: beijing-exchange-bucket-list=47, beijing-lijiang-dali=0, china-20260412-092624=0, china-exchange-bucket-list=77, china-feb-15-mar-7=1, gerardmer=49, qa-new-format-test=0, wangfujing-dongdan=0 = 174. The spec passed through 396 verbatim from the Codex audit, and BA inherited it without re-verifying. Per Anti-Fraud Principle 2 ('Never treat unproven claims as facts'), BA was obligated to re-grep before encoding the number into ACs and evidence fields. The current cycle's canary trip (china-20260412-092624) actually has 0 leaked keys — significant context BA did not surface.",
+      "required_evidence": "Verbatim output of `grep -roE 'AIzaSy[A-Za-z0-9_-]{30,}' data/*/images.json | wc -l` (=174) plus per-file breakdown showing canary trip has 0. Update all '396' references to the verified count, or add a footnote that the spec's 396 was the Codex audit's older count and the current count is 174."
+    },
+    {
+      "dimension": "affected_file_accuracy",
+      "claim": "AC10 GIVEN clause: 'WHEN `ls docs/dev/cycle-20260505-230534.md` lists the existing cycle artifact'. M10 file_inventory: 'docs/dev/cycle-20260505-230534.md (existing artifact; add a section)'.",
+      "problem": "The file `docs/dev/cycle-20260505-230534.md` does NOT EXIST. `ls docs/dev/cycle-*.md` returns no matches. The entire `docs/dev/` directory has no `cycle-*` files. AC10's GIVEN state is unsatisfiable as written — dev cannot 'add a section' to a file that doesn't exist; dev must CREATE it. The literal acceptance text is therefore broken: WHEN `ls` is run it will return exit 2 (file not found), not list a file. This is exactly the F1-class failure (BA referenced a path that doesn't exist on disk). Recommend AC10 be reformulated as 'cycle artifact created if absent, then contains a Cycle Contract section' OR M10 be moved to use an explicitly-created artifact.",
+      "required_evidence": "Output of `ls docs/dev/cycle-*.md` (no matches) plus a corrected M10 + AC10 that either creates the file or names an existing artifact. Note also that `ls` returning exit 2 invalidates the WHEN clause as currently written."
+    },
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "claim": "AC2 forbidden-token grep: `grep -c '\"to plan\\|placeholder\\|TBD\\|本期不渲染\\|out of scope\\|superseded\\|STRUCTURAL CHANGE\\|OLD timeline\\|next session\\|next cycle\\|自理（\\|不渲染\"' data/china-20260412-092624/*.json` returns 0.",
+      "problem": "The literal regex is malformed: the leading `\"` only attaches to the first alternative (`to plan`), and the trailing `\"` only attaches to the last (`不渲染`). Result: `placeholder` and `TBD` etc match anywhere in legitimate prose without quote-context. Live evidence: running this grep against current data returns non-zero counts even though the regression-class strings are not present. accommodation.json:211 has the legitimate phrase '480 CNY/night (placeholder, actual prepaid rate may differ)' which is audit-history prose, not a regression. Modification-log.json contains 21 references to 'placeholder' as part of historical descriptions (e.g., 'replaced 30 placeholder timeline keys'). AC2 will fail on legitimate audit history. This is exactly the F2-class failure ('PASS verdicts with incomplete grep alternations') — but inverted: the alternation now over-counts, producing false-FAILs rather than false-PASSes. Either way, the AC's literal text does not encode its intent.",
+      "required_evidence": "Reformulate AC2 grep so each alternative is correctly anchored (e.g., use `grep -rE '\\\"(to plan|placeholder|TBD|本期不渲染|out of scope|superseded|STRUCTURAL CHANGE|OLD timeline|next session|next cycle|自理（|不渲染)\\\"' data/china-20260412-092624/*.json` with EACH alternative bracketed by the same `\"` boundary, OR exclude modification-log.json from the AC2 scope since historical entries legitimately contain the words). Provide verbatim current grep output to confirm the new formulation matches intent."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "claim": "Section 5.2 control 5 ('Acceptance evidence standard') binds: 'subagent reports include verbatim grep command output for each AC (not summary 0 matches); orchestrator must run the same grep before accepting subagent's PASS report.' BA's S1 says 'each future subagent's PASS report must include verbatim grep output' but BA's OWN spec contains zero verbatim grep output for the current state.",
+      "problem": "BA defers verbatim grep output to dev/QA subagents (S1) but Section 5.2 control 5 applies to the spec author too — the BA spec is the document orchestrator dispatches FROM, and acceptance evidence is the orchestrator's gate. None of AC1-AC10 cite a verbatim CURRENT-state grep output proving the gap exists. For example: AC2 says 'GIVEN current trip with 27 schema validation failures' but does not show the validate-agent-outputs.py output proving 27 failures (I verified it; 27 is correct). AC3 says '26 additionalProperties:true sites' but does not show the grep output (which would actually return 31). AC5 says '134 image_url' but does not show the per-file breakdown grep that proves it (verified 134 = 10+34+3+13+64+10). AC4 says 'lines 390 and 416' but does not show `awk 'NR==390||NR==416'` output (verified). The investigation evidence that Section 5.2 demands is missing from the spec body; BA's evidence section is high-level prose not verbatim command output.",
+      "required_evidence": "Add a new 'Acceptance Evidence (current state)' section to the BA spec citing verbatim outputs for each AC's pre-state grep: validate-agent-outputs.py (27 failures listed verbatim), `grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l` (=31), `grep -c '\"image_url\"' data/china-20260412-092624/*.json` (verbatim per-file), `grep -nE '\\.claude/skills/gaode-maps' scripts/fetch-images-batch.py` (lines 390, 416), etc. This is the orchestrator's first-cycle acceptance gate per Section 5.2 control 5."
+    },
+    {
+      "dimension": "scope_alignment",
+      "claim": "BA's S2 ('Concern_1 per-traveler dimension first phase') marked SHOULD-HAVE then says 'RECOMMEND: do NOT bundle into this cycle — move to S2 backlog'. W9 (Won't Have) confirms: 'Concern_1 full per-traveler schema extension within THIS cycle... deferred to S2 backlog'.",
+      "problem": "Spec Section 8 binding language: 'Half-extension is the disease... Either commit to the dimension or commit to the single-traveler view'. BA's deferral keeps the project in 'half-extension' state for at least one more cycle. While BA cites M3 (additionalProperties:false) as the lock-out mechanism that prevents new bolt-ons, the existing data already contains _jade-suffix patterns that M3 will REJECT — meaning Stage A data cleanup must either (a) remove all such fields and lose information, or (b) do partial schema extension to preserve them. The architect's concern_2.current_data_cleanups_required_before_flip says 'fold accommodation_jade into a second array element with traveler:jade' — but this requires the per-traveler schema extension that BA defers. BA's deferral therefore conflicts with architect's prescribed Stage-A cleanup path. If S2 is deferred, dev must instead DELETE the _jade content (information loss) rather than migrate. BA does not document this trade-off explicitly.",
+      "required_evidence": "Either (a) bring S2 into Must-Have so architect's prescribed migration path is achievable in Stage A, or (b) explicitly document the information-loss path: name each _jade field that will be deleted (vs migrated) and confirm with the user that loss is acceptable. The Mathilde+Jade trip context (per memory: Jade lives Wudaokou, classes May 6/9/11/12) means deleting _jade fields drops user-relevant content."
+    },
+    {
+      "dimension": "evidence_quality",
+      "claim": "BA's M5 acceptance criterion 5 (AC5) cites 'lines 1095-1334 removed' as a single block.",
+      "problem": "Verified: line 1095 ('CRITICAL FIX: Update agent JSON files...') and line 1334 (`json.dump(data, f, ensure_ascii=False, indent=2)`) bracket the block correctly. However, the architect report cites 1166-1334 in concern_3 (`scripts/fetch-images-batch.py:1166-1334 raw json.dump`) and 1095-1334 in arch-prop-1, and 1095-1334 in concern_3.concrete_changes. BA chose 1095-1334. The actual block boundaries depend on what dev considers the 'CRITICAL FIX' block — line 1095 is the comment header, lines 1096-1099 are 4 lines of orchestration, then `_update_agent_jsons` (the helper) extends from somewhere ~1166 to 1334. There are two reasonable framings: (a) remove lines 1095-1099 + the helper definition, or (b) remove lines 1095-1334 inclusive. The architect's own report has both numbers. BA chose one without resolving the ambiguity.",
+      "required_evidence": "Show `awk 'NR==1095 || NR==1099 || NR==1166 || NR==1334 {print NR\":\"$0}' scripts/fetch-images-batch.py` and the function-definition boundary of `_update_agent_jsons`. Confirm whether the '1095-1334 block' includes only the call-site or also the helper. Update AC5 to reference the precise function-name removal so dev has an unambiguous target."
+    }
+  ],
+  "passing_dimensions": [
+    {
+      "dimension": "scope_alignment",
+      "evidence": "BA's M1-M10 correctly maps Spec Section 5.2 items 1, 3-10 (item 2 canceled per 5.1). Item 1 (deploy freeze) folded into W1 (verifier+gate) — semantics preserved. Item 2 correctly excluded as W1 in Won't-Have. Codex REJECTED items (HK-1, HK-8, HK-11, CT-1/CT-2, OA-4, CMD-3) all correctly listed in Won't-Have."
+    },
+    {
+      "dimension": "affected_file_accuracy",
+      "evidence": "Sampled file paths verified: scripts/fetch-images-batch.py:390/416 reference '.claude/skills/gaode-maps/...' (confirmed), real path '.claude/commands/scripts/gaode-maps/scripts/poi_search.py' exists (confirmed), schemas/timeline.schema.json:161-194 contains split_day pattern (confirmed), scripts/save.py:65-101 contains _fetch_poi_image/extract_image_urls/_fill_missing_images (confirmed), scripts/save.py:574 contains the call site `extract_image_urls(agent_file.stem, agent_data, trip_slug)` (confirmed), scripts/generate-html-interactive.py:715/832/938 honor item.image_url (confirmed: cafe_item.get('image_url',''), shop_item.get('image_url',''), acc.get('image_url','')), scripts/generate-and-deploy.sh:154 is `echo \"\"` (confirmed) and L156 is `# Step 2: Generate interactive React HTML` (confirmed). 9 agent files confirmed in .claude/agents/, 5 commands + INDEX/README in .claude/commands/. The cycle-20260505-230534.md miss is the lone affected-file inaccuracy."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "evidence": "BA's component_chain table cites verified read pass on each affected file with line ranges. Architect's concern_2.exact_lines_to_flip is enumerated (though count is wrong; actual list is 31 not 26 — see evidence_quality objection). BA correctly enumerates dual-write paths in save.py:65-101,574 and fetch-images-batch.py:1095-1334 (R-G acknowledges grep verification needed). BA's diagnosis_completeness:'complete' flag is supportable on most claims. The investigation gap is around acceptance evidence — see investigation_completeness objection."
+    }
+  ],
+  "verified_facts_corroborating_ba": {
+    "image_url_count_china_trip": {
+      "ba_claim": 134,
+      "actual_count": 134,
+      "per_file": {"meals.json": 64, "attractions.json": 34, "entertainment.json": 13, "accommodation.json": 10, "shopping.json": 10, "cafe.json": 3},
+      "verdict": "matches"
+    },
+    "schema_validation_failures": {
+      "ba_claim": 27,
+      "actual_count": 27,
+      "verdict": "matches",
+      "evidence": "venv/bin/python scripts/validate-agent-outputs.py data/china-20260412-092624 → CRITICAL ISSUES (27): meals=13, transportation=10, cafe=2, timeline=2 (overlaps)"
+    },
+    "wrong_path_lines_390_416": {
+      "ba_claim": "scripts/fetch-images-batch.py:390,416 reference .claude/skills/gaode-maps",
+      "actual": "Confirmed verbatim: line 390 and 416 both contain `script_path = self.base_dir / \".claude/skills/gaode-maps/scripts/poi_search.py\"`. Real path .claude/commands/scripts/gaode-maps/scripts/poi_search.py exists.",
+      "verdict": "matches"
+    },
+    "verifier_insertion_lines": {
+      "ba_claim": "L154 (echo \"\") / L156 (# Step 2)",
+      "actual": "Verified: L154='echo \"\"', L155=blank, L156='# Step 2: Generate interactive React HTML', L168='echo \"\"', L184='echo -e \"${BLUE}[4/5]${NC} Deploying to GitHub Pages...\"'",
+      "verdict": "matches"
+    },
+    "renderer_image_url_honoring": {
+      "ba_claim": "L715/L832/L938 honor item.image_url",
+      "actual": "Verified: L715=`\"image\": cafe_item.get(\"image_url\", \"\") or self._get_placeholder_image(`, L832=`mall_image = shop_item.get(\"image_url\", \"\") or self._get_placeholder_image(`, L938=`\"image\": acc.get(\"image_url\", \"\") or self._get_placeholder_image(`",
+      "verdict": "matches"
+    },
+    "save_py_extract_image_urls": {
+      "ba_claim": "scripts/save.py:65-101 contains extract_image_urls/_fetch_poi_image/_fill_missing_images, called from line 574",
+      "actual": "Verified: defs at lines 65, 79, 89; call at line 574 (`extract_image_urls(agent_file.stem, agent_data, trip_slug)`). save.py:546 uses validate=False",
+      "verdict": "matches"
+    },
+    "timeline_split_day_extension": {
+      "ba_claim": "schemas/timeline.schema.json:161-194 already extends per-traveler (split_day, shared, matilde, jade)",
+      "actual": "Verified: lines 161-194 contain split_day:bool, shared/matilde/jade objects with patternProperties+timeline_activity ref, additionalProperties:false on each",
+      "verdict": "matches"
+    },
+    "prompt_purity_hook_warning_only": {
+      "ba_claim": "~/.claude/hooks/pretool-orchestrator-prompt-purity.py:57-60,437-461 warning-only",
+      "actual": "Verified: line 58=`'⚠ prompt-purity warning: HOW prescription detected (not blocking).'` confirms warning-only path. Line 437=`def main()`, line 460=`_emit_block(category, snippet)`, line 461=`return 0`",
+      "verdict": "matches"
+    },
+    "fetch_images_batch_block_1095_1334": {
+      "ba_claim": "scripts/fetch-images-batch.py:1095-1334 contains the agent-JSON write block",
+      "actual": "Verified: L1095=`# CRITICAL FIX: Update agent JSON files with image_url fields`, L1334=`json.dump(data, f, ensure_ascii=False, indent=2)`. Block boundary confirmed.",
+      "verdict": "matches"
+    }
+  },
+  "verified_facts_contradicting_ba": {
+    "additionalProperties_true_sites": {
+      "ba_claim": 26,
+      "actual_count": 31,
+      "per_file": {"accommodation": 3, "attractions": 3, "budget": 5, "cafe": 3, "entertainment": 3, "meals": 2, "poi-common": 1, "shopping": 3, "timeline": 3, "transportation": 5},
+      "evidence": "grep -nE '\"additionalProperties\":\\s*true' schemas/*.schema.json | wc -l = 31",
+      "verdict": "discrepancy: BA understates by 5 sites"
+    },
+    "key_AIzaSy_count": {
+      "ba_claim": 396,
+      "actual_count": 174,
+      "per_file": {"beijing-exchange-bucket-list-20260202-232405": 47, "beijing-lijiang-dali-20260418-100846": 0, "china-20260412-092624": 0, "china-exchange-bucket-list-2026": 77, "china-feb-15-mar-7-2026-20260202-195429": 1, "gerardmer-20260419-135844": 49, "qa-new-format-test": 0, "wangfujing-dongdan-beijing-20260405-192905": 0},
+      "evidence": "grep -roE 'AIzaSy[A-Za-z0-9_-]{30,}' data/*/images.json | wc -l = 174",
+      "verdict": "discrepancy: BA overstates by 222 instances; canary trip china-20260412-092624 has 0 leaked keys"
+    },
+    "cycle_artifact_existence": {
+      "ba_claim": "docs/dev/cycle-20260505-230534.md is an existing artifact (M10, AC10, W7)",
+      "actual": "File does not exist. ls docs/dev/cycle-*.md returns no matches. Entire docs/dev/ contains no cycle-* files.",
+      "verdict": "discrepancy: AC10 GIVEN clause is unsatisfiable as written"
+    }
+  },
+  "spec_section_updates": {
+    "section_4": null,
+    "section_6": null,
+    "section_7": null,
+    "comment": "BA-validation mode: this is not a code-execution verdict; spec sections 4/6/7 are not in scope for BA validation."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
