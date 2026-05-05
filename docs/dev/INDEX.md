@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T21:18:01Z*
-**Total entries**: 185
+*Last updated: 2026-05-05T23:15:40Z*
+**Total entries**: 189
 **Convention**: kebab
 
 ## Tree
@@ -16,11 +16,15 @@ dev/
 ├── screenshots/
 │   └── dev-20260505-123425/
 ├── specs/
+│   ├── spec-20260505-221501/
+│   │   └── views/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
-│   └── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
+│   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
+│   └── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
+├── `architect-report-init.json` - json config
 ├── `ba-qa-report-20260415-210000.json` - json config
 ├── `ba-qa-report-20260416-172720.json` - json config
 ├── `ba-qa-report-20260417-001800.json` - json config
