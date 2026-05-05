@@ -387,7 +387,7 @@ class BatchImageFetcher:
         # Try exact name search with keyword fallbacks
         for search_term in self._get_fallback_search_terms(search_name):
             try:
-                script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
+                script_path = self.base_dir / ".claude/commands/scripts/gaode-maps/scripts/poi_search.py"
                 result = subprocess.run(
                     [self.venv_python, str(script_path), "keyword", search_term, city],
                     capture_output=True,
@@ -413,7 +413,7 @@ class BatchImageFetcher:
         # FINAL FALLBACK: Try location/address search
         if location_local:
             try:
-                script_path = self.base_dir / ".claude/skills/gaode-maps/scripts/poi_search.py"
+                script_path = self.base_dir / ".claude/commands/scripts/gaode-maps/scripts/poi_search.py"
                 result = subprocess.run(
                     [self.venv_python, str(script_path), "keyword", location_local, city],
                     capture_output=True,

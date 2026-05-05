@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-05T15:56:38Z*
-**Total entries**: 65
+*Last updated: 2026-05-05T23:58:44Z*
+**Total entries**: 66
 **Convention**: kebab
 
 ## Tree
@@ -23,7 +23,8 @@ scripts/
 ├── lib/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
-│   └── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+│   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+│   └── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
 ├── tests/
 │   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
 ├── todo/
