@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T07:14:14Z*
-**Total entries**: 135
+*Last updated: 2026-05-05T09:49:48Z*
+**Total entries**: 137
 **Convention**: kebab
 
 ## Tree
@@ -51,6 +51,7 @@ dev/
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
+├── `completion-20260505-060527.md` - Development Completion Report — 20260505-060527
 ├── `completion-20260505-061047.md` - Development Completion Report — 20260505-061047
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
@@ -140,6 +141,7 @@ dev/
 ├── `qa-report-20260505-061047.json` - json config
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
+├── `style-inspector-report-20260505-061047.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 └── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ```
