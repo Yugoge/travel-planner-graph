@@ -513,7 +513,7 @@
     }
   },
   "development_approach": {
-    "strategy": "Bundle 4 file-disjoint actionable items under one user-need (search_notes_light in production with structural protection). Reconciliation order: (1) edit consumer docs (meals.md, attractions.md, skill.md); (2) create deployStampCheck.js + run node --check; (3) edit cli.js insert line + run node --check; (4) edit deploy script + run bash -n; (5) edit package.json + verify JSON; (6) edit CLAUDE.md (S3); (7) run deploy script ONCE end-to-end (writes .deploy-stamp); (8) verify drift defense (AC9 — transient tamper); (9) verify preinstall guard (AC10 — npm install attempt). All install-path changes flow through the deploy script — no direct edits to /usr/lib/node_modules/rednote-mcp/*. Architect prescription file is the load-bearing reference for literal strings.",
+    "strategy": "Bundle 5 file-disjoint actionable items under one user-need (search_notes_light in production with structural protection AND data-integrity correctness in the shared MCP client). Reconciliation order: (1) edit consumer docs (meals.md, attractions.md, skill.md); (2) edit mcp_client.py (M9) + run python3 -m py_compile + run AC13 stub round-trip harness (independent file, can land at any point); (3) create deployStampCheck.js + run node --check; (4) edit cli.js insert line + run node --check; (5) edit deploy script + run bash -n; (6) edit package.json + verify JSON; (7) edit CLAUDE.md (S3); (8) run deploy script ONCE end-to-end (writes .deploy-stamp); (9) verify drift defense (AC9 — transient tamper, stderr substring assertion); (10) verify preinstall guard (AC10 — npm install attempt, stderr substring assertion). All install-path changes flow through the deploy script — no direct edits to /usr/lib/node_modules/rednote-mcp/*. Architect prescription file is the load-bearing reference for literal strings (arch-prop-2/3 + cross-cutting deploy widening); MCP spec semantics is the reference for M9.",
     "files_to_create": [
       "/root/rednote-mcp/dist/utils/deployStampCheck.js"
     ],
@@ -521,12 +521,44 @@
       "/root/travel-planner/.claude/agents/meals.md",
       "/root/travel-planner/.claude/agents/attractions.md",
       "/root/travel-planner/.claude/commands/scripts/rednote/skill.md",
+      "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
       "/root/rednote-mcp/dist/cli.js",
       "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
       "/root/rednote-mcp/package.json",
       "/root/rednote-mcp/CLAUDE.md"
     ],
-    "validation_approach": "Per-file syntactic gates immediately after each edit: node --check on JS files, bash -n on the shell script, JSON.parse on package.json. End-to-end gate: run deploy script ONCE (verifies stamp + sha256 round-trip + propagation). Defense gates: tamper-and-restore for drift check, npm-install-attempt for preinstall guard. All grep-based ACs (count assertions for catalog/enumeration internal consistency)."
+    "validation_approach": "Per-file syntactic gates immediately after each edit: node --check on JS files, bash -n on the shell script, JSON.parse on package.json, python3 -m py_compile on mcp_client.py. M9 functional gate: AC13 stub round-trip harness (5 sub-tests covering length-1 JSON / length-1 non-JSON / multi-block JSON / multi-block non-JSON concat / empty-content guard). End-to-end gate: run deploy script ONCE (verifies stamp + sha256 round-trip + propagation). Defense gates: tamper-and-restore for drift check (asserts on literal stderr substring '[deployStampCheck] FAIL: drift detected'), npm-install-attempt for preinstall guard (asserts on literal stderr substring 'REFUSED: rednote-mcp must not be installed via npm'). All grep-based ACs (count assertions for catalog/enumeration internal consistency). Per OBJ-5: stderr-substring assertion replaces fragile npm-wrapped EC=78 grep across AC8 + AC9 + AC10."
+  },
+  "qa_rejection_addressed": {
+    "qa_report_path": "/root/travel-planner/docs/dev/ba-qa-report-20260505-124619.json",
+    "ba_iteration": 1,
+    "OBJ-1": {
+      "qa_severity": "critical",
+      "qa_summary": "BA's W1 / out_of_scope deferral of mcp_client.py:150 cited 'hook policy blocks edits to .claude/commands/' as fact without verifying. QA verified false: dev role allowed_write_path_prefixes=['*'] with no denied list per /root/.claude/policies/tool-policy.v1.json:130-147.",
+      "ba_action": "RETRACTED W1 in ticket-20260505-124619.md (W1 now reads 'RETRACTED (BA-iteration 1)' with full explanation). Added evidence row #14 to Evidence (Contract A) measured table citing the policy file lines. Added new out_of_scope_observations[7] entry (in this JSON) recording the BA's Read of the policy file as the evidence chain for the retraction. Removed the prior mcp_client.py row from out_of_scope_observations (item #9 is now in scope as M9). Updated the Context section paragraph that previously called item #9 'hook-blocked' — now correctly explains the dev-role policy.",
+      "evidence_files_for_qa_recheck": [
+        "ticket-20260505-124619.md (Goal+iteration line, Context paragraph about item #9, Evidence table row #14, W1 retraction text, Constraints item 'DO edit mcp_client.py per M9 + AC13')",
+        "context-20260505-124619.json (out_of_scope_observations[7] policy-evidence row, scope_expansion.user_reported includes mcp_client.py, scope.excluded W1 retraction note, root_cause_analysis.observations entry for tool-policy.v1.json Read)"
+      ]
+    },
+    "OBJ-2": {
+      "qa_severity": "major",
+      "qa_summary": "User named 3 categories; with OBJ-1 disproven, item #9 must be IN SCOPE. Item #10 (AC2 retroactive on closed cycle) is defensibly deferrable.",
+      "ba_action": "Added M9 to MoSCoW Must Have requirements in ticket. Added AC13 (mcp_client.py grep + py_compile + stub round-trip harness with 5 sub-tests proving backward-compat AND multi-block correctness). Added mcp_client.py to scope_boundary.in_user_path, scope_expansion.user_reported, all_occurrences, requirements.where, requirements.scope.included (M9), affected_files. Updated requirements_decomposition R4 to reflect M9 in scope (item #10 still defensibly deferred per OOSO[0]).",
+      "evidence_files_for_qa_recheck": [
+        "ticket-20260505-124619.md (Must Have M9 entry, AC13 with full Python harness, R4 row updated, R11 risk row updated to backward-compat invariant focus)",
+        "context-20260505-124619.json (requirements.success_criteria adds AC13, requirements.where adds mcp_client.py, requirements.scope.included adds M9, scope_boundary.in_user_path adds mcp_client.py, requirements_decomposition R4 reflects M9)"
+      ]
+    },
+    "OBJ-5": {
+      "qa_severity": "minor",
+      "qa_summary": "AC8 + AC10 carry npm-exit-wrapping fragility — npm wraps preinstall failures as exit 1, not exit 78. Recommend asserting on stderr substring instead of exit code 78.",
+      "ba_action": "Tightened AC8 (drift-check pass on freshly deployed install: substring '[deployStampCheck] FAIL' must be ABSENT — substring assertion replaces fragile EC=78 grep). Tightened AC9 (drift-check fail on tamper: substring '[deployStampCheck] FAIL: drift detected' must be PRESENT). Tightened AC10 (preinstall guard rejects: substring 'REFUSED: rednote-mcp must not be installed via npm' must be PRESENT; with env var the substring must be ABSENT — added cross-verification via 'npm run preinstall' which bypasses npm's lifecycle wrapping). Updated Constraints to explicitly note exit code 78 is in-process while VERIFICATION asserts on substring not on the wrapped exit code.",
+      "evidence_files_for_qa_recheck": [
+        "ticket-20260505-124619.md (AC8 substring assertion, AC9 substring assertion, AC10 substring assertion + cross-verify via npm run preinstall, Constraints item about EC78 in-process vs substring-for-verification)",
+        "context-20260505-124619.json (success_criteria AC8 / AC9 / AC10 entries reworded for substring assertions, constraints[] item 3 about EC78 in-process vs substring verification)"
+      ]
+    }
   },
   "standards_to_enforce": {
     "no_hardcoded_values": true,

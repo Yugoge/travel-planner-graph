@@ -528,31 +528,6 @@ class InteractiveHTMLGenerator:
                 return day.get("timeline", {})
         return {}
 
-    def _build_jade_acc_card(self, aj, day_timeline):
-        n_b = aj.get("name_base", "")
-        n_l = aj.get("name_local", "")
-        cost = self._to_display_currency(aj.get("cost", 0), aj.get("currency_local", "CNY"))
-        t = self._get_timeline_time(n_b, n_l, day_timeline)
-        if not t and aj.get("check_in"):
-            t = self._normalize_time(aj.get("check_in"), default_duration_hours=0.5)
-        return {
-            "name_base": n_b, "name_local": n_l,
-            "type_base": self._format_type(aj.get("type_base", "")), "type_local": aj.get("type_local", ""),
-            "location_base": aj.get("location_base", "") or aj.get("address_base", ""),
-            "location_local": aj.get("location_local", "") or aj.get("address_local", ""),
-            "coordinates": aj.get("coordinates", {}),
-            "cost": cost, "cost_local": aj.get("cost", 0), "stars": aj.get("stars", 0),
-            "check_in": aj.get("check_in", "") or aj.get("check_in_date", ""),
-            "check_out": aj.get("check_out", "") or aj.get("check_out_date", ""),
-            "notes_base": aj.get("notes_base", ""), "notes_local": aj.get("notes_local", ""),
-            "optional": aj.get("optional", False), "time": t, "guest_label": "Jade",
-            "image": aj.get("image_url", "") or self._get_placeholder_image("accommodation",
-                poi_name=n_l if n_l else n_b, gaode_id=aj.get("gaode_id", ""),
-                name_base=n_b, name_local=n_l,
-                location_base=aj.get("location_base", ""), location_local=aj.get("location_local", ""),
-                is_home=self._is_home_location(aj))
-        }
-
     def _intra_icon(self, route):
         rt = (route.get("type_base") or "").lower()
         rtl = route.get("type_local") or ""
@@ -604,24 +579,18 @@ class InteractiveHTMLGenerator:
         }
 
     def _inject_intra_routes(self, merged, day_num):
-        if not (self.transportation and "days" in self.transportation): return
+        """Read schema-defined intra_city_routes from transportation.json and
+        attach as cards on merged.intra_routes. Reads ONLY schema-declared
+        fields (intra_city_routes is documented in transportation.schema.json)."""
+        if not (self.transportation and "days" in self.transportation):
+            return
         dt = next((d for d in self.transportation["days"] if d.get("day") == day_num), {})
-        loc_short = dt.get("location_short") or dt.get("location_base_short")
-        loc_local = dt.get("location_local")
-        # BUG-A/C fix dev-20260505-060527: route transit annotations to header_subtitle
-        # NOT location_base. location_base comes from plan-skeleton (pure city).
-        if loc_short and isinstance(loc_short, str) and ("→" in loc_short or "->" in loc_short):
-            merged["header_subtitle_base"] = loc_short
-        if loc_local and isinstance(loc_local, str) and ("→" in loc_local or "->" in loc_local or "（" in loc_local):
-            merged["header_subtitle_local"] = loc_local
         intra_raw = dt.get("intra_city_routes")
         if isinstance(intra_raw, dict):
             intra = list(intra_raw.values())
         elif isinstance(intra_raw, list):
             intra = intra_raw
         else:
-            return
-        if not intra:
             return
         cards = [self._build_intra_card(r) for r in intra if isinstance(r, dict)]
         if cards:
@@ -712,48 +681,6 @@ class InteractiveHTMLGenerator:
                     }
                     merged["budget"]["meals"] += cost
 
-                # Add meal alternatives as equal options in _options array
-                # Dual-read: new format uses meal_slot.alternatives; old format uses {meal_type}_alternatives sibling
-                meal_slot_for_alts = day_meals.get(meal_type, {})
-                nested_alts = meal_slot_for_alts.get("alternatives", None) if isinstance(meal_slot_for_alts, dict) else None
-                flat_alts = day_meals.get(f"{meal_type}_alternatives", None)
-                alts_raw = nested_alts if nested_alts is not None else flat_alts
-                if alts_raw:
-                    alts = alts_raw
-                    primary = merged["meals"][meal_type]
-                    options = [{ **primary, "option_label": "A" }]
-                    for idx, alt in enumerate(alts):
-                        alt_cost = alt.get("cost", 0)
-                        alt_currency = alt.get("currency_local", "CNY")
-                        alt_cost_display = self._to_display_currency(alt_cost, alt_currency)
-                        alt_image = alt.get("image_url", "") or self._get_placeholder_image(
-                            "meal",
-                            poi_name=alt.get("name_local", alt.get("name_base", "")),
-                            name_base=alt.get("name_base", ""),
-                            name_local=alt.get("name_local", ""),
-                            location_base=alt.get("location_base", ""),
-                            location_local=alt.get("location_local", ""),
-                        )
-                        options.append({
-                            "name_base": alt.get("name_base", ""),
-                            "name_local": alt.get("name_local", ""),
-                            "location_base": alt.get("location_base", ""),
-                            "location_local": alt.get("location_local", ""),
-                            "cost": alt_cost_display,
-                            "cost_local": alt.get("cost", 0),
-                            "cuisine_base": alt.get("cuisine_base", ""),
-                            "cuisine_local": alt.get("cuisine_local", ""),
-                            "signature_dishes_base": alt.get("signature_dishes_base", ""),
-                            "signature_dishes_local": alt.get("signature_dishes_local", ""),
-                            "notes_base": alt.get("notes_base", ""),
-                            "notes_local": alt.get("notes_local", ""),
-                            "coordinates": alt.get("coordinates", {}),
-                            "time": merged["meals"][meal_type].get("time", {}),
-                            "option_label": alt.get("option", chr(66 + idx)),
-                            "image": alt_image,
-                            "links": alt.get("links", {}),
-                        })
-                    merged["meals"][f"{meal_type}_options"] = options
 
         # Merge cafe (array-based, like entertainment)
         if self.cafe and "days" in self.cafe:
@@ -988,48 +915,37 @@ class InteractiveHTMLGenerator:
                 # Parse stars from explicit field
                 stars = acc.get("stars", 0)
 
-                # BUG-G fix dev-20260505-060527: skip Matilde 自行安排 / TBD-own-arrangement
-                # placeholders so they do not render as phantom no-image cards.
-                _acc_skip_markers = ("自行安排", "own arrangement", "out of scope", "TBD (own", "out_of_scope")
-                _acc_combined = (acc_name_base or "") + " " + (acc_name_local or "") + " " + (acc.get("notes_base","") or "") + " " + (acc.get("notes_local","") or "")
-                _acc_is_self_arrange = acc.get("out_of_scope") or any(m in _acc_combined for m in _acc_skip_markers)
-                if not _acc_is_self_arrange:
-                    merged["accommodation"] = {
-                        "name_base": acc_name_base,
-                        "name_local": acc_name_local,
-                        "type_base": self._format_type(acc.get("type_base", "")),
-                        "type_local": acc.get("type_local", ""),
-                        "location_base": acc.get("location_base", ""),
-                        "location_local": acc.get("location_local", ""),
-                        "coordinates": acc.get("coordinates", {}),
-                        "cost": cost,
-                        "cost_local": acc.get("cost", 0),
-                        "stars": stars if stars else 0,
-                        "amenities_base": acc.get("amenities_base", []),
-                        "amenities_local": acc.get("amenities_local", []),
-                        "check_in": acc.get("check_in", ""),
-                        "check_out": acc.get("check_out", ""),
-                        "notes_base": acc.get("notes_base", ""),
-                        "notes_local": acc.get("notes_local", ""),
-                        "optional": acc.get("optional", False),
-                        "time": acc_time,
-                        "links": acc.get("links", {}),
-                        "image": acc.get("image_url", "") or self._get_placeholder_image(
-                            "accommodation",
-                            poi_name=acc_name_local if acc_name_local else acc_name_base,
-                            gaode_id=acc.get("gaode_id", ""),
-                            name_base=acc_name_base,
-                            name_local=acc_name_local,
-                            location_base=acc.get("location_base", ""),
-                            location_local=acc.get("location_local", ""),
-                            is_home=self._is_home_location(acc)
-                        )
-                    }
-                    merged["budget"]["accommodation"] = cost
-
-            acc_jade = day_acc.get("accommodation_jade")
-            if isinstance(acc_jade, dict) and acc_jade.get("name_base"):
-                merged["accommodation_jade"] = self._build_jade_acc_card(acc_jade, day_timeline)
+                merged["accommodation"] = {
+                    "name_base": acc_name_base,
+                    "name_local": acc_name_local,
+                    "type_base": self._format_type(acc.get("type_base", "")),
+                    "type_local": acc.get("type_local", ""),
+                    "location_base": acc.get("location_base", ""),
+                    "location_local": acc.get("location_local", ""),
+                    "coordinates": acc.get("coordinates", {}),
+                    "cost": cost,
+                    "cost_local": acc.get("cost", 0),
+                    "stars": stars if stars else 0,
+                    "amenities_base": acc.get("amenities_base", []),
+                    "amenities_local": acc.get("amenities_local", []),
+                    "check_in": acc.get("check_in", ""),
+                    "check_out": acc.get("check_out", ""),
+                    "notes_base": acc.get("notes_base", ""),
+                    "notes_local": acc.get("notes_local", ""),
+                    "optional": acc.get("optional", False),
+                    "time": acc_time,
+                    "links": acc.get("links", {}),
+                    "image": acc.get("image_url", "") or self._get_placeholder_image(
+                        "accommodation",
+                        poi_name=acc_name_local if acc_name_local else acc_name_base,
+                        name_base=acc_name_base,
+                        name_local=acc_name_local,
+                        location_base=acc.get("location_base", ""),
+                        location_local=acc.get("location_local", ""),
+                        is_home=self._is_home_location(acc)
+                    )
+                }
+                merged["budget"]["accommodation"] = cost
 
         # Merge transportation (Fix Issue #8: transportation missing from HTML)
         # Root cause: transportation.json loaded but never processed in _merge_day_data
@@ -1245,8 +1161,6 @@ class InteractiveHTMLGenerator:
         # Add transportation cost to budget (from merged transportation data)
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
             merged["budget"]["transportation"] = merged["transportation"]["cost"]
-
-        self._inject_intra_routes(merged, day_num)
 
         # Calculate total budget (includes all categories)
         merged["budget"]["total"] = sum([
@@ -2341,11 +2255,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
             <h1 style={{ fontSize: sm ? '24px' : '36px', fontWeight: '700', color: '#37352f', margin: '0 0 4px', lineHeight: 1.25 }}>
               {dayLabel(day, lang)}
             </h1>
-            {(day.header_subtitle_local || day.header_subtitle_base) && (
-              <div style={{ fontSize: sm ? '13px' : '15px', color: '#787774', margin: '0 0 24px' }}>
-                {(lang === 'local' && day.header_subtitle_local) ? day.header_subtitle_local : day.header_subtitle_base}
-              </div>
-            )}
             </>
           )}
 
@@ -2416,10 +2325,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     {['breakfast', 'lunch', 'dinner'].flatMap(type => {
                       const meal = day.meals[type];
                       if (!meal) return [];
-                      const options = day.meals[type + '_options'] || [meal];
                       const emoji = mealEmoji[type] || '';
                       const label = L(type, lang);
-                      return options.map((opt, oi) => ({...opt, _type: type, _emoji: emoji, _label: label, _isPrimary: oi === 0, _oi: oi}));
+                      return [{...meal, _type: type, _emoji: emoji, _label: label, _isPrimary: true, _oi: 0}];
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
                       return (
@@ -2640,7 +2548,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               )}
 
               {/* Accommodation */}
-              {(day.accommodation || day.accommodation_jade) && (
+              {day.accommodation && (
                 <Section title={L('accommodation', lang)} icon="🏨">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
@@ -2678,48 +2586,17 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           </div>
                         );
                       })}
-                      {day.accommodation_jade && (() => {
-                        const acj = day.accommodation_jade;
-                        const cc = categoryColors.accommodation;
-                        return (
-                          <div key="acc-jade" style={cardStyle(cc, false)}
-                            onClick={() => onItemClick && onItemClick(acj, 'accommodation')}
-                            onMouseEnter={hoverOn} onMouseLeave={e => hoverOff(e, cc, false)}>
-                            <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
-                              {acj.image && <img src={acj.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={e => { e.target.style.display = 'none'; }} />}
-                            </div>
-                            <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '700', color: cc, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
-                                🏨 Jade 住
-                              </div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
-                                {getDisplayName(acj, lang)}
-                                <RedNoteLink name={acj.name_local || acj.name_base} />
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
-                                {acj.check_in && <div>{L('checkin', lang)}: {acj.check_in}{acj.check_out ? ' · ' + L('checkout', lang) + ': ' + acj.check_out : ''}</div>}
-                                {acj.cost > 0 && <div>{fmtCost(acj.cost, undefined, lang)}</div>}
-                                {(acj.location_base || acj.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={acj} lang={lang} mapProvider={mapProvider} /></div>}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
-                                {lang === 'local' && acj.notes_local ? acj.notes_local : acj.notes_base}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
                     </div>
                   </div>
                 </Section>
               )}
 
               {/* Transportation */}
-              {(day.transportation || (day.intra_routes && day.intra_routes.length > 0)) && (
+              {day.transportation && (
                 <Section title={L('transportation', lang)} icon={(day.transportation && day.transportation.icon) || '✈️'}>
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
-                      {[...(day.transportation ? [day.transportation] : []), ...(day.intra_routes || [])].map((tr, i) => {
+                      {(day.transportation ? [day.transportation] : []).map((tr, i) => {
                         const catColor = categoryColors.transportation;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), height: 'auto', minHeight: sm ? '160px' : '180px'}}
@@ -2906,27 +2783,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
-  // BUG-D fix dev-20260505-060527: include booked intra-city routes (G5415, G8562,
-  // 3U8893, 送/接机专车, BD05565, etc.) so they appear in the clock view.
-  day.intra_routes?.forEach(r => {
-    const label = (lang === 'local' && r.name_local) ? r.name_local : (r.name_base || r.route_number || '');
-    add(r, 'transportation', label);
-  });
-  // BUG-E fix dev-20260505-060527: timeline shows ONLY the primary meal per slot;
-  // alternatives are shown as a +N badge in kanban view but suppressed here.
-  // Also drop "跳过" / "skip" alternatives entirely.
   ['breakfast', 'brunch', 'lunch', 'dinner'].forEach(mealType => {
     const catKey = 'cat_' + mealType;
     const primary = day.meals?.[mealType];
     if (primary) {
-      const pname = (primary.name_base || '') + ' ' + (primary.name_local || '');
-      if (!/跳过|skip/i.test(pname)) {
-        const entry = add(primary, 'meal', L(catKey, lang));
-        const opts = day.meals?.[mealType + '_options'];
-        if (entry && opts && opts.length > 1) {
-          entry._altCount = opts.length - 1;
-        }
-      }
+      add(primary, 'meal', L(catKey, lang));
     }
   });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
