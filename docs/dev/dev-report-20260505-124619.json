@@ -1,0 +1,185 @@
+{
+  "request_id": "20260505-124619",
+  "task_id": "20260505-124619",
+  "timestamp": "2026-05-05T12:46:19Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-124619.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/commands/scripts/rednote/skill.md",
+      "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py",
+      "/root/rednote-mcp/dist/cli.js",
+      "/root/rednote-mcp/scripts/deploy-to-usrlib.sh",
+      "/root/rednote-mcp/package.json",
+      "/root/rednote-mcp/CLAUDE.md"
+    ],
+    "files_created": [
+      "/root/rednote-mcp/dist/utils/deployStampCheck.js",
+      "/usr/lib/node_modules/rednote-mcp/dist/.deploy-stamp",
+      "/root/travel-planner/.claude/.hook-refactor-allow"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "M1: meals.md line 80 search.py -> search_light.py + get_note_content sentence",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/.claude/agents/meals.md"],
+        "rationale": "Activates the new lightweight tool in production meals agent; falls back to mcp__rednote__get_note_content for full-text verification when needed."
+      },
+      {
+        "id": 2,
+        "description": "M2: attractions.md line 85 search.py -> search_light.py + get_note_content sentence",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/.claude/agents/attractions.md"],
+        "rationale": "Mirrors M1 for the attractions agent."
+      },
+      {
+        "id": 3,
+        "description": "M3: skill.md catalog 4 -> 5 tools, search_notes_light at position 2, new tool description section, available scripts gains search_light.py",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/.claude/commands/scripts/rednote/skill.md"],
+        "rationale": "Declarative source-of-truth so any LLM-driven agent reading the skill knows search_notes_light exists and when to use it."
+      },
+      {
+        "id": 4,
+        "description": "M9: mcp_client.py call_tool() iterates ALL content blocks via new module-level _parse_content_blocks helper",
+        "type": "edit",
+        "files_modified": ["/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py"],
+        "rationale": "Fixes the silent-data-loss bug at line 150 where content[0] dropped blocks 1..N. Backward compatibility preserved by construction: a length-1 list joins to a string equal to the sole text block's text field, so existing JSON-load callers (search.py, search_light.py) see byte-identical payloads. Helper extraction keeps call_tool() small (within quality-gate per-function line cap)."
+      },
+      {
+        "id": 5,
+        "description": "M4: New file dist/utils/deployStampCheck.js with enforceAtLaunch export per architect pseudocode",
+        "type": "create",
+        "files_created": ["/root/rednote-mcp/dist/utils/deployStampCheck.js"],
+        "rationale": "Synchronous launch-time drift check. Reads .deploy-stamp, recomputes sha256 of every file under dist/, hard-fails (process.exit(78)) on any mismatch. Uses node builtins only (fs, path, crypto). All output to stderr (MCP stdio frame integrity)."
+      },
+      {
+        "id": 6,
+        "description": "M5: cli.js insert require('./utils/deployStampCheck').enforceAtLaunch(__dirname) between line 46 and 47",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/dist/cli.js"],
+        "rationale": "Architect-prescribed insertion point: after require() block (last require/init at original line 46), before McpServer construction (line 51 after insertion -> line 52). enforceAtLaunch runs synchronously before any McpServer or RedNoteTools is constructed."
+      },
+      {
+        "id": 7,
+        "description": "M6: deploy-to-usrlib.sh widened SOURCE_DIR/TARGET_DIR + 12 --exclude flags + step a find scoped to dist/ + new step f .deploy-stamp writer with mv -f atomic publish",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/scripts/deploy-to-usrlib.sh"],
+        "rationale": "Cross-cutting widening required for arch-prop-3 (preinstall guard in package.json must propagate one level up from dist/). Step f composes the .deploy-stamp JSON via inline node -e and mv-atomically into TARGET_DIR/dist/.deploy-stamp."
+      },
+      {
+        "id": 8,
+        "description": "M7: package.json scripts.preinstall added with literal architect-prescribed text",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/package.json"],
+        "rationale": "npm preinstall guard. Refuses any npm install/link/ci/rebuild without REDNOTE_DEPLOY_OK=1, with literal REFUSED message and process.exit(78). Other 5 scripts preserved verbatim. JSON validity preserved."
+      },
+      {
+        "id": 9,
+        "description": "S3: CLAUDE.md operator note about REDNOTE_DEPLOY_OK bootstrap appended (line 14)",
+        "type": "edit",
+        "files_modified": ["/root/rednote-mcp/CLAUDE.md"],
+        "rationale": "Operator-facing documentation of the bootstrap workflow when the preinstall guard fires legitimately."
+      },
+      {
+        "id": 10,
+        "description": "M8: deploy script run end-to-end; .deploy-stamp written; install-side files byte-equal to source",
+        "type": "verification",
+        "rationale": "Required to land arch-prop-2 + arch-prop-3 in the install path so subsequent launches/installs are gated. One-shot fix made during run: the post-write 'node -p require(stamp).files_count' line was crashing because node treats .deploy-stamp as JS; switched to JSON.parse(fs.readFileSync(...))."
+      },
+      {
+        "id": 11,
+        "description": "AC8/AC9/AC10/AC11/AC13 verification harness executed",
+        "type": "verification",
+        "rationale": "All ACs measured per the BA spec's substring-assertion rubric (OBJ-5 tightening). Results captured below."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "/root/rednote-mcp/dist/utils/deployStampCheck.js",
+        "purpose": "Synchronous launch-time drift check for /usr/lib/node_modules/rednote-mcp/dist/. Reads .deploy-stamp + per-file sha256, exits 78 with multi-line stderr on any mismatch.",
+        "parameters": ["distRoot (path to dist/ directory)"],
+        "usage": "require('./utils/deployStampCheck').enforceAtLaunch(__dirname)  // from cli.js",
+        "exit_codes": {
+          "0": "Drift check passed (function returns void)",
+          "78": "Drift detected, missing/extra/mismatched files, or stamp invalid"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — forward-fix cycle landing items prior cycle 20260505-061047 explicitly deferred (BA OOSO[0]); architect prescription file (architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json) is the load-bearing reference",
+      "why_issue_occurred": "Three parallel gaps: (1) practical-value gap — search_notes_light built in source/install but no production agent referenced it; (2) defense-in-depth gap — install path was writable between deploys; (3) silent-data-loss bug — mcp_client.py:150 took content[0] only and dropped blocks 1..N from any multi-block MCP response.",
+      "how_fix_addresses_root": "Activated the tool in meals + attractions + skill catalog. Layered enforcement: deploy-time sha256 round-trip (existing) + launch-time drift check (new) + install-time preinstall guard (new). Multi-block bug fixed by iterating content[] and concatenating text fields, with backward-compat preserved by construction for the single-block case."
+    },
+    "diff_stats": {
+      "files_changed": 8,
+      "lines_added": 459,
+      "lines_removed": 30,
+      "new_symbols_introduced": [
+        "enforceAtLaunch (dist/utils/deployStampCheck.js export)",
+        "_parse_content_blocks (mcp_client.py module-level helper)",
+        "loadStamp, compareFiles, emitFailReport, sha256OfFile, listFilesRecursively (deployStampCheck.js internal helpers)"
+      ],
+      "minimum_possible_lines_estimate": 380,
+      "justification_for_overage": "Most of the volume is the new deployStampCheck.js (144 lines) per architect pseudocode + the deploy script's step f stamp writer (94 net new lines including JSON composition + git/version capture + atomic mv). Both are explicitly prescribed by the architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json file (tier_1_external reference). Reduction beyond the prescribed scope would shed required behavior. Internal helpers in deployStampCheck.js (loadStamp/compareFiles/emitFailReport/sha256OfFile/listFilesRecursively) were factored from the architect's 9-step pseudocode to keep enforceAtLaunch readable; the alternative of inlining everything would not save lines."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "AC1-AC13 all verified during dev cycle (results below). For QA re-run: (1) AC1/AC2/AC3 are pure grep counts. (2) AC4/AC5 are node --check + grep. (3) AC6 is bash -n + grep. (4) AC7 is JSON.parse + scripts.preinstall substring checks. (5) AC8 is sha256sum cross-check + freshly-deployed launch with absent '[deployStampCheck] FAIL' substring. (6) AC9 tampers /usr/lib/node_modules/rednote-mcp/dist/cli.js, asserts substring '[deployStampCheck] FAIL: drift detected' present, then re-runs deploy and re-verifies AC8. (7) AC10 runs `npm run preinstall` from /root/rednote-mcp with and without REDNOTE_DEPLOY_OK=1 (using `npm run preinstall` directly bypasses npm's lifecycle exit-code wrapping; AC stipulates substring assertion not exit code per OBJ-5). (8) AC11 compares scripts.preinstall byte-for-byte. (9) AC12 grep S1/S2/S3 + wc -l on CLAUDE.md (must be 14-16; current is 14). (10) AC13 grep -c 'content\\[0\\]' on mcp_client.py must be 0 + Python stub harness with 5 sub-tests (length-1 JSON, length-1 non-JSON, multi-block JSON concat, multi-block non-JSON concat, empty content) PLUS a backward-compat invariant sub-test. All passed during dev verification.",
+    "permissions_to_add": [],
+    "ac_verification_results": {
+      "AC1_meals_md": {"search_light_py_count": 1, "get_note_content_count": 1, "status": "PASS"},
+      "AC2_attractions_md": {"search_light_py_count": 1, "get_note_content_count": 1, "status": "PASS"},
+      "AC3_skill_md": {"search_notes_light_count": 4, "five_tools_count": 2, "old_four_tools_count": 0, "mcp_tool_id_count": 3, "status": "PASS"},
+      "AC4_deployStampCheck_js": {"node_check": "OK", "exports_enforceAtLaunch": "function", "imports": "fs, path, crypto only", "console_log_count": 0, "process_exit_78_count": 6, "cookies_json_excludes": 2, "status": "PASS"},
+      "AC5_cli_js_wiring": {"node_check": "OK", "enforceAtLaunch_line": 47, "McpServer_line": 52, "ordering": "enforceAtLaunch above McpServer", "status": "PASS"},
+      "AC6_deploy_script": {"bash_n": "OK", "SOURCE_DIR": "/root/rednote-mcp (no /dist suffix)", "TARGET_DIR": "/usr/lib/node_modules/rednote-mcp", "exclude_flag_count": 12, "step_f_label_count": 2, "deploy_stamp_count": 13, "status": "PASS"},
+      "AC7_package_json": {"json_valid": true, "scripts_keys": ["build", "start", "dev", "test", "prepublishOnly", "preinstall"], "preinstall_substrings": {"REDNOTE_DEPLOY_OK": true, "REFUSED": true, "process_exit_78": true, "deploy_to_usrlib_sh": true}, "status": "PASS"},
+      "AC8_drift_check_clean": {"deploy_exit_code": 0, "package_json_sha256_match": true, "deployStampCheck_js_sha256_match": true, "cli_js_sha256_match": true, "deploy_stamp_schema_version": 1, "stamp_excludes_self": true, "stamp_excludes_cookies": true, "freshly_deployed_launch_FAIL_substring_count": 0, "status": "PASS"},
+      "AC9_drift_check_tamper": {"tampered_launch_exit_code": 78, "drift_detected_substring_count": 1, "stderr_contains_FAIL_drift_detected": true, "restore_byte_identical_after_redeploy": true, "post_restore_AC8_re_pass": true, "status": "PASS"},
+      "AC10_preinstall_guard": {"npm_run_preinstall_no_envvar_exit_code": 78, "REFUSED_substring_count_no_envvar": 1, "npm_run_preinstall_with_envvar_exit_code": 0, "REFUSED_substring_count_with_envvar": 0, "status": "PASS"},
+      "AC11_install_side_byte_equal": {"source_preinstall_eq_install_preinstall": true, "status": "PASS"},
+      "AC12_S1_S2_S3_and_CLAUDE_md_line_count": {"S1_MIGRATION_in_deployStampCheck": 2, "S2_step_f_wrote_stamp_in_script": 1, "S3_REDNOTE_DEPLOY_OK_in_CLAUDE_md": 1, "CLAUDE_md_wc_l": 14, "wc_l_in_range_14_16": true, "status": "PASS"},
+      "AC13_mcp_client_multi_block": {"grep_c_content_zero_index": 0, "py_compile": "OK", "stub_harness_results": {"sub1_length_1_JSON": "PASS", "sub2_length_1_non_JSON": "PASS", "sub3_multi_block_JSON_concat": "PASS", "sub4_multi_block_non_JSON_concat": "PASS", "sub5_empty_content_returns_None": "PASS", "sub6_backward_compat_invariant": "PASS"}, "consumer_compile": {"search_py": "OK", "search_light_py": "OK"}, "status": "PASS"}
+    },
+    "blast_radius": [
+      {"modified": "/root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py", "imported_by": ["search.py", "search_light.py", "test_raw_search.py", "get_note_images.py", "test_get_content.py"], "note": "5 importers in same scripts/ directory; backward-compat preserved for length-1 content (the existing path); QA should smoke-test search.py and search_light.py end-to-end against the live MCP server if practical."},
+      {"modified": "/root/rednote-mcp/dist/cli.js", "imported_by": ["/usr/bin/rednote-mcp (symlink)"], "note": "Direct entry point; every MCP launch now invokes enforceAtLaunch first."},
+      {"modified": "/root/rednote-mcp/dist/utils/deployStampCheck.js", "imported_by": ["dist/cli.js"], "note": "New file; only consumer is cli.js."},
+      {"modified": "/root/rednote-mcp/package.json", "imported_by": ["npm (any install/link/ci/rebuild)"], "note": "preinstall hook intercepts every npm lifecycle that runs preinstall — REDNOTE_DEPLOY_OK=1 required for sanctioned use."},
+      {"modified": "/root/rednote-mcp/scripts/deploy-to-usrlib.sh", "imported_by": ["operators (manual invocation only)"], "note": "Sole sanctioned write path to /usr/lib/node_modules/rednote-mcp/. Now writes .deploy-stamp."},
+      {"modified": "/root/travel-planner/.claude/agents/meals.md", "imported_by": ["meals subagent (loaded by /trip orchestrator)"], "note": "Single bash-line replacement; no programmatic imports."},
+      {"modified": "/root/travel-planner/.claude/agents/attractions.md", "imported_by": ["attractions subagent"], "note": "Same as meals."},
+      {"modified": "/root/travel-planner/.claude/commands/scripts/rednote/skill.md", "imported_by": ["agents reading the skill catalog declaratively"], "note": "No programmatic imports; declarative."}
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Optional architect v2: flock around deploy-to-usrlib.sh + shared flock in deployStampCheck.js to eliminate the rare race window of concurrent deploy+launch.",
+    "Optional polish (architect arch-7): README INSTALL banner reinforcing the preinstall guard's user-facing message — would land cleanly now that the guard exists.",
+    "AC2 retroactive on closed cycle 20260505-061047 (item #10) remains defensibly deferred per BA out_of_scope_observations[0]; sealed audit artifact, sha256 invariants in that cycle's AC1+AC9 already prove byte-identity.",
+    "Auto-generated INDEX.md under .claude/commands/scripts/rednote/scripts/ will be picked up by the doc-sync hook on next sync — no manual edit required."
+  ],
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "All 13 ACs verified during dev cycle with literal commands matching the BA spec assertions. node --check passes for cli.js + deployStampCheck.js. bash -n passes for deploy script. JSON.parse passes for package.json. python3 -m py_compile passes for mcp_client.py + search.py + search_light.py. The 5+1 stub harness for AC13 passes (5 BA-prescribed sub-tests + 1 bonus backward-compat invariant). End-to-end deploy run wrote 18-file .deploy-stamp; sha256 round-trip verified byte-identity of source vs install. Drift detection verified by transient tamper-then-restore. Preinstall guard verified via `npm run preinstall` with and without REDNOTE_DEPLOY_OK=1."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "operator_followups": [
+    {
+      "type": "sentinel_cleanup",
+      "path": "/root/travel-planner/.claude/.hook-refactor-allow",
+      "reason": "Created to authorize the M3 (skill.md) + M9 (mcp_client.py) edits per the orchestrator's binding constraint that dev role allowed_write_path_prefixes=['*'] (verified by BA OBJ-1). The refactor sentinel mechanism is the documented override path published by pretool-claude-config-guard.py itself. Dev role cannot run `rm` (pretool-bash-safety.sh blocks it) so the sentinel could not be auto-cleaned. Orchestrator should remove it post-cycle."
+    }
+  ]
+}
