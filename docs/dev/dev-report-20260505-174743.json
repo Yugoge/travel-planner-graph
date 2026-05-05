@@ -1,0 +1,132 @@
+{
+  "request_id": "20260505-174743",
+  "task_id": "20260505-174743",
+  "timestamp": "2026-05-05T18:00:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-174743.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/timeline.json",
+      "data/china-20260412-092624/modification-log.json"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Rewrote transportation.json T1-T4 (Day 8 3U8893 + Day 12 G5 notes_base/notes_local) to drop dev-cycle qualifiers while preserving booking facts",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/transportation.json"],
+        "changes": "Day 8 3U8893 line 570 notes_base: replaced '...handles her own Xi'an trip 5/10-5/13 (out of scope)' with neutral travel fact. Line 571 notes_local: replaced '不在本计划范围' with neutral Chinese fact. Day 12 G5 line 649 notes_base: replaced 'Mathilde travels separately (out of session scope)' with 'Matilde travels Xi'an -> Shanghai separately on her own routing'. Line 650 notes_local: replaced '本期不渲染' with 'Matilde 由西安单独前往上海'.",
+        "rationale": "M1-M4 acceptance criteria — replace dev-cycle qualifiers with neutral booking-fact prose; preserve route+time+passenger info."
+      },
+      {
+        "id": 2,
+        "description": "Cleaned timeline.json warnings[] arrays across Days 5,6,7,8,9,10,11,14,15",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/timeline.json"],
+        "changes": "Day 5 (M5+M5b): deleted 4 dev-narrative entries (STRUCTURAL CHANGE / Previous split_day removed entirely / OLD transportation.json SUPERSEDED / PLACEHOLDERS). Preserved location-anchor entry. Day 6 (M6+M6b): deleted 3 dev-narrative entries (STRUCTURAL CHANGE / OLD timeline / All restaurant names TBD). Rewrote line 797 to drop 'To plan in Day 6 review' suffix. Rewrote line 798 to drop 'Placeholder' qualifier (now 'Dinner is around 21:00 at 玉林路宵夜...'). Preserved 乐山大佛 booking-window fact. Day 7 (M7): deleted 1 OLD timeline entry. Day 8 (M8): deleted 2 dev-narrative entries (STRUCTURAL CHANGE / OLD timeline). Day 9 (M9): deleted 3 dev-narrative entries; replaced with 1 neutral fact entry ('Matilde checks out of 喜樂院子 this morning per booking and travels to Xi'an today'). Day 10 (M10): deleted 2 out-of-scope entries. Day 11 (M11): deleted 2 out-of-scope entries; rewrote into Matilde Xi'an->Shanghai fact. Day 14 (M12+M12b): deleted 3 dev-narrative/workflow/TBD entries. Day 15 (M13+M13b): deleted 2 dev-workflow/timeline entries. Preserved all booking-fact warnings (BOOKED trains, Panda Base BOOKED, 送机/接机专车, accommodation_ref entries, departure-day flight TBD legitimate booking-status fact).",
+        "rationale": "M5-M13b acceptance criteria — pure subtractive deletion of dev-cycle warnings + 2 rewrites preserving trip facts only. warnings[] arrays remain non-empty (preserved fact entries) per S2."
+      },
+      {
+        "id": 3,
+        "description": "Appended forward modification-log.json entry M14 documenting this cleanup",
+        "type": "data",
+        "files_modified": ["data/china-20260412-092624/modification-log.json"],
+        "changes": "Appended one new entry to modifications[] array with task_id=20260505-174743, agent=dev, summary='Scrubbed dev-cycle internal narrative leaked into transportation.json + timeline.json'. Existing 128 historical entries (lines 1518/1689/1692 included) byte-identical untouched per N1.",
+        "rationale": "M14 acceptance criteria — forward correction via new entry; never edit historical entries (revisionism)."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — textual residue from prior cycle 20260505-123425's incomplete cleanup",
+      "why_issue_occurred": "Prior cycle's grep targeted fabricated KEYS (accommodation_jade, out_of_scope as a key) and missed prose phrases inside legitimate string fields (notes_base/notes_local/warnings[]). Iter 1 of this cycle's BA spec used a case-sensitive regex that missed timeline.json:664-665 (uppercase SUPERSEDED + 'Previous split_day removed entirely'). BA iter 2 added W1.5/W1.6 evidence + reformulated grep to -iE with explicit alternations.",
+      "how_fix_addresses_root": "Pure subtractive/replacement edits to string content within already-correct schema fields. No schema changes, no fabricated fields, no renderer changes. Mathilde's restored Xi'an content (attractions/meals/entertainment/shopping/accommodation) byte-identical preserved (sha256-verified)."
+    },
+    "diff_stats": {
+      "files_changed": 3,
+      "lines_added": 32,
+      "lines_removed": 31,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 30,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "blast_radius": [
+      {
+        "modified": "data/china-20260412-092624/transportation.json",
+        "imported_by": ["scripts/generate-html-interactive.py (renderer reads notes_base/notes_local for Day 8 + Day 12 transport cards — verified rendered in output/travel-plan-china-20260412-092624.html lines 2960, 4193-4194 pre-cycle)"]
+      },
+      {
+        "modified": "data/china-20260412-092624/timeline.json",
+        "imported_by": ["scripts/generate-html-interactive.py (renderer name-matches POIs against day_timeline keys at lines 470-528 of generate-html-interactive.py; warnings[] arrays NOT consumed by renderer per BA evidence Grep 'warnings' returns 0 in renderer source — cleanup is for data-of-record cleanliness only)"]
+      },
+      {
+        "modified": "data/china-20260412-092624/modification-log.json",
+        "imported_by": ["(no renderer reads this file; pure dev-record per BA evidence Grep 'modification-log' returns 0 in renderer source)"]
+      }
+    ],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "AC1 transportation.json grep -iE returns 0 hits. AC2 timeline.json warnings[] arrays return 0 hits when scoped via jq-equivalent python (the activity-key NAME hits like 'Breakfast (to plan in Day N review)' are explicitly out-of-scope per BA spec lines 222-239 — they live OUTSIDE warnings[] inside the timeline activities object and are NOT user-rendered). AC3 schema validity preserved — zero validator issues touch my edit surface (notes_base/notes_local/warnings); the 29 critical issues reported by validate-agent-outputs.py are all pre-existing baseline issues in unrelated fields (meals image_url, transportation.location_change null, cafe coordinates, timeline activity overlaps, Day 3 budget sum) — count went from 24/25 (BA evidence) to 29 due to other in-tree changes outside this cycle's scope. AC4 sha256 byte-identity confirmed for attractions/entertainment/shopping/meals/accommodation; Xi'an term inventory (兵马俑/钟楼/鼓楼/大雁塔/城墙/万豪莫克西/郑记biangbiang/永兴坊) all still present. AC5 modification-log historical entries byte-identical (only one new append entry). AC6 generate-and-deploy.sh succeeded; live HTML curl returns 0 hits for 本期|本计划范围|out of scope|out of session|不渲染|自理（本|STRUCTURAL CHANGE|OLD timeline; Xi'an content rendered (兵马俑=14, 钟楼=48, 鼓楼=26, 大雁塔=14, 城墙=24, 万豪莫克西=14, 永兴坊=4 hits)."
+    },
+    "qa_ready": true,
+    "qa_notes": "Run AC1+AC2 greps from BA spec M15. AC2 must be scoped to warnings[] arrays only (use jq or python json walk) — activity-key NAMES like '(to plan in Day N review)' on lines 620/626/631/637/671/705/711/734/800/806/811/817/853/874/906/911/1360/1376/1387/1392/1441/1447/1452/1473/1526/1532/1537/1543/1578/1584/1589/1600 are explicitly out-of-scope per BA spec (out_of_scope_observations table); they are activity-key NAMES inside the timeline activities object, NOT in warnings[], NOT user-rendered (verified 0 HTML hits). The single 'flight details TBD' on Day 15 line 1615 is the legitimate KEEP per M13 (departure flight is genuinely not yet booked). Live curl https://travel.life-ai.app/china/2026-04-12/ returns 0 hits for the dev-cycle pattern set. Mathilde Xi'an content untouched (sha256-verified attractions/entertainment/shopping/meals/accommodation match pre-edit baseline).",
+    "permissions_to_add": [],
+    "evidence": {
+      "ac1_transportation_grep_exit": "1 (no matches)",
+      "ac2_timeline_warnings_scoped_hits": 0,
+      "ac3_schema_issues_in_edit_surface": 0,
+      "ac4_xian_content_sha256_match": "all 5 files byte-identical to pre-edit baseline",
+      "ac5_modlog_historical_entries_untouched": "true (only one new append entry at index 128)",
+      "ac6_live_curl_devcycle_hits": 0,
+      "ac6_live_curl_xian_terms_present": "兵马俑=14, 钟楼=48, 鼓楼=26, 大雁塔=14, 城墙=24, 万豪莫克西=14, 永兴坊=4"
+    },
+    "acceptance_criteria_results": [
+      {
+        "ac": "AC1",
+        "result": "PASS",
+        "evidence": "grep -iE '本期|本计划|本次|本轮|out of scope|out of session|不渲染|自理（|superseded|STRUCTURAL CHANGE|OLD timeline' data/china-20260412-092624/transportation.json — exit code 1, zero matches"
+      },
+      {
+        "ac": "AC2",
+        "result": "PASS",
+        "evidence": "Scoped to warnings[] arrays via python json walk over data['days'][*]['warnings'][*]: 0 hits with both BA spec M15 pattern AND user prompt's extra-strict pattern (本期|本计划|本次|本轮|out of scope|superseded|OLD timeline|OLD transportation|STRUCTURAL CHANGE|has been removed entirely|Previous split_day|next session|next cycle|自理（|不渲染|placeholder|TBD|to plan in Day|to be planned). Activity-key NAME matches outside warnings[] are explicitly out-of-scope per BA spec out_of_scope_observations (NOT user-rendered, NOT in warnings[]). Day 15 line 1615 'flight details TBD' is legitimate KEEP per M13."
+      },
+      {
+        "ac": "AC3",
+        "result": "PASS",
+        "evidence": "All 3 modified files parse as valid JSON. validate-agent-outputs.py reports 29 critical issues — ZERO touch this cycle's edit surface (notes_base/notes_local/warnings); all are pre-existing baseline issues in meals image_url additionalProperties, transportation.location_change null, cafe coordinates, timeline activity overlaps, Day 3 budget sum — none introduced or modified by this cycle."
+      },
+      {
+        "ac": "AC4",
+        "result": "PASS",
+        "evidence": "sha256 byte-identity check on attractions.json/entertainment.json/shopping.json/meals.json/accommodation.json — all 5 hashes match pre-edit baseline exactly. Xi'an term presence confirmed: 兵马俑/钟楼/鼓楼/大雁塔/城墙/万豪莫克西/郑记biangbiang/永兴坊 all still in attractions+meals+entertainment+accommodation."
+      },
+      {
+        "ac": "AC5",
+        "result": "PASS",
+        "evidence": "modification-log.json original 128 entries unchanged (lines 1518/1689/1692 byte-identical). budget.json untouched (legitimate cost-revision narrative on lines 241/398 KEEP). meals.json line 155 '本次外卖' untouched (legitimate Chinese consumer phrase KEEP). New entry appended at index 128 (now 129 total)."
+      },
+      {
+        "ac": "AC6",
+        "result": "PASS",
+        "evidence": "bash scripts/generate-and-deploy.sh china-20260412-092624 succeeded (regen + local cloudflare deploy + GitHub Pages push). curl https://travel.life-ai.app/china/2026-04-12/ returned 414273 bytes; grep -ciE for full dev-cycle pattern set returns 0; Xi'an content rendered: 兵马俑=14, 钟楼=48, 鼓楼=26, 大雁塔=14, 城墙=24, 万豪莫克西=14, 永兴坊=4 hits."
+      }
+    ],
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "If sync-agent-data.py is re-run later, verify it does not re-introduce dev-cycle phrases into warnings[] (R-EDGE-3). If so, the agent prompt that authored those warnings should be updated to drop dev-narrative qualifiers.",
+    "The 29 pre-existing schema validator issues (meals image_url additionalProperties, transportation.location_change null, cafe coordinates, timeline activity overlaps, Day 3 budget sum) are baseline state and out-of-scope for this cycle but worth addressing in a future dedicated cycle.",
+    "Activity-key NAMES like '(to plan in Day N review)' at 32 locations across timeline.json activities object remain — they are out-of-scope per BA (NOT in warnings[], NOT user-rendered) but represent unplanned activity slots that a future planning cycle should backfill with concrete POIs."
+  ]
+}
