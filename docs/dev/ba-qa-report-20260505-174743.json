@@ -1,0 +1,171 @@
+{
+  "request_id": "20260505-174743",
+  "task_id": "20260505-174743",
+  "mode": "ba_validation",
+  "timestamp": "2026-05-05T17:47:43Z",
+  "verdict": "fail",
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "verification_method": {
+    "ba_grep_pattern_independent_run": true,
+    "pattern_used_for_verification": "本期|本计划|本次|本轮|out of scope|out of session|superseded|STRUCTURAL CHANGE|OLD timeline|next session|next cycle|不渲染|自理（",
+    "files_searched": [
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/timeline.json",
+      "data/china-20260412-092624/budget.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/modification-log.json"
+    ],
+    "ba_enumeration_count": 20,
+    "qa_independent_count_matching_ba_pattern": 30,
+    "qa_count_in_in_scope_files_only": 19,
+    "qa_count_AC2_regex_in_timeline": 15,
+    "qa_count_AC1_regex_in_transportation": 4,
+    "case_sensitivity_test": {
+      "tested_pattern_grep_case_sensitive": "superseded",
+      "tested_pattern_grep_case_insensitive": "superseded (case-insensitive)",
+      "case_sensitive_matches_in_timeline": 2,
+      "case_insensitive_matches_in_timeline": 3,
+      "delta": 1,
+      "delta_location": "data/china-20260412-092624/timeline.json:665 contains 'is SUPERSEDED' (uppercase) which AC2 case-sensitive regex does NOT match"
+    }
+  },
+  "objections": [
+    {
+      "id": "OBJ-1",
+      "dimension": "evidence_quality",
+      "severity": "major",
+      "title": "BA's enumeration missed 2 dev-narrative warnings on Day 5 (timeline.json:664 and :665)",
+      "description": "BA's spec table W1-W16 enumerates 16 timeline.json warnings. Independent inspection of Day 5 warnings[] (lines 663-667) reveals THREE dev-narrative entries, not one: (a) line 663 'STRUCTURAL CHANGE' (BA's W1, captured); (b) line 664 'Previous split_day structure (Matilde solo Chengdu / Jade Beijing class) has been removed entirely.' (BA MISSED); (c) line 665 'OLD transportation.json entry (3U8900 Beijing→Chengdu for Matilde on May 6) is SUPERSEDED — both travelers arrived Chengdu on Day 4 evening via DR5010.' (BA MISSED). Both lines 664 and 665 describe past structural-rebuild decisions, reference removed-content, and use exactly the same dev-cycle vocabulary that motivated the user's 彻底清理 directive ('removed entirely', 'OLD transportation.json entry', 'is SUPERSEDED').",
+      "evidence": [
+        "grep -niE 'superseded' data/china-20260412-092624/timeline.json returns 3 lines: 665 (uppercase SUPERSEDED), 1229, 1357. BA's case-sensitive AC2 regex catches only 1229 and 1357.",
+        "M5 in BA spec says 'Day 5 warnings[] (line 663): the single STRUCTURAL-CHANGE entry deleted. Remaining warnings (location anchor, walkability) preserved.' — but lines 664 and 665 are NOT 'location anchor / walkability' entries; they are dev-narrative."
+      ],
+      "remediation_required": "BA must (a) add lines 664 and 665 to evidence table as W1.5 and W1.6 (or renumber), (b) update M5 to explicitly delete those entries as well, (c) confirm only line 667 'Day 5: Location is Yulin West Road...' is the legitimate location-anchor entry to preserve."
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "major",
+      "title": "AC2 regex pattern `superseded` is case-sensitive and misses uppercase SUPERSEDED at timeline.json:665",
+      "description": "AC2 is stated as: `grep -E '本期|out of scope|superseded|STRUCTURAL CHANGE|OLD timeline' data/china-20260412-092624/timeline.json` returns no matches. The intent of the AC is to catch dev-cycle 'superseded' phrasing. Line 665 contains 'is SUPERSEDED' (uppercase) which BA's regex would NOT match. If dev applies M5-M13 verbatim (deleting only the lines BA explicitly enumerated), the AC2 grep will return 0 matches BUT line 665 will remain — passing the AC literal text while VIOLATING the user's 彻底清理 intent. This is exactly the spec-text-vs-execution drift pattern: AC literal text can be satisfied while user-need is not.",
+      "evidence": [
+        "grep -nE 'superseded' data/china-20260412-092624/timeline.json -> 2 matches (1229, 1357)",
+        "grep -niE 'superseded' data/china-20260412-092624/timeline.json -> 3 matches (665, 1229, 1357). The delta line 665 is true dev-narrative."
+      ],
+      "remediation_required": "Update AC2 regex to be case-insensitive: change `grep -E` to `grep -iE`, OR explicitly add `SUPERSEDED` as alternation, OR add 'OLD transportation' / 'has been removed entirely' / 'Previous split_day' alternations to the pattern. The literal AC text in the BA spec must change so the runnable command matches the AC's intent."
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "investigation_completeness",
+      "severity": "minor",
+      "title": "BA's 彻底清理 scope did not enumerate dev-workflow phrases ('placeholder', 'TBD', 'to be planned during Day N review') that ALSO appear in user-rendered timeline keys",
+      "description": "The user said '彻底清理' (thorough cleanup) of dev-cycle internal narrative. BA scoped narrowly to phrases matching the seed pattern '本期|out of scope|superseded|STRUCTURAL CHANGE|OLD timeline|...'. However, dev-workflow language ALSO leaks via: (a) timeline.json warnings entries like line 666 'All specific activities, meals, and restaurants are PLACEHOLDERS — to be planned during Day 5 review.' and line 799 'all specific restaurant names are TBD — to be planned during Day 6 review.'; (b) user-rendered timeline KEY NAMES like '(to plan in Day 7 review)', '(to plan in Day 14 review)', '(to plan in Day 15 review)' at lines 807/813/818/824/1541/1547/1552/1558/1596/1602/1607/1618. These are NOT in BA's scope but they ARE dev-workflow phrases visible to the user. BA correctly identified W4 (line 851 'to be planned in Day 7 review' inside warning) and M12 partially addresses Day 14 'to plan in review', but the broader pattern is not enumerated. The user's 彻底清理 intent could plausibly include these.",
+      "evidence": [
+        "grep -nE '(to plan|to be planned) in Day [0-9]+ review|placeholder|TBD' data/china-20260412-092624/timeline.json returns 17+ matches across lines 666, 799, 807, 813, 818, 824, 851, 1541, 1547, 1552, 1558, 1586, 1596, 1602, 1607, 1618, 1634",
+        "M12 in BA spec acknowledges 'to plan in Day 14 review' workflow phrase as dev-workflow but only addresses Day 14 (line 1586). Other days (Day 7, Day 15, plus the timeline-key occurrences) not addressed."
+      ],
+      "remediation_required": "Either (a) explicitly document the scoping boundary: 'this cycle covers only the 20 enumerated items; dev-workflow phrases like to plan in Day N review remain because they reflect legitimate plan-status of placeholder days, NOT dev-cycle terminology' — and add to Out-of-Scope Observations; OR (b) expand evidence to enumerate them and decide KEEP/DELETE per location. Option (a) is acceptable if the user's intent is narrowly the contradictory 'out of scope / 本期不渲染' narrative; option (b) is needed for true 彻底清理.",
+      "non_blocking_note": "This dimension issue is minor because the user's main complaint (codex /close audit cited specifically 'out of scope' / 'STRUCTURAL CHANGE' / 'superseded' / 'OLD timeline') is fully covered. But QA flags it for BA visibility."
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "affected_file_accuracy",
+      "severity": "info",
+      "title": "All 20 explicitly-enumerated line citations are byte-accurate",
+      "description": "Verified independently by sed -n line reads. transportation.json:570, :571, :649, :650 contain the verbatim phrases BA quoted. timeline.json:663, :794, :795, :851, :975, :981, :1108, :1110, :1111, :1228, :1229, :1356, :1357, :1585, :1586, :1635 all contain the verbatim phrases BA quoted (with one minor: line 1586 contains 'to plan in Day 14 review' rather than 'OLD timeline' — which IS what BA classified it as in W15). The user-rendered vs data-of-record differentiation is also correct: scripts/generate-html-interactive.py contains zero references to 'warnings' or 'modification-log' (verified independently); output/travel-plan-china-20260412-092624.html does contain transportation.json's 4 leaked strings verbatim at lines 2960-2961 and 4193-4194 (verified independently).",
+      "evidence": [
+        "20/20 cited locations match exact text per sed line read.",
+        "scripts/generate-html-interactive.py grep 'warnings' -> 0 results (confirmed)",
+        "scripts/generate-html-interactive.py grep 'modification.log\\|modification_log' -> 0 results (confirmed)",
+        "output/travel-plan-china-20260412-092624.html has 4 hits at expected lines: 2960, 2961, 4193, 4194 (BA cited 2960, 4193-4194 — accurate, with 2961 being the local Chinese counterpart)."
+      ],
+      "remediation_required": "None — informational pass for this dimension."
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "scope_alignment",
+      "severity": "info",
+      "title": "BA stayed scoped to dev-cycle narrative leakage; did NOT over-expand into rendering/architecture",
+      "description": "User said '彻底清理' (thorough cleanup of dev-cycle narrative). BA's scope is pure subtractive/replacement edits to string content within existing schema-declared fields in 3 data files. BA explicitly excluded: schema files, renderer code (scripts/generate-html-interactive.py), other trip plans, all other data files in the same directory. The KEEP decisions on modification-log.json (3 historical entries) and budget.json (2 'superseded' usages) and meals.json (1 '本次外卖' usage) are well-reasoned: modification-log.json is by definition the change-history of record (rewriting it is revisionism); budget.json 'superseded' usage is legitimate user-facing budget-revision narrative explaining cost change; meals.json '本次' is legitimate Chinese consumer phrase. Scope is appropriately tight for this single user-need clause R1.",
+      "evidence": [
+        "Read budget.json:241 — 'FULLY RECALCULATED 2026-04-29... Previous Day 3 ... superseded. KEY CHANGES: (1) Yungang Grottoes (120 CNY) NOW on Day 3 — correctly included...' is a budget recalculation explanation to the user, not dev-cycle terminology.",
+        "Read meals.json:155 — '本次外卖换用最近的金融街店' is a consumer phrase ('this time the takeout uses...') in normal Chinese usage, not dev-cycle.",
+        "Read modification-log.json:1518/1689/1692 — all are historical entries describing prior cycles' decisions; the file's purpose IS to log such decisions; rewriting them would be revisionism."
+      ],
+      "remediation_required": "None — informational pass for this dimension."
+    }
+  ],
+  "ac_measurability_assessment": {
+    "AC1_transportation_grep_zero": {
+      "achievable_after_M1_M4": true,
+      "current_match_count": 4,
+      "expected_after_dev": 0,
+      "files_dev_must_clean": ["data/china-20260412-092624/transportation.json"],
+      "verdict": "measurable_and_achievable"
+    },
+    "AC2_timeline_grep_zero": {
+      "achievable_after_M5_M13_only_as_specified_in_spec": true,
+      "actually_meets_user_intent": false,
+      "current_match_count": 15,
+      "expected_after_dev_strict_M5_M13": 0,
+      "uncaught_dev_narrative_remaining_after_M5_M13": [
+        "data/china-20260412-092624/timeline.json:664 ('Previous split_day structure ... has been removed entirely')",
+        "data/china-20260412-092624/timeline.json:665 ('OLD transportation.json entry ... is SUPERSEDED')"
+      ],
+      "verdict": "measurable_but_underspecified — AC2 regex literal will return 0 (PASS) even though dev-narrative remains; user's 彻底清理 intent is NOT met"
+    },
+    "AC3_AC4_AC5_AC6_AC7": {
+      "AC3_schema_validity": "achievable — pure subtractive/replacement preserves schema",
+      "AC4_xian_content_unchanged": "achievable — out-of-scope files not touched",
+      "AC5_live_website_no_leaked_phrases": "achievable on transport cards after M1-M4; AC5 narrowly scoped to Day 8 / Day 12 transport cards (correctly user-rendered surface); does not require timeline.json cleanup since warnings[] aren't rendered",
+      "AC6_no_fabricated_fields": "achievable — pure subtractive/replacement",
+      "AC7_modification_log_forward_entry": "achievable — explicit M14 requirement"
+    },
+    "modification_log_keep_consistent_with_AC1_AC2": {
+      "consistent": true,
+      "explanation": "AC1 grep is scoped to transportation.json only. AC2 grep is scoped to timeline.json only. modification-log.json historical entries on lines 1518/1689/1692 contain phrases like 'out of scope', 'next session' but are NOT in the scope of either AC's grep. Therefore KEEP decision on modification-log historical entries does not break AC1/AC2."
+    },
+    "budget_keep_consistent_with_AC1_AC2": {
+      "consistent": true,
+      "explanation": "budget.json is not in either AC's grep scope. KEEP decision on budget.json:241/398 'superseded' is consistent."
+    }
+  },
+  "summary": {
+    "verdict": "fail",
+    "fail_reasons": [
+      "OBJ-1: BA's evidence enumeration missed 2 dev-narrative warnings (timeline.json:664 and :665), violating evidence_quality dimension. BA's M5 instruction 'the single STRUCTURAL-CHANGE entry deleted' will leave dev-narrative behind on Day 5.",
+      "OBJ-2: AC2 regex 'superseded' is case-sensitive but the missed line 665 contains 'SUPERSEDED' (uppercase). The runnable AC literal text passes 0-matches even when dev-narrative remains. This is the exact spec_text_vs_execution_drift pattern. AC must be reformulated to be case-insensitive (-iE) or to add explicit alternations."
+    ],
+    "non_blocking_objections": [
+      "OBJ-3 (investigation_completeness, minor): dev-workflow phrases like 'to plan in Day N review' and 'placeholder' / 'TBD' appear elsewhere; BA may want to explicitly document the scoping boundary."
+    ],
+    "passes": [
+      "OBJ-4 (affected_file_accuracy): 20/20 line citations are byte-accurate; user-rendered vs data-of-record differentiation is correct.",
+      "OBJ-5 (scope_alignment): scope appropriately tight; KEEP decisions on modification-log/budget/meals are well-reasoned."
+    ],
+    "required_fixes_before_dev_proceeds": [
+      "Add timeline.json:664 ('Previous split_day structure ... has been removed entirely') as new evidence row W1.5; update M5 to delete it.",
+      "Add timeline.json:665 ('OLD transportation.json entry ... is SUPERSEDED') as new evidence row W1.6; update M5 to delete it.",
+      "Update AC2 regex literal text from 'grep -E' to 'grep -iE' (case-insensitive) OR add 'SUPERSEDED|OLD transportation|has been removed entirely|Previous split_day' as explicit alternations. Pick whichever the user/BA prefers; both achieve the user-need-centered AC.",
+      "Optionally: document Day 5 line 664/665 as part of 'Day 5 warnings[] cleanup' in M5 such that after dev's edits, Day 5 warnings[] retains only the legitimate location/walking-distance entry on line 667."
+    ],
+    "what_pm_could_close_at_after_fixes": "After OBJ-1 and OBJ-2 fixes, BA spec aligns with user's 彻底清理 intent and AC2 literal-text passes correlate with user-need actually met. OBJ-3 is non-blocking and can be deferred to a follow-up cleanup cycle if user wishes. Scope/file-accuracy are already good."
+  },
+  "ba_mode_validation_metadata": {
+    "five_dimensions_assessed": [
+      "evidence_quality",
+      "scope_alignment",
+      "investigation_completeness",
+      "affected_file_accuracy",
+      "spec_text_vs_execution_drift"
+    ],
+    "dispatch_prompt_listed_dimensions": 5,
+    "qa_round": 1,
+    "single_round": true
+  }
+}

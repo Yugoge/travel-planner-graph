@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T17:54:32Z*
-**Total entries**: 169
+*Last updated: 2026-05-05T18:02:24Z*
+**Total entries**: 174
 **Convention**: kebab
 
 ## Tree
@@ -29,6 +29,8 @@ dev/
 ├── `ba-qa-report-20260505-061047.json` - json config
 ├── `ba-qa-report-20260505-123425.json` - json config
 ├── `ba-qa-report-20260505-124619.json` - json config
+├── `ba-qa-report-20260505-174743.json` - json config
+├── `ba-qa-report-20260505-175102.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -95,6 +97,8 @@ dev/
 ├── `context-20260505-061047.json` - json config
 ├── `context-20260505-123425.json` - json config
 ├── `context-20260505-124619.json` - json config
+├── `context-20260505-174743.json` - json config
+├── `context-20260505-175102.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `dev-report-20260320-213000.json` - json config
 ├── `dev-report-20260321-001000.json` - json config
@@ -175,7 +179,8 @@ dev/
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
 ├── `ticket-20260505-124619.md` - BA Specification: Complete search_notes_light deployment for production use (practical-value + defense-in-depth + known-bug bundle)
-└── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
+├── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
+└── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
 ```
 
 ---

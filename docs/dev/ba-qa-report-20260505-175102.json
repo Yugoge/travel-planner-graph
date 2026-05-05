@@ -1,0 +1,58 @@
+{
+  "request_id": "20260505-175102",
+  "task_id": "20260505-175102",
+  "agent": "qa",
+  "mode": "ba_validation",
+  "timestamp": "2026-05-05T18:01:00Z",
+  "verdict": "pass",
+  "user_verbatim_complaint": "立即修复",
+  "verified_against_complaint": true,
+  "complaint_resolution_evidence": "BA scope = forward-fix the two QA-validated codex objections from prior cycle 20260505-124619 close report (defect 1: install pollution from M6 widening; defect 2: mcp_client.py:184 non-text fallback narrowing). User's '立即修复' directive points exactly at the close report's two named defects per orchestrator brief. BA scope matches 1:1 with the user-need.",
+  "summary": "BA spec 20260505-175102 is a high-quality forward-fix specification. All 5 BA-validation dimensions pass. BA correctly cites mcp_client.py:184 (verified by Read), correctly enumerates the 5 missing exclude tokens (matches close report Round 3 reasons line 172 verbatim), correctly identifies install pollution at /usr/lib (verified by direct ls), correctly verifies all 3 affected files exist with the cited content, and provides mechanically runnable verification commands for every AC. Notably, BA caught a structural extension beyond codex's challenge: the rsync excludes alone are insufficient — the find-clauses at lines 62-73 (step b) and 100-111 (step d) ALSO need the new exclusions, otherwise the sha256 round-trip diff at step e (line 115, exit 3) would fail post-deploy. This is correct and load-bearing. AC5 (harness extension) is mechanically described with exact Python stub pattern, exact assertion, sub-test ordering preservation requirement, and a counter-test invariant clause. No objections raised. Recommend dev proceed.",
+  "objections": [],
+  "dimension_evaluations": {
+    "evidence_quality": {
+      "verdict": "pass",
+      "details": "Every factual claim verified independently this iteration: (a) mcp_client.py:184 reads `return non_text[0] if non_text else None` — confirmed by Read of lines 175-184; (b) deploy-to-usrlib.sh has 10 existing --exclude flags at lines 82-93 — confirmed by `grep -c '^    --exclude'` returning 10; (c) the 5 missing exclude tokens (.claude, .codex, INDEX.md, package-lock.json, stderr_preinstall_*.txt) match close-report-20260505-124619.md Round 3 reasons line 172 verbatim and codex Round 2 challenge #1; (d) install path /usr/lib/node_modules/rednote-mcp/ contains all 4 polluting paths (.claude/dev-registry, .codex, INDEX.md, package-lock.json) — confirmed by `ls`; (e) source-side /root/rednote-mcp/ contains all 5 polluting paths plus stderr_preinstall_no.txt and stderr_preinstall_yes.txt — confirmed by `ls -la`; (f) prior spec line 146 contract clause 'fall back to returning the original list of non-text blocks' — confirmed by Read of ticket-20260505-124619.md:146; (g) prior AC13 harness at lines 374-405 covers sub-tests 1-5 only — confirmed by Read.",
+      "verified_evidence": [
+        "Read /root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py:175-184",
+        "Read /root/rednote-mcp/scripts/deploy-to-usrlib.sh (full file, 197 lines)",
+        "grep -c '^    --exclude' /root/rednote-mcp/scripts/deploy-to-usrlib.sh -> 10",
+        "ls /usr/lib/node_modules/rednote-mcp/.claude /usr/lib/node_modules/rednote-mcp/.codex /usr/lib/node_modules/rednote-mcp/INDEX.md /usr/lib/node_modules/rednote-mcp/package-lock.json -> all exist",
+        "ls -la /root/rednote-mcp/ -> .claude/, .codex, INDEX.md, package-lock.json, stderr_preinstall_no.txt, stderr_preinstall_yes.txt all present",
+        "Read /root/travel-planner/docs/dev/close-report-20260505-124619.md (full file, 213 lines) -> Round 3 reasons line 172 enumerates the 5 tokens",
+        "Read /root/travel-planner/docs/dev/ticket-20260505-124619.md:140-159 (M9 contract) and lines 365-405 (AC13 harness)"
+      ]
+    },
+    "scope_alignment": {
+      "verdict": "pass",
+      "details": "User's '立即修复' is the single-directive verbatim text. Per orchestrator brief, 'this cycle's job is to fix exactly those 2' close-report defects. BA scope: defect 1 (deploy script + cleanup + redeploy) + defect 2 (mcp_client.py + AC13 harness extension). Nothing missing, nothing over-expanded. BA correctly excludes (a) re-implementing search_notes_light, (b) git commits in either repo, (c) refactoring exclusion model into a config file, (d) source-side cleanup of /root/rednote-mcp/ stderr_preinstall_*.txt files. The AC13 sub-test 6 extension is correctly classified as IN scope — the close report itself prescribes 'Add a sub-test 7 to the AC13 harness covering the all-non-text multi-block case' (close-report line 173); without it, the same coverage-gap pattern that allowed the bug to land would re-occur. BA's renumber to sub-test 6 (instead of close report's '7') is a numbering correction, not a scope deviation: the prior AC13 harness has only 5 sub-tests so the new one is sub-test 6, and BA correctly preserves sub-tests 1-5 verbatim per AC5 clause."
+    },
+    "investigation_completeness": {
+      "verdict": "pass",
+      "details": "BA did not just trust the close report. BA's 'evidence' section explicitly states 'verified by `grep -n exclude /root/rednote-mcp/scripts/deploy-to-usrlib.sh` and `ls /usr/lib/node_modules/rednote-mcp/` this iteration' for defect 1, and 'verified by Read this iteration' for defect 2. BA's `root_cause_analysis.observations` array enumerates 6 distinct verification observations, each tagged 'observed: ... this iteration' with a specific tool (grep / ls / Read) and a specific file:line. BA's `localization_evidence` field reaffirms 'Direct re-verification this iteration: grep + ls + Read confirmed each cited fact still holds'. I independently re-ran each verification (grep -c on the exclude flag pattern returned 10; ls of the 4 install-path polluting paths showed all 4 present; Read of mcp_client.py:184 showed the [0] narrowing intact). All BA claims hold."
+    },
+    "affected_file_accuracy": {
+      "verdict": "pass",
+      "details": "All 3 listed files exist with the cited content: (a) /root/rednote-mcp/scripts/deploy-to-usrlib.sh — exists, 197 lines, contains the rsync block at 82-93 and find expressions at 62-73 and 100-111 exactly as BA describes; (b) /root/travel-planner/.claude/commands/scripts/rednote/scripts/mcp_client.py — exists, line 184 reads `return non_text[0] if non_text else None` exactly as BA quotes; (c) /usr/lib/node_modules/rednote-mcp/ — exists, contains the 4 polluting paths BA targets for cleanup. The import chain BA describes (step b find -> step c rsync -> step d find -> step e diff) is structurally correct: step e's `diff -u` between SOURCE_SHASUM_FILE and TARGET_SHASUM_FILE will fail with exit 3 if the two find expressions don't share the same exclusion clauses, which is why BA's M2 mandates symmetric updates in both step b and step d. This 'find-clause symmetry' is a structural correctness requirement that codex's challenge did not surface — BA's deeper investigation caught it.",
+      "file_existence_verified": true,
+      "imports_chain_traced": true
+    },
+    "spec_text_vs_execution_drift": {
+      "verdict": "pass",
+      "details": "Every AC has a runnable, mechanical verification command: AC1 (grep -c on exclude pattern -> 15), AC2 (5 grep -cE patterns each -> >=2), AC3 (ls -> non-zero exit on each of 4 paths + deploy script exit 0), AC4 (grep -c on `return non_text[0]` -> 0 + py_compile -> exit 0), AC5 (extended harness | grep -cF AC13_HARNESS_PASS -> 1, harness exit 0, sub-tests 1-5 preserved verbatim, sub-test 6 follows the exact Python pattern provided), AC6 (action log attests to reconciliation order; all of AC1-AC5 hold simultaneously). The AC5 sub-test 6 is NOT hand-wavy: BA provides the exact Python stub (`client._send_request = lambda method, params=None: {\"result\": {\"content\": [{\"type\": \"image\", \"data\": \"img1\"}, {\"type\": \"image\", \"data\": \"img2\"}]}}`), the exact assertion (`assert r6 == [{\"type\": \"image\", \"data\": \"img1\"}, {\"type\": \"image\", \"data\": \"img2\"}]`), and the exact placement (between sub-test 5 and the print line). The AC5 counter-test clause ('if dev REVERTS the M4 fix... sub-test 6 MUST raise AssertionError') is correctly framed as a logical invariant for inspection rather than a runtime gate (running the counter-test would require dev to actively revert M4 then revert the revert, which is wasteful). One minor observation: AC4 says 'implementation may yield 1+/1- or equivalent minimal diff'; this is acceptably mechanical because the load-bearing claim is `git diff --stat` showing only mcp_client.py changed with a minimal hunk, which can be checked deterministically. No drift between AC literal text and what's actually runnable."
+    }
+  },
+  "registration": {
+    "qa_json_path": "/root/travel-planner/.claude/dev-registry/dev-20260505-175102/qa.json",
+    "directory_existed_pre_invocation": false,
+    "directory_created_by_qa": true,
+    "note": "The dev-registry directory for this task did not exist when QA was invoked. QA created /root/travel-planner/.claude/dev-registry/dev-20260505-175102/ and wrote qa.json. Orchestrator may want to verify whether the dispatch sequence should have created this directory before invoking QA."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
