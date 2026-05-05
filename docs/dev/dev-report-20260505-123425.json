@@ -1,12 +1,15 @@
 {
   "request_id": "20260505-123425",
   "task_id": "20260505-123425",
-  "timestamp": "2026-05-05T16:30:00Z",
-  "iteration": 2,
+  "timestamp": "2026-05-05T17:15:00Z",
+  "iteration": 3,
   "dev_report_path": "docs/dev/dev-report-20260505-123425.json",
   "dev": {
     "status": "completed",
     "files_modified": [
+      "data/china-20260412-092624/accommodation.json"
+    ],
+    "iter2_files_modified_history": [
       "data/china-20260412-092624/timeline.json",
       "data/china-20260412-092624/modification-log.json"
     ],
@@ -37,6 +40,37 @@
       "data/china-20260412-092624/transportation.json.bak"
     ],
     "tasks_completed": [
+      {
+        "id": "iter3-1",
+        "description": "Iteration 3: Replaced Day 13 (May 14) accommodation block in accommodation.json from 上海黑石M+酒店 to 五道口自如寓 — resolves QA iter2 critical finding that Day 13 final timeline entry rendered as 'Check-in: 上海黑石M+酒店' at 22:15-22:45 despite travelers arriving 北京南 at 21:32 via G26.",
+        "type": "data_fix",
+        "files_modified": ["data/china-20260412-092624/accommodation.json"],
+        "operations": [
+          "Day 13 accommodation.name_local: 上海黑石M+酒店 → 五道口自如寓",
+          "Day 13 accommodation.name_base: 'Heishi M+ Hotel Shanghai - Blackstone Apartment (上海黑石M+酒店)' → 'Jade\\'s Home - Wudaokou Ziroom Apartment (五道口自如寓)'",
+          "Day 13 accommodation.location_local: 上海市徐汇区复兴中路1331号（法租界） → 北京市海淀区展春园18号楼207",
+          "Day 13 accommodation.location_base: '1331 Fuxing Middle Road...' → 'Building 18, Unit 207, Zhanchun Garden (展春园), Haidian District, Beijing'",
+          "Day 13 accommodation.coordinates: lat=31.210901,lng=121.452916 → lat=39.9926,lng=116.3444",
+          "Day 13 accommodation.type_base/type_local: 'Boutique Design Hotel'/'精品设计酒店' → 'Home / Private Apartment'/'私人公寓/家庭住所'",
+          "Day 13 accommodation.cost: 386 → 0 (Jade home — free)",
+          "Day 13 accommodation.stars: 4.5 → null",
+          "Day 13 accommodation.check_in / check_out: '15:00'/'12:00' → 'flexible'/'flexible'",
+          "Day 13 accommodation.is_home: true (added — matches Day 14 schema-clean Jade-home pattern)",
+          "Day 13 accommodation.amenities_base/local: rewritten to Wudaokou home amenities (kitchen, washer, Line 13 metro)",
+          "Day 13 accommodation.notes_base: rewritten to 'Arrive Beijing late evening via G26 from Shanghai (21:32 北京南). Metro/taxi to Wudaokou — settle in at Jade\\'s apartment for the night. Free accommodation; flexible arrival.'",
+          "Day 13 accommodation.notes_local: rewritten to '晚间乘G26从上海返京（21:32到达北京南站），地铁/打车前往五道口Jade家中入住。免费住宿，到达时间灵活。'",
+          "Day 13 accommodation.search_results: gaode-maps poi_search 展春园 (mirrors Day 14)",
+          "Day 13 accommodation.image_url: updated to Wudaokou autonavi photo URL (matches Day 14)"
+        ],
+        "rationale": "Iter2 timeline.json edit was correct (Day 13 timeline final entry already said 'Arrive 五道口自如寓 (Beijing accommodation)' at 22:15-22:30) but the deployed kanban renderer reads accommodation.json's day-level accommodation block to emit the synthesized 'Check-in: <hotel>' card entry. accommodation.json Day 13 was still pointing at 上海黑石M+酒店 — that mismatch caused the QA-observed structural impossibility. Surgical Python heredoc replacement of just the Day 13 accommodation object (no schema changes, no new fields, no narrative changes elsewhere). Optional morning checkout entry NOT added — Day 13 timeline.json already has 'Check out 上海黑石M+酒店 + travel to 上海虹桥站' at 14:00-15:30 which adequately represents the Shanghai checkout for the renderer. Smallest possible diff to fix the user-visible bug."
+      },
+      {
+        "id": "iter3-2",
+        "description": "Iteration 3: Re-deployed via scripts/generate-and-deploy.sh china-20260412-092624; verified live URL",
+        "type": "validation_deploy",
+        "verification": "deploy reports 'Live NOW: https://travel.life-ai.app/china/2026-04-12/' (414326 bytes); curl + grep on deployed HTML: 黑石M=4 (down from 6 — the 2 Day 13 accommodation card refs are gone); 五道口=55 (up); 珍宝=0; embedded HTML Day 13 accommodation.name_local=五道口自如寓; coordinates=39.9926/116.3444 confirmed; Day 14 unchanged at 五道口自如寓",
+        "rationale": "User-mandated re-deploy + verification command per iter3 instruction."
+      },
       {
         "id": "iter2-1",
         "description": "Iteration 2: Scrubbed all 11 references to dropped 珍宝酒店 from timeline.json Days 12-13",
@@ -209,12 +243,18 @@
       "how_fix_addresses_root": "SUBTRACTIVE restore — strip every fabricated key, restore Mathilde Days 9-11 from baseline, re-apply user bookings via existing passengers[] array convention. Defers per-traveler schema design to next session per user 升级harness directive."
     },
     "diff_stats": {
-      "files_changed": 2,
-      "lines_added": 24,
-      "lines_removed": 19,
+      "files_changed": 1,
+      "lines_added": 52,
+      "lines_removed": 58,
       "new_symbols_introduced": [],
-      "minimum_possible_lines_estimate": 22,
-      "justification_for_overage": "Iter2 diff: 11 string replacements in timeline.json (each requires both old + new line in unified diff = ~22 lines minimum) + 5 narrative warning rewrites + 1 modification-log entry. No new fields, no new functions, no new schema constructs. Edits only rebind labels to the actual hotel (上海黑石M+酒店). Cannot be smaller without leaving 珍宝 references intact.",
+      "minimum_possible_lines_estimate": 50,
+      "justification_for_overage": "Iter3 diff: replaced one accommodation object (Day 13) — every leaf field (name_base/local, location_base/local, coordinates, cost, currency, type_base/local, amenities_base/local arrays, stars, check_in/out, optional, is_home, search_results, notes_base/local, image_url) needed to be rebound from the Shanghai 黑石M+ values to Wudaokou 五道口自如寓 values. Net 6 lines fewer because the Wudaokou home object is structurally simpler (no stars, simpler amenities, no 'Heritage building'/'metro near 法租界' rich amenities). 0 new schema fields, 0 new functions, 0 narrative bolt-ons. The is_home:true field is already used on Days 14/15 — not a new symbol. Cannot be smaller without leaving the wrong hotel name/coords/notes embedded in the deployed HTML's Day 13 accommodation card.",
+      "iter2_diff_stats_history": {
+        "files_changed": 2,
+        "lines_added": 24,
+        "lines_removed": 19,
+        "minimum_possible_lines_estimate": 22
+      },
       "iter1_diff_stats_history": {
         "files_changed": 18,
         "lines_added": 1529,
@@ -226,15 +266,27 @@
     "fix_layer_match_with_ba": "BA diagnosed L3 (data revert) + L1/L2 (renderer code deletion) + L5 (workspace .bak cleanup); dev fix matches diagnosis exactly.",
     "scope_review_requested": false,
     "qa_ready": true,
-    "qa_notes": "ITER2 verification commands: (1) grep -c 珍宝 /root/travel-planner/data/china-20260412-092624/timeline.json = 0 (was 11). (2) curl -s https://travel.life-ai.app/china/2026-04-12/ | grep -c 珍宝 = 0; | grep -c 黑石M = 6; | grep -c 五道口自如寓 = 9. (3) Day 12 timeline now reads Mathilde-coherent: G5 → Taxi to 上海黑石M+酒店 → Lunch near 法租界 → Check-in 上海黑石M+酒店 → afternoon 田子坊/法租界 → dinner 法租界/淮海路 → return to 上海黑石M+酒店. (4) Day 13 reads: Breakfast Shanghai → morning Shanghai → Lunch Shanghai → Check out 上海黑石M+酒店 → 上海虹桥站 → G26 17:00-21:32 → 北京南 → 五道口自如寓. (5) AC#3 G5 passenger attribution decision documented in implementation_notes — passengers=['LEGROSZIEGLER/JADE'] retained in transportation.json, timeline narrative drops JADE-only prefixes since both reunite in Shanghai per accommodation.json. (6) sync-report.json shows 24 schema violations all pre-existing (1 less than iter1; net improvement, no new violations). ITER1 verification (preserved): Days 9-11 Xi'an content visible, Day 4 Datong, all 14 user bookings present with route numbers + booked status.",
+    "qa_notes": "ITER3 verification commands: (1) python3 -c 'import json; d=json.load(open(\"data/china-20260412-092624/accommodation.json\")); days=d[\"data\"][\"days\"]; print([x[\"accommodation\"][\"name_local\"] for x in days if x[\"day\"] in (12,13,14)])' returns ['上海黑石M+酒店','五道口自如寓','五道口自如寓']. (2) curl -s https://travel.life-ai.app/china/2026-04-12/ | grep -c '黑石M' = 4 (down from 6; the 2 removed are Day 13 accommodation card name_base + name_local — Day 12 accommodation card and Day 13 morning Shanghai→Hongqiao taxi narration retain the 4 legitimate references). (3) curl ... | grep -c '珍宝' = 0 (regression check). (4) Embedded HTML: Day 13 (\"day\":13, \"date\":\"2026-05-14\") accommodation.name_local=五道口自如寓, accommodation.coordinates.lat=39.9926, accommodation.coordinates.lng=116.3444. (5) timeline.json Day 13 final timeline entry unchanged (already correct from iter2): 22:15-22:30 'Arrive 五道口自如寓 (Beijing accommodation)' with accommodation_ref:true. (6) Live mobile (393x852) browser verification REQUIRED — last entry of Day 13 (May 14) timeline / kanban accommodation card MUST display 五道口自如寓 (Jade's home) and NOT 上海黑石M+酒店. ITER2 verification commands (still valid): (1) grep -c 珍宝 /root/travel-planner/data/china-20260412-092624/timeline.json = 0 (was 11). (2) curl -s https://travel.life-ai.app/china/2026-04-12/ | grep -c 珍宝 = 0; | grep -c 黑石M = 6; | grep -c 五道口自如寓 = 9. (3) Day 12 timeline now reads Mathilde-coherent: G5 → Taxi to 上海黑石M+酒店 → Lunch near 法租界 → Check-in 上海黑石M+酒店 → afternoon 田子坊/法租界 → dinner 法租界/淮海路 → return to 上海黑石M+酒店. (4) Day 13 reads: Breakfast Shanghai → morning Shanghai → Lunch Shanghai → Check out 上海黑石M+酒店 → 上海虹桥站 → G26 17:00-21:32 → 北京南 → 五道口自如寓. (5) AC#3 G5 passenger attribution decision documented in implementation_notes — passengers=['LEGROSZIEGLER/JADE'] retained in transportation.json, timeline narrative drops JADE-only prefixes since both reunite in Shanghai per accommodation.json. (6) sync-report.json shows 24 schema violations all pre-existing (1 less than iter1; net improvement, no new violations). ITER1 verification (preserved): Days 9-11 Xi'an content visible, Day 4 Datong, all 14 user bookings present with route numbers + booked status.",
     "permissions_to_add": [],
     "blast_radius": [
-      {"modified": "scripts/generate-html-interactive.py", "imported_by": ["scripts/generate-and-deploy.sh", "scripts/sync-agent-data.py (indirect via deploy)"]}
+      {"modified": "data/china-20260412-092624/accommodation.json", "imported_by": ["scripts/sync-agent-data.py", "scripts/generate-html-interactive.py (via PLAN_DATA inline JSON)", "scripts/generate-and-deploy.sh (via generate-html.sh)"]}
     ],
     "self_verification": {
       "build": "pass",
       "smoke_check": "pass",
       "details": {
+        "iter3_json_valid": "accommodation.json parses cleanly via python json.load — VERIFIED",
+        "iter3_day13_name_local": "data/china-20260412-092624/accommodation.json Day 13 accommodation.name_local = 五道口自如寓 — VERIFIED",
+        "iter3_day14_unchanged": "Day 14 accommodation.name_local = 五道口自如寓 (no regression) — VERIFIED",
+        "iter3_day12_unchanged": "Day 12 accommodation.name_local = 上海黑石M+酒店 (legitimate Shanghai night) — VERIFIED",
+        "iter3_acc_json_heishi_count": "grep -c '上海黑石M+酒店' accommodation.json = 3 (down from 5; only Day 12 references remain — name_base, name_local, search_results display_text)",
+        "iter3_timeline_json_unchanged": "timeline.json was NOT modified iter3 — Day 13 final entry already correct from iter2: 'Arrive 五道口自如寓 (Beijing accommodation)' 22:15-22:30 with accommodation_ref:true",
+        "iter3_deploy_log": "scripts/generate-and-deploy.sh china-20260412-092624 reports 'Live NOW: https://travel.life-ai.app/china/2026-04-12/' — 414326 bytes (down from 414888 iter2; size reduction expected because Wudaokou home accommodation object is structurally simpler than 黑石M+ hotel object)",
+        "iter3_live_curl_heishi_count": "curl -s https://travel.life-ai.app/china/2026-04-12/ | grep -c 黑石M = 4 (down from 6 iter2; expected delta = -2 from removing Day 13 accommodation card name_base + name_local)",
+        "iter3_live_curl_zhenbao_count": "curl ... | grep -c 珍宝 = 0 (regression check)",
+        "iter3_live_curl_wudaokou_count": "curl ... | grep -c 五道口 = 55 (up from prior; expected delta from new Day 13 accommodation card occurrences)",
+        "iter3_live_html_day13_extracted": "Embedded JSON in deployed index.html: Day 13 (date 2026-05-14) accommodation.name_local=五道口自如寓, location_local=北京市海淀区展春园18号楼207, coordinates {lat:39.9926, lng:116.3444}, type_local=私人公寓/家庭住所, cost=0",
+        "iter3_validate_timeline_data_no_new_conflicts": "scripts/validate-timeline-data.py reports 3 hard time conflicts on Days 3 and 6 — all PRE-EXISTING (悬空寺/古城墙 overlap, 帅府街兔头/古城墙 overlap, G5415/乐山大佛 overlap); zero conflicts on Day 13 (the day modified iter3)",
         "iter2_ac1_grep_zhenbao_timeline": "grep -c 珍宝 timeline.json = 0 (was 11) — VERIFIED",
         "iter2_ac1_grep_zhenbao_other_data_files": "Only modification-log.json contains 珍宝 (narrative history of dropped hotel — orchestrator scope was timeline.json specifically; modification-log narrative is legitimate documentation of what was removed)",
         "iter2_json_valid": "timeline.json + modification-log.json both parse via python json.load",
@@ -256,6 +308,11 @@
     }
   },
   "implementation_notes": [
+    "ITER3 single-fix scope: orchestrator iter3 dispatch identified ONE remaining structural bug (Day 13 final accommodation entry pointing to Shanghai hotel despite G26 21:32 Beijing arrival). Iter2 dev report already flagged this exact issue in 'recommendations[0]' — iter3 executes that recommendation surgically.",
+    "ITER3 fix path resolution: the rendered 'Check-in: 上海黑石M+酒店' at 22:15-22:45 on May 14 in the QA browser screenshot was synthesized by the renderer from accommodation.json Day 13's accommodation object (name_local + check_in time). timeline.json Day 13 already had 'Arrive 五道口自如寓 (Beijing accommodation)' at 22:15-22:30 with accommodation_ref:true — but accommodation_ref points back to accommodation.json, which still said 上海黑石M+酒店. Fixing accommodation.json Day 13 propagates correctly to the kanban accommodation card AND through the renderer's accommodation_ref resolution.",
+    "ITER3 minimum-diff: only one accommodation object in one day in one file modified. Coordinates set to Wudaokou (39.9926, 116.3444) as instructed. is_home:true added (consistent with Day 14/15 which also use this Jade-home pattern). No new fields invented; no schema changes; no narrative bolt-ons elsewhere.",
+    "ITER3 optional morning checkout NOT added: orchestrator instruction said 'Optionally add a morning checkout: Checkout: 上海黑石M+酒店 ~09:00-09:30 in Day 13'. Day 13 timeline.json already has 'Check out 上海黑石M+酒店 + travel to 上海虹桥站' at 14:00-15:30 covering the full Shanghai-checkout-to-Hongqiao window. Adding a separate 09:00-09:30 'Checkout' entry would create a redundant timeline event (luggage stays at 黑石M+ until ~14:00 per existing warning text 'leave luggage at front desk until taxi to 虹桥 at ~14:00'). Skipped per minimum-diff principle. If QA insists on the explicit morning checkout entry, iter4 can add it as a 1-key insertion.",
+    "ITER3 codex_consult NOT invoked: iter3 dispatch did not include codex_required:true; per dev contract codex consultation is opt-in only when --codex flag set. Self-review substituted: (a) over-engineering check — fix is 1 file, 1 day, no new fields ✓; (b) regression check — Day 12 黑石M+ preserved (legitimate Shanghai night), Day 14 五道口自如寓 unchanged ✓; (c) acceptance — deployed HTML Day 13 accommodation now reads 五道口自如寓 with Wudaokou coords ✓; (d) scope drift — no edits to renderer, schemas, or other days ✓; (e) contract violations — no destructive git verbs, no schema field invention, no band-aid (positive replacement of wrong data with correct data, not a check-weakening) ✓.",
     "ITER2 AC#3 decision: G5 train passengers=['LEGROSZIEGLER/JADE'] in transportation.json was NOT changed. Reasoning: (a) baseline truth — Jade has the actual ticket booking with that passenger name; changing passengers field would falsify the booking record. (b) Orchestrator preferred form 'most defensible: keep G5 entry... show with proper attribution' is exactly what transportation.json already has. (c) timeline.json narrative was the actual problem — JADE: prefixed activities + 'G5 (BOOKED, Jade only)' + 'Jade is solo on G5 train' — these were rewritten to remove the Jade-only narrative since accommodation.json explicitly says 'Both travelers reunite in Shanghai' on Day 12. The G5 booking truth (passenger=Jade) lives in transportation.json; the timeline reads as the shared day. Satisfies orchestrator option (b) variant.",
     "ITER2 surfaced Day 13 baseline inconsistency (already known from iter1 deferred_followups but worth restating): accommodation.json Day 13 = 上海黑石M+ (Shanghai) but timeline.json Day 13 (after iter2 fix) reads checkout 上海黑石M+ → G26 → arrive 五道口自如寓 (Beijing). So Day 13 SLEEP location is implicitly Beijing per timeline narrative but accommodation.json Day 13 entry still says Shanghai. Out of iter2 scope (orchestrator did not include this in AC); flagged for next-session resolution.",
     "ITER2 sync-report.json schema violations DROPPED from 25 to 24 — net improvement. The dropped violation was the timeline.json travel_segment that had 珍宝酒店 in name_local (which got rewritten to 上海黑石M+酒店). All 24 remaining are pre-existing baseline issues out of scope for this cycle.",
@@ -268,7 +325,7 @@
   ],
   "blocking_issues": [],
   "recommendations": [
-    "ITER2 priority: Resolve Day 13 sleep location ambiguity — accommodation.json Day 13 currently says 上海黑石M+ (Shanghai) but timeline now correctly reads transit to 五道口自如寓 (Beijing). Either fix accommodation.json Day 13 to 五道口自如寓 OR add a note explaining Day 13 is shared-luggage-at-黑石M+ → travel → arrive Beijing.",
+    "ITER3 RESOLVED: Day 13 sleep-location ambiguity fixed — accommodation.json Day 13 now points to 五道口自如寓 (Beijing) consistent with G26 21:32 北京南 arrival. (Was iter2's top open recommendation.)",
     "ITER2 next session: 24 pre-existing schema violations cleanup (meals image_url misplacement, transportation location_change:null, cafe coords) — separate ticket per BA out_of_scope_observations.",
     "Next session: extend schema with formal per-traveler dimension (accommodation_jade, passengers_jade, split_day) so Jade-side rendering can return without ad-hoc fabrication.",
     "Next session: tighten schemas/transportation.schema.json + accommodation.schema.json day_entry.additionalProperties from true to false with explicit allowlists — this rot-enabler permitted the original pollution.",
