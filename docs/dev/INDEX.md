@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T10:02:18Z*
-**Total entries**: 139
+*Last updated: 2026-05-05T10:18:43Z*
+**Total entries**: 140
 **Convention**: kebab
 
 ## Tree
@@ -49,6 +49,7 @@ dev/
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
 ├── `cleanliness-inspector-report-20260505-061047.json` - json config
+├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
