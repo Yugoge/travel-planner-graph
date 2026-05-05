@@ -8,84 +8,215 @@
   "prior_iteration_objections_count": 7,
   "objections_addressed_count": 7,
   "objections_remaining": [],
-  "_ITERATION_2_REPORT_BEGINS_BELOW": true,
-  "_iter1_verdict_was": "fail",
-  "objections": [
+  "per_objection_verification": [
     {
+      "objection_id": "iter1-obj1",
       "dimension": "affected_file_accuracy",
-      "claim": "BA Evidence E5 claims `timeline.json` Days 1-4 travel_segments contain 'origin/destination/route_details/optional' — STRICT VIOLATION (10+ instances)' and root_cause_analysis observation #3 says '11 instances on Days 1-4'.",
-      "problem": "Actual count via deep walk of /root/travel-planner/data/china-20260412-092624/timeline.json is 33 forbidden-key instances (Day 1: 3, Day 2: 6, Day 3: 17, Day 4: 7). BA undercounted by 3x. M6 in MoSCoW says '10+ instances across Days 1-4' — dev will plausibly stop scanning after finding 11 and ship a partial cleanup. AC2's grep would still catch leftovers, but the spec-stated count is materially wrong and misleads dev's effort estimation.",
-      "required_evidence": "Update Evidence E5 to '33 instances across Days 1-4' (Day 1=3, Day 2=6, Day 3=17, Day 4=7). Update root_cause_analysis observation. Update M6 to require ALL travel_segments cleaned, not 'the 11+ found on Days 1-4'."
+      "topic": "timeline.json travel_segment violations: BA undercounted at 11; actual 33",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 73 (Evidence E5): '**33 instances total** (Day 1: 3, Day 2: 6, Day 3: 17, Day 4: 7) verified by deep walk'",
+        "Ticket line 182 (M6): '**Verified count: 33 forbidden-key instances** (Day 1: 3, Day 2: 6, Day 3: 17, Day 4: 7). Dev must scan ALL 15 days (not stop at 33 — sync regeneration may add more).'",
+        "Context JSON line 28 (scope.included): 'Strip travel_segment extras (origin, destination, route_details, optional) from timeline.json — 33 instances verified (Day 1=3, Day 2=6, Day 3=17, Day 4=7); dev must scan ALL 15 days'",
+        "Context JSON observation #3: '33 instances of forbidden keys origin/destination/route_details/optional (Day 1=3, Day 2=6, Day 3=17, Day 4=7)'"
+      ],
+      "qa_independent_verification": {
+        "command": "python3 deep-walk timeline.json travel_segments[*] for {origin,destination,route_details,optional}",
+        "actual_count": 33,
+        "per_day": {"day_1": 3, "day_2": 6, "day_3": 17, "day_4": 7},
+        "matches_ba_claim": true
+      },
+      "notes": "BA explicitly directs dev to 'scan ALL 15 days (not stop at 33 — sync regeneration may add more)' which closes the 'dev stops at first 11' risk. Per-day breakdown is in ticket E5, M6, and context observation #3."
     },
     {
+      "objection_id": "iter1-obj2",
       "dimension": "affected_file_accuracy",
-      "claim": "BA Evidence E8 claims `accommodation.json:210,259,308,355,402,477,552,627,702,749` has `accommodation_item.gaode_id` and `.out_of_scope` 'present' — implying 10 line-pinned instances of each.",
-      "problem": "Deep walk of current accommodation.json shows ONLY 6 gaode_id instances (Days 4,5,6,7,8 喜樂院子 + Day 12 accommodation_jade 上海珍宝) and ONLY 6 out_of_scope instances (Days 9-14 phantom entries). BA's 10-line list looks like stale line numbers from an earlier polluted state OR includes line numbers in unrelated fields. This matters because M7 / M8 / M9 reference E8 — if dev follows the line numbers literally (line 210, line 259, etc.) they may grep the wrong lines and miss/over-edit.",
-      "required_evidence": "Update E8 to 'accommodation.json: 6 gaode_id instances (item-level on Days 4-8 喜樂院子 + Day 12 accommodation_jade[0] 上海珍宝) and 6 out_of_scope instances (item-level on Days 9-14 phantom entries) — refer dev to deep-walk grep, not pinned line numbers'."
+      "topic": "accommodation.json gaode_id and out_of_scope: BA pinned 10 stale line numbers; actual 6",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 76 (Evidence E8): '**gaode_id (6)**: Day 4 喜樂院子, Day 5 喜樂院子, Day 6 喜樂院子, Day 7 喜樂院子, Day 8 喜樂院子, Day 12 accommodation_jade[0] 上海珍宝酒店. **out_of_scope (6)**: Days 9-14 phantom Mathilde TBD entries.'",
+        "Ticket line 76 column header: 'refer to NAMES not stale line numbers'",
+        "Ticket line 183 (M7): 'Strip `gaode_id` (**6 instances**: Day 4-8 喜樂院子 + Day 12 accommodation_jade[0] 上海珍宝酒店) and `out_of_scope` (**6 instances**: Days 9-14 phantom Mathilde TBD entries). Dev must use deep-walk grep, not the prior stale line-numbers (line numbers in earlier spec were wrong).'",
+        "Context JSON line 29 + observation #6 line 128: same NAME-based enumeration"
+      ],
+      "qa_independent_verification": {
+        "command": "python3 deep-walk accommodation.json days[*].accommodation/accommodation_jade[*] for gaode_id and out_of_scope keys",
+        "gaode_id_count": 6,
+        "gaode_id_locations": [
+          "Day 4 accommodation[0] 喜樂院子",
+          "Day 5 accommodation[0] 喜樂院子",
+          "Day 6 accommodation[0] 喜樂院子",
+          "Day 7 accommodation[0] 喜樂院子",
+          "Day 8 accommodation[0] 喜樂院子",
+          "Day 12 accommodation_jade[0] 上海珍宝酒店"
+        ],
+        "out_of_scope_count": 6,
+        "out_of_scope_locations": [
+          "Day 9 accommodation[0] 马蒂尔德西安住宿待定",
+          "Day 10 accommodation[0] 马蒂尔德西安住宿待定",
+          "Day 11 accommodation[0] 马蒂尔德西安住宿待定",
+          "Day 12 accommodation[0] 马蒂尔德上海住宿待定",
+          "Day 13 accommodation[0] 马蒂尔德北京住宿待定",
+          "Day 14 accommodation[0] 马蒂尔德北京住宿待定"
+        ],
+        "matches_ba_claim": true
+      },
+      "notes": "BA names every offending entry by hotel name + accommodation field path (accommodation vs accommodation_jade). Stale line numbers explicitly retracted. Dev cannot misidentify."
     },
     {
+      "objection_id": "iter1-obj3",
       "dimension": "evidence_quality",
-      "claim": "BA Evidence E4 says 'transportation.json Day 12 .location_change Per-traveler keys passengers_jade, booking_status_jade'.",
-      "problem": "Technically correct: the day field=12 IS at array index 8. But BA's day-numbering implies fields appear ONLY on Day 12. Verified: passengers_jade appears 1x and booking_status_jade appears 1x, both on day=12 location_change only. ALSO: transportation.json only has 11 day_entries (days 1-6, 8, 9, 12, 13, 14 — missing days 7, 10, 11, 15). BA never notes this asymmetry; whether that's a pre-existing structural choice or a pollution artifact needs to be called out so dev doesn't re-introduce missing days during 'restoration'.",
-      "required_evidence": "Add a note: 'transportation.json contains only 11 day_entries (days 1-6, 8, 9, 12, 13, 14). Days 7, 10, 11, 15 are intentionally omitted (no inter-city movement those days). Dev: do NOT add empty day entries during restoration.' Also confirm the 11-day structure matches baseline 5b9a715 transportation.json (verify before dev starts)."
+      "topic": "transportation.json 11 day_entries (missing 7/10/11/15) — BA never explained intentional gap",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 78 (Evidence E14 NEW): 'Current: 11 day_entries (days 1, 2, 3, 4, 5, 6, 8, 9, 12, 13, 14). Baseline 5b9a715: 10 day_entries (days 1, 2, 3, 4, 5, 6, 8, 9, 12, 14). Delta: current adds Day 13 (G26 inter-city HSR booking — LEGITIMATE, post-baseline). Days 7, 10, 11, 15 are intentionally absent in BOTH baseline and current (no inter-city movement those days)'",
+        "Ticket line 78: 'Decision: structural omission (NOT a bug to fill). Dev MUST NOT add empty day entries for 7/10/11/15 during restoration. The 11-day structure is the new correct state (baseline 10 + Day 13 G26).'",
+        "Ticket line 179 (M3): 'Day-entry count: **11 day_entries** (days 1,2,3,4,5,6,8,9,12,13,14) — Days 7/10/11/15 are intentionally absent (no inter-city movement those days; baseline 5b9a715 omits them too). DO NOT add empty day entries for 7/10/11/15 during restoration.'",
+        "Context JSON observation #2 line 124: same explanation",
+        "Ticket lines 346-350 (NEW Diff Classification section): explicit per-day baseline-vs-current comparison"
+      ],
+      "qa_independent_verification": {
+        "command": "python3 list day numbers in transportation.json",
+        "actual_day_entries": 11,
+        "actual_day_numbers": [1, 2, 3, 4, 5, 6, 8, 9, 12, 13, 14],
+        "matches_ba_claim": true
+      },
+      "notes": "BA explicitly verified the 11-day structure against baseline 5b9a715 (10 days + Day 13 G26 = 11). Dev is told three separate times in spec + context to NOT add empty days for 7/10/11/15."
     },
     {
+      "objection_id": "iter1-obj4",
       "dimension": "evidence_quality",
-      "claim": "BA Evidence E6 lists 5 timeline.json line numbers (`:573,1245,1332,1419,1506`) for composite-prose locations on Days 4-14.",
-      "problem": "Deep walk of timeline.json shows composite-prose locations on Days 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 — that is 12 days affected (Day 5 'Chengdu (玉林西路)', Day 7 'Chengdu (玉林西路)', Day 15 'Beijing (departure day)' all violate 'single city per day' rule too, in addition to the 9 days BA pinned). BA's M5 only enumerates Days 4, 9-11, 14 — missing Days 5, 6, 7, 8, 12, 13, 15. AC5 grep won't catch parenthetical-only pollution like 'Chengdu (玉林西路)'.",
-      "required_evidence": "Update E6 + M5 to list ALL 12 affected days. Specify acceptance: timeline.json day-level `.location` is a SINGLE CITY NAME with no parentheses, no arrows, no en-dashes, no slashes (regex: location MUST match `^[A-Za-z'\\u4e00-\\u9fff ]+$` — single city only)."
+      "topic": "timeline.json composite-location: BA listed 5 days; actual 12 days affected",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 74 (Evidence E6): 'ALL of Days 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ... **12 days affected** with composite prose / parenthetical / arrow / em-dash / slash content. Verbatim values: Day 4 ... Day 5 'Chengdu (玉林西路)' ... Day 7 'Chengdu (玉林西路)' ... Day 15 'Beijing (departure day)''",
+        "Ticket line 74 acceptance regex: '`^[A-Za-z'一-鿿 ]+$` (no `(`, `)`, `/`, `→`, `—`, `-`)'",
+        "Ticket line 181 (M5): 'day-level `.location` = SINGLE CITY for **ALL 12 affected days** (4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15). Target values: Day 4=`Datong`; Day 5=`Chengdu`; Day 6=`Chengdu`; Day 7=`Chengdu`; Day 8=`Chengdu`; Day 9/10/11=`Xi an` ...; Day 12=`Shanghai`; Day 13=`Beijing` ...; Day 14=`Beijing`; Day 15=`Beijing`'",
+        "Ticket lines 295-300 (NEW AC9): 'GIVEN deployed page WHEN viewing the day list / sidebar for Days 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 THEN each day-level location label is a SINGLE CITY ... AND zero day labels contain `(`, `)`, `→`, `—`, `/`, or `-`'",
+        "Context JSON line 31 + observation #4 line 126 also enumerate all 12 days"
+      ],
+      "qa_independent_verification": {
+        "command": "python3 regex check timeline.json days[*].location against ^[A-Za-z'一-鿿 ]+$",
+        "actual_bad_days": 12,
+        "actual_days_list": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        "matches_ba_claim": true
+      },
+      "notes": "BA enumerates ALL 12 days with verbatim current values + target single-city values + NEW acceptance criterion AC9 with explicit char-class deny list. Day-by-day target values prevent dev guessing."
     },
     {
+      "objection_id": "iter1-obj5",
       "dimension": "spec_text_vs_execution_drift",
-      "claim": "BA Acceptance Criterion AC2 grep pattern is `accommodation_jade|passengers_jade|booking_status_jade|location_short|out_of_scope|\"split_day\"|gaode_id|header_subtitle|\"origin\"\\s*:|\"destination\"\\s*:|\"route_details\"\\s*:|\"optional\"\\s*:` and BA notes that `\"optional\":` may legitimately appear in accommodation_item per schema.",
-      "problem": "AC2's grep WILL false-positive on legitimate `\"optional\": false` in accommodation_item (per accommodation.schema.json line 47-51 — accommodation_item REQUIRES `optional: false`). Dev running AC2 verbatim will see matches and incorrectly conclude pollution remains. The note 'verify by jsonschema instead of pure grep if grep produces false positives' is hand-wavy — dev needs a reproducible, deterministic check. The fix is to scope the grep: e.g. only grep timeline.json for `\"optional\"\\s*:` (since accommodation_item uses `optional` legitimately and timeline doesn't allow it).",
-      "required_evidence": "Re-author AC2 as TWO greps: (a) `grep -E 'accommodation_jade|passengers_jade|booking_status_jade|location_short|out_of_scope|\"split_day\"|gaode_id|header_subtitle' data/china-20260412-092624/*.json` returns zero. (b) `grep -E '\"origin\"\\s*:|\"destination\"\\s*:|\"route_details\"\\s*:|\"optional\"\\s*:' data/china-20260412-092624/timeline.json` returns zero (scoped to timeline.json where these are forbidden additionalProperties). This makes the AC literal-text directly runnable without false positives."
+      "topic": "AC2 grep would false-positive on legitimate accommodation_item.optional — needs scoped greps",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 257 (AC2 preamble): 'The single-grep AC was retracted because `\"optional\"\\s*:` legitimately appears in every `accommodation_item` per `accommodation.schema.json` lines 47-51 (REQUIRED field on accommodation items). Replace with two scoped greps:'",
+        "Ticket lines 259-262 (AC2.a): 'fabricated-key scan (all data files; no schema-legitimate field in this list)' — grep pattern excludes `optional` key entirely; runs on all data/*.json",
+        "Ticket lines 264-267 (AC2.b): 'travel_segment additionalProperties scan (timeline.json ONLY — these keys are forbidden on travel_segment but accommodation_item legitimately has `optional`)' — restricted to timeline.json only, where origin/destination/route_details/optional are all forbidden",
+        "Ticket lines 269-272 (AC2.c NEW): composite-location regex check using python+json (not pure grep) for the parenthetical/slash/arrow case from objection 4"
+      ],
+      "qa_independent_verification": {
+        "ac2_a_pattern_check": "grep pattern 'accommodation_jade|passengers_jade|booking_status_jade|location_short|out_of_scope|\"split_day\"|gaode_id|header_subtitle' — verified zero schema-legitimate keys in this list",
+        "ac2_b_scope_check": "grep is scoped to timeline.json only — origin/destination/route_details/optional are forbidden on travel_segment per schemas/timeline.schema.json:113 additionalProperties:false; accommodation_item is in a different file so its `optional` field cannot match",
+        "false_positive_risk": "eliminated"
+      },
+      "notes": "AC2 split into 3 scoped checks (a/b/c). Each check has a precise scope that excludes legitimate fields. Dev can run each verbatim and trust the result. AC literal-text drift fully closed."
     },
     {
+      "objection_id": "iter1-obj6",
       "dimension": "evidence_quality",
-      "claim": "BA's strategy for Jade-only transports (3U8893 Day 8, G5 Day 12) prescribes: 'put traveler info in notes_base/notes_local of the location_change' (M4) and 'DO NOT add passengers_jade field. Traveler attribution in notes_base=\"Jade only — Mathilde stays Chengdu\" / notes_local=\"仅 Jade 乘机；Matilde 留成都\"'.",
-      "problem": "BA failed to recognize that the existing data ALREADY uses a `passengers` array convention. Verified: 9 intra_city_routes entries currently have `passengers: [...]` lists (Days 4, 6, 8, 13). The transportation schema's `intra_city_routes` is `additionalProperties: true` (line 180) so `passengers` is schema-permitted. Same for `location_change` (additionalProperties: true line 155). For Jade-only transports the canonical encoding is therefore `passengers: ['LEGROSZIEGLER/JADE']` (already used on Day 8 jade_chartered_car_to_shuangliu, jade_3u8893_chengdu_to_beijing, jade_chartered_car_from_capital_airport — verify these lines). BA's prescription invents a parallel convention (notes_*) when an established field already exists. This is a strategy soundness issue: it splits the data model and forces dev to choose between two encodings, increasing the chance of inconsistency.",
-      "required_evidence": "Update M4 and bookings_to_reapply to: 'Delete `passengers_jade` and `booking_status_jade` fields ONLY. Traveler attribution stays in the existing `passengers: [...]` array on the entry — for Jade-only transports the array contains ONE name (LEGROSZIEGLER/JADE); for both-traveler transports it contains both. Verify Day 8 jade_* entries already encode this correctly (passengers=[LEGROSZIEGLER/JADE]); do not duplicate into notes_*.' Also: update bookings_to_reapply table column 'encoding' to reference the `passengers` field, not `notes_*`."
+      "topic": "BA prescribed notes_* convention for traveler attribution; existing `passengers` array convention should be used instead",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket line 180 (M4): 'For traveler attribution use the **existing `passengers: [...]` array convention** that is already established in 9 entries (Days 4, 6, 8, 13). For Jade-only entries the array contains exactly `[\"LEGROSZIEGLER/JADE\"]` ... DO NOT introduce a parallel `notes_*` convention for traveler attribution — use ONLY the existing `passengers` array.'",
+        "Ticket line 196 (M16): 'Jade-only — encoded via existing `passengers: [\"LEGROSZIEGLER/JADE\"]` array convention, NOT via fabricated `passengers_jade` and NOT via parallel `notes_*`'",
+        "Ticket lines 320-322 (Authorized Bookings preamble): 'The strategy correction: existing data already uses `passengers: [...]` array convention (verified 9 instances on Days 4, 6, 8, 13). Schema permits via `additionalProperties: true` on `location_change` (line 155) and `intra_city_routes` (line 180). Use ONLY this convention for traveler attribution.'",
+        "Ticket line 334 (Day 8 row): 'passengers=`[\"LEGROSZIEGLER/JADE\"]` (already correct, single-name array). DO NOT add `passengers_jade`. DO NOT introduce `notes_*` for traveler attribution — `passengers` array already conveys \"Jade only\" via single-element array.'",
+        "Ticket line 337 (Day 12 row): 'DELETE `passengers_jade` field; ADD `passengers: [\"LEGROSZIEGLER/JADE\"]` to the same `location_change` object (using existing convention). DELETE `booking_status_jade` field; the `status_base` field already holds booking status.'",
+        "Ticket line 386 (Diff Classification): 'KEEP location_change object; DELETE `passengers_jade` and `booking_status_jade` fields; ADD `passengers: [\"LEGROSZIEGLER/JADE\"]` using existing convention; rely on existing `status_base`.'",
+        "Context JSON lines 283-285: same instruction in transportation.json operations"
+      ],
+      "qa_independent_verification": {
+        "command": "python3 enumerate passengers array usage in current transportation.json",
+        "actual_passengers_arrays": 9,
+        "locations": [
+          "Day 4: 3 entries (booked_chartered_car_hotel_to_dat, dr5010_datong_to_chengdu_both, booked_chartered_car_tfu_to_hotel) — both travelers",
+          "Day 6: 2 entries (g5415, g8562) — both travelers",
+          "Day 8: 3 entries (jade_chartered_car_to_shuangliu, jade_3u8893_chengdu_to_beijing, jade_chartered_car_from_capital_airport) — Jade only, single-element array",
+          "Day 13: 1 entry (g26_shanghai_hongqiao_to_beijing_south) — both travelers"
+        ],
+        "schema_permits_passengers_field": true,
+        "schema_evidence": "transportation.schema.json: location_change additionalProperties:true (line 155); intra_city_routes additionalProperties:true (line 180)",
+        "matches_ba_claim": true
+      },
+      "audit_of_residual_notes_mention": {
+        "concern": "Ticket line 189 says 'Mathilde's she handles her own logistics status is recorded in `notes_base`/`notes_local` of these entries'",
+        "verdict": "ACCEPTABLE — this line refers to ACCOMMODATION_ITEM entries (M9 context: real Mathilde hotel + note explaining she may not actually stay there), NOT transportation traveler attribution. accommodation_item.notes_* are schema-legitimate fields on accommodation items. Objection 6 was specifically about transportation passenger attribution, which BA correctly routes to the passengers array on line 180. The accommodation use-case is a different schema element with different semantics."
+      },
+      "notes": "BA explicitly retracts the prior notes_* prescription for transportation. The remaining notes_base/notes_local mention on line 189 is for accommodation_item descriptions, which is a schema-legitimate use of a different field. No parallel convention is being introduced for transportation traveler attribution."
     },
     {
+      "objection_id": "iter1-obj7",
       "dimension": "investigation_completeness",
-      "claim": "BA's pollution inventory enumerates the rendered/data pollution fully BUT does not assert a baseline-vs-current diff for `transportation.json` — i.e., BA never compares current transportation.json to `git show 5b9a715:data/china-20260412-092624/transportation.json`.",
-      "problem": "BA strategy says 'Surgically clean (no wholesale revert) transportation.json' but does NOT enumerate which intra_city_routes / location_change entries are POST-baseline additions (legitimate user bookings) vs WHICH are pollution. Without that diff, dev has to do the comparison themselves. The bookings_to_reapply table covers some bookings but doesn't say which currently-present entries should be deleted vs preserved. Risk: dev preserves a polluted entry thinking it's a real booking, OR deletes a real booking thinking it's pollution.",
-      "required_evidence": "Run `diff <(git show 5b9a715:data/china-20260412-092624/transportation.json | python3 -m json.tool) <(python3 -m json.tool < data/china-20260412-092624/transportation.json)` and append the resulting per-entry diff (or a structured table) to BA spec showing: (a) entries present in current but NOT baseline → these are post-baseline additions; classify each as legitimate booking (preserve) vs pollution (delete); (b) entries present in baseline but NOT current → these were lost during pollution; restore. Same diff exercise for accommodation.json."
+      "topic": "BA never produced baseline-vs-current per-entry diff for transportation/accommodation",
+      "verdict": "PASS",
+      "evidence_in_ba_spec": [
+        "Ticket lines 343-393 (NEW Section: 'Baseline-vs-Current Diff Classification (transportation.json)'): per-day enumeration of baseline keys vs current keys for Days 1, 2, 3, 4, 5, 6, 8, 9, 12 (location_change), 13, 14, with KEEP / REMOVE / RESTORE decision for each delta",
+        "Ticket lines 346-350: Day-entry presence diff (baseline 10 days, current 11 days, Day 13 KEEP as legitimate post-baseline)",
+        "Ticket lines 351-354 (Day 1): Baseline had 5 routes, current has 3 — explicit decision per missing entry (do NOT restore stale airport-arrival alternatives)",
+        "Ticket lines 356-359 (Day 2): Baseline had 3 routes, current has 2 — explicit decision",
+        "Ticket lines 361-362 (Day 3): unchanged",
+        "Ticket lines 364-367 (Day 4): 'COMPLETE REPLACEMENT. Baseline had a SPLIT-DAY plan ... Current has BOTH-TRAVELERS plan ... Decision: KEEP CURRENT'",
+        "Ticket lines 371-374 (Day 6): 'Baseline had Jade flying Beijing→Chengdu Day 6; current has both travelers' Leshan day-trip booking. Decision: KEEP CURRENT'",
+        "Ticket lines 376-379 (Day 8): 'Current is 3 detailed entries replacing baseline's 1 generic entry. Decision: KEEP CURRENT'",
+        "Ticket lines 384-386 (Day 12 location_change): 'KEEP location_change object; DELETE passengers_jade and booking_status_jade fields; ADD passengers: [\"LEGROSZIEGLER/JADE\"]'",
+        "Ticket lines 388-390 (Day 13): 'POST-BASELINE — entire day_entry is new ... Decision: KEEP — this is the legitimate G26 booking added post-baseline'",
+        "Ticket lines 394-417 (NEW Section: 'Baseline-vs-Current Diff Classification (accommodation.json)'): Day-by-day table for ALL 15 days with Baseline / Current accommodation / Current accommodation_jade / Decision columns",
+        "Ticket line 414 (Day 13 decision): explicitly flags inconsistency for dev investigation: 'baseline says 上海黑石M+ AND G26 lands in Beijing, baseline may itself be inconsistent — surface as a finding. Default: restore 上海黑石M+ from baseline as faithful restoration; flag inconsistency in dev report.'"
+      ],
+      "qa_independent_verification": {
+        "transportation_diff_complete": true,
+        "transportation_per_day_decisions": "All 11 current days + 4 baseline-only deltas have explicit KEEP/REMOVE/RESTORE decisions",
+        "accommodation_diff_complete": true,
+        "accommodation_per_day_decisions": "All 15 days have explicit Baseline / Current / Decision rows",
+        "edge_case_flagged": "Day 13 accommodation inconsistency (baseline says Shanghai but G26 lands Beijing) explicitly surfaced for dev investigation"
+      },
+      "notes": "BA produced TWO comprehensive baseline-vs-current diff tables (transportation per-day + accommodation 15-row table) with explicit KEEP/REMOVE/RESTORE decisions for every entry. Dev cannot misclassify a polluted entry as a real booking or vice versa. Day 13 baseline inconsistency is correctly surfaced rather than papered over."
     }
   ],
-  "verified_baseline_claims": {
-    "day_9_lunch_baseline": {"claim": "baseline has Mathilde Xi'an itinerary Days 9-11 (永兴坊, 钟楼, 兵马俑, 大雁塔, 城墙, 回坊, etc.)", "verified": true, "evidence": "git show 5b9a715:data/china-20260412-092624/meals.json — Day 9 lunch primary name_local = 郑记biangbiang面(钟楼店), Day 9 dinner primary name_local = 永兴坊"},
-    "days_9_11_attractions_count": {"claim": "baseline 5b9a715 had 1/3/4 attractions on Days 9-11", "verified": true, "evidence": "git show 5b9a715:data/china-20260412-092624/attractions.json — Day 9: 1 item (西安钟楼), Day 10: 3 items (秦始皇兵马俑博物馆 + 西安化觉巷清真大寺 + 回民街), Day 11: 4 items (西安钟楼 + 西安鼓楼 + 大雁塔北广场音乐喷泉 + 西安城墙)"},
-    "days_9_14_accommodation": {"claim": "baseline had 西安万豪莫克西酒店(碑林太乙路店) Days 9-11, 上海黑石M+酒店 Days 12-13, 五道口自如寓 Day 14", "verified": true, "evidence": "git show 5b9a715:data/china-20260412-092624/accommodation.json confirms these names on those exact days"},
-    "plan_skeleton_pollution": {"claim": "Day 4 = 'Chengdu' (should be Datong), Days 9-11 = 'Beijing' (should be Xi an)", "verified": true, "evidence": "current data/china-20260412-092624/plan-skeleton.json confirms Day 4='Chengdu', Days 9-11='Beijing'; baseline 5b9a715 shows Day 4='Datong', Days 9-11='Xi an'"}
-  },
-  "verified_pollution_inventory": {
-    "gaode_id_in_accommodation_json": {"ba_count": 10, "actual_count": 6, "match": false, "actual_locations": "Days 4-8 喜樂院子 (5 entries) + Day 12 accommodation_jade[0] 上海珍宝 (1 entry)"},
-    "passengers_jade_in_transportation_json": {"ba_says": "Day 12 .location_change", "actual": "1 instance on day=12 (array index 8) location_change", "match": true},
-    "booking_status_jade_in_transportation_json": {"actual": "1 instance on day=12 location_change", "match": true},
-    "travel_segment_violations_in_timeline_json": {"ba_count": "10-11", "actual_count": 33, "match": false, "per_day": {"day_1": 3, "day_2": 6, "day_3": 17, "day_4": 7}},
-    "data_bak_files_in_china_20260412": {"ba_count": 9, "actual_count": 9, "match": true, "files": ["accommodation.json.bak", "attractions.json.bak", "budget.json.bak", "entertainment.json.bak", "meals.json.bak", "modification-log.json.bak", "shopping.json.bak", "timeline.json.bak", "transportation.json.bak"]},
-    "renderer_band_aids_in_generate_html_interactive_py": {"ba_count": 10, "actual_grep_count": 11, "match": "approx", "evidence": "grep -nE '_inject_intra_routes|_build_jade_acc_card|header_subtitle|location_short|_altCount|跳过|自行安排|🏨 Jade|out of scope|own arrangement|TBD \\(own' confirms all listed band-aids present at lines 531, 606, 609, 614, 616, 991, 993, 1032, 1249, 2344, 2346, 2694, 2917, 2923, 2927"},
-    "wudaokou_meal_pollution_days_9_11": {"ba_addressed": true, "actual": "Day 9: lunch=五道口午餐（Jade自选）, dinner=椒鸣椒麻小馆·创始店(五道口店) — but day-level location='Xi an' (mismatch). Day 10/11 same Wudaokou meals.", "verified": true, "ba_strategy_handles_it": "yes — BA strategy says 'verify Days 9-11 meals are Xi'an restaurants (not Wudaokou); if baseline restoration lands Wudaokou meals on those days (it should NOT — that pollution post-dates 5b9a715), surface as a separate finding'"}
+  "additional_quality_observations": {
+    "scope_alignment_preserved": true,
+    "scope_evidence": "Ticket W1-W6 still defers schema extension, Jade-side rendering, and other-trip cleanup. No scope creep introduced in iteration 2.",
+    "anti_band_aid_discipline": "Ticket line 439 FORBIDS comment-out / feature-flag / preserved-for-future-use wrapping. Band-aids must be DELETED, not hidden.",
+    "destructive_action_discipline": "Ticket E1 confirms `git checkout 5b9a715 -- <file>` is non-destructive (working-tree write only, branch history untouched) per BA destructive-action escalation clause. No revert/reset/force-push.",
+    "user_authorized_bookings_protected": true,
+    "user_authorized_bookings_evidence": "M16 + Authorized Bookings table (lines 324-340) maps every user-confirmed booking to schema-clean encoding with explicit preservation instruction",
+    "edge_case_e3_acknowledged": "Spec acknowledges accommodation.json cannot be wholesale git-checkout (5b9a715 lacks 喜樂院子 image_url from later gaode lookup); surgical clean strategy explicitly chosen instead",
+    "edge_case_e4_sync_robustness": "Spec instructs dev: 'if sync still emits violations, dev MUST surface that as a separate finding (not patch around it in data)' — anti-band-aid posture preserved at sync layer too"
   },
   "scope_alignment_verification": {
     "user_verbatim": "立刻先修复全部错误内容，我们下一个session升级harness",
-    "ba_scope": "fix existing pollution + restore baseline + preserve real bookings; NO schema redesign this session",
+    "ba_scope_in_iter2": "fix existing pollution + restore baseline + preserve real bookings; NO schema redesign this session",
     "scope_creep_detected": false,
-    "evidence": "W1-W6 (Won't Have section) explicitly defers schema extension, Jade-side accommodation rendering, orchestrator-subagent boundary doc, other trips' .bak files, schema edits, legitimate-fix files. Scope alignment is correct."
+    "verdict": "PASS"
   },
-  "strategy_soundness_verification": {
-    "passengers_field_canonical_encoding": {"existing_data_convention": "intra_city_routes / location_change use a `passengers: [\"NAME1\", \"NAME2\"]` array (9 instances confirmed in current data on Days 4, 6, 8, 13)", "schema_permits": "yes (intra_city_routes additionalProperties:true line 180; location_change additionalProperties:true line 155)", "ba_prescription": "use notes_base/notes_local (M4)", "problem": "BA invented a new convention when the existing `passengers` field already serves this purpose; dev should be told 'preserve `passengers` array; for Jade-only entries the array has ONE name'"},
-    "transportation_json_only_11_days": {"observed": "transportation.json has day_entries for days 1-6, 8, 9, 12, 13, 14 only (missing 7, 10, 11, 15)", "ba_addressed": false, "risk": "dev may add empty day entries during 'restoration' if not warned"}
+  "verified_pollution_inventory_iter2": {
+    "travel_segment_violations": {"ba_count": 33, "actual_count": 33, "match": true, "per_day": {"1": 3, "2": 6, "3": 17, "4": 7}},
+    "gaode_id_in_accommodation": {"ba_count": 6, "actual_count": 6, "match": true, "ba_names_locations": true},
+    "out_of_scope_in_accommodation": {"ba_count": 6, "actual_count": 6, "match": true, "ba_names_locations": true},
+    "composite_location_days_in_timeline": {"ba_count": 12, "actual_count": 12, "match": true, "ba_enumerates_all": true},
+    "transportation_day_entries": {"ba_count": 11, "actual_count": 11, "match": true, "ba_explains_intentional_gaps": true},
+    "passengers_array_existing_usage": {"ba_count": 9, "actual_count": 9, "match": true, "ba_directs_to_use_existing_convention": true},
+    "passengers_jade_pollution": {"ba_count": 1, "actual_count": 1, "match": true, "location": "Day 12 location_change"},
+    "booking_status_jade_pollution": {"ba_count": 1, "actual_count": 1, "match": true, "location": "Day 12 location_change"}
   },
-  "summary": "BA spec is SCOPE-CORRECT (does not creep into schema redesign) and the user-facing baseline restoration claims (Day 9 lunch 郑记biangbiang面, Days 9-11 attractions 1/3/4, Days 9-11 hotel 西安万豪莫克西酒店, Day 12-13 上海黑石M+, Day 14 五道口自如寓) all VERIFY against `git show 5b9a715`. However, the spec has multiple count/scope errors that materially mislead dev: (a) timeline.json travel_segment violations are 33 not 11 (BA undercounted 3x); (b) accommodation.json gaode_id violations are 6 not 10 (BA's pinned line numbers stale); (c) timeline.json composite-location pollution affects 12 days not 5 (BA missed Days 5, 6, 7, 8, 12, 13, 15); (d) AC2 grep pattern false-positives on legitimate `optional: false` in accommodation_item (needs to be split into two scoped greps); (e) BA's Jade-traveler encoding prescribes notes_* but the existing data already uses a `passengers` array — BA invented a parallel convention; (f) BA does not enumerate which currently-present transportation/accommodation entries are post-baseline additions (legitimate bookings to preserve) vs pollution (to delete) — dev has to do the diff themselves and may misclassify; (g) transportation.json has only 11 day_entries (missing days 7, 10, 11, 15) — BA never notes this so dev may incorrectly add empty days. These are correctable defects; BA must update the spec before dev is dispatched. Verdict: FAIL pending revision.",
+  "summary": "BA iteration 2 fully addresses all 7 objections from QA iteration 1. Every count is verified against current files (33 travel_segment violations, 6 gaode_id, 6 out_of_scope, 12 composite-location days, 11 transportation day_entries, 9 existing passengers arrays, 1 passengers_jade, 1 booking_status_jade — all match). The AC2 grep is split into 3 scoped checks (AC2.a/b/c) eliminating false-positive risk on legitimate accommodation_item.optional. The transportation traveler attribution strategy correctly switches from invented notes_* to the existing passengers array convention with explicit DO NOT instructions across M4/M16/lines 320-340/line 386. Comprehensive baseline-vs-current diff tables for both transportation.json (per-day) and accommodation.json (15-row table) give dev unambiguous KEEP/REMOVE/RESTORE decisions for every entry. The transportation 11-day structure is explicitly explained as intentional with three reinforcing 'DO NOT add empty day entries' warnings. Day 13 accommodation baseline inconsistency (baseline says Shanghai but G26 lands Beijing) is surfaced for dev investigation rather than papered over. Scope is correctly bounded — W1-W6 still defer schema extension and Jade-side rendering to next session per user directive. Verdict: PASS — green-light dev.",
   "self_verification": {
-    "claims_total": 14,
-    "claims_with_evidence": 14,
+    "claims_total": 21,
+    "claims_with_evidence": 21,
     "claims_superficial": 0,
     "confidence": "high",
-    "evidence_summary": "All counts verified by direct python json deep-walk against current files; all baseline claims verified by `git show 5b9a715:<path>` and python parsing; renderer band-aid presence verified by grep; schema field allowances verified by direct read of schemas/*.schema.json"
+    "evidence_summary": "All 7 objection-resolution claims backed by direct quotes from ba ticket + context JSON with line numbers, plus independent re-verification via python deep-walks against current /root/travel-planner/data/china-20260412-092624/{timeline,accommodation,transportation}.json. Every count BA states (33, 6, 6, 12, 11, 9, 1, 1) matches QA's independent measurement exactly. The one residual notes_base/notes_local reference (ticket line 189) was audited and confirmed to be a different schema element (accommodation_item) with legitimate notes_* fields — does not contradict objection 6 resolution which was scoped to transportation.",
+    "audit_of_pass_basis": "PASS basis: every objection has at least one direct line-cite from ticket-20260505-123425.md AND independent QA re-verification of the underlying count. No PASS is granted on assertion alone."
   },
   "codex_consult": {
     "invoked": false,
