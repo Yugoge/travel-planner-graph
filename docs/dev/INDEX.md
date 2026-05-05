@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T20:44:25Z*
-**Total entries**: 182
+*Last updated: 2026-05-05T20:51:50Z*
+**Total entries**: 184
 **Convention**: kebab
 
 ## Tree
@@ -62,6 +62,7 @@ dev/
 ├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 ├── `close-report-20260505-123425.md` - Close Report — 20260505-123425
 ├── `close-report-20260505-124619.md` - Close Report — 20260505-124619
+├── `close-report-20260505-175102.md` - Close Report — 20260505-175102
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
@@ -69,6 +70,7 @@ dev/
 ├── `completion-20260505-061047.md` - Development Completion Report — 20260505-061047
 ├── `completion-20260505-123425.md` - Schema-Restoration Completion Report — 20260505-123425
 ├── `completion-20260505-124619.md` - Development Completion Report — 20260505-124619
+├── `completion-20260505-174743.md` - 彻底清理 Completion — 20260505-174743
 ├── `completion-20260505-175102.md` - Development Completion Report — 20260505-175102
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
