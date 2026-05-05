@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T20:36:00Z*
-**Total entries**: 178
+*Last updated: 2026-05-05T20:39:06Z*
+**Total entries**: 181
 **Convention**: kebab
 
 ## Tree
@@ -58,6 +58,7 @@ dev/
 ├── `cleanliness-inspector-report-20260505-061047.json` - json config
 ├── `cleanliness-inspector-report-20260505-123425.json` - json config
 ├── `cleanliness-inspector-report-20260505-124619.json` - json config
+├── `cleanliness-inspector-report-20260505-175102.json` - json config
 ├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 ├── `close-report-20260505-123425.md` - Close Report — 20260505-123425
 ├── `close-report-20260505-124619.md` - Close Report — 20260505-124619
@@ -138,6 +139,7 @@ dev/
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
+├── `prompt-inspector-report-20260505-175102.json` - json config
 ├── `qa-full-audit-20260413.json` - json config
 ├── `qa-output-ac10-envvar-stderr.txt` - txt file
 ├── `qa-output-ac10-envvar-stdout.txt` - txt file
@@ -179,6 +181,7 @@ dev/
 ├── `style-inspector-report-20260505-061047.json` - json config
 ├── `style-inspector-report-20260505-123425.json` - json config
 ├── `style-inspector-report-20260505-124619.json` - json config
+├── `style-inspector-report-20260505-175102.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
