@@ -1162,6 +1162,8 @@ class InteractiveHTMLGenerator:
         if merged.get("transportation") and merged["transportation"].get("cost", 0) > 0:
             merged["budget"]["transportation"] = merged["transportation"]["cost"]
 
+        self._inject_intra_routes(merged, day_num)
+
         # Calculate total budget (includes all categories)
         merged["budget"]["total"] = sum([
             merged["budget"]["meals"],
@@ -2592,11 +2594,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               )}
 
               {/* Transportation */}
-              {day.transportation && (
+              {(day.transportation || (day.intra_routes && day.intra_routes.length > 0)) && (
                 <Section title={L('transportation', lang)} icon={(day.transportation && day.transportation.icon) || '✈️'}>
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
-                      {(day.transportation ? [day.transportation] : []).map((tr, i) => {
+                      {[...(day.transportation ? [day.transportation] : []), ...(day.intra_routes || [])].map((tr, i) => {
                         const catColor = categoryColors.transportation;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), height: 'auto', minHeight: sm ? '160px' : '180px'}}
@@ -2783,6 +2785,10 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
     const tTo = lang === 'local' && day.transportation.to_local ? day.transportation.to_local : day.transportation.to_base;
     add(day.transportation, 'transportation', `${tFrom} → ${tTo}`);
   }
+  day.intra_routes?.forEach(r => {
+    const label = (lang === 'local' && r.name_local) ? r.name_local : (r.name_base || r.route_number || '');
+    add(r, 'transportation', label);
+  });
   ['breakfast', 'brunch', 'lunch', 'dinner'].forEach(mealType => {
     const catKey = 'cat_' + mealType;
     const primary = day.meals?.[mealType];
