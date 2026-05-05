@@ -6,6 +6,17 @@
 
 ---
 
+## Spec Header
+
+<!-- EXPLICIT source:L1-L5 sha256:a6990e0b15ac8062a0c50cb1bf8dfbd482b4ecda226849124f44a9108dc22554 -->
+# Spec: Travel-planner harness 升级 — Codex 共识版后验方案
+
+**Pipeline**: travel-planner / harness-upgrade
+**Session**: 20260505-221501
+**Created**: 2026-05-05T22:15:01+00:00
+
+---
+
 ## Role Mandate (from spec)
 
 > User said: "将以上保存为 spec" — saves the consolidated post-mortem + Codex-signed action plan from session-end debate. Below is the verbatim final consensus.

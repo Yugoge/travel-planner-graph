@@ -34,7 +34,7 @@ User explicitly **cancels** the P0 security recommendation. The 396 leaked `key=
 
 ---
 
-<!-- EXPLICIT source:L126-L126 sha256:placeholder -->
+<!-- EXPLICIT source:L126-L126 sha256:9539ae76d1942a12035fb5530db6c077fdc608cbdbb37219c7757d88ac8ba01f -->
 #### Codex-signed Top 5 controls (catches ~80% of failure modes)
 
 1. **Single deploy-blocking verifier**
@@ -92,7 +92,8 @@ User explicitly **cancels** the P0 security recommendation. The 396 leaked `key=
 
 ---
 
-## File paths referenced
+<!-- EXPLICIT source:L202-L202 sha256:9ada9b9ead8c07e2d8f6913232cb17d32477f47b74478805e886f6ed68091e78 -->
+#### File paths referenced
 
 - BA spec template: `~/.claude/templates/overnight-spec.md`
 - Renderer: `/root/travel-planner/scripts/generate-html-interactive.py`

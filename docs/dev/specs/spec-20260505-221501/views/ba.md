@@ -149,6 +149,45 @@ Without this preamble, every subsequent hook is corrective; with it, most failur
 
 ---
 
+## Additional Content (coverage fallback)
+
+<!-- EXPLICIT source:L33-L37 sha256:60ff6ba56c565b49d36a6a210ae40097cc92fa1ee2676743752bbdf01d9e2ca4 -->
+## Section 2: What Was Attempted
+
+### Cycle 1
+
+_Not yet populated._
+
+<!-- EXPLICIT source:L41-L45 sha256:7badc2aa48456fabc098c00d6c1a176a9ff1b132b422cbd2840880e4dfa5dcbf -->
+## Section 3: What Was Changed
+
+### Cycle 1
+
+_Not yet populated._
+
+<!-- EXPLICIT source:L49-L53 sha256:32cd338cd0bf9bdd59016dc4fbb31626f8e1349cedbe07faac86df88ee059b58 -->
+## Section 4: Current State
+
+### Cycle 1
+
+_Not yet populated._
+
+<!-- EXPLICIT source:L218-L222 sha256:2bf27f775c8bef143515718432d0e877b751114533e12924458622f5d79a19c3 -->
+## Section 6: Why Not Met
+
+### Cycle 1
+
+_Not yet populated._
+
+<!-- EXPLICIT source:L226-L230 sha256:3e3db37ad2f6f9e0545929204f97d6940cbd233997922d3ae2fe5eff6571d514 -->
+## Section 7: What Must Be Done
+
+### Cycle 1
+
+_Not yet populated._
+
+---
+
 ## Section 8: Attention Notes
 
 **Per-traveler dimension is the recurring root architecture problem**: schema has no per-traveler dimension, so split-day (Mathilde + Jade in different cities/transports) keeps producing fabricated bolt-on fields (`accommodation_jade`, `passengers_jade`, `split_day`). Either formally extend schemas (add `traveler` enum to accommodation_item, ensure `passengers: []` array on every transport, add `split_day:bool` + `traveler:enum` documented at day_entry level), OR drop second-traveler rendering entirely (single-traveler view). Half-extension is the disease.
