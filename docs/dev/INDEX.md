@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-05T17:32:07Z*
-**Total entries**: 168
+*Last updated: 2026-05-05T17:54:32Z*
+**Total entries**: 169
 **Convention**: kebab
 
 ## Tree
@@ -174,7 +174,8 @@ dev/
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
-└── `ticket-20260505-124619.md` - BA Specification: Complete search_notes_light deployment for production use (practical-value + defense-in-depth + known-bug bundle)
+├── `ticket-20260505-124619.md` - BA Specification: Complete search_notes_light deployment for production use (practical-value + defense-in-depth + known-bug bundle)
+└── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
 ```
 
 ---
