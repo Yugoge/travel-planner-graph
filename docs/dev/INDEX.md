@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-04T23:46:34Z*
-**Total entries**: 123
+*Last updated: 2026-05-05T06:16:04Z*
+**Total entries**: 124
 **Convention**: kebab
 
 ## Tree
@@ -129,7 +129,8 @@ dev/
 ├── `qa-report-20260417-001800.json` - json config
 ├── `qa-report-20260418-153011.json` - json config
 ├── `qa-validation-20260321.json` - json config
-└── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
+├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
+└── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ```
 
 ---
