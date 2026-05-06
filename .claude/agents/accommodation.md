@@ -10,6 +10,9 @@ tools:
 - Read
 - Bash
 - Skill
+owned_files:
+- ^data/[^/]+/accommodation\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 

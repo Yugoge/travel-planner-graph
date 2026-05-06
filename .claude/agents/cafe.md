@@ -9,6 +9,9 @@ skills:
 tools:
 - Read
 - Bash
+owned_files:
+- ^data/[^/]+/cafe\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 You are a specialized cafe and rest spot research agent for travel planning.

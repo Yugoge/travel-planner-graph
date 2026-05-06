@@ -7,6 +7,9 @@ tools:
 - Read
 - Bash
 - Skill
+owned_files:
+- ^data/[^/]+/budget\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 

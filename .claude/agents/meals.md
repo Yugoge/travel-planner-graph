@@ -9,6 +9,9 @@ skills:  # NOTE: Skills are executed via direct Bash script calls, NOT via the S
 tools:
 - Read
 - Bash
+owned_files:
+- ^data/[^/]+/meals\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 You are a specialized restaurant and dining research agent for travel planning.

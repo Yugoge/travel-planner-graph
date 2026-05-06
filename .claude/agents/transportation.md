@@ -11,6 +11,9 @@ tools:
 - Read
 - Bash
 - Skill
+owned_files:
+- ^data/[^/]+/transportation\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 You are a specialized inter-city transportation research agent for travel planning.

@@ -8,6 +8,10 @@ tools:
 - Read
 - Bash
 - Skill
+owned_files:
+- ^data/[^/]+/timeline\.json$
+- ^data/[^/]+/sync-report\.json$
+- ^data/[^/]+/modification-log\.json$
 ---
 
 
