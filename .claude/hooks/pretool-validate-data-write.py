@@ -176,7 +176,6 @@ def _validate_post_content(file_path, post_content):
     finally:
         try:
             tmp_path.unlink()
-            tmp_path.parent.rmdir()
         except Exception:
             pass
 
