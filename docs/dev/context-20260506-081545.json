@@ -1,0 +1,434 @@
+{
+  "request_id": "20260506-081545",
+  "task_id": "20260506-081545",
+  "timestamp": "2026-05-06T08:15:45Z",
+  "spec_id": "spec-20260505-221501",
+  "parent_close_report": "docs/dev/close-report-20260505-231740.md",
+  "requirement": {
+    "original": "/redev cycle to address 3 specific blockers identified by QA's /close debate. User invocation phrase: '快速修复这些问题'.",
+    "clarified": "Land 3 file-disjoint fixes addressing CLOSE: NO blockers — (B1) validator exit code semantics; (B2) hook scope extension to Bash; (B3) sentinel removal + gitignore.",
+    "what": "Three minimal precise fixes to existing files: validate-agent-outputs.py exit code, pretool-block-production-files.sh tool-name dispatch, .gitignore + git rm of sentinel.",
+    "why": "Parent cycle 20260505-231740 closed CLOSE: NO. Codex+QA gatekeeper identified 3 in_scope_real_bug blockers. Each individually sufficient to reject close.",
+    "where": [
+      "scripts/validate-agent-outputs.py",
+      ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/.hook-refactor-allow",
+      ".gitignore"
+    ],
+    "scope": {
+      "included": [
+        "validator exit code semantics (warnings-only -> 0)",
+        "hook Bash branch (save.py + direct-redirect detection, image_url deny + ownership applied)",
+        "sentinel filesystem rm + git rm --cached",
+        ".gitignore line for sentinel"
+      ],
+      "excluded": [
+        "Codex Findings 2,3,4,7 (deploy gate wiring, forbidden-token regex breadth, image_url HTML coverage, AC8 cross-repo)",
+        "any AC text rewrite for AC2 (chosen resolution: fix validator, leave AC text)",
+        "any cross-repo dot-claude work",
+        "any git revert / force-push / hard-reset (Destructive-Action Escalation contract: no destructive verbs proposed)"
+      ]
+    },
+    "success_criteria": [
+      "AC1: validator exits 0 on warnings-only canary trip; exits 1 on injected critical; exits 2 on missing dir.",
+      "AC2: hook blocks Bash-based save.py invocation carrying image_url and direct-redirect to data/<trip>/<file>.json; allows clean save.py and unrelated Bash; remains a single hook file.",
+      "AC3: sentinel absent from git index AND working tree.",
+      "AC4: .gitignore covers .claude/.hook-refactor-allow; touch+status verifies effect.",
+      "AC5: pretool-claude-config-guard.py exits 2 (BLOCKED) on synthetic Edit to .claude/commands/foo.md."
+    ],
+    "constraints": [
+      "Smallest precise change set per user verbatim '快速修复' (per spec Section 5.1).",
+      "Stay within /root/travel-planner repo (cross-repo dot-claude is out per /root/CLAUDE.md).",
+      "Preserve architect concern_6 binding (single hook file, no separate hook stack).",
+      "No destructive git operations (no revert / force-push / hard-reset).",
+      "AC text MUST match what verification actually produces (Section 5.2 control 5)."
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/validate-agent-outputs.py",
+      ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/settings.json (matcher entry only — IF currently restrictive to Write|Edit)",
+      ".claude/.hook-refactor-allow",
+      ".gitignore"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/save.py (read-only — referenced by hook detection regex; not modified)",
+      ".claude/agents/meals.md and 8 sibling data agent specs (read-only — owned_files frontmatter source for ownership check; not modified)",
+      "~/.claude/hooks/pretool-claude-config-guard.py (read-only cross-repo — verifier of AC5; not modified)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/verify-plan-integrity.py (Codex Findings 3, 4)",
+      "scripts/generate-and-deploy.sh (Codex Finding 2)",
+      "~/.claude/hooks/pretool-orchestrator-prompt-purity.py (Codex Finding 7)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-06T08:15:45Z",
+      "task_id": "20260506-081545",
+      "file": "scripts/verify-plan-integrity.py",
+      "line": "48-51",
+      "observation": "Codex Finding 3: FORBIDDEN_TOKEN_PATTERN is exact-match against quoted string values, not substring. Pollution phrases like 'Day 7 to plan more attractions' would not match. Outside user-need path for this cycle (user said 快速修复 the 3 explicit blockers).",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T08:15:45Z",
+      "task_id": "20260506-081545",
+      "file": "scripts/verify-plan-integrity.py",
+      "line": "58",
+      "observation": "Codex Finding 4: HTTP_IMAGE_URL_PATTERN only matches \"image_url\": \"http://. Misses \"image\": \"http://...\" (renderer-output key) and src=\"http://...\" in HTML scan. Out of scope this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T08:15:45Z",
+      "task_id": "20260506-081545",
+      "file": "scripts/generate-and-deploy.sh",
+      "line": null,
+      "observation": "Codex Finding 2: deploy gate runs verify-plan-integrity.py but not validate-agent-outputs.py. Spec 5.2 plan item 1 mentions 'current validator' ambiguously. The verifier is wired but not the original tool. Out of scope this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T08:15:45Z",
+      "task_id": "20260506-081545",
+      "file": "~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "line": null,
+      "observation": "Codex Finding 7: cross-repo dot-claude has many uncommitted unrelated changes; AC8 evidence will not ship cleanly until dot-claude is committed separately. Out of scope per /root/CLAUDE.md ('never push from /root').",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Parent cycle close failed with verdict CLOSE: NO; Codex round 1b' found 3 in_scope_real_bug blockers.",
+    "root_cause": "B1: validator exit-code semantics (return 2 on warnings-only) drift from AC2 literal text and from CLI severity-alignment convention. B2: pretool-block-production-files.sh dispatch table only includes Write|Edit; data agents canonical write surface is Bash via scripts/save.py — entire AC9 control is bypassable. B3: W4 of parent cycle created .claude/.hook-refactor-allow as a temporary opt-in but never deleted it; auto-commit captured it (commit cab2600 2026-05-06T00:00:09Z); .gitignore never covered it; the global guard exits 0 unconditionally while the file exists, disabling protection on .claude/commands/ and .claude/hooks/.",
+    "root_cause_commit": "B1: pre-existing (validator behavior since creation); B2: 5fd0da8 / parent cycle W6 dev-report-20260505-231740-W6.json (extension landed in Write|Edit branch); B3: cab2600 (2026-05-06T00:00:09Z auto-commit captured the W4 sentinel).",
+    "why_introduced": "B1: prior author chose exit 2 for 'warnings present' as a tri-state signal. B2: architect concern_6 explicitly bound 'single hook'; W6 dev correctly stayed in one hook but did not enumerate the Bash dispatch case because the existing case lattice only had Write|Edit. B3: W4 needed to Edit a .claude/commands file under the protection guard; the documented override is the sentinel; the cleanup step (delete sentinel after operation) was missed; auto-commit then captured the file because no .gitignore entry existed.",
+    "why_problematic": "B1: violates Section 5.2 control 5 (AC literal text must match verification output). Also violates the standard CLI convention readers expect. B2: the hook does not enforce on the actual write surface, so AC9's universal image_url deny + ownership are theoretical only. B3: the protection guard ships disabled in every checkout of the repo until removed.",
+    "timeline": "B1 — pre-existing. B2 — parent cycle W6 (2026-05-06T00:05Z). B3 — parent cycle W4 (2026-05-05T17:15Z creation; 2026-05-06T00:00Z auto-commit captured it).",
+    "affected_files": [
+      "scripts/validate-agent-outputs.py",
+      ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/.hook-refactor-allow",
+      ".gitignore"
+    ],
+    "evidence_type": "observed",
+    "observations": [
+      "validate-agent-outputs.py exits 2 on canary trip warnings-only (observed: re-execution in this BA session, exit_code=2 confirmed via two methods)",
+      "pretool-block-production-files.sh:29-32 short-circuits with exit 0 for non-Write|Edit (observed: file read in this session)",
+      "scripts/save.py is the canonical save surface for data agents (observed: .claude/agents/meals.md:292 explicit invocation)",
+      "no shell caller of validate-agent-outputs.py exists (observed: grep -rn '*.sh' returns 0 hits)",
+      "sync-agent-data.py:511-563 calls validator via importlib not subprocess (observed: file read; uses load_schemas + validate_against_schema directly)",
+      ".claude/.hook-refactor-allow is tracked by git (observed: git ls-files returns the path)",
+      ".claude/.hook-refactor-allow not in .gitignore (observed: git check-ignore -v returns no output, .gitignore content read)",
+      "first commit adding sentinel: cab2600 (observed: git log --diff-filter=A)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": [
+      "validate-agent-outputs.py",
+      "exit 0",
+      "exit 2",
+      "AC2",
+      "pretool-block-production-files.sh",
+      "AC9",
+      "Write|Edit",
+      "Bash",
+      ".hook-refactor-allow",
+      "sentinel"
+    ],
+    "localization_evidence": "Re-executed validator on canary trip (exit_code=2 confirmed). Read hook source and confirmed Write|Edit-only dispatch. Read sentinel file and confirmed git ls-files tracks it.",
+    "located_source": "scripts/validate-agent-outputs.py:425-430 + .claude/hooks/pretool-block-production-files.sh:29-32 + .claude/.hook-refactor-allow + /root/travel-planner/.gitignore",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "cab2600 (B3 sentinel) confirmed by git log --diff-filter=A; B1 pre-existing; B2 parent cycle W6 dev-report.",
+      "commit_message": "B3: 'Auto-commit: 2026-05-06 00:00:09'",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "AC2 claim 'validate-agent-outputs.py exits 0' is factually false (actual exit 2)",
+      "acceptance_criterion": "AC1: validator exits 0 on warnings-only; 1 on critical; 2 only on invocation/IO error."
+    },
+    {
+      "id": "R2",
+      "source_phrase": "AC9 hook only handles Write|Edit not Bash-based writes",
+      "acceptance_criterion": "AC2: hook also intercepts Bash invocations of scripts/save.py and direct-redirect/tee/cp/mv to data/<trip>/<file>.json; image_url deny + ownership applied; same hook file."
+    },
+    {
+      "id": "R3",
+      "source_phrase": ".hook-refactor-allow sentinel ships with active protection bypass",
+      "acceptance_criterion": "AC3+AC4+AC5: sentinel removed from git index + working tree; .gitignore prevents re-add; pretool-claude-config-guard.py enforcement re-engages."
+    },
+    {
+      "id": "R4",
+      "source_phrase": "快速修复这些问题",
+      "acceptance_criterion": "Meta-directive — constrains M-list to smallest precise scope; no AC text rewrite, no cross-repo work, no destructive git ops."
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/validate-agent-outputs.py",
+      "line_range": "425-430",
+      "role": "tail of main() decides exit code based on (total_errors, all_warnings) state.",
+      "imports_from": "leaf",
+      "evidence": "Read in this session lines 405-434.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/sync-agent-data.py",
+      "line_range": "504-563",
+      "role": "the only Python caller of validate-agent-outputs functions; uses importlib.spec_from_file_location to load load_schemas + validate_against_schema directly. NEVER calls main() and never inspects exit code.",
+      "imports_from": "scripts/validate-agent-outputs.py (importlib only)",
+      "evidence": "Read in this session lines 504-563.",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line_range": "29-32",
+      "role": "tool-name dispatch — currently Write|Edit only; non-matching tool exits 0.",
+      "imports_from": "leaf (bash + python3 inline)",
+      "evidence": "Read in this session lines 1-195.",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/agents/meals.md",
+      "line_range": "292-298",
+      "role": "canonical save.py invocation pattern — `python scripts/save.py --trip <slug> --agent meals --input /tmp/meals_update.json`. The Bash dispatch must detect this exact pattern.",
+      "imports_from": "leaf",
+      "evidence": "Read + grep in this session (13 hits for save.py in meals.md).",
+      "verified_via": "both"
+    },
+    {
+      "file": "~/.claude/hooks/pretool-claude-config-guard.py",
+      "line_range": "75-77, 168-185",
+      "role": "global guard for .claude/commands/ + .claude/hooks/; checks _sentinel_present() FIRST and exits 0 if sentinel exists. Sentinel removal re-engages the guard.",
+      "imports_from": "leaf",
+      "evidence": "Read in this session lines 1-189.",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line": 37,
+      "type": "if",
+      "code_snippet": "case \"$FILE_PATH\" in /root/happy/*) ... exit 2 ;; esac",
+      "purpose": "Production-path block (legacy /root/happy/, /root/.happy/, /root/.happy-jade/, /usr/lib/node_modules/happy*, /usr/bin/happy*).",
+      "removal_authorized": false
+    },
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line": 121,
+      "type": "if",
+      "code_snippet": "is_data_json = bool(re.match(r'^data/[^/]+/[^/]+\\.json$', rel_path))",
+      "purpose": "Universal image_url deny gate predicate — restricts deny to data/<trip>/<file>.json paths.",
+      "removal_authorized": false
+    },
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line": 145,
+      "type": "if",
+      "code_snippet": "if agent_type and agent_type in DATA_AGENT_TYPES:",
+      "purpose": "Agent-ownership gate — only enforces ownership for the 9 data agent types; orchestrator exempt.",
+      "removal_authorized": false
+    },
+    {
+      "file": "~/.claude/hooks/pretool-claude-config-guard.py",
+      "line": 75,
+      "type": "if",
+      "code_snippet": "def _sentinel_present(): return (_project_dir() / '.claude' / SENTINEL_NAME).exists()",
+      "purpose": "Per-session opt-out for .claude/commands/ + .claude/hooks/ guard. B3's fix RELIES on this guard re-engaging — must NOT modify this guard, only delete the sentinel + gitignore it.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- pure backend (validator script + bash hook + git index/gitignore); cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, or (4) screenshot evidence",
+    "viewport": null,
+    "theme": null,
+    "locale": null,
+    "auth_state": null,
+    "data_state": null,
+    "browser": null,
+    "url_path": null
+  },
+  "evidence": {
+    "observed": "Three blockers from close-report-20260505-231740.md verdict CLOSE: NO: B1 validator exit 2 not 0; B2 hook Write|Edit-only; B3 sentinel tracked + bypass active.",
+    "measured": {
+      "value": {
+        "B1_validator_exit": 2,
+        "B1_stdout_last_line": "Validation PASSED with 25 warning(s)",
+        "B2_hook_dispatch_branch": "Write|Edit",
+        "B2_hook_short_circuit_for_other_tools": "exit 0 at line 32",
+        "B3_sentinel_tracked": true,
+        "B3_sentinel_in_gitignore": false,
+        "B3_first_commit_adding": "cab2600"
+      },
+      "location": "scripts/validate-agent-outputs.py:425-430; .claude/hooks/pretool-block-production-files.sh:29-32; git ls-files .claude/.hook-refactor-allow + git check-ignore -v"
+    },
+    "expected": {
+      "value": {
+        "B1_validator_exit": 0,
+        "B1_stdout_last_line": "Validation PASSED with N warning(s) (N >= 0)",
+        "B2_hook_dispatch_branch": "Write|Edit|Bash",
+        "B2_hook_short_circuit_for_other_tools": "exit 0 ONLY for tools without write side-effects (i.e. tools other than Write/Edit/Bash)",
+        "B3_sentinel_tracked": false,
+        "B3_sentinel_in_gitignore": true
+      },
+      "source": "AC2 literal text + Section 5.2 control 5 (AC text must match execution); architect concern_6 (single-hook binding from parent cycle BA spec); standard git workflow for per-session opt-in files."
+    },
+    "gap": "B1: exit 2 vs expected 0 (literal mismatch with AC). B2: Bash branch missing — entire AC9 control bypassable. B3: tracked + not gitignored — guard permanently disabled."
+  },
+  "scope_expansion": {
+    "search_pattern": "validate-agent-outputs|pretool-block-production-files|hook-refactor-allow",
+    "search_scope": "/root/travel-planner",
+    "user_reported": [
+      "scripts/validate-agent-outputs.py",
+      ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/.hook-refactor-allow",
+      ".gitignore"
+    ],
+    "additional_found": [
+      "scripts/sync-agent-data.py (only non-doc Python caller of validate-agent-outputs; uses importlib not subprocess; UNAFFECTED by exit code change — confirms B1 blast radius is nil)",
+      ".claude/settings.json (W2 may need to extend matcher to Bash if currently restrictive — minor)"
+    ],
+    "all_occurrences": [
+      "scripts/validate-agent-outputs.py:425-430 (W1)",
+      ".claude/hooks/pretool-block-production-files.sh:29-32 (W2)",
+      ".claude/.hook-refactor-allow (W3)",
+      "/root/travel-planner/.gitignore (W3)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "B1: severity-alignment convention + verified by re-execution. B2: architect concern_6 binding (single hook) verified in dev-report-20260505-231740-W6.json:60. B3: standard git workflow for per-session opt-in files.",
+    "url_or_location": "scripts/validate-agent-outputs.py:425-430 (re-executed); .claude/hooks/pretool-block-production-files.sh:29-32 (read); docs/dev/dev-report-20260505-231740-W6.json:60 (architect concern_6 cite); ~/.claude/hooks/pretool-claude-config-guard.py:75-77 (sentinel-check logic).",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "no project CLAUDE.md role-table — this is pure backend; no design tokens / UI roles relevant"
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260505-231740.md + docs/dev/dev-report-20260505-231740-W6.json",
+        "proposed_solution": "Extend pretool-block-production-files.sh with agent-ownership + universal image_url deny under architect concern_6 single-hook binding.",
+        "actual_change": "Added owned_files YAML frontmatter to 9 data agents; added Check 2 (ownership) + Check 3 (image_url deny) to the SAME hook BUT only inside the Write|Edit branch.",
+        "outcome": "Hook covers Write|Edit which agents are forbidden from using. Real write surface (Bash via save.py) bypasses entire AC9 control. Closer Finding 5.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L4"
+      },
+      {
+        "artifact_path": "docs/dev/dev-report-20260505-231740-W4.json + commit cab2600",
+        "proposed_solution": "Use sentinel mechanism to temporarily bypass pretool-claude-config-guard.py during W4 prompt-purity work.",
+        "actual_change": "Created .claude/.hook-refactor-allow; performed prompt-purity edits; failed to delete sentinel; auto-commit captured it; .gitignore never updated.",
+        "outcome": "Sentinel tracked in git, bypass permanently active. Closer Finding 6.",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L5"
+      },
+      {
+        "artifact_path": "docs/dev/qa-report-20260505-231740.json (AC2 evidence)",
+        "proposed_solution": "Verify AC2 by running validator and reading stdout last line ('Validation PASSED with 24 warning(s)').",
+        "actual_change": "QA reported AC2 PASS based on stdout substring without checking exit code.",
+        "outcome": "Closer re-ran validator and observed exit 2; QA claim factually false. Anti-Fraud Principle 4/5 violated. Closer Finding 1.",
+        "failure_category": "tainted_reference",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4 (B1 + B2) and L5 (B3)",
+      "differs_from_all_priors": true,
+      "rationale": "B1 fixes the validator semantics — a layer the prior cycle did NOT touch (prior cycle worked at the QA verification layer; this cycle works at the validator output layer). B2 adds a Bash dispatch branch — a layer extension the prior cycle did NOT enter (prior cycle stopped at Write|Edit). B3 inverses the sentinel creation — same file but at a deeper layer (git index + gitignore vs filesystem-only). No layer is repeated."
+    }
+  },
+  "context": {
+    "codebase_state": "On branch master. .claude/.hook-refactor-allow tracked. Recent commits: cc6edbb 2026-05-06 07:26 (regen-command-index.py); 3b3b523 2026-05-06 06:31 (strip-image-url-fields.py); cab2600 2026-05-06 00:00 (auto-commit that captured sentinel).",
+    "recent_commits": [
+      "cc6edbb 2026-05-06 07:26:39 Auto-commit",
+      "3b3b523 2026-05-06 06:31 Auto-commit",
+      "1617d91 2026-05-06 00:01 cycle artifact",
+      "cab2600 2026-05-06 00:00:09 Auto-commit (added sentinel)",
+      "024d9cd 2026-05-06 00:06 verify-plan-integrity.py"
+    ],
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Three file-disjoint workers in parallel; each addresses one blocker at the layer prior cycle did not enter.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/validate-agent-outputs.py (W1)",
+      ".claude/hooks/pretool-block-production-files.sh (W2)",
+      ".claude/settings.json (W2 — IF matcher is Write|Edit-restrictive)",
+      ".gitignore (W3)"
+    ],
+    "files_to_delete": [
+      ".claude/.hook-refactor-allow (W3 — git rm --cached + filesystem rm)"
+    ],
+    "validation_approach": "QA executes the verbatim recipes in AC1-AC5: re-run validator (exit code check); simulate hook with synthetic JSON envelopes (exit code check + stderr substring match); git ls-files + git check-ignore + ls -la; simulate guard."
+  },
+  "worker_partition": [
+    {
+      "worker": "W1",
+      "blocker": "B1",
+      "files": ["scripts/validate-agent-outputs.py"],
+      "scope": "Modify only main() exit-code branches at lines 425-430 + docstring lines 10-13. No other changes.",
+      "layer": "L4",
+      "estimated_lines_changed": 5
+    },
+    {
+      "worker": "W2",
+      "blocker": "B2",
+      "files": [
+        ".claude/hooks/pretool-block-production-files.sh",
+        ".claude/settings.json (matcher only, IF currently restrictive)"
+      ],
+      "scope": "Replace tool-name dispatch with Write|Edit|Bash; add Bash branch implementing save.py detection (--input file read) + direct-redirect detection (>, >>, tee, cp, mv to data/<trip>/<file>.json); reuse existing PYHOOK_EOF Python for image_url + ownership logic. Stay in same hook file (architect concern_6).",
+      "layer": "L4",
+      "estimated_lines_changed": 60
+    },
+    {
+      "worker": "W3",
+      "blocker": "B3",
+      "files": [
+        ".claude/.hook-refactor-allow (deletion)",
+        ".gitignore"
+      ],
+      "scope": "git rm --cached + filesystem rm of sentinel; append `.claude/.hook-refactor-allow` to .gitignore under a comment header. No other changes.",
+      "layer": "L5",
+      "estimated_lines_changed": 3
+    }
+  ],
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "ac_text_matches_execution": true,
+    "single_hook_binding": true,
+    "no_destructive_git_operations": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward 3-blocker fix with clear root cause — validator exit semantics, hook dispatch table, git index + gitignore. Each is a well-understood mechanical pattern; no industry-best-practices research needed."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

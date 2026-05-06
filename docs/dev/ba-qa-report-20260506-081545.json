@@ -1,0 +1,58 @@
+{
+  "request_id": "20260506-081545",
+  "task_id": "20260506-081545",
+  "timestamp": "2026-05-06T08:30:00Z",
+  "mode": "ba_validation",
+  "verdict": "fail",
+  "objections": [
+    {
+      "dimension": "investigation_completeness",
+      "claim": "BA M2/AC2: extending pretool-block-production-files.sh to handle Bash branch fully closes the AC9 universal image_url deny gap on data agents.",
+      "problem": "BA never verified runtime wiring of the hook in settings.json. Direct grep confirms pretool-block-production-files.sh is NOT wired in /root/travel-planner/.claude/settings.json PreToolUse (only pretool-workflow-gate.py and pretool-bash-safety.sh are wired) AND NOT wired in /root/.claude/settings.json PreToolUse. The hook exists as a file but never fires at runtime. AC2's verbatim self-test pipes a JSON envelope to the hook directly — this tests the hook code in isolation but does NOT prove the hook fires on a real Bash invocation by a subagent. If W2 lands the Bash branch but the hook is still not wired, the AC2 self-test PASSes while the actual production protection is still bypassed (entire AC9 control still bypassable). BA's Technical Hint #W2 says 'check .claude/settings.json for the existing pretool-block-production-files.sh entry; if its matcher field is Write|Edit, change to Write|Edit|Bash' — this is conditional on an entry existing, but no entry exists. Treating wiring as 'maybe-no-op' rather than confirming-by-grep is the same investigation-completeness failure the prior cycle hit at the Write|Edit-vs-Bash boundary.",
+      "required_evidence": "BA must add (a) explicit verification step: 'grep -nE pretool-block-production-files /root/travel-planner/.claude/settings.json /root/.claude/settings.json' with the actual current state recorded, AND (b) a hard requirement in M3 / W2 scope: 'if no settings.json entry exists, ADD one with matcher Write|Edit|Bash', AND (c) a new AC sub-clause (or extend AC2) verifying runtime wiring: 'grep -nE \"pretool-block-production-files\" /root/travel-planner/.claude/settings.json returns at least one match in the PreToolUse block with a matcher that includes Bash'."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "claim": "BA M2 / AC2: detection regexes for `python(3?) (\\S*/)?scripts/save\\.py` + direct redirect/tee/cp/mv to data/<trip>/<file>.json fully cover the canonical save surface.",
+      "problem": "BA did not enumerate or investigate other Python scripts that write data/<trip>/<file>.json files. Concretely: scripts/sync-agent-data.py:181-183 writes data/<trip>/<file>.json via `open(path, 'w'); json.dump(output, f, ...)` — i.e., Python-internal file write, not a shell redirect, not save.py, not stdin-piped. A subagent or orchestrator that runs `python3 scripts/sync-agent-data.py ...` via Bash would NOT match BA's regex set (the regex only catches `scripts/save.py --input <path>` for save.py and `> data/...`/`tee data/...`/`cp ... data/...`/`mv ... data/...` for shell redirects). Same gap for scripts/strip-image-url-fields.py:36-37 which also opens data/<trip>/*.json files and writes JSON. BA did acknowledge stdin-piped save.py form as a known coverage gap (C1) but did NOT acknowledge the Python-internal-write surface, which is a wider gap because it is invisible to ALL of BA's detection patterns.",
+      "required_evidence": "BA must (a) document this Python-internal-write surface as either an additional detection target (regex match on `python3 .* (sync-agent-data|strip-image-url-fields)\\.py` plus any other script that opens data/<trip>/<file>.json for write — discovered via `grep -lnE \"open.*data/[^/]+/[^/]+\\.json\" scripts/*.py`) OR explicitly as an out-of-scope coverage gap with rationale parallel to C1's stdin-piped acknowledgement. Not naming this surface at all means W2 lands a fix that still leaves AC9 control bypassable via 2+ documented Python script invocations."
+    },
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "claim": "AC2's verbatim recipe — piping JSON envelope to .claude/hooks/pretool-block-production-files.sh — verifies that 'pretool hook intercepts Bash-based save.py writes'.",
+      "problem": "AC2 literal recipe tests hook code in isolation. It does not verify the hook is wired in settings.json, so it cannot prove the hook actually fires when a subagent invokes `python3 scripts/save.py`. The AC text says 'hook intercepts Bash-based save.py writes' but the recipe only proves 'hook code, when piped synthetic JSON, would block such writes IF it were invoked'. This is the same class of drift that produced cycle 20260505-231740's Anti-Fraud Principle 4/5 violation (AC2 claimed exit 0; recipe verified stdout substring, not exit code). The recipe must include a wiring check, or AC2's literal claim must be narrowed to 'hook code, when invoked, blocks Bash-based save.py writes'. Either is acceptable; the current state — broad claim plus narrow recipe — is the same drift shape that just failed close.",
+      "required_evidence": "BA must update AC2 to add a wiring sub-criterion (verbatim recipe), e.g., `grep -nE 'pretool-block-production-files' .claude/settings.json` returns at least one PreToolUse hook entry with a matcher containing 'Bash'. Or, if BA chooses to narrow the claim instead of add the wiring step, AC2's prose must say 'hook script, when invoked with the synthetic envelope, blocks ...' instead of 'hook intercepts Bash-based save.py writes'. The drift dimension applies because the literal text describes runtime behavior but the recipe verifies static-isolation behavior."
+    }
+  ],
+  "non_objections": [
+    {
+      "dimension": "evidence_quality",
+      "note": "B1 evidence verified: validator exit code 2 confirmed via PIPESTATUS=2 on canary trip (PIPESTATUS, not direct $? after pipe — BA's claim is correct). No shell callers (grep returns 0 hits in scripts/*.sh). Only Python caller is sync-agent-data.py:507-563 via importlib.spec_from_file_location, never subprocess. B1 blast radius is genuinely nil."
+    },
+    {
+      "dimension": "evidence_quality",
+      "note": "B3 evidence verified: `git ls-files .claude/.hook-refactor-allow` returns the path (tracked), `git check-ignore -v` returns no output and exits 1 (not gitignored), `ls -la` shows 0-byte file present. BA's measurements all correct."
+    },
+    {
+      "dimension": "evidence_quality",
+      "note": "B2 hook source verified at lines 28-32 — case Write|Edit) ;; *) exit 0 ;; esac. BA's claim about Write|Edit-only dispatch is factually correct."
+    },
+    {
+      "dimension": "scope_alignment",
+      "note": "BA's 3 work items map 1-to-1 to the 3 in_scope_real_bug close blockers (Findings 1, 5, 6). BA preserved 快速修复 intent — properly deferred Findings 2, 3, 4, 7 to Out-of-Scope Observations. No bug renamed, no scope narrowed."
+    },
+    {
+      "dimension": "affected_file_accuracy",
+      "note": "All 4 cited files exist at the cited paths; line references verified against actual file content."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "note": "B3 sentinel guard logic at ~/.claude/hooks/pretool-claude-config-guard.py:75-77 verified. _sentinel_present() reads .claude/.hook-refactor-allow at project root and main() exits 0 unconditionally if present (line 176-177). After AC3's filesystem rm + AC4's gitignore, AC5's synthetic Edit will hit _evaluate_write_edit() then _block_path() at line 116-128, exit 2 with 'BLOCKED: agent Edit to .claude/commands/ is forbidden ...'. BA's AC5 recipe is sound."
+    },
+    {
+      "dimension": "investigation_completeness",
+      "note": "C1 stdin-piped save.py form is correctly acknowledged as a known coverage gap in BA spec (Could Have section + Edge Cases & Risks); accepting this as an out-of-scope C1 is reasonable for a 快速修复 cycle."
+    }
+  ],
+  "summary": "FAIL — 3 objections: 2x investigation_completeness (settings.json wiring not checked; Python-internal-write surface uncovered) + 1x spec_text_vs_execution_drift (AC2 recipe tests hook in isolation, claim is about runtime interception). B1+B3 are sound; B2 has a structural gap that, if landed as-is, repeats the same Anti-Fraud-4/5 shape that just failed close. BA must add wiring verification + acknowledge or cover the Python-internal-write surface before this redev cycle can dispatch dev workers."
+}
