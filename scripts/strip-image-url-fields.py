@@ -7,6 +7,14 @@ import json
 import sys
 from pathlib import Path
 
+# Route persistence through the canonical save layer so post-strip writes hit
+# the iter-2 ownership rejector + universal image_url deny. After stripping
+# image_url fields the universal deny is a no-op (payload is image_url-free);
+# ownership still applies (target file must be in the inferred agent's
+# owned_files allowlist).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib.json_io import save_agent_json  # noqa: E402
+
 
 def strip_image_url(node):
     """Recursively remove all 'image_url' keys from any dict in node. Returns count."""
@@ -33,9 +41,20 @@ def process_file(path: Path) -> int:
 
     count = strip_image_url(data)
     if count > 0:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+        # Iter 2 (spec-20260505-221501 / W2): route through json_io's
+        # save_agent_json so the ownership rejector + universal image_url
+        # deny + stock-image deny all fire. agent_name inferred from
+        # filename stem (e.g., meals.json -> meals).
+        agent_name = path.stem
+        inner_data = data.get("data", data) if isinstance(data, dict) else data
+        save_agent_json(
+            path,
+            agent_name=agent_name,
+            data=inner_data,
+            validate=False,
+            create_backup=False,
+            allow_high_severity=True,
+        )
         print(f"[ok] {path}: removed {count} image_url field(s)")
     else:
         print(f"[skip] {path}: no image_url fields")
