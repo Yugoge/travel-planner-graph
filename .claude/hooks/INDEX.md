@@ -1,7 +1,7 @@
 # hooks
 
-*Last updated: 2026-05-06T11:05:27Z*
-**Total entries**: 53
+*Last updated: 2026-05-06T11:11:36Z*
+**Total entries**: 54
 **Convention**: kebab
 
 ## Tree
@@ -45,6 +45,7 @@ hooks/
 ├── `pretool-quality-gate.py` - PreToolUse Hook: Quality gate for Write/Edit operations
 ├── `pretool-subagent-enforce.py` - PreToolUse Hook: Enforce subagent invocation at designated workflow steps
 ├── `pretool-todo-validate.py` - PreToolUse Hook: Validate TodoWrite input BEFORE execution
+├── `pretool-validate-data-write.py` - Implements spec-20260506-092951 §5.1, §5.3, §5.7. Reads JSON hook payload
 ├── `pretool-workflow-gate.py` - PreToolUse Hook: Require TodoWrite/TodoRead acknowledgment before other tools
 ├── `pretool-worktree-guard.sh` - PreToolUse hook: Detect stale agent worktrees before ANY tool call
 ├── `prompt-workflow.py` - UserPromptSubmit Hook: Checklist Injection for Slash Commands
