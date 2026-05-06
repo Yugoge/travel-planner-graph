@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T09:30:42Z*
-**Total entries**: 221
+*Last updated: 2026-05-06T09:32:11Z*
+**Total entries**: 223
 **Convention**: kebab
 
 ## Tree
@@ -22,7 +22,8 @@ dev/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 │   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
-│   └── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
+│   ├── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
+│   └── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `architect-report-init.json` - json config
@@ -220,6 +221,7 @@ dev/
 ├── `style-inspector-report-20260505-124619.json` - json config
 ├── `style-inspector-report-20260505-175102.json` - json config
 ├── `style-inspector-report-20260505-231740.json` - json config
+├── `style-inspector-report-20260506-081545.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
