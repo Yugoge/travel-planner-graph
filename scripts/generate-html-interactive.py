@@ -2990,7 +2990,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                   left: hasColumns ? `calc(10px + ${colLeft}%)` : '10px',
                   width: hasColumns ? `calc(${colWidth}% - 12px)` : 'calc(100% - 20px)',
                   height: entryH - 4,
-                  background: st.bg, borderLeft: `3px ${(entry.optional || entry._isAlternative) ? 'dashed' : 'solid'} ${st.border}`,
+                  background: st.bg, borderLeft: `3px ${entry.optional ? 'dashed' : 'solid'} ${st.border}`,
                   borderRadius: '6px',
                   padding: sm ? '4px 6px' : '6px 8px',  // Smaller padding for scaled fonts
                   display: 'flex',
@@ -3040,17 +3040,17 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         ) : (
                           <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                         )}
-                        {(entry.optional || entry._isAlternative) && showDetails && (
+                        {entry.optional && showDetails && (
                           <span style={{
                             fontSize: `${9 * fontScale}px`,
                             padding: '1px 4px',
-                            background: entry._isAlternative ? '#edf2fc' : '#f5f5f3',
+                            background: '#f5f5f3',
                             borderRadius: '3px',
-                            color: entry._isAlternative ? '#2b63b5' : '#9b9a97',
+                            color: '#9b9a97',
                             marginLeft: '4px',
                             verticalAlign: 'middle'
                           }}>
-                            {entry._isAlternative ? (lang === 'local' ? '备选' : 'Alt') : L('optional', lang)}
+                            {L('optional', lang)}
                           </span>
                         )}
                       </div>
