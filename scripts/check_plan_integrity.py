@@ -234,14 +234,48 @@ def _mk_dup(target, name, day, sources, severity):
     )
 
 
+def _mk_dup_cross_file_warn(target, name, day, sources):
+    """WARN-severity finding for cross-file 2-source duplicate (spec §5.7 §1 evidence: G5415-class)."""
+    return _Finding(
+        'duplicate-transit', 'WARN', f'{target}:day{day+1}',
+        f'cross-file duplicate transit segment: "{name}" appears in '
+        f'transportation.json AND timeline.json on the same day '
+        f'(sources: {sorted(sources)})',
+        'Pick one source-of-truth: keep the segment in either '
+        'transportation.intra_city_routes OR timeline (travel_segments / '
+        'timeline activity), not both files.',
+    )
+
+
+def _is_cross_file_pair(sources):
+    """True iff source set contains BOTH a transportation.* and a timeline.* label."""
+    has_trans = any(s.startswith('transportation.') for s in sources)
+    has_timeline = any(s.startswith('timeline.') for s in sources)
+    return has_trans and has_timeline
+
+
 def _duplicate_transit_findings(target, transportation_data,
                                 timeline_data, severity):
     if not (transportation_data and timeline_data):
         return []
     seen = _collect_transit_keys(transportation_data, timeline_data)
-    return [_mk_dup(target, name, day, set(sources), severity)
-            for (name, day), sources in seen.items()
-            if len(set(sources)) >= 3]
+    out = []
+    for (name, day), sources in seen.items():
+        unique_sources = set(sources)
+        n = len(unique_sources)
+        # Existing check: ≥3-source duplicate at caller-supplied severity.
+        if n >= 3:
+            out.append(_mk_dup(target, name, day, unique_sources, severity))
+            continue
+        # New check (spec §5.7 extension): cross-file 2-source duplicate
+        # at WARN severity. Narrowed to cross-file pairs only — intra-
+        # timeline.json segment+timeline pairs are renderer-driver patterns,
+        # not duplication bugs.
+        if n == 2 and _is_cross_file_pair(unique_sources):
+            out.append(_mk_dup_cross_file_warn(
+                target, name, day, unique_sources,
+            ))
+    return out
 
 
 def cross_ref_findings_for_target(target_path: Path, severity: str = 'FAIL'):
