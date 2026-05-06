@@ -64,7 +64,11 @@
     "in_user_path": [
       "scripts/validate-agent-outputs.py",
       ".claude/hooks/pretool-block-production-files.sh",
-      ".claude/settings.json (matcher entry only — IF currently restrictive to Write|Edit)",
+      ".claude/settings.json (NEW PreToolUse hook entry registration with Write|Edit|Bash matcher — REQUIRED, not conditional)",
+      "scripts/lib/json_io.py (extension: _reject_unauthorized_ownership rejector + new OwnershipError exception)",
+      "scripts/sync-agent-data.py (refactor :181-183 to route through save_agent_json)",
+      "scripts/strip-image-url-fields.py (refactor :36-37 to route through save_agent_json)",
+      "scripts/tests/test_json_io_ownership.py (NEW test file — AC-OWNERSHIP recipe)",
       ".claude/.hook-refactor-allow",
       ".gitignore"
     ],
@@ -79,6 +83,32 @@
       "~/.claude/hooks/pretool-orchestrator-prompt-purity.py (Codex Finding 7)"
     ]
   },
+  "qa_objections_addressed": [
+    {
+      "objection_index": 1,
+      "dimension": "investigation_completeness",
+      "qa_claim": "BA never verified runtime wiring of the hook in settings.json. Direct grep confirms pretool-block-production-files.sh is NOT wired in /root/travel-planner/.claude/settings.json PreToolUse AND NOT wired in /root/.claude/settings.json PreToolUse.",
+      "ba_iter2_investigation": "Verbatim grep performed in this BA session: `grep -n pretool-block-production-files /root/travel-planner/.claude/settings.json` returned 0 hits, exit 1; `grep -n pretool-block-production-files /root/.claude/settings.json` returned 0 hits, exit 1. Project settings.json PreToolUse block parsed: only pretool-workflow-gate.py (no matcher) + pretool-bash-safety.sh (matcher Bash). Global settings.json PreToolUse 19 entries inspected — no entry for pretool-block-production-files.sh.",
+      "ba_iter2_resolution": "W2 scope EXPANDED. M4 added: REQUIRED (not conditional) registration of the hook in .claude/settings.json with matcher Write|Edit|Bash. AC-WIRING added with verbatim grep + json-parse recipe.",
+      "evidence_status": "confirmed — QA was correct"
+    },
+    {
+      "objection_index": 2,
+      "dimension": "investigation_completeness",
+      "qa_claim": "BA did not enumerate other Python scripts that write data/<trip>/<file>.json files. scripts/sync-agent-data.py:181-183 writes via Python-internal open(); json.dump(). Same gap for scripts/strip-image-url-fields.py:36-37. A PreToolUse Bash hook can NEVER intercept Python-internal open() writes.",
+      "ba_iter2_investigation": "Read in this session — sync-agent-data.py:170-200 (confirmed direct open(path,'w'); json.dump pattern at lines 181-183) and strip-image-url-fields.py:20-60 (confirmed direct open(path,'w'); json.dump pattern at lines 36-37). Grep `save_agent_json|json_io|save_agent_batch` returned 0 hits in BOTH files. Read scripts/lib/json_io.py (517 lines) — confirmed save_agent_json is the canonical persistence function and already runs _reject_unsafe_image_payloads at line 183; extension point for ownership rejector exists at line 138-191.",
+      "ba_iter2_resolution": "W2 scope EXPANDED to include BOTH (a) AND (b) per QA's recommendation: (a) M5 added — extend scripts/lib/json_io.py:save_agent_json with _reject_unauthorized_ownership rejector; (b) M6 added — refactor scripts/sync-agent-data.py:181-183 and scripts/strip-image-url-fields.py:36-37 to route through save_agent_json. Bash hook detection becomes secondary defense (catches direct shell redirects). AC-OWNERSHIP and AC-REFACTOR added with verbatim recipes.",
+      "evidence_status": "confirmed — QA was correct; architectural mismatch identified and resolved at the persistence layer"
+    },
+    {
+      "objection_index": 3,
+      "dimension": "spec_text_vs_execution_drift",
+      "qa_claim": "AC2 literal recipe tests hook code in isolation. It does not verify the hook is wired in settings.json, so it cannot prove the hook actually fires when a subagent invokes python3 scripts/save.py. The AC text says 'hook intercepts Bash-based save.py writes' but the recipe only proves 'hook code, when piped synthetic JSON, would block such writes IF it were invoked'.",
+      "ba_iter2_investigation": "Confirmed by re-reading iter-1 AC2 — recipe pipes JSON envelope to hook directly (static-isolation behavior). Same drift shape as parent cycle's Anti-Fraud-4/5.",
+      "ba_iter2_resolution": "AC2 REFORMULATED. The runtime claim now decomposes into three sub-criteria, each with its own AC: (a) AC-WIRING proves hook is in settings.json and will fire on Bash; (b) AC-OWNERSHIP proves persistence-layer enforcement catches Python-internal writes; (c) AC2-RUNTIME proves the hook script's Bash-detection branch produces the correct exit code on synthetic envelopes. The three together prove runtime enforcement; AC2's reformulated text now matches what the recipe verifies (the Bash-detection sub-case in isolation, called out explicitly).",
+      "evidence_status": "confirmed — QA was correct; AC reformulated to eliminate drift"
+    }
+  ],
   "out_of_scope_observations": [
     {
       "ts": "2026-05-06T08:15:45Z",
@@ -115,6 +145,15 @@
       "observation": "Codex Finding 7: cross-repo dot-claude has many uncommitted unrelated changes; AC8 evidence will not ship cleanly until dot-claude is committed separately. Out of scope per /root/CLAUDE.md ('never push from /root').",
       "in_user_path": false,
       "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T08:35:00Z",
+      "task_id": "20260506-081545",
+      "file": "scripts/save.py",
+      "line": null,
+      "observation": "Iter 2 W4: dev should verify save.py itself routes through json_io.save_agent_json. If not, separate refactor needed (not this cycle). With json_io enforcement in place after W2, save.py becomes the only remaining Bash-tool surface; if save.py uses json_io internally, defense-in-depth is complete. If not, that's a separate refactor concern for a future cycle.",
+      "in_user_path": false,
+      "security_relevant": false
     }
   ],
   "root_cause_analysis": {
@@ -127,6 +166,11 @@
     "affected_files": [
       "scripts/validate-agent-outputs.py",
       ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/settings.json",
+      "scripts/lib/json_io.py",
+      "scripts/sync-agent-data.py",
+      "scripts/strip-image-url-fields.py",
+      "scripts/tests/test_json_io_ownership.py",
       ".claude/.hook-refactor-allow",
       ".gitignore"
     ],
@@ -186,7 +230,22 @@
     {
       "id": "R4",
       "source_phrase": "快速修复这些问题",
-      "acceptance_criterion": "Meta-directive — constrains M-list to smallest precise scope; no AC text rewrite, no cross-repo work, no destructive git ops."
+      "acceptance_criterion": "Meta-directive — constrains M-list to smallest precise scope; no AC text rewrite for AC1, no cross-repo work, no destructive git ops; scope expansion in iter 2 is constrained to exactly what QA objections demand."
+    },
+    {
+      "id": "R5",
+      "source_phrase": "settings.json wiring not verified (QA obj. 1)",
+      "acceptance_criterion": "AC-WIRING: grep + json-parse confirms .claude/settings.json registers pretool-block-production-files.sh under PreToolUse with matcher containing Bash."
+    },
+    {
+      "id": "R6",
+      "source_phrase": "Python-internal write surface uncovered (QA obj. 2)",
+      "acceptance_criterion": "AC-OWNERSHIP: json_io.save_agent_json raises OwnershipError on out-of-owned-files write; preserves existing StockImageRejected behavior. AC-REFACTOR: grep confirms sync-agent-data.py and strip-image-url-fields.py route through save_agent_json with no remaining direct open(...,'w') to data/<trip>/<file>.json."
+    },
+    {
+      "id": "R7",
+      "source_phrase": "AC2 recipe vs claim drift (QA obj. 3)",
+      "acceptance_criterion": "AC2 reformulated as 'Bash-detection sub-case in isolation' + AC-WIRING + AC-OWNERSHIP collectively prove runtime enforcement; AC text matches recipe scope at each level."
     }
   ],
   "component_chain": [
@@ -213,6 +272,38 @@
       "imports_from": "leaf (bash + python3 inline)",
       "evidence": "Read in this session lines 1-195.",
       "verified_via": "Read"
+    },
+    {
+      "file": ".claude/settings.json",
+      "line_range": "81-101",
+      "role": "PreToolUse hook registration — currently registers pretool-workflow-gate.py (no matcher) and pretool-bash-safety.sh (matcher Bash) ONLY. NO entry for pretool-block-production-files.sh — the hook is a file on disk that NEVER fires at runtime. Iter 2 W2 ADDS a new entry.",
+      "imports_from": "leaf (JSON config, read by Claude Code harness)",
+      "evidence": "Read + grep in this session: grep -n pretool-block-production-files /root/travel-planner/.claude/settings.json returned 0 hits, exit 1; python3 json-parse confirmed only 2 PreToolUse entries.",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/lib/json_io.py",
+      "line_range": "117-132, 138-191",
+      "role": "Canonical persistence layer for data/<trip>/<file>.json writes. save_agent_json runs _reject_unsafe_image_payloads at line 183 (existing image_url + stock-image deny). Extension point for ownership rejector: add new function _reject_unauthorized_ownership that runs BEFORE _reject_unsafe_image_payloads. New OwnershipError(JSONIOError) exception class.",
+      "imports_from": "plan_validate (importlib)",
+      "evidence": "Read in this session, full 517-line file.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/sync-agent-data.py",
+      "line_range": "181-183",
+      "role": "Direct Python write to data/<plan_id>/<filename>: open(path, 'w'); json.dump(output). Bypasses json_io entirely. Iter 2 W2 refactor target.",
+      "imports_from": "scripts/validate-agent-outputs.py (importlib at lines 504-563)",
+      "evidence": "Read in this session lines 170-200; grep save_agent_json|json_io|save_agent_batch returned 0 hits.",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/strip-image-url-fields.py",
+      "line_range": "36-37",
+      "role": "Direct Python write to processed file: open(path, 'w'); json.dump(data). Bypasses json_io entirely. Iter 2 W2 refactor target.",
+      "imports_from": "leaf",
+      "evidence": "Read in this session lines 20-69; grep save_agent_json|json_io|save_agent_batch returned 0 hits.",
+      "verified_via": "both"
     },
     {
       "file": ".claude/agents/meals.md",
@@ -278,18 +369,28 @@
     "url_path": null
   },
   "evidence": {
-    "observed": "Three blockers from close-report-20260505-231740.md verdict CLOSE: NO: B1 validator exit 2 not 0; B2 hook Write|Edit-only; B3 sentinel tracked + bypass active.",
+    "observed": "Three blockers from close-report-20260505-231740.md verdict CLOSE: NO + 3 QA objections from ba-qa-report-20260506-081545.json verdict=fail: B1 validator exit 2 not 0; B2 hook Write|Edit-only AND not wired in settings.json AND Python-internal write surface uncovered; B3 sentinel tracked + bypass active.",
     "measured": {
       "value": {
         "B1_validator_exit": 2,
         "B1_stdout_last_line": "Validation PASSED with 25 warning(s)",
         "B2_hook_dispatch_branch": "Write|Edit",
         "B2_hook_short_circuit_for_other_tools": "exit 0 at line 32",
+        "B2_iter2_hook_wired_in_project_settings": false,
+        "B2_iter2_hook_wired_in_global_settings": false,
+        "B2_iter2_hook_grep_project_exit_code": 1,
+        "B2_iter2_hook_grep_global_exit_code": 1,
+        "B2_iter2_sync_agent_data_write_pattern": "open(path,'w'); json.dump(...) at scripts/sync-agent-data.py:181-183",
+        "B2_iter2_strip_image_url_write_pattern": "open(path,'w'); json.dump(...) at scripts/strip-image-url-fields.py:36-37",
+        "B2_iter2_sync_agent_data_routes_through_json_io": false,
+        "B2_iter2_strip_image_url_routes_through_json_io": false,
+        "B2_iter2_json_io_save_agent_json_has_image_url_rejector": true,
+        "B2_iter2_json_io_save_agent_json_has_ownership_rejector": false,
         "B3_sentinel_tracked": true,
         "B3_sentinel_in_gitignore": false,
         "B3_first_commit_adding": "cab2600"
       },
-      "location": "scripts/validate-agent-outputs.py:425-430; .claude/hooks/pretool-block-production-files.sh:29-32; git ls-files .claude/.hook-refactor-allow + git check-ignore -v"
+      "location": "scripts/validate-agent-outputs.py:425-430; .claude/hooks/pretool-block-production-files.sh:29-32; .claude/settings.json (project + global) PreToolUse blocks; scripts/sync-agent-data.py:181-183; scripts/strip-image-url-fields.py:36-37; scripts/lib/json_io.py:117-132,181-183; git ls-files .claude/.hook-refactor-allow + git check-ignore -v"
     },
     "expected": {
       "value": {
@@ -297,12 +398,17 @@
         "B1_stdout_last_line": "Validation PASSED with N warning(s) (N >= 0)",
         "B2_hook_dispatch_branch": "Write|Edit|Bash",
         "B2_hook_short_circuit_for_other_tools": "exit 0 ONLY for tools without write side-effects (i.e. tools other than Write/Edit/Bash)",
+        "B2_iter2_hook_wired_in_project_settings": true,
+        "B2_iter2_hook_matcher_includes_bash": true,
+        "B2_iter2_sync_agent_data_routes_through_json_io": true,
+        "B2_iter2_strip_image_url_routes_through_json_io": true,
+        "B2_iter2_json_io_save_agent_json_has_ownership_rejector": true,
         "B3_sentinel_tracked": false,
         "B3_sentinel_in_gitignore": true
       },
-      "source": "AC2 literal text + Section 5.2 control 5 (AC text must match execution); architect concern_6 (single-hook binding from parent cycle BA spec); standard git workflow for per-session opt-in files."
+      "source": "AC1 literal text + Section 5.2 control 5 (AC text must match execution); architect concern_6 (single-hook binding from parent cycle BA spec); QA's required-evidence directives in ba-qa-report-20260506-081545.json (settings.json grep + Python-internal-write architectural fix via json_io extension and sync/strip refactor); standard git workflow for per-session opt-in files."
     },
-    "gap": "B1: exit 2 vs expected 0 (literal mismatch with AC). B2: Bash branch missing — entire AC9 control bypassable. B3: tracked + not gitignored — guard permanently disabled."
+    "gap": "B1: exit 2 vs expected 0 (literal mismatch with AC). B2: Bash branch missing AND hook not wired in settings.json (zero runtime effect) AND Python-internal write surface in sync-agent-data.py + strip-image-url-fields.py is invisible to ANY Bash hook (architectural mismatch — must move enforcement to persistence layer via json_io extension). B3: tracked + not gitignored — guard permanently disabled."
   },
   "scope_expansion": {
     "search_pattern": "validate-agent-outputs|pretool-block-production-files|hook-refactor-allow",
@@ -360,12 +466,20 @@
         "outcome": "Closer re-ran validator and observed exit 2; QA claim factually false. Anti-Fraud Principle 4/5 violated. Closer Finding 1.",
         "failure_category": "tainted_reference",
         "target_layer": "L4"
+      },
+      {
+        "artifact_path": "docs/dev/ticket-20260506-081545.md (BA iter 1, this cycle's prior iteration)",
+        "proposed_solution": "Extend hook with Bash branch; assume settings.json wiring exists; detect save.py + direct-redirect via regex.",
+        "actual_change": "BA iter 1 spec produced; not yet executed by dev. Rejected by QA before dispatch.",
+        "outcome": "Rejected by QA (ba-qa-report-20260506-081545.json verdict=fail). Three gaps: (1) settings.json wiring assumption was wrong — no entry exists; (2) Python-internal write surface (sync-agent-data.py + strip-image-url-fields.py) invisible to ANY Bash-level regex; (3) AC2 recipe tests static-isolation, not runtime interception (drift).",
+        "failure_category": "wrong_scope + tainted_reference",
+        "target_layer": "L4"
       }
     ],
     "novelty_check": {
-      "this_attempt_layer": "L4 (B1 + B2) and L5 (B3)",
+      "this_attempt_layer": "L4 (B1) + L4+L5+L3 (B2 iter 2) + L5 (B3)",
       "differs_from_all_priors": true,
-      "rationale": "B1 fixes the validator semantics — a layer the prior cycle did NOT touch (prior cycle worked at the QA verification layer; this cycle works at the validator output layer). B2 adds a Bash dispatch branch — a layer extension the prior cycle did NOT enter (prior cycle stopped at Write|Edit). B3 inverses the sentinel creation — same file but at a deeper layer (git index + gitignore vs filesystem-only). No layer is repeated."
+      "rationale": "B1 unchanged from iter 1 — still novel relative to parent cycle (validator semantics). B2 iter 2 enters TWO new layers neither parent nor iter 1 entered: L5 (.claude/settings.json wiring) and L3 (scripts/lib/json_io.py persistence library + sync/strip refactor). B3 unchanged from iter 1. The iter-2 expansion specifically addresses each QA objection at a layer that closes the architectural mismatch — the Bash hook physically cannot reach Python-internal writes, so enforcement moves to the persistence layer; settings.json wiring is the prerequisite for ANY hook-based enforcement to fire at runtime; AC2 reformulation aligns claim with what the recipe actually proves. No layer is repeated; no architectural mismatch carries over."
     }
   },
   "context": {
@@ -382,18 +496,23 @@
     "environment": {}
   },
   "development_approach": {
-    "strategy": "Three file-disjoint workers in parallel; each addresses one blocker at the layer prior cycle did not enter.",
-    "files_to_create": [],
+    "strategy": "Three file-disjoint workers in parallel; each addresses one blocker at the layer prior cycle did not enter. Iter 2: W2 expanded materially to address QA objections at the architectural level — defense-in-depth across 4 layers (Bash hook + settings.json wiring + json_io persistence-layer ownership + sync/strip refactor).",
+    "files_to_create": [
+      "scripts/tests/test_json_io_ownership.py (W2 — NEW IN ITER 2: AC-OWNERSHIP recipe)"
+    ],
     "files_to_modify": [
       "scripts/validate-agent-outputs.py (W1)",
-      ".claude/hooks/pretool-block-production-files.sh (W2)",
-      ".claude/settings.json (W2 — IF matcher is Write|Edit-restrictive)",
+      ".claude/hooks/pretool-block-production-files.sh (W2 — Bash branch)",
+      ".claude/settings.json (W2 — REQUIRED in iter 2: NEW PreToolUse hook entry with Write|Edit|Bash matcher)",
+      "scripts/lib/json_io.py (W2 — NEW IN ITER 2: extend save_agent_json with _reject_unauthorized_ownership rejector + OwnershipError exception)",
+      "scripts/sync-agent-data.py (W2 — NEW IN ITER 2: refactor :181-183 to route through save_agent_json)",
+      "scripts/strip-image-url-fields.py (W2 — NEW IN ITER 2: refactor :36-37 to route through save_agent_json)",
       ".gitignore (W3)"
     ],
     "files_to_delete": [
       ".claude/.hook-refactor-allow (W3 — git rm --cached + filesystem rm)"
     ],
-    "validation_approach": "QA executes the verbatim recipes in AC1-AC5: re-run validator (exit code check); simulate hook with synthetic JSON envelopes (exit code check + stderr substring match); git ls-files + git check-ignore + ls -la; simulate guard."
+    "validation_approach": "QA executes the verbatim recipes in AC1, AC-WIRING, AC-OWNERSHIP, AC-REFACTOR, AC2 (reformulated), AC3, AC4, AC5: re-run validator (exit code check); grep + json-parse settings.json; run scripts/tests/test_json_io_ownership.py; grep sync/strip files for json_io routing; simulate hook with synthetic JSON envelopes (exit code + stderr); git ls-files + git check-ignore + ls -la; simulate guard. Combined ACs prove BOTH static-isolation AND runtime behavior."
   },
   "worker_partition": [
     {
@@ -405,15 +524,20 @@
       "estimated_lines_changed": 5
     },
     {
-      "worker": "W2",
+      "worker": "W2-enforcement-runtime-wiring",
       "blocker": "B2",
       "files": [
-        ".claude/hooks/pretool-block-production-files.sh",
-        ".claude/settings.json (matcher only, IF currently restrictive)"
+        ".claude/hooks/pretool-block-production-files.sh (Bash branch addition)",
+        ".claude/settings.json (NEW PreToolUse hook entry with Write|Edit|Bash matcher — REQUIRED, not conditional)",
+        "scripts/lib/json_io.py (extension: _reject_unauthorized_ownership rejector + new OwnershipError exception; called from save_agent_json BEFORE _reject_unsafe_image_payloads)",
+        "scripts/sync-agent-data.py (refactor :181-183 from direct open()/json.dump to save_agent_json call)",
+        "scripts/strip-image-url-fields.py (refactor :36-37 from direct open()/json.dump to save_agent_json call)",
+        "scripts/tests/test_json_io_ownership.py (NEW test file — AC-OWNERSHIP recipe: 3 sub-tests covering allowed write, ownership rejection, image_url rejection)"
       ],
-      "scope": "Replace tool-name dispatch with Write|Edit|Bash; add Bash branch implementing save.py detection (--input file read) + direct-redirect detection (>, >>, tee, cp, mv to data/<trip>/<file>.json); reuse existing PYHOOK_EOF Python for image_url + ownership logic. Stay in same hook file (architect concern_6).",
-      "layer": "L4",
-      "estimated_lines_changed": 60
+      "scope": "Iter 2 (enforcement-runtime-wiring): land defense-in-depth across 4 layers. (1) Hook gets Bash branch (architect concern_6: same file, no new hook). (2) Settings.json registers the hook with Write|Edit|Bash matcher (NEW — closes the runtime gap where hook never fires). (3) json_io.save_agent_json adds ownership rejector at the persistence layer (closes Python-internal-write surface invisible to Bash). (4) sync-agent-data.py + strip-image-url-fields.py refactor to route through json_io (closes the bypass surface at source). (5) NEW test file verifies AC-OWNERSHIP. Dev MUST land in deterministic order: extend json_io first, then settings.json, then refactor sync/strip, then hook Bash branch + test file.",
+      "layer": "L3 + L4 + L5",
+      "estimated_lines_changed": 180,
+      "iter2_expansion_rationale": "QA objections 1+2+3 require this scope expansion. Iter 1's settings.json assumption was wrong (hook NOT wired). Iter 1's Bash regex cannot reach Python-internal writes. Iter 1's AC2 recipe drifted from claim. The expanded W2 closes all three gaps with defense-in-depth at the persistence layer + correct runtime wiring + reformulated ACs."
     },
     {
       "worker": "W3",
