@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T09:32:11Z*
-**Total entries**: 223
+*Last updated: 2026-05-06T09:48:27Z*
+**Total entries**: 228
 **Convention**: kebab
 
 ## Tree
@@ -76,6 +76,7 @@ dev/
 ├── `close-report-20260505-124619.md` - Close Report — 20260505-124619
 ├── `close-report-20260505-175102.md` - Close Report — 20260505-175102
 ├── `close-report-20260505-231740.md` - Close Report — Cycle 20260505-231740
+├── `close-report-20260506-081545.md` - Close Report — Cycle 20260506-081545 (/redev iteration 2)
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
@@ -175,7 +176,11 @@ dev/
 ├── `prompt-inspector-report-20260505-175102.json` - json config
 ├── `prompt-inspector-report-20260505-231740.json` - json config
 ├── `prompt-inspector-report-20260506-081545.json` - json config
+├── `qa-codex-consensus-20260506-081545.txt` - txt file
+├── `qa-codex-consensus-round2-20260506-081545.txt` - txt file
 ├── `qa-full-audit-20260413.json` - json config
+├── `qa-input-codex-prompt-20260506-081545.txt` - txt file
+├── `qa-input-codex-round2-20260506-081545.txt` - txt file
 ├── `qa-output-ac10-envvar-stderr.txt` - txt file
 ├── `qa-output-ac10-envvar-stdout.txt` - txt file
 ├── `qa-output-ac10-noenv-stderr.txt` - txt file
