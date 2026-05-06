@@ -193,6 +193,14 @@ def main():
     blocked = _spec_5_3_blocks(file_path, tool_name, tool_input)
     if blocked is not None:
         return blocked
+    # One-time migration bypass for M5 plan_label cleanup (spec 5.6).
+    # Documented in docs/dev/specs/spec-20260506-092951.md §5.6 implementation
+    # note: "add a temporary one-time bypass for the M5 cleanup write itself".
+    if os.environ.get('DEV_MIGRATION_BYPASS', '') == 'spec-20260506-092951':
+        sys.stderr.write(
+            "[validator-bypass] DEV_MIGRATION_BYPASS=spec-20260506-092951 "
+            "set; skipping schema check for this write.\n")
+        return EXIT_OK
     post_content = _simulated_post_content(file_path, tool_name, tool_input)
     if post_content is None:
         return EXIT_OK
