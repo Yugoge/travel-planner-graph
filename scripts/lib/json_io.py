@@ -178,6 +178,10 @@ def save_agent_json(
         if high_issues and not allow_high_severity:
             raise ValidationError(issues, metrics)
 
+    # Persistence rejector: block stock-image URLs + http:// image_url scheme.
+    # key=AIzaSy URLs are explicitly allowed (user-accepted, spec 5.1).
+    _reject_unsafe_image_payloads(envelope)
+
     # Create backup
     if create_backup and file_path.exists():
         _create_backup(file_path)
@@ -258,6 +262,8 @@ def _batch_write_tmp(saves: List[Tuple[Path, str, dict]]) -> List[Tuple[Path, Pa
     for file_path, agent_name, data in saves:
         path = Path(file_path)
         envelope = {"agent": agent_name, "status": "complete", "data": data}
+        # Reject stock-image / http:// image_url payloads BEFORE writing tmp.
+        _reject_unsafe_image_payloads(envelope)
         content = json.dumps(envelope, indent=2, ensure_ascii=False) + "\n"
         tmp_path = path.with_suffix(path.suffix + '.tmp')
         tmp_path.write_text(content, encoding='utf-8')
