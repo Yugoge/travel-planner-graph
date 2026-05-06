@@ -101,22 +101,23 @@ def _simulated_post_content(file_path, tool_name, tool_input):
     return current.replace(old, new, 1)
 
 
-def _verifier_cmd(tempfile_path):
+def _verifier_cmd(tempfile_path, agent_name):
     return [
         sys.executable, str(VERIFIER),
         '--target-file', str(tempfile_path),
         '--strict-schema', '--cross-ref', '--cross-ref-warn-only',
+        '--agent-name', agent_name,
     ]
 
 
-def _exec_verifier(tempfile_path):
+def _exec_verifier(tempfile_path, agent_name):
     if not VERIFIER.exists():
         sys.stderr.write(
             f"[validator-unavailable] verifier not at {VERIFIER}; skip.\n")
         return None
     try:
         return subprocess.run(
-            _verifier_cmd(tempfile_path),
+            _verifier_cmd(tempfile_path, agent_name),
             capture_output=True, text=True, timeout=30,
         )
     except FileNotFoundError:
