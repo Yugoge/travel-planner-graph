@@ -2,16 +2,24 @@
   "request_id": "20260506-081545",
   "task_id": "20260506-081545",
   "timestamp": "2026-05-06T08:15:45Z",
+  "iteration": 2,
+  "iter2_revision_timestamp": "2026-05-06T08:35:00Z",
   "spec_id": "spec-20260505-221501",
   "parent_close_report": "docs/dev/close-report-20260505-231740.md",
+  "qa_report_addressed": "docs/dev/ba-qa-report-20260506-081545.json",
   "requirement": {
     "original": "/redev cycle to address 3 specific blockers identified by QA's /close debate. User invocation phrase: '快速修复这些问题'.",
-    "clarified": "Land 3 file-disjoint fixes addressing CLOSE: NO blockers — (B1) validator exit code semantics; (B2) hook scope extension to Bash; (B3) sentinel removal + gitignore.",
-    "what": "Three minimal precise fixes to existing files: validate-agent-outputs.py exit code, pretool-block-production-files.sh tool-name dispatch, .gitignore + git rm of sentinel.",
-    "why": "Parent cycle 20260505-231740 closed CLOSE: NO. Codex+QA gatekeeper identified 3 in_scope_real_bug blockers. Each individually sufficient to reject close.",
+    "clarified": "Land 3 file-disjoint fixes addressing CLOSE: NO blockers — (B1) validator exit code semantics; (B2 — iter 2) hook Bash branch + settings.json wiring + json_io ownership extension + sync/strip refactor; (B3) sentinel removal + gitignore.",
+    "what": "Iter 2: Three minimal precise fixes — W1 validator exit code; W2-enforcement-runtime-wiring covers (1) hook Bash branch, (2) settings.json hook registration with Write|Edit|Bash matcher, (3) json_io.save_agent_json ownership rejector extension, (4) sync-agent-data.py + strip-image-url-fields.py refactor to route through json_io, (5) NEW test file for AC-OWNERSHIP; W3 sentinel rm + gitignore.",
+    "why": "Parent cycle 20260505-231740 closed CLOSE: NO. Codex+QA gatekeeper identified 3 in_scope_real_bug blockers. BA iter 1 was rejected by QA (ba-qa-report-20260506-081545.json verdict=fail, 3 objections: settings.json wiring not verified, Python-internal write surface uncovered, AC2 recipe-vs-claim drift). Iter 2 expands W2 scope to address all 3 objections.",
     "where": [
       "scripts/validate-agent-outputs.py",
       ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/settings.json",
+      "scripts/lib/json_io.py",
+      "scripts/sync-agent-data.py",
+      "scripts/strip-image-url-fields.py",
+      "scripts/tests/test_json_io_ownership.py",
       ".claude/.hook-refactor-allow",
       ".gitignore"
     ],
@@ -19,19 +27,27 @@
       "included": [
         "validator exit code semantics (warnings-only -> 0)",
         "hook Bash branch (save.py + direct-redirect detection, image_url deny + ownership applied)",
+        "settings.json PreToolUse hook entry registration with Write|Edit|Bash matcher (NEW IN ITER 2 — REQUIRED, not conditional)",
+        "json_io.save_agent_json _reject_unauthorized_ownership extension (NEW IN ITER 2 — closes Python-internal-write surface)",
+        "sync-agent-data.py + strip-image-url-fields.py refactor to route through json_io.save_agent_json (NEW IN ITER 2)",
+        "scripts/tests/test_json_io_ownership.py new test file (NEW IN ITER 2)",
         "sentinel filesystem rm + git rm --cached",
         ".gitignore line for sentinel"
       ],
       "excluded": [
         "Codex Findings 2,3,4,7 (deploy gate wiring, forbidden-token regex breadth, image_url HTML coverage, AC8 cross-repo)",
-        "any AC text rewrite for AC2 (chosen resolution: fix validator, leave AC text)",
+        "any AC text rewrite for AC1 (chosen resolution: fix validator, leave AC text)",
         "any cross-repo dot-claude work",
-        "any git revert / force-push / hard-reset (Destructive-Action Escalation contract: no destructive verbs proposed)"
+        "any git revert / force-push / hard-reset (Destructive-Action Escalation contract: no destructive verbs proposed)",
+        "refactoring scripts/save.py itself to route through json_io.save_agent_json (W4 NEW IN ITER 2 — separate concern, log as out-of-scope observation if discovered)"
       ]
     },
     "success_criteria": [
       "AC1: validator exits 0 on warnings-only canary trip; exits 1 on injected critical; exits 2 on missing dir.",
-      "AC2: hook blocks Bash-based save.py invocation carrying image_url and direct-redirect to data/<trip>/<file>.json; allows clean save.py and unrelated Bash; remains a single hook file.",
+      "AC-WIRING (NEW IN ITER 2): grep + python json-parse asserts pretool-block-production-files.sh is wired in /root/travel-planner/.claude/settings.json PreToolUse with matcher containing Bash.",
+      "AC-OWNERSHIP (NEW IN ITER 2): json_io.save_agent_json raises OwnershipError on out-of-owned-files write; raises StockImageRejected on image_url payload (existing behavior preserved); allows authorized write.",
+      "AC-REFACTOR (NEW IN ITER 2): grep confirms sync-agent-data.py and strip-image-url-fields.py route through json_io.save_agent_json; no direct open(...,'w') to data/<trip>/<file>.json remains.",
+      "AC2 (REFORMULATED IN ITER 2): hook blocks synthetic Bash-redirect / save.py-detection envelopes when invoked directly (Bash-detection sub-case in isolation); combined with AC-WIRING + AC-OWNERSHIP this proves runtime enforcement.",
       "AC3: sentinel absent from git index AND working tree.",
       "AC4: .gitignore covers .claude/.hook-refactor-allow; touch+status verifies effect.",
       "AC5: pretool-claude-config-guard.py exits 2 (BLOCKED) on synthetic Edit to .claude/commands/foo.md."
