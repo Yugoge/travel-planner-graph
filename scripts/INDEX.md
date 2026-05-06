@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T11:06:45Z*
-**Total entries**: 70
+*Last updated: 2026-05-06T11:10:28Z*
+**Total entries**: 71
 **Convention**: kebab
 
 ## Tree
@@ -39,6 +39,7 @@ scripts/
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
 ├── `check-day-completion.sh` - Validate that all days in requirements-skeleton.json have user_plans populated
 ├── `check-location-continuity.sh` - Validate that all location changes have corresponding location_change objects
+├── `check_plan_integrity.py` - Cross-file referential-integrity linter (spec-20260506-092951 §5.7).
 ├── `clean-redundant-fields.py` - Clean Redundant Fields from Agent Data
 ├── `deploy-travel-plans.sh` - Deploy travel plan HTML to GitHub Pages
 ├── `detect-location-changes.py` - Reads day-by-day plan and identifies when travelers move between cities
