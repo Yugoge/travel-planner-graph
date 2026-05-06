@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-05T23:58:44Z*
-**Total entries**: 66
+*Last updated: 2026-05-06T00:05:40Z*
+**Total entries**: 67
 **Convention**: kebab
 
 ## Tree
@@ -72,6 +72,7 @@ scripts/
 ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+├── `verify-plan-integrity.py` - Codex-signed deploy-blocking integrity verifier for travel-plan trips
 └── `verify-tool-restrictions.py` - Tool Restrictions Verification Script
 ```
 
