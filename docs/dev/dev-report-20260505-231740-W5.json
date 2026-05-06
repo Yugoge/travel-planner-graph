@@ -1,0 +1,155 @@
+{
+  "request_id": "20260505-231740",
+  "task_id": "20260505-231740",
+  "worker_id": "W5-prompt-purity-hard-block",
+  "timestamp": "2026-05-05T23:23:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-231740-W5.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "~/.claude/hooks/pretool-orchestrator-prompt-purity.py"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added POSITIVE_AUTHORIZATION_PATTERNS category for the 5 pollution seeds (placeholder|TBD|stub|include later|to plan)",
+        "type": "code",
+        "files_modified": ["~/.claude/hooks/pretool-orchestrator-prompt-purity.py"],
+        "rationale": "B3 placeholder regression in cycle 20260505-123425 originated from orchestrator dispatch prompts that positively authorized 'include placeholder entries'. Adding a dedicated detection category at the same architectural layer as DAEMON_RESTART_PRESCRIPTION_PATTERNS catches the seed words at dispatch time."
+      },
+      {
+        "id": 2,
+        "description": "Wired new category into _scan_prompt() before generic categories (matches DAEMON_RESTART precedence)",
+        "type": "code",
+        "files_modified": ["~/.claude/hooks/pretool-orchestrator-prompt-purity.py"],
+        "rationale": "POSITIVE_AUTHORIZATION must scan before generic categories so its dedicated hard-block path wins over warn-only generic categories. Same pattern as the existing C3 daemon-restart escalation."
+      },
+      {
+        "id": 3,
+        "description": "Added _POSITIVE_AUTHORIZATION_HEADER + _POSITIVE_AUTHORIZATION_REMEDY for the new category and wired into _header_remedy_for()",
+        "type": "code",
+        "files_modified": ["~/.claude/hooks/pretool-orchestrator-prompt-purity.py"],
+        "rationale": "AC8 self-test contract requires the standard substring 'orchestrator must not specify HOW' in the blocking message. Header includes verbatim phrase plus B3-regression context."
+      },
+      {
+        "id": 4,
+        "description": "Refactored main() into main() + _route_hit() helper (quality-gate compliance: keeps each function ≤30 lines)",
+        "type": "refactor",
+        "files_modified": ["~/.claude/hooks/pretool-orchestrator-prompt-purity.py"],
+        "rationale": "Adding the new POSITIVE_AUTHORIZATION_LABEL routing branch in main() pushed the function above the 30-line quality-gate cap. Extracted routing logic into _route_hit() — preserves all existing branch semantics (daemon-restart subagent-applies, generic warn-only, subagent-exempt) and adds the new hard-block branch."
+      },
+      {
+        "id": 5,
+        "description": "POSITIVE_AUTHORIZATION_LABEL now exits 2 (BLOCKING) for orchestrator dispatches; subagent-exempt by the existing is_subagent guard (matches generic-category convention)",
+        "type": "code",
+        "files_modified": ["~/.claude/hooks/pretool-orchestrator-prompt-purity.py"],
+        "rationale": "Spec M8/AC8 binding: dispatch prompts that positively authorize pollution seeds MUST hard-block. Subagent dispatches are exempt because they re-issue tool calls with their own prompts that this hook does not gate at the same layer (subagent prompts are the dev/qa/ba subagent's downstream calls, not the orchestrator's authorization)."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "Multi-cycle accretion (no single regression). Recent context: c77d922, 088102b, cfca66d auto-checkpoint commits within failing session 20260505.",
+      "why_issue_occurred": "Hook was warning-only (lines 57-60 STDERR_HEADER says 'not blocking'; lines 437-461 main() returned 0 for all non-daemon-restart hits). Orchestrator's own dispatch prompts authorized 'include placeholder entries' (B3 in spec Section 5.2 bug accounting), and the warning was insufficient to prevent the placeholder regression KEYS from being shipped.",
+      "how_fix_addresses_root": "Adds a new category POSITIVE_AUTHORIZATION_PATTERNS scoped specifically to verb+seed positive grammar (NOT a full ban — CMD-3 was REJECTED). Hard-blocks at exit 2 with the standard 'orchestrator must not specify HOW' substring per AC8. Negative phrasings like 'never use placeholder' are explicitly allowed via lookbehind and absence-of-positive-verb."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 260,
+      "lines_removed": 30,
+      "new_symbols_introduced": [
+        "POSITIVE_AUTHORIZATION_VERBS",
+        "POSITIVE_AUTHORIZATION_SEED_TOKENS",
+        "POSITIVE_AUTHORIZATION_NEGATION_LOOKBEHIND",
+        "POSITIVE_AUTHORIZATION_PATTERNS",
+        "POSITIVE_AUTHORIZATION_LABEL",
+        "_POSITIVE_AUTHORIZATION_HEADER",
+        "_POSITIVE_AUTHORIZATION_REMEDY",
+        "_route_hit"
+      ],
+      "minimum_possible_lines_estimate": 50,
+      "justification_for_overage": "The minimum-diff estimate (~50 lines) was based on adding ONE category. Final diff is ~230 net lines because: (a) the new category requires the full set of constants matching the existing pattern (verb tokens regex, seed tokens regex, negation lookbehind regex, 2 compiled patterns, label, header, remedy) — same shape as DAEMON_RESTART_PRESCRIPTION's ~70-line block; (b) the M8 acceptance criteria (positive grammar HIT, negative grammar PASS, narrative-prose PASS) demanded careful regex design with 12+ negation lookbehinds and a verb-prefix scope to avoid false positives — this is the irreducible regex complexity for the seed-word detection; (c) the quality-gate hook forced a refactor of main() into main()+_route_hit() helper (~25 lines), which is a contract requirement (this file's quality-gate cap is 30 lines/function) not avoidable scope; (d) the new category is mirrored exactly on the existing OPTIONS_XML / DAEMON_RESTART pattern so the file's structure stays uniform and reviewable. No new symbols were introduced 'while I was here' — every new symbol is required by the new category."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "AC8 self-test commands (verbatim, run from /root/travel-planner):\n\n  1. echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"include placeholder entries for missing days\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo $?\n     EXPECTED: stderr contains 'orchestrator must not specify HOW'; exit code 2.\n\n  2. echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"implement the feature\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo $?\n     EXPECTED: silent stderr; exit code 0.\n\n  3. echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"never use placeholder content; produce real values\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo $?\n     EXPECTED: silent stderr; exit code 0 (negative phrasing must pass).\n\n  4. grep -nE \"(sys\\.exit\\(2\\)|exit 2| return 2)\" ~/.claude/hooks/pretool-orchestrator-prompt-purity.py\n     EXPECTED: shows return-2 at multiple lines including the new positive-authorization branch (line ~551).\n\n  5. grep -n \"orchestrator must not specify HOW\" ~/.claude/hooks/pretool-orchestrator-prompt-purity.py\n     EXPECTED: 3+ hits (existing docstring at L21, comment at L456, NEW header constant at L459).\n\n  6. grep -n \"POSITIVE_AUTHORIZATION_LABEL\" ~/.claude/hooks/pretool-orchestrator-prompt-purity.py\n     EXPECTED: 5 hits (label declaration L252; scan-wire L399; route_hit branch L480; docstring L538; main() route L549).\n\nFile is the only modification. No data files, no other hooks, no agent .md, no project script touched. CROSS-REPO NOTE: ~/.claude is a symlink to /dev/shm/dev-workspace/dot-claude — the file is in that separate git repo. Per orchestrator instruction, dev did NOT commit; the user/orchestrator commits within dot-claude separately.",
+    "permissions_to_add": []
+  },
+  "blast_radius": [
+    {
+      "modified": "~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "imported_by": [],
+      "invoked_as": "PreToolUse hook (matcher: Agent) per ~/.claude/settings.json"
+    }
+  ],
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "build_command": "python3 -m py_compile ~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+    "smoke_test_results": {
+      "positive_include_placeholder_blocks": "PASS (rc=2, header includes 'orchestrator must not specify HOW')",
+      "positive_use_TBD_blocks": "PASS (rc=2)",
+      "positive_leave_a_stub_blocks": "PASS (rc=2)",
+      "positive_include_later_blocks": "PASS (rc=2)",
+      "positive_set_to_plan_blocks": "PASS (rc=2)",
+      "negative_never_use_placeholder_passes": "PASS (rc=0)",
+      "negative_do_not_include_TBD_passes": "PASS (rc=0)",
+      "neutral_implement_feature_passes": "PASS (rc=0)",
+      "neutral_describe_what_passes": "PASS (rc=0)",
+      "subagent_positive_exempt_passes": "PASS (rc=0, subagent_id present)",
+      "daemon_restart_category_unchanged": "PASS (rc=2, existing C3 category preserved)",
+      "tool_prescription_warn_only_unchanged": "PASS (rc=0, existing generic warn-only preserved)",
+      "quoted_TBD_authorization_blocks": "PASS (rc=2, Pattern 2 quoted-token detector works)",
+      "narrative_placeholder_avoid_passes": "PASS (rc=0, no positive verb attached)",
+      "doc_describing_seeds_passes": "PASS (rc=0, acceptance-criterion language passes)"
+    },
+    "notes": "All 15 self-test cases pass. New category is additive — preserves all existing category contracts (C3 daemon-restart hard-block, generic warn-only, subagent-exempt, options-xml overnight-gated)."
+  },
+  "acceptance_evidence": {
+    "AC8_grep_blocking_exit": {
+      "command": "grep -nE \"(sys\\.exit\\(2\\)|exit 2| return 2)\" ~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "output_verbatim": "20:  - On hit: exit 2 with stderr beginning\n147:# Hard hits → exit 2 (escalation from warn-only — see main()).\n196:# placeholder entries\"). Hard-block at exit 2 with the standard prompt-purity\n536:      - DAEMON_RESTART_PRESCRIPTION_LABEL: hard-block exit 2; applies to\n538:      - POSITIVE_AUTHORIZATION_LABEL: hard-block exit 2; orchestrator only\n546:        return 2\n551:        return 2"
+    },
+    "AC8_self_test_positive_authorization_blocks": {
+      "command": "echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"include placeholder entries for missing days\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo \"EXIT_CODE=$?\"",
+      "stdout_verbatim": "EXIT_CODE=2",
+      "stderr_verbatim_first_line": "BLOCKED: orchestrator must not specify HOW; rewrite prompt to describe WHAT only. Positive authorization of pollution seeds (placeholder/TBD/stub/include later/to plan) detected in dispatch prompt — these seeds caused the B3 placeholder regression in cycle 20260505-123425. (BA spec 20260505-231740 / AC8 / M8.)",
+      "stderr_includes_canonical_substring": true
+    },
+    "AC8_self_test_neutral_passes": {
+      "command": "echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"implement the feature\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo \"EXIT_CODE=$?\"",
+      "stdout_verbatim": "EXIT_CODE=0",
+      "stderr_verbatim": ""
+    },
+    "AC8_self_test_negative_phrasing_passes": {
+      "command": "echo '{\"tool_name\":\"Agent\",\"tool_input\":{\"prompt\":\"never use placeholder content; produce real values\"}}' | python3 ~/.claude/hooks/pretool-orchestrator-prompt-purity.py; echo \"EXIT_CODE=$?\"",
+      "stdout_verbatim": "EXIT_CODE=0",
+      "stderr_verbatim": ""
+    },
+    "AC8_canonical_error_substring_in_hook_source": {
+      "command": "grep -n \"orchestrator must not specify HOW\" ~/.claude/hooks/pretool-orchestrator-prompt-purity.py",
+      "output_verbatim": "21:        \"orchestrator must not specify HOW; rewrite prompt to describe WHAT only.\"\n456:# `orchestrator must not specify HOW; rewrite prompt to describe WHAT only.`\n459:    \"BLOCKED: orchestrator must not specify HOW; rewrite prompt to \""
+    }
+  },
+  "implementation_notes": [
+    "Per CMD-3 REJECTED: did NOT ban 'placeholder' everywhere. Scope is strictly verb+seed positive-authorization grammar in dispatch prompts (e.g. 'include placeholder', 'use TBD', 'leave a stub', 'add later', 'set to \"to plan\"').",
+    "Negation lookbehind covers: never|not|no|without|don't|doesn't|didn't|cannot|can't|mustn't|avoid|forbid|forbids|forbidden — these phrases preceding a positive verb cause the match to fail (negative phrasings pass through).",
+    "Subagent dispatch exemption preserved (matches existing generic-category convention; only daemon-restart category applies to subagents).",
+    "Refactor: main() was 27 lines pre-edit; would have grown to 35 lines with new branch (over the 30-line quality-gate cap on this file). Extracted routing into _route_hit() helper. Behavior is byte-identical to inline version; only structure changed.",
+    "CROSS-REPO: ~/.claude is symlinked to /dev/shm/dot-claude — file landed in the dot-claude repo. Per orchestrator instruction, dev did NOT commit; the user commits separately within dot-claude.",
+    "AC8 'lines 57-60 + 437-461 no longer use warning-only print path': lines 57-60 (the STDERR_HEADER constant) is preserved verbatim because it remains the warn-only header for OTHER categories (tool-name prescription, shell-command token, shell-syntax token, fenced bash) that the BA spec explicitly scoped OUT of the upgrade (CMD-3 REJECTED a full ban). Lines 437-461 are now refactored — the warn-only return-0 path still exists for generic categories (W5 only required upgrade for positive-authorization-of-pollution-seeds, NOT for all categories). The AC8 acceptance evidence is satisfied because dispatch prompts with the 5 seed words DO now exit 2 with the canonical 'orchestrator must not specify HOW' substring."
+  ],
+  "blocking_issues": [],
+  "recommendations": [
+    "Future: consider widening the seed-word list if new pollution seeds emerge in cycle reports (e.g. 'fixme', 'xxx', '???'). Currently scoped to the spec's 5 seeds.",
+    "Future: a tighter test suite for this hook would belong at ~/.claude/tests/test_prompt_purity.py — outside W5 scope.",
+    "QA: when running the spec's full smoke test, verify no legitimate orchestrator dispatch in the codebase incidentally trips the new category (the current orchestrator command files at .claude/commands/*.md should be checked, but that's W4 territory)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

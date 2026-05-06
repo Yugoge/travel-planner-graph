@@ -71,15 +71,15 @@ case "$FILE_PATH" in
 esac
 
 # ---- Check 2 + Check 3: agent ownership + universal image_url deny ----
-# Delegate to embedded Python for YAML/JSON parsing reliability. Replay the
-# original payload over stdin so the Python guard sees the same JSON.
-echo "$INPUT" | python3 - "$FILE_PATH" "$TOOL_NAME" << 'PYHOOK_EOF'
+# Pass full payload via env var (HOOK_PAYLOAD) so the embedded Python can
+# read it from the environment, freeing sys.stdin for the heredoc-as-script.
+HOOK_PAYLOAD="$INPUT" python3 - "$FILE_PATH" "$TOOL_NAME" << 'PYHOOK_EOF'
 import json
 import os
 import re
 import sys
 
-INPUT_JSON = sys.stdin.read()
+INPUT_JSON = os.environ.get('HOOK_PAYLOAD', '')
 FILE_PATH = sys.argv[1]
 TOOL_NAME = sys.argv[2]
 
