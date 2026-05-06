@@ -411,6 +411,12 @@ def _add_args_strict(parser):
                         action='store_true',
                         help='Run cross-file referential-integrity linter '
                              '(spec 5.7).')
+    parser.add_argument('--cross-ref-warn-only', dest='cross_ref_warn_only',
+                        action='store_true',
+                        help='Demote cross-ref findings to WARN regardless '
+                             'of --strict-schema. Used by write-time hook so '
+                             'pre-existing orphan POIs do not block unrelated '
+                             'edits.')
 
 
 def parse_args(argv):
