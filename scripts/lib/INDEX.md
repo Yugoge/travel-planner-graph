@@ -1,7 +1,7 @@
 # lib
 
-*Last updated: 2026-05-06T08:58:54Z*
-**Total entries**: 4
+*Last updated: 2026-05-06T11:24:49Z*
+**Total entries**: 5
 **Convention**: kebab
 
 ## Tree
@@ -10,7 +10,8 @@ lib/
 ├── `html_generator.py` - Reusable HTML generator module for travel plans
 ├── `image_fetcher.py` - Image Fetcher Module
 ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
-└── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+└── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 ```
 
 ---
