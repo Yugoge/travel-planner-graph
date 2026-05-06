@@ -1,9 +1,17 @@
 ---
-description: "Gaode Maps integration for route planning, POI search, and geocoding in China"
+description: Gaode Maps integration for route planning, POI search, and geocoding
+  in China
 allowed-tools: Task, Read, Bash
-argument-hint: "[category|help]"
+argument-hint: '[category|help]'
 model: inherit
 disable-model-invocation: true
+uses_scripts:
+- .claude/commands/scripts/gaode-maps/scripts/geocoding.py
+- .claude/commands/scripts/gaode-maps/scripts/routing.py
+- .claude/commands/scripts/gaode-maps/scripts/poi_search.py
+- .claude/commands/scripts/gaode-maps/scripts/utilities.py
+dispatches: []
+mutates_files: []
 ---
 
 # Gaode Maps Skill

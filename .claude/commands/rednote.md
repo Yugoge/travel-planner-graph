@@ -1,9 +1,14 @@
 ---
-description: "RedNote (小红书/Xiaohongshu) integration for searching Chinese UGC travel content"
+description: RedNote (小红书/Xiaohongshu) integration for searching Chinese UGC travel
+  content
 allowed-tools: Task, Read, Bash
-argument-hint: "[keyword|help]"
+argument-hint: '[keyword|help]'
 model: inherit
 disable-model-invocation: true
+uses_scripts:
+- .claude/commands/scripts/rednote/scripts/search.py
+dispatches: []
+mutates_files: []
 ---
 
 # RedNote Skill
