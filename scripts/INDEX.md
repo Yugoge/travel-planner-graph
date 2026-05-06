@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T11:10:28Z*
-**Total entries**: 71
+*Last updated: 2026-05-06T11:19:55Z*
+**Total entries**: 72
 **Convention**: kebab
 
 ## Tree
@@ -58,6 +58,7 @@ scripts/
 ├── `load.py` - Unified Data Loading Script - 3-Level Hierarchical Access
 ├── `log-modification.py` - Modification Logging Helper - Append structured log entry to modification-log.json
 ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
+├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
