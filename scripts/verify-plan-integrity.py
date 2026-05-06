@@ -417,6 +417,10 @@ def _add_args_strict(parser):
                              'of --strict-schema. Used by write-time hook so '
                              'pre-existing orphan POIs do not block unrelated '
                              'edits.')
+    parser.add_argument('--agent-name', dest='agent_name', default=None,
+                        help='Override agent-name lookup (timeline/meals/etc.) '
+                             'when the target file has a synthetic prefix '
+                             'like .precheck-<pid>-timeline.json.')
 
 
 def parse_args(argv):
