@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T07:58:08Z*
-**Total entries**: 209
+*Last updated: 2026-05-06T08:20:30Z*
+**Total entries**: 210
 **Convention**: kebab
 
 ## Tree
@@ -215,7 +215,8 @@ dev/
 ├── `ticket-20260505-124619.md` - BA Specification: Complete search_notes_light deployment for production use (practical-value + defense-in-depth + known-bug bundle)
 ├── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
 ├── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
-└── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
+├── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
+└── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740
 ```
 
 ---
