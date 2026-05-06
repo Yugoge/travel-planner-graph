@@ -47,9 +47,29 @@ class BatchImageFetcher:
 
         # Load config from requirements-skeleton.json
         self.config = self._load_config()
-
         # Load cache
         self.cache = self._load_cache()
+        self._spec_5_2_init()  # Spec 5.2 counters + helper-path assert.
+
+    def _spec_5_2_init(self):
+        self._fetch_attempts = 0
+        self._fetch_successes = 0
+        self._fetch_failures = 0
+        self._assert_helper_paths_exist()
+
+    def _helper_paths(self):
+        return [
+            self.base_dir / ".claude/skills/google-maps/scripts/places.py",
+            self.base_dir / ".claude/commands/scripts/gaode-maps/scripts/poi_search.py",
+        ]
+
+    def _assert_helper_paths_exist(self):
+        missing = [p for p in self._helper_paths() if not p.exists()]
+        if not missing:
+            return
+        for p in missing:
+            logger.error("helper not found at %s — image fetch cannot proceed.", p)
+        raise FileNotFoundError(f"image-fetch helper(s) missing: {missing}")
 
     def _find_venv_python(self) -> str:
         """Find Python in venv or fallback to system python3"""
