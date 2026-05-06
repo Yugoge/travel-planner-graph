@@ -446,14 +446,13 @@ class BatchImageFetcher:
                     data = json.loads(result.stdout)
                     if data.get("pois") and len(data["pois"]) > 0:
                         poi = data["pois"][0]
-                        photos = poi.get("photos", {})
-                        url = photos.get("url")
+                        url = poi.get("photos", {}).get("url")
                         if url and url.startswith("http"):
                             return url.replace("http://", "https://", 1)
             except subprocess.TimeoutExpired:
-                pass
-            except Exception:
-                pass
+                self._fetch_failures += 1
+            except (json.JSONDecodeError, OSError):  # Spec 5.2 narrow.
+                self._fetch_failures += 1
 
         return None
 
