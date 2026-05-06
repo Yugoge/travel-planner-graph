@@ -1166,13 +1166,37 @@ Day filter examples:
     # force_refresh already passed to constructor
     fetcher.fetch_cities(city_limit)
     fetcher.fetch_pois(poi_limit, day_filter=day_filter)
+    sys.exit(_print_spec_5_2_banner(fetcher))
 
-    print("\n" + "="*60)
-    print(f"✅ Batch complete!")
+
+def _print_spec_5_2_banner(fetcher) -> int:
+    """Spec 5.2: distinguish total-failure / partial / cache-only / success."""
+    threshold = float(os.environ.get('IMAGE_FETCH_SUCCESS_THRESHOLD', '0.5'))
+    attempts = getattr(fetcher, '_fetch_attempts', 0)
+    successes = getattr(fetcher, '_fetch_successes', 0)
+    failures = getattr(fetcher, '_fetch_failures', 0)
+    print("\n" + "=" * 60)
+    if attempts == 0:
+        print("✅ Cache hit: no fetches required")
+        rc = 0
+    else:
+        rate = successes / attempts if attempts else 0.0
+        if rate < threshold:
+            print(f"❌ Batch FAILED: {successes}/{attempts} successful "
+                  f"(threshold {threshold:.0%}; failures={failures})")
+            rc = 1
+        elif failures:
+            print(f"⚠️  Batch partial: {rate:.0%} successful "
+                  f"({successes}/{attempts}; failures={failures})")
+            rc = 0
+        else:
+            print(f"✅ Batch complete: {successes}/{attempts} successful")
+            rc = 0
     print(f"  City covers: {len(fetcher.cache['city_covers'])}")
     print(f"  POI photos: {len(fetcher.cache['pois'])}")
     print(f"  Cache: {fetcher.cache_file}")
-    print("="*60)
+    print("=" * 60)
+    return rc
 
 
 if __name__ == "__main__":
