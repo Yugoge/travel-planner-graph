@@ -1,55 +1,78 @@
 #!/bin/bash
-# smart-checkpoint.sh - Intelligent auto-checkpoint system
-# Smart checkpoint system: automatically save code at appropriate times
-# Location: ~/.claude/hooks/smart-checkpoint.sh
+# posttool-git-checkpoint.sh — refs/checkpoints/<branch> auto-checkpoint.
+#
+# Per spec-20260506-092951.md §5.4 (Auto-commit 不应该淹没 git log):
+# this hook MUST NEVER advance HEAD. It writes only to
+# refs/checkpoints/<current-branch> via git update-ref so that:
+#   1. `git log <branch>` shows only logical commits the user authored.
+#   2. Per-cycle recovery snapshots remain available under
+#      `git log refs/checkpoints/<branch>`.
+#
+# Recovery: see docs/checkpoint-recovery.md.
+# Migration note: previous implementation called `git commit` + `git push`
+# (HEAD-advancing) — that behaviour is the regression this file fixes.
 
-# Configuration
-CHECKPOINT_THRESHOLD=${GIT_CHECKPOINT_THRESHOLD:-10}  # Default: 10 files accumulated
-SILENT_MODE=${GIT_CHECKPOINT_SILENT:-0}  # Silent mode flag
+set -e
 
-# Count changes
+CHECKPOINT_THRESHOLD=${GIT_CHECKPOINT_THRESHOLD:-10}
+SILENT_MODE=${GIT_CHECKPOINT_SILENT:-0}
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  exit 0
+fi
+
 STAGED=$(git diff --cached --name-only 2>/dev/null | wc -l)
 MODIFIED=$(git diff --name-only 2>/dev/null | wc -l)
 UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l)
 TOTAL=$((STAGED + MODIFIED + UNTRACKED))
 
-# Exit if no changes
 if [ "$TOTAL" -eq 0 ]; then
   exit 0
 fi
 
-# Check if threshold reached
-if [ "$TOTAL" -ge "$CHECKPOINT_THRESHOLD" ]; then
-  TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+if [ "$TOTAL" -lt "$CHECKPOINT_THRESHOLD" ]; then
+  exit 0
+fi
 
-  if [ "$SILENT_MODE" != "1" ]; then
-    echo "💾 Auto-checkpoint triggered: $TOTAL files pending"
-  fi
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "detached")
+CHECKPOINT_REF="refs/checkpoints/${CURRENT_BRANCH}"
+TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
-  # Stage all changes
-  git add . 2>/dev/null
+# Use a temporary index so we never disturb the user's staging area or HEAD.
+TMP_INDEX="$(mktemp -t claude-cp-index.XXXXXX)"
+trap 'rm -f "$TMP_INDEX"' EXIT
+GIT_INDEX_FILE="$TMP_INDEX" git read-tree HEAD 2>/dev/null || true
+GIT_INDEX_FILE="$TMP_INDEX" git add -A 2>/dev/null
 
-  # Create checkpoint commit
-  git commit -q -m "checkpoint: Auto-save at $TIMESTAMP
+TREE=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree 2>/dev/null) || exit 0
 
-Files: $TOTAL modified/added
-Triggered by: Smart checkpoint system (threshold: $CHECKPOINT_THRESHOLD)
+if PARENT=$(git rev-parse "$CHECKPOINT_REF" 2>/dev/null); then
+  :
+elif PARENT=$(git rev-parse HEAD 2>/dev/null); then
+  :
+else
+  PARENT=""
+fi
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-via [Happy](https://happy.engineering)
+MSG="checkpoint: posttool $TIMESTAMP
 
-Co-Authored-By: Claude <noreply@anthropic.com>
-Co-Authored-By: Happy <yesreply@happy.engineering>" 2>/dev/null
+Files staged: $TOTAL
+Branch: $CURRENT_BRANCH
+Trigger: PostToolUse Write|Edit|NotebookEdit
+Ref: $CHECKPOINT_REF (HEAD never advances)
+"
 
-  if [ $? -eq 0 ]; then
-    # Push in background (won't block workflow)
-    git push origin $(git branch --show-current) >/dev/null 2>&1 &
+if [ -n "$PARENT" ]; then
+  COMMIT=$(echo "$MSG" | git commit-tree "$TREE" -p "$PARENT") || exit 0
+else
+  COMMIT=$(echo "$MSG" | git commit-tree "$TREE") || exit 0
+fi
 
-    if [ "$SILENT_MODE" != "1" ]; then
-      COMMIT_HASH=$(git rev-parse --short HEAD)
-      echo "✅ Checkpoint saved: $COMMIT_HASH ($TOTAL files)"
-    fi
-  fi
+git update-ref "$CHECKPOINT_REF" "$COMMIT"
+
+if [ "$SILENT_MODE" != "1" ]; then
+  SHORT=$(git rev-parse --short "$COMMIT" 2>/dev/null || echo "$COMMIT")
+  echo "checkpoint: $CHECKPOINT_REF -> $SHORT ($TOTAL files; HEAD untouched)"
 fi
 
 exit 0
