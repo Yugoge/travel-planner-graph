@@ -215,46 +215,44 @@ def m4_bug2_day8():
 
 
 def _set_loc(d9):
-    changed = False
     if d9.get('location') == 'Beijing':
         d9['location'] = "Xi'an"
-        changed = True
-    if d9.get('location_local') in ('北京', None):
-        d9['location_local'] = '西安'
-        changed = True
-    return changed
+        return True
+    return False
 
 
-def _intercity_seg():
+def _location_change():
     return {
         'from_base': 'Chengdu East Railway Station (成都东站)',
         'from_local': '成都东站',
         'to_base': "Xi'an North Railway Station (西安北站)",
         'to_local': '西安北站',
+        'name_base': "Chengdu East -> Xi'an North HSR (Day 9 intercity)",
+        'name_local': '成都东 → 西安北高铁',
         'type_base': 'high-speed rail',
         'type_local': '高铁',
-        'name_base': "Chengdu East -> Xi'an North HSR (Day 9 intercity)",
-        'name_local': '成都东 → 西安北高铁（Day 9 城际段）',
-        'duration_minutes': 240,
-        'status': 'Not yet booked',
+        'departure_time': '09:00',
+        'arrival_time': '13:00',
+        'status_base': 'Not yet booked',
+        'status_local': '尚未预订',
+        'notes_base': 'Day 9 intercity transit Chengdu -> Xi\'an. Booking pending; placeholder times pending Duffel HSR/flight selection.',
+        'notes_local': 'Day 9 城际段（成都→西安）。尚未预订，时间为占位值，待选定高铁车次或航班。',
     }
 
 
-def _has_seg(intercity):
-    return any(isinstance(s, dict)
-               and "Xi'an" in (s.get('to_base', '') or '')
-               and 'Chengdu' in (s.get('from_base', '') or '')
-               for s in intercity)
-
-
-def _add_seg(d9):
-    intercity = d9.get('intercity_segments')
-    if intercity is None:
-        d9['intercity_segments'] = []
-        intercity = d9['intercity_segments']
-    if _has_seg(intercity):
+def _has_chengdu_xian(lc):
+    if not isinstance(lc, dict):
         return False
-    intercity.append(_intercity_seg())
+    to_b = lc.get('to_base', '') or ''
+    fr_b = lc.get('from_base', '') or ''
+    return "Xi'an" in to_b and 'Chengdu' in fr_b
+
+
+def _add_loc_change(d9):
+    lc = d9.get('location_change')
+    if _has_chengdu_xian(lc):
+        return False
+    d9['location_change'] = _location_change()
     return True
 
 
@@ -265,8 +263,14 @@ def m4_bug3_day9():
     if len(days) < 9 or not isinstance(days[8], dict):
         return False
     d9 = days[8]
-    changed = _set_loc(d9)
-    if _add_seg(d9):
+    # Remove forbidden keys from previous run if present.
+    removed = False
+    for k in ('intercity_segments', 'location_local'):
+        if k in d9:
+            del d9[k]
+            removed = True
+    changed = _set_loc(d9) or removed
+    if _add_loc_change(d9):
         changed = True
     if changed:
         save(p, obj)
