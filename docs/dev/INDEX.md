@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T08:20:30Z*
-**Total entries**: 210
+*Last updated: 2026-05-06T08:41:05Z*
+**Total entries**: 212
 **Convention**: kebab
 
 ## Tree
@@ -38,6 +38,7 @@ dev/
 ├── `ba-qa-report-20260505-175102.json` - json config
 ├── `ba-qa-report-20260505-231740-iter2.json` - json config
 ├── `ba-qa-report-20260505-231740.json` - json config
+├── `ba-qa-report-20260506-081545.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -114,6 +115,7 @@ dev/
 ├── `context-20260505-174743.json` - json config
 ├── `context-20260505-175102.json` - json config
 ├── `context-20260505-231740.json` - json config
+├── `context-20260506-081545.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `cycle-20260505-231740.md` - Cycle Artifact: 20260505-231740
 ├── `dev-report-20260320-213000.json` - json config
@@ -216,7 +218,7 @@ dev/
 ├── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
 ├── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
 ├── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
-└── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740
+└── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
 ```
 
 ---
