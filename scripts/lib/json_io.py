@@ -19,6 +19,8 @@ Usage:
 """
 
 import json
+import os
+import re
 import sys
 import shutil
 from pathlib import Path
@@ -85,6 +87,27 @@ class StockImageRejected(JSONIOError):
     """Persistence layer refused a payload because it contains stock-image
     URLs or http://-protocol image_url values. User-accepted Google Maps
     `key=AIzaSy...` URLs are explicitly NOT rejected (per spec 5.1)."""
+    pass
+
+
+class OwnershipError(JSONIOError):
+    """Persistence layer refused a write because the target file_path is not
+    in the calling agent's `owned_files` allowlist (defined in
+    .claude/agents/<agent_name>.md frontmatter).
+
+    Iter 2 (spec-20260505-221501 / W2): closes the Python-internal-write
+    surface that a Bash-level PreToolUse hook physically cannot reach.
+    """
+    pass
+
+
+class UniversalImageDeny(JSONIOError):
+    """Persistence layer refused a write because the payload introduces an
+    `image_url` field into agent JSON. This is the universal image_url deny
+    enforced at the persistence layer for ALL agents (independent of stock-
+    image domains). Mirrors hook check 3 (universal image_url deny on data
+    JSON paths).
+    """
     pass
 
 # Stock-image domains the persistence layer permanently rejects on NEW writes.

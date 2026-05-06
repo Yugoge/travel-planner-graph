@@ -8,9 +8,9 @@ budget sum verification, coordinate bounds).
 
 Usage: validate-agent-outputs.py <data_dir>
 Exit codes:
-  0 = all valid
+  0 = no critical errors (warnings allowed)
   1 = critical issues found (schema violations, missing data)
-  2 = warnings only (semantic issues)
+  2 = invocation/IO error (no data dir, not a directory, schemas missing)
 
 Examples:
   python3 validate-agent-outputs.py data/china-feb-15-mar-7-2026-20260202-195429
@@ -427,7 +427,7 @@ def main():
         return 1
     else:
         print(f"\nValidation PASSED with {len(all_warnings)} warning(s)")
-        return 2
+        return 0
 
 
 if __name__ == "__main__":

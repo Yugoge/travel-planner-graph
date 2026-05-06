@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T06:32:52Z*
-**Total entries**: 68
+*Last updated: 2026-05-06T08:55:04Z*
+**Total entries**: 69
 **Convention**: kebab
 
 ## Tree
@@ -59,6 +59,7 @@ scripts/
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
+├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
 ├── `save.py` - Unified Data Saving Script — Batch Validation and Atomic Writes.
 ├── `save.py.backup` - backup file
 ├── `strip-image-url-fields.py` - Description: Recursively strip "image_url" keys from JSON files (PATH B image migration).
