@@ -633,32 +633,77 @@ def save_batch(
     _report_batch_warnings(results)
     return True
 
+def _add_core_args(parser):
+    parser.add_argument("--trip", required=True, help="Trip slug")
+    parser.add_argument("--agent", help="Agent name")
+    parser.add_argument("--input", help="Input JSON file (default: stdin)")
+    parser.add_argument("--batch", help="Batch input JSON file (DEPRECATED "
+                        "per spec-20260506-092951 §5.3; gated behind "
+                        "BYPASS_DAY_GUARD=1 - agents must NOT set this).")
+
+
+def _add_flag_args(parser):
+    parser.add_argument("--no-validate", action="store_true", help="Skip validation")
+    parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
+    parser.add_argument("--no-backup", action="store_true", help="Skip backups")
+    parser.add_argument("--day", type=int, default=None,
+                        help="Per-day write (spec 5.3): integer 1..N. "
+                             "MANDATORY for single-agent saves. --days "
+                             "and --all-days do not exist by design.")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
         description="Unified data saving script with mandatory validation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--trip", required=True, help="Trip slug")
-    parser.add_argument("--agent", help="Agent name")
-    parser.add_argument("--input", help="Input JSON file (default: stdin)")
-    parser.add_argument("--batch", help="Batch input JSON file")
-    parser.add_argument("--no-validate", action="store_true", help="Skip validation")
-    parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
-    parser.add_argument("--no-backup", action="store_true", help="Skip backups")
+    _add_core_args(parser)
+    _add_flag_args(parser)
     return parser
+
+
+def _is_bypass_set() -> bool:
+    """Spec 5.3 escape hatch: only the human user may set this; agents may not."""
+    import os
+    return os.environ.get('BYPASS_DAY_GUARD', '') == '1'
+
+
+def _err_exit(msg: str) -> None:
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _check_mutual_exclusion(args):
+    if args.batch and args.agent:
+        _err_exit("Cannot specify both --batch and --agent")
+    if not args.batch and not args.agent:
+        _err_exit("Must specify either --batch or --agent")
+    if args.batch and args.input:
+        _err_exit("--batch and --input are mutually exclusive")
+
+
+def _check_batch_bypass(args):
+    if args.batch and not _is_bypass_set():
+        _err_exit("--batch is deprecated per spec-20260506-092951 §5.3 "
+                  "(批量操作永久禁止). Use single-agent saves with --day N. "
+                  "If you are the human user explicitly overriding, set "
+                  "BYPASS_DAY_GUARD=1.")
+
+
+def _check_day_arg(args):
+    if args.agent and args.day is None:
+        _err_exit("--day N is required for single-agent saves "
+                  "(spec-20260506-092951 §5.3). Pass an integer 1..N.")
+    if args.day is not None and args.day < 1:
+        _err_exit(f"--day must be >= 1 (got {args.day})")
+
 
 def _validate_args(args) -> None:
     """Validate mutually exclusive argument combinations."""
-    if args.batch and args.agent:
-        print("Error: Cannot specify both --batch and --agent", file=sys.stderr)
-        sys.exit(1)
-    if not args.batch and not args.agent:
-        print("Error: Must specify either --batch or --agent", file=sys.stderr)
-        sys.exit(1)
-    if args.batch and args.input:
-        print("Error: --batch and --input are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
+    _check_mutual_exclusion(args)
+    _check_batch_bypass(args)
+    _check_day_arg(args)
 
 def _load_input(args) -> Dict[str, Any]:
     """Load input JSON from --input file or stdin."""
