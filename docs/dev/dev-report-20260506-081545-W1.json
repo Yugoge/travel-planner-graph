@@ -1,0 +1,95 @@
+{
+  "request_id": "20260506-081545",
+  "task_id": "20260506-081545",
+  "timestamp": "2026-05-06T08:55:00Z",
+  "worker": "W1-validator-exit-semantics",
+  "blocker_addressed": "B1",
+  "dev_report_path": "docs/dev/dev-report-20260506-081545-W1.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/validate-agent-outputs.py"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Change validator exit-code semantics so warnings-only canary trip exits 0; criticals exit non-zero (1); invocation/IO errors keep exit 2",
+        "type": "config_logic",
+        "files_modified": ["scripts/validate-agent-outputs.py"],
+        "changes": "Line 430: return 2 -> return 0 in the warnings-only branch of main(). Lines 11-13: docstring exit-code legend updated to match new contract (0=no critical errors with warnings allowed; 1=critical issues; 2=invocation/IO error).",
+        "rationale": "Root cause B1: prior author chose exit 2 for warnings-only as a tri-state signal, which violated AC2 literal text and standard CLI severity-alignment convention (eslint/mypy/ruff: warnings-only -> 0). BA confirmed zero shell callers and the only Python caller (sync-agent-data.py) uses importlib and never inspects exit code, so blast radius is nil."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "B1: pre-existing (validator behavior since file creation)",
+      "why_issue_occurred": "Validator emitted return 2 on warnings-only as a tri-state severity signal; AC2 literal text and standard CLI convention both expect 0.",
+      "how_fix_addresses_root": "Surgical 1-character semantic change (return 2 -> return 0) at line 430; docstring legend updated at lines 11-13 to reflect the new contract so future readers do not re-introduce the old behavior."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 3,
+      "lines_removed": 3,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 1,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "AC1 verified end-to-end via verbatim recipes below. No --strict flag exists in the validator (BA's optional preserve-clause is N/A for this codebase). Run `python scripts/validate-agent-outputs.py data/china-20260412-092624; echo $?` to confirm exit 0; run with /nonexistent-path to confirm exit 2; inject schema-violating JSON to confirm exit 1.",
+    "permissions_to_add": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/validate-agent-outputs.py",
+        "imported_by": ["scripts/sync-agent-data.py (via importlib.spec_from_file_location, calls load_schemas + validate_against_schema directly; never invokes main(); never inspects exit code -- per BA evidence verified)"],
+        "shell_callers": "0 (grep -rn 'validate-agent-outputs' --include=*.sh returns no hits in any production path)"
+      }
+    ]
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "py_compile clean; canary trip exit 0 confirmed (was 2 pre-fix); missing-dir exit 2 preserved; injected critical exits 1."
+  },
+  "acceptance_evidence": {
+    "AC1_warnings_only_exit_0": {
+      "command": "source venv/bin/activate && python scripts/validate-agent-outputs.py data/china-20260412-092624; echo $?",
+      "stdout_last_line_verbatim": "Validation PASSED with 25 warning(s)",
+      "exit_code_verbatim": 0,
+      "result": "PASS"
+    },
+    "AC1_pre_fix_baseline": {
+      "command": "source venv/bin/activate && python scripts/validate-agent-outputs.py data/china-20260412-092624; echo $?",
+      "stdout_last_line_verbatim": "Validation PASSED with 25 warning(s)",
+      "exit_code_verbatim": 2,
+      "result": "PRE-FIX (confirms B1 reproduced)"
+    },
+    "AC1_missing_dir_exit_2": {
+      "command": "source venv/bin/activate && python scripts/validate-agent-outputs.py /nonexistent-path; echo $?",
+      "stderr_verbatim": "Error: Data directory not found: /nonexistent-path",
+      "exit_code_verbatim": 2,
+      "result": "PASS (preserved)"
+    },
+    "AC1_critical_exit_non_zero": {
+      "command": "cp -r data/china-20260412-092624 /tmp/w1-critical-test && echo '{\"not_valid\": true}' > /tmp/w1-critical-test/meals.json && source venv/bin/activate && python scripts/validate-agent-outputs.py /tmp/w1-critical-test; echo $?",
+      "stdout_last_line_verbatim": "Validation FAILED: 4 critical issue(s), 25 warning(s)",
+      "exit_code_verbatim": 1,
+      "result": "PASS (non-zero on criticals)"
+    },
+    "py_compile_check": {
+      "command": "source venv/bin/activate && python -m py_compile scripts/validate-agent-outputs.py; echo $?",
+      "exit_code_verbatim": 0,
+      "result": "PASS"
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
