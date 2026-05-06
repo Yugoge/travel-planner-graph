@@ -1,0 +1,500 @@
+{
+  "request_id": "20260506-104100",
+  "task_id": "20260506-104100",
+  "timestamp": "2026-05-06T10:41:00Z",
+  "spec_id": "spec-20260506-092951",
+  "spec_path": "docs/dev/specs/spec-20260506-092951.md",
+  "requirement": {
+    "original": "--spec /root/travel-planner/docs/dev/specs/spec-20260506-092951.md 彻底一次性解决这个问题",
+    "clarified": "Implement spec-20260506-092951 sections 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.9 (5.8 explicitly out-of-scope) as a permanent, root-cause harness fix. Block schema-violating writes at write-time, repair eight residual data bugs in china-20260412-092624, kill HEAD pollution from auto-commit hooks, ban batch operations structurally, purge plan_label from data and schema, and enforce user-language to schema translation in save.py.",
+    "what": "Land 8 binding acceptance criteria from spec sections 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.9.",
+    "why": "Five hours of debugging showed Claude repeatedly writing non-schema fields and stale states without harness intervention. Parent spec spec-20260505-221501 was force-closed because a Bash-regex hook produced false positives. User has explicitly demanded 'permanent root-cause fix' and 'batch operations permanently banned'.",
+    "where": [
+      "scripts/verify-plan-integrity.py",
+      "scripts/save.py",
+      "scripts/fetch-images-batch.py",
+      ".claude/hooks/posttool-git-checkpoint.sh",
+      ".claude/hooks/stop-git-commit.sh",
+      ".claude/hooks/pretool-validate-data-write.py (NEW)",
+      ".claude/settings.json",
+      "schemas/timeline.schema.json",
+      "data/china-20260412-092624/*.json",
+      "docs/checkpoint-recovery.md (NEW)"
+    ],
+    "scope": {
+      "included": [
+        "5.1 strict-schema PreToolUse Write/Edit hook",
+        "5.2 fetch-images-batch.py loud-fail refactor",
+        "5.3 save.py --day N mandatory + raw-Write/Edit block",
+        "5.4 auto-commit -> refs/checkpoints/<branch>",
+        "5.5 eight data bug fixes in china-20260412-092624/",
+        "5.6 plan_label purge from data + schemas/timeline.schema.json:77-80",
+        "5.7 cross-file referential integrity linter",
+        "5.9 user-language to schema translation in save.py"
+      ],
+      "excluded": [
+        "5.8 (explicit user exclusion: post-hoc auditing, HTML render visual validation, sub-agent shared cache, attribution-bias diagnostics)",
+        "Re-introducing a Bash-regex hook on the Bash matcher (parent cycle's failure layer)",
+        "Trips other than china-20260412-092624",
+        "Promoting transportation.intra_city_routes / budget.breakdown.* to additionalProperties:false (cp-01 decision: keep true)",
+        "Schema-level CJK regex tightening of name_local (data-level fix only this cycle)",
+        "Test refactors when --batch is deprecated"
+      ]
+    },
+    "success_criteria": [
+      "AC1: git log master shows zero new entries during a multi-cycle run; refs/checkpoints/master shows >= 13 per-cycle checkpoints",
+      "AC2: PreToolUse hook returns exit 2 on schema-violating Write/Edit to data/**/*.json with file:json-path:rule message",
+      "AC3: raw Write/Edit to data/**/*.json from agent contexts blocked; save.py --day N mandatory; save.py without --day fails non-zero",
+      "AC4: zero plan_label hits in data/china-20260412-092624/*.json; field removed from schemas/timeline.schema.json; future writes blocked",
+      "AC5: save.py translates primary/Plan A -> optional:false and Plan B/C -> optional:true; rejects unknown fields",
+      "AC6.1-AC6.8: eight data bugs resolved per per-bug acceptance",
+      "AC7: cross-ref linter blocks orphan POIs, hollow plan branches, triple-duplicate transit",
+      "AC8: image fetcher exits non-zero on missing helper / 0% success / threshold miss; conditional banner",
+      "AC9: save.py rejects unknown fields with explicit error"
+    ],
+    "constraints": [
+      "Must not re-introduce Bash-regex hook on Bash matcher (Contract D - parent's failure layer)",
+      "Must reuse verify-plan-integrity.py (already has --strict-schema); NOT build a parallel validator",
+      "PreToolUse hook order in .claude/settings.json:102-111 matters (path-block first, schema-validate second)",
+      "Schema-tightening order: data fixes before any CJK pattern tightening on name_local",
+      "Implementation order is fixed by spec section 8: 5.4 first, 5.1 second, 5.6 third, 5.3+5.9 fourth, 5.5 fifth, 5.7 sixth, 5.2 anytime",
+      "Cleanliness aspiration applies only on the user-need path (close-time inspectors per global CLAUDE.md)",
+      "Token-role grounding (Step 0.5): no role table in project CLAUDE.md (no UI/design-system context); not applicable to this harness work"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/verify-plan-integrity.py",
+      "scripts/save.py",
+      "scripts/fetch-images-batch.py",
+      ".claude/hooks/posttool-git-checkpoint.sh",
+      ".claude/hooks/stop-git-commit.sh",
+      ".claude/hooks/pretool-validate-data-write.py",
+      ".claude/hooks/pretool-block-data-raw-write.py",
+      ".claude/settings.json",
+      "schemas/timeline.schema.json",
+      "data/china-20260412-092624/timeline.json",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/budget.json",
+      "data/china-20260412-092624/meals.json",
+      "data/china-20260412-092624/entertainment.json",
+      "data/china-20260412-092624/attractions.json",
+      "data/china-20260412-092624/shopping.json",
+      "data/china-20260412-092624/accommodation.json",
+      "data/china-20260412-092624/cafe.json",
+      "docs/checkpoint-recovery.md"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/json_io.py (save.py and pretool hook both import)",
+      "schemas/poi-common.schema.json (refs by other schemas)",
+      "schemas/transportation.schema.json (potential plan_label removal if found)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "data/china-20260412-092624/*.json.bak (backups; will be regenerated)",
+      "scripts/generate-html-interactive.py (dead _isAlternative code; spec marks as low priority)",
+      "scripts/tests/* (may use --batch; test refactor out of user-need scope)",
+      "Other trip slugs under data/ (only china-20260412-092624 in user-stated scope)",
+      "schemas/budget.schema.json sub-objects (cp-01 decision: keep additionalProperties:true)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "data/china-20260412-092624/timeline.json.bak",
+      "line": null,
+      "observation": "Backup files contain 8 stale plan_label hits. Will be regenerated on next save; not in user-stated cleanup scope.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "data/china-20260412-092624/transportation.json.bak",
+      "line": null,
+      "observation": "Backup contains 18 stale plan_label hits. Will be regenerated on next save; out of user-stated scope.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "scripts/generate-html-interactive.py",
+      "line": "2993, 3043, 3047, 3049, 3053",
+      "observation": "Dead _isAlternative reads (never written anywhere). Spec section 5.6 explicitly marks as low priority; leave-as-is acceptable per spec.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "scripts/tests/*",
+      "line": null,
+      "observation": "Tests may use save.py --batch. Deprecating --batch could break tests. Test refactor was not part of the user's stated need; mention but do not act unless dev finds breakage during M3.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "schemas/budget.schema.json",
+      "line": "44, 54, 107, 132, 146, 151",
+      "observation": "Multiple additionalProperties:true in budget breakdown sub-objects. cp-01 decision: keep true (freeform per-day breakdown). Tightening is path-external scope creep.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "schemas/transportation.schema.json",
+      "line": "196",
+      "observation": "intra_city_routes additionalProperties:true (freeform descriptor keys). cp-01 decision: keep true. Existing data (e.g., planA_wutongqiao_to_leshan_station_taxi) requires freeform.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T10:41:00Z",
+      "task_id": "20260506-104100",
+      "file": "data/ (other trip slugs)",
+      "line": null,
+      "observation": "Only china-20260412-092624 named in user scope. Other trip slugs may have similar bugs but are path-external this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Five hours of debugging; Claude repeatedly writes non-schema fields (most recently plan_label) and stale states; auto-commit hooks fill master git log with 13+ entries in 90 minutes; image fetcher reports false success when upstream calls all fail; data file china-20260412-092624 contains 8 distinct active bugs across timeline/transportation/budget/meals/entertainment/attractions/shopping.",
+    "root_cause": "Harness has zero write-time schema enforcement on data/**/*.json (PreToolUse on Write/Edit only does path-block; PostToolUse only runs git checkpoint hook; deploy-time verify-plan-integrity.py runs only at generate-and-deploy.sh time). Combined with: (a) save.py exposing --batch flag and lacking --day mandate, allowing multi-day batch overwrites; (b) auto-commit hooks (posttool-git-checkpoint.sh + stop-git-commit.sh) calling git commit directly which advances master HEAD; (c) fetch-images-batch.py broad except clauses swallowing all errors; (d) schemas/timeline.schema.json:77-80 leaking plan_label as a valid property in a prior unauthorized cycle; (e) no cross-file referential-integrity check anywhere in the pipeline.",
+    "root_cause_commit": "Multiple — schema plan_label leak source unknown without bisect (out of scope this cycle); auto-commit hooks present since at least 2026-04-04 per file headers; broad excepts in fetch-images-batch.py legacy. The user did not request bisect; root cause is structural absence of write-time gates rather than a single regression commit.",
+    "why_introduced": "save.py --batch was introduced for legitimate multi-agent atomic saves (rollback semantics). Auto-commit hooks were introduced for crash-recovery. Broad excepts in fetch-images-batch.py were introduced as defensive programming. plan_label was unilaterally added by a prior Claude cycle as a 'helpful extension' the user never authorized. None of these were 'wrong' per se — they accumulated into a system where agents have many ways to write bad data and few enforced gates.",
+    "why_problematic": "The user's explicit binding ('永久根本性地彻底修复', '批量操作永久禁止') requires structural impossibility, not just discipline. The current harness ASSUMES agents follow rules; the spec demands the harness ENFORCE rules.",
+    "timeline": "Accumulated debt from at least 2026-04-04 (auto-commit hook header). Recent surge during 2026-05-05/06 5-hour /review session that produced two retrospectives and one codex audit consolidated in spec-20260506-092951.",
+    "affected_files": [
+      "scripts/verify-plan-integrity.py",
+      "scripts/save.py",
+      "scripts/fetch-images-batch.py",
+      ".claude/hooks/posttool-git-checkpoint.sh",
+      ".claude/hooks/stop-git-commit.sh",
+      ".claude/settings.json",
+      "schemas/timeline.schema.json",
+      "data/china-20260412-092624/*.json"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "schemas/timeline.schema.json:77-80 contains plan_label property definition (observed: Read tool)",
+      "scripts/verify-plan-integrity.py:401-405 implements --strict-schema flag (observed: Read tool)",
+      "scripts/save.py:642-648 argparse has no --day option (observed: Read tool)",
+      ".claude/hooks/stop-git-commit.sh:60-78 calls git commit + git push origin (observed: Read tool)",
+      ".claude/hooks/posttool-git-checkpoint.sh:30-46 calls git commit (observed: Read tool)",
+      "scripts/fetch-images-batch.py:408-411,433-436 broad except continue/pass (observed: Read tool)",
+      "scripts/fetch-images-batch.py:1152 unconditional success banner (observed: Read tool)",
+      "data/china-20260412-092624/timeline.json:1027,1038,1049,1076,1106,1127,1130,1247 stale 喜樂院子 references (observed: Grep tool)",
+      "data/china-20260412-092624/transportation.json:357-358 stale 喜樂院子 references (observed: Read tool)",
+      "data/china-20260412-092624/transportation.json:236,269,307 plan_label hits (observed: Grep tool)",
+      "data/china-20260412-092624/timeline.json:633,640,647,654,661,797,804,949,956,963 plan_label hits (observed: Grep tool, 10 hits total in timeline.json)",
+      "data/china-20260412-092624/transportation.json:364-367 Day 9 location 'Beijing' should be 'Xi'an' (observed: Read tool)",
+      "data/china-20260412-092624/budget.json:173-180 Day 3 categories sum 1105 vs total 980 (inferred: arithmetic on observed values)",
+      "data/china-20260412-092624/budget.json:1175-1181 Day 15 categories sum 641 vs total 586 (inferred: arithmetic on observed values)",
+      "data/china-20260412-092624/timeline.json:622-625 start=end=23:59 with duration 30 (observed: Read tool)",
+      "data/china-20260412-092624/timeline.json:676-677,696-697 name_local field contains English (observed: Read tool)",
+      "data/china-20260412-092624/shopping.json:133 'before departing for Beijing' but Day 4 flies to Chengdu (observed: Read tool, cross-checked with Day 4 flow)",
+      "data/china-20260412-092624/transportation.json:251-253 18:00-18:30 with duration 24 should be 30 (inferred: arithmetic on observed values)",
+      "scripts/generate-html-interactive.py:2993,3043,3047,3049,3053 reads _isAlternative which is never assigned (observed: Grep tool)",
+      "git log master shows 5 of last 5 commits are Auto-commit: entries (observed: gitStatus in env)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": [
+      "spec-20260506-092951",
+      "彻底一次性解决",
+      "永久根本性地彻底修复",
+      "批量操作永久禁止",
+      "Auto-commit 不应该淹没 git log",
+      "plan_label 直接删除",
+      "Plan A/B/C 都不是标准术语"
+    ],
+    "localization_evidence": "Direct file reads of spec-20260506-092951.md sections 1, 5, 8 confirmed all 8 active data bug locations and 5 active harness failure locations with file:line precision. Grep confirmed 13 live plan_label hits across timeline.json + transportation.json. Read tool confirmed schemas/timeline.schema.json:77-80 contains the unauthorized plan_label property. Read tool confirmed scripts/verify-plan-integrity.py:401-405 already has --strict-schema flag (so cp-02 selects option (b)).",
+    "located_source": "Multiple — see 'in_user_path' list under scope_boundary. Primary loci: scripts/verify-plan-integrity.py (extension target), scripts/save.py:642-648 (extension target), scripts/fetch-images-batch.py:408-411,433-436,1152 (refactor targets), .claude/hooks/{posttool-git-checkpoint.sh,stop-git-commit.sh} (replacement targets), schemas/timeline.schema.json:77-80 (deletion target), data/china-20260412-092624/*.json (8-bug repair targets).",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "Not a regression bug — this is consolidation of accumulated structural debt. Spec §1 lists symptoms with current file:line evidence; user did not ask for bisect; bisect would not change the fix (which is forward-only structural enforcement).",
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4 (logic — hooks/validators/scripts) + L5 (infrastructure — git refs, harness wiring)",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "将以上全部总结为一个spec，永久根本性地彻底修复", "acceptance_criterion": "AC1+AC2+AC3+AC4+AC5+AC6.1..8+AC7+AC8+AC9 (all 9 ACs)"},
+    {"id": "R2", "source_phrase": "批量操作永久禁止", "acceptance_criterion": "AC3 — save.py --day N mandatory; raw Write/Edit blocked; --batch deprecated"},
+    {"id": "R3", "source_phrase": "Auto-commit 不应该淹没 git log", "acceptance_criterion": "AC1 — both auto-commit hooks redirect to refs/checkpoints/<branch>; git log master shows zero new entries"},
+    {"id": "R4", "source_phrase": "plan_label 直接删除，这不是我们 schema 中的", "acceptance_criterion": "AC4 — zero plan_label hits in data; field removed from schemas/timeline.schema.json:77-80; future writes blocked"},
+    {"id": "R5", "source_phrase": "Plan A/B/C 都不是标准术语，只是用户语言，你只能用当前的 schema 用 save 脚本翻译成机器语言", "acceptance_criterion": "AC5+AC9 — translation layer in save.py + unknown-key rejection"}
+  ],
+  "component_chain": [
+    {
+      "file": ".claude/settings.json",
+      "line_range": "102-111",
+      "role": "Wire new PreToolUse hook on Write|Edit matcher",
+      "imports_from": ".claude/hooks/pretool-validate-data-write.py (NEW)",
+      "evidence": "Read /root/travel-planner/.claude/settings.json:102-111 — PreToolUse Write|Edit currently runs only pretool-block-production-files.sh",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/hooks/pretool-validate-data-write.py",
+      "line_range": "NEW (entire file)",
+      "role": "Pre-write strict-schema + cross-ref enforcement",
+      "imports_from": "scripts/verify-plan-integrity.py (extended) and inline JSON-edit simulation",
+      "evidence": "File does not yet exist; new artifact per M2",
+      "verified_via": "Glob (confirmed absent)"
+    },
+    {
+      "file": "scripts/verify-plan-integrity.py",
+      "line_range": "401-405, 408-426, 477",
+      "role": "Existing strict-schema validator. Extend with --target-file <path> mode.",
+      "imports_from": "schemas/*.schema.json via AGENT_SCHEMA_MAP (line 68-78)",
+      "evidence": "Read /root/travel-planner/scripts/verify-plan-integrity.py — confirmed --strict-schema flag at 401-405 and entrypoint at 477",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "503-513, 609-695",
+      "role": "Add --day N mandatory; add user-language translation; deprecate --batch; add unknown-key rejector",
+      "imports_from": "scripts/lib/json_io.py (existing)",
+      "evidence": "Read /root/travel-planner/scripts/save.py — confirmed _prepare_agent_data at 503, save_batch at 609, parser at 642",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/hooks/posttool-git-checkpoint.sh",
+      "line_range": "29-46",
+      "role": "Replace git commit with git update-ref refs/checkpoints/<branch>",
+      "imports_from": "git CLI",
+      "evidence": "Read /root/travel-planner/.claude/hooks/posttool-git-checkpoint.sh — confirmed git commit + git push at 30-46",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/hooks/stop-git-commit.sh",
+      "line_range": "60-78",
+      "role": "Replace git commit with git update-ref refs/checkpoints/<branch>",
+      "imports_from": "git CLI",
+      "evidence": "Read /root/travel-planner/.claude/hooks/stop-git-commit.sh — confirmed git add -A + git commit + git push at 60-78",
+      "verified_via": "Read"
+    },
+    {
+      "file": "schemas/timeline.schema.json",
+      "line_range": "77-80",
+      "role": "Remove plan_label property definition",
+      "imports_from": "leaf",
+      "evidence": "Read /root/travel-planner/schemas/timeline.schema.json:77-80 — confirmed plan_label declared as type:string with description",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/fetch-images-batch.py",
+      "line_range": "1-50, 408-411, 433-436, 1140-1156",
+      "role": "Loud-fail refactor: startup assert, specific exception catches, conditional success banner",
+      "imports_from": "subprocess, os.path",
+      "evidence": "Read /root/travel-planner/scripts/fetch-images-batch.py — confirmed broad except patterns at 408,410,433,435 and unconditional banner at 1152",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/china-20260412-092624/timeline.json",
+      "line_range": "617-1310 (multiple bug sites)",
+      "role": "Repair stale 喜樂院子, plan_label, degenerate durations, name_local",
+      "imports_from": "leaf data",
+      "evidence": "Grep + Read confirmed bug locations",
+      "verified_via": "both"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line": 35,
+      "type": "case-statement-path-block",
+      "code_snippet": "case \"$FILE_PATH\" in /root/happy/*) ... exit 2 ;; esac",
+      "purpose": "Prevent writes to production paths from dev environment",
+      "removal_authorized": false
+    },
+    {
+      "file": ".claude/hooks/pretool-block-production-files.sh",
+      "line": 0,
+      "type": "universal-image-deny",
+      "code_snippet": "Codex Top-5 control 4: no agent (any type) may directly write image_url",
+      "purpose": "Per spec 20260505-221501 W6: enforces image_url payload deny on data/**/*.json",
+      "removal_authorized": false
+    },
+    {
+      "file": ".claude/settings.json",
+      "line": 4,
+      "type": "permission-deny",
+      "code_snippet": "Write(data/**/*.json:agent=accommodation), ... (8 entries)",
+      "purpose": "Permission system already denies per-agent writes",
+      "removal_authorized": false
+    },
+    {
+      "file": "schemas/*.schema.json",
+      "line": 0,
+      "type": "additionalProperties:false (most top-level)",
+      "code_snippet": "additionalProperties: false (timeline_activity etc.)",
+      "purpose": "Existing strict checks at the top-level types — strictly enforced once write-time validator is wired",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/verify-plan-integrity.py",
+      "line": 401,
+      "type": "deploy-gate",
+      "code_snippet": "argument('--strict-schema', action='store_true', ...)",
+      "purpose": "Deploy-time strict validator. Reuse for write-time per cp-02.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "applicable",
+    "reason": null,
+    "viewport": null,
+    "theme": null,
+    "locale": "zh+en",
+    "auth_state": null,
+    "data_state": "production trip slug china-20260412-092624 with 8 active data bugs per spec section 1",
+    "browser": null,
+    "url_path": "file paths only — data/china-20260412-092624/*.json, schemas/*.schema.json, scripts/{save.py,verify-plan-integrity.py,fetch-images-batch.py}, .claude/hooks/{posttool-git-checkpoint.sh,stop-git-commit.sh,pretool-validate-data-write.py(NEW)}, .claude/settings.json"
+  },
+  "evidence": {
+    "observed": "Spec docs/dev/specs/spec-20260506-092951.md sections 1+5+8 enumerate 5 active harness failures and 8 active data bugs with file:line evidence. User binding: 永久根本性地彻底修复 + 批量操作永久禁止 + Auto-commit 不应该淹没 git log + plan_label 直接删除.",
+    "measured": {
+      "value": "0 write-time schema enforcement; 13 live plan_label hits; 8 distinct data bugs; 2 HEAD-polluting auto-commit hooks; 4 broad-except sites in fetch-images-batch.py; save.py has no --day option",
+      "location": "see component_chain above"
+    },
+    "expected": {
+      "value": "Strict-schema PreToolUse hook on Write|Edit blocking schema violations; refs/checkpoints/<branch> instead of HEAD; save.py --day N mandatory; specific exception types only in fetch-images-batch.py; plan_label removed from data + schema; cross-file referential integrity enforced",
+      "source": "spec-20260506-092951.md sections 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.9 (verbatim)"
+    },
+    "gap": "8 acceptance criteria vs 0 currently met"
+  },
+  "scope_expansion": {
+    "search_pattern": "plan_label | except Exception: pass|continue | git commit (in hooks) | --batch | --day | 喜樂院子",
+    "search_scope": "/root/travel-planner/{scripts,.claude/hooks,schemas,data/china-20260412-092624}",
+    "user_reported": [
+      "data/china-20260412-092624/*.json",
+      "scripts/save.py",
+      "schemas/timeline.schema.json",
+      ".claude/hooks/posttool-git-checkpoint.sh",
+      ".claude/hooks/stop-git-commit.sh",
+      "scripts/fetch-images-batch.py",
+      "scripts/verify-plan-integrity.py"
+    ],
+    "additional_found": [
+      ".claude/settings.json (hook wiring)",
+      ".claude/hooks/pretool-validate-data-write.py (NEW required for AC2)",
+      ".claude/hooks/pretool-block-data-raw-write.py (NEW or merged for AC3)",
+      "scripts/check-plan-integrity.py (NEW or extension for AC7)",
+      "docs/checkpoint-recovery.md (NEW for S1)"
+    ],
+    "all_occurrences": [
+      "data/china-20260412-092624/transportation.json:236",
+      "data/china-20260412-092624/transportation.json:269",
+      "data/china-20260412-092624/transportation.json:307",
+      "data/china-20260412-092624/timeline.json:633,640,647,654,661,797,804,949,956,963",
+      "schemas/timeline.schema.json:77-80",
+      "scripts/save.py:609-695",
+      "scripts/verify-plan-integrity.py:401-405,477",
+      "scripts/fetch-images-batch.py:408-411,433-436,1152",
+      ".claude/hooks/posttool-git-checkpoint.sh:30-46",
+      ".claude/hooks/stop-git-commit.sh:60-78"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_1_external",
+    "description": "User's verbatim binding directive from spec-20260506-092951.md section 5; git update-ref / commit-tree mechanics from man git-update-ref; PEP 8 except Exception antipattern from Python docs; JSON Schema 2020-12 spec",
+    "url_or_location": "docs/dev/specs/spec-20260506-092951.md (sections 1, 5, 8); man git-update-ref; man git-commit-tree; PEP 8; existing scripts/verify-plan-integrity.py:401-405 (already implements --strict-schema)",
+    "copy_allowed": true,
+    "role_table": null,
+    "_role_table_source": "No project CLAUDE.md role table relevant to this harness work (this is L4/L5 logic + infra, not UI)"
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing+dedup_hit+git_log",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/specs/spec-20260505-221501.md (parent — force-closed)",
+        "proposed_solution": "Enforce write-time image_url deny + agent ownership via Bash regex hook on Bash matcher",
+        "actual_change": "Introduced pretool-block-production-files.sh Bash regex layer; later force-removed; persistence-layer json_io UniversalImageDeny + OwnershipError retained as canonical chokepoint",
+        "outcome": "Bash regex produced false positives on legitimate Bash commands containing redirect-pattern text in quoted strings (e.g., echo \"value > 0\"). Hook removed via forced override.",
+        "failure_category": "wrong_layer",
+        "target_layer": "L4 (Bash hook regex)"
+      },
+      {
+        "artifact_path": "Overnight cycles 20260505-060527 .. 20260506-081545 (dev-reports)",
+        "proposed_solution": "Agent prompt rules + manual data corrections + deploy-time verify-plan-integrity.py --strict-schema",
+        "actual_change": "Repeatedly re-introduced plan_label and stale states; deploy gate caught violations but did not prevent them",
+        "outcome": "Reactive enforcement only. User explicitly demanded permanent banning ('永久禁止').",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L1 (agent prompt) + reactive L3 (deploy validator)"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4 logic + L5 infrastructure",
+      "differs_from_all_priors": true,
+      "rationale": "Parent attempted regex on Bash strings (parsing shell quoting with regex - undecidable in general). This attempt operates at the structured tool_input.file_path / tool_input.content payload (JSON-parseable, no quoting ambiguity). Auto-commit redirect to refs/checkpoints/<branch> via git update-ref + commit-tree (never advancing HEAD) is a novel L5 infrastructure approach not previously attempted in this codebase. save.py --day N mandatory mode makes batch operations structurally impossible at the API level (L4 CLI gating) rather than relying on agent discipline (parent's L1 approach)."
+    }
+  },
+  "context": {
+    "codebase_state": "current branch master; 5 of last 5 commits are Auto-commit:; 1 dirty file in worktree (.claude/worktrees/overnight-20260412-c6ec78c9)",
+    "recent_commits": "59dcf12 Auto-commit, 84803ba chore(workflow), b3a45b7 Auto-commit, e252852 Auto-commit, 5259425 Auto-commit",
+    "file_contents": {},
+    "dependencies": {
+      "python": "3.x with jsonschema library available in /root/.claude/venv",
+      "git": "git-update-ref, git-commit-tree, git-write-tree (standard CLI)",
+      "shell": "bash (for hook scripts)"
+    },
+    "environment": {
+      "project_root": "/root/travel-planner",
+      "venv": "/root/.claude/venv",
+      "trip_slug": "china-20260412-092624"
+    }
+  },
+  "development_approach": {
+    "strategy": "Land in spec section 8 binding order: 5.4 (auto-commit redirect) -> 5.1 (strict-schema hook) -> 5.6 (plan_label purge from data + schema) -> 5.3+5.9 (save.py --day N mandatory + translation) -> 5.5 (8 data bugs) -> 5.7 (cross-ref linter) -> 5.2 (image fetcher hardening) -> S1 (recovery doc) -> S2 (dead code cleanup).",
+    "files_to_create": [
+      ".claude/hooks/pretool-validate-data-write.py",
+      ".claude/hooks/pretool-block-data-raw-write.py (or merge into pretool-validate-data-write.py)",
+      "docs/checkpoint-recovery.md",
+      "scripts/check-plan-integrity.py (or extend verify-plan-integrity.py with --cross-ref mode)"
+    ],
+    "files_to_modify": [
+      "scripts/verify-plan-integrity.py (add --target-file <path> single-file mode)",
+      "scripts/save.py (add --day N mandatory; add user-language translation; deprecate --batch behind non-agent-accessible escape hatch; add unknown-key rejection)",
+      "scripts/fetch-images-batch.py (startup assert, specific exception catches, conditional banner, threshold exit)",
+      ".claude/hooks/posttool-git-checkpoint.sh (replace git commit with git update-ref refs/checkpoints/<branch>)",
+      ".claude/hooks/stop-git-commit.sh (replace git commit with git update-ref refs/checkpoints/<branch>)",
+      ".claude/settings.json (wire new PreToolUse hook after pretool-block-production-files.sh)",
+      "schemas/timeline.schema.json (remove plan_label property at lines 77-80)",
+      "data/china-20260412-092624/timeline.json (purge plan_label, fix 喜樂院子, fix degenerate durations, fix name_local CJK)",
+      "data/china-20260412-092624/transportation.json (purge plan_label, fix 喜樂院子, fix Day 9 location, fix Day-X 18:00-18:30/24min)",
+      "data/china-20260412-092624/budget.json (Day 3 + Day 15 arithmetic; Day 5 assessment string)",
+      "data/china-20260412-092624/meals.json (Day 8 traveler matrix consistency)",
+      "data/china-20260412-092624/entertainment.json (Day 8 traveler matrix consistency)",
+      "data/china-20260412-092624/attractions.json (Fangsuo Bookstore PRIMARY/Optional resolution)",
+      "data/china-20260412-092624/shopping.json:133 (Weidu Antique City note Beijing -> Chengdu)"
+    ],
+    "validation_approach": "QA runs the new write-time hook against synthetic violation payloads (plan_label, name_local:null, location_change:null, coordinates:{}); confirms exit 2 for each. QA reproduces the 13+ tool-cycle scenario and confirms git log master shows zero new entries while refs/checkpoints/master shows 13+. QA runs the eight per-bug greps in AC6.1-AC6.8 and confirms each returns the expected zero/non-zero result. QA invokes save.py --day 0 and save.py without --day; confirms non-zero exit. QA invokes save.py with primary:true and confirms it translates to optional:false. QA mocks fetch-images-batch.py 100% failure scenario and confirms non-zero exit. Per spec 5.8, no HTML render visual validation."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Spec is technical harness hardening with all root-cause evidence already enumerated by parent retrospectives + codex audit + spec sections 1+5+8. Existing scripts verify-plan-integrity.py (--strict-schema), save.py (argparse), and standard git update-ref / commit-tree mechanics are sufficient. No external best-practice gap. cp-02 confirmed by direct Read of verify-plan-integrity.py:401-405."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
