@@ -137,7 +137,8 @@ def _emit_block(target_file, result):
 
 
 def _run_verifier(target_file, tempfile_path):
-    result = _exec_verifier(tempfile_path)
+    agent_name = Path(target_file).stem
+    result = _exec_verifier(tempfile_path, agent_name)
     if result is None:
         return EXIT_OK
     if result.returncode != 0:
