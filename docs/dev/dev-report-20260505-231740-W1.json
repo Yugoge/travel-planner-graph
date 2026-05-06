@@ -1,0 +1,203 @@
+{
+  "request_id": "20260505-231740",
+  "task_id": "20260505-231740",
+  "worker_id": "W1-verifier-and-deploy-gate",
+  "timestamp": "2026-05-06T00:08:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-231740-W1.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/generate-and-deploy.sh"
+    ],
+    "files_created": [
+      "scripts/verify-plan-integrity.py"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "m_item": "M1",
+        "description": "Created scripts/verify-plan-integrity.py — Codex-signed deploy-blocking 6-in-1 verifier",
+        "type": "script",
+        "files_created": ["scripts/verify-plan-integrity.py"],
+        "rationale": "Single-source-of-truth replacement for the rejected 30-bespoke-per-symptom hook stack (spec 5.2). Implements: (1) jsonschema validation with cross-file $ref registry, (2) forbidden-token grep on data using AC2's reformulated regex with the principled exclusions for modification-log.json/plan-skeleton.json/requirements-skeleton.json, (3) stock-image-URL grep (unsplash/picsum/placeholder.com/via.placeholder.com/loremflickr/placekitten), (4) HTTP-protocol image_url grep, (5) key=AIzaSy WARN-only grep per user 5.1, (6) HTML-rendered scan via --html-also <file>. Two CLI modes (data-only and data+html). Per architect concern_4 honors IMAGE_FETCH_STATUS=FAILED env signal. Schema-strictness toggleable via --strict-schema (orchestrator W1 directive: 'verifier must accept current state initially' — schema findings default to WARN until W2 lands M2/M3 cleanups; deploy gate passes --strict-schema explicitly)."
+      },
+      {
+        "id": 2,
+        "m_item": "M6",
+        "description": "Wired verifier into scripts/generate-and-deploy.sh at the architect-prescribed insertion points",
+        "type": "shell-edit",
+        "files_modified": ["scripts/generate-and-deploy.sh"],
+        "changes": "Inserted [1.5/5] data-mode verifier between original L154 (post-image-fetch cache-status block) and original L156 (Step 2 HTML generation). Inserted [3.5/5] data+html-also-mode verifier between original L168 (HTML structure-valid echo) and original L184 (Step 4 deploy). Both invocations propagate IMAGE_FETCH_STATUS env and abort deploy with a RED banner on non-zero exit. Both pass --strict-schema so the deploy gate is unconditionally strict (post-W2-landing semantics).",
+        "rationale": "Per BA AC6 + architect concern_4 + spec 5.2 plan item 6 (M6). Insertion points exactly between L154↔L156 (data) and L168↔L184 (html-also) per architect concern_4.exact_insertion_point."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/verify-plan-integrity.py",
+        "purpose": "Deploy-blocking 6-in-1 integrity verifier (schema, forbidden-tokens, stock-images, http://, key=AIzaSy WARN, HTML scan)",
+        "parameters": ["plan_id", "[--html-also <output-file>]", "[--strict-schema]", "[--data-root <path>]", "[--schemas-root <path>]"],
+        "usage": "python scripts/verify-plan-integrity.py china-20260412-092624 [--html-also output/file.html] [--strict-schema]",
+        "exit_codes": {
+          "0": "Clean (or only WARN-level findings)",
+          "1": "Blocking failure (schema FAIL in strict mode, forbidden token, stock URL, http://, IMAGE_FETCH_STATUS=FAILED env)"
+        },
+        "env_signals": {
+          "IMAGE_FETCH_STATUS": "If 'FAILED', verifier emits a FAIL finding even when other checks pass (architect concern_4)"
+        },
+        "cli_modes": {
+          "data-only": "scripts/verify-plan-integrity.py <plan-id>",
+          "data-plus-html": "scripts/verify-plan-integrity.py <plan-id> --html-also <output-file>",
+          "deploy-gate-strict": "scripts/verify-plan-integrity.py <plan-id> --strict-schema [--html-also <output-file>]"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "Multi-cycle accretion across 20260505 sessions (no single regression). Verifier is forward-enhancement.",
+      "why_issue_occurred": "Cycle had structural gaps where 30+ bespoke per-symptom hooks were proposed; Codex consensus is to consolidate into a single deploy-blocking verifier.",
+      "how_fix_addresses_root": "Single deploy-blocking verifier replaces 30 bespoke hooks. 6-in-1 check covers schema, forbidden-tokens, stock-image, http://, key=AIzaSy WARN, IMAGE_FETCH_STATUS env. Two CLI modes wire into generate-and-deploy.sh between image-fetch and HTML-generation, and between HTML-generation and deploy. Strict-schema toggle preserves W1↔W2 parallel landing safety."
+    },
+    "diff_stats": {
+      "files_changed": 2,
+      "lines_added": 442,
+      "lines_removed": 12,
+      "new_symbols_introduced": [
+        "Finding (class)",
+        "fnd (factory)",
+        "_import_validator",
+        "_parse_one_schema",
+        "_load_schemas",
+        "_validate_instance",
+        "_read_json",
+        "_check_one_agent",
+        "_build_registry",
+        "_walk_agent_files",
+        "check_schemas",
+        "_read_text_lines",
+        "_scan_lines",
+        "_matches_to_findings",
+        "_scan_one_file",
+        "_scan_data_dir",
+        "check_forbidden_tokens",
+        "check_stock_images",
+        "check_http_image_url",
+        "check_api_key_leak",
+        "_scan_html_pattern",
+        "check_html_artifact",
+        "check_image_fetch_status",
+        "find_project_root",
+        "parse_args",
+        "collect_findings",
+        "_print_findings",
+        "report_and_verdict",
+        "_print_header",
+        "main"
+      ],
+      "minimum_possible_lines_estimate": 200,
+      "justification_for_overage": "Verifier is a 6-in-1 check unifying schema validation (jsonschema with $ref registry), four pattern grep checks (forbidden tokens, stock URLs, http://, key=AIzaSy), HTML rendered scan, IMAGE_FETCH_STATUS env signal, and CLI argument parsing. The orchestrator-mandated quality gate (max 30-line functions, max 3-level nesting) required splitting the 6 checks plus their helpers into ~20 small functions. The new file size of ~480 lines reflects (a) the breadth of the 6-in-1 scope, (b) per-finding location + remediation hint output, and (c) explicit helper decomposition mandated by the project's pretool-quality-gate.py (max 30 lines per function, max nesting 3). Wire-up edits in generate-and-deploy.sh add ~24 lines (two RED-banner blocks). Total <500 lines, well under the 800-line file threshold."
+    },
+    "fix_layer": "L4+L5",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "AC1 (verifier file exists, exits 0 on canary in default lenient mode, key=AIzaSy WARN-only) and AC6 (verifier wired into generate-and-deploy.sh at L160 and L200 with bash -n syntax-OK) both verified. Default schema-mode is lenient (WARN) so the verifier passes today; deploy gate passes --strict-schema explicitly so post-W2 the gate enforces strict schemas. QA may invoke: (a) python scripts/verify-plan-integrity.py china-20260412-092624 → expected exit 0 with WARN-only findings; (b) python scripts/verify-plan-integrity.py china-20260412-092624 --strict-schema → expected exit 1 today (W2 has not yet landed M2/M3 — schema FAILs from null name_local, null location_change, meal-slot extra image_url) → expected exit 0 once W2 completes; (c) IMAGE_FETCH_STATUS=FAILED python scripts/verify-plan-integrity.py china-20260412-092624 → expected exit 1 (FAIL on env signal); (d) bash -n scripts/generate-and-deploy.sh → expected syntax OK; (e) grep -n verify-plan-integrity scripts/generate-and-deploy.sh → expected 2 hits at L160 (data mode) and L200 (data+html mode). Test invocation does NOT require trip data to be perfect (lenient default) but DOES require schemas/ + data/<plan-id>/ to exist. Final integration QA after W2 lands: re-run --strict-schema to verify all FAILs cleared.",
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(python scripts/verify-plan-integrity.py:*)",
+        "reason": "Allow execution of new deploy-blocking verifier script created by W1"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(IMAGE_FETCH_STATUS=*python scripts/verify-plan-integrity.py:*)",
+        "reason": "Allow env-prefixed invocation matching generate-and-deploy.sh's wire-up pattern"
+      }
+    ]
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "py_compile scripts/verify-plan-integrity.py → OK; bash -n scripts/generate-and-deploy.sh → OK; verifier default-mode exit 0 on canary; --strict-schema exit 1 (expected pre-W2); --html-also exit 0 (rendered HTML clean of forbidden/stock/http://); IMAGE_FETCH_STATUS=FAILED exit 1 (env-signal FAIL works)."
+  },
+  "blast_radius": [
+    {
+      "modified": "scripts/generate-and-deploy.sh",
+      "imported_by": ["scripts/push-to-main-repo.sh (potentially), README.md docs, .claude/commands/plan.md (verify)"],
+      "note": "Shell script invoked by user from CLI; integration surface is the 2 new verifier invocations. Manual smoke test with bash -n syntax-validated."
+    },
+    {
+      "modified": "scripts/verify-plan-integrity.py",
+      "imported_by": [],
+      "note": "New script; no imports yet. Will become the canonical deploy gate."
+    }
+  ],
+  "acceptance_evidence": {
+    "AC1_file_exists": {
+      "command": "ls scripts/verify-plan-integrity.py",
+      "exit_code": 0,
+      "stdout": "scripts/verify-plan-integrity.py"
+    },
+    "AC1_default_lenient_exit_0": {
+      "command": "python scripts/verify-plan-integrity.py china-20260412-092624",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "stdout_tail": "verifier verdict: PASS",
+      "warn_count": 24,
+      "fail_count": 0,
+      "warn_summary": "24 key=AIzaSy WARN findings in meals.json image_url fields (proxied through maps.googleapis.com); WARN-only per user 5.1; rotation/scrub explicitly out of scope. Note: BA spec evidence section claimed 0 keys in canary, but this referred to data/china-20260412-092624/images.json specifically (which is 0); the cross-file count across all canary JSON is 24 (same root images leaked into image_url fields). Behavior matches AC: WARN-only, exit 0."
+    },
+    "AC1_strict_schema_exit_1_pre_W2": {
+      "command": "python scripts/verify-plan-integrity.py china-20260412-092624 --strict-schema",
+      "exit_code": 1,
+      "verdict": "FAIL — deploy aborted",
+      "fail_count": 24,
+      "warn_count": 12,
+      "explanation": "Pre-W2 expected behavior: schema FAILs are demoted to WARN by default (lenient), but --strict-schema promotes them to FAIL. Today the canary has 24 schema violations (null name_local, null location_change, meal-slot extra image_url) that W2's M2 cleanup will fix. Post-W2 this command will exit 0."
+    },
+    "AC1_html_also_mode": {
+      "command": "python scripts/verify-plan-integrity.py china-20260412-092624 --html-also output/travel-plan-china-20260412-092624.html",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "fail_count": 0,
+      "warn_count": 36,
+      "explanation": "Mode 2 reads the rendered HTML and applies the same forbidden-token/stock-image/http:// patterns. Today the rendered HTML for canary is clean of FAIL-level patterns (only key=AIzaSy WARNs surface, propagated from the underlying data)."
+    },
+    "AC1_image_fetch_status_env_fail": {
+      "command": "IMAGE_FETCH_STATUS=FAILED python scripts/verify-plan-integrity.py china-20260412-092624",
+      "exit_code": 1,
+      "verdict": "FAIL — deploy aborted",
+      "first_finding": "[FAIL] image-fetch-status @ env(IMAGE_FETCH_STATUS): upstream image-fetch step reported FAILED"
+    },
+    "AC6_grep_wire_up": {
+      "command": "grep -n verify-plan-integrity scripts/generate-and-deploy.sh",
+      "exit_code": 0,
+      "stdout": "160:IMAGE_FETCH_STATUS=\"$IMAGE_FETCH_STATUS\" python \"$SCRIPT_DIR/verify-plan-integrity.py\" \"$PLAN_ID\" --strict-schema || {\n200:IMAGE_FETCH_STATUS=\"$IMAGE_FETCH_STATUS\" python \"$SCRIPT_DIR/verify-plan-integrity.py\" \"$PLAN_ID\" --strict-schema --html-also \"$OUTPUT_FILE\" || {",
+      "matches": 2,
+      "data_mode_line": 160,
+      "html_mode_line": 200
+    },
+    "AC6_bash_syntax": {
+      "command": "bash -n scripts/generate-and-deploy.sh",
+      "exit_code": 0,
+      "stdout": "(silent — syntax OK)"
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "After W2 lands M2 (data Stage A cleanup) and M3 (schema additionalProperties:false flip), QA should re-run `python scripts/verify-plan-integrity.py china-20260412-092624 --strict-schema` and confirm exit 0; the lenient default may then be flipped to strict in a follow-up cycle (single-line edit: --strict-schema becomes default).",
+    "Future cycles can extend the verifier with additional checks (e.g. timeline-POI cross-references, traveler-dimension assertions) by adding new check_* functions to the same module — the report-and-verdict driver is already shape-agnostic.",
+    "QA may want to add a dedicated unit test: a synthetic data dir with one of each FAIL pattern + IMAGE_FETCH_STATUS=FAILED, asserting the verifier exits 1 with the expected number of findings."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "implementation_notes": [
+    "Quality gate (~/.claude/hooks/pretool-quality-gate.py: max 30-line functions, max 3-level nesting) blocked the initial monolithic implementation 3 times. Refactored into ~20 small helpers per the gate's enforced limits. This is why the file is ~480 lines (the algorithmic core would be ~150 lines; the rest is scaffolding for the gate's mandated decomposition).",
+    "Schema-strictness toggle resolves a tension: the orchestrator's W1 acceptance directive 'verifier must accept current state initially' conflicts with the spec's deploy-blocking semantics. Resolution: schema findings default to WARN (lenient — passes today's canary even with W2 not yet landed), and the deploy gate explicitly passes --strict-schema (the strict mode). After W2 merges and the canary is clean, lenient default can be flipped to strict in a future cycle.",
+    "BA spec's 'currently 0 keys in canary trip' (Acceptance Evidence § AC11) was specifically about data/<plan>/images.json count being 0. Across all canary JSON, the count is 24 (same root URLs leaked into meals.json image_url fields). Per user 5.1 these are WARN-only, so the verifier's behavior is correct (exit 0).",
+    "BA spec's reformulated AC2 forbidden-token regex was used verbatim — the corrected version with single grouped alternation `\"(...)\"` so each token is properly bracketed, plus the principled exclusions for modification-log.json/plan-skeleton.json/requirements-skeleton.json.",
+    "All checkpoints in cp-state-dev.json were already pre-waived by dev-spec-init at 2026-05-06T00:00:29Z; no new mark/waive calls needed (lifecycle closed prior to this invocation; SubagentStop hook will accept exit since all cps are in waived-with-reason state).",
+    "No bespoke per-symptom hooks were created (W1 directive honored). No API key rotation/scrub (user 5.1 honored). No new hook files added (only modified scripts/generate-and-deploy.sh and created scripts/verify-plan-integrity.py)."
+  ]
+}
