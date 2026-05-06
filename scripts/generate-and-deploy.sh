@@ -153,6 +153,19 @@ if [ -f "$IMAGES_FILE" ]; then
 fi
 echo ""
 
+# Step 1.5: Deploy-blocking integrity verifier (data-only mode)
+# Aborts deploy on schema FAIL, forbidden-token, stock-image, http://, or
+# IMAGE_FETCH_STATUS=FAILED. WARN-only on key=AIzaSy per user 5.1.
+echo -e "${BLUE}[1.5/5]${NC} Verifying plan integrity (deploy-blocking)..."
+IMAGE_FETCH_STATUS="$IMAGE_FETCH_STATUS" python "$SCRIPT_DIR/verify-plan-integrity.py" "$PLAN_ID" --strict-schema || {
+    echo -e "${RED}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  INTEGRITY VERIFIER FAILED — deploy aborted       ║${NC}"
+    echo -e "${RED}║  See findings above for remediation hints.        ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════╝${NC}"
+    exit 1
+}
+echo ""
+
 # Step 2: Generate interactive React HTML
 echo -e "${BLUE}[2/5]${NC} Generating interactive React HTML..."
 cd "$PROJECT_ROOT"
@@ -178,6 +191,19 @@ if ! grep -q "React" "$OUTPUT_FILE"; then
     exit 1
 fi
 echo -e "${GREEN}✓${NC} HTML structure valid"
+echo ""
+
+# Step 3.5: Deploy-blocking integrity verifier (data + rendered HTML mode)
+# Re-runs the 6-in-1 checks plus a forbidden-token / stock-image / http:// scan
+# of the rendered HTML to catch leaks introduced during HTML generation.
+echo -e "${BLUE}[3.5/5]${NC} Verifying plan integrity (data + rendered HTML)..."
+IMAGE_FETCH_STATUS="$IMAGE_FETCH_STATUS" python "$SCRIPT_DIR/verify-plan-integrity.py" "$PLAN_ID" --strict-schema --html-also "$OUTPUT_FILE" || {
+    echo -e "${RED}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  INTEGRITY VERIFIER FAILED (HTML scan)            ║${NC}"
+    echo -e "${RED}║  Deploy aborted; see findings above.              ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════╝${NC}"
+    exit 1
+}
 echo ""
 
 # Step 4: Deploy to GitHub Pages

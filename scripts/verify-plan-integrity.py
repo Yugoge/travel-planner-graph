@@ -20,6 +20,15 @@ verifier ABORTS deploy — image cache incomplete is a hard fail.
 CLI modes:
   scripts/verify-plan-integrity.py <plan-id>
   scripts/verify-plan-integrity.py <plan-id> --html-also <output-file>
+  scripts/verify-plan-integrity.py <plan-id> --strict-schema   # deploy-gate
+
+Schema-strictness toggle (orchestrator W1 directive: "verifier must accept
+current state initially"): without --strict-schema (the default during the
+W1↔W2 parallel landing window), schema findings are downgraded to WARN so
+W1's verifier can be tested in isolation while W2's data cleanup is still
+in flight. Once W2 lands AC2/AC3 cleanups the deploy gate flips the flag
+on by default by passing --strict-schema explicitly from generate-and-
+deploy.sh. After the W2 cycle merges, the default may flip on globally.
 
 Exit codes: 0 = clean (or only WARN); 1 = blocking failure.
 
@@ -145,14 +154,15 @@ def _load_schemas(schemas_dir):
     return index, raw, errs
 
 
-def _validate_instance(instance, schema, schema_filename, agent_path, Validator, registry):
+def _validate_instance(instance, schema, schema_filename, agent_path,
+                       Validator, registry, severity):
     """Run a Draft202012Validator over one instance and emit Findings."""
     findings = []
     validator = Validator(schema, registry=registry)
     for error in validator.iter_errors(instance):
         path = '.'.join(str(p) for p in error.absolute_path) or '<root>'
         findings.append(fnd(
-            'schema', 'FAIL', f'{agent_path}:{path}', error.message,
+            'schema', severity, f'{agent_path}:{path}', error.message,
             f'Fix data shape so {schema_filename} accepts it; '
             'see schemas/ for required/forbidden field rules',
         ))
@@ -172,13 +182,13 @@ def _read_json(path):
         )
 
 
-def _check_one_agent(agent_path, schema, schema_filename, Validator, registry):
+def _check_one_agent(agent_path, schema, schema_filename, Validator, registry, severity):
     """Read agent JSON and validate. Returns Findings."""
     instance, err = _read_json(agent_path)
     if err is not None:
         return [err]
     return _validate_instance(
-        instance, schema, schema_filename, agent_path, Validator, registry,
+        instance, schema, schema_filename, agent_path, Validator, registry, severity,
     )
 
 
@@ -189,7 +199,7 @@ def _build_registry(raw_resources, Registry, Resource):
     return Registry().with_resources(resources)
 
 
-def _walk_agent_files(data_dir, schema_index, Validator, registry):
+def _walk_agent_files(data_dir, schema_index, Validator, registry, severity):
     findings = []
     for agent_name, schema_filename in AGENT_SCHEMA_MAP.items():
         agent_path = data_dir / f'{agent_name}.json'
@@ -204,12 +214,13 @@ def _walk_agent_files(data_dir, schema_index, Validator, registry):
             ))
             continue
         findings += _check_one_agent(
-            agent_path, schema, schema_filename, Validator, registry,
+            agent_path, schema, schema_filename, Validator, registry, severity,
         )
     return findings
 
 
-def check_schemas(data_dir, schemas_dir):
+def check_schemas(data_dir, schemas_dir, strict):
+    severity = 'FAIL' if strict else 'WARN'
     if not schemas_dir.exists():
         return [fnd('schema', 'FAIL', str(schemas_dir),
                     f'schemas directory not found: {schemas_dir}',
@@ -224,7 +235,9 @@ def check_schemas(data_dir, schemas_dir):
                         'no schemas found', 'Populate schemas/*.schema.json'))
         return errs
     registry = _build_registry(raw, Registry, Resource)
-    return errs + _walk_agent_files(data_dir, schema_index, Validator, registry)
+    return errs + _walk_agent_files(
+        data_dir, schema_index, Validator, registry, severity,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -385,15 +398,20 @@ def parse_args(argv):
                         help='Override data root (default: <project_root>/data)')
     parser.add_argument('--schemas-root', dest='schemas_root', default=None,
                         help='Override schemas root (default: <project_root>/schemas)')
+    parser.add_argument('--strict-schema', dest='strict_schema',
+                        action='store_true',
+                        help='Treat schema findings as FAIL (deploy gate). '
+                             'Default WARN until W2 lands data cleanups.')
     return parser.parse_args(argv)
 
 
-def collect_findings(data_dir, schemas_dir, html_also):
+def collect_findings(data_dir, schemas_dir, html_also, strict_schema):
     findings = []
     print('Step 1: image-fetch env signal')
     findings += check_image_fetch_status()
-    print('Step 2: schema validation')
-    findings += check_schemas(data_dir, schemas_dir)
+    print('Step 2: schema validation '
+          f'({"strict/FAIL" if strict_schema else "lenient/WARN"})')
+    findings += check_schemas(data_dir, schemas_dir, strict_schema)
     print('Step 3: forbidden-token grep (data)')
     findings += check_forbidden_tokens(data_dir)
     print('Step 4: stock-image-URL grep (data)')
@@ -455,7 +473,9 @@ def main(argv):
         print(f'[FAIL] data dir not found: {data_dir}')
         print('       remediation: confirm plan-id and data/ structure')
         return EXIT_FAIL
-    findings = collect_findings(data_dir, schemas_dir, args.html_also)
+    findings = collect_findings(
+        data_dir, schemas_dir, args.html_also, args.strict_schema,
+    )
     return report_and_verdict(findings)
 
 
