@@ -455,13 +455,13 @@ def _check_forbidden_fields_one_file(target_path, severity):
     )
 
 
-def _resolve_target_schema(target_path):
+def _resolve_target_schema(target_path, agent_override=None):
     """Return (agent_name, schema_filename) for a target file, or (None, None)."""
-    agent_name = target_path.stem
+    agent_name = agent_override or target_path.stem
     return agent_name, AGENT_SCHEMA_MAP.get(agent_name)
 
 
-def _check_one_target_file(target_path, schemas_dir, strict):
+def _check_one_target_file(target_path, schemas_dir, strict, agent_override=None):
     """Single-file 5.1 mode: validate one file against its agent schema."""
     target_path = Path(target_path)
     if not target_path.exists():
@@ -469,7 +469,7 @@ def _check_one_target_file(target_path, schemas_dir, strict):
                     'target file not found',
                     'Confirm tool_input.file_path is correct')]
     severity = 'FAIL' if strict else 'WARN'
-    _, schema_filename = _resolve_target_schema(target_path)
+    _, schema_filename = _resolve_target_schema(target_path, agent_override)
     if schema_filename is None:
         return []
     Validator, Registry, Resource, errs = _import_validator()
