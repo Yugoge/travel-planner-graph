@@ -1636,3 +1636,40 @@ hook: Stop
 hook: Stop
 hook: Stop
 hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+2026-05-06T09:41:38.773572Z ERROR codex_core::session: failed to record rollout items: thread 019dfca6-3cb3-7401-8647-11b34c804c0d not found
+tokens used
+99,740
+CODEX_FEEDBACK:
+
+B1 looks acceptable. `scripts/validate-agent-outputs.py:422-430` now returns `0` for warnings-only and preserves `1` for critical validation errors. IO/invocation errors still use `2`. I see low caller-break risk: the main Python caller imports functions directly, not CLI exit codes.
+
+B3 looks acceptable. `.claude/.hook-refactor-allow` is absent, no longer tracked, and `.gitignore:41` covers `.claude/.hook-refactor-allow`.
+
+B2 is not actually closed.
+
+1. Serious ownership bug: Bash/save.py and `json_io.py` check the target agent, not the calling agent.  
+   - `.claude/hooks/pretool-block-production-files.sh:179-193` extracts `--agent` and verifies `data/<trip>/<agent>.json` against that same agent’s allowlist. It does not compare against `CLAUDE_AGENT_TYPE`.
+   - `scripts/lib/json_io.py:208-227` has the same issue: `agent_name` is treated as the owner, but that is just a caller-supplied target label.
+   - Repro: with `CLAUDE_AGENT_TYPE=accommodation`, `python3 scripts/save.py --trip codex-trip --agent meals --input /tmp/payload.json` exits `0`, while a direct Write to `data/codex-trip/meals.json` correctly exits `2`. So cross-agent writes through the canonical Bash/Python path remain possible.
+
+2. The Bash direct-write regex is over-eager.  
+   `detects_direct_data_write()` at `.claude/hooks/pretool-block-production-files.sh:77-84` scans raw command text, including quoted strings. A harmless command like:
+   `printf '%s\n' '> data/foo/meals.json'`
+   is blocked as if it were an actual redirect. This is a real regression from wiring the hook to Bash.
+
+3. Python-internal write coverage claim is incomplete.  
+   `scripts/sync-agent-data.py:690-692` still raw-writes `data/<trip>/sync-report.json`, while the Bash hook explicitly allows `sync-agent-data.py` on the claim that it routes through `save_agent_json`. That statement is false for the report write.
+
+4. The 4-layer defense is not over-engineering; it is the minimum shape needed for B2. But the implementation is currently target-based rather than caller-based, so it does not satisfy the blocker.
+
+5. Deferred Codex findings 2-4 and 7 are correctly deferred under the stated “快速修复 exactly 3 blockers” scope.
+
+Recommendation: NO.
