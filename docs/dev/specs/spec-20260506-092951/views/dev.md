@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED VIEW for dev | source: docs/dev/specs/spec-20260506-092951.md | extracted: 2026-05-05T23:38:00Z -->
+<!-- AUTO-GENERATED VIEW for dev | source: docs/dev/specs/spec-20260506-092951.md | extracted: 2026-05-06T00:00:00Z -->
 
 # dev view of spec-20260506-092951
 
@@ -11,33 +11,17 @@
 
 > **Pipeline**: ba → dev → qa
 
-> <!-- WHO WRITES: Dev (after each implementation attempt) -->
-
-> <!-- WHO WRITES: Dev (after each implementation) -->
-
 ---
 
-# Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+## Section 1: Before
 
-**Pipeline**: ba → dev → qa
-**Session**: spec-20260506-092951
-**Created**: 2026-05-06T09:29:51+00:00
+<!-- WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context) -->
+<!-- WHAT: Screenshot path + text description of the current state BEFORE any fix attempt. -->
+<!-- This establishes the baseline so later cycles can compare. -->
 
----
+### Cycle 1
 
-## Section 2: What Was Attempted
-
-<!-- WHO WRITES: Dev (after each implementation attempt) -->
-<!-- WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed). -->
-<!-- This prevents the next cycle's Dev from repeating the same approach. -->
-
-## Section 3: What Was Changed
-
-<!-- WHO WRITES: Dev (after each implementation) -->
-<!-- WHAT: Exact file changes with line numbers and old->new values. -->
-<!-- FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue` -->
-
-## Section 1: Before — Concrete Targets
+**Trigger session**: 2026-05-05/06 `/review china/2026-04-12/` ran ~5 hours. User extremely frustrated with iterative failures. Two retrospectives produced (Claude self-audit) plus codex CLI second-opinion audit. This spec consolidates ALL findings.
 
 **Active data bugs** (codex-verified, in `data/china-20260412-092624/`):
 
@@ -86,22 +70,31 @@
 - Schemas are lax: `transportation.schema.json:193-196` `intra_city_routes` is `additionalProperties: true` with description "Freeform structure with route_N (or descriptor) keys; values are open dicts." `budget.json` `breakdown.*_detail` similarly allows arbitrary keys.
 - `plan-validate.py` (1788 lines) supports `--json`, `--json-file`, `--min-severity`, `--agent`, but has **NO `--strict-schema` CLI flag** — would need extension or wrapper for write-time blocking. Currently the strict validator (`verify-plan-integrity.py`) is a separate script invoked only at deploy.
 
----
+**Behavioral pattern (informational, NOT a fix-target)**: Claude repeatedly preferred surface-level fixes (regex global replace, "0 fetched assumed cache hit", "user must hard-refresh") over root-cause investigation. User explicitly said behavioral fixes are out of scope — the goal is harness enforcement, not Claude's discipline.
 
-## Section 5: Implementation Requirements
+## Section 2: What Was Attempted
+
+<!-- WHO WRITES: Dev (after each implementation attempt) -->
+<!-- WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed). -->
+<!-- This prevents the next cycle's Dev from repeating the same approach. -->
+
+### Cycle 1
+
+_Not yet populated._
+
+## Section 3: What Was Changed
+
+<!-- WHO WRITES: Dev (after each implementation) -->
+<!-- WHAT: Exact file changes with line numbers and old->new values. -->
+<!-- FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue` -->
+
+### Cycle 1
+
+_Not yet populated._
 
 ### 5.1: Block schema-violating writes at the moment of write
 
 **Goal**: PostToolUse hook on `Write`/`Edit` to `data/**/*.json` runs strict-mode `plan-validate.py` (with `additionalProperties:false` enforcement and explicit-null rejection for typed fields) BEFORE the file is allowed to persist into checkpoint. If validation fails, the write is rolled back / blocked, not warned.
-
-**Acceptance**:
-- A test write that adds a non-schema field (e.g. `plan_label` on an `attraction_item`) is BLOCKED with a clear error pointing at the violating field.
-- A test write that sets a required string field to `null` (e.g. `name_local: null`) is BLOCKED.
-- A test write that emits `location_change: null` for an optional `object` field is BLOCKED (recommend deletion or empty-object).
-- A test write that emits an empty `coordinates: {}` is BLOCKED (must satisfy `{lat, lng}`).
-- The hook runs BEFORE the auto-commit / checkpoint hook so dirty data never reaches a checkpoint ref.
-- Explicit error messages name the file path, JSON path of the violation, and the schema rule that rejected it.
-- Schemas themselves must be tightened where they are currently lax — at minimum, decide whether `transportation.intra_city_routes` and `budget.breakdown.*_detail` should remain `additionalProperties:true` or be promoted to `false` with documented allowed keys (BA decides; document the rationale in the resulting spec view).
 
 ### 5.2: Image fetcher must fail loudly, not silently
 
@@ -111,12 +104,6 @@
 - Helper subprocess emits stderr that indicates failure (network error, auth error, JSON parse failure).
 - 0 fetches AND non-empty input target list (distinguishes "all cached" from "all failed" by exit code).
 
-**Acceptance**:
-- Removing the symlink at `.claude/skills/gaode-maps` reproduces the original failure → script now exits non-zero with a clear "helper not found at <path>" error instead of `Total fetched: 0/0 ✓ Updated 0 POIs` happy banner.
-- Cache-hit-only scenario (everything already in cache, 0 fetches needed) exits 0 with explicit "cache hit, no fetches required" banner — distinct from failure.
-- Mock 100% Gaode fail scenario exits non-zero.
-- The `408-411` and `433-436` broad exception swallowing is replaced with: catch specific expected exceptions (network/timeout) → record failure; let unexpected exceptions propagate.
-
 ### 5.3: Permanently ban batch / multi-day data operations
 
 **Goal**: Raw `Write`/`Edit` to `data/**/*.json` is BLOCKED. Data edits MUST go through a structured per-day API that:
@@ -125,57 +112,12 @@
 - Performs old-value check on each modified field (refuse if old-value doesn't match expected, to prevent unintended overwrites).
 - Cannot be invoked across multiple days in a single call.
 
-**Acceptance**:
-- `Write` tool attempt on `data/china-*/timeline.json` is BLOCKED by PreToolUse hook with message pointing to the structured API.
-- `Edit` tool attempt that uses `replace_all: true` on a data file is BLOCKED.
-- `scripts/save.py` (or successor) gains a mandatory `--day N` argument; absence of `--day` exits non-zero.
-- Bulk regex search-replace by Claude (the "Matilde solo → Both together" pattern that damaged Day 8/9) is structurally impossible because the only allowed write path is `--day N`.
-- Documented escape hatch: human user (NOT Claude) can override with explicit `--bypass-day-guard` flag, but agent invocations MUST NOT have access to this flag.
-
 ### 5.4: Auto-commit moves to refs/checkpoints/<branch>, never advances HEAD
 
 **Goal**: `posttool-git-checkpoint.sh` writes only to `refs/checkpoints/<current-branch>` via `git update-ref`. HEAD advances ONLY on:
 - Explicit user `git commit`
 - `/commit` slash command (closed-task or `--force` mode)
 - `/merge`
-
-**Acceptance**:
-- Running 13+ tool-use cycles on master produces ZERO new entries in `git log master`.
-- `git log refs/checkpoints/master` shows the per-cycle checkpoints (preserving recovery capability).
-- `git log` default view shows only logical/intentional commits.
-- The current implementation in `.claude/hooks/posttool-git-checkpoint.sh:29-46` is REPLACED, not just documented.
-- Recovery procedure documented: how to inspect / cherry-pick from `refs/checkpoints/<branch>` if a session crashes.
-
-### 5.5: Eight residual data bugs in `data/china-20260412-092624/` must be fixed
-
-**Goal**: All eight active bugs listed in Section 1 are resolved.
-
-**Acceptance** (per-bug, all must pass):
-1. No reference to `喜樂院子` remains in `timeline.json` Days 4-9 or `transportation.json` Days 4-9 — replaced with Atour Yulin Huaxi (or removed if accommodation-orthogonal).
-2. Day 8 traveler matrix is internally consistent across `timeline.json`, `meals.json`, `entertainment.json` (all three say the same thing for each slot).
-3. `transportation.json:364-367` Day 9 location is `Xi'an`, and a Chengdu→Xi'an intercity segment exists (HSR or flight, BOOKED status as appropriate).
-4. For every day in `budget.json`: `budget.total == sum(budget.{meals, accommodation, activities, entertainment, shopping, transportation, cafe})`. Assessment strings reference the same numeric values (no stale 980 references when actual is 1230).
-5. No timeline activity has `start_time == end_time` with `duration_minutes > 0`. Every entry's `duration_minutes` matches `(end - start) in minutes`.
-6. Every `name_local` field in China-trip data files contains at least one Chinese character (CJK Unified Ideographs range) AND has no dangling/unmatched parentheses.
-7. Every Plan A/B/C attraction either has a matching `timeline.json` entry with non-degenerate time OR is removed from the attractions array. Items tagged "PRIMARY" cannot also be tagged "Optional" (mutually exclusive).
-8. `shopping.json:133` Weidu Antique City note is updated to reflect the actual Day 4 destination (Chengdu) or removed.
-
-### 5.6: Delete the unauthorized `plan_label` field from all data files
-
-**Resolution (no longer a choice — user has decided)**:
-- `plan_label` is a non-standard field Claude unilaterally introduced. DELETE it from every data file: `attractions.json`, `meals.json`, `entertainment.json`, `shopping.json`, `transportation.json`, `timeline.json`, `cafe.json`, `accommodation.json`, `budget.json` (search-and-strip across the entire trip data tree).
-- Plan A/B/C remain only as **literal conceptual labels** expressed via:
-  - `optional: false` for Plan A (primary) items
-  - `optional: true` for Plan B/C (alternative) items
-  - Optional human-readable prefix in `notes_base` like `[PLAN A]` / `[PLAN B - ALTERNATIVE]` / `[PLAN C - ALTERNATIVE]` (free-text, NOT a schema field)
-- HTML renderer continues using only `optional`. No visual distinction between Plan B and Plan C — both render as `optional` (dashed border, "Optional" badge).
-- `_isAlternative` is dead code in `scripts/generate-html-interactive.py:3043-3053` (read but never assigned). Delete the dead branches OR leave as-is (orchestrator-internal cleanup, low priority).
-- DO NOT add `plan_label` to any schema. DO NOT promote it to standard. Treat any future agent attempt to write `plan_label` as a schema violation under 5.1's strict-write enforcement.
-
-**Acceptance**:
-- `grep -rn '"plan_label"' data/china-20260412-092624/` returns zero matches.
-- 5.1's strict-schema PreToolUse hook BLOCKS any future write that introduces `plan_label` to any data file (it remains non-standard forever).
-- Spec 5.7's referential-integrity linter no longer special-cases `plan_label`.
 
 ### 5.7: Cross-file referential integrity + plan completeness invariant
 
@@ -184,28 +126,23 @@
 - Any day where a Plan label (A/B/C) has fewer than 2 items, unless explicitly marked as single-item with a documented reason.
 - Any duplicate route/segment that appears in BOTH `transportation.intra_city_routes` AND `timeline.travel_segments` AND `timeline.timeline` for the same day at overlapping times.
 
-### 5.9: User-language vs machine-schema boundary — translation is mandatory, ad-hoc field introduction is forbidden
-
-**The single write path is `scripts/save.py`** (post-extension per 5.3 with `--day N`). save.py is responsible for:
-- Accepting structured input that maps onto existing schema fields only
-- Rejecting input fields that aren't in the schema
-- Translating common user-language synonyms (e.g., `"primary": true` → `optional: false` if writer used user phrasing)
-
----
-
 ## Section 8: Attention Notes
+
+<!-- WHO WRITES: PM-Retro -->
+<!-- WHAT: Issue-specific traps, warnings, and things to watch out for in the next cycle/session. -->
+<!-- Example: "This file is imported by 12 components -- changes here cascade widely" -->
 
 **Implementation order matters**:
 1. **5.1 (schema hook) MUST land before 5.5 (data bug fixes)** — otherwise the data fixes themselves can re-introduce schema violations and there's no automated catch.
 2. **5.4 (auto-commit→checkpoint ref) MUST land before any large dev cycle** — otherwise the implementation churn pollutes HEAD and rerunning becomes painful.
 3. **5.3 (batch ban) MUST land before 5.5 (data bug fixes)** — the data fixes touch multiple days and the dev should be FORCED to do them per-day, not via batch regex.
 
-**`scripts/save.py` does NOT have `--day` option currently** — Claude's previous proposal was based on a non-existent API. Either extend `save.py` or build a new structured editor as part of 5.3. Do not pretend the API exists.
-
 **Pre-existing PreToolUse hooks on Write/Edit** (`pretool-quality-gate.py`, `pretool-block-production-files.sh`) do code-quality + path-block but NOT schema validation. New hook for 5.1 / 5.3 must compose with these without conflicts.
 
 **Path mismatch already partially mitigated by symlink** — but symlink is fragile (deleted accidentally → silent failure returns). 5.2 must include a hard `os.path.exists` check at script startup so future symlink deletion fails LOUDLY.
 
 **`_isAlternative` is dead code** — never assigned anywhere in the renderer. Either wire it up (Option A in 5.6) or delete (Option B). Don't leave it as zombie code that suggests functionality that doesn't exist.
+
+**`docs/incidents-2026-04-04.md`** describes prior production catastrophes — Lesson 13 ("NEVER let a single subagent handle multiple tasks") is directly relevant to 5.3 (batch ban). Cross-reference when implementing.
 
 **Codex audit raw output**: `/var/tmp/codex-outputs/codex-output-1263055-1778057849.txt` — referenced for evidence of all eight Section-1 active bugs. Will be auto-cleaned in 7 days; mirror to `docs/dev/specs/spec-20260506-092951/codex-audit.txt` as part of the dev cycle if persistent reference is needed.
