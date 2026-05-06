@@ -146,10 +146,17 @@ def _run_verifier(target_file, tempfile_path):
 
 
 def _write_tempfile(file_path, post_content):
+    """Create a tempfile that PRESERVES the original stem so the verifier's
+    AGENT_SCHEMA_MAP lookup (timeline / meals / ...) hits.
+
+    Layout: data/<trip>/.precheck-<pid>/<original-name>
+    """
     target_dir = Path(file_path).resolve().parent
     target_name = Path(file_path).name
-    tmp_path = target_dir / f'.precheck-{os.getpid()}-{target_name}'
+    tmp_dir = target_dir / f'.precheck-{os.getpid()}'
     try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        tmp_path = tmp_dir / target_name
         tmp_path.write_text(post_content, encoding='utf-8')
         return tmp_path
     except Exception as exc:
