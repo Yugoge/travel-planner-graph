@@ -562,6 +562,7 @@ def _print_header(args, data_dir, schemas_dir):
 def _run_target_file_mode(args, schemas_dir):
     findings = _check_one_target_file(
         args.target_file, schemas_dir, args.strict_schema,
+        agent_override=args.agent_name,
     )
     if args.cross_ref:
         cr_severity = ('WARN' if args.cross_ref_warn_only
