@@ -1,0 +1,177 @@
+{
+  "request_id": "20260506-081545",
+  "task_id": "20260506-081545",
+  "timestamp": "2026-05-06T09:11:23Z",
+  "dev_report_path": "docs/dev/dev-report-20260506-081545.json",
+  "parallel_workers": [
+    "W1",
+    "W2",
+    "W3"
+  ],
+  "dev": {
+    "status": "completed",
+    "tasks_completed": [
+      {
+        "worker": "W1",
+        "task": {
+          "id": 1,
+          "description": "Change validator exit-code semantics so warnings-only canary trip exits 0; criticals exit non-zero (1); invocation/IO errors keep exit 2",
+          "type": "config_logic",
+          "files_modified": [
+            "scripts/validate-agent-outputs.py"
+          ],
+          "changes": "Line 430: return 2 -> return 0 in the warnings-only branch of main(). Lines 11-13: docstring exit-code legend updated to match new contract (0=no critical errors with warnings allowed; 1=critical issues; 2=invocation/IO error).",
+          "rationale": "Root cause B1: prior author chose exit 2 for warnings-only as a tri-state signal, which violated AC2 literal text and standard CLI severity-alignment convention (eslint/mypy/ruff: warnings-only -> 0). BA confirmed zero shell callers and the only Python caller (sync-agent-data.py) uses importlib and never inspects exit code, so blast radius is nil."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 1,
+          "description": "Extend scripts/lib/json_io.py with OwnershipError + UniversalImageDeny exceptions, _reject_unauthorized_ownership rejector, and _reject_universal_image_url rejector; wire both into save_agent_json BEFORE _reject_unsafe_image_payloads.",
+          "type": "code",
+          "files_modified": [
+            "scripts/lib/json_io.py"
+          ],
+          "rationale": "QA objection 2: Python-internal write surface (sync-agent-data.py, strip-image-url-fields.py) is invisible to a Bash PreToolUse hook. Move enforcement to the persistence layer so any write through save_agent_json fires the ownership + image_url rejectors regardless of caller (Python script, save.py, future scripts). Reads owned_files regex list from .claude/agents/<agent_name>.md frontmatter — same source as the Bash hook so both layers agree."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 2,
+          "description": "Register pretool-block-production-files.sh in .claude/settings.json PreToolUse with matcher 'Write|Edit|Bash'.",
+          "type": "config",
+          "files_modified": [
+            ".claude/settings.json"
+          ],
+          "changes": "Added new entry under hooks.PreToolUse with matcher 'Write|Edit|Bash' and stdin_json: true.",
+          "rationale": "QA objection 1: BA iter 1's wiring assumption was wrong — no entry existed at all (0 grep hits in project + global settings.json). The W6 hook from the parent cycle was a file on disk that NEVER fired at runtime. This registration is the prerequisite for ANY hook-based enforcement to be live."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 3,
+          "description": "Refactor scripts/sync-agent-data.py:_save_json to route through json_io.save_agent_json instead of direct open(); json.dump().",
+          "type": "code",
+          "files_modified": [
+            "scripts/sync-agent-data.py"
+          ],
+          "changes": "Replaced direct write at lines 181-183 with save_agent_json(path, agent_name=path.stem, data=data, validate=False, create_backup=False, allow_high_severity=True). Added 'from lib.json_io import save_agent_json' at module top.",
+          "rationale": "Closes the bypass surface at the source. Without this refactor, the json_io ownership rejector exists but sync-agent-data never invokes it."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 4,
+          "description": "Refactor scripts/strip-image-url-fields.py:process_file to route through json_io.save_agent_json when image_url fields are stripped.",
+          "type": "code",
+          "files_modified": [
+            "scripts/strip-image-url-fields.py"
+          ],
+          "changes": "Replaced direct write at lines 36-37 with save_agent_json(path, agent_name=path.stem, data=inner_data, validate=False, create_backup=False, allow_high_severity=True). Added 'from lib.json_io import save_agent_json' at module top. Inner data extracted from envelope when present (data.get('data', data)).",
+          "rationale": "Same bypass-closure rationale as sync-agent-data.py. After stripping image_url fields the universal image_url deny is a no-op (payload is image_url-free); ownership still applies."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 5,
+          "description": "Extend .claude/hooks/pretool-block-production-files.sh with a Bash branch that intercepts (a) python scripts/save.py invocations with --input image_url payloads, (b) python scripts/save.py invocations targeting unauthorized agent paths, (c) direct shell redirect/tee/cp/mv to data/<trip>/<file>.json. SAME hook file, no separate hook stack (architect concern_6).",
+          "type": "code",
+          "files_modified": [
+            ".claude/hooks/pretool-block-production-files.sh"
+          ],
+          "changes": "Replaced 'case $TOOL_NAME in Write|Edit) ;; *) exit 0' with three-arm dispatch: Write|Edit (existing behavior), Bash (new — runs Python regex detection of save.py + direct-data-write patterns and applies image_url + ownership checks), * (exit 0). Existing PYHOOK_EOF heredoc unchanged.",
+          "rationale": "QA objection on AC9 surface: data agents canonical write path is Bash via save.py; Write|Edit-only dispatch missed the entire AC9 control. Bash branch closes the secondary defense (json_io persistence layer is primary)."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 6,
+          "description": "Create scripts/tests/test_json_io_ownership.py with 4 sub-tests verifying authorized write succeeds, cross-agent write raises OwnershipError, image_url payload raises UniversalImageDeny/StockImageRejected, and unknown-agent write raises OwnershipError.",
+          "type": "test",
+          "files_created": [
+            "scripts/tests/test_json_io_ownership.py"
+          ],
+          "rationale": "AC-OWNERSHIP recipe: this is the verbatim test the AC mandates. Mirrors the existing test_merge_agent_slots.py pattern (standalone harness + pytest-compatible)."
+        }
+      },
+      {
+        "worker": "W2",
+        "task": {
+          "id": 7,
+          "description": "Create scripts/tests/test_hook_bash_branch.sh with 8 sub-cases proving the Bash branch isolation behavior (direct redirect blocks, save.py mention-only allows, save.py with clean payload allows, save.py with image_url blocks, tee/cp into data block, non-data Bash allows).",
+          "type": "test",
+          "files_created": [
+            "scripts/tests/test_hook_bash_branch.sh"
+          ],
+          "rationale": "AC2 reformulated recipe: Bash-detection sub-case in isolation. Eight envelopes piped to the hook directly, recording exit code + stderr against expected. All 8 PASS."
+        }
+      },
+      {
+        "worker": "W3",
+        "task": {
+          "id": 1,
+          "description": "Remove .claude/.hook-refactor-allow from working tree AND git index",
+          "type": "deletion",
+          "files_deleted": [
+            ".claude/.hook-refactor-allow"
+          ],
+          "command_used": "git -C /root/travel-planner rm -f .claude/.hook-refactor-allow",
+          "rationale": "Sentinel was committed accidentally in prior session. Per pretool-claude-config-guard.py line 75-77, sentinel presence at `_project_dir()/.claude/.hook-refactor-allow` causes the hook to exit 0 (allow), bypassing the protection on .claude/hooks/ and .claude/commands/. Removing the sentinel re-engages the guard."
+        }
+      },
+      {
+        "worker": "W3",
+        "task": {
+          "id": 2,
+          "description": "Append .claude/.hook-refactor-allow to .gitignore",
+          "type": "config",
+          "files_modified": [
+            ".gitignore"
+          ],
+          "changes": "Added 3 lines after the existing `.claude/workflow-current.json` block: blank line, comment, and the pattern itself.",
+          "rationale": "Prevents accidental re-commit of the sentinel. Pattern matches the exact path so users can still create the sentinel locally for opt-in refactor sessions; only the index commit is blocked."
+        }
+      }
+    ],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "files_modified": [
+      ".claude/hooks/pretool-block-production-files.sh",
+      ".claude/settings.json",
+      "/root/travel-planner/.gitignore",
+      "scripts/lib/json_io.py",
+      "scripts/strip-image-url-fields.py",
+      "scripts/sync-agent-data.py",
+      "scripts/validate-agent-outputs.py"
+    ],
+    "files_created": [
+      "scripts/tests/test_hook_bash_branch.sh",
+      "scripts/tests/test_json_io_ownership.py"
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    {
+      "worker": "W2",
+      "text": "Future cycle: refactor scripts/save.py itself to confirm it routes through json_io.save_agent_json (per ticket out_of_scope_observations 2026-05-06T08:35Z; spec lists this as W4-out-of-scope but worth verifying). If save.py already uses save_agent_json, defense-in-depth is complete. If not, that's a separate refactor."
+    },
+    {
+      "worker": "W2",
+      "text": "Consider caching .claude/agents/<name>.md frontmatter parse via functools.lru_cache on _load_owned_files to amortize repeated reads in batch save scenarios. Profiling has not shown this to be hot."
+    },
+    {
+      "worker": "W2",
+      "text": "Out-of-scope observation (Codex Findings 2-4, 7) remain as recorded in ticket-20260506-081545.md; should be addressed in a separate cycle per user's '快速修复' constraint."
+    },
+    {
+      "worker": "W3",
+      "text": "Consider adding a CI/pre-commit check that fails if `.claude/.hook-refactor-allow` appears in a commit (defense-in-depth beyond .gitignore)."
+    }
+  ]
+}
