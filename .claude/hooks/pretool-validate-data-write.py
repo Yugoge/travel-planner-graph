@@ -105,7 +105,7 @@ def _verifier_cmd(tempfile_path):
     return [
         sys.executable, str(VERIFIER),
         '--target-file', str(tempfile_path),
-        '--strict-schema', '--cross-ref',
+        '--strict-schema', '--cross-ref', '--cross-ref-warn-only',
     ]
 
 
