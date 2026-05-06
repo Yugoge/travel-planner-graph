@@ -38,30 +38,6 @@ POI_AGENTS = {"meals", "attractions", "entertainment", "shopping", "cafe"}
 TIMELINE_FIELD = "timeline"
 TRAVEL_SEGMENTS_FIELD = "travel_segments"
 
-def _load_image_fetcher(trip_slug: str):
-    """Load BatchImageFetcher from fetch-images-batch.py. None on failure."""
-    try:
-        import importlib.util
-        batch_script = Path(__file__).resolve().parent / "fetch-images-batch.py"
-        spec = importlib.util.spec_from_file_location("fetch_images_batch", batch_script)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.BatchImageFetcher(trip_slug)
-    except Exception as e:
-        print(f"Image fetcher unavailable: {e}", file=sys.stderr)
-        return None
-
-def _collect_day_pois(day: dict, agent: str) -> list:
-    """Collect POIs from a day entry based on agent type."""
-    if agent == "meals":
-        return [day[mt] for mt in MEAL_TYPES if isinstance(day.get(mt), dict)]
-    if agent == "accommodation":
-        acc = day.get("accommodation")
-        return [acc] if isinstance(acc, dict) else []
-    if agent in ["attractions", "entertainment", "shopping", "cafe"]:
-        return list(day.get(agent, []))
-    return []
-
 def _extract_high_issues(issues: list) -> list:
     """Filter HIGH severity issues from a list."""
     def _is_high(i):
@@ -533,7 +509,7 @@ def _prepare_agent_data(data, agent_file, trip_slug):
     agent_data = data.get("data") if "data" in data else data
     if agent_file.exists():
         agent_data = _merge_existing_slots(agent_file, agent_data, data)
-    extract_image_urls(agent_file.stem, agent_data, trip_slug)
+    # PATH B (M5): images.json cache is sole image source (image_url no longer written).
     return agent_data
 
 def save_single_agent(

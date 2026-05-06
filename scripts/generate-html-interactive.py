@@ -712,7 +712,7 @@ class InteractiveHTMLGenerator:
                         "notes_base": cafe_item.get("notes_base", ""),
                         "notes_local": cafe_item.get("notes_local", ""),
                         "optional": cafe_item.get("optional", False),
-                        "image": cafe_item.get("image_url", "") or self._get_placeholder_image(
+                        "image": self._get_placeholder_image(
                             "cafe",
                             poi_name=cafe_name_local if cafe_name_local else cafe_name_base,
                             gaode_id=cafe_item.get("gaode_id", ""),
@@ -829,7 +829,7 @@ class InteractiveHTMLGenerator:
                 notes_local = shop_item.get("notes_local", "")
 
                 # Get mall image (used as fallback for brand cards)
-                mall_image = shop_item.get("image_url", "") or self._get_placeholder_image(
+                mall_image = self._get_placeholder_image(
                     "attraction",
                     poi_name=shop_name_local if shop_name_local else shop_name_base,
                     name_base=shop_name_base,
@@ -935,7 +935,7 @@ class InteractiveHTMLGenerator:
                     "optional": acc.get("optional", False),
                     "time": acc_time,
                     "links": acc.get("links", {}),
-                    "image": acc.get("image_url", "") or self._get_placeholder_image(
+                    "image": self._get_placeholder_image(
                         "accommodation",
                         poi_name=acc_name_local if acc_name_local else acc_name_base,
                         name_base=acc_name_base,
