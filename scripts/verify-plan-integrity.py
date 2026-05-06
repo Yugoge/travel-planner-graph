@@ -549,12 +549,40 @@ def _print_header(args, data_dir, schemas_dir):
     print(rule)
 
 
+def _run_target_file_mode(args, schemas_dir):
+    findings = _check_one_target_file(
+        args.target_file, schemas_dir, args.strict_schema,
+    )
+    if args.cross_ref:
+        from importlib import import_module  # noqa: F401
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from check_plan_integrity import (  # type: ignore
+                cross_ref_findings_for_target,
+            )
+            findings += cross_ref_findings_for_target(
+                Path(args.target_file), 'FAIL' if args.strict_schema else 'WARN',
+            )
+        except ImportError:
+            findings.append(fnd(
+                'cross-ref', 'WARN', str(args.target_file),
+                'check_plan_integrity not importable',
+                'Confirm scripts/check_plan_integrity.py exists and is importable',
+            ))
+    return report_and_verdict(findings)
+
+
 def main(argv):
     args = parse_args(argv)
     project_root = find_project_root(Path(__file__).parent)
-    data_root = Path(args.data_root) if args.data_root else project_root / 'data'
     schemas_dir = (Path(args.schemas_root) if args.schemas_root
                    else project_root / 'schemas')
+    if args.target_file:
+        return _run_target_file_mode(args, schemas_dir)
+    if not args.plan_id:
+        print('[FAIL] either plan_id (positional) or --target-file is required')
+        return EXIT_FAIL
+    data_root = Path(args.data_root) if args.data_root else project_root / 'data'
     data_dir = data_root / args.plan_id
     _print_header(args, data_dir, schemas_dir)
     if not data_dir.is_dir():
