@@ -252,7 +252,7 @@ def _has_chengdu_xian(lc):
 
 def _add_loc_change(d9):
     lc = d9.get('location_change')
-    if _has_chengdu_xian(lc):
+    if _has_chengdu_xian(lc) and isinstance(lc, dict) and 'cost' in lc:
         return False
     d9['location_change'] = _location_change()
     return True
