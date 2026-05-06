@@ -1,6 +1,6 @@
-<!-- AUTO-GENERATED VIEW for ba | source: docs/dev/specs/spec-20260506-092951.md | extracted: 2026-05-05T23:38:00Z -->
+<!-- AUTO-GENERATED VIEW for qa | source: docs/dev/specs/spec-20260506-092951.md | extracted: 2026-05-05T23:38:00Z -->
 
-# ba view of spec-20260506-092951
+# qa view of spec-20260506-092951
 
 **Monolith**: docs/dev/specs/spec-20260506-092951.md
 **Extraction**: content-block level (no section-level mapping)
@@ -11,9 +11,16 @@
 
 > **Pipeline**: ba → dev → qa
 
-> <!-- WHO WRITES: BA (on first analysis) -->
-> <!-- WHAT: Verbatim quote from user's requirement or focus string. -->
-> <!-- This is the single source of truth for what "done" means. Do not paraphrase. -->
+> <!-- WHO WRITES: QA (after each verification) -->
+> <!-- WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths. -->
+> <!-- This gives the next cycle's Dev concrete data to work with instead of vague "it failed". -->
+
+> <!-- WHO WRITES: QA (when verdict is fail) -->
+> <!-- WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5). -->
+> <!-- Must include evidence: actual value vs expected value. -->
+
+> <!-- WHO WRITES: QA (on fail) or PM-Retro -->
+> <!-- WHAT: Prescriptive next step for this specific issue. Not generic advice -- a concrete action. -->
 
 ---
 
@@ -25,15 +32,25 @@
 
 ---
 
-## Section 1: Before
+## Section 4: Current State
 
-<!-- WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context) -->
-<!-- WHAT: Screenshot path + text description of the current state BEFORE any fix attempt. -->
-<!-- This establishes the baseline so later cycles can compare. -->
+<!-- WHO WRITES: QA (after each verification) -->
+<!-- WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths. -->
+<!-- This gives the next cycle's Dev concrete data to work with instead of vague "it failed". -->
 
-### Cycle 1
+## Section 6: Why Not Met
 
-**Trigger session**: 2026-05-05/06 `/review china/2026-04-12/` ran ~5 hours. User extremely frustrated with iterative failures. Two retrospectives produced (Claude self-audit) plus codex CLI second-opinion audit. This spec consolidates ALL findings.
+<!-- WHO WRITES: QA (when verdict is fail) -->
+<!-- WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5). -->
+<!-- Must include evidence: actual value vs expected value. -->
+
+## Section 7: What Must Be Done
+
+<!-- WHO WRITES: QA (on fail) or PM-Retro -->
+<!-- WHAT: Prescriptive next step for this specific issue. Not generic advice -- a concrete action. -->
+<!-- Example: "Increase padding from 8px to 16px in Chat.tsx:42" not "fix the padding" -->
+
+## Section 1: Verification Targets (Active Bugs to Confirm Fixed)
 
 **Active data bugs** (codex-verified, in `data/china-20260412-092624/`):
 
@@ -73,31 +90,13 @@
 - G5415 HSR appears in both `timeline.json:734` AND `transportation.json:204`
 - 五通桥 taxi appears in `timeline.json:765`, `timeline.json:839`, AND `transportation.json:242`
 
-**Behavioral pattern (informational, NOT a fix-target)**: Claude repeatedly preferred surface-level fixes (regex global replace, "0 fetched assumed cache hit", "user must hard-refresh") over root-cause investigation. User explicitly said behavioral fixes are out of scope — the goal is harness enforcement, not Claude's discipline.
-
 ---
 
-## Section 5: User's Acceptance Criterion
-
-<!-- WHO WRITES: BA (on first analysis) -->
-<!-- WHAT: Verbatim quote from user's requirement or focus string. -->
-<!-- This is the single source of truth for what "done" means. Do not paraphrase. -->
+## Section 5: Acceptance Criteria for Verification
 
 > 将以上全部总结为一个spec，永久根本性地彻底修复
 
-User's intent (consolidated from this conversation): take the systemic findings (Claude's two retrospectives + codex's audit) and convert them into a permanent root-cause fix — both the harness mechanisms that allowed the failures AND the residual data bugs codex flagged. The user explicitly excluded:
-- Agent-output post-hoc auditing ("无所谓，只要脚本约束足够严格并且用户指定的方法足够严格就行")
-- HTML render visual validation ("人工验证，不需要你验证")
-- Behavioral attribution-bias diagnostics (acknowledged as Claude being stubborn — out of scope)
-- Over-engineering generally
-
-User explicitly demanded:
-- 批量操作永久禁止 (batch operations permanently banned, not "guarded")
-- Auto-commit 不应该淹没 git log (auto-commit should not pollute HEAD)
-
 ### 5.1: Block schema-violating writes at the moment of write
-
-**Goal**: PostToolUse hook on `Write`/`Edit` to `data/**/*.json` runs strict-mode `plan-validate.py` (with `additionalProperties:false` enforcement and explicit-null rejection for typed fields) BEFORE the file is allowed to persist into checkpoint. If validation fails, the write is rolled back / blocked, not warned.
 
 **Acceptance**:
 - A test write that adds a non-schema field (e.g. `plan_label` on an `attraction_item`) is BLOCKED with a clear error pointing at the violating field.
@@ -110,12 +109,6 @@ User explicitly demanded:
 
 ### 5.2: Image fetcher must fail loudly, not silently
 
-**Goal**: `scripts/fetch-images-batch.py` exits non-zero on any of the following:
-- Required helper script path missing at startup (`assert os.path.exists(SKILL_PATH)` raises before any work).
-- Total fetch attempts > 0 AND success rate < threshold (suggest 50% as starting threshold; tunable).
-- Helper subprocess emits stderr that indicates failure (network error, auth error, JSON parse failure).
-- 0 fetches AND non-empty input target list (distinguishes "all cached" from "all failed" by exit code).
-
 **Acceptance**:
 - Removing the symlink at `.claude/skills/gaode-maps` reproduces the original failure → script now exits non-zero with a clear "helper not found at <path>" error instead of `Total fetched: 0/0 ✓ Updated 0 POIs` happy banner.
 - Cache-hit-only scenario (everything already in cache, 0 fetches needed) exits 0 with explicit "cache hit, no fetches required" banner — distinct from failure.
@@ -123,12 +116,6 @@ User explicitly demanded:
 - The `408-411` and `433-436` broad exception swallowing is replaced with: catch specific expected exceptions (network/timeout) → record failure; let unexpected exceptions propagate.
 
 ### 5.3: Permanently ban batch / multi-day data operations
-
-**Goal**: Raw `Write`/`Edit` to `data/**/*.json` is BLOCKED. Data edits MUST go through a structured per-day API that:
-- Takes a single `--day N` argument (no `--days "1-5,8"` ranges, no `--all-days` flag).
-- Performs schema validation before write.
-- Performs old-value check on each modified field (refuse if old-value doesn't match expected, to prevent unintended overwrites).
-- Cannot be invoked across multiple days in a single call.
 
 **Acceptance**:
 - `Write` tool attempt on `data/china-*/timeline.json` is BLOCKED by PreToolUse hook with message pointing to the structured API.
@@ -139,11 +126,6 @@ User explicitly demanded:
 
 ### 5.4: Auto-commit moves to refs/checkpoints/<branch>, never advances HEAD
 
-**Goal**: `posttool-git-checkpoint.sh` writes only to `refs/checkpoints/<current-branch>` via `git update-ref`. HEAD advances ONLY on:
-- Explicit user `git commit`
-- `/commit` slash command (closed-task or `--force` mode)
-- `/merge`
-
 **Acceptance**:
 - Running 13+ tool-use cycles on master produces ZERO new entries in `git log master`.
 - `git log refs/checkpoints/master` shows the per-cycle checkpoints (preserving recovery capability).
@@ -152,8 +134,6 @@ User explicitly demanded:
 - Recovery procedure documented: how to inspect / cherry-pick from `refs/checkpoints/<branch>` if a session crashes.
 
 ### 5.5: Eight residual data bugs in `data/china-20260412-092624/` must be fixed
-
-**Goal**: All eight active bugs listed in Section 1 are resolved.
 
 **Acceptance** (per-bug, all must pass):
 1. No reference to `喜樂院子` remains in `timeline.json` Days 4-9 or `transportation.json` Days 4-9 — replaced with Atour Yulin Huaxi (or removed if accommodation-orthogonal).
@@ -167,30 +147,12 @@ User explicitly demanded:
 
 ### 5.6: Delete the unauthorized `plan_label` field from all data files
 
-**User decision (verbatim from accumulation loop)**:
-> plan_label 直接删除，这不是我们 schema 中的啊！我让你给 plan abc 仅仅是字面意义，同时 BC 加上 optional，并没有说要加入一个新的标准
-
-**Resolution (no longer a choice — user has decided)**:
-- `plan_label` is a non-standard field Claude unilaterally introduced. DELETE it from every data file: `attractions.json`, `meals.json`, `entertainment.json`, `shopping.json`, `transportation.json`, `timeline.json`, `cafe.json`, `accommodation.json`, `budget.json` (search-and-strip across the entire trip data tree).
-- Plan A/B/C remain only as **literal conceptual labels** expressed via:
-  - `optional: false` for Plan A (primary) items
-  - `optional: true` for Plan B/C (alternative) items
-  - Optional human-readable prefix in `notes_base` like `[PLAN A]` / `[PLAN B - ALTERNATIVE]` / `[PLAN C - ALTERNATIVE]` (free-text, NOT a schema field)
-- HTML renderer continues using only `optional`. No visual distinction between Plan B and Plan C — both render as `optional` (dashed border, "Optional" badge).
-- `_isAlternative` is dead code in `scripts/generate-html-interactive.py:3043-3053` (read but never assigned). Delete the dead branches OR leave as-is (orchestrator-internal cleanup, low priority).
-- DO NOT add `plan_label` to any schema. DO NOT promote it to standard. Treat any future agent attempt to write `plan_label` as a schema violation under 5.1's strict-write enforcement.
-
 **Acceptance**:
 - `grep -rn '"plan_label"' data/china-20260412-092624/` returns zero matches.
 - 5.1's strict-schema PreToolUse hook BLOCKS any future write that introduces `plan_label` to any data file (it remains non-standard forever).
 - Spec 5.7's referential-integrity linter no longer special-cases `plan_label`.
 
 ### 5.7: Cross-file referential integrity + plan completeness invariant
-
-**Goal**: A linter (`scripts/check-plan-integrity.py` or similar) runs as part of the schema hook (5.1) and rejects:
-- Any `name_base` in attractions/meals/entertainment/shopping that has no matching key in `timeline.timeline` for that day (substring-match acceptable, but exact match preferred).
-- Any day where a Plan label (A/B/C) has fewer than 2 items, unless explicitly marked as single-item with a documented reason.
-- Any duplicate route/segment that appears in BOTH `transportation.intra_city_routes` AND `timeline.travel_segments` AND `timeline.timeline` for the same day at overlapping times.
 
 **Acceptance**:
 - Reproduce the Plan-C-hollowed scenario (move all but one Plan-C attraction to Plan-A) → linter blocks the write.
@@ -199,31 +161,11 @@ User explicitly demanded:
 
 ### 5.9: User-language vs machine-schema boundary — translation is mandatory, ad-hoc field introduction is forbidden
 
-**User decision (verbatim from accumulation loop)**:
-> 是的，甚至 Plan A/B/C 都不是标准术语，只是用户语言，你只能用当前的 schema 用 save 脚本翻译成机器语言
-
-**Principle**: Claude (orchestrator + sub-agents) MUST treat all user phrasing as **conversational / colloquial input** and translate it into the **existing machine schema**. Ad-hoc field introduction is forbidden, even via fields that the schema technically permits via `additionalProperties:true`.
-
-**Translation rules** (illustrative, not exhaustive):
-- "Plan A" / "primary" / "主行程" / "套餐 A" → `optional: false`
-- "Plan B" / "Plan C" / "alternative" / "备选" / "可选" → `optional: true`
-- "must do" / "non-negotiable" → `optional: false`
-- "skip if tired" / "nice-to-have" → `optional: true`
-- **No** `plan_label`, `is_alternative`, `_isAlternative`, `tier`, `priority`, `category_label`, `bundle_id`, or any similar Claude-invented attribute is permitted in any data file.
-- The string `[PLAN A]` / `[PLAN B - ALTERNATIVE]` / `[PLAN C - ALTERNATIVE]` etc. in `notes_base` is **free-text annotation**, NOT a structured field. It is allowed only as human-readable prose, must not be parsed by any code, and must not become a de-facto enum.
-
-**The single write path is `scripts/save.py`** (post-extension per 5.3 with `--day N`). save.py is responsible for:
-- Accepting structured input that maps onto existing schema fields only
-- Rejecting input fields that aren't in the schema
-- Translating common user-language synonyms (e.g., `"primary": true` → `optional: false` if writer used user phrasing)
-
 **Acceptance**:
 - `grep -rnE '"(plan_label|is_alternative|_isAlternative|tier|bundle_id|priority_label)"' data/china-*/` returns zero matches across all trip data.
 - save.py rejects any structured-input JSON that contains keys not present in the corresponding schema, with error message naming the unknown field.
 - Future agent prompts using "Plan A/B/C" terminology are translated by the orchestrator (or save.py wrapper) into `optional` flags before any data write — no agent is permitted to write the literal string `plan_label` or similar.
 - 5.1's strict-write hook BLOCKs any non-schema field at write time as defense-in-depth.
-
-**Out-of-scope clarification**: this requirement does NOT mean Claude or agents cannot USE the words "Plan A/B/C" in user-facing summaries, prompts to sub-agents, or `notes_base` prose. It only means those words cannot become MACHINE-READABLE structured fields. The boundary is: **anything machine-parsed must already be in the schema; user language stays in prose**.
 
 ### 5.8: Out-of-scope (explicitly excluded by user)
 
@@ -235,17 +177,9 @@ The following are NOT to be implemented in this spec, per user's directives:
 
 ---
 
-## Section 8: Attention Notes
+## Section 8: Attention Notes for QA
 
 **Implementation order matters**:
 1. **5.1 (schema hook) MUST land before 5.5 (data bug fixes)** — otherwise the data fixes themselves can re-introduce schema violations and there's no automated catch.
 2. **5.4 (auto-commit→checkpoint ref) MUST land before any large dev cycle** — otherwise the implementation churn pollutes HEAD and rerunning becomes painful.
 3. **5.3 (batch ban) MUST land before 5.5 (data bug fixes)** — the data fixes touch multiple days and the dev should be FORCED to do them per-day, not via batch regex.
-
-**Schema tightening risk**: making `transportation.intra_city_routes` strict will reject existing data. Migration step required: either widen schema to accept current shape, or normalize current data first. BA must decide and document.
-
-**`plan-validate.py` does NOT have `--strict-schema` flag** — the strict validator is a separate script `verify-plan-integrity.py` only invoked at deploy. 5.1 must clarify whether to extend `plan-validate.py` with strict mode, or wire the existing `verify-plan-integrity.py` into PreToolUse, or build a new write-time validator. BA decides.
-
-**Plan B/C visual distinction is a UI design decision, not a tech decision** — surface to the user before implementing. Defaulting to "renderer reads plan_label" is what Claude did unilaterally last time, and the result was schema violations + invisible Plan-C.
-
-**`docs/incidents-2026-04-04.md`** describes prior production catastrophes — Lesson 13 ("NEVER let a single subagent handle multiple tasks") is directly relevant to 5.3 (batch ban). Cross-reference when implementing.
