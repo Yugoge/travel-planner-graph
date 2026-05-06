@@ -1,9 +1,38 @@
 ---
-description: "Multi-agent travel planning with specialized subagents and interactive HTML generation"
+description: Multi-agent travel planning with specialized subagents and interactive
+  HTML generation
 allowed-tools: Task, Read, Write, TodoWrite, Skill, Bash
-argument-hint: "[destination]"
+argument-hint: '[destination]'
 model: inherit
 disable-model-invocation: true
+uses_scripts:
+- scripts/generate-skeletons.py
+- scripts/generate-plan-slug.py
+- scripts/check-day-completion.sh
+- scripts/check-location-continuity.sh
+- scripts/parse-agent-json.py
+- scripts/validate-agent-outputs.py
+- scripts/validate-timeline-consistency.sh
+- scripts/sync-agent-data.py
+- scripts/check-budget-overage.py
+- scripts/load.py
+- scripts/save.py
+- scripts/fetch-images-batch.py
+- scripts/plan-validate.py
+- scripts/generate-and-deploy.sh
+- scripts/generate-booking-checklist.py
+dispatches:
+- meals
+- accommodation
+- attractions
+- entertainment
+- shopping
+- transportation
+- cafe
+- timeline
+- budget
+mutates_files:
+- data/{destination-slug}/*.json
 ---
 
 **⚠️ CRITICAL**: Use TodoWrite to track workflow phases. Mark in_progress before each phase, completed immediately after.

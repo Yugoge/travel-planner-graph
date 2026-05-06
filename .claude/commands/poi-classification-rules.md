@@ -1,6 +1,9 @@
 ---
-description: "Decision tree and rules for POI classification across domains"
+description: Decision tree and rules for POI classification across domains
 disable-model-invocation: true
+uses_scripts: []
+dispatches: []
+mutates_files: []
 ---
 
 # POI Classification Rules

@@ -1,10 +1,33 @@
 ---
-description: "Multi-day iterative review command with incremental workflow"
+description: Multi-day iterative review command with incremental workflow
 name: review
 allowed-tools: Task, Read, Write, TodoWrite, Bash, Skill
-argument-hint: "<plan-id> [--day N] [--force-images]"
+argument-hint: <plan-id> [--day N] [--force-images]
 model: inherit
 disable-model-invocation: true
+uses_scripts:
+- scripts/load.py
+- scripts/save.py
+- scripts/fetch-images-batch.py
+- scripts/parse-agent-json.py
+- scripts/sync-agent-data.py
+- scripts/plan-validate.py
+- scripts/generate-and-deploy.sh
+- scripts/generate-html.sh
+- scripts/generate-booking-checklist.py
+- scripts/update-skeleton.py
+dispatches:
+- meals
+- accommodation
+- attractions
+- entertainment
+- shopping
+- transportation
+- cafe
+- timeline
+- budget
+mutates_files:
+- data/{destination-slug}/*.json
 ---
 
 **⚠️ CRITICAL**: Use TodoWrite to track workflow phases. Mark in_progress before each phase, completed immediately after.

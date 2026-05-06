@@ -1,9 +1,16 @@
 ---
-description: "Google Maps integration for places, routing, geocoding, distance matrix, and elevation"
+description: Google Maps integration for places, routing, geocoding, distance matrix,
+  and elevation
 allowed-tools: Task, Read, Bash
-argument-hint: "[category|help]"
+argument-hint: '[category|help]'
 model: inherit
 disable-model-invocation: true
+uses_scripts:
+- .claude/commands/scripts/google-maps/scripts/places.py
+- .claude/commands/scripts/google-maps/scripts/routing.py
+- .claude/commands/scripts/google-maps/scripts/geocoding.py
+dispatches: []
+mutates_files: []
 ---
 
 # Google Maps Skill
