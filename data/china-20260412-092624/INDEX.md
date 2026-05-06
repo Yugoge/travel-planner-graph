@@ -1,27 +1,35 @@
 # china-20260412-092624
 
-*Last updated: 2026-05-05T20:32:14Z*
-**Total entries**: 15
+*Last updated: 2026-05-06T06:26:17Z*
+**Total entries**: 23
 **Convention**: kebab
 
 ## Tree
 ```
 china-20260412-092624/
 ├── `accommodation.json` - json config
+├── `accommodation.json.bak` - bak file
 ├── `attractions.json` - json config
+├── `attractions.json.bak` - bak file
 ├── `budget.json` - json config
+├── `budget.json.bak` - bak file
 ├── `cafe.json` - json config
 ├── `entertainment.json` - json config
+├── `entertainment.json.bak` - bak file
 ├── `images.json` - json config
 ├── `meals.json` - json config
+├── `meals.json.bak` - bak file
 ├── `modification-log.json` - json config
+├── `modification-log.json.bak` - bak file
 ├── `plan-skeleton.json` - json config
 ├── `requirements-skeleton.json` - json config
 ├── `route-optimization.json` - json config
 ├── `shopping.json` - json config
 ├── `sync-report.json` - json config
 ├── `timeline.json` - json config
-└── `transportation.json` - json config
+├── `timeline.json.bak` - bak file
+├── `transportation.json` - json config
+└── `transportation.json.bak` - bak file
 ```
 
 ---
