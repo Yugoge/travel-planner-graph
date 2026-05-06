@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T17:29:56Z*
-**Total entries**: 249
+*Last updated: 2026-05-06T17:36:03Z*
+**Total entries**: 250
 **Convention**: kebab
 
 ## Tree
@@ -82,6 +82,7 @@ dev/
 ├── `close-report-20260505-175102.md` - Close Report — 20260505-175102
 ├── `close-report-20260505-231740.md` - Close Report — Cycle 20260505-231740
 ├── `close-report-20260506-081545.md` - Close Report — Cycle 20260506-081545 (/redev iteration 2)
+├── `close-report-20260506-141814.md` - Close Debate Report — task-id 20260506-141814
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
