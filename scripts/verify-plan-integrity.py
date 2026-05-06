@@ -560,14 +560,15 @@ def _run_target_file_mode(args, schemas_dir):
         args.target_file, schemas_dir, args.strict_schema,
     )
     if args.cross_ref:
-        from importlib import import_module  # noqa: F401
+        cr_severity = ('WARN' if args.cross_ref_warn_only
+                       else ('FAIL' if args.strict_schema else 'WARN'))
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parent))
             from check_plan_integrity import (  # type: ignore
                 cross_ref_findings_for_target,
             )
             findings += cross_ref_findings_for_target(
-                Path(args.target_file), 'FAIL' if args.strict_schema else 'WARN',
+                Path(args.target_file), cr_severity,
             )
         except ImportError:
             findings.append(fnd(
