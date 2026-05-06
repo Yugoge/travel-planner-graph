@@ -1,12 +1,14 @@
 # tests
 
-*Last updated: 2026-04-17T06:37:32Z*
-**Total entries**: 1
+*Last updated: 2026-05-06T09:04:30Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
 ```
 tests/
+├── `test_hook_bash_branch.sh` - Test the Bash branch of pretool-block-production-files.sh in isolation.
+├── `test_json_io_ownership.py` - Iter 2 (spec-20260505-221501 / W2): verifies the persistence-layer
 └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
 ```
 
