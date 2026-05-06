@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T11:24:01Z*
-**Total entries**: 72
+*Last updated: 2026-05-06T11:25:05Z*
+**Total entries**: 73
 **Convention**: kebab
 
 ## Tree
@@ -24,7 +24,8 @@ scripts/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
-│   └── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+│   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+│   └── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 ├── tests/
 │   ├── `test_json_io_ownership.py` - Iter 2 (spec-20260505-221501 / W2): verifies the persistence-layer
 │   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full

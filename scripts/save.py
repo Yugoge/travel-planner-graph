@@ -500,16 +500,15 @@ def _report_save_warnings(issues: list) -> None:
     if med or low:
         print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
 
-def _prepare_agent_data(data, agent_file, trip_slug):
-    """Unwrap envelope, auto-merge if file exists, extract images.
-
-    Slot-level merge is the sole merge path: when the target file already
-    exists on disk, _merge_existing_slots() fires automatically. No flag needed.
-    """
+def _prepare_agent_data(data, agent_file, trip_slug, agent: str = ""):
+    """Unwrap; spec 5.9 translate; auto-merge."""
+    from lib.save_translate import walk_translate, reject_banned
     agent_data = data.get("data") if "data" in data else data
+    walk_translate(agent_data)
+    if agent:
+        reject_banned(agent, agent_data)
     if agent_file.exists():
         agent_data = _merge_existing_slots(agent_file, agent_data, data)
-    # PATH B (M5): images.json cache is sole image source (image_url no longer written).
     return agent_data
 
 def save_single_agent(
