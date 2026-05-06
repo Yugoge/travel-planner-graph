@@ -504,9 +504,8 @@ class BatchImageFetcher:
         """
         search_name = name_local if name_local else poi_name
         service = self._map_service_for(city, poi_coordinates)
-
+        self._fetch_attempts += 1  # Spec 5.2: per-POI attempt counter.
         photo_url = None
-
         if service == "gaode":
             # CRITICAL FIX: Use "城市名 + POI名" format for more precise Gaode search
             # Example: "重庆来福士观景台" instead of "来福士观景台"
