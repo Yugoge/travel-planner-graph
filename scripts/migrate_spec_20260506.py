@@ -98,7 +98,14 @@ def _replace_strs(o):
     if isinstance(o, dict):
         _replace_in_dict(o)
     elif isinstance(o, list):
-        for v in o:
+        _replace_in_list(o)
+
+
+def _replace_in_list(lst):
+    for i, v in enumerate(lst):
+        if _has_xile(v):
+            lst[i] = _xile(v)
+        else:
             _replace_strs(v)
 
 
