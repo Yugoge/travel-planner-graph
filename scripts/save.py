@@ -62,44 +62,6 @@ def _collect_day_pois(day: dict, agent: str) -> list:
         return list(day.get(agent, []))
     return []
 
-def _fetch_poi_image(fetcher, poi: dict, city: str) -> bool:
-    """Try to fetch image for a single POI. Returns True if updated."""
-    photo_url = fetcher.fetch_poi_photo(
-        poi_name=poi.get("name_base", ""),
-        city=city,
-        name_local=poi.get("name_local"),
-        location_local=poi.get("location_local"),
-        poi_coordinates=poi.get("coordinates"),
-    )
-    if photo_url:
-        poi["image_url"] = photo_url
-        return True
-    return False
-
-def _fill_missing_images(fetcher, pois: list, city: str) -> int:
-    """Fetch images for POIs missing image_url. Returns count updated."""
-    updated = 0
-    for poi in pois:
-        if not isinstance(poi, dict) or poi.get("image_url"):
-            continue
-        if _fetch_poi_image(fetcher, poi, city):
-            updated += 1
-    return updated
-
-def extract_image_urls(agent: str, data: Dict[str, Any], trip_slug: str) -> None:
-    """Auto-extract image_url for POIs missing it."""
-    if agent not in (POI_AGENTS | {"accommodation"}):
-        return
-    fetcher = _load_image_fetcher(trip_slug)
-    if not fetcher:
-        return
-    total = 0
-    for day in data.get("days", []):
-        pois = _collect_day_pois(day, agent)
-        total += _fill_missing_images(fetcher, pois, day.get("location", ""))
-    if total > 0:
-        print(f"Auto-extracted {total} image URLs", file=sys.stderr)
-
 def _extract_high_issues(issues: list) -> list:
     """Filter HIGH severity issues from a list."""
     def _is_high(i):

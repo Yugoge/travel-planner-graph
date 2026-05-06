@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T00:08:20Z*
-**Total entries**: 67
+*Last updated: 2026-05-06T06:31:31Z*
+**Total entries**: 68
 **Convention**: kebab
 
 ## Tree
@@ -61,6 +61,7 @@ scripts/
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 ├── `save.py` - Unified Data Saving Script — Batch Validation and Atomic Writes.
 ├── `save.py.backup` - backup file
+├── `strip-image-url-fields.py` - Description: Recursively strip "image_url" keys from JSON files (PATH B image migration).
 ├── `sync-agent-data.py` - Agent Data Synchronization Script
 ├── `test-load-py.sh` - Description: Comprehensive test suite for scripts/load.py
 ├── `test-unified-workflow.sh` - Test Unified Scripts Architecture
