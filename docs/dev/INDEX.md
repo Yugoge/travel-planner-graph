@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T09:48:27Z*
-**Total entries**: 228
+*Last updated: 2026-05-06T10:49:50Z*
+**Total entries**: 231
 **Convention**: kebab
 
 ## Tree
@@ -19,6 +19,8 @@ dev/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
 │   │   └── `ba-report-init.json` - json config
+│   ├── spec-20260506-092951/
+│   │   └── views/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 │   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
@@ -234,7 +236,8 @@ dev/
 ├── `ticket-20260505-174743.md` - BA Specification: 彻底清理 dev-cycle internal narrative leaked into trip data
 ├── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
 ├── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
-└── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
+├── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
+└── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 ```
 
 ---
