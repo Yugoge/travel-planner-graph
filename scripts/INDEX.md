@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T09:01:12Z*
-**Total entries**: 69
+*Last updated: 2026-05-06T11:06:32Z*
+**Total entries**: 70
 **Convention**: kebab
 
 ## Tree
@@ -26,6 +26,7 @@ scripts/
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 │   └── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
 ├── tests/
+│   ├── `test_json_io_ownership.py` - Iter 2 (spec-20260505-221501 / W2): verifies the persistence-layer
 │   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
 ├── todo/
 │   ├── `plan.py` - Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
