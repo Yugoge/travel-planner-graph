@@ -515,11 +515,11 @@ class BatchImageFetcher:
         else:
             photo_url = self.fetch_poi_photo_google(search_name, city)
 
-        # Bing Images fallback if Gaode/Google failed
         if not photo_url:
             logger.info(f"Gaode/Google failed for {poi_name}, trying Bing Images...")
             photo_url = self._bing_images_search(search_name, city)
-
+        if photo_url:
+            self._fetch_successes += 1
         return photo_url
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
