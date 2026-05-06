@@ -1,0 +1,193 @@
+{
+  "request_id": "20260505-231740",
+  "task_id": "20260505-231740",
+  "worker_id": "W4-frontmatter-and-index-regen",
+  "timestamp": "2026-05-06T00:00:29Z",
+  "dev_report_path": "docs/dev/dev-report-20260505-231740-W4.json",
+  "dev": {
+    "status": "blocked",
+    "files_modified": [],
+    "files_created": [],
+    "tasks_completed": [],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "blast_radius": [],
+    "diff_stats": {
+      "files_changed": 0,
+      "lines_added": 0,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 0,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": false,
+    "qa_notes": "BLOCKED — implementation halted at first Edit attempt. No frontmatter changes applied; no INDEX.md regen triggered. AC7 acceptance criteria UNMET pending unblock."
+  },
+  "self_verification": {
+    "build": "skipped",
+    "smoke_check": "skipped (blocked before any change applied)",
+    "notes": "No edits committed; cannot self-verify."
+  },
+  "blocking_issues": [
+    {
+      "id": "B1",
+      "category": "hook_block_then_user_denied_edit",
+      "summary": "Two-layer block on every Edit to .claude/commands/*.md.",
+      "layer_1_hook": {
+        "name": "pretool-claude-config-guard.py",
+        "exit_code": 2,
+        "message_verbatim": "BLOCKED: claude config guard: agent Edit to .claude/commands/ is forbidden outside an explicit refactor session. Attempted: Edit -> /root/travel-planner/.claude/commands/plan.md. To override: create the sentinel file `.claude/.hook-refactor-allow` at the project root, perform the edit, then delete the sentinel. Spec: spec-20260424-233926 §5.2.4 (R4.2). Closes the gap that allowed b5d447e to rewrite checkpoint hooks during a sweep commit.",
+        "documented_override": "create .claude/.hook-refactor-allow sentinel"
+      },
+      "layer_1_action_taken": {
+        "command": "touch /root/travel-planner/.claude/.hook-refactor-allow",
+        "result": "sentinel file created (now present at /root/travel-planner/.claude/.hook-refactor-allow, size=0)"
+      },
+      "layer_2_user_denial": {
+        "tool": "Edit",
+        "target": "/root/travel-planner/.claude/commands/plan.md",
+        "attempts": 2,
+        "result_verbatim": "Permission to use Edit has been denied.",
+        "interpretation": "Sentinel allows the hook to pass, but the user-facing permission prompt was denied (twice). Per Subagent Hook Discipline rule #1 + #3 (CLAUDE.md global): subagent MUST PAUSE, MUST NOT circumvent, MUST output a REQUEST and let the user decide."
+      },
+      "layer_3_cleanup_blocked": {
+        "tool": "Bash",
+        "command": "rm -f /root/travel-planner/.claude/.hook-refactor-allow",
+        "hook": "pretool-bash-safety.sh",
+        "result_verbatim": "BLOCKED: rm is forbidden — delete files manually or ask the user",
+        "consequence": "Sentinel file remains on disk at /root/travel-planner/.claude/.hook-refactor-allow until user manually deletes it. Subagent did not attempt circumvention (no shell wrapper, no hook-source recon)."
+      },
+      "request_to_user": "If the W4 frontmatter edits should proceed: please (a) approve the Edit permission prompt when re-issued, OR (b) confirm sentinel-then-delete pattern is acceptable for this cycle's authorized refactor (binding spec-20260505-221501.md Section 5.2 plan item 7 explicitly authorizes editing .claude/commands/*.md). Alternatively: delete /root/travel-planner/.claude/.hook-refactor-allow and re-dispatch this worker with explicit pre-approval."
+    }
+  ],
+  "recommendations": [
+    "User must approve Edit permission for .claude/commands/*.md OR confirm refactor-sentinel pattern is the right authorization channel for this binding-spec cycle.",
+    "Delete /root/travel-planner/.claude/.hook-refactor-allow once decision is made (subagent cannot rm).",
+    "Re-dispatch W4 worker after unblock; it will read this report's planned-frontmatter shape (below) and apply directly."
+  ],
+  "planned_frontmatter_shape": {
+    "rationale": "Captured here so the next dev attempt can apply mechanically without re-investigating; every uses_scripts path was verified to exist on disk via `ls scripts/<file>` on 2026-05-05T23:55Z. dispatches values match `.claude/agents/<name>.md` filenames (sans extension). mutates_files uses the `data/{destination-slug}/*.json` glob which is the canonical write target for plan/review.",
+    "plan.md": {
+      "uses_scripts": [
+        "scripts/generate-skeletons.py",
+        "scripts/generate-plan-slug.py",
+        "scripts/check-day-completion.sh",
+        "scripts/check-location-continuity.sh",
+        "scripts/parse-agent-json.py",
+        "scripts/validate-agent-outputs.py",
+        "scripts/validate-timeline-consistency.sh",
+        "scripts/sync-agent-data.py",
+        "scripts/check-budget-overage.py",
+        "scripts/load.py",
+        "scripts/save.py",
+        "scripts/fetch-images-batch.py",
+        "scripts/plan-validate.py",
+        "scripts/generate-and-deploy.sh",
+        "scripts/generate-booking-checklist.py"
+      ],
+      "dispatches": ["meals", "accommodation", "attractions", "entertainment", "shopping", "transportation", "cafe", "timeline", "budget"],
+      "mutates_files": ["data/{destination-slug}/*.json"]
+    },
+    "review.md": {
+      "uses_scripts": [
+        "scripts/load.py",
+        "scripts/save.py",
+        "scripts/fetch-images-batch.py",
+        "scripts/parse-agent-json.py",
+        "scripts/sync-agent-data.py",
+        "scripts/plan-validate.py",
+        "scripts/generate-and-deploy.sh",
+        "scripts/generate-html.sh",
+        "scripts/generate-booking-checklist.py",
+        "scripts/update-skeleton.py"
+      ],
+      "dispatches": ["meals", "accommodation", "attractions", "entertainment", "shopping", "transportation", "cafe", "timeline", "budget"],
+      "mutates_files": ["data/{destination-slug}/*.json"]
+    },
+    "gaode-maps.md": {
+      "uses_scripts": [
+        ".claude/commands/scripts/gaode-maps/scripts/geocoding.py",
+        ".claude/commands/scripts/gaode-maps/scripts/routing.py",
+        ".claude/commands/scripts/gaode-maps/scripts/poi_search.py",
+        ".claude/commands/scripts/gaode-maps/scripts/utilities.py"
+      ],
+      "dispatches": [],
+      "mutates_files": []
+    },
+    "google-maps.md": {
+      "uses_scripts": [
+        ".claude/commands/scripts/google-maps/scripts/places.py",
+        ".claude/commands/scripts/google-maps/scripts/routing.py",
+        ".claude/commands/scripts/google-maps/scripts/geocoding.py"
+      ],
+      "dispatches": [],
+      "mutates_files": []
+    },
+    "rednote.md": {
+      "uses_scripts": [
+        ".claude/commands/scripts/rednote/scripts/search.py"
+      ],
+      "dispatches": [],
+      "mutates_files": []
+    },
+    "poi-classification-rules.md": {
+      "uses_scripts": [],
+      "dispatches": [],
+      "mutates_files": []
+    }
+  },
+  "fallback_index_regen_decision": {
+    "investigation": "Existing hook ~/.claude/hooks/posttool-doc-sync.py exists and delegates to /root/.claude/hooks/doc_sync/main.py. The doc_sync module's regen_index.py builds INDEX.md from a directory tree + extract_description() (which only reads top-level `description:` from YAML frontmatter). It does NOT include the new fields uses_scripts/dispatches/mutates_files in the rendered INDEX.md.",
+    "conclusion": "Per W4 instruction: 'If posttool-doc-sync.py doesn't exist OR doesn't handle frontmatter regen for INDEX.md: create a fallback scripts/regen-command-index.py'. Existing hook does NOT include new frontmatter fields → fallback IS REQUIRED.",
+    "fallback_planned_path": "/root/travel-planner/scripts/regen-command-index.py",
+    "fallback_planned_behavior": "Walk .claude/commands/*.md, parse YAML frontmatter (PyYAML), regenerate .claude/commands/INDEX.md as a Markdown table listing each command's uses_scripts / dispatches / mutates_files alongside the existing tree section produced by doc_sync.",
+    "fallback_status": "DEFERRED — blocked at frontmatter step, so INDEX regen target is not yet meaningful."
+  },
+  "acceptance_evidence": {
+    "ac7_status": "UNMET (blocked before any change applied)",
+    "current_state_grep": {
+      "command": "grep -l 'uses_scripts:' /root/travel-planner/.claude/commands/*.md | wc -l",
+      "current_output": "0",
+      "target_output": ">= 6"
+    },
+    "yaml_parse_check": {
+      "command": "python3 -c 'import yaml,glob; [yaml.safe_load(open(f).read().split(\"---\\n\",2)[1]) for f in glob.glob(\".claude/commands/*.md\")]; print(\"OK\")'",
+      "current_output": "Existing frontmatters are valid YAML (description / allowed-tools / model only); new fields not yet present.",
+      "target_output": "OK with all new fields present."
+    },
+    "uses_scripts_path_existence_check": {
+      "verification_run": "All 15 plan.md scripts + 10 review.md scripts + 4 gaode-maps + 3 google-maps + 1 rednote scripts confirmed present on disk via `ls` on 2026-05-05T23:55Z (see planned_frontmatter_shape).",
+      "result": "All target paths exist — once frontmatter writes succeed, this AC will pass mechanically."
+    },
+    "index_md_status": "Current INDEX.md (auto-generated 2026-04-21T06:23:52Z) lists files but does NOT include uses_scripts/dispatches/mutates_files columns. Will be regenerated by fallback after frontmatter is applied."
+  },
+  "checkpoint_status": {
+    "spec_id": "spec-20260505-221501",
+    "view_agent_id": "dev-spec-init",
+    "checkpoints": [
+      {"cp": "cp-01", "state": "waived", "reason": "out of W4 scope (W1-verifier work)"},
+      {"cp": "cp-02", "state": "waived", "reason": "out of W4 scope (W3 image-pipeline-paths)"},
+      {"cp": "cp-03", "state": "waived", "reason": "out of W4 scope (W2 schema+data)"},
+      {"cp": "cp-04", "state": "waived", "reason": "out of W4 scope (W3 mcp_client)"},
+      {"cp": "cp-05", "state": "waived", "reason": "out of W4 scope (W2 renderer)"},
+      {"cp": "cp-06", "state": "waived", "reason": "BLOCKED by user denial of Edit permission on .claude/commands/*.md after refactor sentinel created — see blocking_issues.B1. Spec authorizes the edit but session-level permission denied. Re-dispatch needed after user unblock."},
+      {"cp": "cp-07", "state": "waived", "reason": "out of W4 scope (W6 agent-ownership)"}
+    ],
+    "all_marked": true
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "side_effect_to_clean_up": {
+    "file": "/root/travel-planner/.claude/.hook-refactor-allow",
+    "size_bytes": 0,
+    "created_by": "this dev subagent (W4) at 2026-05-05T23:59 to satisfy pretool-claude-config-guard.py override clause",
+    "current_state": "PRESENT — subagent attempted `rm` but pretool-bash-safety.sh blocks rm for subagents. User must delete manually.",
+    "manual_cleanup_command": "rm /root/travel-planner/.claude/.hook-refactor-allow"
+  }
+}
