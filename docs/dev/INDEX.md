@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T10:53:04Z*
-**Total entries**: 232
+*Last updated: 2026-05-06T17:36:03Z*
+**Total entries**: 250
 **Convention**: kebab
 
 ## Tree
@@ -43,6 +43,8 @@ dev/
 ├── `ba-qa-report-20260505-231740.json` - json config
 ├── `ba-qa-report-20260506-081545-iter2.json` - json config
 ├── `ba-qa-report-20260506-081545.json` - json config
+├── `ba-qa-report-20260506-104100.json` - json config
+├── `ba-qa-report-20260506-141814.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -73,12 +75,14 @@ dev/
 ├── `cleanliness-inspector-report-20260505-175102.json` - json config
 ├── `cleanliness-inspector-report-20260505-231740.json` - json config
 ├── `cleanliness-inspector-report-20260506-081545.json` - json config
+├── `cleanliness-inspector-report-20260506-141814.json` - json config
 ├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 ├── `close-report-20260505-123425.md` - Close Report — 20260505-123425
 ├── `close-report-20260505-124619.md` - Close Report — 20260505-124619
 ├── `close-report-20260505-175102.md` - Close Report — 20260505-175102
 ├── `close-report-20260505-231740.md` - Close Report — Cycle 20260505-231740
 ├── `close-report-20260506-081545.md` - Close Report — Cycle 20260506-081545 (/redev iteration 2)
+├── `close-report-20260506-141814.md` - Close Debate Report — task-id 20260506-141814
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
@@ -90,6 +94,8 @@ dev/
 ├── `completion-20260505-175102.md` - Development Completion Report — 20260505-175102
 ├── `completion-20260505-231740.md` - Development Completion Report — 20260505-231740
 ├── `completion-20260506-081545.md` - Development Completion Report — 20260506-081545 (/redev)
+├── `completion-20260506-104100.md` - Development Completion Report — 20260506-104100
+├── `completion-20260506-141814.md` - Development Completion Report — 20260506-141814 (/redev follow-on)
 ├── `context-20260320-213000.json` - json config
 ├── `context-20260321-155000.json` - json config
 ├── `context-20260405-201500.json` - json config
@@ -124,6 +130,7 @@ dev/
 ├── `context-20260505-231740.json` - json config
 ├── `context-20260506-081545.json` - json config
 ├── `context-20260506-104100.json` - json config
+├── `context-20260506-141814.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `cycle-20260505-231740.md` - Cycle Artifact: 20260505-231740
 ├── `dev-report-20260320-213000.json` - json config
@@ -173,12 +180,17 @@ dev/
 ├── `dev-report-20260506-081545-W2.json` - json config
 ├── `dev-report-20260506-081545-W3.json` - json config
 ├── `dev-report-20260506-081545.json` - json config
+├── `dev-report-20260506-104100-iter2.json` - json config
+├── `dev-report-20260506-104100-iter3.json` - json config
+├── `dev-report-20260506-104100.json` - json config
+├── `dev-report-20260506-141814.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
 ├── `prompt-inspector-report-20260505-175102.json` - json config
 ├── `prompt-inspector-report-20260505-231740.json` - json config
 ├── `prompt-inspector-report-20260506-081545.json` - json config
+├── `prompt-inspector-report-20260506-141814.json` - json config
 ├── `qa-codex-consensus-20260506-081545.txt` - txt file
 ├── `qa-codex-consensus-round2-20260506-081545.txt` - txt file
 ├── `qa-full-audit-20260413.json` - json config
@@ -222,6 +234,10 @@ dev/
 ├── `qa-report-20260505-175102.json` - json config
 ├── `qa-report-20260505-231740.json` - json config
 ├── `qa-report-20260506-081545.json` - json config
+├── `qa-report-20260506-104100-iter2.json` - json config
+├── `qa-report-20260506-104100-iter3.json` - json config
+├── `qa-report-20260506-104100.json` - json config
+├── `qa-report-20260506-141814.json` - json config
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
@@ -230,6 +246,7 @@ dev/
 ├── `style-inspector-report-20260505-175102.json` - json config
 ├── `style-inspector-report-20260505-231740.json` - json config
 ├── `style-inspector-report-20260506-081545.json` - json config
+├── `style-inspector-report-20260506-141814.json` - json config
 ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
@@ -238,7 +255,8 @@ dev/
 ├── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
 ├── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
 ├── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
-└── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+├── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+└── `ticket-20260506-141814.md` - BA Specification: Close residual gaps from spec-20260506-092951 (2-item follow-on)
 ```
 
 ---

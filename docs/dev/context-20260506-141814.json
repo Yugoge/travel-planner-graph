@@ -1,0 +1,290 @@
+{
+  "request_id": "20260506-141814",
+  "task_id": "20260506-141814",
+  "timestamp": "2026-05-06T14:18:14+00:00",
+  "parent_spec": "docs/dev/specs/spec-20260506-092951.md",
+  "parent_ticket": "docs/dev/ticket-20260506-104100.md",
+  "requirement": {
+    "original": "立刻完成所有可以满足我需求的",
+    "clarified": "Close the two consciously-deferred residual items from spec-20260506-092951: (1) extend the cross-ref linter so it catches cross-file 2-source duplicate transit segments (the class spec §1 evidence named via G5415 HSR), at WARN severity; (2) delete the 5 dead-code `_isAlternative` reads in scripts/generate-html-interactive.py (spec §5.6 explicit option).",
+    "what": "Two-item additive follow-on: linter cross-file 2-source extension + renderer dead-code deletion.",
+    "why": "Parent spec §1 cited a 2-source duplicate (G5415 timeline+transportation) but parent §5.7 acceptance literal recipe required 3 sources, leaving a regression-detection gap. Parent §5.6 explicitly named `_isAlternative` as dead code with deletion as one of two authorized options. User's verbatim closes-residual phrase activates both.",
+    "where": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "scope": {
+      "included": [
+        "scripts/check_plan_integrity.py — extend _duplicate_transit_findings with cross-file 2-source detection at WARN severity",
+        "scripts/generate-html-interactive.py — delete 5 _isAlternative reads at lines 2993, 3043, 3047, 3049, 3053",
+        "Reproduction tests for both items (synthesized in-memory fixtures preferred)"
+      ],
+      "excluded": [
+        "scripts/lib/save_translate.py:23 _isAlternative ban-list (defense-in-depth, preserved)",
+        "scripts/verify-plan-integrity.py:438 _isAlternative ban-list (defense-in-depth, preserved)",
+        "docs/dev/specs/spec-20260506-092951.md — parent spec is binding; do not edit",
+        "Parent harness layers (5.1 hook, 5.3 batch ban, 5.4 auto-commit redirect, 5.5 data fixes, 5.6 plan_label purge, 5.9 translation)",
+        "HEAD pollution / /commit workflow (orchestrator's responsibility per parent spec §5.4)",
+        "5.8 explicitly excluded items (Playwright snapshot diff, agent post-hoc auditing, etc.)"
+      ]
+    },
+    "success_criteria": [
+      "AC1: cross-file 2-source duplicate produces exactly one WARN finding via cross_ref_findings_for_target",
+      "AC2: existing ≥3-source FAIL detection still triggers (back-compat reproduction test passes)",
+      "AC3: grep -n '_isAlternative' scripts/generate-html-interactive.py returns 0 matches; ban-list mentions in save_translate.py:23 and verify-plan-integrity.py:438 preserved",
+      "AC4: renderer optional:true items still produce dashed border + Optional/可选 badge; the dead branch strings (#edf2fc, #2b63b5, 备选, Alt) no longer appear in rendered output",
+      "AC5: cross_ref_findings_for_target returns 0 findings on current cleaned data (no new false positives from cross-file widening)"
+    ],
+    "constraints": [
+      "Severity for new 2-source detection MUST be WARN (not FAIL) — surfaces the finding without blocking writes; safer-default per orchestrator instruction",
+      "MUST narrow to cross-file (transportation.json AND timeline.json) — naive any-2-of-3 widening would produce 6 false positives on currently-clean data (intra-timeline segment+timeline pairs)",
+      "Renderer optional-treatment styling MUST be bit-identical: dashed left border, badge with #f5f5f3 background and #9b9a97 color, label via L('optional', lang)",
+      "Ban-list entries MUST remain in scripts/lib/save_translate.py:23 and scripts/verify-plan-integrity.py:438 to protect against future field re-introduction"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/verify-plan-integrity.py (caller of cross_ref_findings_for_target; ban-list entry MUST remain — read-only verification)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/save_translate.py (ban-list entry MUST remain — read-only verification)",
+      "data/china-20260412-092624/*.json (already cleaned by parent cycles 1-3; serves as regression-guard data only)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-06T14:18Z",
+      "task_id": "20260506-141814",
+      "file": "data/china-20260412-092624/timeline.json",
+      "line": null,
+      "observation": "6 intra-timeline.json segment+timeline same-key same-day pairs exist on Days 5-6 (e.g., 'Taxi/Didi from Leshan Giant Buddha to Xiba/Wutongqiao area' appears in both timeline.travel_segments AND timeline.timeline). These are renderer-driver patterns (segment defines path, timeline activity describes the same hop), NOT a duplication-bug class. The cross-file narrowing in ITEM 1 deliberately excludes them.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-06T14:18Z",
+      "task_id": "20260506-141814",
+      "file": "scripts/generate-html-interactive.py",
+      "line": null,
+      "observation": "File is 3376 lines of React-as-string. Modernizing to JSX/TSX with a build pipeline is path-external scope expansion not authorized by the user.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Two residual gaps from spec-20260506-092951: (a) §5.7 linter only catches ≥3-source duplicates, missing the 2-source class the §1 evidence named; (b) §5.6 named `_isAlternative` as dead code with deletion as an authorized option, but cycle-1 dev chose leave-as-is.",
+    "root_cause": "Parent spec §5.7 acceptance recipe used 'AND...AND...AND' wording, which produced a literal ≥3-source threshold in dev — even though §1 evidence was a 2-source case. Parent §5.6 explicitly authorized either deletion or leave-as-is for the dead code; cycle-1 chose the lower-effort option. User's 立刻完成所有可以满足我需求的 closes both residuals.",
+    "root_cause_commit": "N/A — design-by-spec residual, not a regression from a specific commit",
+    "why_introduced": "Parent spec author wrote the §5.7 recipe with 'AND...AND' to capture the strongest form of the bug; the §1 evidence was a weaker 2-source form that didn't match the recipe verbatim. §5.6 dead-code was authored as a low-priority optional cleanup.",
+    "why_problematic": "(a) A future regression that re-introduces a G5415-style 2-source cross-file duplicate would silently slip past the linter — exactly the class the §1 evidence named. (b) Dead code with 5 read sites in a 3376-line renderer is a maintenance hazard and a misleading signal for future maintainers (suggests a Plan-B-vs-Plan-C visual distinction that does not exist).",
+    "timeline": "Parent ticket landed 2026-05-06; QA cycle 3 verdict PASS; this follow-on requested same day under 立刻完成所有可以满足我需求的.",
+    "affected_files": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "scripts/check_plan_integrity.py:244 contains 'len(set(sources)) >= 3' (observed: Read tool)",
+      "scripts/generate-html-interactive.py:2993, 3043, 3047, 3049, 3053 read entry._isAlternative (observed: Grep tool)",
+      "Codebase-wide grep returns 0 write sites for _isAlternative — only ban-list mentions and renderer reads (observed: Grep tool)",
+      "Probe of current production data via _collect_transit_keys: 0 ≥3-source duplicates, 6 intra-timeline 2-source pairs (Days 5-6), 0 cross-file 2-source duplicates (observed: Bash python3 invocation)",
+      "Renderer optional-treatment uses #f5f5f3 background, #9b9a97 color, L('optional', lang) label for the 'optional:true' branch; dead `_isAlternative` branch used #edf2fc, #2b63b5, '备选'/'Alt' (observed: Read tool lines 2985-3060)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": [
+      "立刻完成",
+      "所有可以满足我需求的",
+      "G5415",
+      "_isAlternative",
+      "5.7",
+      "5.6"
+    ],
+    "localization_evidence": "Direct Read of scripts/check_plan_integrity.py confirms the >=3 threshold at line 244. Direct Read of scripts/generate-html-interactive.py:2985-3060 confirms the 5 _isAlternative reads at the spec-named line numbers and the optional-treatment expressions. Bash probe of the current production data via the existing _collect_transit_keys function confirms zero false-positive risk for the cross-file narrowing.",
+    "located_source": "scripts/check_plan_integrity.py:244 (ITEM 1) and scripts/generate-html-interactive.py:2993,3043,3047,3049,3053 (ITEM 2)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "spec-direct (parent spec §1 and §5.6 named both items explicitly)",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "立刻完成所有可以满足我需求的",
+      "acceptance_criterion": "Both ITEM 1 (linter cross-file 2-source extension at WARN) and ITEM 2 (5 _isAlternative reads deleted) land; parent harness untouched."
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/check_plan_integrity.py",
+      "line_range": "237-263",
+      "role": "_duplicate_transit_findings invokes _collect_transit_keys, filters by len(set(sources)) >= 3, and emits one finding per duplicate via _mk_dup; cross_ref_findings_for_target is the public entry point.",
+      "imports_from": ["leaf"],
+      "evidence": "Read scripts/check_plan_integrity.py lines 1-263 (entire file)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/verify-plan-integrity.py",
+      "line_range": "438",
+      "role": "Imports cross_ref_findings_for_target lazily under --cross-ref; ban-list also includes _isAlternative at line 438.",
+      "imports_from": ["scripts/check_plan_integrity.py"],
+      "evidence": "Grep _isAlternative scripts/ returns line 438; parent dev-report confirms verifier calls cross-ref linter under --cross-ref",
+      "verified_via": "Grep"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "2985-3060",
+      "role": "Renders timeline entries with optional-vs-primary visual treatment (dashed-vs-solid border, Optional badge). Reads entry._isAlternative at 5 sites; entry._isAlternative is never assigned anywhere.",
+      "imports_from": ["leaf"],
+      "evidence": "Read scripts/generate-html-interactive.py lines 2985-3060; Grep _isAlternative scripts/ confirms 5 read sites in this file",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/lib/save_translate.py",
+      "line_range": "23",
+      "role": "Banned-fields list for save.py translation layer; includes _isAlternative as a forbidden user-language input. Defense-in-depth that MUST remain even after ITEM 2 lands.",
+      "imports_from": ["leaf"],
+      "evidence": "Grep _isAlternative scripts/lib/save_translate.py confirms line 23 entry",
+      "verified_via": "Grep"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/save_translate.py",
+      "line": 23,
+      "type": "validator",
+      "code_snippet": "'plan_label', 'is_alternative', '_isAlternative',",
+      "purpose": "Reject any user-language input attempting to write _isAlternative as a data-file field; protects against the field being re-introduced into JSON data after the renderer-side cleanup.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/verify-plan-integrity.py",
+      "line": 438,
+      "type": "validator",
+      "code_snippet": "'_isAlternative',",
+      "purpose": "Schema verifier ban-list entry; ensures verify-plan-integrity reports any data file containing _isAlternative as a violation.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/check_plan_integrity.py",
+      "line": 244,
+      "type": "if",
+      "code_snippet": "if len(set(sources)) >= 3",
+      "purpose": "Existing ≥3-source FAIL guard — must remain functional after ITEM 1 extension; the new cross-file 2-source check emits WARN and is additive.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "both en and zh",
+    "auth_state": "logged-out",
+    "data_state": "with-data — data/china-20260412-092624 cycle-3 cleaned baseline",
+    "browser": "Chrome desktop",
+    "url_path": "file:// rendering of output/index.html"
+  },
+  "evidence": {
+    "observed": "立刻完成所有可以满足我需求的 — close residual ITEM 1 and ITEM 2 from spec-20260506-092951",
+    "measured": {
+      "value": "ITEM 1: scripts/check_plan_integrity.py:244 has 'len(set(sources)) >= 3' (≥3-source threshold). ITEM 2: 5 _isAlternative reads at scripts/generate-html-interactive.py:2993, 3043, 3047, 3049, 3053; 0 write sites in codebase.",
+      "location": "scripts/check_plan_integrity.py:244; scripts/generate-html-interactive.py:2993,3043,3047,3049,3053"
+    },
+    "expected": {
+      "value": "ITEM 1: cross-file 2-source duplicate (transportation.json + timeline.json same-day) flagged at WARN; existing ≥3-source FAIL preserved. ITEM 2: 0 _isAlternative reads in renderer; ban-list entries preserved.",
+      "source": "Parent spec §1 evidence (G5415 cross-file 2-source) and parent spec §5.6 (named-as-dead-code with deletion as authorized option)"
+    },
+    "gap": "ITEM 1: linter threshold ≥3 misses 2-source class (gap: −1 source). ITEM 2: 5 dead reads (gap: 5 to 0)."
+  },
+  "scope_expansion": {
+    "search_pattern": "_isAlternative|_duplicate_transit_findings",
+    "search_scope": "scripts/, project-wide",
+    "user_reported": [
+      "scripts/check_plan_integrity.py (ITEM 1 implied via parent spec §5.7)",
+      "scripts/generate-html-interactive.py (ITEM 2 named by parent spec §5.6)"
+    ],
+    "additional_found": [
+      "scripts/verify-plan-integrity.py:438 (_isAlternative ban-list — preserved)",
+      "scripts/lib/save_translate.py:23 (_isAlternative ban-list — preserved)"
+    ],
+    "all_occurrences": [
+      "scripts/check_plan_integrity.py:237-263 (target function)",
+      "scripts/generate-html-interactive.py:2993",
+      "scripts/generate-html-interactive.py:3043",
+      "scripts/generate-html-interactive.py:3047",
+      "scripts/generate-html-interactive.py:3049",
+      "scripts/generate-html-interactive.py:3053",
+      "scripts/lib/save_translate.py:23",
+      "scripts/verify-plan-integrity.py:438"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Parent spec docs/dev/specs/spec-20260506-092951.md — user-authored binding spec for the broader hardening cycle. §1 names the G5415 2-source evidence; §5.6 names `_isAlternative` as dead code with deletion as one of two authorized options.",
+    "url_or_location": "docs/dev/specs/spec-20260506-092951.md:54 (G5415 evidence) and :520 (named-as-dead-code line)",
+    "copy_allowed": true,
+    "role_table": null
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing + dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/dev-report-20260506-104100.json",
+        "proposed_solution": "Ship ≥3-source linter per parent §5.7 literal recipe; leave _isAlternative reads per parent §5.6 leave-as-is option.",
+        "actual_change": "scripts/check_plan_integrity.py:_duplicate_transit_findings with 'len(set(sources)) >= 3' threshold; renderer untouched.",
+        "outcome": "Parent QA cycle-3 PASS at literal-recipe level. Both items explicitly named as residuals: §5.7 ≥3-source threshold leaves a 2-source gap matching §1 evidence; §5.6 dead-code was an authorized leave-as-is option.",
+        "failure_category": "other",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Parent attempt was correct for parent spec's binding criteria — not a failure. This follow-on adds scope (cross-file 2-source detection + dead-code deletion) without revisiting the parent decision. Layer is identical (L4) because the prior was not a failure on these axes; the novelty is *additive scope*, not *different layer for the same scope*."
+    }
+  },
+  "context": {
+    "codebase_state": "working tree dirty with prior cycles' uncommitted files; HEAD master 2348595c per parent spec §5.4 (auto-commit redirected to refs/checkpoints/<branch>); orchestrator handles HEAD/commit per parent spec §5.4 (out of scope here).",
+    "recent_commits": "2348595 checkpoint: Auto-save 2026-05-06 10:59:52; aef6c17 checkpoint: Auto-save 2026-05-06 10:49:50; 84803ba chore(workflow) clean up stale workflow tracker; b3a45b7 Auto-commit 2026-05-06 10:20:16",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Two-step surgical follow-on. (1) Extend scripts/check_plan_integrity.py with a cross-file 2-source detection branch in _duplicate_transit_findings, emitting WARN. Add reproduction test (synthesized in-memory dicts, no on-disk fixtures). (2) Surgically replace 5 _isAlternative read expressions in scripts/generate-html-interactive.py with their entry.optional-only equivalents. Smoke-test renderer by grepping rendered HTML for 'dashed' + Optional/可选 strings. No schema changes. No data changes. No hook changes.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "validation_approach": "AC1: synthesized cross-file 2-source dict pair triggers exactly 1 WARN finding; AC2: existing ≥3-source FAIL reproduction still works; AC3: grep _isAlternative scripts/generate-html-interactive.py returns 0; ban-list entries preserved; AC4: render sample optional:true entry, grep for 'dashed' + L('optional', lang) markup; render sample optional:false entry, confirm 'solid' border + no Optional badge; confirm legacy strings ('#edf2fc', '#2b63b5', '备选', 'Alt') absent; AC5: cross_ref_findings_for_target on cleaned data returns 0 findings."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Two-item additive follow-on to a fully-spec'd parent ticket. No new design pattern, architecture, or industry-best-practice question. Both items are explicit residuals named verbatim by parent spec §5.7 evidence and §5.6 deletion option."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

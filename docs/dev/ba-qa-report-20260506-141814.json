@@ -1,0 +1,93 @@
+{
+  "request_id": "20260506-141814",
+  "task_id": "20260506-141814",
+  "timestamp": "2026-05-06T14:30:00Z",
+  "mode": "ba_validation",
+  "ba_spec": "docs/dev/ticket-20260506-141814.md",
+  "context_json": "docs/dev/context-20260506-141814.json",
+  "parent_spec": "/root/travel-planner/docs/dev/specs/spec-20260506-092951.md",
+  "verdict": "pass",
+  "objections": [],
+  "summary": "BA's two-item additive follow-on ticket holds across all 5 dimensions: file/line citations spot-check exact, scope tightly bounded to the 2 user-authorized residual items, investigation independently reproduced (0/0/6 probe matches), affected-file map complete with no missed _isAlternative read sites, and AC literal recipes provably catch the §1 G5415 evidence and preserve the optional-only branch after dead-code deletion.",
+  "dimension_findings": {
+    "evidence_quality": {
+      "verdict": "pass",
+      "claims_verified": [
+        {
+          "ba_claim": "scripts/check_plan_integrity.py:244 contains 'len(set(sources)) >= 3'",
+          "verification": "Read scripts/check_plan_integrity.py lines 237-244; line 244 is exactly 'if len(set(sources)) >= 3' inside _duplicate_transit_findings. The function spans lines 237-244 (ends with the list-comp), and cross_ref_findings_for_target follows at line 247 — matches BA's component_chain line_range '237-263'.",
+          "result": "exact_match"
+        },
+        {
+          "ba_claim": "scripts/generate-html-interactive.py:2993, 3043, 3047, 3049, 3053 read entry._isAlternative",
+          "verification": "Read scripts/generate-html-interactive.py lines 2985-3060: line 2993 has '(entry.optional || entry._isAlternative) ? \\'dashed\\' : \\'solid\\''; line 3043 has '{(entry.optional || entry._isAlternative) && showDetails && ('; line 3047 has 'background: entry._isAlternative ? \\'#edf2fc\\' : \\'#f5f5f3\\','; line 3049 has 'color: entry._isAlternative ? \\'#2b63b5\\' : \\'#9b9a97\\','; line 3053 has '{entry._isAlternative ? (lang === \\'local\\' ? \\'备选\\' : \\'Alt\\') : L(\\'optional\\', lang)}'. All 5 line numbers exact; expressions match BA's technical-hint substitution table verbatim.",
+          "result": "exact_match"
+        },
+        {
+          "ba_claim": "scripts/lib/save_translate.py:23 has '_isAlternative' ban-list entry",
+          "verification": "Read scripts/lib/save_translate.py lines 18-25: line 23 is exactly \"'plan_label', 'is_alternative', '_isAlternative',\" inside the BANNED_AD_HOC_KEYS tuple.",
+          "result": "exact_match"
+        },
+        {
+          "ba_claim": "scripts/verify-plan-integrity.py:438 has '_isAlternative' ban-list entry",
+          "verification": "Read scripts/verify-plan-integrity.py lines 434-441: line 438 is exactly \"'_isAlternative',\" inside _FORBIDDEN_AD_HOC_FIELDS tuple.",
+          "result": "exact_match"
+        }
+      ]
+    },
+    "scope_alignment": {
+      "verdict": "pass",
+      "user_verbatim": "立刻完成所有可以满足我需求的",
+      "ba_goal": "Close two residual items the parent ticket consciously deferred. ITEM 1 hardens §5.7 cross-file 2-source detection. ITEM 2 deletes the 5 dead _isAlternative reads in the renderer.",
+      "scope_check": "BA's ticket Goal exactly matches the orchestrator-instructed 2 items (§5.7 extension + §5.6 cleanup) and no scope creep beyond. Won't-Have section explicitly excludes: tightening severity to FAIL, touching parent harness layers (§5.1 hook, §5.3 batch ban, §5.4 auto-commit, §5.5 data fixes, §5.6 plan_label purge, §5.9 translation), removing ban-list entries, and HEAD pollution / /commit workflow. M1-M7 Must-Haves are tightly scoped to the 2 items. R1 in requirements_decomposition correctly identifies the single user-need clause and the 2 sub-tasks.",
+      "result": "no_scope_creep"
+    },
+    "investigation_completeness": {
+      "verdict": "pass",
+      "ba_probe_claim": "0 cross-file 2-source duplicates, 6 intra-timeline.json segment+timeline pairs in cleaned data/china-20260412-092624/",
+      "independent_reproduction": "Invoked _collect_transit_keys() against current production data with synthesized counter using set membership of source-prefixes. Result: 3+: 0, 2-cross-file: 0, 2-intra-file: 6. The 6 intra-file pairs are all on Days 5-6 (matches BA's claim 'all on Days 5-6') and ALL pair timeline.timeline + timeline.travel_segments (intra-file, NOT cross-file): Day 5 'taxi/didi from leshan giant buddha to xiba/wutongqiao area', Day 5 'metro/didi from chengdu south station back to hotel', Day 6 'taxi/didi: hotel (yulin) to dacisi/taikoo li area [plan a]', Day 6 'walk: taikoo li to chunxi road [plan a]', Day 6 'walk: chunxi road to ifs [plan a]', Day 6 'taxi/didi: ifs to hotel (yulin) — return [plan a]'.",
+      "intra_file_legitimacy_check": "Each of the 6 pairs is a renderer-driver pattern (timeline.travel_segments defines the segment's leg geometry; timeline.timeline records the activity narrative for the same hop). They appear by design in both keys of the SAME timeline.json file — not a duplication bug. BA's exclusion via the cross-file narrowing predicate (any source startswith 'transportation.' AND any startswith 'timeline.') correctly preserves them as not-a-duplicate. M4 regression-guard probe (linter returns 0 cross-file findings on cleaned data) is provably true today.",
+      "result": "investigation_independently_verified"
+    },
+    "affected_file_accuracy": {
+      "verdict": "pass",
+      "ba_affected_files": [
+        "scripts/check_plan_integrity.py",
+        "scripts/generate-html-interactive.py"
+      ],
+      "ba_preserved_files": [
+        "scripts/lib/save_translate.py:23 (ban-list)",
+        "scripts/verify-plan-integrity.py:438 (ban-list)"
+      ],
+      "grep_audit": "Project-wide grep for '_isAlternative' returns: 5 read sites in scripts/generate-html-interactive.py at lines 2993, 3043, 3047, 3049, 3053 (the 5 BA listed); 2 ban-list mentions at scripts/lib/save_translate.py:23 and scripts/verify-plan-integrity.py:438 (the 2 BA preserves); 1 docstring/comment reference at scripts/lib/save_translate.py:5 (BA does not need to mention this — it is a same-file documentation comment about the BANNED_AD_HOC_KEYS tuple right below it, lives or dies with the line-23 entry); historical mentions in docs/dev/dev-report-* and docs/dev/qa-report-* and docs/dev/specs/spec-20260506-092951.md (artifacts, not code). No write sites anywhere in the codebase. Zero missed read sites.",
+      "result": "all_sites_identified"
+    },
+    "spec_text_vs_execution_drift": {
+      "verdict": "pass",
+      "ac1_recipe_check": "AC1 acceptance: 'linter flags transit segments appearing in BOTH timeline.travel_segments AND transportation.intra_city_routes for the same day at overlapping times'. Catches G5415 §1 evidence: yes — G5415 in timeline.json:734 (timeline.timeline key OR timeline.travel_segments) AND in transportation.json:204 (transportation.intra_city_routes value) is exactly a cross-file 2-source pair. The narrowing predicate 'cross-file (any from transportation.* AND any from timeline.*)' correctly captures the §1 evidence. Note: AC1 wording 'BOTH ... AND ...' is the cross-file class — confirmed via BA's technical hint at lines 224 of the ticket and reproduced via _collect_transit_keys logic at scripts/check_plan_integrity.py:218-224.",
+      "ac3_ac4_renderer_preservation": "AC3 deletes the 5 reads. AC4 requires optional:true items to keep dashed border + Optional/可选 badge. Since entry._isAlternative is provably never assigned (0 write sites), at runtime: (a) line 2993 '(entry.optional || entry._isAlternative)' === 'entry.optional || undefined' === 'entry.optional' (truthy iff optional truthy); (b) line 3043 same; (c) lines 3047, 3049, 3053 ternaries 'entry._isAlternative ? X : Y' === 'undefined ? X : Y' === 'Y' (always selects the right branch — '#f5f5f3', '#9b9a97', L('optional', lang) — which is the optional-only path). BA's surgical replacements at ticket lines 226-230 preserve runtime behavior exactly. AC4's bit-identical preservation of dashed border + Optional badge holds; the legacy strings ('#edf2fc', '#2b63b5', '备选', 'Alt') were already unreachable code paths. No drift between AC literal text and what the implementation will produce.",
+      "result": "no_drift"
+    }
+  },
+  "spot_check_summary": {
+    "files_inspected": [
+      "scripts/check_plan_integrity.py:1-263",
+      "scripts/generate-html-interactive.py:2985-3060",
+      "scripts/lib/save_translate.py:18-25",
+      "scripts/verify-plan-integrity.py:434-441"
+    ],
+    "data_probes_run": [
+      "_collect_transit_keys() invoked against data/china-20260412-092624/timeline.json + transportation.json — confirmed 0/0/6 distribution (3+/cross-file-2/intra-file-2)"
+    ],
+    "greps_run": [
+      "_isAlternative project-wide — 5 renderer reads + 2 ban-list mentions + 1 same-file comment + historical artifacts; 0 write sites"
+    ]
+  },
+  "checkpoint_state_note": "spec-check.py mark/waive operations were BLOCKED by pretool-tool-policy.py hook (write-target denied — qa role does not have write permission for cp-state mutations on this BA-validation pre-check invocation). Per Subagent Hook Discipline I did not circumvent. CP-state file shows 6/8 already in 'done', 2/8 in 'waived-with-reason' from prior cycles 1-3 — every cp is already in a terminal state per cp-state file content read at start. SubagentStop enforcement may flag this; reporting per discipline.",
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

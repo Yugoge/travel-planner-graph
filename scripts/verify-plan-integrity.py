@@ -387,22 +387,120 @@ def find_project_root(start):
     return start.resolve()
 
 
-def parse_args(argv):
-    parser = argparse.ArgumentParser(
-        description='Codex-signed deploy-blocking integrity verifier',
-    )
-    parser.add_argument('plan_id', help='Trip plan-id (subdirectory under data/)')
+def _add_args_core(parser):
+    parser.add_argument('plan_id', nargs='?', default=None,
+                        help='Trip plan-id (subdirectory under data/). '
+                             'Optional when --target-file is used.')
     parser.add_argument('--html-also', dest='html_also', default=None,
                         help='Path to rendered HTML artifact for mode-2 scan')
     parser.add_argument('--data-root', dest='data_root', default=None,
                         help='Override data root (default: <project_root>/data)')
     parser.add_argument('--schemas-root', dest='schemas_root', default=None,
                         help='Override schemas root (default: <project_root>/schemas)')
+
+
+def _add_args_strict(parser):
     parser.add_argument('--strict-schema', dest='strict_schema',
                         action='store_true',
                         help='Treat schema findings as FAIL (deploy gate). '
                              'Default WARN until W2 lands data cleanups.')
+    parser.add_argument('--target-file', dest='target_file', default=None,
+                        help='Single-file mode (spec-20260506-092951 5.1): '
+                             'validate just this one file against its schema.')
+    parser.add_argument('--cross-ref', dest='cross_ref',
+                        action='store_true',
+                        help='Run cross-file referential-integrity linter '
+                             '(spec 5.7).')
+    parser.add_argument('--cross-ref-warn-only', dest='cross_ref_warn_only',
+                        action='store_true',
+                        help='Demote cross-ref findings to WARN regardless '
+                             'of --strict-schema. Used by write-time hook so '
+                             'pre-existing orphan POIs do not block unrelated '
+                             'edits.')
+    parser.add_argument('--agent-name', dest='agent_name', default=None,
+                        help='Override agent-name lookup (timeline/meals/etc.) '
+                             'when the target file has a synthetic prefix '
+                             'like .precheck-<pid>-timeline.json.')
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        description='Codex-signed deploy-blocking integrity verifier',
+    )
+    _add_args_core(parser)
+    _add_args_strict(parser)
     return parser.parse_args(argv)
+
+
+_FORBIDDEN_AD_HOC_FIELDS = (
+    'plan_label',
+    'is_alternative',
+    '_isAlternative',
+    'tier',
+    'bundle_id',
+    'priority_label',
+)
+
+
+def _check_forbidden_fields_one_file(target_path, severity):
+    """Anti-pattern grep: spec 5.6+5.9 ban these ad-hoc Claude-invented fields."""
+    pattern = re.compile(
+        r'"(' + '|'.join(_FORBIDDEN_AD_HOC_FIELDS) + r')"\s*:'
+    )
+    return _scan_one_file(
+        target_path, pattern, 'forbidden-adhoc-field', severity,
+        'forbidden ad-hoc field (spec 5.6/5.9 ban)',
+        'Use the schema-defined `optional` field. plan_label / is_alternative / '
+        'tier etc. are NOT permitted in any data file.',
+    )
+
+
+def _resolve_target_schema(target_path, agent_override=None):
+    """Return (agent_name, schema_filename) for a target file, or (None, None)."""
+    agent_name = agent_override or target_path.stem
+    return agent_name, AGENT_SCHEMA_MAP.get(agent_name)
+
+
+def _check_one_target_file(target_path, schemas_dir, strict, agent_override=None):
+    """Single-file 5.1 mode: validate one file against its agent schema."""
+    target_path = Path(target_path)
+    if not target_path.exists():
+        return [fnd('schema', 'FAIL', str(target_path),
+                    'target file not found',
+                    'Confirm tool_input.file_path is correct')]
+    severity = 'FAIL' if strict else 'WARN'
+    _, schema_filename = _resolve_target_schema(target_path, agent_override)
+    if schema_filename is None:
+        return []
+    Validator, Registry, Resource, errs = _import_validator()
+    if Validator is None:
+        return errs
+    schema_index, raw, parse_errs = _load_schemas(schemas_dir)
+    errs += parse_errs
+    if not schema_index:
+        return errs + [fnd('schema', 'FAIL', str(schemas_dir),
+                            'no schemas found',
+                            'Populate schemas/*.schema.json')]
+    return errs + _do_target_file_check(
+        target_path, schema_index, schema_filename, raw,
+        Validator, Registry, Resource, severity,
+    )
+
+
+def _do_target_file_check(target_path, schema_index, schema_filename,
+                          raw, Validator, Registry, Resource, severity):
+    schema = schema_index.get(schema_filename)
+    if schema is None:
+        return [fnd('schema', 'FAIL', str(target_path),
+                    f'schema {schema_filename} missing',
+                    f'Restore schemas/{schema_filename}')]
+    registry = _build_registry(raw, Registry, Resource)
+    findings = []
+    findings += _check_one_agent(
+        target_path, schema, schema_filename, Validator, registry, severity,
+    )
+    findings += _check_forbidden_fields_one_file(target_path, severity)
+    return findings
 
 
 def collect_findings(data_dir, schemas_dir, html_also, strict_schema):
@@ -461,12 +559,42 @@ def _print_header(args, data_dir, schemas_dir):
     print(rule)
 
 
+def _run_target_file_mode(args, schemas_dir):
+    findings = _check_one_target_file(
+        args.target_file, schemas_dir, args.strict_schema,
+        agent_override=args.agent_name,
+    )
+    if args.cross_ref:
+        cr_severity = ('WARN' if args.cross_ref_warn_only
+                       else ('FAIL' if args.strict_schema else 'WARN'))
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from check_plan_integrity import (  # type: ignore
+                cross_ref_findings_for_target,
+            )
+            findings += cross_ref_findings_for_target(
+                Path(args.target_file), cr_severity,
+            )
+        except ImportError:
+            findings.append(fnd(
+                'cross-ref', 'WARN', str(args.target_file),
+                'check_plan_integrity not importable',
+                'Confirm scripts/check_plan_integrity.py exists and is importable',
+            ))
+    return report_and_verdict(findings)
+
+
 def main(argv):
     args = parse_args(argv)
     project_root = find_project_root(Path(__file__).parent)
-    data_root = Path(args.data_root) if args.data_root else project_root / 'data'
     schemas_dir = (Path(args.schemas_root) if args.schemas_root
                    else project_root / 'schemas')
+    if args.target_file:
+        return _run_target_file_mode(args, schemas_dir)
+    if not args.plan_id:
+        print('[FAIL] either plan_id (positional) or --target-file is required')
+        return EXIT_FAIL
+    data_root = Path(args.data_root) if args.data_root else project_root / 'data'
     data_dir = data_root / args.plan_id
     _print_header(args, data_dir, schemas_dir)
     if not data_dir.is_dir():

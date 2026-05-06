@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T09:01:12Z*
-**Total entries**: 69
+*Last updated: 2026-05-06T14:33:48Z*
+**Total entries**: 73
 **Convention**: kebab
 
 ## Tree
@@ -24,8 +24,10 @@ scripts/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
-│   └── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+│   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+│   └── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 ├── tests/
+│   ├── `test_json_io_ownership.py` - Iter 2 (spec-20260505-221501 / W2): verifies the persistence-layer
 │   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
 ├── todo/
 │   ├── `plan.py` - Root cause reference: Commit 77dca06 introduced nested loop pattern for Step 14-15
@@ -38,6 +40,7 @@ scripts/
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
 ├── `check-day-completion.sh` - Validate that all days in requirements-skeleton.json have user_plans populated
 ├── `check-location-continuity.sh` - Validate that all location changes have corresponding location_change objects
+├── `check_plan_integrity.py` - Cross-file referential-integrity linter (spec-20260506-092951 §5.7).
 ├── `clean-redundant-fields.py` - Clean Redundant Fields from Agent Data
 ├── `deploy-travel-plans.sh` - Deploy travel plan HTML to GitHub Pages
 ├── `detect-location-changes.py` - Reads day-by-day plan and identifies when travelers move between cities
@@ -56,6 +59,7 @@ scripts/
 ├── `load.py` - Unified Data Loading Script - 3-Level Hierarchical Access
 ├── `log-modification.py` - Modification Logging Helper - Append structured log entry to modification-log.json
 ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
+├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)

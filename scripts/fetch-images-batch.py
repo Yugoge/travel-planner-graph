@@ -47,9 +47,29 @@ class BatchImageFetcher:
 
         # Load config from requirements-skeleton.json
         self.config = self._load_config()
-
         # Load cache
         self.cache = self._load_cache()
+        self._spec_5_2_init()  # Spec 5.2 counters + helper-path assert.
+
+    def _spec_5_2_init(self):
+        self._fetch_attempts = 0
+        self._fetch_successes = 0
+        self._fetch_failures = 0
+        self._assert_helper_paths_exist()
+
+    def _helper_paths(self):
+        return [
+            self.base_dir / ".claude/skills/google-maps/scripts/places.py",
+            self.base_dir / ".claude/commands/scripts/gaode-maps/scripts/poi_search.py",
+        ]
+
+    def _assert_helper_paths_exist(self):
+        missing = [p for p in self._helper_paths() if not p.exists()]
+        if not missing:
+            return
+        for p in missing:
+            logger.error("helper not found at %s — image fetch cannot proceed.", p)
+        raise FileNotFoundError(f"image-fetch helper(s) missing: {missing}")
 
     def _find_venv_python(self) -> str:
         """Find Python in venv or fallback to system python3"""
@@ -400,14 +420,14 @@ class BatchImageFetcher:
                     data = json.loads(result.stdout)
                     if data.get("pois") and len(data["pois"]) > 0:
                         poi = data["pois"][0]
-                        photos = poi.get("photos", {})
-                        url = photos.get("url")
+                        url = poi.get("photos", {}).get("url")
                         if url and url.startswith("http"):
-                            # Ensure HTTPS (Gaode supports it; avoids mixed-content on HTTPS pages)
                             return url.replace("http://", "https://", 1)
             except subprocess.TimeoutExpired:
+                self._fetch_failures += 1
                 continue
-            except Exception:
+            except (json.JSONDecodeError, OSError):  # Spec 5.2 narrow.
+                self._fetch_failures += 1
                 continue
 
         # FINAL FALLBACK: Try location/address search
@@ -426,14 +446,13 @@ class BatchImageFetcher:
                     data = json.loads(result.stdout)
                     if data.get("pois") and len(data["pois"]) > 0:
                         poi = data["pois"][0]
-                        photos = poi.get("photos", {})
-                        url = photos.get("url")
+                        url = poi.get("photos", {}).get("url")
                         if url and url.startswith("http"):
                             return url.replace("http://", "https://", 1)
             except subprocess.TimeoutExpired:
-                pass
-            except Exception:
-                pass
+                self._fetch_failures += 1
+            except (json.JSONDecodeError, OSError):  # Spec 5.2 narrow.
+                self._fetch_failures += 1
 
         return None
 
@@ -485,9 +504,8 @@ class BatchImageFetcher:
         """
         search_name = name_local if name_local else poi_name
         service = self._map_service_for(city, poi_coordinates)
-
+        self._fetch_attempts += 1
         photo_url = None
-
         if service == "gaode":
             # CRITICAL FIX: Use "城市名 + POI名" format for more precise Gaode search
             # Example: "重庆来福士观景台" instead of "来福士观景台"
@@ -497,11 +515,11 @@ class BatchImageFetcher:
         else:
             photo_url = self.fetch_poi_photo_google(search_name, city)
 
-        # Bing Images fallback if Gaode/Google failed
         if not photo_url:
             logger.info(f"Gaode/Google failed for {poi_name}, trying Bing Images...")
             photo_url = self._bing_images_search(search_name, city)
-
+        if photo_url:
+            self._fetch_successes += 1
         return photo_url
 
     def _bing_images_search(self, search_name: str, city: str) -> Optional[str]:
@@ -1147,13 +1165,37 @@ Day filter examples:
     # force_refresh already passed to constructor
     fetcher.fetch_cities(city_limit)
     fetcher.fetch_pois(poi_limit, day_filter=day_filter)
+    sys.exit(_print_spec_5_2_banner(fetcher))
 
-    print("\n" + "="*60)
-    print(f"✅ Batch complete!")
+
+def _print_spec_5_2_banner(fetcher) -> int:
+    """Spec 5.2: distinguish total-failure / partial / cache-only / success."""
+    threshold = float(os.environ.get('IMAGE_FETCH_SUCCESS_THRESHOLD', '0.5'))
+    attempts = getattr(fetcher, '_fetch_attempts', 0)
+    successes = getattr(fetcher, '_fetch_successes', 0)
+    failures = getattr(fetcher, '_fetch_failures', 0)
+    print("\n" + "=" * 60)
+    if attempts == 0:
+        print("✅ Cache hit: no fetches required")
+        rc = 0
+    else:
+        rate = successes / attempts if attempts else 0.0
+        if rate < threshold:
+            print(f"❌ Batch FAILED: {successes}/{attempts} successful "
+                  f"(threshold {threshold:.0%}; failures={failures})")
+            rc = 1
+        elif failures:
+            print(f"⚠️  Batch partial: {rate:.0%} successful "
+                  f"({successes}/{attempts}; failures={failures})")
+            rc = 0
+        else:
+            print(f"✅ Batch complete: {successes}/{attempts} successful")
+            rc = 0
     print(f"  City covers: {len(fetcher.cache['city_covers'])}")
     print(f"  POI photos: {len(fetcher.cache['pois'])}")
     print(f"  Cache: {fetcher.cache_file}")
-    print("="*60)
+    print("=" * 60)
+    return rc
 
 
 if __name__ == "__main__":

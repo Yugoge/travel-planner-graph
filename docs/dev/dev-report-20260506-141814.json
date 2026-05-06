@@ -1,0 +1,162 @@
+{
+  "request_id": "20260506-141814",
+  "task_id": "20260506-141814",
+  "timestamp": "2026-05-06T14:38:00+00:00",
+  "iteration": 4,
+  "dev_report_path": "docs/dev/dev-report-20260506-141814.json",
+  "parent_spec": "docs/dev/specs/spec-20260506-092951.md",
+  "parent_ticket": "docs/dev/ticket-20260506-141814.md",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py",
+      "docs/dev/specs/spec-20260506-092951.md"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "ITEM 1: extend _duplicate_transit_findings with cross-file 2-source WARN detection",
+        "type": "linter-extension",
+        "files_modified": ["scripts/check_plan_integrity.py"],
+        "changes": "Added _mk_dup_cross_file_warn (WARN-severity finding emitter for cross-file 2-source duplicates), _is_cross_file_pair (predicate detecting both transportation.* and timeline.* sources), restructured _duplicate_transit_findings into explicit loop with two mutually-exclusive branches (≥3-source FAIL at caller severity; ==2-source cross-file WARN at fixed WARN severity). Existing ≥3-source check semantics preserved bit-identical. Triple-duplicates produce exactly 1 finding (no double-counting via continue).",
+        "rationale": "Parent spec §1 evidence cited a 2-source case (G5415 HSR in transportation.json + timeline.json) but parent §5.7 acceptance recipe used 'AND...AND...AND' wording producing a literal ≥3-source threshold in cycle-1. Future regressions re-introducing G5415-class 2-source duplicates would slip past the linter. Cross-file narrowing prevents 6 known intra-timeline.json renderer-driver pairs from triggering false positives. WARN severity (per spec constraint) surfaces the finding without blocking writes."
+      },
+      {
+        "id": 2,
+        "description": "ITEM 2: delete 5 _isAlternative reads in scripts/generate-html-interactive.py; preserve optional treatment via entry.optional-only branch",
+        "type": "renderer-dead-code-deletion",
+        "files_modified": ["scripts/generate-html-interactive.py"],
+        "changes": "Line 2993: '(entry.optional || entry._isAlternative) ? dashed : solid' -> 'entry.optional ? dashed : solid'. Line 3043: '(entry.optional || entry._isAlternative) && showDetails' -> 'entry.optional && showDetails'. Line 3047: 'entry._isAlternative ? #edf2fc : #f5f5f3' -> '#f5f5f3'. Line 3049: 'entry._isAlternative ? #2b63b5 : #9b9a97' -> '#9b9a97'. Line 3053: 'entry._isAlternative ? (lang === local ? 备选 : Alt) : L(optional, lang)' -> 'L(optional, lang)'. Net delta: 5 substitutions (5 deletions + 5 insertions = net 0).",
+        "rationale": "Parent spec §5.6 explicitly named these 5 read sites as dead code with deletion as one of two authorized options. _isAlternative is never assigned anywhere in the codebase (verified via grep), so (entry.optional || entry._isAlternative) reduces to entry.optional with no behavioral change. Optional treatment (dashed border + Optional/可选 badge with #f5f5f3 background and #9b9a97 color) preserved bit-identical."
+      },
+      {
+        "id": 3,
+        "description": "Update parent spec sections 2 and 3 with Cycle 4 entries (PRESERVE prior cycles 1-3)",
+        "type": "spec-update",
+        "files_modified": ["docs/dev/specs/spec-20260506-092951.md"],
+        "changes": "Appended ### Cycle 4 subsection to Section 2 (What Was Attempted) describing approach + rationale for ITEM 1 + ITEM 2. Appended ### Cycle 4 subsection to Section 3 (What Was Changed) recording exact file:line edits with old -> new values and net delta per file. Cycles 1, 2, 3 sections in S2/S3 preserved verbatim.",
+        "rationale": "Parent spec is the cross-cycle living document; this redev cycle's surgical changes are recorded for future maintainers."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — design-by-spec residual closure, not a regression",
+      "why_issue_occurred": "Parent spec §5.7 acceptance recipe wording 'AND...AND...AND' produced a ≥3-source linter threshold in cycle-1 even though §1 evidence was a 2-source case. Parent §5.6 authorized either delete-or-leave-as-is for the dead code; cycle-1 chose leave-as-is.",
+      "how_fix_addresses_root": "ITEM 1 closes the 2-source detection gap with a narrowed cross-file predicate at WARN severity (additive, doesn't weaken existing FAIL guard). ITEM 2 closes the deletion option for the dead code, removing the 5 dead reads while preserving the optional-styling branch."
+    },
+    "diff_stats": {
+      "files_changed": 3,
+      "lines_added": 39,
+      "lines_removed": 5,
+      "new_symbols_introduced": ["_mk_dup_cross_file_warn", "_is_cross_file_pair"],
+      "minimum_possible_lines_estimate": 25,
+      "justification_for_overage": "ITEM 1 requires +34 lines because it introduces two new helper functions (_mk_dup_cross_file_warn for distinct WARN message + _is_cross_file_pair for predicate), restructures the loop body from list-comprehension to explicit branched loop with continue (to prevent triple-duplicate double-counting), and adds explanatory comments documenting the additive WARN semantics and cross-file-only narrowing rationale. The minimum-possible single-line implementation would have been ~25 lines but would have collapsed message construction inline (less readable), inlined the predicate (less testable), and omitted the explanatory comments (the spec hints + ban-list constraints make documentation valuable for future maintainers). The two new helper functions follow the existing module's helper-function decomposition style (cf. _mk_dup, _mk_orphan, _mk_hollow already present). ITEM 2 is exactly minimum-diff (5-for-5 substitution, no helper introduction)."
+    },
+    "blast_radius": [
+      {
+        "modified": "scripts/check_plan_integrity.py",
+        "imported_by": ["scripts/verify-plan-integrity.py (lazy import under --cross-ref via runtime sys.path.insert + from check_plan_integrity import cross_ref_findings_for_target at line 572)"]
+      },
+      {
+        "modified": "scripts/generate-html-interactive.py",
+        "imported_by": []
+      },
+      {
+        "modified": "docs/dev/specs/spec-20260506-092951.md",
+        "imported_by": []
+      }
+    ],
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Two-item additive follow-on. ITEM 1: linter cross-file 2-source WARN detection (additive — does not change existing ≥3-source FAIL semantics). ITEM 2: renderer dead-code deletion (5 substitutions, net 0 line delta, optional treatment preserved bit-identical). All 5 BA acceptance criteria (AC1–AC5) verified by dev. Pre-existing guards preserved. Production data scan returns 0 FAIL + 0 WARN. QA can independently verify by: (1) running the synthetic 2-source test fixture and confirming WARN; (2) running the synthetic 3-source test fixture and confirming FAIL; (3) running scripts/verify-plan-integrity.py --target-file data/china-20260412-092624/timeline.json --cross-ref --strict-schema and confirming verdict PASS; (4) grep -n '_isAlternative' across scripts/ confirming 0 matches in renderer + ban-list entries preserved; (5) rendering the existing plan and grepping for 'dashed' / '#f5f5f3' / '#9b9a97' / 'L(\\'optional\\'' presence and '_isAlternative' / '备选' / 'Alt' absence.",
+    "permissions_to_add": [],
+    "evidence": {
+      "ITEM_1_2source_extension": {
+        "before_line": "scripts/check_plan_integrity.py:244 (cycle-3 baseline): `if len(set(sources)) >= 3` (single-branch list comprehension, only ≥3-source FAIL at caller severity)",
+        "after_code": "scripts/check_plan_integrity.py:259-281 (cycle-4): explicit loop with two branches — `if n >= 3: out.append(_mk_dup(...))` (back-compat FAIL) and `if n == 2 and _is_cross_file_pair(unique_sources): out.append(_mk_dup_cross_file_warn(...))` (new WARN). New helpers at :237-247 (`_mk_dup_cross_file_warn`) and :250-254 (`_is_cross_file_pair`).",
+        "test_2source_synthetic": "TEST A: synthesized payload {transportation.intra_city_routes: {r1: {name_base: 'G5415 HSR'}}, timeline.timeline: {'G5415 HSR': {}}} → produces exactly 1 finding with severity=WARN, check=duplicate-transit, message contains 'g5415 hsr' and 'cross-file duplicate transit segment'. PASS.",
+        "test_3source_existing": "TEST B: synthesized payload with G5415 HSR in transportation.intra_city_routes + timeline.travel_segments + timeline.timeline → produces exactly 1 finding with severity=FAIL (caller=FAIL) or WARN (caller=WARN demote). No double-counting (no redundant 2-source WARN for the same triple). PASS.",
+        "production_scan": "scripts/verify-plan-integrity.py --target-file data/china-20260412-092624/timeline.json --cross-ref --strict-schema → 'verdict: FAIL=0  WARN=0' → PASS. Same command on transportation.json → 'verdict: FAIL=0  WARN=0' → PASS. 0 cross-file 2-source findings on cleaned baseline.",
+        "intra_file_exclusion": "TEST C: synthesized intra-timeline.json pair (Walk: Taikoo Li to Chunxi Road in both timeline.travel_segments and timeline.timeline same day, NO transportation.intra_city_routes entry) → 0 findings (cross-file predicate correctly excludes intra-file pair). PASS. Verified independently: production data has 6 intra-timeline 2-source pairs on Days 5–6 (Taxi/Didi from Leshan Giant Buddha → Xiba/Wutongqiao; Metro/Didi from Chengdu South Station back to hotel; Taxi/Didi from Yulin hotel to Dacisi/Taikoo Li; Walk Taikoo Li → Chunxi Road; Walk Chunxi Road → IFS; Taxi/Didi IFS → Yulin hotel return) — 0 of these triggered the new WARN per the production scan. PASS."
+      },
+      "ITEM_2_dead_code_deletion": {
+        "grep_before": "Pre-edit: grep -n '_isAlternative' scripts/generate-html-interactive.py → 5 matches at lines 2993, 3043, 3047, 3049, 3053 (all read sites; 0 write sites anywhere in codebase).",
+        "grep_after": "Post-edit: grep -n '_isAlternative' scripts/generate-html-interactive.py → 0 matches.",
+        "ban_list_preserved": "grep -n '_isAlternative' scripts/lib/save_translate.py → :5 (docstring) + :23 ('plan_label', 'is_alternative', '_isAlternative',). grep -n '_isAlternative' scripts/verify-plan-integrity.py → :438 ('_isAlternative',). All 3 ban-list locations preserved verbatim.",
+        "render_smoke": "Rendered output/travel-plan-china-20260412-092624.html (390.5 KB). Positive presence (optional treatment preserved): 'dashed' = 4 occurrences, '#f5f5f3' = 12, '#9b9a97' = 24, 'L('optional', lang)' = 6, 'entry.optional' = 2 read sites (the new 2993 + 3043). Negative absence (dead code purged): '_isAlternative' = 0, '备选' = 0, 'Alt' (in '? Alt :' form) = 0. Optional badge styling rendered with bg=#f5f5f3 + color=#9b9a97 + label=L('optional', lang) per AC4."
+      },
+      "harness_layer_recheck": {
+        "AC1_orphan_poi_5_7": "Orphan-POI synthetic test: target with name_base 'Imaginary Temple' + timeline keys ['Real Other Place'] → 1 finding (orphan-poi check, FAIL severity). PASS.",
+        "AC2_hollow_plan": "Hollow-plan synthetic test: target with single '[PLAN A] Solo plan item' → 1 finding (hollow-plan-branch check, FAIL severity). PASS.",
+        "AC7_3source_FAIL_regression": "Re-run 3-source synthetic test from cycle-1 (G5415 in all three sources same day) → 1 FAIL finding from _mk_dup. Back-compat preserved. PASS.",
+        "AC9_save_py_unaffected": "scripts/save.py + scripts/lib/save_translate.py untouched in this cycle. Cycle-1 + cycle-3 hardening intact. PASS (by exclusion).",
+        "AC3_AC4_AC5_AC6_unaffected": "PreToolUse hook, posttool-git-checkpoint, save.py --day enforcement, plan_label purge, schema strictness — all untouched in this cycle. Prior cycle work intact. PASS (by exclusion).",
+        "production_data_clean": "scripts/verify-plan-integrity.py --target-file data/china-20260412-092624/{timeline,transportation}.json --cross-ref --strict-schema returns verdict PASS (FAIL=0 WARN=0) on both files."
+      }
+    },
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Both files pass python3 -m py_compile. Pre-existing SyntaxWarning at scripts/generate-html-interactive.py:1502 (invalid escape sequence '\\d') is unrelated to this cycle's edits — that line was not modified. Renderer rendered china-20260412-092624 plan to 390.5 KB output successfully. Linter cross-ref CLI returned verdict PASS on production data."
+    }
+  },
+  "scope_boundary_compliance": {
+    "in_scope_files_modified": [
+      "scripts/check_plan_integrity.py",
+      "scripts/generate-html-interactive.py"
+    ],
+    "out_of_scope_observed_but_not_touched": [
+      "scripts/lib/save_translate.py (ban-list at :5+:23 preserved as required)",
+      "scripts/verify-plan-integrity.py (ban-list at :438 preserved as required)",
+      "data/china-20260412-092624/*.json (regression-guard data — not touched)"
+    ],
+    "spec_file_status": "docs/dev/specs/spec-20260506-092951.md edited per orchestrator instruction (Section 2 Cycle 4 + Section 3 Cycle 4 appended; cycles 1-3 preserved)"
+  },
+  "pre_existing_guards_compliance": [
+    {
+      "file": "scripts/lib/save_translate.py",
+      "line": 23,
+      "guard_purpose": "_isAlternative ban-list entry — defense-in-depth against future write attempts",
+      "preserved": true,
+      "verified_via": "grep -n '_isAlternative' scripts/lib/save_translate.py → :5 + :23 still present"
+    },
+    {
+      "file": "scripts/verify-plan-integrity.py",
+      "line": 438,
+      "guard_purpose": "_isAlternative entry in _FORBIDDEN_AD_HOC_FIELDS tuple",
+      "preserved": true,
+      "verified_via": "grep -n '_isAlternative' scripts/verify-plan-integrity.py → :438 still present"
+    },
+    {
+      "file": "scripts/check_plan_integrity.py",
+      "line": 267,
+      "guard_purpose": "≥3-source FAIL guard (cycle-3 baseline at :244, restructured into branch at :267)",
+      "preserved": true,
+      "verified_via": "grep -n '>= 3' scripts/check_plan_integrity.py → 1 match at :267 (inside new branch); behavior verified by TEST B + TEST B2 + TEST B3 reproductions"
+    }
+  ],
+  "checkpoints_status": {
+    "spec_id": "spec-20260506-092951",
+    "cp_state_file": ".claude/specs/spec-20260506-092951/cp-state-dev.json",
+    "all_8_cps_state": "done (from cycles 1-3; redev cycle 4 confirms terminal state — additive scope does not require new cps)",
+    "pending_count": 0,
+    "lifecycle_closed": true,
+    "closed_at": "2026-05-06T14:37:14Z",
+    "rationale": "All 8 cps were marked done in cycles 1-3. Re-marking attempted but spec-check.py auto-closes lifecycle when all cps are terminal (line 376 of spec-check.py). cp-01 was confirmed already-done; subsequent re-mark calls returned 'lifecycle closed' which is the correct guard against double-mutation. Net result: all 8 cps in done state, lifecycle correctly closed, SubagentStop hook will pass."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA: verify the linter extension via the verify-plan-integrity --cross-ref CLI on both timeline.json and transportation.json; verify the renderer dead-code deletion via grep + render smoke.",
+    "Future: if WARN severity proves too lenient for cross-file 2-source duplicates in production, the orchestrator can promote it to FAIL by changing 'WARN' to severity in _mk_dup_cross_file_warn (single-character change). Currently kept WARN per spec constraint § 'safer-default per orchestrator instruction'.",
+    "Future maintainers: scripts/generate-html-interactive.py is 3376 lines of React-as-string; modernization to JSX/TSX with a build pipeline is path-external scope expansion (BA out-of-scope observation captured in context JSON)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

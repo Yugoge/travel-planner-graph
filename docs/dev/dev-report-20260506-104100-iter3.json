@@ -1,0 +1,478 @@
+{
+  "request_id": "20260506-104100",
+  "task_id": "20260506-104100",
+  "iteration": 3,
+  "timestamp": "2026-05-06T12:35:00Z",
+  "spec_id": "spec-20260506-092951",
+  "dev_report_path": "docs/dev/dev-report-20260506-104100-iter3.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "data/china-20260412-092624/budget.json",
+      "data/china-20260412-092624/transportation.json",
+      "data/china-20260412-092624/attractions.json",
+      "docs/dev/specs/spec-20260506-092951.md"
+    ],
+    "files_created": [
+      "docs/dev/dev-report-20260506-104100-iter3.json"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "ITEM A: Budget arithmetic per-day fix (Day 3 + Day 15 cycle-1 false-positive)",
+        "type": "data",
+        "files_modified": [
+          "data/china-20260412-092624/budget.json"
+        ],
+        "changes": "Day 3 budget.total 980->1105; Day 15 budget.total 586->641; vs_target reconciled per day",
+        "rationale": "QA cycle-2 independent re-verification surfaced cycle-1 false-positive on AC5/5.5 bug 4. Spec §1 evidence: Day 3 cat_sum 1105 / total 980; Day 15 cat_sum 641 / total 586. Cycle-1 dev report claimed PASS without modifying data."
+      },
+      {
+        "id": 2,
+        "description": "ITEM B: Cycle-1 narrative regex damage repair (Day 3 + Day 5 budget.json prose)",
+        "type": "data",
+        "files_modified": [
+          "data/china-20260412-092624/budget.json"
+        ],
+        "changes": "Day 3 'Total: 0 CNY/person' segment restored to 1105 CNY with reconciled +207/+414 deltas; Day 5 'combined 0 CNY' -> 'combined 980 CNY'; '0 -> 1230' -> '980 -> 1230'",
+        "rationale": "Cycle-1 migration regex 'stale 980'->'corrected' over-replaced legitimate historical references. QA Section 7 cycle-2 prescription item 2."
+      },
+      {
+        "id": 3,
+        "description": "ITEM C: Transportation duration_minutes:0 repair across 8 routes",
+        "type": "data",
+        "files_modified": [
+          "data/china-20260412-092624/transportation.json"
+        ],
+        "changes": "8 intra_city_routes entries with duration_minutes:0 + non-trivial timestamps fixed to (arrival - departure). Days 1, 3, 4, 6 (3), 8, 13.",
+        "rationale": "Cycle-1 migration zeroed legitimate non-zero durations on Metro/HSR/Flight/Charter/Taxi modes. QA Section 7 cycle-2 prescription item 2."
+      },
+      {
+        "id": 4,
+        "description": "ITEM D part 1: Strip [PLAN A - PRIMARY] from Fangsuo Bookstore prose",
+        "type": "data",
+        "files_modified": [
+          "data/china-20260412-092624/attractions.json"
+        ],
+        "changes": "Day 7 attractions[4] (Fangsuo) notes_base + notes_local: '[PLAN A - PRIMARY]' -> '[PLAN A]'. Item is optional=true; new prose '[PLAN A] Optional literary stop' is internally consistent.",
+        "rationale": "QA Section 7 cycle-2 item 3. Spec 5.6 only requires plan_label field deletion, but [PLAN A - PRIMARY] on optional=true item is the same anti-pattern in human-readable form."
+      },
+      {
+        "id": 5,
+        "description": "Spec sections 2 + 3 updated with Cycle 3 entries (preserving Cycle 1 + 2 content)",
+        "type": "documentation",
+        "files_modified": [
+          "docs/dev/specs/spec-20260506-092951.md"
+        ],
+        "changes": "Appended ### Cycle 3 subsections to Section 2 (What Was Attempted) and Section 3 (What Was Changed). All prior cycle content preserved verbatim.",
+        "rationale": "Spec is living-document per §header; dispatch requires per-cycle append, never overwrite."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "5b9a715 (2026-04-29) — original budget data with Day 3/Day 15 mismatch",
+      "why_issue_occurred": "Cycle-1 migration script for spec-20260506-092951 used regex heuristics ('980'->'corrected', duration zeroing) that over-replaced legitimate references and zeroed legitimate timestamps. Cycle-1 dev claimed bug 4 PASS without modifying data; cycle-1 QA mirrored claim without independent verification. Cycle-2 dev did not re-touch budget.json so the false-positive carried.",
+      "how_fix_addresses_root": "Surgical per-day save.py --day N invocations. No regex. No batch. No migration script. Each numeric edit explicit and accompanied by post-fix invariant printout (15-day total==cat_sum table; 8-route duration matches expected). Fix prevents recurrence by recording actual computed numbers in this report and the spec sections."
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": null,
+      "lines_removed": null,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 25,
+      "justification_for_overage": "Per-day save.py merge replaces the entire day object inside each agent's days[] array; the merge engine writes the whole day's JSON back even when only a few numeric fields changed. Raw line count overstates the semantic diff. Net semantic delta: 4 numeric writes (Day 3 total + 3 vs_target fields), 3 numeric writes (Day 15 total + 2 vs_target fields), 1 narrative segment swap (Day 3 sentence), 2 narrative segment swaps (Day 5), 8 duration_minutes int writes, 2 prose-prefix swaps (Fangsuo notes_base + notes_local). All under 25 effective lines."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Cycle-3 expects QA to re-run independent invariants (NOT to trust dev's PASS labels): (1) 15-day budget total==cat_sum check via Python; (2) 8-route duration_minutes sweep across transportation.json intra_city_routes; (3) grep recipes for 5.6 + 5.9 still 0; (4) name_local CJK + paren-balance still 264/0/0; (5) live AC1/AC3/AC4/AC9 hook smokes. ITEM D part 2 (2-source linter extension) DEFERRED per spec §5.7 acceptance.",
+    "permissions_to_add": [],
+    "evidence": {
+      "ITEM_A_budget_arithmetic_per_day": [
+        {
+          "day": 1,
+          "before_total": 473,
+          "before_cat_sum": 473,
+          "after_total": 473,
+          "after_cat_sum": 473,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 2,
+          "before_total": 948,
+          "before_cat_sum": 948,
+          "after_total": 948,
+          "after_cat_sum": 948,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 3,
+          "before_total": 980,
+          "before_cat_sum": 1105,
+          "after_total": 1105,
+          "after_cat_sum": 1105,
+          "mismatch_resolved": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent budget --day 3 --input /tmp/dev-iter3/day3-budget-input.json --no-backup",
+          "save_py_exit_code": 0,
+          "note": null
+        },
+        {
+          "day": 4,
+          "before_total": 1072,
+          "before_cat_sum": 1072,
+          "after_total": 1072,
+          "after_cat_sum": 1072,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 5,
+          "before_total": 1230,
+          "before_cat_sum": 1230,
+          "after_total": 1230,
+          "after_cat_sum": 1230,
+          "mismatch_resolved": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent budget --day 5 --input /tmp/dev-iter3/day5-budget-input.json --no-backup",
+          "save_py_exit_code": 0,
+          "note": null
+        },
+        {
+          "day": 6,
+          "before_total": 1048,
+          "before_cat_sum": 1048,
+          "after_total": 1048,
+          "after_cat_sum": 1048,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 7,
+          "before_total": 1024,
+          "before_cat_sum": 1024,
+          "after_total": 1024,
+          "after_cat_sum": 1024,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 8,
+          "before_total": 691,
+          "before_cat_sum": 691,
+          "after_total": 691,
+          "after_cat_sum": 691,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 9,
+          "before_total": 410,
+          "before_cat_sum": 410,
+          "after_total": 410,
+          "after_cat_sum": 410,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 10,
+          "before_total": 214,
+          "before_cat_sum": 214,
+          "after_total": 214,
+          "after_cat_sum": 214,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 11,
+          "before_total": 305,
+          "before_cat_sum": 305,
+          "after_total": 305,
+          "after_cat_sum": 305,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 12,
+          "before_total": 1382,
+          "before_cat_sum": 1382,
+          "after_total": 1382,
+          "after_cat_sum": 1382,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 13,
+          "before_total": 785,
+          "before_cat_sum": 785,
+          "after_total": 785,
+          "after_cat_sum": 785,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 14,
+          "before_total": 1040,
+          "before_cat_sum": 1040,
+          "after_total": 1040,
+          "after_cat_sum": 1040,
+          "mismatch_resolved": true,
+          "save_py_invocation": null,
+          "save_py_exit_code": null,
+          "note": "already_balanced_pre_iter3"
+        },
+        {
+          "day": 15,
+          "before_total": 586,
+          "before_cat_sum": 641,
+          "after_total": 641,
+          "after_cat_sum": 641,
+          "mismatch_resolved": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent budget --day 15 --input /tmp/dev-iter3/day15-budget-input.json --no-backup",
+          "save_py_exit_code": 0,
+          "note": null
+        }
+      ],
+      "ITEM_B_budget_narrative_per_day": {
+        "day_3": {
+          "narrative_field": "data.days[2].notes",
+          "before_excerpt": "...Hunyuan county)→back to Datong. (4) Total: 0 CNY/person (+82 vs prior 898 CNY), 1,960 CNY for 2 travelers (+164 vs prior 1,796 CNY).",
+          "after_excerpt": "ry (Hunyuan county)→back to Datong. (4) Total: 1105 CNY/person (+207 vs prior 898 CNY), 2,210 CNY for 2 travelers (+414 vs prior 1,",
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent budget --day 3 --input /tmp/dev-iter3/day3-budget-input.json --no-backup",
+          "exit_code": 0,
+          "literal_zero_cny_hits_after": 0
+        },
+        "day_5": {
+          "narrative_field": "data.days[4].notes",
+          "before_excerpts": [
+            "(Jade-Beijing scenario, combined 0 CNY)",
+            "(5) Combined: 0 → 1230 CNY (+250 CNY)"
+          ],
+          "after_excerpt_1": "th cluster). KEY CHANGES vs prior Day 5 (Jade-Beijing scenario, combined 980 CNY): (1) Jade now in Chengdu with Matilde — NOT Beijing class day. (2) Removed",
+          "after_excerpt_2": "ng 40 CNY/person, 80 CNY combined). (5) Combined: 980 → 1230 CNY (+250 CNY). Jade's full Chengdu day adds ~530 CNY net (615 - 85 prior).",
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent budget --day 5 --input /tmp/dev-iter3/day5-budget-input.json --no-backup",
+          "exit_code": 0,
+          "literal_zero_cny_hits_after": 1
+        }
+      },
+      "ITEM_C_transportation_duration_per_route": [
+        {
+          "day": 1,
+          "intra_city_routes_key": "matilde_arrival_beijing_south_station_to_qianmen",
+          "mode_base": "Metro Line 14 + Metro Line 8",
+          "name_base": "Beijing South Station to Qianmen (if arriving by HSR)",
+          "start_time": "13:00",
+          "end_time": "13:30",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 30,
+          "expected_after": 30,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 1 --input /tmp/dev-iter3/day1-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 3,
+          "intra_city_routes_key": "datong_day3_chartered_car_full_loop",
+          "mode_base": "Chartered private car / driver (full day with waiting)",
+          "name_base": "Chartered Private Car: Yungang Grottoes — Hanging Monastery",
+          "start_time": "11:30",
+          "end_time": "19:30",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 480,
+          "expected_after": 480,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 3 --input /tmp/dev-iter3/day3-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 4,
+          "intra_city_routes_key": "dr5010_datong_to_chengdu_both",
+          "mode_base": "domestic flight",
+          "name_base": "Flight DR5010 Datong → Chengdu — Both Matilde and Jade",
+          "start_time": "19:25",
+          "end_time": "21:55",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 150,
+          "expected_after": 150,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 4 --input /tmp/dev-iter3/day4-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 6,
+          "intra_city_routes_key": "g5415_chengdu_south_to_leshan",
+          "mode_base": "High-speed train",
+          "name_base": "G5415 Chengdu South to Leshan (Leshan Giant Buddha)",
+          "start_time": "10:26",
+          "end_time": "11:07",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 41,
+          "expected_after": 41,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 6 --input /tmp/dev-iter3/day6-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 6,
+          "intra_city_routes_key": "planA_wutongqiao_to_leshan_station_taxi",
+          "mode_base": "Taxi / Didi",
+          "name_base": "Taxi/Didi: Wutongqiao to Leshan Station (return to HSR)",
+          "start_time": "18:00",
+          "end_time": "18:30",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 30,
+          "expected_after": 30,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 6 --input /tmp/dev-iter3/day6-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 6,
+          "intra_city_routes_key": "g8562_leshan_to_chengdu_south",
+          "mode_base": "High-speed train",
+          "name_base": "G8562 HSR Train: Leshan to Chengdu South",
+          "start_time": "19:06",
+          "end_time": "19:59",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 53,
+          "expected_after": 53,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 6 --input /tmp/dev-iter3/day6-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 8,
+          "intra_city_routes_key": "jade_3u8893_chengdu_to_beijing",
+          "mode_base": "Domestic flight",
+          "name_base": "Flight 3U8893 Chengdu → Beijing (Jade return for class)",
+          "start_time": "16:30",
+          "end_time": "19:00",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 150,
+          "expected_after": 150,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 8 --input /tmp/dev-iter3/day8-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        },
+        {
+          "day": 13,
+          "intra_city_routes_key": "g26_shanghai_hongqiao_to_beijing_south",
+          "mode_base": "High-speed train (Fuxing / 复兴号)",
+          "name_base": "G26 Shanghai Hongqiao → Beijing South",
+          "start_time": "17:00",
+          "end_time": "21:32",
+          "before_duration_minutes": 0,
+          "after_duration_minutes": 272,
+          "expected_after": 272,
+          "matches_expected": true,
+          "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent transportation --day 13 --input /tmp/dev-iter3/day13-transportation-input.json --no-backup",
+          "save_py_exit_code": 0
+        }
+      ],
+      "ITEM_D_fangsuo_prose_strip": {
+        "decision": "landed",
+        "file": "data/china-20260412-092624/attractions.json",
+        "day_7_attractions_index": 4,
+        "name_base": "Fangsuo Bookstore - Taikoo Li Underground (方所书店·太古里店)",
+        "optional": true,
+        "before_notes_base_prefix": "[PLAN A - PRIMARY] Optional literary stop 14:30-15:30",
+        "after_notes_base_prefix": "[PLAN A] Optional literary stop 14:30-15:30",
+        "before_notes_local_prefix": "[PLAN A - PRIMARY] 可选文艺打卡14:30-15:30",
+        "after_notes_local_prefix": "[PLAN A] 可选文艺打卡14:30-15:30",
+        "save_py_invocation": "scripts/save.py --trip china-20260412-092624 --agent attractions --day 7 --input /tmp/dev-iter3/day7-attractions-input.json --no-backup",
+        "save_py_exit_code": 0,
+        "untouched_neighbors": "Day 7 attractions[0..3] retain [PLAN A - PRIMARY] prefix because optional=False (no contradiction)."
+      },
+      "ITEM_D_linter_2source": {
+        "decision": "deferred",
+        "rationale": "Spec §5.7 acceptance only requires >=3-source detection. QA cycle-2 Section 7 item 4 explicitly marks the 2-source extension as OPTIONAL. Per Minimum-Diff Rule + cycle-2 ITEM F precedent, deferred to a future cycle if surfaced. Cycle-1 5-source-of-truth linter at scripts/check_plan_integrity.py:243-244 untouched."
+      },
+      "harness_layer_recheck": {
+        "AC1_strict_schema_hook": {
+          "status": "pass",
+          "evidence": "File .claude/hooks/pretool-validate-data-write.py untouched (mtime 2026-05-06 11:29 < iter-3 12:30). Cycle-2 live test still valid."
+        },
+        "AC2_image_fetcher": {
+          "status": "pass",
+          "evidence": "scripts/fetch-images-batch.py untouched (mtime 2026-05-06 11:27)."
+        },
+        "AC3_save_py_day_required": {
+          "status": "pass",
+          "live_test": "echo '{\"data\":{\"days\":[]}}' | python3 scripts/save.py --trip china-20260412-092624 --agent timeline -> exit 1 + stderr 'Error: --day N is required for single-agent saves (spec-20260506-092951 §5.3). Pass an integer 1..N.'"
+        },
+        "AC4_auto_commit_redirect": {
+          "status": "pass",
+          "evidence": ".claude/hooks/posttool-git-checkpoint.sh untouched (mtime 2026-05-06 11:04)."
+        },
+        "AC7_cross_ref_linter": {
+          "status": "pass",
+          "evidence": "scripts/check_plan_integrity.py untouched (mtime 2026-05-06 11:10)."
+        },
+        "AC9_save_py_reject_unknown": {
+          "status": "pass",
+          "live_test": "echo '{\"data\":{\"days\":[{\"day\":1,\"plan_label\":\"PLAN A\"}]}}' | python3 scripts/save.py --trip china-20260412-092624 --agent timeline --day 1 --no-validate --no-backup -> stderr 'Error: Unknown field(s) [\\'plan_label\\'] for agent timeline: not in schema. Use the schema-defined optional field instead (spec-20260506-092951 §5.9).'"
+        }
+      },
+      "spec_literal_grep_recipes_5_6_5_9": {
+        "AC_5_6_grep_plan_label": {
+          "command": "grep -rn '\"plan_label\"' data/china-20260412-092624/",
+          "exit_code": 1,
+          "matches": 0,
+          "result": "PASS"
+        },
+        "AC_5_9_grep_banned_fields": {
+          "command": "grep -rnE '\"(plan_label|is_alternative|_isAlternative|tier|bundle_id|priority_label)\"' data/china-20260412-092624/",
+          "exit_code": 1,
+          "matches": 0,
+          "result": "PASS"
+        }
+      },
+      "name_local_cjk_full_sweep": {
+        "files_scanned": 9,
+        "name_local_fields_checked": 264,
+        "cjk_violations": 0,
+        "paren_imbalance_violations": 0,
+        "result": "PASS",
+        "method": "Python re `[一-鿿㐀-䶿]` over every name_local in accommodation/attractions/budget/cafe/entertainment/meals/shopping/timeline/transportation; balanced-paren count((+ ）) - count() + （)"
+      }
+    }
+  },
+  "self_verification": {
+    "build": "skipped",
+    "smoke_check": "pass",
+    "notes": "No build step (filesystem-only spec). Per-day save.py exit codes 0; per-day Python invariant re-verification confirms 15/15 budget arithmetic + 0/12 transport duration violations. AC1/AC3/AC4/AC7/AC9 harness re-confirmed via mtime + live smoke. Grep recipes 5.6 + 5.9 zero. CJK + paren sweep 264/0/0."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA cycle-3 must re-run the SAME Python invariant checks (NOT trust dev's PASS labels) — this is the only way to catch a recurrence of the cycle-1 false-positive pattern. The full per-day total/cat_sum table must be reproduced by QA.",
+    "Future fix cycles: avoid heuristic regex migrations. Per-day save.py --day N is the canonical pattern. Cycle-1 migrate_spec_20260506.py demonstrated the failure mode (over-replacement + missed cases)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
