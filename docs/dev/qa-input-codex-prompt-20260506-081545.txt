@@ -1,0 +1,48 @@
+USER REQUIREMENT: User said "快速修复这些问题" — a redev cycle to fix EXACTLY 3 specific close-blockers from parent cycle 20260505-231740 (B1: validator exit-code; B2: hook scope + wiring + Python-internal write surface; B3: .hook-refactor-allow sentinel committed to git).
+SCOPE: find bugs that prevent or threaten the resolution of these 3 blockers, OR new regressions introduced by this redev cycle.
+OUT OF SCOPE: adjacent improvements, hypothetical attack vectors outside the 3-blocker scope, style preferences, defensive hardening the user did not request, and the 4 deferred parent-cycle codex findings (2/3/4/7) which the user explicitly scoped out via "快速修复".
+
+CONTEXT: /close debate Round 1b adversarial consultation for redev cycle 20260506-081545.
+
+THE 3 BLOCKERS AND CLAIMED RESOLUTIONS:
+
+B1 — validate-agent-outputs.py exit code:
+- Parent verdict: validator exited 2 on warnings-only data (AC2 claimed exit 0, was factually false).
+- Redev fix (W1): Changed line 430 from "return 2" to "return 0"; updated docstring lines 11-13.
+- My re-verification: running validator on canary trip data produced "Validation PASSED with 25 warning(s)" + EXIT:0.
+- Missing-dir path: validator on /nonexistent-path exits 2 (preserved).
+- Blast radius: 0 shell callers; only Python caller (sync-agent-data.py:511-563) uses importlib, calls load_schemas/validate_against_schema functions directly, never inspects exit code -> nil risk.
+
+B2 — hook scope (4-layer defense-in-depth, all NEW in this redev):
+- Parent verdict: hook only handled Write|Edit (not Bash); also NOT WIRED in settings.json at all (silent zero-effect change from cycle 20260505-231740 W6); Python-internal writes uncovered.
+- Redev fix (W2):
+  (a) .claude/settings.json line 107 registers hook with matcher Write|Edit|Bash.
+  (b) pretool-block-production-files.sh extended with Bash branch detecting save.py invocations + direct redirect/tee/cp/mv to agent persistence files.
+  (c) scripts/lib/json_io.py:save_agent_json extended with _reject_unauthorized_ownership + _reject_universal_image_url rejectors.
+  (d) scripts/sync-agent-data.py:179 and scripts/strip-image-url-fields.py:50 refactored from raw open() to save_agent_json().
+- My re-verification: bash test 8/8 PASS; Python ownership test 4/4 PASS; 0 raw open() calls remain.
+- Architecture: stays in SAME hook file (architect concern_6 binding).
+
+B3 — .hook-refactor-allow sentinel:
+- Parent verdict: sentinel committed to git, disabling pretool-claude-config-guard.py at line 75-77.
+- Redev fix (W3): git rm --cached + filesystem rm + .gitignore line 41 entry.
+- My re-verification: ls "no such file"; git ls-files empty; gitignore entry present.
+
+INSPECTOR RESULTS (Round 1b):
+- style-inspector: 0 NEW violations (6 advisories all defensible).
+- cleanliness-inspector: CLEAN.
+- prompt-inspector: CLEAN.
+
+REGRESSION CHECK: test_merge_agent_slots.py 8/8 PASS.
+
+YOUR ADVERSARIAL TASK:
+
+Challenge whether this CLOSE: YES would grant on something that ACTUALLY satisfies the user-stated need (the 3 blockers being fully fixed) and whether any new regressions were introduced. Specifically:
+
+1. The validator exit-code change (W1) — could it break any unrelated callers?
+2. The hook is NOW wired (was completely off in parent cycle W6). Edge cases? OBSERVED: I just witnessed the hook firing on a Bash command whose prompt simply CONTAINED a substring matching the redirect-to-data regex even though the actual command was not redirecting anywhere. Is the regex over-eager?
+3. The 4-layer defense-in-depth in W2 — over-engineering for "快速修复" or minimum sufficient?
+4. Are the deferred parent-cycle Codex Findings 2-4, 7 correctly deferred?
+5. New regressions from json_io.py extension (rejectors are NEW code paths)?
+
+Inspect the actual files at /root/travel-planner/. Be skeptical. Reply with CODEX_FEEDBACK: <substantive points>, ending with explicit YES or NO recommendation for closing this cycle.
