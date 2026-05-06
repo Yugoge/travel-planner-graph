@@ -30,7 +30,12 @@ def _norm(s):
 
 
 def _translate_one_dict(item):
-    if 'primary' in item:
+    # Spec 5.9: 'primary': true → optional=false (user-language to schema).
+    # Only translate when 'primary' is a bool — meals/attractions schemas
+    # legitimately use 'primary' as a slot KEY whose value is a nested dict
+    # (e.g. meals.json: {"breakfast": {"primary": {name_base, ...}}}).
+    # Translating those would pop the slot subtree (cycle-1 latent bug fix).
+    if isinstance(item.get('primary'), bool):
         item['optional'] = not bool(item.pop('primary'))
     if 'plan' not in item:
         return
