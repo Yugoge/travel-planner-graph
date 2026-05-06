@@ -523,7 +523,7 @@ def save_single_agent(
         return False
     agent_file = trip_dir / f"{agent}.json"
     try:
-        agent_data = _prepare_agent_data(data, agent_file, trip_slug)
+        agent_data = _prepare_agent_data(data, agent_file, trip_slug, agent)
     except Exception as e:
         print(f"Merge failed: {e}", file=sys.stderr)
         return False
