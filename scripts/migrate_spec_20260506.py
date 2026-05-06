@@ -233,10 +233,12 @@ def _location_change():
         'type_local': '高铁',
         'departure_time': '09:00',
         'arrival_time': '13:00',
+        'cost': 0,
+        'currency_local': 'CNY',
         'status_base': 'Not yet booked',
         'status_local': '尚未预订',
-        'notes_base': 'Day 9 intercity transit Chengdu -> Xi\'an. Booking pending; placeholder times pending Duffel HSR/flight selection.',
-        'notes_local': 'Day 9 城际段（成都→西安）。尚未预订，时间为占位值，待选定高铁车次或航班。',
+        'notes_base': 'Day 9 intercity transit Chengdu -> Xian; booking pending. Placeholder cost=0; placeholder times pending HSR/flight selection.',
+        'notes_local': 'Day 9 城际段（成都→西安）。尚未预订，cost=0 占位，时间待选定车次。',
     }
 
 
