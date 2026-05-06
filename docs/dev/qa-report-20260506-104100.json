@@ -1,0 +1,355 @@
+{
+  "request_id": "20260506-104100",
+  "task_id": "20260506-104100",
+  "spec_id": "spec-20260506-092951",
+  "timestamp": "2026-05-06T11:50:00Z",
+  "qa": {
+    "status": "fail",
+    "user_verbatim_complaint": "将以上全部总结为一个spec，永久根本性地彻底修复 / 批量操作永久禁止 / Auto-commit 不应该淹没 git log / plan_label 直接删除，这不是我们 schema 中的啊！我让你给 plan abc 仅仅是字面意义，同时 BC 加上 optional，并没有说要加入一个新的标准 / 是的，甚至 Plan A/B/C 都不是标准术语，只是用户语言，你只能用当前的 schema 用 save 脚本翻译成机器语言",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-06T11:48:00Z",
+        "file": "data/china-20260412-092624/*.bak",
+        "line": null,
+        "observation": "8 .bak files (3 git-tracked: timeline.json.bak, transportation.json.bak, modification-log.json.bak; 5 untracked: accommodation/attractions/budget/entertainment/meals.json.bak) contain stale plan_label content; BA spec marked these out-of-scope but spec AC6/AC9 literal recipes (recursive grep on directory) catch them. Recommend gitignore + sweep.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "spec_section_updates": {
+      "section_4": "**Cycle 1 Current State (QA verification 2026-05-06T11:50Z)**\n\n**Hooks + harness (AC1, AC2, AC3, AC4, AC7, AC9 functional)**:\n- `.claude/settings.json:102-115` — PreToolUse Write|Edit matcher runs `pretool-block-production-files.sh` first then `pretool-validate-data-write.py` second. Both use Write|Edit matcher (structured-payload), NOT Bash regex (parent-cycle force-close pattern not re-introduced).\n- AC1 (5.1) tested live via stdin payload: plan_label re-injection → exit 2 + stderr names file path + JSON path + `forbidden ad-hoc field` rule; `name_local: null` → exit 2 (`None is not of type 'string'`); `coordinates: {}` on attractions.json → exit 2 (`'lat' is a required property`, `'lng' is a required property`); `location_change: null` on transportation.json → exit 2 (`None is not of type 'object'`).\n- AC2 (5.2) verified by overriding `_helper_paths()` to nonexistent path → `FileNotFoundError: image-fetch helper(s) missing: [...]` raised in `_assert_helper_paths_exist`. `_print_spec_5_2_banner` returns rc=0 for cache-hit (attempts==0) and all-success, rc=1 for 0/10 (rate < 0.5 threshold), rc=0 for 60% partial, all banners distinct.\n- AC3 (5.3): `pretool-validate-data-write.py` blocks raw Write/Edit by data-agents (CLAUDE_AGENT_TYPE in {meals,accommodation,...,timeline,budget}); blocks `replace_all:true` on data/**/*.json regardless of agent. `save.py` rejects missing --day with exit 1; rejects --day 0; --batch deprecated and gated behind BYPASS_DAY_GUARD=1.\n- AC4 (5.4): triggered `posttool-git-checkpoint.sh` with GIT_CHECKPOINT_THRESHOLD=1 — HEAD master 2348595 unchanged; refs/checkpoints/master advanced from dbf06b9 → 864d762. Recovery doc at docs/checkpoint-recovery.md (4633 bytes, fresh content).\n- AC6/AC9 schema: `schemas/timeline.schema.json` does NOT contain `plan_label` (grep returns 0).\n- AC7 (5.7) cross-ref linter: synthetic orphan POI → 1 finding; synthetic hollow plan (only 1 [PLAN C] item) → 1 finding; synthetic triple-duplicate transit → 1 finding. All three scenarios reproduced.\n- AC9 (5.9): save.py rejects `{plan_label:X}` via stdin → exit 1 + stderr names unknown field.\n\n**Data bugs (AC5 / 5.5) — partial pass**:\n- 喜樂院子 in timeline.json/transportation.json live data: 0 matches (PASS).\n- Day 9 transportation.json location='Xi\\'an' (PASS); Chengdu East → Xi'an North HSR location_change present with cost=0, status_base='Not yet booked' (PASS).\n- budget.json: every day's total == sum(meals+accommodation+activities+entertainment+shopping+transportation+cafe). 0 mismatches (PASS).\n- timeline.json/transportation.json durations: 0 degenerate (start==end, dur>0); 0 mismatched (dur != end-start). PASS.\n- name_local CJK requirement: **7 violations** — see Section 6.\n- Day 8 traveler matrix: **CONTRADICTORY** — entertainment.json Day 8 entertainment[0] notes_base='Both travelers evening' vs notes_local='Matilde独自夜间活动'. See Section 6.\n- shopping.json:134 notes_local: 'Matilde独自'-style stale Beijing reference at zh-CN side: '建议回北京前的上午前往'. notes_base updated to Chengdu (PASS), notes_local NOT updated (FAIL).\n- Plan A/B/C [PRIMARY]+[Optional] mutex: 0 violations on the active flag (PASS at the literal mutex level). Fangsuo Bookstore (attractions Day 7, optional=true) has no matching timeline entry (linter surfaces as WARN-only).\n\n**Plan_label literal grep recipes (AC6 / AC9)**: spec specifies recursive grep on directory: `grep -rn '\"plan_label\"' data/china-20260412-092624/`. Result: 26 matches — 17 in transportation.json.bak, 8 in timeline.json.bak, 1 in `.test_pl_check.json` (75KB leftover dev test artifact, untracked). The dev report's evidence used `*.json` glob (avoiding .bak), but the spec recipe is recursive directory.\n\n**Cleanup gaps**: data/china-20260412-092624/.test_pl_check.json (75KB, dev test artifact left untracked, contains 'plan_label': 'X' at line 279).",
+      "section_6": "**Cycle 1 — Why Not Met (QA verdict: fail)**\n\n1. **AC5 / 5.5 bug 6 (name_local CJK)** — spec acceptance: \"Every name_local in all China-trip data files contains at least one CJK char\". Measured violations:\n   - meals.json: \"Beijing North → Datong South, departs 08:20\" (English-only)\n   - timeline.json (6 entries): \"Taxi from Du Fu Thatched Cottage to Wuhou Shrine area\"; \"Taxi from Jinli to Atour Hotel Yulin Huaxi (return to hotel)\"; \"Taxi/Didi from Leshan Giant Buddha to Xiba/Wutongqiao area\"; \"Metro/Didi from Chengdu South Station back to Hotel\"; \"Taxi/Didi: Hotel (Yulin) to Dacisi/Taikoo Li area [Plan A]\"; \"Taxi/Didi: IFS to Hotel (Yulin) — return [Plan A]\"\n   - Total: 7 violations. Dev report claimed `AC6_6_name_local_cjk: \"no changes detected\"` — but the fix is to make these CJK-clean, not whether the migration changed something.\n\n2. **AC5 / 5.5 bug 2 (Day 8 traveler matrix)** — spec acceptance: \"Day 8 traveler matrix is internally consistent across timeline.json, meals.json, entertainment.json (all three say the same thing)\". Measured CONTRADICTION: data/china-20260412-092624/entertainment.json Day 8 entertainment[0]:\n   - notes_base (en): \"Both travelers evening. The giant panda sculpture climbing up the IFS building facade is one of Chengdu's most beloved photo spots. ...\"\n   - notes_local (zh): \"Matilde独自夜间活动。攀爬IFS大楼外墙的巨型熊猫雕塑是成都最受喜爱的打卡地之一。...\"\n   The English says BOTH travelers; the Chinese says Matilde ALONE. Spec §1 explicitly named this as the bug to fix (\"entertainment.json:370 English says 'Both travelers'; :371 中文 says Matilde 单独\"). Dev report claimed `AC6_2: 'no changes detected by migration heuristic — strings already in consistent state'` — but the contradiction persists in the data.\n\n3. **AC5 / 5.5 bug 8 (shopping.json Beijing→Chengdu) — partial fail**: notes_base updated to \"before departing for Chengdu\" (PASS), but notes_local at line 134 still says \"建议回北京前的上午前往\" (= \"before returning to Beijing\"). Dev report claimed \"赴北京前 → 赴成都前\" but the actual zh-CN string is \"回北京前\" (different phrasing variant the migration heuristic missed).\n\n4. **AC6 (5.6) and AC9 (5.9) — literal grep recipe fails on the directory**: spec specifies `grep -rn '\"plan_label\"' data/china-20260412-092624/` (recursive on dir). Measured 26 matches across:\n   - data/china-20260412-092624/transportation.json.bak:649,682,...,1190 (17 matches)\n   - data/china-20260412-092624/timeline.json.bak:684,691,...,1005 (8 matches)\n   - data/china-20260412-092624/.test_pl_check.json:279 (1 match — leftover dev test artifact)\n   The dev evidence used `*.json` glob which masks .bak files and dot-files. Per the spec's literal recipe, the grep is non-zero. BA spec acknowledged .bak as out-of-scope, but `.test_pl_check.json` is a leftover dev test artifact (75KB, untracked, written by dev cycle at 11:28) that was not cleaned up.\n\n5. **Cleanup gap (cross-cutting)**: 8 .bak files in data/china-20260412-092624/, 3 of which are git-tracked (timeline.json.bak, transportation.json.bak, modification-log.json.bak) and contain stale plan_label content. They are not in .gitignore. Plus the `.test_pl_check.json` dev artifact pollutes the data dir.",
+      "section_7": "**Cycle 1 — What Must Be Done (next-cycle prescription)**\n\n1. **Remove dev test artifact**: `git rm --force data/china-20260412-092624/.test_pl_check.json` (or `rm` since it's untracked). Add to .gitignore: `data/*/.test_*.json`, `data/*/.tmp_*.json`, `data/*/.precheck-*` (prevents future dev cycle leftovers).\n\n2. **Decide .bak file policy**: either (a) `git rm` the 3 tracked .bak files and add `data/*/*.bak` to .gitignore, OR (b) explicitly amend spec AC6/AC9 literal recipe to scope to `*.json` (excluding .bak) and document that .bak files are intentional snapshots. Current state — recipe says recursive on dir, but BA spec acknowledged .bak out-of-scope — is internally inconsistent.\n\n3. **Fix 7 name_local CJK violations** (AC5 / 5.5 bug 6): Apply the user-requested transit-name CJK pairs to:\n   - meals.json — \"Beijing North → Datong South, departs 08:20\" → add zh-CN form e.g. \"北京北 → 大同南，08:20发车\"\n   - timeline.json — 6 transit/taxi entries; example fixes:\n     * \"Taxi from Du Fu Thatched Cottage to Wuhou Shrine area\" → \"出租车：杜甫草堂至武侯祠片区\"\n     * \"Taxi from Jinli to Atour Hotel Yulin Huaxi (return to hotel)\" → \"出租车：锦里至亚朵酒店玉林华西（回酒店）\"\n     * \"Taxi/Didi from Leshan Giant Buddha to Xiba/Wutongqiao area\" → \"出租车/滴滴：乐山大佛至西坝/五通桥片区\"\n     * \"Metro/Didi from Chengdu South Station back to Hotel\" → \"地铁/滴滴：成都南站返回酒店\"\n     * \"Taxi/Didi: Hotel (Yulin) to Dacisi/Taikoo Li area [Plan A]\" → \"出租车/滴滴：酒店（玉林）至大慈寺/太古里片区【方案A】\"\n     * \"Taxi/Didi: IFS to Hotel (Yulin) — return [Plan A]\" → \"出租车/滴滴：IFS国际金融中心至酒店（玉林）返程【方案A】\"\n   Each must be invoked via `save.py --day N` (not raw Write).\n\n4. **Fix Day 8 traveler matrix contradiction** (AC5 / 5.5 bug 2): in `data/china-20260412-092624/entertainment.json` Day 8 entertainment[0], reconcile notes_base and notes_local. Authoritative cycle decision needed: is the IFS panda sighting Both travelers or Matilde alone? Once decided, both fields must say the same thing. Per spec §1, meals.json:1261 already says 'Matilde solo' and timeline says 'both/shared' — the cycle must converge all three to one matrix entry per slot.\n\n5. **Fix shopping.json:134 notes_local** (AC5 / 5.5 bug 8 zh side): change \"建议回北京前的上午前往\" → \"赴成都前的上午前往\" (or similar zh phrasing matching Day 4's Chengdu departure).\n\n6. **Tighten dev migration script's heuristic patterns** (`scripts/migrate_spec_20260506.py`) to catch \"回X前\" / \"赴X前\" / \"前往X前\" variants for future Beijing→Chengdu / city-change updates.\n\n7. **Optionally extend the cross-ref linter** (`scripts/check_plan_integrity.py`) to detect the 2-source duplicate transit pattern (currently only ≥3 sources). The 五通桥→Leshan Station taxi appears in BOTH timeline.json (travel_segments) AND transportation.json (intra_city_routes) — only 2 sources, so the current linter does not surface it. Decide whether duplicate-transit-2 should also be FAIL or WARN."
+    },
+    "verified_location_keywords": [
+      "data", "china-20260412-092624", "timeline.json", "transportation.json",
+      "shopping.json", "entertainment.json", "meals.json", "budget.json",
+      ".claude", "hooks", "settings.json", "scripts", "save.py",
+      "fetch-images-batch.py", "verify-plan-integrity.py", "check_plan_integrity.py",
+      "pretool-validate-data-write.py", "posttool-git-checkpoint.sh",
+      "stop-git-commit.sh", "checkpoint-recovery.md",
+      "schemas", "timeline.schema.json", "refs", "checkpoints", "master"
+    ],
+    "location_overlap": [
+      "data", "china-20260412-092624", "timeline.json", "transportation.json",
+      "shopping.json", ".claude", "hooks", "settings.json", "scripts",
+      "save.py", "fetch-images-batch.py", "schemas", "refs", "checkpoints"
+    ],
+    "complaint_resolution_evidence": "AC1+AC3+AC4+AC9 (harness mechanisms) all verified live; the user's '永久根本性' demand is materially achieved at the harness level (write-time blocks, save.py --day mandatory, refs/checkpoints redirect, save.py rejects banned keys). Where the cycle FAILS the user's intent: 3 of 8 data bugs (AC6.2 Day 8 traveler matrix, AC6.6 name_local CJK, AC6.8 shopping zh-CN) are not actually fixed in the data, despite dev report's 'no changes detected' rationalisation. The user demanded '彻底修复' (thoroughly fix) — partial-fix-with-disclaimer is the exact pattern the user explicitly rejected.",
+    "complaint_element_pointer": {
+      "selector": "data/china-20260412-092624/{timeline,transportation,meals,entertainment,shopping,budget,attractions,accommodation,cafe}.json plus .claude/hooks/* + .claude/settings.json + scripts/{save,verify-plan-integrity,fetch-images-batch}.py + schemas/timeline.schema.json + refs/checkpoints/master",
+      "how_located": "spec-20260506-092951 §5.1-5.9 enumerates these files explicitly with line numbers",
+      "found_in_dom": true,
+      "page_url": "n/a (terminal/data files, no UI)"
+    },
+    "element_screenshots": {
+      "before_selector": "n/a (no UI)",
+      "before_path": "n/a",
+      "after_path": "n/a",
+      "same_element_verified": true
+    },
+    "overall_assessment": "Harness mechanisms (AC1/AC2/AC3/AC4/AC7/AC9 functional layer) are correctly implemented and verified end-to-end via live hook invocations. However, three data-fix sub-criteria (AC5 bug 2 Day 8 traveler matrix, AC5 bug 6 name_local CJK, AC5 bug 8 shopping zh-CN) FAIL the spec's literal acceptance: contradictory traveler matrix persists in entertainment.json Day 8 (verbatim spec §1 bug); 7 name_local fields are English-only; shopping.json:134 still says '回北京前'. Plus AC6 / AC9 literal grep recipes fail because of (a) .bak files (BA-acknowledged out-of-scope but spec recipe still hits them), and (b) .test_pl_check.json leftover dev test artifact. Verdict: fail.",
+    "success_criteria_results": [
+      {
+        "requirement_id": "AC1",
+        "source_phrase": "Section 5.1: Block schema-violating writes at the moment of write",
+        "criterion": "PreToolUse hook on Write|Edit blocks plan_label re-injection, name_local:null, location_change:null, coordinates:{} with explicit error naming file path + JSON path + rule; runs BEFORE auto-commit",
+        "verification_method": "Live invocation of pretool-validate-data-write.py via stdin JSON payload simulating Write/Edit on data/china-20260412-092624/{timeline,transportation,attractions}.json with each violation type",
+        "status": "pass",
+        "result": "pass",
+        "details": "All 4 violation types blocked with exit 2; stderr names file + JSON path + schema rule. Hook runs before posttool-git-checkpoint.sh per .claude/settings.json hook ordering (PreToolUse Write|Edit fires before PostToolUse Write|Edit|NotebookEdit).",
+        "evidence": "exit 2; stderr 'BLOCKED: schema violation in /root/travel-planner/data/.../timeline.json' + 'forbidden ad-hoc field (spec 5.6/5.9 ban): \"plan_label\": \"X\"' (plan_label test); 'None is not of type \\'string\\'' (name_local null); '\\'lat\\' is a required property' (coordinates empty); 'None is not of type \\'object\\'' (location_change null)"
+      },
+      {
+        "requirement_id": "AC2",
+        "source_phrase": "Section 5.2: Image fetcher must fail loudly, not silently",
+        "criterion": "Helper-not-found raises FileNotFoundError; broad-except blocks at :408-411 + :433-436 narrowed to specific types; banner conditional on success rate (cache-hit / partial / failed / complete)",
+        "verification_method": "In-process subclass override of _helper_paths() to non-existent path; live call to _print_spec_5_2_banner with 4 fake fetcher states (cache-hit / 0/10 fail / 60% partial / 100% success)",
+        "status": "pass",
+        "result": "pass",
+        "details": "FileNotFoundError raised on missing helper path with 'image-fetch helper(s) missing: [PosixPath(...)]'. Source inspection of fetch-images-batch.py:426-431 + :452-455 confirms `subprocess.TimeoutExpired` + `(json.JSONDecodeError, OSError)` — no `except Exception: continue/pass`. Banner: cache-hit → '✅ Cache hit: no fetches required' rc=0; all-fail → '❌ Batch FAILED: 0/10 successful (threshold 50%)' rc=1; 60% partial → '⚠️  Batch partial: 60% successful' rc=0; 100% success → '✅ Batch complete: 10/10 successful' rc=0.",
+        "evidence": "Source lines fetch-images-batch.py:426-431,452-455 + live banner output captured"
+      },
+      {
+        "requirement_id": "AC3",
+        "source_phrase": "Section 5.3: Permanently ban batch / multi-day data operations",
+        "criterion": "Raw Write/Edit on data/**/*.json blocked when CLAUDE_AGENT_TYPE=data-agent; replace_all:true blocked unconditionally; save.py rejects missing/zero --day; --batch deprecated and gated behind BYPASS_DAY_GUARD",
+        "verification_method": "Live hook invocations + save.py CLI invocations",
+        "status": "pass",
+        "result": "pass",
+        "details": "CLAUDE_AGENT_TYPE=timeline + Write to timeline.json → exit 2 'BLOCKED: raw Write to data/**/*.json forbidden (spec 5.3) ... agent: timeline ... Use: save.py --day N'. Edit replace_all:true on data file (orchestrator agent) → exit 2 'BLOCKED: Edit replace_all:true on data/**/*.json forbidden (spec 5.3)'. save.py without --day → exit 1 'Error: --day N is required for single-agent saves'. save.py --day 0 → exit 1 'Error: --day must be >= 1'. save.py --batch without bypass → exit 1 'Error: --batch is deprecated per spec 5.3 (批量操作永久禁止)'.",
+        "evidence": "All four CLI/hook invocations captured with exit codes and stderr"
+      },
+      {
+        "requirement_id": "AC4",
+        "source_phrase": "Section 5.4: Auto-commit moves to refs/checkpoints/<branch>, never advances HEAD",
+        "criterion": "Triggering posttool-git-checkpoint.sh produces zero new entries on git log master; new entries appear in git log refs/checkpoints/master; recovery doc at docs/checkpoint-recovery.md",
+        "verification_method": "Captured HEAD before; created small mutation under docs/dev/qa-input-marker.txt; ran posttool-git-checkpoint.sh with GIT_CHECKPOINT_THRESHOLD=1; captured HEAD + refs/checkpoints/master after",
+        "status": "pass",
+        "result": "pass",
+        "details": "HEAD master before: 2348595c1a129fcd258185a4f23eadcc221a376c; HEAD master after: 2348595c1a129fcd258185a4f23eadcc221a376c (UNCHANGED). refs/checkpoints/master before: dbf06b9; after: 864d762 (ADVANCED). Hook stdout: 'checkpoint: refs/checkpoints/master -> 864d762 (36 files; HEAD untouched)'. Source inspection of posttool-git-checkpoint.sh confirms `git commit-tree` + `git update-ref` pattern, no `git commit` or `git push`. Same for stop-git-commit.sh. docs/checkpoint-recovery.md exists (4633 bytes), explains git update-ref / cherry-pick procedures.",
+        "evidence": "Live shell output of git rev-parse before/after + posttool hook stdout + source inspection of replaced .sh files"
+      },
+      {
+        "requirement_id": "AC5",
+        "source_phrase": "Section 5.5: Eight residual data bugs in data/china-20260412-092624/ must be fixed",
+        "criterion": "All 8 sub-bugs (1-8) repaired per spec acceptance",
+        "verification_method": "Per-bug parsed JSON checks; CJK regex; arithmetic sum check; substring search",
+        "status": "fail",
+        "result": "fail",
+        "details": "AC6.1 (喜樂院子 absent days 4-9): PASS — 0 matches in timeline.json+transportation.json. AC6.2 (Day 8 traveler matrix): FAIL — entertainment.json Day 8 entertainment[0] notes_base='Both travelers evening' contradicts notes_local='Matilde独自夜间活动'. AC6.3 (Day 9 Xi'an + Chengdu→Xi'an HSR): PASS — location='Xi\\'an', location_change has Chengdu East → Xi'an North HSR (cost=0, status='Not yet booked'). AC6.4 (budget arithmetic): PASS — every day's total == sum(categories), zero mismatches. AC6.5 (degenerate durations): PASS — zero start==end-with-dur>0; zero duration mismatches. AC6.6 (name_local CJK): FAIL — 7 violations (1 in meals.json, 6 in timeline.json) where name_local contains zero CJK characters. AC6.7 (Plan A/B/C orphan / mutex): partial PASS — zero [PRIMARY]+[Optional] mutex collisions; Fangsuo Bookstore (attractions Day 7, optional=true) has no matching timeline entry but is now optional=true so technically a Plan-B/C alt; cross-ref linter surfaces 29 pre-existing orphan POIs as WARN-only per spec design. AC6.8 (shopping Beijing→Chengdu): partial FAIL — notes_base updated to 'before departing for Chengdu' (PASS), notes_local at line 134 still says '建议回北京前的上午前往' (FAIL).",
+        "evidence": "Per-check Python output captured; specific line numbers and verbatim string contradictions documented in Section 6"
+      },
+      {
+        "requirement_id": "AC6",
+        "source_phrase": "Section 5.6: Delete the unauthorized plan_label field from all data files",
+        "criterion": "grep -rn '\"plan_label\"' data/china-20260412-092624/ returns ZERO matches; field removed from schemas/timeline.schema.json; AC1 hook blocks future re-introduction",
+        "verification_method": "Direct execution of spec's literal grep recipe + schema grep + AC1 hook live test",
+        "status": "fail",
+        "result": "fail",
+        "details": "Spec literal recipe: `grep -rn '\"plan_label\"' data/china-20260412-092624/` (recursive on directory). Result: 26 matches — 17 in transportation.json.bak, 8 in timeline.json.bak, 1 in .test_pl_check.json (leftover dev test artifact at line 279). Live data files (timeline.json, transportation.json, meals.json, etc.) have ZERO matches. schemas/timeline.schema.json has ZERO matches (plan_label property removed). AC1 hook BLOCKS plan_label re-introduction (verified live). Per the spec's literal recipe, this AC FAILS.",
+        "evidence": "grep -rn '\"plan_label\"' data/china-20260412-092624/ output captured (26 lines); grep schemas/timeline.schema.json (0 lines); AC1 live test output"
+      },
+      {
+        "requirement_id": "AC7",
+        "source_phrase": "Section 5.7: Cross-file referential integrity + plan completeness invariant",
+        "criterion": "Linter rejects orphan POI / hollow plan branch / triple-duplicate transit",
+        "verification_method": "Synthetic JSON files exercising each pattern; in-process call to cross_ref_findings_for_target",
+        "status": "pass",
+        "result": "pass",
+        "details": "Synthetic attractions with 'TOTALLY-ORPHAN-POI' (no timeline match) → orphan-poi finding; synthetic attractions with 1 [PLAN C] item + 2 [PLAN A] items → hollow-plan-branch finding for Plan C count=1; synthetic transp+timeline with 'Taxi to A' in 3 sources → duplicate-transit finding 'appears in 3 sources'. All three required scenarios reproduced. Note: linter's duplicate-transit threshold is >=3 sources (matches spec's 'triple-duplicate' wording); 2-source duplicates are NOT caught — per spec acceptance this is acceptable, but the surviving 五通桥→Leshan Station taxi 2-source duplicate (timeline.travel_segments + transportation.intra_city_routes) is documented as a follow-up.",
+        "evidence": "In-process Python output for all 3 synthetic scenarios"
+      },
+      {
+        "requirement_id": "AC9",
+        "source_phrase": "Section 5.9: User-language vs machine-schema boundary — translation mandatory, ad-hoc field forbidden",
+        "criterion": "grep -rnE '\"(plan_label|is_alternative|_isAlternative|tier|bundle_id|priority_label)\"' data/china-*/ returns ZERO matches; save.py rejects unknown fields with explicit error",
+        "verification_method": "Direct execution of spec's literal grep recipe + save.py CLI test with non-schema field input",
+        "status": "fail",
+        "result": "fail",
+        "details": "Spec literal recipe is recursive on directory. Result: 26 matches across .bak files + .test_pl_check.json (same as AC6 — all are plan_label residue, none are is_alternative/tier/bundle_id which were never in this codebase). Live data files: zero. save.py with stdin '{\"plan_label\":\"X\"}' → exit 1 'Error: Unknown field(s) [\\'plan_label\\'] for agent \\'timeline\\': not in schema. Use the schema-defined `optional` field instead (spec-20260506-092951 §5.9).' PASS at the CLI level; FAIL at the literal grep recipe level (same root cause as AC6).",
+        "evidence": "save.py invocation captured; grep -rnE '\"(plan_label|is_alternative|_isAlternative|tier|bundle_id|priority_label)\"' data/china-*/ output captured"
+      }
+    ],
+    "_success_criteria_rule": "Spec lists 8 ACs (AC1..AC9 minus AC8). All 8 verified.",
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "medium",
+      "rationale": "Harness root causes (no write-time validation, batch operations allowed, auto-commit polluting HEAD, no translation layer) are all materially addressed at the structural layer. Three data bugs (Day 8 traveler matrix, name_local CJK, shopping zh-CN) are not addressed because the migration script's heuristics didn't match. The user's '彻底修复' demand is harness-met but data-incomplete."
+    },
+    "build_verification": {
+      "status": "skipped",
+      "build_command": "n/a (terminal/data + harness work; no compiled artifact)",
+      "deploy_command": "n/a (no deployed service in this cycle)",
+      "build_output_summary": "Dev report self_verification: 'pass (python -m py_compile on all modified .py files; bash -n on hook .sh files)'. QA spot-checked: pretool-validate-data-write.py executes without exception under live stdin payload; posttool-git-checkpoint.sh executes successfully (rc=0); save.py executes for argparse failures (rc=1) and successful banned-key rejection (rc=1).",
+      "service_healthy": null,
+      "changes_verified_live": true,
+      "skip_reason": "Spec scope is harness/data, not deployed UI. No build/deploy step applies."
+    },
+    "script_quality_results": [
+      {
+        "script": ".claude/hooks/pretool-validate-data-write.py",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": []
+      },
+      {
+        "script": ".claude/hooks/posttool-git-checkpoint.sh",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": []
+      },
+      {
+        "script": ".claude/hooks/stop-git-commit.sh",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": []
+      },
+      {
+        "script": "scripts/save.py",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": []
+      },
+      {
+        "script": "scripts/check_plan_integrity.py",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": [
+          {
+            "severity": "minor",
+            "finding": "duplicate-transit threshold is >=3 sources; 2-source duplicates (timeline.travel_segments + transportation.intra_city_routes) are not surfaced. Spec used 'triple-duplicate' wording so this matches the literal AC, but the surviving 五通桥→Leshan Station taxi 2-source duplicate is a real residue.",
+            "location": "scripts/check_plan_integrity.py:243-244 (`len(set(sources)) >= 3`)",
+            "recommendation": "Optional: lower threshold to >=2 with WARN severity, keep >=3 for FAIL."
+          }
+        ]
+      },
+      {
+        "script": "scripts/migrate_spec_20260506.py",
+        "syntax_check": "pass",
+        "execution_test": "pass",
+        "standards_compliance": "pass",
+        "issues": [
+          {
+            "severity": "major",
+            "finding": "Migration heuristics missed (a) zh-CN '回北京前' variant in shopping.json:134 (only matched '赴北京前'), (b) 7 transit name_local entries that are English-only and need CJK translation, (c) Day 8 traveler matrix contradiction in entertainment.json — these are real spec acceptance failures, not just cosmetic gaps.",
+            "location": "scripts/migrate_spec_20260506.py (M4 bug functions)",
+            "recommendation": "Extend bug heuristics to catch '回X前' / '前往X前' variants; add explicit name_local CJK fixer for transit entries; add Day 8 traveler matrix reconciliation logic."
+          }
+        ]
+      }
+    ],
+    "regression_test_results": [
+      {
+        "test": "verify-plan-integrity.py --strict-schema on each of 9 China data files (timeline, transportation, budget, meals, entertainment, attractions, shopping, accommodation, cafe)",
+        "result": "pass",
+        "details": "All 9 files: verdict PASS (0 FAIL, 0 WARN under strict-schema)."
+      },
+      {
+        "test": "PreToolUse hook ordering: pretool-block-production-files.sh first, pretool-validate-data-write.py second on Write|Edit",
+        "result": "pass",
+        "details": ".claude/settings.json:103-115 confirms ordering."
+      },
+      {
+        "test": "No Bash matcher with regex re-introduced for redirect-pattern (parent-cycle force-close pattern)",
+        "result": "pass",
+        "details": "Settings.json Bash matchers: (1) pretool-bash-safety.sh (legitimate global guard), (2) Bash(git commit.*) → posttool-git-warn.sh (passive warning). pretool-block-production-files.sh and pretool-validate-data-write.py both use Write|Edit matcher (structured payload), NOT Bash regex on redirect strings."
+      }
+    ],
+    "code_quality_findings": [
+      {
+        "severity": "major",
+        "category": "leftover-dev-artifact",
+        "location": "data/china-20260412-092624/.test_pl_check.json",
+        "issue": "75KB leftover dev test artifact (untracked, mtime 2026-05-06T11:28:23Z, contains 'plan_label': 'X' at line 279). Created by dev cycle's AC1 testing and not cleaned up. Spec AC6 literal grep recipe catches this.",
+        "recommendation": "Remove file (rm); add data/*/.test_*.json + data/*/.tmp_*.json + data/*/.precheck-* to .gitignore."
+      },
+      {
+        "severity": "major",
+        "category": "untracked-policy-gap",
+        "location": "data/china-20260412-092624/*.bak (8 files, 3 git-tracked)",
+        "issue": "BA spec marked .bak files out-of-scope, but spec AC6/AC9 literal recipes (recursive grep) catch them. Either gitignore them or update spec recipe.",
+        "recommendation": "Decide: (a) git rm --force the 3 tracked .bak files + add data/*/*.bak to .gitignore; OR (b) explicitly amend spec AC6/AC9 recipes to use *.json glob instead of recursive."
+      }
+    ],
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 3,
+      "validated_permissions": [
+        {"pattern": "Bash(source venv/bin/activate && python3 scripts/migrate_spec_20260506.py:*)", "section": "allow", "status": "approved"},
+        {"pattern": "Bash(source venv/bin/activate && python3 scripts/check_plan_integrity.py:*)", "section": "allow", "status": "approved"},
+        {"pattern": "Bash(source venv/bin/activate && python3 scripts/verify-plan-integrity.py:*)", "section": "allow", "status": "approved"}
+      ],
+      "issues": []
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 11,
+      "violations": [],
+      "summary": {"critical": 0, "major": 0, "minor": 0}
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "no UI role table in spec scope (terminal/data work)",
+      "violations": []
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true,
+      "skip_reason": "Spec scope is data/harness; no UI. CLAUDE.md test plan correctly skipped Playwright per §5.8 exclusion of HTML render visual validation."
+    },
+    "ui_test_results": [],
+    "generated_tests": [],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "data/china-20260412-092624/entertainment.json (Day 8, entertainment[0])",
+        "issue": "Day 8 traveler matrix internally contradictory: notes_base='Both travelers evening' vs notes_local='Matilde独自夜间活动'. Same bug spec §1 named verbatim ('entertainment.json:370 English says Both travelers; :371 中文 says Matilde 单独').",
+        "recommendation": "Reconcile both fields to same traveler subset; if Matilde solo on this slot, English must say 'Matilde solo' not 'Both travelers'.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "data/china-20260412-092624/{meals.json, timeline.json}",
+        "issue": "AC5 / 5.5 bug 6 not fixed: 7 name_local fields contain zero CJK characters (1 in meals.json transit description, 6 in timeline.json taxi/transit entries).",
+        "recommendation": "Provide zh-CN translations for each via save.py --day N. See Section 7 for verbatim mapping suggestions.",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "data/china-20260412-092624/shopping.json:134",
+        "issue": "AC5 / 5.5 bug 8 partial fail: notes_local still says '建议回北京前的上午前往' (Beijing) while notes_base correctly says 'before departing for Chengdu'. Migration heuristic matched '赴北京前' but missed '回北京前' variant.",
+        "recommendation": "Update notes_local zh-CN to reflect Day 4 Chengdu departure.",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "data/china-20260412-092624/.test_pl_check.json",
+        "issue": "Leftover dev test artifact (75KB, untracked) containing 'plan_label': 'X' on line 279. Pollutes data dir; spec AC6/AC9 literal grep recipes catch this.",
+        "recommendation": "rm data/china-20260412-092624/.test_pl_check.json; add data/*/.test_*.json to .gitignore.",
+        "blocks_release": true
+      },
+      {
+        "severity": "minor",
+        "location": "data/china-20260412-092624/*.bak (3 git-tracked files)",
+        "issue": "Spec AC6/AC9 literal grep recipes catch .bak files. BA spec acknowledged out-of-scope, but the literal recipe says recursive — internal inconsistency.",
+        "recommendation": "Either gitignore .bak (option a) or amend spec recipes to *.json (option b).",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/check_plan_integrity.py:243-244",
+        "issue": "Cross-ref linter triple-duplicate threshold is >=3 sources; the surviving 五通桥→Leshan Station taxi 2-source duplicate (timeline.travel_segments + transportation.intra_city_routes) is not flagged. Spec used 'triple-duplicate' wording so technically PASS, but a real residue exists.",
+        "recommendation": "Optional: lower to >=2 with WARN severity, keep >=3 for FAIL.",
+        "blocks_release": false
+      }
+    ],
+    "summary": {
+      "critical_issues": 2,
+      "major_issues": 2,
+      "minor_issues": 2,
+      "total_findings": 6,
+      "release_recommendation": "reject"
+    },
+    "self_verification": {
+      "claims_total": 17,
+      "claims_with_evidence": 17,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "AC5 / 5.5 bug 2 (Day 8 traveler matrix consistency)",
+      "AC5 / 5.5 bug 6 (name_local CJK requirement)",
+      "AC5 / 5.5 bug 8 zh-CN side (shopping.json:134 notes_local)",
+      "AC6 (5.6) literal grep recipe (recursive on dir hits .bak + .test_pl_check.json)",
+      "AC9 (5.9) literal grep recipe (same as AC6)"
+    ],
+    "critical_issues": [
+      "entertainment.json Day 8 entertainment[0]: notes_base 'Both travelers evening' vs notes_local 'Matilde独自夜间活动' — verbatim spec §1 bug not actually fixed",
+      "7 name_local fields missing CJK characters across meals.json + timeline.json transit entries"
+    ],
+    "recommended_approach": "Run a targeted second migration pass: (a) 'rm data/*/.test_*.json' + .gitignore update; (b) save.py --day 8 reconciliation of entertainment.json Day 8 entertainment[0] (decide Matilde-solo vs Both-travelers, propagate to both notes_base + notes_local); (c) save.py --day N for each of 7 name_local CJK fixes (provide zh-CN translations); (d) save.py --day 4 update for shopping.json notes_local '回北京前' → '赴成都前'; (e) optionally gitignore .bak files OR amend spec recipes to *.json glob.",
+    "additional_context": "Harness mechanisms (AC1/AC2/AC3/AC4/AC7/AC9) are fully functional and should not be re-touched. Only the data-fix sub-criteria need a second pass. The harness itself blocks raw Write/Edit so the next pass must use save.py --day N (or DEV_MIGRATION_BYPASS for one-shot migration script extension)."
+  }
+}
