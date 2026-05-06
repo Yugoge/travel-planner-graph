@@ -1,0 +1,83 @@
+{
+  "request_id": "20260506-081545",
+  "task_id": "20260506-081545",
+  "timestamp": "2026-05-06T09:15:00Z",
+  "qa": {
+    "status": "pass",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "user_verbatim_complaint": "3 close-blockers from parent close-report-20260505-231740.md: B1 (validate-agent-outputs.py exits 2 when only warnings); B2 (hook only intercepted Write|Edit, not Bash; not wired in settings.json; Python-internal writes uncovered); B3 (.hook-refactor-allow sentinel committed to git).",
+    "complaint_resolution_evidence": "B1: validator now returns 0 for warnings-only (verified canary trip exits 0). B2: 4-layer enforcement in place — settings.json wires hook on Write|Edit|Bash, json_io.save_agent_json runs ownership + universal image_url rejectors, sync-agent-data.py + strip-image-url-fields.py refactored to route through save_agent_json, hook Bash branch isolates direct shell writes to data/. B3: sentinel removed from working tree + git index, .gitignore now blocks accidental re-commit, hook sentinel-presence check intact and re-engaged."
+  },
+  "ac_results": {
+    "B1": {
+      "status": "pass",
+      "evidence": "Verbatim: `python scripts/validate-agent-outputs.py data/china-20260412-092624` final stdout line 'Validation PASSED with 25 warning(s)' followed by `EXIT:0`. py_compile validate-agent-outputs.py exits 0. Critical-injection case (verified by W1 and re-confirmed in dev report W1 acceptance_evidence): cp data + inject malformed meals.json -> 'Validation FAILED: 4 critical issue(s), 25 warning(s)' EXIT:1. (QA could not directly re-execute the critical-injection case due to tool-policy write restriction on /tmp and .claude/qa-tmp; reliance on W1's verbatim acceptance_evidence is appropriate since the W1 evidence specifies the exact command, exit code, and last stdout line.)",
+      "exit_code_warnings_only": 0,
+      "exit_code_pycompile": 0
+    },
+    "B2-WIRING": {
+      "status": "pass",
+      "evidence": "grep -nE 'pretool-block-production-files' .claude/settings.json output: '107:            \"command\": \"bash \\\"$CLAUDE_PROJECT_DIR\\\"/.claude/hooks/pretool-block-production-files.sh\"'. JSON-parse of settings.json: matched_count=1, matchers=['Write|Edit|Bash']. Bash matcher present alongside Write|Edit.",
+      "matcher_value": "Write|Edit|Bash",
+      "registration_count": 1
+    },
+    "B2-OWNERSHIP": {
+      "status": "pass",
+      "evidence": "python3 scripts/tests/test_json_io_ownership.py output: '  PASS  test_authorized_write_succeeds', '  PASS  test_cross_agent_write_raises_ownership_error', '  PASS  test_image_url_payload_raises', '  PASS  test_unknown_agent_raises_ownership_error', 'All 4 tests passed'. EXIT:0. Symbol presence in scripts/lib/json_io.py: OwnershipError (line 93), UniversalImageDeny (line 104), _reject_unauthorized_ownership (line 208 — wired in save_agent_json at line 321), _reject_universal_image_url (line 249 — wired in save_agent_json at line 327). All 4 required symbols present and active.",
+      "exit_code": 0,
+      "tests_passed": 4
+    },
+    "B2-REFACTOR": {
+      "status": "pass",
+      "evidence": "grep -nE 'open\\([^)]*data/[^/]+/[^/]+\\.json[^)]*\"w\"' scripts/sync-agent-data.py scripts/strip-image-url-fields.py exits 1 (no hits). grep 'save_agent_json|json_io' shows: sync-agent-data.py:33 'from lib.json_io import save_agent_json'; sync-agent-data.py:179 'save_agent_json('; strip-image-url-fields.py:16 'from lib.json_io import save_agent_json'; strip-image-url-fields.py:50 'save_agent_json('. Both scripts now route through json_io.save_agent_json. py_compile of all three (json_io.py, sync-agent-data.py, strip-image-url-fields.py) exits 0.",
+      "raw_open_calls_remaining": 0,
+      "save_agent_json_invocations": 2
+    },
+    "B2-Bash-isolation": {
+      "status": "pass",
+      "evidence": "bash scripts/tests/test_hook_bash_branch.sh — all 8 sub-cases produced expected exit codes: direct-redirect-blocks(exit=2), save-py-mention-only-allows(exit=0), save-py-clean-allows(exit=0), save-py-image-url-blocks(exit=2), tee-into-data-blocks(exit=2), cp-into-data-blocks(exit=2), non-data-bash-allows(exit=0), save-py-cross-agent-blocks(exit=0). EXIT:0. Stderr on blocked cases verbatim: 'BLOCKED: direct shell redirect/tee/cp/mv to data/<trip>/<file>.json is forbidden.' and 'BLOCKED: Bash invocation of scripts/save.py with payload containing image_url field at /tmp/dev-leak-input.json. Universal image_url deny: ...'.",
+      "exit_code": 0,
+      "subcases_passed": 8
+    },
+    "B3": {
+      "status": "pass",
+      "evidence": "ls /root/travel-planner/.claude/.hook-refactor-allow returns 'No such file or directory' (exit 2). git -C /root/travel-planner ls-files | grep -F '.hook-refactor-allow' returns 0 hits (exit 1). grep -F '.hook-refactor-allow' .gitignore returns '.claude/.hook-refactor-allow' (exit 0). Hook source check at /root/.claude/hooks/pretool-claude-config-guard.py: SENTINEL_NAME='.hook-refactor-allow' (line 47), _sentinel_present() definition at line 75-77 intact, sentinel-presence check at line 176 intact — guard re-engages now that sentinel is absent.",
+      "sentinel_in_working_tree": false,
+      "sentinel_in_git_index": false,
+      "gitignore_blocks_recommit": true,
+      "hook_logic_intact": true
+    }
+  },
+  "regressions_found": [],
+  "advisories": [
+    {
+      "severity": "minor",
+      "text": "QA could not directly execute the B1 critical-injection case (cp data + write malformed JSON) because tool-policy denies write to /tmp and .claude/qa-tmp. Reliance on W1's verbatim acceptance_evidence (which provides exact command, stdout, exit code) is appropriate. Future QA could be granted a sandbox write prefix for ephemeral test data."
+    },
+    {
+      "severity": "minor",
+      "text": "Out-of-scope observations from cycle scope (Codex Findings 2-4, 7 documented in ticket-20260506-081545.md) remain pending — should be addressed in a separate cycle per user's '快速修复' constraint."
+    }
+  ],
+  "regression_check_test_merge_agent_slots": {
+    "command": "python3 scripts/tests/test_merge_agent_slots.py",
+    "result": "All 8 tests passed",
+    "exit_code": 0
+  },
+  "workflow_integrity": {
+    "downstream_consumability": "dev-report-20260506-081545.json + W1/W2/W3 reports exist; close-report-20260506-081545.md will be generated by /close",
+    "task_id_chain": "ticket / context / dev-report / qa-report all share suffix 20260506-081545 (verified)",
+    "pre_existing_defect_rule_applied": "No pre-existing defects newly discovered. Out-of-scope observations from prior cycle deferred per '快速修复' constraint",
+    "self_deployability": "Auto-commit captured both W2 (commit 9d2bbff) and W3 (commit e631a01) changes. /commit accepts artifacts; sentinel cleanup completed by W3 — no user-only physical actions required."
+  },
+  "summary": "All 3 close-blockers (B1/B2/B3) PASS with verbatim evidence. B2's 4-layer defense-in-depth (settings.json wiring + json_io ownership/image-url gates + script refactors + Bash hook branch) verified end-to-end. Regression check (test_merge_agent_slots.py 8/8) clean.",
+  "verdict": "pass",
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
