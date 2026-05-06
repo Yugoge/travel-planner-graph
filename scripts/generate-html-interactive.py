@@ -3040,17 +3040,17 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
                         ) : (
                           <span>{entry._label}: {getDisplayName(entry, lang)}</span>
                         )}
-                        {(entry.optional || entry._isAlternative) && showDetails && (
+                        {entry.optional && showDetails && (
                           <span style={{
                             fontSize: `${9 * fontScale}px`,
                             padding: '1px 4px',
-                            background: entry._isAlternative ? '#edf2fc' : '#f5f5f3',
+                            background: '#f5f5f3',
                             borderRadius: '3px',
-                            color: entry._isAlternative ? '#2b63b5' : '#9b9a97',
+                            color: '#9b9a97',
                             marginLeft: '4px',
                             verticalAlign: 'middle'
                           }}>
-                            {entry._isAlternative ? (lang === 'local' ? '备选' : 'Alt') : L('optional', lang)}
+                            {L('optional', lang)}
                           </span>
                         )}
                       </div>
