@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-06T12:49:38Z*
-**Total entries**: 240
+*Last updated: 2026-05-06T14:23:00Z*
+**Total entries**: 241
 **Convention**: kebab
 
 ## Tree
@@ -246,7 +246,8 @@ dev/
 ├── `ticket-20260505-175102.md` - BA Specification: Forward-fix two CLOSE: NO defects from prior cycle 20260505-124619
 ├── `ticket-20260505-231740.md` - BA Specification: Codex-signed harness upgrade — full 10-step plan
 ├── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
-└── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+├── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+└── `ticket-20260506-141814.md` - BA Specification: Close residual gaps from spec-20260506-092951 (2-item follow-on)
 ```
 
 ---
