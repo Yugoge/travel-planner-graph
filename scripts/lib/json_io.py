@@ -137,6 +137,127 @@ def _check_payload_for_http_image_url(payload_text: str) -> bool:
     return bool(re.search(r'"image_url"\s*:\s*"http://', payload_text))
 
 
+def _project_root() -> Path:
+    """Resolve project root for locating .claude/agents/<name>.md."""
+    env_root = os.environ.get('CLAUDE_PROJECT_DIR')
+    if env_root:
+        return Path(env_root)
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def _parse_owned_files_block(fm_text: str) -> List[str]:
+    """Extract owned_files regex strings from YAML frontmatter text."""
+    owned: List[str] = []
+    in_block = False
+    for line in fm_text.splitlines():
+        if re.match(r'^owned_files:\s*$', line):
+            in_block = True
+            continue
+        if not in_block:
+            continue
+        sm = re.match(r'^-\s+(.+?)\s*$', line)
+        if sm:
+            owned.append(sm.group(1))
+        elif re.match(r'^\S', line):
+            in_block = False
+    return owned
+
+
+def _load_owned_files(agent_name: str) -> List[str]:
+    """Read owned_files regex list from .claude/agents/<agent_name>.md
+    frontmatter. Returns empty list when missing/unparseable."""
+    agent_md = _project_root() / '.claude' / 'agents' / f'{agent_name}.md'
+    if not agent_md.is_file():
+        return []
+    try:
+        src = agent_md.read_text(encoding='utf-8')
+    except OSError:
+        return []
+    m = re.search(r'(?ms)^---\n(.*?)\n---\n', src)
+    if not m:
+        return []
+    return _parse_owned_files_block(m.group(1))
+
+
+def _path_relative_to_root(file_path: Path) -> str:
+    """Render file_path relative to project root for owned_files matching."""
+    root = _project_root()
+    file_path = Path(file_path)
+    try:
+        return str(file_path.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return os.path.relpath(str(file_path), str(root))
+
+
+def _safe_re_match(pattern: str, value: str) -> bool:
+    """Return bool(re.match(pattern, value)); swallow regex compile errors."""
+    try:
+        return bool(re.match(pattern, value))
+    except re.error:
+        return False
+
+
+def _path_matches_any(rel_path: str, patterns: List[str]) -> bool:
+    """True iff rel_path matches at least one regex in patterns."""
+    for pat in patterns:
+        if _safe_re_match(pat, rel_path):
+            return True
+    return False
+
+
+def _reject_unauthorized_ownership(file_path: Path, agent_name: str) -> None:
+    """Raise OwnershipError when file_path is not in agent's owned_files.
+
+    Persistence-layer counterpart to pretool-block-production-files.sh
+    Check 2. Catches Python-internal writes invisible to Bash hooks.
+    """
+    rel_path = _path_relative_to_root(file_path)
+    owned = _load_owned_files(agent_name)
+    if not owned:
+        raise OwnershipError(
+            f"agent '{agent_name}' has no owned_files allowlist "
+            f"(checked .claude/agents/{agent_name}.md frontmatter); "
+            f"refusing write to {rel_path}."
+        )
+    if not _path_matches_any(rel_path, owned):
+        raise OwnershipError(
+            f"agent '{agent_name}' attempted to write {rel_path}, which is "
+            f"not in its owned_files allowlist. Allowed patterns: {owned}. "
+            f"See .claude/agents/{agent_name}.md frontmatter."
+        )
+
+
+def _expand_node_children(node: Any, stack: List[Any]) -> None:
+    """Push children of a JSON node onto stack for iterative traversal."""
+    if isinstance(node, dict):
+        stack.extend(node.values())
+    elif isinstance(node, list):
+        stack.extend(node)
+
+
+def _walk_payload_for_image_url(node: Any) -> bool:
+    """True iff any dict node in the JSON tree contains an `image_url` key."""
+    stack: List[Any] = [node]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict) and 'image_url' in cur:
+            return True
+        _expand_node_children(cur, stack)
+    return False
+
+
+def _reject_universal_image_url(envelope: dict) -> None:
+    """Raise UniversalImageDeny if envelope contains an `image_url` key
+    anywhere in the JSON tree. Mirrors hook check 3 at persistence layer."""
+    if _walk_payload_for_image_url(envelope):
+        raise UniversalImageDeny(
+            "Persistence layer refused payload: 'image_url' field is "
+            "forbidden in agent JSON (universal image_url deny). "
+            "Images live in data/<trip>/images.json only and are "
+            "populated exclusively by scripts/fetch-images-batch.py."
+        )
+
+
 def _reject_unsafe_image_payloads(envelope: dict) -> None:
     """Raise StockImageRejected when the JSON-serialized envelope contains
     stock-image URLs or http:// image_url values. ``key=AIzaSy...`` is
@@ -191,6 +312,19 @@ def save_agent_json(
         "data": data,
         "notes": ""
     }
+
+    # Persistence-layer ownership gate (iter 2 / W2): closes the Python-
+    # internal-write surface invisible to Bash PreToolUse hooks. Reads
+    # owned_files regex list from .claude/agents/<agent_name>.md frontmatter
+    # and rejects any write whose file_path does not match. Runs BEFORE
+    # validation/payload checks because ownership is a stronger gate.
+    _reject_unauthorized_ownership(file_path, agent_name)
+
+    # Universal image_url deny (iter 2 / W2): mirrors hook Check 3 at the
+    # persistence layer. ANY image_url field in the payload is rejected,
+    # regardless of agent. Stricter sibling _reject_unsafe_image_payloads
+    # additionally blocks stock-image domains and http:// schemes.
+    _reject_universal_image_url(envelope)
 
     # Validate before write
     if validate:

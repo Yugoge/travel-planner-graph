@@ -25,9 +25,202 @@ INPUT=$(cat)
 
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
 
-# Only act on Write and Edit tools
+# Iter 2 (spec-20260505-221501 / W2): Bash branch added so this hook also
+# intercepts the canonical data-write surface (python scripts/save.py +
+# direct shell redirects to data/<trip>/<file>.json). Architect concern_6
+# binding: SAME hook file, no separate hook stack.
 case "$TOOL_NAME" in
   Write|Edit) ;;
+  Bash)
+    HOOK_PAYLOAD="$INPUT" python3 - << 'PYBASH_EOF'
+import json
+import os
+import re
+import sys
+
+INPUT_JSON = os.environ.get('HOOK_PAYLOAD', '')
+try:
+    payload = json.loads(INPUT_JSON)
+except Exception:
+    sys.exit(0)
+
+tool_input = payload.get('tool_input', {}) or {}
+command = tool_input.get('command', '') or ''
+if not command:
+    sys.exit(0)
+
+
+def emit_block(message):
+    sys.stderr.write(message)
+    sys.exit(2)
+
+
+def detects_save_py(cmd):
+    return bool(re.search(
+        r'(^|[;&|]|\s)python(3?)\s+(\S*/)?scripts/save\.py\b', cmd
+    ))
+
+
+def detects_strip_image_url(cmd):
+    return bool(re.search(
+        r'(^|[;&|]|\s)python(3?)\s+(\S*/)?scripts/strip-image-url-fields\.py\b',
+        cmd,
+    ))
+
+
+def detects_sync_agent_data(cmd):
+    return bool(re.search(
+        r'(^|[;&|]|\s)python(3?)\s+(\S*/)?scripts/sync-agent-data\.py\b', cmd
+    ))
+
+
+def detects_direct_data_write(cmd):
+    patterns = [
+        r'>>?\s*\S*data/[^/\s]+/[^/\s]+\.json',
+        r'tee\s+(-a\s+)?\S*data/[^/\s]+/[^/\s]+\.json',
+        r'\bcp\s+\S+\s+\S*data/[^/\s]+/[^/\s]+\.json',
+        r'\bmv\s+\S+\s+\S*data/[^/\s]+/[^/\s]+\.json',
+    ]
+    return any(re.search(p, cmd) for p in patterns)
+
+
+def extract_input_path(cmd):
+    m = re.search(r'--input\s+(\S+)', cmd)
+    return m.group(1) if m else ''
+
+
+def extract_agent_name(cmd):
+    m = re.search(r'--agent\s+(\S+)', cmd)
+    return m.group(1) if m else ''
+
+
+def project_root():
+    return os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner')
+
+
+def parse_owned_block(fm_text):
+    owned = []
+    in_block = False
+    for line in fm_text.splitlines():
+        if re.match(r'^owned_files:\s*$', line):
+            in_block = True
+            continue
+        if not in_block:
+            continue
+        sm = re.match(r'^-\s+(.+?)\s*$', line)
+        if sm:
+            owned.append(sm.group(1))
+        elif re.match(r'^\S', line):
+            in_block = False
+    return owned
+
+
+def load_agent_owned_files(agent_name):
+    if not agent_name:
+        return []
+    agent_md = os.path.join(
+        project_root(), '.claude', 'agents', f'{agent_name}.md'
+    )
+    if not os.path.isfile(agent_md):
+        return []
+    try:
+        with open(agent_md, 'r', encoding='utf-8') as f:
+            src = f.read()
+    except OSError:
+        return []
+    fm = re.search(r'(?ms)^---\n(.*?)\n---\n', src)
+    if not fm:
+        return []
+    return parse_owned_block(fm.group(1))
+
+
+def safe_match(pat, value):
+    try:
+        return bool(re.match(pat, value))
+    except re.error:
+        return False
+
+
+def scan_payload_for_image_url(node):
+    stack = [node]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict) and 'image_url' in cur:
+            return True
+        if isinstance(cur, dict):
+            stack.extend(cur.values())
+        elif isinstance(cur, list):
+            stack.extend(cur)
+    return False
+
+
+def parse_save_py_input(input_path):
+    if not input_path or not os.path.isfile(input_path):
+        return None
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def check_save_py_image_url(cmd):
+    input_path = extract_input_path(cmd)
+    payload_obj = parse_save_py_input(input_path)
+    if payload_obj is not None and scan_payload_for_image_url(payload_obj):
+        emit_block(
+            "BLOCKED: Bash invocation of scripts/save.py with payload "
+            f"containing 'image_url' field at {input_path}.\n"
+            "Universal image_url deny: no agent (or script) may directly "
+            "write image_url. Images live in data/<trip>/images.json only.\n"
+        )
+
+
+def check_save_py_ownership(cmd):
+    agent_name = extract_agent_name(cmd)
+    if not agent_name:
+        return
+    trip_match = re.search(r'--trip\s+(\S+)', cmd)
+    if not trip_match:
+        return
+    target_rel = f"data/{trip_match.group(1)}/{agent_name}.json"
+    owned = load_agent_owned_files(agent_name)
+    if owned and not any(safe_match(p, target_rel) for p in owned):
+        emit_block(
+            f"BLOCKED: Bash save.py invocation for agent '{agent_name}' "
+            f"would write {target_rel}, which is not in its owned_files "
+            f"allowlist.\nAllowed patterns: {owned}\n"
+            f"See .claude/agents/{agent_name}.md frontmatter.\n"
+        )
+
+
+def check_save_py_invocation(cmd):
+    check_save_py_image_url(cmd)
+    check_save_py_ownership(cmd)
+
+
+def main():
+    if detects_direct_data_write(command):
+        emit_block(
+            "BLOCKED: direct shell redirect/tee/cp/mv to "
+            "data/<trip>/<file>.json is forbidden.\n"
+            "Use `python scripts/save.py --trip <slug> --agent <name> "
+            "--input <file>` instead. The canonical save path enforces "
+            "schema validation, ownership, and image_url deny.\n"
+        )
+    if detects_save_py(command):
+        check_save_py_invocation(command)
+    if detects_strip_image_url(command) or detects_sync_agent_data(command):
+        # Both scripts route through json_io.save_agent_json (iter 2 / W2).
+        # Persistence-layer rejectors fire there; allow at Bash gate.
+        sys.exit(0)
+    sys.exit(0)
+
+
+main()
+PYBASH_EOF
+    exit $?
+    ;;
   *) exit 0 ;;
 esac
 

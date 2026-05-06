@@ -26,6 +26,12 @@ from pathlib import Path
 from datetime import datetime
 from copy import deepcopy
 
+# Route persistence through the canonical save layer so the iter-2 ownership
+# rejector + universal image_url deny + stock-image deny all fire on every
+# Python-internal write (sync-agent-data is invisible to Bash hooks).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib.json_io import save_agent_json  # noqa: E402
+
 
 CHECKIN_WINDOW_MINUTES = 60  # Default check-in duration for accommodation
 
@@ -158,28 +164,26 @@ class AgentDataSyncer:
             return {}
 
     def _save_json(self, filename: str, data: dict):
-        """Save JSON file, wrapping in 'data' envelope."""
+        """Save JSON file via the canonical persistence layer.
+
+        Iter 2 (spec-20260505-221501 / W2): routes every write through
+        json_io.save_agent_json so the per-agent ownership rejector,
+        universal image_url deny, and stock-image deny all fire on this
+        Python-internal write surface. Direct open()/json.dump() bypassed
+        these gates entirely (B2 root cause).
+        """
         if self.dry_run:
             return
         path = self.data_dir / filename
-        # Read original to preserve metadata
-        original = {}
-        if path.exists():
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    original = json.load(f)
-            except Exception:
-                pass
-
-        # Wrap in data envelope if original had one
-        if "data" in original and isinstance(original["data"], dict):
-            original["data"] = data
-            output = original
-        else:
-            output = {"data": data}
-
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
+        agent_name = path.stem
+        save_agent_json(
+            path,
+            agent_name=agent_name,
+            data=data,
+            validate=False,
+            create_backup=False,
+            allow_high_severity=True,
+        )
         print(f"  Saved: {filename}")
 
     def _normalize_time(self, time_val, default_duration_hours: float = 1.0) -> dict:
