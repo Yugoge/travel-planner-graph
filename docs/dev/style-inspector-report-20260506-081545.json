@@ -1,0 +1,114 @@
+{
+  "request_id": "20260506-081545",
+  "timestamp": "2026-05-06T08:30:00Z",
+  "inspector": "style-inspector",
+  "mode": "changed-files-scoped",
+  "ac_2_6_default_safe": true,
+  "cycle_context": "redev addressing 3 close-blockers from cycle 20260505-231740",
+  "scope": {
+    "changed_files_count": 9,
+    "auditable_files_count": 7,
+    "skipped_files_count": 2,
+    "skipped_reason": ".claude/settings.json (JSON config, not code/command/agent/script — out of scope for all 11 standards), .gitignore (build metadata, not code — out of scope)"
+  },
+  "files_audited": [
+    ".claude/hooks/pretool-block-production-files.sh",
+    "scripts/lib/json_io.py",
+    "scripts/strip-image-url-fields.py",
+    "scripts/sync-agent-data.py",
+    "scripts/tests/test_hook_bash_branch.sh",
+    "scripts/tests/test_json_io_ownership.py",
+    "scripts/validate-agent-outputs.py"
+  ],
+  "violations": [],
+  "advisory_notes": [
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "advisory",
+      "location": "scripts/tests/test_hook_bash_branch.sh:3",
+      "finding": "HOOK=/root/travel-planner/.claude/hooks/pretool-block-production-files.sh (absolute hardcoded path); also hardcoded /tmp/dev-clean-input.json, /tmp/dev-leak-input.json, china-20260412-092624 trip slug throughout test cases",
+      "newness": "new-in-this-diff",
+      "rationale_for_default_safe_ignore": "This is a test fixture script that pins assertions to a specific hook path and specific test data. Test harnesses conventionally hardcode the system-under-test path because the test only validates ONE specific hook. The /tmp/* and china-20260412-092624 are deterministic test inputs whose values are arbitrary (the hook treats them as opaque strings). Standard 2's stated rationale ('break portability and configuration') does not apply: this test script's purpose IS to exercise this exact hook. Per AC-2.6 default-safe rule: when violation classification is ambiguous due to file kind (test fixture vs production script), default to ignore.",
+      "decision": "not-flagged"
+    },
+    {
+      "standard": "use-source-venv",
+      "severity": "advisory",
+      "location": "scripts/tests/test_hook_bash_branch.sh:24,34,40,60",
+      "finding": "Test envelope JSON strings contain literal 'python3 scripts/save.py ...' commands",
+      "newness": "new-in-this-diff",
+      "rationale_for_default_safe_ignore": "These python3 strings are TEST INPUT DATA fed into the hook as JSON tool_input.command payloads — they simulate the Bash tool calls the hook validates. They are not actual Python execution by the test script itself. The test harness uses 'bash $HOOK' (line 9), not python3. Standard 3 targets actual Python invocations; embedded test fixture strings simulating user commands are out of scope. Per AC-2.6 default-safe rule: ambiguous → ignore.",
+      "decision": "not-flagged"
+    },
+    {
+      "standard": "no-inline-code",
+      "severity": "advisory",
+      "location": ".claude/hooks/pretool-block-production-files.sh:35-221",
+      "finding": "Embedded python heredoc PYBASH_EOF block (~187 lines of Python logic inside Bash hook script)",
+      "newness": "new-in-this-diff",
+      "rationale_for_default_safe_ignore": "Standard 1 explicitly scopes to '.claude/commands/*.md and .claude/agents/*.md' (command/agent files), NOT to .claude/hooks/*.sh files. Hooks ARE scripts by definition; embedded Python in hook scripts is the established project convention (the file's existing PYHOOK_EOF block at line 269 is pre-existing and unchallenged). Architect concern_6 binding explicitly required the SAME hook file (no separate stack), forcing the Bash branch into this file. Per AC-2.6 default-safe rule: out-of-detection-scope per Standard 1's stated file glob → not flagged.",
+      "decision": "not-flagged"
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "advisory",
+      "location": ".claude/hooks/pretool-block-production-files.sh:98,309",
+      "finding": "Both PYBASH_EOF and PYHOOK_EOF blocks use os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner') with project-specific fallback path",
+      "newness": "ambiguous (PYHOOK_EOF pre-existing per prior cycle audit; PYBASH_EOF mirrors it for consistency)",
+      "rationale_for_default_safe_ignore": "Pattern IS parameterized via CLAUDE_PROJECT_DIR env var with a documented fallback (Standard 9 acceptable parameterization pattern). The new PYBASH_EOF block deliberately mirrors the pre-existing PYHOOK_EOF idiom for consistency within the same hook file. Already documented as advisory-not-flagged in prior cycle (style-inspector-report-20260505-231740.json). Per AC-2.6 default-safe rule: ambiguous → ignore.",
+      "decision": "not-flagged"
+    },
+    {
+      "standard": "english-only",
+      "severity": "advisory",
+      "location": "scripts/sync-agent-data.py:460",
+      "finding": "Chinese characters '中文名' in regex comment '# Try to split \"English Name (中文名)\" pattern'",
+      "newness": "pre-existing (introduced 2026-02-08 commit 118988c, not modified in this cycle's diff)",
+      "rationale_for_default_safe_ignore": "Verified via git diff HEAD~5 HEAD -- scripts/sync-agent-data.py: line 460 is unchanged. The Chinese characters illustrate the regex pattern this code parses (bilingual 'English Name (中文名)' input format) and predate this cycle by 3 months. Per AC-2.6 default-safe rule: pre-existing → ignore.",
+      "decision": "not-flagged"
+    },
+    {
+      "standard": "merge-conflicts",
+      "severity": "advisory",
+      "location": "scripts/lib/json_io.py (multiple lines with `# ====` decorative separators)",
+      "finding": "detect-merge-conflicts.sh flagged file due to '=======' substring match",
+      "newness": "false-positive",
+      "rationale_for_default_safe_ignore": "Manual inspection: lines 65, 67, 278, 280, 527, 529 are Python comment dividers ('# ============================================================'), not git merge conflict markers. There are no '<<<<<<<' or '>>>>>>>' markers in the file (verified via grep). The detector is over-eager. Per AC-2.6 default-safe rule: false-positive → not flagged.",
+      "decision": "not-flagged"
+    }
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 0,
+    "critical": 0,
+    "advisory_notes": 6,
+    "files_audited": 7,
+    "files_total": 9,
+    "rounds_completed": 1
+  },
+  "standards_passed": [
+    "no-inline-code (Standard 1) - no new inline executable code in command/agent .md files; embedded Python in hook .sh files is out of Standard 1's scope and matches pre-existing convention in same file",
+    "no-hardcoded-values (Standard 2) - new code in scripts/lib/json_io.py uses _project_root() with CLAUDE_PROJECT_DIR env var fallback; new agent-name-derived paths in strip-image-url-fields.py and sync-agent-data.py use path.stem (computed, not hardcoded); test fixture hardcoded paths are conventional and ruled advisory-not-flagged",
+    "use-source-venv (Standard 3) - no new direct python3 invocations in production code; test envelope JSON strings (test data) ruled advisory-not-flagged; existing source venv conventions preserved",
+    "integer-step-numbering (Standard 4) - no new markdown 'Step N.M' or 'Step Na' patterns introduced; no .md files in this cycle's diff use step numbering",
+    "meaningful-naming (Standard 5) - no new files introduced (test files have descriptive names: test_hook_bash_branch, test_json_io_ownership); no 'enhance-*', 'fast-*', 'improved-*', '-v2' patterns",
+    "english-only (Standard 6) - no NEW Chinese characters introduced in this cycle's diff; the single hit at sync-agent-data.py:460 is pre-existing (verified via git diff)",
+    "merge-similar-scripts (Standard 7) - new test files exercise distinct surfaces (test_hook_bash_branch.sh tests hook Bash branch; test_json_io_ownership.py tests Python persistence layer); strip-image-url-fields.py and sync-agent-data.py refactors route through json_io (consolidating, not duplicating)",
+    "concise-documentation (Standard 8) - new docstrings and comments are technical and rationale-bearing (cite spec/iter/RC numbers); no marketing language, no story-style prose, no repetitive examples; test docstrings explain what is verified",
+    "parameterized-scripts (Standard 9) - new save_agent_json calls in strip-image-url-fields.py and sync-agent-data.py pass agent_name from path.stem (computed); _project_root() uses env var with fallback; test_json_io_ownership.py uses os.getpid() for unique trip slug",
+    "dangling-references (Standard 10) - all new imports resolve: 'from lib.json_io import save_agent_json' resolves to scripts/lib/json_io.py (exists); test imports OwnershipError, StockImageRejected, UniversalImageDeny — all defined in json_io.py",
+    "merge-conflicts (Standard 11) - no actual merge-conflict markers in changed files; detector false-positive on Python decorative separators ruled out by manual grep for '<<<<<<<' / '>>>>>>>'"
+  ],
+  "diff_baseline": {
+    "base_commit_approx": "HEAD~5 (covering pre-cycle-20260506-081545 state)",
+    "head_commit": "HEAD (current working tree)",
+    "method": "git diff HEAD~5 HEAD -- <file> for each changed file; only lines marked '+' inspected for NEW violations; cross-checked against prior cycle baseline style-inspector-report-20260505-231740.json"
+  },
+  "ac_2_6_compliance_notes": [
+    "Pre-existing patterns preserved on modified lines (e.g., scripts/sync-agent-data.py:460 Chinese regex comment) are NOT flagged as NEW.",
+    "Test fixture hardcoding (test_hook_bash_branch.sh) is conventional for system-under-test pinning and ruled advisory-not-flagged per Standard 2 stated rationale ('break portability and configuration') — purpose of the test IS to validate this specific hook.",
+    "Embedded Python heredocs in .sh hook files are explicitly out of Standard 1's stated scope ('.claude/commands/*.md and .claude/agents/*.md').",
+    "Six advisory notes documented above were considered and explicitly ruled out as provably-NEW per AC-2.6 default-safe rule. Each has a specific defense: out-of-scope-detection, pre-existing, false-positive, or env-var-parameterization.",
+    "All three close-blockers from cycle 20260505-231740 were addressed in this cycle without introducing new style violations: hook Bash branch addition (concern_6 binding), persistence-layer ownership/image_url deny in json_io, and refactor of strip-image-url-fields/sync-agent-data to route through canonical save layer."
+  ]
+}
