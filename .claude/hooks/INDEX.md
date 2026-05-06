@@ -1,6 +1,6 @@
 # hooks
 
-*Last updated: 2026-05-06T11:04:59Z*
+*Last updated: 2026-05-06T11:05:27Z*
 **Total entries**: 53
 **Convention**: kebab
 
@@ -56,7 +56,7 @@ hooks/
 ├── `session_start.sh` - SessionStart Hook - Display working environment info
 ├── `smart-checkpoint.sh` - smart-checkpoint.sh - Intelligent auto-checkpoint system
 ├── `start-fswatch-all.sh` - start-fswatch-all.sh - Start fswatch monitoring for all important repositories
-├── `stop-git-commit.sh` - ============================================================================
+├── `stop-git-commit.sh` - stop-git-commit.sh — Stop-hook: snapshot to refs/checkpoints/<branch> only.
 ├── `stop-overnight-timelock.py` - Stop Hook: Block conversation termination until overnight end-time
 ├── `stop-workflow-enforce.py` - Stop Hook: Enforce workflow structural integrity before allowing Claude to stop
 └── `userprompt-doc-sync-check.py` - UserPromptSubmit Hook: Periodic file deletion detection for doc-sync
