@@ -1,7 +1,7 @@
 # specs
 
-*Last updated: 2026-05-06T14:36:49Z*
-**Total entries**: 23
+*Last updated: 2026-05-08T22:13:40Z*
+**Total entries**: 24
 **Convention**: kebab
 
 ## Tree
@@ -29,7 +29,8 @@ specs/
 ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
-└── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+├── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
+└── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
 ```
 
 ---
