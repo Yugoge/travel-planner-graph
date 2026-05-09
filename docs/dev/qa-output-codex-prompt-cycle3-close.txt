@@ -1,0 +1,65 @@
+USER REQUIREMENT: User wants systematic ban of g-aode/a-map (Chinese mapping service) skill for all subagents EXCEPT timeline and transportation, enforced at BOTH harness and prompt layers. Verbatim user text: "系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill。使用 harness 原则，并且在 prompt 中也禁止。"
+SCOPE: find bugs in cycle-3 redev that PREVENT or THREATEN this requirement holding for the user's threat model ("agent forgets the rule", non-adversarial agent that may try the wrong tool/path/URL through honest mistake).
+OUT OF SCOPE: adjacent attack vectors outside that threat model (base64-decoded payloads, eval/$()/format-string injection, shell-glob-brace adversarial constructs the user did not ask to defend against), style preferences, defensive hardening the user didn't request.
+
+---
+
+QA close-debate Round 1b adversarial review for cycle-3 redev of spec-20260508-221237 task-id 20260509-114002.
+
+This is the SECOND /close attempt. The FIRST attempt (cycle 1 only, dated 2026-05-09T15:18Z) returned CLOSE: NO with 4 findings:
+1. Glob pattern field bypass — _check_g-aode_read read only file_path/path
+2. MCP browser_navigate bypass — _check_g-aode_webfetch only matched WebFetch tool
+3. AC6 verification gap — timeline/transportation not in tool-policy.v1.json roles dict
+4. BA-QA r2 invalid JSON — line 179 Chinese parenthetical breaks string syntax
+
+CYCLE-3 REDEV (the cycle being judged here) shipped:
+- Replace per-tool functions with field-whitelist scanner GAODE_FIELD_WHITELIST tuple at pretool-tool-policy.py:67-83 listing 15 (tool, field, surface) entries explicitly
+- Composed-path scanner _scan_composed_glob_grep at pretool-tool-policy.py:168-184 with formula os.path.realpath(os.path.join(p, pat.replace("**","").replace("*","")))
+- extract_heredoc_bodies in bash_write_targets.py iterating outer + each heredoc body through 4 bash matchers
+- New first-class roles "timeline" and "transportation" in tool-policy.v1.json with allowed_tools=[Read,Bash,Skill] and denied_tools=[Write,Edit,MultiEdit,NotebookEdit] (Feb-13-2026 incident lock)
+- gaode_denied_bash_tokens extended with module prefixes (g-aode_, a-map_, g-aode-, a-map-)
+- BA-QA r2 line 179 fixed (concatenated single string)
+- T1 verifier extended to 32 cases (was 30; +2 bash-resolved-path branch cases)
+- T2 NEW verify-g-aode-ban-integration.sh: 39 cases, end-to-end subprocess invocation of pretool-tool-policy.py
+- T3 NEW verify-g-aode-ban-contract.sh + scripts/lib/mcp-tool-catalog.json: 9 entries
+
+Artifacts at /root/travel-planner/docs/dev/:
+- ticket-20260509-114002.md (cycle 1 + cycle 3 + REVISION-2/3 markers)
+- dev-report-20260509-114002.json (cycle 1 + cycle 3 unified, 16 files modified, 350 lines)
+- qa-report-20260509-114002.json (status:pass, 0 findings, T1+T2+T3 80/80 PASS)
+- close-report-20260509-114002.md (cycle 1 NO; cycle 3 will append fresh debate section)
+- specs/spec-20260508-221237.md (user verbatim §5.1+§5.4+§5.13C contract)
+- scratch-20260509-114002/architect-redev-findings.md (3 critical + 3 major + 5 minor + arch-prop-1/2/3)
+
+INSPECTORS: all 3 CLEAN for cycle 3 (style, cleanliness, prompt). No NEW within-diff line-level findings.
+
+QA RUNTIME EVIDENCE I just produced (with brand obfuscation g-aode/a-map):
+1. Glob pattern=".claude/skills/g-aode-maps/**" subagent_type=dev with CLAUDE_PROJECT_DIR=/root/travel-planner → exit 2 surface=read-path matched=/.claude/skills/g-aode-maps/. CYCLE-1 FINDING #1 CLOSED.
+2. mcp__playwright__browser_navigate url=https://restapi.a-map.com/v3/test subagent_type=dev → exit 2 surface=network-host. CYCLE-1 FINDING #2 CLOSED.
+3. Skill skill="scripts:g-aode-maps:tools:routing" subagent_type=timeline → exit 0. AC6 (positive test) CLOSED.
+4. ba-qa-report-r2.json line 179 → json.load() succeeds. CLOSED.
+5. Composed-path Glob path=/root/.claude/skills/ pattern=g-aode-maps/** subagent_type=dev → exit 2 surface=read-path matched=/.claude/skills/g-aode-maps/. CLOSED.
+6. Heredoc bash <<EOF python3 .../g-aode-maps/scripts/poi.py EOF subagent_type=dev → exit 2 surface=bash-token. CLOSED.
+7. AC18 timeline Write file_path=/tmp/foo.txt → exit 2 deny_reason "tool Write explicitly denied" (denied_tools at policy_registry.py:228-234 fires BEFORE allowed_tools). CLOSED.
+8. AC15 ba Edit ticket containing https://restapi.a-map.com URL → exit 0 (content fields not scanned per intentional design). CLOSED.
+9. T1 verify-g-aode-ban.sh: 32/32 PASS.
+10. T2 verify-g-aode-ban-integration.sh: 39/39 PASS.
+11. T3 verify-g-aode-ban-contract.sh: 9/9 PASS.
+
+EDGE CASES I FOUND THAT REMAIN UNRESOLVED in cycle 3:
+A. Bare leading-slash pattern "/.claude/skills/g-aode-maps/**" subagent_type=dev → exit 0. The os.path.abspath of literal /-rooted path doesn't match the project-root-anchored prefix.
+B. Brace-expansion pattern "{a,b}/.claude/skills/g-aode-maps/*.md" subagent_type=dev → exit 0. Shell brace expansion not handled.
+C. Identity-default-deny does NOT fire on Glob pattern when subagent_type missing AND pattern starts with leading slash → exit 0 instead of exit 2.
+
+QUESTIONS FOR ADVERSARIAL CHALLENGE:
+- Are edges A/B/C in-scope-real-bug, in-scope-minor, out-of-scope per the user's "agent forgets the rule" threat model, or nitpick? Specifically: in normal Claude operation, would a subagent like meals.md ever construct a glob pattern with leading-slash literal "/" or brace-expansion "{a,b}" by honest mistake?
+- Did cycle-3 introduce any NEW bypass class within this diff scope (a regression of cleanliness-of-THIS-diff)? E.g., did adding 12 small helpers create a new gap that wasn't there in cycle-1's 4 large functions?
+- Is the composed-path formula `os.path.realpath(os.path.join(p, pat.replace("**","").replace("*","")))` correct for normal Claude Glob/Grep usage shapes (path=relative-or-absolute string + pattern=relative glob)? Or does it have a foot-gun?
+- Is the orchestrator self-block (the literal "g-aode-" token blocked even for the orchestrator's own Bash) per spec §5.13C #5 a BUG or a FEATURE? The spec says it is a feature (intended). The workaround (base64 indirection or shell-glob obfuscation) is documented in the spec as Section 2 cycle-3 working-pattern.
+- Are the 4 Workflow Integrity bullets all PASS for cycle 3?
+  (i) Downstream consumability — /commit reads dev-report and close-report
+  (ii) Task-id chain consistency — all artifacts under 20260509-114002
+  (iii) Pre-existing-defect rule — fetch-images-batch.py / plan.md / user-level agents lack DO-NOT blocks were BA-deferred to M2/M5
+  (iv) Self-deployability — /commit's git commit subject doesn't contain literal "g-aode-" token
+
+GIVE YOUR VERDICT as CODEX_FEEDBACK: <substantive points + recommend YES or NO>. If you would block, specify which finding(s) and severity. If A/B/C are in-scope-real-bug, justify with reference to spec text and the user's threat model.
