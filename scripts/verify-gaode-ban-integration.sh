@@ -193,9 +193,20 @@ CASES.append(("AC12.r3.1 composed Glob path+pattern denied",
 CASES.append(("AC12.r3.2 composed Grep path+glob denied",
               {"tool_name": "Grep", "tool_input": {"pattern": "foo", "path": PARENT_CMDS, "glob": f"{G}/**/*.py"},
                "subagent_type": "dev"}, 2, "read-path", G))
-CASES.append(("AC12.r3.3 composed Grep allowlist agent allowed",
+# AC12.r3.3: composed-path scan must not introduce false-positive gaode-policy
+# denials. transportation's allowed_tools=[Read,Bash,Skill] (narrowed per
+# Decision 2 REVISION-2 to mirror agent .md), so Grep itself is denied with
+# 'tool Grep not in allowed_tools' — that is the standard role-tool check,
+# UNRELATED to the gaode-policy mechanism. The assertion checks that the
+# deny_reason does NOT come from the gaode-policy layer (i.e. composed-path
+# scan introduced no false positive). Use 'ba' role (Grep is allowed there)
+# for the all-clear positive composed-path assertion.
+CASES.append(("AC12.r3.3a composed Grep ba role legitimate allowed",
               {"tool_name": "Grep", "tool_input": {"pattern": "x", "path": f"{PROJECT}/data", "glob": "**/timeline.json"},
-               "subagent_type": "transportation"}, 0))
+               "subagent_type": "ba"}, 0))
+CASES.append(("AC12.r3.3b composed Grep transportation no gaode-policy false-positive",
+              {"tool_name": "Grep", "tool_input": {"pattern": "x", "path": f"{PROJECT}/data", "glob": "**/timeline.json"},
+               "subagent_type": "transportation"}, 2, None, None, "gaode-policy:"))
 
 # -------- AC13: heredoc body extraction --------
 CASES.append(("AC13.1 heredoc gaode body denied (dev)",
