@@ -48,9 +48,9 @@ Add an `--auto` flag (or equivalent) to the planning entrypoint that bypasses th
 
 Default mode (without `--auto`) remains the user-gated flow from §5.2.
 
-### 5.6: Web UI overhaul — backend / endpoint cross-cuts (UI specifics in ui-specialist.md)
+### 5.6: Web UI overhaul — drag-and-drop timeline with all-pairs intra-city routing
 
-The interactive HTML output (`generate-html-interactive.py` and friends) must become the primary user-selection surface, not just a final report.
+(UI specifics — candidates panel, drag/drop, layout — in ui-specialist.md.)
 
 Backend requirement enabling (3) — **all-pairs intra-city precompute**:
 
