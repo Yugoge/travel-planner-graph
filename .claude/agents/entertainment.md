@@ -96,10 +96,7 @@ For each day in the trip:
    **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool (which is unavailable in subagent context).**
 
    - **For global destinations**: Use Google Maps (see skill docs for usage)
-   - **For China destinations**: Use Gaode Maps POI search via Bash:
-     ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<entertainment_query>" "<city>" "080000"
-     ```
+   - **For China destinations**: Use RedNote-driven discovery only. Surface venues as `name_local` + `location_local` strings; coordinate resolution is owned by the downstream `timeline` agent. The harness will REJECT any `gaode-maps` invocation from this agent (see DO NOT section above).
    - **For local entertainment recommendations (China)**: Use RedNote search via Bash:
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
