@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T22:05:34Z*
-**Total entries**: 88
+*Last updated: 2026-05-09T22:06:05Z*
+**Total entries**: 89
 **Convention**: kebab
 
 ## Tree
@@ -47,6 +47,7 @@ scripts/
 ├── `_qa_diag5.py` - Python script
 ├── `_qa_diag6.py` - Spawn the hook subprocess with the JSON on stdin
 ├── `_qa_diag7.py` - What does the policy actually have for read-path prefixes?
+├── `_qa_diag8.sh` - Test: does Skill matcher catch direct invocation of g-aode-maps skill?
 ├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
