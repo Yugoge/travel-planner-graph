@@ -1,13 +1,23 @@
 {
   "request_id": "20260509-114002",
   "spec_id": "spec-20260508-221237",
-  "cycle": "M1 — gaode-maps harness ban",
-  "timestamp": "2026-05-09T00:00:00Z",
+  "cycle": "M1 cycle-3 redev close (extends cycle-1 work)",
+  "timestamp": "2026-05-09T11:40:02Z",
   "inspector": "style-inspector",
-  "scope": "--changed-files (14 files)",
-  "files_audited": [
+  "verdict": "CLEAN",
+  "scope": "--changed-files (cycle-3 delta + cycle-1 preserved-work)",
+  "cycle_3_files_audited": [
+    "/root/travel-planner/scripts/verify-gaode-ban-integration.sh",
+    "/root/travel-planner/scripts/verify-gaode-ban-contract.sh",
+    "/root/travel-planner/scripts/lib/mcp-tool-catalog.json",
     "/root/.claude/policies/tool-policy.v1.json",
     "/root/.claude/hooks/pretool-tool-policy.py",
+    "/root/.claude/hooks/lib/bash_write_targets.py",
+    "/root/travel-planner/scripts/verify-gaode-ban.sh",
+    "/root/travel-planner/docs/dev/ba-qa-report-20260509-114002-r2.json",
+    "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"
+  ],
+  "cycle_1_files_preserved": [
     "/root/.claude/hooks/lib/policy_registry.py",
     "/root/.claude/hooks/lib/agent_resolver.py",
     "/root/travel-planner/.claude/agents/meals.md",
@@ -16,51 +26,126 @@
     "/root/travel-planner/.claude/agents/entertainment.md",
     "/root/travel-planner/.claude/agents/shopping.md",
     "/root/travel-planner/.claude/agents/accommodation.md",
-    "/root/travel-planner/.claude/agents/budget.md",
-    "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md",
-    "/root/travel-planner/scripts/verify-gaode-ban.sh"
+    "/root/travel-planner/.claude/agents/budget.md"
   ],
-  "violations": [
+  "cycle_3_findings": [],
+  "cycle_1_findings_status": [
     {
-      "standard": "no-hardcoded-values",
-      "severity": "critical",
-      "location": "/root/travel-planner/scripts/verify-gaode-ban.sh:66-69,75,81",
-      "introduced_in_diff": true,
-      "finding": "Test-fixture paths hardcode '/root/travel-planner/.claude/skills/{G}/skill.md' and '/root/travel-planner/data/foo.json' as string literals instead of deriving from CLAUDE_PROJECT_DIR. Line 81 sets CLAUDE_PROJECT_DIR='/root/travel-planner' as a fallback when unset, which keeps the script working under the current layout but the read-path CASES on lines 66-69 and 75 never consult that variable. Moving the script (or running it from a worktree) breaks the read-path matcher tests.",
-      "recommendation": "Replace hardcoded prefixes with f-strings against an env-resolved base, e.g. `BASE = os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner')` then `f\"{BASE}/.claude/skills/{G}/skill.md\"`. Keeps the parameterized-default pattern already used on lines 16, 30, 81."
+      "original_finding": "Hardcoded test-fixture paths in verify-gaode-ban.sh (cycle-1 lines 66-69, 75, 81)",
+      "status": "RESOLVED in cycle-3 redev",
+      "resolution_evidence": "verify-gaode-ban.sh:42-46 now derives PROJECT=os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner') and constructs SKILL_PATH/BASH_PATH/DATA_NEG as f-strings against PROJECT. CASES at lines 78-87 reference these env-derived constants. Cycle-1 default-fallback behavior preserved (lines 92-96).",
+      "introduced_in_diff": false,
+      "verified_at": "/root/travel-planner/scripts/verify-gaode-ban.sh:42-46,78-87"
     }
   ],
-  "standards_passed": [
-    "no-inline-code: agent .md files use only docstring/example syntax in DO NOT blocks; the only Bash one-liners (source venv && python3 ...) are pre-existing on unchanged lines. No new inline code introduced by the diff.",
-    "use-source-venv: verify-gaode-ban.sh imports stdlib-only lib.policy_registry; no project venv dependency. Agent .md python3 invocations are pre-existing, on unchanged lines.",
-    "integer-step-numbering: §5.1/§5.13C are SECTION numbers (not step numbers). New script and DO NOT blocks introduce no decimal step numbers. Agent Step 0/1/2/3 sequences are pre-existing and unchanged.",
-    "meaningful-naming: all new identifiers (is_gaode_allowed, _check_gaode_skill, _check_gaode_bash, _check_gaode_webfetch, _check_gaode_read, _gaode_pre_check, _emit_gaode_block, gaode_match_pattern, normalize_gaode_agent_id, _gaode_decide, _gaode_decide_unknown, _GAODE_SURFACE_DISPATCH, GAODE_BASH_SURFACES, GAODE_READ_TOOLS, verify-gaode-ban.sh) are domain-descriptive. No enhance-/fast-/v2/improved-/optimize- patterns.",
-    "english-only: '高德' in tool-policy.v1.json:20 (escaped \\u9ad8\\u5fb7) is a POLICY DATA TOKEN used by the bash-token matcher to detect Chinese-language gaode references in commands — functionally required, not prose. Permitted under the data-token exemption.",
-    "merge-similar-scripts: verify-gaode-ban.sh is a single-purpose harness for the M1 feature; no overlapping pre-existing script.",
-    "concise-documentation: the 17-line DO NOT block duplicated across 7 agent files is borderline-verbose, but justified by global rule Lesson 11 ('subagent prompts must explicitly list what is FORBIDDEN'). Per-agent 'Allowed alternatives' subsections are agent-specific (meals/cafe/etc. mention rednote+timeline; budget mentions reading from upstream JSON only), so the duplication is bounded and intentional.",
-    "parameterized-scripts: verify-gaode-ban.sh parameterizes PYTHON, HOOKS_DIR, and CLAUDE_PROJECT_DIR via env-with-default. (Test-fixture path hardcodes flagged separately under no-hardcoded-values.)",
-    "dangling-references: every script/policy reference in the agent DO NOT blocks resolves — pretool-tool-policy.py, tool-policy.v1.json, lib.policy_registry all exist. verify-gaode-ban.sh imports resolve. spec §5.1/§5.4/§5.13C present in spec-20260508-221237.md.",
-    "merge-conflicts: detect-merge-conflicts.sh shows 0 hits in the 14 changed files (33 hits exist elsewhere in repo but are pre-existing on unchanged files; out of scope per AC-2.6 file-level newness rule).",
-    "no-hardcoded-tokens-in-hook-code: gaode tokens (gaode-maps, amap, 高德, *.amap.com, AMAP_*, GAODE_*) live in tool-policy.v1.json under gaode_denied_* keys; policy_registry.py reads them via load_policy().get(...) at decision time. Hook code contains zero hardcoded gaode literals — meets the M1 requirement that 'all gaode tokens should be in policy data, not in hook code'."
+  "cycle_3_standards_passed": [
+    {
+      "standard": "no-hardcoded-tokens-in-hook-code",
+      "evidence": "pretool-tool-policy.py contains ZERO hardcoded gaode literals (gaode-maps, amap, AMAP_*, GAODE_*). All tokens live in /root/.claude/policies/tool-policy.v1.json under gaode_denied_* keys (lines 17-25). Hook code only references tool-name constants ('Bash','Skill','Glob','Grep','mcp__claude_ai_Gmail__send','mcp__playwright__browser_*') and surface names ('read-path','network-host','env-var','bash-token','bash-resolved-path','skill') — none are gaode tokens. Confirms M1 requirement: 'all gaode tokens in policy data, not in hook code'.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "evidence": "verify-gaode-ban-integration.sh:13-15 and verify-gaode-ban-contract.sh:15-18 parameterize PYTHON/HOOK/PROJECT/CATALOG via ${VAR:-default}. All fixture paths derive from $PROJECT (integration.sh:42-47, contract.sh:47-48). mcp-tool-catalog.json is pure data (catalog-driven contract). verify-gaode-ban.sh cycle-1 finding RESOLVED (paths now CLAUDE_PROJECT_DIR-derived).",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "no-inline-code",
+      "evidence": "Cycle-3 delta is entirely in scripts/ (executable .sh + .py + .json data) and policy data (.json). Spec-section markdown (spec-20260508-221237.md) Cycle 3 subheaders contain no new bash/python implementation code blocks. Agent .md files unchanged in cycle 3.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "use-source-venv",
+      "evidence": "verify-gaode-ban-integration.sh:13 and verify-gaode-ban-contract.sh:15 default PYTHON='${PYTHON:-python3}' — but the imported modules (lib.policy_registry, lib.agent_resolver, lib.bash_write_targets, subprocess, base64, json) are stdlib-only with no project-venv dependency. Same pattern as cycle-1 verify-gaode-ban.sh. No new agent-md python3 invocations introduced.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "integer-step-numbering",
+      "evidence": "Cycle-3 NEW scripts use Python comment section markers ('# -------- AC9b: ...', '# -------- AC10: ...') — these are AC anchors, not step numbers. spec-20260508-221237.md cycle-3 subheaders use '### Cycle 3 (redev)' (literal english, no decimals). pretool-tool-policy.py docstring numbering ('T2.1') refers to test-task IDs from spec, not enumeration steps. No decimal step numbering introduced.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "meaningful-naming",
+      "evidence": "All new identifiers domain-descriptive: GAODE_FIELD_WHITELIST, GAODE_URL_SUBSTRING_FIELDS, GAODE_PATH_LIST_FIELDS, GAODE_GMAIL_FIELDS, _scan_field_whitelist, _scan_composed_glob_grep, _scan_url_substring_fields, _scan_path_list_fields, _scan_gmail_fields, _check_gaode_one, _gaode_scan_tool_input, _check_one_bash_string, extract_heredoc_bodies, _collect_heredoc_body, _walk_heredoc_bodies, verify-gaode-ban-integration.sh, verify-gaode-ban-contract.sh, mcp-tool-catalog.json. NO enhance-/fast-/v2/improved-/optimize- patterns.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "english-only",
+      "evidence": "All cycle-3 new files English-only. tool-policy.v1.json:20 contains an escaped JSON unicode token (gaode in CJK form) in gaode_denied_bash_tokens — POLICY DATA TOKEN required by the matcher to detect Chinese-language gaode references in commands (functionally required, not prose). Same data-token exemption as cycle 1.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "evidence": "Three verify-gaode-ban-*.sh scripts (cycle-1 base + cycle-3 -integration + cycle-3 -contract) intentionally separated by concern: T1 unit-tests is_gaode_allowed() in isolation (no subprocess); T2 integration drives pretool-tool-policy.py end-to-end with realistic tool_input shapes (covers AC9b/10/11/12/13/15/18); T3 contract enforces MCP tool catalog completeness (drift detection). Merging would conflate three distinct verification contracts and obscure failure attribution. Justified separation, not duplication.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "concise-documentation",
+      "evidence": "pretool-tool-policy.py module docstring (lines 1-37) tightly tied to behavior contract; no marketing language. verify-gaode-ban-integration.sh and -contract.sh use functional header comments (Description/Usage/Exit codes) — no story-style prose. mcp-tool-catalog.json _note/_schema fields are self-describing data, not verbose marketing. tool-policy.v1.json:16 _note covers all 3 policy_version bumps and the M1 cycle-3 closure rationale in one paragraph — dense but functional. extract_heredoc_bodies docstring includes 2 doctests (executable specifications, not 'examples for show'). bash_write_targets.py:29-78 doctest block is mandatory regression test scaffolding (run via -m doctest).",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "parameterized-scripts",
+      "evidence": "verify-gaode-ban-integration.sh: PYTHON, HOOK, CLAUDE_PROJECT_DIR all ${VAR:-default} (lines 13-15); subprocess env explicit (line 53). verify-gaode-ban-contract.sh: PYTHON, HOOK, CATALOG, CLAUDE_PROJECT_DIR all parameterized (lines 15-18). mcp-tool-catalog.json: catalog-driven (T3 reads list from JSON, not hardcoded). verify-gaode-ban.sh cycle-3 fix completes parameterization of test fixtures.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "dangling-references",
+      "evidence": "All cycle-3 references resolve: pretool-tool-policy.py imports lib.bash_write_targets.extract_heredoc_bodies (line 49-52) — function exists at /root/.claude/hooks/lib/bash_write_targets.py:180. verify-gaode-ban-integration.sh:14 references HOOK=/root/.claude/hooks/pretool-tool-policy.py (exists). verify-gaode-ban-contract.sh:17 references CATALOG=/root/travel-planner/scripts/lib/mcp-tool-catalog.json (exists). All MCP tool names in mcp-tool-catalog.json match real Claude Code MCP tool surface (mcp__playwright__*, mcp__claude_ai_Gmail__send).",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "merge-conflicts",
+      "evidence": "All 9 cycle-3 delta files scanned via grep '^<<<<<<<|^>>>>>>>|^=======$': zero hits. Pre-existing conflict markers exist in /root/travel-planner/.claude/INDEX.md, .claude/hooks/INDEX.md, .claude/hooks/auto-commit.sh, .claude/hooks/ensure-git-repo.sh, .claude/hooks/install.sh, .claude/hooks/session-git-init.sh, data/agent-test-20260212-191529/TEST_REPORT.txt — all on files NOT in cycle-3 changed-files set, pre-existing per AC-2.6 file-level newness rule, out of scope."
+    }
   ],
+  "cycle_3_specific_validations": {
+    "GAODE_FIELD_WHITELIST_explicit_and_exhaustive": {
+      "result": "PASS",
+      "location": "/root/.claude/hooks/pretool-tool-policy.py:67-83",
+      "evidence": "15 entries: 9 standard tools (Read, Glob x2, Grep x2, NotebookEdit, Write, Edit, MultiEdit) + 4 mcp playwright filename fields (browser_take_screenshot/snapshot/console_messages/network_requests) + 2 url fields (WebFetch, browser_navigate). Tuple is immutable, explicitly flat, content fields (Edit.old_string, Write.content, MultiEdit.edits[].old_string, NotebookEdit.new_source) intentionally absent — closes documentation-blackhole class per docstring."
+    },
+    "scan_composed_glob_grep_matches_spec_formula": {
+      "result": "PASS",
+      "location": "/root/.claude/hooks/pretool-tool-policy.py:168-184",
+      "evidence": "Implements os.path.realpath(os.path.join(p, pat.replace('**','').replace('*',''))) at lines 182-183. Closes QA r2 OBJ-NEW-1 bypass where neither path nor pattern alone contains denied substring but their join does. Handles both Glob.path+pattern and Grep.path+glob. Type-guards isinstance(p,str) and isinstance(pat,str) at line 180."
+    },
+    "verify_gaode_ban_sh_cycle_1_finding_resolved": {
+      "result": "PASS",
+      "location": "/root/travel-planner/scripts/verify-gaode-ban.sh:42-46",
+      "evidence": "Cycle-1 hardcoded /root/travel-planner test-fixture paths replaced with PROJECT = os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner'); SKILL_PATH = f'{PROJECT}/.claude/skills/{G}/skill.md'; BASH_PATH = f'{PROJECT}/.claude/commands/scripts/{G}/scripts/poi.py'; DATA_NEG = f'{PROJECT}/data/foo.json'. CASES at lines 78-87 consume these env-derived constants. Cycle-1 default-fallback behavior preserved (lines 92-96)."
+    },
+    "verify_gaode_ban_integration_sh_quality": {
+      "result": "PASS",
+      "location": "/root/travel-planner/scripts/verify-gaode-ban-integration.sh",
+      "evidence": "Parameterized (PYTHON/HOOK/PROJECT). Executable (#!/usr/bin/env bash, set -euo pipefail). Meaningful name (-integration distinguishes T2 end-to-end from T1 unit). No hardcoded gaode tokens in source (constructed via base64 at runtime, lines 38-40, deliberately to keep harness file token-free). Negative-test inputs ARE legitimate (cannot test ban without naming the literal under test). 28 CASES cover AC9b/10/11/12/13/15/18 with distinct contracts each."
+    },
+    "verify_gaode_ban_contract_sh_quality": {
+      "result": "PASS",
+      "location": "/root/travel-planner/scripts/verify-gaode-ban-contract.sh",
+      "evidence": "Parameterized (PYTHON/HOOK/CATALOG/PROJECT). Catalog-driven (reads /root/travel-planner/scripts/lib/mcp-tool-catalog.json — single source of truth for MCP tool drift detection). Meaningful name (-contract distinguishes T3 contract enforcement from T2 integration). No hardcoded gaode tokens beyond base64-constructed negative-test inputs (lines 44-48). 9 catalog entries cover 6 architect MCP vectors + 3 Codex Q2 output-save filename fields."
+    }
+  },
   "preexisting_not_flagged": [
     {
       "category": "concise-documentation",
       "location": "agent .md files (meals, attractions, cafe, entertainment, shopping, accommodation, budget)",
-      "note": "Pre-existing CRITICAL CONSTRAINT — WRITE TOOL ABSOLUTELY FORBIDDEN block (~30 lines) and Failure Mode 1-5 sections (~70 lines) are verbose but unchanged by this diff. Pre-existing per AC-2.6 (b)."
+      "note": "Pre-existing CRITICAL CONSTRAINT — WRITE TOOL ABSOLUTELY FORBIDDEN block (~30 lines) and Failure Mode 1-5 sections (~70 lines) are verbose but unchanged by cycle-3 diff. Pre-existing per AC-2.6 (b)."
     },
     {
-      "category": "english-only",
-      "location": "agent .md files",
-      "note": "'高德' references inside the new DO NOT block are introduced by the diff but ARE the data token whose presence in agent prose is prescribed (the agent must understand what literal the harness rejects). Same exemption as the policy-file token."
+      "category": "merge-conflicts",
+      "location": ".claude/INDEX.md, .claude/hooks/INDEX.md, .claude/hooks/auto-commit.sh, .claude/hooks/ensure-git-repo.sh, .claude/hooks/install.sh, .claude/hooks/session-git-init.sh, data/agent-test-20260212-191529/TEST_REPORT.txt",
+      "note": "Pre-existing unresolved conflict markers on files NOT in cycle-3 changed-files set. Per AC-2.6 file-level newness rule, out of scope for cycle-3 close."
     }
   ],
   "summary": {
     "standards_checked": 11,
-    "violations_found": 1,
-    "critical": 1,
-    "files_audited": 13,
-    "files_total": 13,
-    "rounds_completed": 1
+    "cycle_3_violations_found": 0,
+    "cycle_3_critical": 0,
+    "cycle_1_findings_resolved": 1,
+    "cycle_3_files_audited": 9,
+    "cycle_1_files_preserved": 9,
+    "rounds_completed": 1,
+    "verdict": "CLEAN — cycle-3 delta introduces zero new violations; cycle-1 verify-gaode-ban.sh hardcoded-path finding is RESOLVED"
   }
 }
