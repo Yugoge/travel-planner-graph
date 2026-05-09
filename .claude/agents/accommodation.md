@@ -4,7 +4,6 @@ description: Research hotels and lodging options for each location
 model: sonnet
 skills:
 - google-maps
-- gaode-maps
 - airbnb
 tools:
 - Read
