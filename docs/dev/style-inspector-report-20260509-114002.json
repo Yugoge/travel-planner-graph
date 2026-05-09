@@ -1,0 +1,66 @@
+{
+  "request_id": "20260509-114002",
+  "spec_id": "spec-20260508-221237",
+  "cycle": "M1 — gaode-maps harness ban",
+  "timestamp": "2026-05-09T00:00:00Z",
+  "inspector": "style-inspector",
+  "scope": "--changed-files (14 files)",
+  "files_audited": [
+    "/root/.claude/policies/tool-policy.v1.json",
+    "/root/.claude/hooks/pretool-tool-policy.py",
+    "/root/.claude/hooks/lib/policy_registry.py",
+    "/root/.claude/hooks/lib/agent_resolver.py",
+    "/root/travel-planner/.claude/agents/meals.md",
+    "/root/travel-planner/.claude/agents/attractions.md",
+    "/root/travel-planner/.claude/agents/cafe.md",
+    "/root/travel-planner/.claude/agents/entertainment.md",
+    "/root/travel-planner/.claude/agents/shopping.md",
+    "/root/travel-planner/.claude/agents/accommodation.md",
+    "/root/travel-planner/.claude/agents/budget.md",
+    "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md",
+    "/root/travel-planner/scripts/verify-gaode-ban.sh"
+  ],
+  "violations": [
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "/root/travel-planner/scripts/verify-gaode-ban.sh:66-69,75,81",
+      "introduced_in_diff": true,
+      "finding": "Test-fixture paths hardcode '/root/travel-planner/.claude/skills/{G}/skill.md' and '/root/travel-planner/data/foo.json' as string literals instead of deriving from CLAUDE_PROJECT_DIR. Line 81 sets CLAUDE_PROJECT_DIR='/root/travel-planner' as a fallback when unset, which keeps the script working under the current layout but the read-path CASES on lines 66-69 and 75 never consult that variable. Moving the script (or running it from a worktree) breaks the read-path matcher tests.",
+      "recommendation": "Replace hardcoded prefixes with f-strings against an env-resolved base, e.g. `BASE = os.environ.get('CLAUDE_PROJECT_DIR', '/root/travel-planner')` then `f\"{BASE}/.claude/skills/{G}/skill.md\"`. Keeps the parameterized-default pattern already used on lines 16, 30, 81."
+    }
+  ],
+  "standards_passed": [
+    "no-inline-code: agent .md files use only docstring/example syntax in DO NOT blocks; the only Bash one-liners (source venv && python3 ...) are pre-existing on unchanged lines. No new inline code introduced by the diff.",
+    "use-source-venv: verify-gaode-ban.sh imports stdlib-only lib.policy_registry; no project venv dependency. Agent .md python3 invocations are pre-existing, on unchanged lines.",
+    "integer-step-numbering: §5.1/§5.13C are SECTION numbers (not step numbers). New script and DO NOT blocks introduce no decimal step numbers. Agent Step 0/1/2/3 sequences are pre-existing and unchanged.",
+    "meaningful-naming: all new identifiers (is_gaode_allowed, _check_gaode_skill, _check_gaode_bash, _check_gaode_webfetch, _check_gaode_read, _gaode_pre_check, _emit_gaode_block, gaode_match_pattern, normalize_gaode_agent_id, _gaode_decide, _gaode_decide_unknown, _GAODE_SURFACE_DISPATCH, GAODE_BASH_SURFACES, GAODE_READ_TOOLS, verify-gaode-ban.sh) are domain-descriptive. No enhance-/fast-/v2/improved-/optimize- patterns.",
+    "english-only: '高德' in tool-policy.v1.json:20 (escaped \\u9ad8\\u5fb7) is a POLICY DATA TOKEN used by the bash-token matcher to detect Chinese-language gaode references in commands — functionally required, not prose. Permitted under the data-token exemption.",
+    "merge-similar-scripts: verify-gaode-ban.sh is a single-purpose harness for the M1 feature; no overlapping pre-existing script.",
+    "concise-documentation: the 17-line DO NOT block duplicated across 7 agent files is borderline-verbose, but justified by global rule Lesson 11 ('subagent prompts must explicitly list what is FORBIDDEN'). Per-agent 'Allowed alternatives' subsections are agent-specific (meals/cafe/etc. mention rednote+timeline; budget mentions reading from upstream JSON only), so the duplication is bounded and intentional.",
+    "parameterized-scripts: verify-gaode-ban.sh parameterizes PYTHON, HOOKS_DIR, and CLAUDE_PROJECT_DIR via env-with-default. (Test-fixture path hardcodes flagged separately under no-hardcoded-values.)",
+    "dangling-references: every script/policy reference in the agent DO NOT blocks resolves — pretool-tool-policy.py, tool-policy.v1.json, lib.policy_registry all exist. verify-gaode-ban.sh imports resolve. spec §5.1/§5.4/§5.13C present in spec-20260508-221237.md.",
+    "merge-conflicts: detect-merge-conflicts.sh shows 0 hits in the 14 changed files (33 hits exist elsewhere in repo but are pre-existing on unchanged files; out of scope per AC-2.6 file-level newness rule).",
+    "no-hardcoded-tokens-in-hook-code: gaode tokens (gaode-maps, amap, 高德, *.amap.com, AMAP_*, GAODE_*) live in tool-policy.v1.json under gaode_denied_* keys; policy_registry.py reads them via load_policy().get(...) at decision time. Hook code contains zero hardcoded gaode literals — meets the M1 requirement that 'all gaode tokens should be in policy data, not in hook code'."
+  ],
+  "preexisting_not_flagged": [
+    {
+      "category": "concise-documentation",
+      "location": "agent .md files (meals, attractions, cafe, entertainment, shopping, accommodation, budget)",
+      "note": "Pre-existing CRITICAL CONSTRAINT — WRITE TOOL ABSOLUTELY FORBIDDEN block (~30 lines) and Failure Mode 1-5 sections (~70 lines) are verbose but unchanged by this diff. Pre-existing per AC-2.6 (b)."
+    },
+    {
+      "category": "english-only",
+      "location": "agent .md files",
+      "note": "'高德' references inside the new DO NOT block are introduced by the diff but ARE the data token whose presence in agent prose is prescribed (the agent must understand what literal the harness rejects). Same exemption as the policy-file token."
+    }
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 1,
+    "critical": 1,
+    "files_audited": 13,
+    "files_total": 13,
+    "rounds_completed": 1
+  }
+}
