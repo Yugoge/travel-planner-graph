@@ -58,8 +58,6 @@ Backend requirement enabling (3) — **all-pairs intra-city precompute**:
 - Matrix entries cite their gaode-maps source (since `timeline` is allowlisted to call gaode); cache invalidation is by POI-id + mode (re-compute only when a POI's coordinates change).
 - `transportation` is unaffected by the matrix — it remains the inter-city designer (§5.2).
 
-(Above bullets are **SUPERSEDED by §5.9 / §5.13 A** — kept here only as the formal record of what was revoked.)
-
 **E resolution (all-pairs intra-city matrix)**:
 
 User's intent in providing the slot model is that the candidate space per day is naturally bounded:
