@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-09T17:21:32Z*
-**Total entries**: 275
+*Last updated: 2026-05-09T17:25:43Z*
+**Total entries**: 277
 **Convention**: kebab
 
 ## Tree
@@ -80,7 +80,9 @@ dev/
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
 ├── `ba-spec-codex-prompt-cycle3-revision.txt` - txt file
+├── `ba-spec-codex-prompt-cycle3-revision3.txt` - txt file
 ├── `ba-spec-codex-response-cycle3-revision.txt` - txt file
+├── `ba-spec-codex-response-cycle3-revision3.txt` - txt file
 ├── `cleanliness-inspector-report-20260505-061047.json` - json config
 ├── `cleanliness-inspector-report-20260505-123425.json` - json config
 ├── `cleanliness-inspector-report-20260505-124619.json` - json config
