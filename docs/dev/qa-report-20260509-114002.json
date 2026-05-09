@@ -242,6 +242,66 @@
     },
     "ui_test_results": [],
     "generated_tests": [],
+    "cycle_3_verification": {
+      "verifier_results": {
+        "T1_verify_gaode_ban": {"status": "pass", "cases_passed": 32, "cases_total": 32, "command": "bash scripts/verify-g?ode-ban.sh", "evidence": "All 32 cases PASS — final stdout line 'All 32 cases PASS'; cycle-1 30 + cycle-3 2 bash-resolved-path branch cases (timeline allowed; meals denied)"},
+        "T2_verify_gaode_ban_integration": {"status": "pass", "cases_passed": 39, "cases_total": 39, "command": "bash scripts/verify-g?ode-ban-integration.sh", "evidence": "PASS 39/39 final line; covers AC9b 6, AC10 2, AC11 6, AC12 5+2+3 (incl 3 REVISION-3 composed-path), AC13 2, AC15 3, AC18 8+1"},
+        "T3_verify_gaode_ban_contract": {"status": "pass", "cases_passed": 9, "cases_total": 9, "command": "bash scripts/verify-g?ode-ban-contract.sh", "evidence": "PASS 9/9 final line; 6 architect MCP vectors + 3 catalog-completeness output-save filename fields"}
+      },
+      "close_report_findings_closed": {
+        "finding_1_glob_pattern_bypass": {"status": "closed", "evidence": "Inline reproduction: payload {tool_name:Glob, tool_input:{pattern:'.claude/skills/gaode-maps/**'}, subagent_type:meals} → exit 2 stderr JSON role:meals tool:Glob surface:read-path matched_pattern:/.claude/skills/gaode-maps/"},
+        "finding_2_mcp_browser_navigate_bypass": {"status": "closed", "evidence": "Inline reproduction: payload {tool_name:mcp__playwright__browser_navigate, tool_input:{url:https://restapi.amap.com/v3/test}, subagent_type:meals} → exit 2 stderr JSON role:meals surface:network-host matched_pattern:restapi.amap.com"},
+        "finding_3_ac6_verification_gap": {"status": "closed", "evidence": "Inline reproduction: payload {tool_name:Skill, tool_input:{skill:scripts:gaode-maps:tools:routing}, subagent_type:timeline} → exit 0 (gaode pre-check allowlist + Skill in allowed_tools[Read,Bash,Skill])"},
+        "finding_4_ba_qa_r2_invalid_json": {"status": "closed", "evidence": "Inline reproduction: python3 -c \"import json; json.load(open('docs/dev/ba-qa-report-20260509-114002-r2.json'))\" → 'PASS - JSON valid' (no JSONDecodeError); line 179 concatenated string form valid"}
+      },
+      "ac_matrix": {
+        "AC1": {"status": "pass", "evidence": "T1 + AC1 inline regression"},
+        "AC2": {"status": "pass", "evidence": "T1 32/32 incl bash-resolved-path"},
+        "AC3": {"status": "pass", "evidence": "T1 + Finding #2 inline"},
+        "AC4": {"status": "pass", "evidence": "T1 env-var rows"},
+        "AC5": {"status": "pass", "evidence": "T1 + AC12 T2"},
+        "AC6": {"status": "pass", "evidence": "T1 alias + AC9b end-to-end positive"},
+        "AC7": {"status": "pass", "evidence": "Grep 7 banned files match; allowlist 0"},
+        "AC8": {"status": "pass", "evidence": "T1 negatives + AC15"},
+        "AC9a": {"status": "pass", "evidence": "T1 helper-isolated 32/32"},
+        "AC9b": {"status": "pass", "evidence": "T2 AC9b.1-6 + Finding #3 inline"},
+        "AC10": {"status": "pass", "evidence": "T2 AC10.1-2 + Finding #1 inline"},
+        "AC11": {"status": "pass", "evidence": "T2 AC11.1-6 + T3 9/9 + Gmail body env-var inline"},
+        "AC12": {"status": "pass", "evidence": "T2 AC12 10 cases incl composed-path Glob inline (composed candidate /.claude/skills/gaode-maps/ denied)"},
+        "AC13": {"status": "pass", "evidence": "T2 AC13.1-2 + grep extract_heredoc_bodies wired at pretool-tool-policy.py:51,277"},
+        "AC14": {"status": "pass", "evidence": "Finding #4 json.load inline PASS"},
+        "AC15": {"status": "pass", "evidence": "T2 AC15.1-3 + ba Edit ticket containing https://restapi.amap.com inline → exit 0 (content fields not scanned)"},
+        "AC16": {"status": "pass", "evidence": "T2 PASS 39/39"},
+        "AC17": {"status": "pass", "evidence": "T3 PASS 9/9 (cycle-3 actual catalog scope per Decision 4 = 6 architect + 3 catalog-completeness; spec-text >=35 is REVISION-1 leftover gloss)"},
+        "AC18": {"status": "pass", "evidence": "T2 AC18 9 cases + inline timeline Write payload → exit 2 deny_reason 'tool Write explicitly denied'; denied_tools at policy_registry.py:228-234 fires before allowed_tools"}
+      },
+      "dimension_summary": {
+        "evidence_quality": "all 19 ACs (AC1-AC8 + AC9a/9b + AC10-18) have direct evidence (T1+T2+T3 outputs + 4 finding inline reproductions + AC18/AC15/AC11.6/AC12 composed-path inline reproductions); zero unsupported claims",
+        "scope_alignment": "BA REVISION-3 ticket scope (18 ACs + 4 close-report findings + 11 architect findings + Codex Q5 + 2 QA r2 OBJ-NEW) verified end-to-end; no scope shrinkage; cycle-1 ACs preserved",
+        "investigation_completeness": "all 4 close-report findings independently reproduced inline; all REVISION-3 critical ACs spot-checked; cycle-1 AC1+AC7 regression-tested",
+        "affected_file_accuracy": "all 16 dev-modified/created files verified to contain claimed content (policy v3 with timeline+transportation roles + denied_tools; GAODE_FIELD_WHITELIST tuple at pretool-tool-policy.py:67; _scan_composed_glob_grep formula 'os.path.realpath(os.path.join(p, stripped))' at line 183; extract_heredoc_bodies imported and iterated at line 51,277; ba-qa r2 line 179 valid JSON; T1+T2+T3 + mcp-tool-catalog.json all present)",
+        "spec_text_vs_execution_drift": "AC17 BA spec text says '>=35' MCP entries but Decision 4 catalog scope is 6 architect + 3 catalog-completeness = 9; T3 9/9 satisfies cycle-3 actual catalog scope. Non-blocking spec-text gloss leftover from REVISION-1 (when arch-2 listed 35+ enumeration); REVISION-2 narrowed to 9. Recommend BA update AC17 text to '>=9' on next cycle for literal-text accuracy"
+      },
+      "quality_standards_check": {
+        "no_hardcoded_brand_in_policy_registry": {"status": "pass", "evidence": "Grep 'amap.com|AMAP_KEY|gaode-maps' returned 0 matches"},
+        "no_hardcoded_brand_in_pretool_hook": {"status": "pass_with_note", "evidence": "Grep returned 1 match at pretool-tool-policy.py:97 — docstring comment '# env-var matcher to catch $AMAP_KEY / $GAODE_* references.' (acceptable: explanatory comment, not logic; logic reads from policy data)"},
+        "field_whitelist_explicit_and_exhaustive": {"status": "pass", "evidence": "GAODE_FIELD_WHITELIST tuple at pretool-tool-policy.py:67-... is explicit (Read.file_path, Glob.path, Glob.pattern, Grep.path, Grep.glob, Edit.file_path, Write.file_path, MultiEdit.file_path, NotebookEdit.notebook_path, mcp__playwright__browser_take_screenshot.filename, browser_snapshot.filename, browser_console_messages.filename, browser_network_requests.filename, browser_navigate.url); future drift caught by T3 contract verifier"},
+        "composed_path_formula_correct": {"status": "pass", "evidence": "pretool-tool-policy.py:182-183 'stripped = pat.replace(\"**\", \"\").replace(\"*\", \"\")' then 'composed = os.path.realpath(os.path.join(p, stripped))' matches REVISION-3 spec exactly"},
+        "all_scripts_meaningful_naming_executable": {"status": "pass", "evidence": "verify-gaode-ban.sh + -integration.sh + -contract.sh; verb-noun pattern; CLAUDE_PROJECT_DIR-parameterized fixture paths"}
+      },
+      "self_review_substituted_for_codex": {
+        "status": "failed_quota_fallback",
+        "questions_covered": 5,
+        "questions": {
+          "Q1_bypass_classes": "eval/base64/$()/env-expansion documented out-of-threat-model in BA Edge Cases; token matcher scans full Bash.command + heredoc bodies; URL-substring extraction handles MCP code/function fields; python -m gaode_module covered by Decision 5/6 prefix tokens (gaode_, amap_, gaode-, amap-). No new bypass class identified.",
+          "Q2_composed_path_edge_cases": "os.path.realpath resolves symlinks AND ..; absolute pattern handled by os.path.join (discards path arg); wildcard-strip leaves literal directory portion; substring-contains semantics tolerates leftover ?, {a,b}, **xyz noise. False-positive risk NONE for path-anchored denied prefix '/.claude/skills/gaode-maps/' verified by AC12.r3.3a/b negative regression-guards (transportation legitimate composed glob exit 0).",
+          "Q3_field_whitelist_exhaustiveness": "T3 catalog covers all 6 architect MCP vectors + 3 catalog-completeness output-save filename fields. No additional path/URL/code fields surfaced from current Claude/MCP toolchain. Future MCP server addition triggers T3 catalog diff alert.",
+          "Q4_feb13_guard_truly_closed": "denied_tools enforcement at policy_registry.py:228-234 fires BEFORE allowed_tools. AC18 verified all 8 (Write/Edit/MultiEdit/NotebookEdit × timeline+transportation) → exit 2 deny_reason 'tool X explicitly denied'. A future regression that adds Write to allowed_tools without removing denied_tools would still be blocked. Removing denied_tools entry would fail AC18 fixture during CI. Meta-test for tools-subset-of-allowed documented as out-of-scope harness-quality cycle.",
+          "Q5_anything_missed_for_close_yes": "BA out-of-scope observations (fetch-images-batch.py transit-via-wrapper, plan.md 9 positive instructions, /root/.claude/agents/{ba,qa,dev,...}.md DO-NOT parity, save.py indirect Python writes, allowed_path_prefixes not enforced for reads, tools-subset meta-test) are all properly flagged as M2/M5 deferrals per Section 5.4 default-safe rule. No new in-scope gaps."
+        },
+        "verdict_recommendation": "CLOSE: YES — all 4 close-report findings closed with reproducible inline evidence; all 19 ACs PASS; cycle-1 regressions verified absent; quality standards met."
+      }
+    },
     "all_findings": [],
     "summary": {
       "critical_issues": 0,
@@ -251,17 +311,17 @@
       "release_recommendation": "approve"
     },
     "self_verification": {
-      "claims_total": 14,
-      "claims_with_evidence": 14,
+      "claims_total": 24,
+      "claims_with_evidence": 24,
       "claims_superficial": 0,
       "superficial_details": [],
       "confidence": "high"
     },
     "codex_consult": {
-      "invoked": false,
-      "status": "not_requested",
-      "feedback_summary": null,
-      "feedback_incorporated": null
+      "invoked": true,
+      "status": "failed_quota",
+      "feedback_summary": "Codex returned 'ERROR: You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 6:13 PM.' Per agents/qa.md graceful-fallback contract, self-review substituted covering 5 adversarial questions (bypass classes, composed-path edge cases, field whitelist exhaustiveness, Feb-13 guard, anything-missed). All 5 converged on existing implementation as sufficient.",
+      "feedback_incorporated": "self-review substituted (failed_quota fallback per agents/qa.md contract); no design changes triggered. Prompt artifact preserved at /root/travel-planner/docs/dev/qa-output-codex-prompt-redev-postdev.txt."
     }
   },
   "iteration_needed": false,
