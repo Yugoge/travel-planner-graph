@@ -367,9 +367,9 @@ ERROR: Validation failed with 1 HIGH severity issues:
 
 ## Workflow
 
-1. Load Google Maps or Gaode Maps tools:
+1. Load discovery tools:
    - For international: `/google-maps places`
-   - For China: Use Gaode Maps POI search (see SKILL.md)
+   - For China: Use rednote search (see RedNote section). Coordinate resolution is delegated to the downstream `timeline` agent — do NOT invoke gaode (harness will reject).
 2. For each day and meal:
    - Use `search_places` (Google Maps) or `poi_search_keyword` (Gaode Maps)
    - Filter results: rating ≥4.0, review count ≥20, cost within budget
