@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T21:52:11Z*
-**Total entries**: 82
+*Last updated: 2026-05-09T21:52:29Z*
+**Total entries**: 83
 **Convention**: kebab
 
 ## Tree
@@ -41,6 +41,7 @@ scripts/
 ├── `_qa_diag.sh` - Diagnose why Glob.pattern alone (no path) didn't fire gaode read-path matcher.
 ├── `_qa_diag2.sh` - Diagnose what abspath gives for the bare pattern.
 ├── `_qa_diag3.sh` - Test the EXACT cycle-1 finding-1 reproduction.
+├── `_qa_diag4.sh` - Shell script
 ├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
