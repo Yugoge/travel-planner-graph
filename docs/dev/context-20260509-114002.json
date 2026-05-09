@@ -1,0 +1,433 @@
+{
+  "request_id": "20260509-114002",
+  "task_id": "20260509-114002",
+  "timestamp": "2026-05-09T11:40:02Z",
+  "spec_id": "spec-20260508-221237",
+  "milestone": "M1",
+  "milestone_label": "gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block",
+  "requirement": {
+    "original": "Implement spec-20260508-221237.md in its entirety (user said \"全部\" — whole spec). M1 of 5: §5.1 + §5.4 + §5.13C — systematic harness-layer ban of gaode-maps for all subagents except {timeline, transportation}, with prompt-layer defense-in-depth.",
+    "clarified": "Cycle 1 deliverable = M1 = (a) extend tool-policy.v1.json with 8 gaode_* keys + version bump; (b) extend pretool-tool-policy.py + lib/policy_registry.py to enforce the 6 matcher surfaces (skill, bash-token, bash-resolved-path, network-host, env-var, read-path) with gaode-scoped fail-CLOSED on unresolved agent_id and alias normalization (transport→transportation); (c) add ## DO NOT block to 7 non-allowlist agent .md files and remove their positive gaode instructions. M2-M5 documented as Future Cycles outline; not built this cycle.",
+    "what": "M1: harness-layer ban of gaode-maps across 6 surfaces for all non-allowlist subagents + prompt-layer DO-NOT block in 7 banned agents",
+    "why": "User §5.1 verbatim: 系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill。使用 harness 原则，并且在 prompt 中也禁止。 + spec §5.4/§5.13C codex audit follow-up: ban must cover Bash, network egress, env vars, source-path reads, and default-deny on unresolved agent_id, NOT just the Skill tool. M1 establishes the trustable allowlist that M2/M3/M4 all assume.",
+    "where": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/agent_resolver.py",
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/agents/accommodation.md",
+      "/root/travel-planner/.claude/agents/cafe.md",
+      "/root/travel-planner/.claude/agents/entertainment.md",
+      "/root/travel-planner/.claude/agents/shopping.md",
+      "/root/travel-planner/.claude/agents/budget.md"
+    ],
+    "scope": {
+      "included": [
+        "tool-policy.v1.json schema bump v1→v2 with 8 gaode_* keys",
+        "pretool-tool-policy.py: 6-surface classifier + is_gaode_allowed call BEFORE standard is_allowed",
+        "policy_registry.py: new is_gaode_allowed(role, surface, target) function + alias normalization",
+        "agent_resolver.py: docstring update documenting gaode-scoped fail-CLOSED asymmetry vs LOW-10 global fail-open",
+        "7 agent .md DO-NOT blocks (verbatim header '## DO NOT (harness-enforced)')",
+        "Removal/rewrite of positive gaode instructions in the 7 banned agents",
+        "Negative + positive tests for all 6 surfaces × allowlist/non-allowlist combinations"
+      ],
+      "excluded": [
+        "Schema migration to per-slot options[] (M2)",
+        "plan.md pipeline reorder (M2)",
+        "--auto mode flag (M2)",
+        "6 named slots model (M2)",
+        "Per-slot floors validator meals≥2/day≥6, accommodation≥3 (M2)",
+        "Day-type table validator (M2)",
+        "day-states.json artifact (M2)",
+        "route_resolver.py shared module (M2)",
+        "Web app, FastAPI server, REST endpoints, React rewrite, drag-drop UI (M3)",
+        "Live budget recompute, lazy routing endpoint, atomic file save, 409-soft, request_seq filter (M3)",
+        "PDF/iCal exporters with CJK font, VTIMEZONE, VALARM, time-anchor panel (M4)",
+        "Multi-traveler attribution, compare/diff, re-roll, cost-cap/dietary filter, custom-card, share-link (M5)",
+        "Modification of /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/*.py (the bannable scripts themselves remain for timeline/transportation)",
+        "Modification of /root/travel-planner/.claude/skills/gaode-maps/skill.md (user-invocable: true preserved)",
+        "Modification of timeline.md or transportation.md (allowlist preserved)",
+        "Modification of any data file under /root/travel-planner/data/**"
+      ]
+    },
+    "success_criteria": [
+      "Negative test: subagent role=meals invokes Skill(scripts:gaode-maps:tools:routing) → hook exit 2 with surface=skill",
+      "Negative test: role=attractions invokes Bash with python3 .../gaode-maps/scripts/poi_search.py → hook exit 2 with surface=bash-token",
+      "Negative test: role=cafe invokes Bash with curl https://restapi.amap.com/... → hook exit 2 with surface=network-host",
+      "Negative test: role=dev invokes Bash with echo $AMAP_KEY → hook exit 2 with surface=env-var",
+      "Negative test: role=entertainment invokes Read on /.claude/skills/gaode-maps/skill.md → hook exit 2 with surface=read-path",
+      "Negative test: gaode surface hit with missing agent_id → hook exit 2 with surface=identity-default-deny",
+      "Positive test: alias 'transport' normalized to 'transportation', all 6 surfaces ALLOW",
+      "Positive test: canonical 'timeline' and 'transportation', all 6 surfaces ALLOW",
+      "Backward-compat test: every non-gaode tool call across all roles behaves identically to policy v1 (no false denies, no false allows)",
+      "Grep test: each of 7 banned agent .md files contains exactly one '## DO NOT (harness-enforced)' header; timeline.md + transportation.md unchanged"
+    ],
+    "constraints": [
+      "Use canonical agent IDs 'timeline' and 'transportation' verbatim (NOT shorthand 'transport'); aliases normalized BEFORE allowlist check",
+      "Single tool-policy.v1.json + single pretool-tool-policy.py hook (architect arch-prop-1: do NOT splinter into 5 ad-hoc hooks)",
+      "Additive enforcement only — existing role-level allowed_tools/denied_* semantics unchanged",
+      "Fail-CLOSED on unresolved agent_id is gaode-scoped only; global LOW-10 fail-open posture for non-gaode tools preserved",
+      "policy_version bump v1→v2 with new keys ignored gracefully by old hook code (additive schema)",
+      "No emoji in code/comments/commit messages (CLAUDE.md global rule)",
+      "Auto-commit via refs/checkpoints/<branch>; HEAD master never advances on PostToolUse"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/agent_resolver.py",
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/agents/accommodation.md",
+      "/root/travel-planner/.claude/agents/cafe.md",
+      "/root/travel-planner/.claude/agents/entertainment.md",
+      "/root/travel-planner/.claude/agents/shopping.md",
+      "/root/travel-planner/.claude/agents/budget.md"
+    ],
+    "path_dependent_shared_infra": [
+      "/root/.claude/hooks/lib/bash_write_targets.py (read-only verify; no edit unless reusable path resolver exists)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "/root/travel-planner/scripts/lib/save_translate.py (data-layer gaode tagging, not agent invocation)",
+      "/root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/*.py (bannable scripts; harness blocks invocation, scripts remain for timeline/transportation)",
+      "/root/travel-planner/.claude/skills/gaode-maps/skill.md (user-invocable preserved; subagent ban is at hook layer)",
+      "/root/travel-planner/CLAUDE.md (auto-inventory only; no role-table to extract per Step 0.5)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-09T11:40:02Z",
+      "task_id": "20260509-114002",
+      "file": "/root/travel-planner/scripts/lib/save_translate.py",
+      "line": null,
+      "observation": "References gaode in data-layer tagging (translation/banned-keys), not agent invocation. Out of M1 user-need path; not modified.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-09T11:40:02Z",
+      "task_id": "20260509-114002",
+      "file": "/root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py",
+      "line": null,
+      "observation": "Bannable script. Per §5.1 the ban is achieved by harness REJECTING invocation, not by deleting/modifying the script (which timeline/transportation legitimately use). Not modified.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-09T11:40:02Z",
+      "task_id": "20260509-114002",
+      "file": "/root/travel-planner/.claude/skills/gaode-maps/skill.md",
+      "line": null,
+      "observation": "Skill manifest declares user-invocable: true. Out of M1 scope: user can still invoke manually; ban targets subagents only (via agent_id). Not modified.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-09T11:40:02Z",
+      "file": "/root/travel-planner/CLAUDE.md",
+      "task_id": "20260509-114002",
+      "line": null,
+      "observation": "Project CLAUDE.md is auto-inventory only (13 lines, no role-table entries to extract per Step 0.5 grounding contract).",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "All 6 content agents (meals, attractions, cafe, entertainment, shopping, accommodation) currently invoke gaode-maps via Bash → python3 wrapper, in violation of the user's spec §5.1 systematic ban.",
+    "root_cause": "No harness-layer enforcement exists for gaode-maps invocation. tool-policy.v1.json + pretool-tool-policy.py enforce role-level tool allow/deny and write/read path prefixes, but no skill-prefix / bash-token / bash-resolved-path / network-host / env-var / read-path matchers exist for the gaode surface set. Prompts of the 6 banned agents currently INSTRUCT them to call gaode (positive instructions in meals.md:79, attractions.md:84, etc.). Both layers — harness AND prompt — must change for the ban to be deterministic.",
+    "root_cause_commit": "N/A — pre-existing absence; no single commit introduced the gap. Spec §5.1 establishes the new requirement.",
+    "why_introduced": "Original travel-planner agents were designed to do their own POI search via gaode for accuracy in China. Spec §5.2 inverts this design (timeline/transportation own routing; content agents own discovery via rednote). M1 enforces the new design at the harness layer.",
+    "why_problematic": "Without M1, M2's per-slot options[] schema and M3's web app cannot trust that 'agent_id=timeline' is the only path to gaode. Defensive coding would have to repeat across every milestone. M1 establishes the invariant once.",
+    "timeline": "Spec authored 2026-05-08; user-confirmed parameters 2026-05-09; codex audit follow-up §5.13 added 2026-05-09. M1 cycle starts 2026-05-09T11:40Z.",
+    "affected_files": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/travel-planner/.claude/agents/{meals,attractions,accommodation,cafe,entertainment,shopping,budget}.md"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "Read of /root/.claude/policies/tool-policy.v1.json (full file): no gaode_* keys exist (observed via Read tool)",
+      "Read of /root/.claude/hooks/pretool-tool-policy.py:47-67 (_extract_targets): only handles WRITE_TOOLS / Read / Bash with bash_write_targets — no gaode classifier (observed via Read)",
+      "Read of /root/.claude/hooks/lib/policy_registry.py:228-251: _check_tool_lists / _check_write_path / _check_read_path — no gaode equivalents (observed via Read)",
+      "Read of /root/.claude/hooks/lib/agent_resolver.py:21: LOW-10 fail-open documented (observed via Read); gaode-scoped fail-CLOSED is a new asymmetry to introduce",
+      "Grep '(gaode|amap|高德|GAODE|AMAP)' across /root/travel-planner/.claude/agents/*.md: 7 banned agents have positive gaode references at specific lines (observed via Grep, listed verbatim in ticket Evidence/Measured)",
+      "timeline.md and transportation.md confirmed allowlisted-by-design (gaode references at timeline.md:361-440, transportation.md:94 etc are intentional and must be preserved)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["gaode-maps", "高德", "amap", "timeline", "transportation", "harness", "prompt", "subagent"],
+    "localization_evidence": "Reproduced via direct Read of tool-policy.v1.json (no gaode_* keys present), pretool-tool-policy.py (no surface classifier), and Grep across 9 agent .md files (7 have positive gaode references, 2 are allowlisted). Spec §5.13C #1-6 enumerates the six surfaces required.",
+    "located_source": "/root/.claude/policies/tool-policy.v1.json (policy data); /root/.claude/hooks/pretool-tool-policy.py (hook logic); /root/travel-planner/.claude/agents/*.md (per-agent prompts). All three named in spec §5.1 + §5.13C verbatim.",
+    "localization_blocked": null,
+    "git_bisect_result": null
+  },
+  "diagnosis_layer": "L5",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill (§5.1)", "classification": "user-need", "milestone": "M1", "acceptance_criterion": "Harness blocks all 6 surfaces for non-allowlist agents; allowlist binds canonical timeline/transportation; alias transport normalized; agent_id-missing fails CLOSED. AC1-AC6."},
+    {"id": "R2", "source_phrase": "使用 harness 原则，并且在 prompt 中也禁止 (§5.1)", "classification": "user-need", "milestone": "M1", "acceptance_criterion": "## DO NOT block in every non-allowlist agent .md as defense-in-depth. AC7."},
+    {"id": "R3", "source_phrase": "修 travel-planner 的底层逻辑为，meals 等实际业务 agent 应该为每一个计划提供较多的选择… (§5.2)", "classification": "user-need", "milestone": "M2", "acceptance_criterion": "Documented in Future Cycles outline; not in this ticket's AC."},
+    {"id": "R4", "source_phrase": "增加 --auto 模式 (§5.5)", "classification": "user-need", "milestone": "M2", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R5", "source_phrase": "全面改进 web 端…拖拽内容到 timeline 视图 (§5.6)", "classification": "user-need", "milestone": "M3", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R6", "source_phrase": "每天至少6家餐厅…每晚至少3家酒店推荐 (§5.7 A/B)", "classification": "user-need", "milestone": "M2", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R7", "source_phrase": "早餐一个槽位…6 named slots (§5.8)", "classification": "user-need", "milestone": "M2", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R8", "source_phrase": "所有槽位时间都不固定…后台重新获取高德数据实时计算 (§5.9)", "classification": "user-need", "milestone": "M3", "acceptance_criterion": "Documented in Future Cycles outline; M1 makes the lazy-routing endpoint trustable."},
+    {"id": "R9", "source_phrase": "让 budget agent 在用户每次拖动后也实时重算总价 (§5.10)", "classification": "user-need", "milestone": "M3", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R10", "source_phrase": "追加：PDF / iCal 导出 (§5.11)", "classification": "user-need", "milestone": "M4", "acceptance_criterion": "Documented in Future Cycles outline."},
+    {"id": "R11", "source_phrase": "过去的html没有交互功能…不需要向后兼容 (§5.12)", "classification": "user-need", "milestone": "cross-cutting (documented in M2 schema design)", "acceptance_criterion": "M1 unaffected — gaode ban orthogonal to schema versioning."},
+    {"id": "R12", "source_phrase": "Codex audit follow-up §5.13 A/B/C/D", "classification": "user-need", "milestone": "split: §5.13C → M1; §5.13A markers already in spec; §5.13B day-type table → M2; §5.13D web persistence → M3", "acceptance_criterion": "M1 implements §5.13C in full. AC1-AC8."},
+    {"id": "R13", "source_phrase": "全部 (user covering phrase)", "classification": "user-need", "milestone": "orchestration: implement whole spec across 5 milestones", "acceptance_criterion": "Decomposition into 5 milestones; this cycle = M1; remaining queued. See ticket Future Cycles section."}
+  ],
+  "milestone_roadmap": [
+    {
+      "id": "M1",
+      "label": "gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block",
+      "scope_sections": ["§5.1", "§5.4", "§5.13C"],
+      "size": "1 dev cycle",
+      "blocked_on": null,
+      "this_cycle": true
+    },
+    {
+      "id": "M2",
+      "label": "Schema + state machine + pipeline reorder + --auto + day-type table + flexible-time validators + route_resolver shared module",
+      "scope_sections": ["§5.2", "§5.5", "§5.7 A/B/D", "§5.8", "§5.9 A/C", "§5.13 A/B"],
+      "size": "1-2 dev cycles",
+      "blocked_on": ["M1"],
+      "this_cycle": false,
+      "deferred_clarifications_needed_before_start": ["C3 --auto override surface (panel default-collapsed with see-alternatives link; fit_score components in provenance)"]
+    },
+    {
+      "id": "M3",
+      "label": "Web UI MVP — FastAPI server, REST endpoints, atomic save + meta.json, candidates panel + drag-drop + tap-to-place mobile, lazy routing endpoint, live budget panel, validation feedback UI, trips-list landing page",
+      "scope_sections": ["§5.6", "§5.9 B/D/E", "§5.10", "§5.13D"],
+      "size": "1-2 dev cycles",
+      "blocked_on": ["M1", "M2"],
+      "this_cycle": false,
+      "deferred_clarifications_needed_before_start": ["C1 cascade undo policy (toast OR confirm-modal)", "C4 409-soft semantics (cross-day auto-merge vs same-day prompt-with-diff)", "C6 drag swap+cross-type semantics", "po-31 trips-list landing in scope?"]
+    },
+    {
+      "id": "M4",
+      "label": "Exports — PDF (weasyprint + Noto CJK + per-day pages + ToC) + iCal (icalendar + VTIMEZONE + VALARM) + KML/高德-list",
+      "scope_sections": ["§5.11"],
+      "size": "1 dev cycle",
+      "blocked_on": ["M1", "M2", "M3"],
+      "this_cycle": false,
+      "deferred_clarifications_needed_before_start": ["C2 iCal time-anchor model (per-trip default + per-day override panel BEFORE export, not modal cascade)"]
+    },
+    {
+      "id": "M5",
+      "label": "Polish — multi-traveler attribution, compare/diff, re-roll, cost-cap/dietary filter, custom-card injection, share-link read-only URL, per-day save indicator",
+      "scope_sections": ["beyond spec — specialist-identified gaps po-1, po-2, po-4, po-5, po-7, po-26, user-17, user-20"],
+      "size": "1 dev cycle",
+      "blocked_on": ["M1", "M2", "M3"],
+      "this_cycle": false,
+      "deferred_clarifications_needed_before_start": ["po-7 multi-traveler attribution in scope?"]
+    }
+  ],
+  "deferred_spec_questions": {
+    "blocking_M1": [],
+    "blocking_M2": ["C3 --auto override surface"],
+    "blocking_M3": ["C1 cascade undo policy", "C4 409-soft semantics", "C6 drag swap+cross-type semantics", "po-31 trips-list landing page in/out of scope"],
+    "blocking_M4": ["C2 iCal time-anchor model"],
+    "blocking_M5": ["po-7 multi-traveler attribution in/out of scope"],
+    "rationale": "M1 is a pure harness/prompt change with no UX, no data shape, and no orchestration touch. None of the 6 specialist-flagged contradictions affect M1's deliverables. The orchestrator should batch user-clarification questions before M2 starts (cleanest moment: M1 closed, M2 ticket being drafted)."
+  },
+  "component_chain": [
+    {
+      "file": "/root/.claude/policies/tool-policy.v1.json",
+      "line_range": "1-606",
+      "role": "Single source of truth for tool/path policy per role; new gaode_* keys land here as additive top-level fields",
+      "imports_from": "consumed by /root/.claude/hooks/lib/policy_registry.py via load_policy()",
+      "evidence": "Read of full file: keys present are policy_version, default_action, _shared_protected_path_prefixes, roles{...}; no gaode_* keys present",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/.claude/hooks/lib/policy_registry.py",
+      "line_range": "1-280",
+      "role": "Loads tool-policy.v1.json once, exposes is_allowed(role, tool, target) -> (bool, str) consulted by every hook; gains is_gaode_allowed sibling in M1",
+      "imports_from": "consumed by /root/.claude/hooks/pretool-tool-policy.py:37 and pretool-subagent-code-block.py shim",
+      "evidence": "Read of full file: _check_tool_lists/_check_write_path/_check_read_path decomposition at L228-251, _path_in_prefixes/_glob_match helpers reusable for gaode patterns",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/.claude/hooks/pretool-tool-policy.py",
+      "line_range": "1-117",
+      "role": "PreToolUse:* hook entrypoint; classifies (tool, input) into targets, calls is_allowed, exits 2 on deny; gains gaode-surface classifier + is_gaode_allowed call BEFORE standard is_allowed in M1",
+      "imports_from": "leaf (consumed by Claude Code harness via PreToolUse hook configuration)",
+      "evidence": "Read of full file: _extract_targets at L47-67 handles WRITE_TOOLS/Read/Bash; _check_targets at L82-92 iterates targets with first-deny exit; main() at L95-107 is the integration point",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/.claude/hooks/lib/agent_resolver.py",
+      "line_range": "1-139",
+      "role": "Resolves payload.agent_id → agent_type (role) via cp-state files + dev-registry; LOW-10 fail-open on unresolvable",
+      "imports_from": "consumed by pretool-tool-policy.py:35 and pretool-subagent-code-block.py",
+      "evidence": "Read of full file: docstring L17-22 documents LOW-10 deliberate fail-open contract; resolve_agent_type at L128-138 returns None on miss",
+      "verified_via": "Read"
+    },
+    {
+      "file": "/root/travel-planner/.claude/agents/meals.md",
+      "line_range": "75-89, 146, 165, 397, 412-425",
+      "role": "Banned agent prompt; currently instructs gaode invocation; M1 adds DO-NOT block + removes positive gaode instructions",
+      "imports_from": "leaf (loaded by Claude Code harness when the meals subagent is dispatched)",
+      "evidence": "Grep '(gaode|amap|高德)' returned the listed line numbers; Read L75-100 confirmed positive gaode instruction at L77-80",
+      "verified_via": "both"
+    },
+    {
+      "file": "/root/travel-planner/.claude/agents/{attractions,cafe,entertainment,shopping,accommodation,budget}.md",
+      "line_range": "see ticket Evidence/Measured for per-file lines",
+      "role": "5 banned agents with positive gaode refs (attractions/cafe/entertainment/shopping/accommodation) + 1 banned agent without existing refs (budget); all 6 receive DO-NOT block in M1",
+      "imports_from": "leaf",
+      "evidence": "Grep '(gaode|amap|高德|GAODE|AMAP)' across .claude/agents/*.md returned per-file line numbers verbatim listed in ticket",
+      "verified_via": "Grep"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "/root/.claude/hooks/pretool-tool-policy.py",
+      "line": 111,
+      "type": "if",
+      "code_snippet": "try: main(); except Exception as e: sys.stderr.write(f'pretool-tool-policy: unexpected ({e})\\n'); sys.exit(0)",
+      "purpose": "Fail-safe on any unexpected exception in the hook — exits 0 (allow) so a hook bug does not brick the tool pipeline.",
+      "removal_authorized": false
+    },
+    {
+      "file": "/root/.claude/hooks/lib/policy_registry.py",
+      "line": 254,
+      "type": "if",
+      "code_snippet": "def _fail_open_or_closed(role, reason): if role in ALLOWED_TYPES_FALLBACK: return (True, f'fail-safe-{reason}'); return (False, f'fail-closed-{reason}')",
+      "purpose": "On policy load failure, dev role gets fail-safe ALLOW (preserves historical ALLOWED_TYPES = {'dev'} behavior); other roles fail-CLOSED. Preserve this for non-gaode tools.",
+      "removal_authorized": false
+    },
+    {
+      "file": "/root/.claude/hooks/lib/agent_resolver.py",
+      "line": 21,
+      "type": "if",
+      "code_snippet": "LOW-10 (2026-05-07): callers MUST NOT hard-block on `None`. Claude Code may dispatch subagents before any sentinel-creating tool runs",
+      "purpose": "Global LOW-10 fail-open posture — preserve for non-gaode tools; gaode-scoped fail-CLOSED is a new asymmetry that does NOT remove this guard.",
+      "removal_authorized": false
+    },
+    {
+      "file": "/root/.claude/hooks/pretool-tool-policy.py",
+      "line": 99,
+      "type": "if",
+      "code_snippet": "if not role: sys.exit(0)",
+      "purpose": "Exit 0 (allow) when role is unresolvable (LOW-10 enforcement). M1 modifies this for gaode tools only: the new is_gaode_allowed branch is consulted BEFORE this exit so a gaode call with missing agent_id fails CLOSED while non-gaode calls retain the fail-open.",
+      "removal_authorized": true,
+      "removal_authorization_note": "Authorized to MODIFY (not remove) — insert gaode check BEFORE this exit; fall through to the existing exit for non-gaode tools."
+    }
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- pure backend (hook + policy + agent-prompt edit); cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, or (4) screenshot evidence",
+    "viewport": null,
+    "theme": null,
+    "locale": null,
+    "auth_state": null,
+    "data_state": null,
+    "browser": null,
+    "url_path": null
+  },
+  "evidence": {
+    "observed": "User §5.1 verbatim: 系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill。使用 harness 原则，并且在 prompt 中也禁止。 + §5.13C codex audit follow-up extending to Bash, network, env vars, source-path reads, and identity-default-deny.",
+    "measured": {
+      "value": "tool-policy.v1.json contains 0 of 8 required gaode_* keys; pretool-tool-policy.py contains 0 of 6 surface matchers; 7 of 9 agent .md files contain 0 ## DO NOT blocks; 6 of 7 banned agents contain positive gaode invocation instructions.",
+      "location": "/root/.claude/policies/tool-policy.v1.json (full file); /root/.claude/hooks/pretool-tool-policy.py:47-67,82-92,95-107; /root/travel-planner/.claude/agents/{meals,attractions,cafe,entertainment,shopping,accommodation,budget}.md (per-file line numbers in ticket Evidence section)"
+    },
+    "expected": {
+      "value": "Per §5.13C: 6 surfaces blocked for non-allowlist; canonical agent IDs timeline/transportation; alias transport normalized; gaode-scoped fail-CLOSED on missing agent_id; ## DO NOT block in every non-allowlist agent .md; positive gaode instructions removed/rewritten.",
+      "source": "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md:79-97 (§5.1), L121-129 (§5.4), L440-462 (§5.13C)"
+    },
+    "gap": "Add 8 policy keys + 6 surface matchers (1 hook + 1 lib function) + 7 DO-NOT blocks + remove/rewrite ~12 positive gaode instructions across 6 agent files."
+  },
+  "scope_expansion": {
+    "search_pattern": "(gaode|amap|高德|GAODE|AMAP)",
+    "search_scope": "/root/travel-planner/.claude/** and /root/.claude/policies/** and /root/.claude/hooks/**",
+    "user_reported": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/agents/accommodation.md",
+      "/root/travel-planner/.claude/agents/cafe.md",
+      "/root/travel-planner/.claude/agents/entertainment.md",
+      "/root/travel-planner/.claude/agents/shopping.md"
+    ],
+    "additional_found": [
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/agent_resolver.py",
+      "/root/travel-planner/.claude/agents/budget.md"
+    ],
+    "all_occurrences": [
+      "meals.md:7,79,146,165,397,412,423,425",
+      "attractions.md:7,84,189,360,362",
+      "cafe.md:7,86,146",
+      "entertainment.md:7,82,169,338,340",
+      "shopping.md:7,84,197,367,369",
+      "accommodation.md:7,194,394",
+      "timeline.md:361,364,369,375,380,382,395,406,407,440 (PRESERVE — allowlisted)",
+      "transportation.md:7,94,202,214,354,361,363,411 (PRESERVE — allowlisted)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "User's verbatim spec text + specialist consultation findings, both read in this session",
+    "url_or_location": "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md:79-97,121-129,440-462; /root/travel-planner/docs/dev/scratch-20260509-114002/specialist-findings.md:32-46",
+    "copy_allowed": true,
+    "role_table": null,
+    "_role_table_source_note": "/root/travel-planner/CLAUDE.md is auto-inventory only (13 lines); no role-table entries to extract per Step 0.5"
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": null
+  },
+  "context": {
+    "codebase_state": "Branch master; recent commits 1441e52, d52fcdd are spec-20260506-092951 cycles 1-3 (write-time strict-schema + checkpoint refs + save.py rewrites + plan-integrity linter). No prior work on spec-20260508-221237.",
+    "recent_commits": "1441e52 (spec-20260506-092951 cycles 1-3 hardening), d52fcdd (close deferred items), c5e2741 (timeline return-to-hotel tactical fix — unrelated to systematic ban scope)",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Single-hook extension per architect arch-prop-1 — add 8 gaode_* keys to existing tool-policy.v1.json; add is_gaode_allowed sibling function to existing policy_registry.py; insert gaode-surface classifier + is_gaode_allowed call BEFORE standard is_allowed in pretool-tool-policy.py main(). Preserve fail-safe on policy load failure, fail-CLOSED only for gaode-scoped missing agent_id, fail-open for non-gaode unresolved roles. Add 7 DO-NOT blocks to non-allowlist agent .md files with verbatim header '## DO NOT (harness-enforced)'; remove/rewrite each existing positive gaode instruction so the prompt no longer instructs invocation (replacement: rednote-only discovery + name+address strings; defer coordinate resolution + intra-city routing to timeline agent in M2 pipeline).",
+    "files_to_create": [],
+    "files_to_modify": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/agent_resolver.py",
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/agents/accommodation.md",
+      "/root/travel-planner/.claude/agents/cafe.md",
+      "/root/travel-planner/.claude/agents/entertainment.md",
+      "/root/travel-planner/.claude/agents/shopping.md",
+      "/root/travel-planner/.claude/agents/budget.md"
+    ],
+    "validation_approach": "QA runs negative tests for each of 6 surfaces × non-allowlist roles (skill, bash-token, bash-resolved-path, network-host, env-var, read-path) and confirms hook exits 2 with correct surface and matched_pattern in stderr JSON; positive tests for canonical timeline/transportation across all 6 surfaces and alias 'transport' normalization; identity-default-deny test with missing agent_id on gaode surface; backward-compat test that non-gaode tool calls behave identically to v1 (no regression in existing role behaviors); grep test that each of 7 banned agent .md files contains exactly one '## DO NOT (harness-enforced)' header and timeline.md/transportation.md unchanged."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "no_emoji_in_code": true,
+    "additive_policy_schema": true,
+    "single_hook_single_policy": true,
+    "canonical_agent_ids": true,
+    "preserve_existing_guards": true
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
