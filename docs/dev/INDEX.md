@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-09T15:21:18Z*
-**Total entries**: 266
+*Last updated: 2026-05-09T15:49:06Z*
+**Total entries**: 267
 **Convention**: kebab
 
 ## Tree
@@ -14,6 +14,7 @@ dev/
 ├── playwright-screenshots/
 │   └── `01-initial-load.png` - png file
 ├── scratch-20260509-114002/
+│   ├── `architect-redev-findings.md` - Architect findings — /redev cycle for spec-20260508-221237 M1
 │   └── `specialist-findings.md` - Specialist Consultation Findings — spec-20260508-221237
 ├── screenshots/
 │   └── dev-20260505-123425/
