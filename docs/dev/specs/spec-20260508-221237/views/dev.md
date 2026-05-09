@@ -48,18 +48,30 @@ Add an `--auto` flag (or equivalent) to the planning entrypoint that bypasses th
 
 Default mode (without `--auto`) remains the user-gated flow from §5.2.
 
-### 5.6: Web UI overhaul — drag-and-drop timeline with all-pairs intra-city routing
-
-> 全面改进 web 端，使得全部候选的内容都可以被展示在 web 端并且用户可以自己拖拽内容到 timeline 视图（这要求 timeline 视图增加新的候选窗口）。同时 timeline 应该自动计算每一个景点相互之间的市内行程，即使用户不用，因为这样可以让用户在网页自定义行程的时候可以自动地计算任意两个地方的 timeline（自动匹配）。
+### 5.6: Web UI overhaul — backend / endpoint cross-cuts (UI specifics in ui-specialist.md)
 
 The interactive HTML output (`generate-html-interactive.py` and friends) must become the primary user-selection surface, not just a final report.
 
-Required UI features:
+Backend requirement enabling (3) — **all-pairs intra-city precompute**:
 
-1. **Candidates panel** — a new pane in the timeline view that lists every `options[]` candidate produced by content agents for the current day, grouped by slot (meals/attractions/cafe/entertainment/shopping/accommodation), each card carrying name, location, cost, why-fits-user, source citation. The panel coexists with the timeline column.
-2. **Drag-and-drop** — user can drag any candidate card from the panel onto the timeline at a chosen time slot. Dropping a card materializes it as a timeline item.
-3. **Auto-routed gaps** — whenever two timeline items are adjacent (after a drop, move, or removal), the gap between them auto-fills with the intra-city travel segment connecting them. No manual recompute click; the connection updates live as items are reordered.
-4. **Selection persistence** — drag/drop edits write back to the day's data file (or to a session-scoped working copy that is committed on user "save"). The schema must distinguish "auto-selected", "user-selected via drag-drop", and "agent-default" provenance.
+- For every day, `timeline` agent MUST compute the intra-city travel segment between every ordered pair of POIs that appear anywhere on that day — including all `options[]` candidates, not just the currently selected items.
+- The precomputed N×N matrix is persisted alongside the day's data (e.g. `data/<trip>/day-<n>/intra-city-matrix.json` keyed by `from_poi_id × to_poi_id`, with mode/duration/distance/cost per cell).
+- The web UI consumes the matrix to instantly render any drag-drop reorder without a round-trip to the agent.
+- Matrix entries cite their gaode-maps source (since `timeline` is allowlisted to call gaode); cache invalidation is by POI-id + mode (re-compute only when a POI's coordinates change).
+- `transportation` is unaffected by the matrix — it remains the inter-city designer (§5.2).
+
+(Above bullets are **SUPERSEDED by §5.9 / §5.13 A** — kept here only as the formal record of what was revoked.)
+
+**E resolution (all-pairs intra-city matrix)** — also superseded:
+
+User's intent in providing the slot model is that the candidate space per day is naturally bounded:
+- Per-day total candidates ≈ `2 (breakfast) + ~3 (morning) + 2 (lunch) + ~3 (afternoon) + 2 (dinner) + ~3 (evening) ≈ 15` POIs.
+- All-pairs matrix size ≈ `15 × 15 = 225` cells, manageable within gaode rate limits given typical multi-day caching.
+
+Therefore E is resolved as **option E1 by virtue of the slot model** (no explicit per-slot 5-cap is added beyond §5.7's per-slot floors; the ceiling falls out of the slot structure):
+- `timeline` precomputes the full N×N intra-city matrix per day, where N = total POIs across all 6 slots' `options[]` ∪ accommodation.
+- No artificial cap is imposed; the cap is structural (6 slots × small candidate count).
+- If a future day exceeds a sensible upper bound (e.g. N > 25), `timeline` MAY fall back to lazy on-demand pair computation in the web UI; this is a dev-plan optimization, not a spec requirement.
 
 ### 5.9: Lazy intra-city routing — implementation
 
