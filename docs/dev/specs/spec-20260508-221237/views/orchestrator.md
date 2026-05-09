@@ -6,6 +6,44 @@
 
 ---
 
+## Spec header (verbatim)
+
+# Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
+
+**Pipeline**: travel-planner
+**Session**: spec-20260508-221237
+**Created**: 2026-05-08T22:12:37Z
+
+---
+
+## Empty section markers (cycle 1 not yet populated)
+
+## Section 2: What Was Attempted
+
+_Not yet populated._
+
+## Section 3: What Was Changed
+
+_Not yet populated._
+
+## Section 4: Current State
+
+_Not yet populated._
+
+## Section 6: Why Not Met
+
+_Not yet populated._
+
+## Section 7: What Must Be Done
+
+_Not yet populated._
+
+## Section 8: Attention Notes
+
+_Not yet populated._
+
+---
+
 ## Role Mandate (from spec)
 
 > 5. The two geo agents (`timeline`, `transportation`) are the ONLY agents permitted to call gaode-maps (cross-reference §5.1).
