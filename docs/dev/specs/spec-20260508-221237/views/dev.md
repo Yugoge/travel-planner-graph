@@ -61,48 +61,6 @@ Required UI features:
 3. **Auto-routed gaps** — whenever two timeline items are adjacent (after a drop, move, or removal), the gap between them auto-fills with the intra-city travel segment connecting them. No manual recompute click; the connection updates live as items are reordered.
 4. **Selection persistence** — drag/drop edits write back to the day's data file (or to a session-scoped working copy that is committed on user "save"). The schema must distinguish "auto-selected", "user-selected via drag-drop", and "agent-default" provenance.
 
-### 5.7: User-confirmed parameters — implementation floors
-
-**A. Per-slot option floor — meals**
-
-- Per-meal floor: `breakfast.options[].length >= 2`, `lunch.options[].length >= 2`, `dinner.options[].length >= 2`.
-- Per-day total floor across the three meal slots: `>= 6` distinct restaurants per day.
-- Validator must enforce both the per-slot AND per-day totals; a day failing either fails plan validation.
-
-**B. Per-slot option floor — accommodation, with same-city auto-lock**
-
-- For the FIRST night in a city: `options[].length >= 3` distinct hotels surfaced to user.
-- "Same city" continuation rule: if day N's accommodation is in city X and day N+1 stays in city X, day N+1's accommodation slot auto-locks to the day-N selection (no re-prompt, no candidate panel for that slot).
-- City-change detection key: city name on the skeleton (or stay-block boundary). When the city changes, the next night re-opens the 3-option choice.
-- Web UI (§5.6): on locked nights, the candidates panel for accommodation is hidden or shows the locked hotel as a single non-draggable card with a "locked from day N" provenance label. User can still unlock by going back to day N and re-picking.
-- `--auto` mode (§5.5) follows the same lock — auto-pick once on the first night, propagate across same-city continuation.
-
-**D. `--auto` selection policy**
-
-- Primary sort key: best match to the user's profile / requirement context — i.e. the same "fit-to-user" reasoning that the content agent already produces per option (the `why-fits-user` justification field).
-- Operational definition: each `option` carries a numeric or rank-ordered "fit score" derived from the agent's matching logic against the user's stated requirements + memory profile (Matilde+Jade INFJ / 文艺温馨 / no-touristy-chains, etc.). `--auto` picks the option with the highest fit score per slot.
-- Tie-breakers (in order): cost (cheaper wins), distance to current base (nearer wins).
-- Provenance: `selected_by: "auto"`, plus `selected_reason: "fit_score=<n>; tied=<bool>; tiebreaker=<key>"`.
-
-### 5.8: Day slot model — schema implications
-
-**Canonical day slot list** (every day's `options[]` and timeline are organized around these 6 slots, in this sequential order):
-
-1. `breakfast` — meal slot. Min 2 candidates (§5.7 A). **Time NOT fixed** — no hardcoded clock hour; the timeline places it based on the day's first activity, not on a fixed 08:00.
-2. `morning_activity` (上午行程) — single slot. Candidates may be drawn from `attractions`, `cafe`, `shopping`, `entertainment`, depending on the day's plan; surfaced together in this one slot.
-3. `lunch` — meal slot. Min 2 candidates.
-4. `afternoon_activity` (下午行程) — single slot. Same candidate pool rule as `morning_activity`.
-5. `dinner` — meal slot. Min 2 candidates.
-6. `evening_activity` (晚间活动) — single slot. Same candidate pool rule as `morning_activity` (typically `entertainment` / `cafe` / `shopping`).
-
-Plus the orthogonal accommodation slot (§5.7 B), which is per-night, NOT per day-segment, and locks across same-city continuation.
-
-**Implications for the schema and pipeline**:
-- Content agents emit candidates **into** one of these 6 named slots, not as free-floating items. `meals` agent owns `breakfast`/`lunch`/`dinner`; `attractions`/`cafe`/`entertainment`/`shopping` agents contribute candidates to `morning_activity`/`afternoon_activity`/`evening_activity` based on what fits each slot.
-- `morning_activity`/`afternoon_activity`/`evening_activity` candidates may come from MULTIPLE content agents — the orchestrator merges them into a single per-slot `options[]` array, with each option labeled by its source agent (provenance: `source_agent: "attractions"` etc.).
-- Per-slot floor for activity slots: TBD in dev-plan, but the bounded candidate space means small numbers (e.g. 3-5) are sufficient — full flexibility is not needed because slots are pre-typed.
-- Web UI candidates panel (§5.6) groups cards by these 6 slot names.
-
 ### 5.9: Lazy intra-city routing — implementation
 
 **A. All slot times are flexible (not just breakfast)**
