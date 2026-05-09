@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T17:50:42Z*
-**Total entries**: 74
+*Last updated: 2026-05-09T17:52:16Z*
+**Total entries**: 76
 **Convention**: kebab
 
 ## Tree
@@ -24,6 +24,7 @@ scripts/
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
+│   ├── `mcp-tool-catalog.json` - json config
 │   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
 │   └── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 ├── tests/
@@ -78,6 +79,7 @@ scripts/
 ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+├── `verify-gaode-ban-integration.sh` - Description: T2 integration verifier — spawns pretool-tool-policy.py as subprocess,
 ├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
 ├── `verify-plan-integrity.py` - Codex-signed deploy-blocking integrity verifier for travel-plan trips
 └── `verify-tool-restrictions.py` - Tool Restrictions Verification Script
