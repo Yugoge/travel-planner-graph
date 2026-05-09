@@ -206,7 +206,7 @@ CASES.append(("AC12.r3.3a composed Grep ba role legitimate allowed",
                "subagent_type": "ba"}, 0))
 CASES.append(("AC12.r3.3b composed Grep transportation no gaode-policy false-positive",
               {"tool_name": "Grep", "tool_input": {"pattern": "x", "path": f"{PROJECT}/data", "glob": "**/timeline.json"},
-               "subagent_type": "transportation"}, 2, None, None, "gaode-policy:"))
+               "subagent_type": "transportation"}, 2, None, None, "gaode-policy:", None))
 
 # -------- AC13: heredoc body extraction --------
 CASES.append(("AC13.1 heredoc gaode body denied (dev)",
