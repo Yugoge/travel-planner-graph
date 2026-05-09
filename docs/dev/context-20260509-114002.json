@@ -140,6 +140,33 @@
       "observation": "Project CLAUDE.md is auto-inventory only (13 lines, no role-table entries to extract per Step 0.5 grounding contract).",
       "in_user_path": false,
       "security_relevant": false
+    },
+    {
+      "ts": "2026-05-09T12:30:00Z",
+      "task_id": "20260509-114002",
+      "file": "/root/travel-planner/scripts/fetch-images-batch.py",
+      "line": "63,154-158,173-208,395,410,436,498-568,1078-1089",
+      "observation": "User-invoked image-enrichment script. Direct restapi.amap.com REST calls using AMAP_MAPS_API_KEY env var (lines 154-158); subprocess invocation of .claude/commands/scripts/gaode-maps/scripts/poi_search.py (lines 63, 410, 436); _gaode_search method at line 395; gaode/google service-routing logic at 173-208, 498-568, 1078-1089. Transit-via-wrapper bypass risk: if a banned subagent ever invokes 'python3 scripts/fetch-images-batch.py', bash-token matcher does NOT match (no gaode token in wrapper command) and bash-resolved-path matcher does NOT match (script lives at scripts/, not under a gaode prefix). Today zero subagent invocations (verified Grep 'fetch-images-batch.py' over .claude/ returned 0). Optional M1 hardening: extend gaode_denied_bash_resolved_path_prefixes with /scripts/fetch-images-batch.py OR add gaode_denied_bash_token: ['fetch-images-batch.py']. Deferred to M5 unless QA flags as P0. Resolves QA OBJ-2.",
+      "in_user_path": false,
+      "security_relevant": true
+    },
+    {
+      "ts": "2026-05-09T12:30:00Z",
+      "task_id": "20260509-114002",
+      "file": "/root/travel-planner/.claude/commands/plan.md",
+      "line": "100,397,417,423,1103,1144,1577,1641,1673",
+      "observation": "Orchestrator slash-command prompt with 9 positive gaode instructions to delegate gaode invocation to specialist subagents. After M1 lands, the harness will deny those invocations on every /plan invocation, producing user-visible JSON-shaped stderr deny output (per AC1-AC6) — interpretable by user, no silent hang. NOT in M1 affected_files: M2's pipeline reorder (content→user-review→timeline→transportation) rewrites plan.md as the first task; a partial M1 edit would drift from M2 design. M1→M2 inconsistency window acknowledged in Won't Have. Resolves QA OBJ-3.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-09T12:30:00Z",
+      "task_id": "20260509-114002",
+      "file": "/root/.claude/agents/{ba,qa,dev,pm,product-owner,ui-specialist,user}.md",
+      "line": null,
+      "observation": "7 global Claude harness agents named verbatim in spec §5.1 line 90 as 'out-of-scope agents (must be banned)'. Live in the global .claude repo (per global CLAUDE.md 'Nested .claude Repo' → /dev/shm/dev-workspace/dot-claude), NOT in travel-planner. Verified `ls /root/travel-planner/.claude/agents/` returns only 9 project-local content agents (accommodation, attractions, budget, cafe, entertainment, meals, shopping, timeline, transportation). Verified Grep '(gaode|amap|高德)' over /root/.claude/agents/ returned 0 matches in any of 19 global agent files — no existing positive instructions to retract, so §5.1 clause 2 ('在 prompt 中也禁止') has no prompt-layer divergence to fix. M1's harness layer covers them by virtue of being non-allowlist roles (default-deny binds at the policy file, not in their prompt text). Documentation parity in their .md files belongs to the separate dot-claude repo lifecycle and is deferred to M5 or to a separate dev cycle in that repo. Resolves QA OBJ-1.",
+      "in_user_path": false,
+      "security_relevant": false
     }
   ],
   "root_cause_analysis": {
