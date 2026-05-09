@@ -1,0 +1,40 @@
+QA cycle-3 round-2 BA-validation re-verification. Adversarial review of QA's draft PASS verdict.
+
+Banned brand obfuscated: g-aode = gaode, a-map = amap (cycle-1 hook blocks literals in Bash, hence obfuscation).
+
+CONTEXT:
+- Cycle 3 round 1: BA shipped revision; QA filed 9 objections (4 critical: OBJ-1..4; 4 major/minor: OBJ-5..9). Codex independently surfaced Q5 (Grep.glob field missed).
+- Cycle 3 round 2: BA produced REVISION-2 in /root/travel-planner/docs/dev/ticket-20260509-114002.md and /root/travel-planner/docs/dev/context-20260509-114002.json (codex_consult_cycle_3_revision_2 block).
+- BA also adopted QA's codex workaround (REV-7) — see /root/travel-planner/docs/dev/ba-spec-codex-prompt-cycle3-revision.txt and /root/travel-planner/docs/dev/ba-spec-codex-response-cycle3-revision.txt (49,928 token codex review).
+
+QA's DRAFT VERDICT: PASS — all 9 prior objections + Codex Q5 resolved.
+
+OBJ-1 RESOLVED: Decision 2 REVISION-2 narrows allowed_tools to [Read, Bash, Skill] verbatim mirror of timeline.md:7-10 / transportation.md:10-13. Adds denied_tools=[Write,Edit,MultiEdit,NotebookEdit]. Verified policy_registry.py:228-234 has denied_tools enforcement (line 229 explicit deny wins, checked BEFORE allowed_tools). NEW AC18 explicitly tests Write/Edit/MultiEdit/NotebookEdit denied for both roles + negative regression-guard for Bash→save.py.
+
+OBJ-2 RESOLVED: AC15 REVISION-2 switched to subagent_type:"ba". Verified ba IS in tool-policy.v1.json roles{}, with allowed_tools including Read/Edit/Grep/MultiEdit and allowed_write_path_prefixes including */docs/dev/ticket- (matches AC15 payload-3 file path). 3 explicit payloads, the third edits BA's own ticket file with banned path embedded in old_string — a content field per Decision 1 REVISION-2.
+
+OBJ-3 RESOLVED: Decision 1 REVISION-2 = explicit (tool_name, field_name) whitelist. Path/glob fields scanned: Read.file_path, Glob.pattern, Glob.path, Grep.path, Grep.glob (Codex Q5 critical addition), Edit.file_path, Write.file_path, MultiEdit.file_path, NotebookEdit.notebook_path, mcp playwright filename / paths[] / 3 catalog-completeness output-save filename fields. URL fields scanned via WebFetch.url + 3 mcp playwright URL/code/function fields (URL-substring extracted). Bash + heredoc bodies scanned. EXFIL EXCEPTION: mcp claude_ai Gmail send body/subject/html/text fed to env-var matcher only. Content fields NEVER scanned: Edit.old_string/new_string, MultiEdit edits[].old_string/new_string, Write.content, NotebookEdit.new_source. AC12-vs-AC15 inconsistency dissolved.
+
+OBJ-4 RESOLVED: AC9 split into AC9a (helper-isolated, all 6 surfaces with is_g-aode_allowed) and AC9b (full-hook, only Skill/Bash/Read which are timeline/transportation's allowed_tools). 6 explicit payloads in AC9b including Skill, Bash curl-network-host, Bash python3 resolved-path, Bash env-var, Read.
+
+OBJ-5 RESOLVED: AC11 enumerates all 6 architect-listed MCP vectors: browser_navigate.url, browser_evaluate.function (URL-substring), browser_run_code.code (URL-substring), browser_take_screenshot.filename, browser_file_upload.paths[], mcp claude_ai Gmail send.body (env-var exfil).
+
+OBJ-6 RESOLVED: allowed_write_path_prefixes narrowed to per-file fnmatch globs mirroring agent owned_files. (Caveat: fnmatch * matches across slashes, so this is not a perfect mirror of regex ^data/[^/]+/...$ — Codex flagged this as a non-critical caveat; QA treats as non-blocking because denied_tools makes the write prefixes mostly defense-in-depth anyway.)
+
+OBJ-7 RESOLVED: BA adopted QA's workaround. Prompt at /root/travel-planner/docs/dev/ba-spec-codex-prompt-cycle3-revision.txt uses g-aode/a-map obfuscation. Response at /root/travel-planner/docs/dev/ba-spec-codex-response-cycle3-revision.txt (49,928 tokens). codex_consult_cycle_3_revision_2 block in context.json documents method.
+
+OBJ-8 RESOLVED (minor): Decision 6 documents broader false-positive class.
+OBJ-9 RESOLVED (minor INFO): Decision 8 deferral with ledger entry.
+
+Codex Q5 RESOLVED: AC12 sub-payload (3) and Decision 1 explicit field whitelist both name Grep.glob.
+
+CHALLENGE QA's PASS VERDICT — look for:
+
+1. Any of the 9 resolutions actually unresolved or partially resolved that QA missed?
+2. New internal contradiction introduced by REVISION-2 that QA missed?
+3. AC literal-text drift: AC18 payloads use literal "<trip>" placeholder string in file_path — does this introduce verification ambiguity?
+4. Grep.pattern not in field whitelist — is that the right call (treat as content/free-text)? Or should it ALSO be scanned because Grep.pattern can be a regex with embedded paths?
+5. AC9b payload (5) "echo $A-MAP_KEY" — the env-var matcher in cycle-1 likely matches on the literal "$A-MAP_KEY" string in the command. AC says "exit 0 because allowlist". Any way the matcher returns DENY for allowlisted role here?
+6. Any 5th critical you (Codex) missed in round 1 that surfaces only after seeing REVISION-2 in full?
+
+Reply prefixed CODEX_FEEDBACK: with concrete points. If you concur with PASS, say so explicitly.
