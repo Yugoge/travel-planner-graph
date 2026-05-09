@@ -410,7 +410,7 @@ This agent has access to specialized accommodation search skills:
 
 **Skill Integration Notes**:
 - For Airbnb rentals: Use Skill tool to invoke airbnb skill, then use provided tools
-- For China locations: Use Skill tool to invoke gaode-maps skill for POI search
+- For China locations: surface candidate hotels as `name_local` + `location_local` strings; coordinate resolution and routing are owned by the downstream `timeline` agent (the only allowlisted gaode invoker — see DO NOT section at top of file).
 - For weather considerations: Use Skill tool to invoke openmeteo-weather skill
 - See individual SKILL.md files for detailed usage patterns
 
