@@ -1,0 +1,242 @@
+{
+  "request_id": "20260509-114002",
+  "task_id": "20260509-114002",
+  "timestamp": "2026-05-09T12:30:00Z",
+  "mode": "ba_validation_round_2",
+  "spec_id": "spec-20260508-221237",
+  "ba_artifact_paths": {
+    "ticket": "/root/travel-planner/docs/dev/ticket-20260509-114002.md",
+    "context": "/root/travel-planner/docs/dev/context-20260509-114002.json",
+    "spec": "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"
+  },
+  "prior_qa_report": "/root/travel-planner/docs/dev/ba-qa-report-20260509-114002.json",
+  "verdict": "pass",
+  "summary": "BA's cycle-2 revisions resolve all 5 actionable objections from cycle 1 with verifiable evidence. OBJ-1 (user-level agents): RESOLVED — ticket Won't Have section now contains explicit decision naming all 7 global agents with rationale grounded in (a) repo-locality (they live in dot-claude, not travel-planner), (b) re-grep verification of zero existing positive gaode references in /root/.claude/agents/ (independently verified by QA this round — exit 1, 'No matches found'), (c) harness default-deny coverage by virtue of being non-allowlist roles. OBJ-2 (fetch-images-batch.py): RESOLVED — 5th out-of-scope observation entry added with line numbers (63, 154-158, 173-208, 395, 410-436, 498-568, 1078-1089) and security_relevant=true; 'deferred to M5' is defensible given current zero subagent invocations (Grep verified) and the bypass risk is documented as a known coverage gap (not silently inherited). OBJ-3 (plan.md 9 instructions): RESOLVED — 6th out-of-scope observation entry added with all 9 line numbers; M2 inconsistency window acknowledged in Won't Have with explicit user-visible JSON-shaped deny output rationale. OBJ-4 (per-line REMOVE/PRESERVE): RESOLVED — Evidence/Measured section now contains per-line classification for all 6 banned agents; spot-check of meals.md:146, cafe.md:146, attractions.md:189 confirms classification accuracy (JSON template field, JSON template field, 'Common skills' enum list — all correctly marked PRESERVE). OBJ-5 (bash data contract): RESOLVED — Technical Hints 'Bash command-string data contract' section now explicitly identifies the pre-check stage location (between resolve_agent_type and _check_targets), names the function _check_gaode_bash(role, command), states the data contract (data['tool_input']['command'] not write-paths), and explains why a naive _extract_targets refactor would silently miss tokens. The wording is WHAT-only data-contract guidance with location identification, not a HOW-only refactor command. No new contradictions introduced; M1 deliverables held the line (8 policy keys + 6 surface matchers + 7 DO-NOT blocks). The 3 'exclude from M1' decisions accumulate into a documented M1→M2 inconsistency window that BA flagged transparently and that does not violate spec §5.1's 'systematic' demand because (a) every banned agent the spec names DOES get harness coverage (default-deny binds at the policy file regardless of prompt-layer presence), (b) the prompt-layer ban applies only where prompt-layer divergence exists (zero existing instructions in global agents = no divergence to fix), and (c) plan.md's prompt-layer rewrite is correctly assigned to M2 where the pipeline reorder happens.",
+  "user_verbatim_complaint": "Spec §5.1 verbatim: 系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill。使用 harness 原则，并且在 prompt 中也禁止。 Plus user covering phrase '全部' (whole spec, decomposed into 5 milestones; M1 = §5.1+§5.4+§5.13C foundation).",
+  "objection_resolutions": [
+    {
+      "id": "OBJ-1",
+      "dimension": "affected_file_accuracy",
+      "severity": "major",
+      "ba_response_strategy": "option (b) — exclude from M1 with explicit rationale documented in Won't Have + Out-of-Scope Observations + Edge Cases + scope.excluded",
+      "verification": {
+        "a_explicit_excluded_paragraph": {
+          "found": true,
+          "location": "ticket Won't Have first bullet (line 135) + Edge Cases pm/product-owner/ui-specialist/... entry (line 177) + context.json scope.excluded entry (line 53) + 7th out-of-scope-observation entry (lines 162-170)",
+          "names_all_7_files": true,
+          "files_named": ["ba.md", "qa.md", "dev.md", "pm.md", "product-owner.md", "ui-specialist.md", "user.md"],
+          "rationale_provided": "(a) repo-locality: live in /dev/shm/dev-workspace/dot-claude not travel-planner; (b) zero existing positive gaode references; (c) harness default-deny suffices; (d) documentation parity deferred to M5 or separate dot-claude repo cycle"
+        },
+        "b_zero_gaode_references_claim": {
+          "verified": true,
+          "method": "Grep '(gaode|amap|高德|GAODE|AMAP)' across /root/.claude/agents/ this round",
+          "result": "No matches found (exit 1) — 0 matches across all 19 global agent files",
+          "claim_holds": true
+        },
+        "c_spec_text_interpretation": {
+          "spec_phrase_verbatim": "every affected agent definition file under .claude/agents/ MUST contain an explicit ## DO NOT section",
+          "key_word": "affected",
+          "interpretation_options": {
+            "narrow_read": "files that currently have positive gaode instructions to retract (BA's read)",
+            "literal_read": "every banned agent file regardless of current content"
+          },
+          "ba_choice": "narrow_read",
+          "qa_assessment": "BA's narrow read is defensible because (a) §5.1 clause 2 ('在 prompt 中也禁止') exists to retract existing positive instructions, and zero such instructions exist in the 7 global agents, so the clause has nothing to apply to; (b) the harness layer (clause 1, authoritative per spec line 85) covers them via default-deny irrespective of prompt-layer presence; (c) the 7 global agents live in a separate repo (dot-claude per global CLAUDE.md), so editing them in M1 would mix repos and violate the cycle's 'travel-planner project' scope. The literal read is also valid but BA has provided a documented rationale for the narrow read with explicit rather than silent omission, which satisfies the cycle-1 OBJ-1 required_fix option (b) verbatim ('add a paragraph under scope.excluded explicitly naming each of these 7 user-level agent files and writing the rationale'). The remaining concern (literal read of 'every') is substantively addressed by the harness ban itself: the 7 agents ARE banned at the policy layer; only the prompt-layer documentation parity is deferred."
+        }
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "investigation_completeness",
+      "severity": "major",
+      "ba_response_strategy": "documented as 5th out-of-scope observation with security_relevant=true; optional harness coverage deferred to M5",
+      "verification": {
+        "a_new_out_of_scope_entry_exists": {
+          "found": true,
+          "location": "ticket Out-of-Scope Observations table line 188 + context.json out_of_scope_observations entry lines 144-152",
+          "line_numbers_present": "63, 154-158, 173-208, 395, 410-436, 498-568, 1078-1089",
+          "security_relevant_flag": true,
+          "qa_re_grep_verification": "Grep this round confirms: line 63 (poi_search.py path), 154-158 (restapi.amap.com geocode URL with AMAP_MAPS_API_KEY), 173-208 (gaode/google service-routing logic), 395 (_gaode_search method), 410, 436 (subprocess to poi_search.py), 498, 509, 514, 564, 568 (gaode service-routing branches), 1078, 1089 (search_term gaode logic). All BA-cited lines verified accurate."
+        },
+        "b_deferred_to_m5_defensibility": {
+          "qa_assessment": "The deferral is defensible for M1 ship readiness but the underlying concern remains a real bypass vector. BA's defense: (1) zero subagent invocations today (Grep 'fetch-images-batch.py' across .claude/ returned 0 — QA spot-checks this would still hold); (2) script lives at scripts/, not under a gaode prefix, so bash-resolved-path matcher would not catch it; (3) script wrapper command contains no gaode token, so bash-token matcher would not catch it; (4) optional M1 hardening explicitly named (extend gaode_denied_bash_resolved_path_prefixes with /scripts/fetch-images-batch.py OR add gaode_denied_bash_token: ['fetch-images-batch.py']); (5) deferred unless QA flags as P0. QA assessment: This is NOT P0 today (no subagent invokes it). However, the gap IS documented (security_relevant=true, M5 follow-up named, optional hardening recipe provided), which satisfies OBJ-2's required_fix option (ii) verbatim ('document it as a known coverage gap in out_of_scope_observations with security_relevant=true'). The cycle-1 objection's primary concern was the silent omission, which is now an explicit documented decision with bypass-risk acknowledgment. Cycle does not need to block on this; M5 owns the closure."
+        }
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "investigation_completeness",
+      "severity": "major",
+      "ba_response_strategy": "documented as 6th out-of-scope observation with all 9 line numbers; M1→M2 inconsistency window acknowledged with deny output rationale",
+      "verification": {
+        "a_new_out_of_scope_entry_exists": {
+          "found": true,
+          "location": "ticket Out-of-Scope Observations table line 189 + Won't Have second bullet (line 136) + context.json out_of_scope_observations entry lines 153-161",
+          "line_numbers_present": "100, 397, 417, 423, 1103, 1144, 1577, 1641, 1673",
+          "qa_re_grep_verification": "Grep this round confirms: lines 100, 397, 417, 423, 1103, 1144, 1577, 1641, 1673 — all 9 lines verified present and contain positive gaode mentions. BA's enumeration is exact."
+        },
+        "b_deny_output_interpretable_rationale": {
+          "qa_inspection": "Read of plan.md lines 95-109 (around line 100), 390-425 (around line 397/417/423), 1570-1584 (around line 1577) confirms: line 100 is inside an 'Orchestrator invokes entertainment-agent' example block — the gaode reference is in the SUBAGENT's instruction template ('Agent researches using gaode-maps/rednote'), not the orchestrator itself. Line 397 is inside a meals-agent invocation template ('use gaode-maps (China) or google-maps (international) to obtain GPS coordinates' — instruction TO the agent). Line 1577 is a 'NEVER use gaode-maps MCP tools yourself' (orchestrator-self-prohibition; this is actually correct — orchestrator should not use gaode itself; but the rest of the line tells the orchestrator to delegate to subagents who would then be denied). Lines 100, 397, 417, 423, 1103, 1144, 1641, 1673 = orchestrator-level instructions telling the orchestrator to delegate gaode invocation to specialist subagents (meals/attractions/etc.). After M1 lands, when the orchestrator follows the plan.md instruction to dispatch a meals subagent that then tries gaode, the harness will deny ON THE SUBAGENT SIDE (not the orchestrator side). The deny output is JSON-shaped per AC1 (stderr JSON with role, surface, matched_pattern, deny_reason) — interpretable, not a silent hang. BA's rationale verifies.",
+          "rationale_holds": true
+        },
+        "c_5_1_clause_2_prompt_interpretation": {
+          "spec_phrase_verbatim": "在 prompt 中也禁止",
+          "key_question": "Does 'prompt' include orchestrator slash-command files like plan.md, or only agent .md files?",
+          "ba_position": "plan.md belongs to M2 (pipeline reorder); the M1→M2 inconsistency window is acknowledged",
+          "qa_assessment": "Plan.md is technically a prompt to the orchestrator LLM (every slash-command file is a prompt). A literal reading of '在 prompt 中也禁止' would include plan.md. However, BA's Won't Have rationale is defensible: (a) M2's pipeline reorder rewrites plan.md as the FIRST task per the Future Cycles outline, so a partial M1 edit would drift from M2 design; (b) the M1→M2 inconsistency window is bounded (one milestone) and explicitly acknowledged with user-visible JSON-shaped deny output (not silent hang); (c) the harness layer (clause 1, authoritative) takes precedence over the prompt-layer divergence per spec line 85 ('Harness rejection is the source of truth — prompt rules alone are insufficient'). The narrow risk is that during the M1→M2 window, /plan invocations will produce harness denials that the user must interpret. BA explicitly committed to this trade-off in Won't Have with an explanation; the trade-off is acceptable because (a) the deny output is interpretable, (b) the window is bounded by M2's first task, and (c) the orchestrator's natural retry/redev loop allows recovery. This satisfies OBJ-3's required_fix option (2) verbatim ('an out_of_scope_observation entry naming plan.md:100,397,417,423,1103,1144,1577,1641,1673 with the explicit note ... M2 rewrites plan.md per Future Cycles outline'). The required_fix option (1) 'preferred' was stronger but option (2) is explicitly accepted in the cycle-1 fix list ('The second option is acceptable IF BA confirms the orchestrator's deny output is interpretable by the user (not a silent hang)'), which BA did via the JSON-shaped stderr clause."
+        }
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "evidence_quality",
+      "severity": "minor",
+      "ba_response_strategy": "Evidence/Measured section rewritten with per-line REMOVE/PRESERVE classification + schema-preservation rationale",
+      "verification": {
+        "a_per_line_classification_present": {
+          "found": true,
+          "location": "ticket Evidence/Measured section lines 32-46 + context.json evidence.measured.value field",
+          "all_6_banned_agents_classified": true,
+          "agents_with_classification": ["meals.md", "attractions.md", "cafe.md", "entertainment.md", "shopping.md", "accommodation.md"]
+        },
+        "b_classification_correctly_distinguishes_imperative_vs_schema": {
+          "qa_spot_checks": [
+            {
+              "file": "meals.md",
+              "line": 146,
+              "ba_classification": "PRESERVE (schema template — gaode-maps as enum value in search_results JSON)",
+              "qa_inspection": "Read confirms: line 146 is inside a JSON template under search_results array: '\"skill\": \"gaode-maps\", \"type\": \"place_detail\", \"url\": \"https://...\"'. Classification CORRECT.",
+              "verdict": "accurate"
+            },
+            {
+              "file": "cafe.md",
+              "line": 146,
+              "ba_classification": "PRESERVE (schema template — gaode-maps as enum value)",
+              "qa_inspection": "Read confirms: line 146 is identical pattern to meals.md:146, JSON template with 'skill': 'gaode-maps' inside search_results array. Classification CORRECT.",
+              "verdict": "accurate"
+            },
+            {
+              "file": "attractions.md",
+              "line": 189,
+              "ba_classification": "PRESERVE (Common skills enum list)",
+              "qa_inspection": "Read confirms: line 189 is '- Common skills: google-maps, gaode-maps, rednote' — descriptive enum list naming valid skill values. Classification CORRECT.",
+              "verdict": "accurate"
+            },
+            {
+              "file": "meals.md",
+              "line": 79,
+              "ba_classification": "REMOVE/REWRITE (imperative bash invocation block at :77-80)",
+              "qa_inspection": "Read confirms: lines 77-80 contain 'For China destinations: Use Gaode Maps POI search via Bash:' followed by a bash code block that executes poi_search.py. Imperative invocation. Classification CORRECT.",
+              "verdict": "accurate"
+            }
+          ],
+          "schema_preservation_rationale_provided": true,
+          "rationale_text": "search_results[].skill is an enum field downstream consumed by HTML/web renderers; deleting gaode-maps from the enum list would break renderers that legitimately produce gaode-maps entries from timeline/transportation outputs. The harness ban operates on agent_id at invocation time, not on enum-value presence in schema text."
+        }
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "minor",
+      "ba_response_strategy": "Technical Hints section gained a 'Bash command-string data contract' subsection naming the function, the location, and the data contract; context.json development_approach.strategy also includes the contract",
+      "verification": {
+        "a_explicit_data_contract_guidance": {
+          "found": true,
+          "location": "ticket Technical Hints / Related patterns to follow / first bullet (lines 264) + context.json development_approach.strategy (lines 431) — both contain identical guidance",
+          "guidance_text": "For Bash tool calls, the gaode bash-token + bash-resolved-path + env-var + network-host matchers MUST receive data['tool_input']['command'] (the raw command string), NOT the WRITE-path list returned by extract_bash_write_paths(). The existing _extract_targets() at pretool-tool-policy.py:47-67 consumes the command and discards it, returning only [None] + write_paths — this is correct for the WRITE-path check but loses the data the new gaode matchers need."
+        },
+        "b_pre_check_stage_location_identified": {
+          "found": true,
+          "location_in_main": "between resolve_agent_type and _check_targets",
+          "function_name": "_check_gaode_bash(role, command)",
+          "behavior_described": "runs all 4 bash-related gaode matchers against the raw command string and exits 2 on first hit; standard _check_targets continues unchanged for non-gaode write-path checks",
+          "naive_pitfall_called_out": "Naively extending _extract_targets to surface the raw command would silently miss tokens in `cd /tmp && python3 wrapper.sh` style commands where extract_bash_write_paths() returns no targets and the loop never runs the gaode matcher."
+        },
+        "c_what_only_not_how_only": {
+          "wording_assessment": "The guidance is data-contract WHAT (the matchers MUST receive data['tool_input']['command'], not the WRITE-path list) plus location WHERE (between resolve_agent_type and _check_targets), plus rationale WHY (extract_bash_write_paths discards command; naive extension would silently miss tokens). This is data-contract specification, not a refactor command. Dev retains freedom on implementation specifics (e.g., whether _check_gaode_bash is a method, top-level function, or class — BA does not prescribe). The NAME _check_gaode_bash is suggested ('Recommend' / 'Required design' phrasing), not mandated. Acceptable as WHAT-with-WHERE guidance, not as HOW-only.",
+          "verdict": "WHAT + WHERE (acceptable spec-level guidance)"
+        }
+      },
+      "verdict": "resolved"
+    }
+  ],
+  "additional_checks": {
+    "no_new_contradictions_introduced": {
+      "verified": true,
+      "evidence": "Diff between cycle-1 and cycle-2 ticket: (a) Won't Have section grew with explicit decisions for global agents, plan.md, fetch-images-batch.py — all consistent with each other and with spec §5.1 authority chain (harness layer authoritative, prompt layer defense-in-depth); (b) Out-of-Scope Observations table grew from 4 to 7 entries — all new entries are documented decisions, not silent omissions; (c) Evidence/Measured section gained per-line REMOVE/PRESERVE classification + schema-preservation rationale — internally consistent and aligned with grep results; (d) Technical Hints gained Bash data contract subsection — internally consistent with the existing Affected files #2 entry (which already mentioned 'extend _extract_targets' but now is supplemented by the explicit pre-check stage guidance)."
+    },
+    "m1_deliverables_held_the_line": {
+      "verified": true,
+      "comparison": "M1 Must Have items 1-5 are unchanged between cycle 1 and cycle 2: 8 policy keys + 6 surface matchers + 7 DO-NOT blocks + remove/rewrite positive instructions + audit log + version bump. No M1 deliverable was narrowed; the 3 'exclude from M1' decisions (global agents / fetch-images-batch / plan.md) are explicitly OUT OF SCOPE additions to Won't Have, NOT removals from Must Have. BA correctly distinguished cycle scope from bug scope."
+    },
+    "exclude_from_m1_decisions_vs_systematic_demand": {
+      "verified": true,
+      "spec_phrase_verbatim": "系统性彻底禁止" (systematic and complete prohibition),
+      "qa_assessment": "The 3 exclude-from-M1 decisions accumulate into a documented coverage profile: (a) global agents — covered by harness default-deny (no prompt-layer change needed because zero positive instructions exist); (b) fetch-images-batch.py — covered by the user-only invocation today + documented bypass risk for future M5 hardening; (c) plan.md — covered by harness layer with bounded M1→M2 inconsistency window. The 'systematic' demand from spec §5.1 is satisfied by the HARNESS LAYER (clause 1, authoritative): every banned agent at every surface is denied via default-deny + 6 surface matchers. The PROMPT LAYER (clause 2, defense-in-depth) is satisfied for the 7 in-scope project-local agents. The unfixed prompt-layer divergence is plan.md (orchestrator delegating) — bounded to M2's first task. This is NOT a coverage hole at the harness layer (which is authoritative); it is a documented prompt-layer inconsistency window. Defensible per spec line 85 ('Harness rejection is the source of truth — prompt rules alone are insufficient')."
+    }
+  },
+  "dimension_summary": {
+    "evidence_quality": {
+      "verdict": "pass",
+      "objections_resolved": ["OBJ-4"],
+      "notes": "Per-line REMOVE/PRESERVE classification added with schema-preservation rationale. Spot-check of 4 cited lines confirms classification accuracy."
+    },
+    "scope_alignment": {
+      "verdict": "pass",
+      "objections_resolved": [],
+      "notes": "M1 deliverables held the line (no narrowing). 3 exclude-from-M1 decisions are explicit Won't Have additions, not Must Have removals."
+    },
+    "investigation_completeness": {
+      "verdict": "pass",
+      "objections_resolved": ["OBJ-2", "OBJ-3"],
+      "notes": "Both missed surfaces (fetch-images-batch.py + plan.md) now have explicit out-of-scope observation entries with line numbers, security_relevant flag, and deferred-to-M2/M5 rationale."
+    },
+    "affected_file_accuracy": {
+      "verdict": "pass",
+      "objections_resolved": ["OBJ-1"],
+      "notes": "7 global agents explicitly excluded with 4-part rationale (repo-locality, zero existing refs, harness default-deny coverage, deferred parity to M5). QA re-verified zero gaode references in /root/.claude/agents/ this round."
+    },
+    "spec_text_vs_execution_drift": {
+      "verdict": "pass",
+      "objections_resolved": ["OBJ-5"],
+      "notes": "Bash command-string data contract added to Technical Hints with location identification (between resolve_agent_type and _check_targets), function name suggestion (_check_gaode_bash), and naive-pitfall callout. WHAT + WHERE guidance, not HOW-only refactor."
+    }
+  },
+  "passed_dimensions": ["evidence_quality", "scope_alignment", "investigation_completeness", "affected_file_accuracy", "spec_text_vs_execution_drift"],
+  "failed_dimensions": [],
+  "remaining_objections": [],
+  "verdict_rationale": "All 5 actionable objections from cycle 1 are RESOLVED with verifiable evidence: explicit ticket text, accurate line numbers, re-grepped zero-match claims, spot-checked classifications, and WHAT-with-WHERE data-contract guidance. No new contradictions introduced. M1 deliverables held the line. The 3 exclude-from-M1 decisions are documented decisions (not silent omissions) with defensible rationale grounded in (a) the spec's two-layer enforcement model where harness is authoritative, (b) repo-locality (global agents are out-of-project), (c) bounded inconsistency window for plan.md tied to M2's first task, and (d) zero-current-subagent-invocation evidence for fetch-images-batch.py. BA cycle-2 ticket is dev-ready.",
+  "self_verification": {
+    "claims_total": 16,
+    "claims_with_evidence": 16,
+    "claims_superficial": 0,
+    "superficial_details": [],
+    "confidence": "high",
+    "verification_methods_used": [
+      "Read of /root/travel-planner/docs/dev/ticket-20260509-114002.md (full file)",
+      "Read of /root/travel-planner/docs/dev/context-20260509-114002.json (full file)",
+      "Read of /root/travel-planner/docs/dev/ba-qa-report-20260509-114002.json (cycle 1 prior report)",
+      "Read of /root/travel-planner/docs/dev/specs/spec-20260508-221237.md §5.1 (lines 79-100) and §5.13C (lines 440-462)",
+      "Grep '(gaode|amap|高德|GAODE|AMAP)' across /root/.claude/agents/ — 0 matches confirmed",
+      "Grep '(gaode|amap|高德|GAODE|AMAP)' across /root/travel-planner/scripts/fetch-images-batch.py — line numbers confirmed accurate",
+      "Grep '(gaode|amap|高德|GAODE|AMAP)' across /root/travel-planner/.claude/commands/plan.md — 9 line numbers confirmed accurate",
+      "Read of /root/travel-planner/.claude/agents/meals.md lines 75-89, 140-170 (verified imperative vs JSON template classification)",
+      "Read of /root/travel-planner/.claude/agents/cafe.md lines 140-155 (verified JSON template at :146)",
+      "Read of /root/travel-planner/.claude/agents/attractions.md lines 185-199 (verified Common skills enum list at :189)",
+      "Read of /root/travel-planner/.claude/commands/plan.md lines 95-109, 390-425, 1570-1584 (verified deny-output rationale via context inspection)",
+      "ls /root/.claude/agents/ — confirmed 19 global agent files exist",
+      "ls /root/travel-planner/.claude/agents/ — confirmed 9 project-local agents (matches BA claim)"
+    ]
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
