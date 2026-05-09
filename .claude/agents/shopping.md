@@ -380,9 +380,8 @@ cat data.json | python scripts/save.py --trip TRIP_SLUG --agent shopping \
 
 **Skill Integration Notes** (all skills called via direct Bash script execution, NOT the Skill tool):
 - For global destinations: Use Google Maps skill scripts
-- For China destinations: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<query>" "<city>" "<category>"`
 - For Chinese shopping insights: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<keyword>" --limit 20`
-- For routing: `source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/routing.py transit "<origin_lng,lat>" "<dest_lng,lat>" "<city>" 0`
+- For coordinates / intra-city routing: emit `name_local` + `location_local` strings ONLY. The downstream `timeline` agent owns coordinate resolution and routing (see DO NOT section at top of file).
 - See individual SKILL.md files for detailed usage patterns
 
 
