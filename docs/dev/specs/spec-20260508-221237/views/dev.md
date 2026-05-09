@@ -236,7 +236,7 @@ Implementer rule: when §5.6 / §5.8 conflict with §5.9, **§5.9 wins**.
 5. **Backend identity model (web app drag-drop endpoint)** — the §5.9 lazy-routing endpoint runs server-side and must invoke `timeline` with a verifiable `agent_id`. The harness MUST default-deny when `agent_id` is missing/unknown on the gaode hooks. The endpoint code is responsible for setting `agent_id="timeline"` on outbound calls; if it doesn't, the hook denies and the UI shows "unknown — retry" per §5.9. No fail-open path.
 6. **Allowlist canonicalization** — the allowlist binds to canonical agent IDs `timeline` and `transportation` (NOT shorthand "transport"). The hook MUST compare on the canonical form; any alias resolves to the canonical name before the check. New agents are default-deny until explicitly added to the canonical allowlist.
 
-#### D. Web app persistence and concurrency contract — backend API
+#### D. Web app persistence and concurrency contract (codex must-fix #5)
 
 The web UI (§5.6, §5.9, §5.10, §5.11) requires a non-trivial persistence model. Specify the following minimal contract:
 
