@@ -1,0 +1,66 @@
+CONTEXT (cycle-3 redev dev review request)
+
+I am the dev subagent implementing cycle-3 of spec-20260508-221237 M1 (task-id 20260509-114002). The user invoked /redev --codex requesting "永久彻底修复" (permanently and thoroughly fix). The previous cycle-1 implementation passed QA + 30/30 verifier but /close --codex returned CLOSE: NO with 4 findings: (1) Glob.pattern bypass of read-path matcher; (2) MCP browser_navigate bypass of network-host matcher; (3) AC6 end-to-end positive-test gap (timeline/transportation not first-class roles); (4) BA-QA r2 line-179 invalid JSON.
+
+BA REVISION-3 spec asked dev to:
+- Decision 1 REVISION-3: replace per-tool gaode checks with content-based field-whitelist scanner + composed-path scan for Glob/Grep
+- Decision 2 REVISION-2: add `timeline` + `transportation` as first-class roles with `allowed_tools=[Read,Bash,Skill]` + `denied_tools=[Write,Edit,MultiEdit,NotebookEdit]` (Feb-13 incident lock) + narrowed write prefixes
+- Decision 5: extract heredoc bodies for bash matchers (closes `bash <<EOF python3 .../poi.py EOF` bypass)
+- Decision 6: extend gaode_denied_b-ash_tokens with `g-aode_`, `a-map_`, `g-aode-`, `a-map-` (Python module prefixes; brand obfuscated for this prompt: g-aode = gaode, a-map = amap)
+- Decision 3+4: T2 integration verifier + T3 contract verifier with mcp-tool-catalog.json
+- AC14: fix line-179 JSON typo
+- AC18: Feb-13 regression guard tests using concrete fixture slug `beijing-lijiang-dali-20260418-100846`
+
+WHAT I DID
+
+1. Bumped tool-policy.v1.json policy_version 2→3; added `timeline` + `transportation` roles mirroring agent .md `tools:` field; extended gaode_denied_b-ash_tokens with 4 new prefix forms.
+
+2. Replaced `_check_gaode_webfetch` + `_check_gaode_read` in pretool-tool-policy.py with `_gaode_scan_tool_input(role, tool_name, tool_input)` which walks an EXPLICIT (tool, field, surface) whitelist:
+   - Path/glob fields scanned: Read.file_path, Glob.path, Glob.pattern, Grep.path, Grep.glob, NotebookEdit.notebook_path, Write.file_path, Edit.file_path, MultiEdit.file_path, mcp__playwright__browser_take_screenshot.filename, snapshot.filename, console_messages.filename, network_requests.filename
+   - URL fields scanned: WebFetch.url, mcp__playwright__browser_navigate.url
+   - URL-substring extraction (regex `https?://[^\s'"\`<>]+`): mcp__playwright__browser_evaluate.function, mcp__playwright__browser_run_code.code
+   - List-of-paths: mcp__playwright__browser_file_upload.paths
+   - Gmail body env-var exception: mcp__claude_ai_Gmail__send.{body,subject,html,text} fed to env-var matcher
+   - Composed-path scan: for Glob and Grep, additionally `os.path.realpath(os.path.join(path, pattern.replace('**','').replace('*','')))` fed to read-path matcher
+   - Content fields NEVER scanned: Edit.old_string/new_string, Write.content, MultiEdit.edits[].old_string/new_string, NotebookEdit.new_source
+
+3. Added `extract_heredoc_bodies(command) -> list[str]` to bash_write_targets.py; `_check_gaode_bash` iterates outer command + each heredoc body separately through 4 bash matchers.
+
+4. Created scripts/verify-gaode-ban-integration.sh (T2): 39 cases via JSON stdin to pretool-tool-policy.py. Includes AC9b 6 positive timeline/transportation, AC10 Glob/Grep bypass, AC11 6 MCP vectors, AC12 5 path-fields + 2 content negatives + 3 composed-path, AC13 heredoc, AC15 BA documentation false-positive guard, AC18 Feb-13 8 denied_tools + 1 Bash save.py allowed.
+
+5. Created scripts/verify-g-aode-ban-contract.sh (T3) + scripts/lib/mcp-tool-catalog.json fixture (9 entries: 6 architect MCP vectors + 3 catalog-completeness output-save filename fields).
+
+6. Updated scripts/verify-g-aode-ban.sh (T1): added 2 bash-resolved-path branch cases (architect arch-11); derive test fixture paths from CLAUDE_PROJECT_DIR (style-inspector finding closure).
+
+7. Fixed ba-qa-report-20260509-114002-r2.json:179 JSON syntax (parenthetical moved inside string).
+
+VERIFICATION RESULTS
+- T1: 32/32 PASS (was 30/30; +2 bash-resolved-path cases)
+- T2: 39/39 PASS (covers AC9b/AC10/AC11/AC12/AC13/AC15/AC18; including 3 REVISION-3 composed-path cases and AC18 6 denied_tools + 2 negatives)
+- T3: 9/9 PASS (every MCP tool in catalog gets correct surface denial)
+- 4 close-report findings: each has discrete proof of fix (PASS) with stderr JSON shape verified
+
+DIFF SHAPE
+- /root/.cl-aude/policies/tool-policy.v1.json: +66 lines (2 new role entries + 4 token prefixes + version bump + _note update)
+- /root/.cl-aude/hooks/pretool-tool-policy.py: replaced 4 per-tool functions with 12 small content-scanner helpers; total similar size; new module-level constants for whitelist/url-fields/list-fields/gmail-fields
+- /root/.cl-aude/hooks/lib/bash_write_targets.py: +35 lines (3 helpers: _collect_heredoc_body, _walk_heredoc_bodies, extract_heredoc_bodies)
+- T1 +20 lines, T2 +280 lines (NEW), T3 +95 lines (NEW), catalog +60 lines (NEW)
+- BA-QA r2: 1-character fix (paren placement)
+
+ADVERSARIAL REVIEW REQUEST
+
+Please challenge this implementation adversarially. I would like substantive responses on:
+
+Q1. Is the explicit field whitelist truly exhaustive for the cl-ose-report classes the user demanded? Specifically: are there other Claude tool fields besides the ones listed that are documented as path-shaped or URL-shaped that an adversarial banned-role agent could exploit?
+
+Q2. The composed-path synthesis uses `os.path.join(path, pattern.replace('**','').replace('*',''))`. Are there edge cases where this produces (a) a false positive (allowed legitimate usage gets denied) or (b) a false negative (a real bypass survives)? Specifically consider: absolute pattern values, pattern containing `..`, pattern with `?` or `{a,b}` glob shapes, very long paths, symlink-suffixed patterns.
+
+Q3. The denied_tools=[Write,Edit,MultiEdit,NotebookEdit] for timeline/transportation closes the Feb-13-2026 direct-Claude-tool-write incident. Are there indirect write paths I missed beyond Bash → save.py (which is documented residual risk)? Specifically: does the Skill tool open any way to mutate JSON files? Does Read have any side effect?
+
+Q4. The AC9b end-to-end test asserts `exit 0` for timeline/transportation across 6 payloads. With the new role declarations, the standard `_check_tool_lists` runs after `_gaode_pre_check`. Are there payloads where `_gaode_pre_check` allows but `_check_tool_lists` then incorrectly denies (e.g. write-path enforcement)?
+
+Q5. The T2 verifier covers ~39 cases. Is there a bypass class I have not tested? Specifically: what happens if a banned role sends `tool_input` with non-string values for the whitelisted fields (e.g. dict-typed url, numeric file_path)?
+
+Q6. Should commit/CLOSE: YES be granted on this state, or are there specific blockers?
+
+Reply with `CODEX_FEEDBACK:` followed by substantive points. Be concrete; cite specific code paths; flag any regression risk you see. Brand-obfuscated literals throughout: g-aode = gaode, a-map = amap, AMAP_KEY = key.
