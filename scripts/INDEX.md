@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T21:52:53Z*
-**Total entries**: 84
+*Last updated: 2026-05-09T21:53:08Z*
+**Total entries**: 85
 **Convention**: kebab
 
 ## Tree
@@ -43,6 +43,7 @@ scripts/
 ├── `_qa_diag3.sh` - Test the EXACT cycle-1 finding-1 reproduction.
 ├── `_qa_diag4.sh` - Shell script
 ├── `_qa_diag5.py` - Python script
+├── `_qa_diag6.py` - Spawn the hook subprocess with the JSON on stdin
 ├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
