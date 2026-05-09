@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-09T22:33:11Z*
-**Total entries**: 281
+*Last updated: 2026-05-09T22:58:08Z*
+**Total entries**: 283
 **Convention**: kebab
 
 ## Tree
@@ -101,6 +101,8 @@ dev/
 ├── `close-report-20260506-081545.md` - Close Report — Cycle 20260506-081545 (/redev iteration 2)
 ├── `close-report-20260506-141814.md` - Close Debate Report — task-id 20260506-141814
 ├── `close-report-20260509-114002.md` - Close Debate Report — 20260509-114002
+├── `commit-cycle-report-20260509-114002.json` - json config
+├── `commit-manifest-20260509-114002.json` - json config
 ├── `completion-20260415-210000.md` - Development Completion Report — Cafe POI Type
 ├── `completion-20260416-172720.md` - Development Completion Report
 ├── `completion-20260417-001800.md` - Development Completion Report
