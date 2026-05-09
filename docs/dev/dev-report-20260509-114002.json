@@ -1,0 +1,192 @@
+{
+  "request_id": "20260509-114002",
+  "task_id": "20260509-114002",
+  "timestamp": "2026-05-09T12:46:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260509-114002.json",
+  "spec_id": "spec-20260508-221237",
+  "milestone": "M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/agent_resolver.py",
+      "/root/travel-planner/.claude/agents/meals.md",
+      "/root/travel-planner/.claude/agents/attractions.md",
+      "/root/travel-planner/.claude/agents/cafe.md",
+      "/root/travel-planner/.claude/agents/entertainment.md",
+      "/root/travel-planner/.claude/agents/shopping.md",
+      "/root/travel-planner/.claude/agents/accommodation.md",
+      "/root/travel-planner/.claude/agents/budget.md",
+      "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"
+    ],
+    "files_created": [
+      "/root/travel-planner/scripts/verify-gaode-ban.sh"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Extend tool-policy.v1.json with 8 new gaode_* keys; bump policy_version 1->2",
+        "type": "policy",
+        "files_modified": ["/root/.claude/policies/tool-policy.v1.json"],
+        "rationale": "Single-policy-file approach (architect arch-prop-1) — additive keys old hooks ignore via .get() pattern. 8 keys cover the 6 matcher surfaces + allowlist + alias normalization + identity-default-deny toggle."
+      },
+      {
+        "id": 2,
+        "description": "Add gaode sub-policy module to lib/policy_registry.py — is_gaode_allowed(role, surface, target) + alias normalization + 6 surface matchers",
+        "type": "library",
+        "files_modified": ["/root/.claude/hooks/lib/policy_registry.py"],
+        "rationale": "BA OBJ-3 mandates is_gaode_allowed as a sibling to is_allowed; extracted into 13 small helpers + a dispatch table to satisfy the quality gate's 30-line per-function and 3-level nesting caps."
+      },
+      {
+        "id": 3,
+        "description": "Extend pretool-tool-policy.py with _gaode_pre_check stage between resolve_agent_type and _check_targets",
+        "type": "hook",
+        "files_modified": ["/root/.claude/hooks/pretool-tool-policy.py"],
+        "rationale": "BA OBJ-5: the existing _extract_targets discards the raw command string (returns only WRITE-path list). The gaode bash matchers need the full command — solved by a separate pre-check stage that consumes data['tool_input']['command'] directly. Identity-default-deny added as _gaode_identity_pre_check called BEFORE the role-None early-exit."
+      },
+      {
+        "id": 4,
+        "description": "Update agent_resolver.py docstring to document gaode-scoped fail-CLOSED asymmetry",
+        "type": "docstring",
+        "files_modified": ["/root/.claude/hooks/lib/agent_resolver.py"],
+        "rationale": "BA constraint #4: gaode is fail-CLOSED; non-gaode is fail-OPEN (LOW-10). Docstring records the asymmetric exception so future maintainers do not 'fix' the apparent inconsistency."
+      },
+      {
+        "id": 5,
+        "description": "Add ## DO NOT (harness-enforced) block to 7 banned project agents; remove imperative gaode invocation lines per BA per-line classification",
+        "type": "prompt",
+        "files_modified": [
+          "/root/travel-planner/.claude/agents/meals.md",
+          "/root/travel-planner/.claude/agents/attractions.md",
+          "/root/travel-planner/.claude/agents/cafe.md",
+          "/root/travel-planner/.claude/agents/entertainment.md",
+          "/root/travel-planner/.claude/agents/shopping.md",
+          "/root/travel-planner/.claude/agents/accommodation.md",
+          "/root/travel-planner/.claude/agents/budget.md"
+        ],
+        "rationale": "Defense-in-depth (BA R2). Removed gaode-maps from frontmatter skills lists; removed each imperative bash invocation block; PRESERVED schema-template enum values and enum-list documentation lines per BA's REMOVE/PRESERVE classification. timeline.md and transportation.md UNCHANGED (allowlist preserved). budget.md has only the DO-NOT block (no imperative lines existed to remove)."
+      },
+      {
+        "id": 6,
+        "description": "Create scripts/verify-gaode-ban.sh — verification harness exercising 30 cases (6 surfaces x 5 roles + 5 negative + 1 alias)",
+        "type": "test_script",
+        "files_created": ["/root/travel-planner/scripts/verify-gaode-ban.sh"],
+        "rationale": "BA Could-Have #8. Built using base64-encoded literal tokens so the harness file itself does not embed gaode strings (would otherwise trip its own hook on re-read). All 30 cases PASS as of cycle 1."
+      },
+      {
+        "id": 7,
+        "description": "Update spec-20260508-221237.md Section 2 (What Was Attempted) and Section 3 (What Was Changed) with cycle 1 evidence",
+        "type": "doc",
+        "files_modified": ["/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"],
+        "rationale": "Per agents/dev.md Overnight Spec Integration contract: spec is a living document; dev appends approach + rationale + per-file change log."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "/root/travel-planner/scripts/verify-gaode-ban.sh",
+        "purpose": "Verify gaode-maps harness ban across 6 surfaces × 5 role inputs + 5 negative cases + 1 alias normalization",
+        "parameters": ["[policy-path]"],
+        "usage": "verify-gaode-ban.sh    # uses default /root/.claude/policies/tool-policy.v1.json",
+        "exit_codes": {
+          "0": "all PASS",
+          "1": "one or more FAIL",
+          "2": "harness invocation error (hooks lib missing)"
+        }
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "n/a — new spec, cycle 1",
+      "why_issue_occurred": "Spec §5.1: user requires systematic ban of gaode-maps for non-{timeline,transportation} subagents at both harness and prompt layers. Pre-existing tool-policy.v1.json has zero of the 8 required keys; pre-existing hook has no gaode classifier; 7 banned agents have positive gaode instructions and no DO-NOT block.",
+      "how_fix_addresses_root": "Authoritative harness layer: 8 policy keys + 6 surface matchers wired through pretool-tool-policy.py + identity-default-deny on missing agent_id. Defense-in-depth prompt layer: 7 DO-NOT blocks + removal of every imperative gaode invocation line. Verification harness proves all 30 cases bind correctly."
+    },
+    "diff_stats": {
+      "files_changed": 13,
+      "lines_added": 526,
+      "lines_removed": 100,
+      "new_symbols_introduced": [
+        "policy_registry.normalize_gaode_agent_id",
+        "policy_registry._gaode_allowlist",
+        "policy_registry._gaode_fail_closed",
+        "policy_registry._skill_pref_match",
+        "policy_registry._gaode_skill_match",
+        "policy_registry._gaode_bash_token_match",
+        "policy_registry._is_path_shaped",
+        "policy_registry._bash_path_tokens",
+        "policy_registry._resolve_token",
+        "policy_registry._match_any_prefix",
+        "policy_registry._gaode_bash_path_match",
+        "policy_registry._gaode_host_glob_match",
+        "policy_registry._gaode_substring_signal",
+        "policy_registry._host_match_one",
+        "policy_registry._gaode_network_match",
+        "policy_registry._env_var_regex",
+        "policy_registry._gaode_env_var_match",
+        "policy_registry._gaode_read_path_match",
+        "policy_registry._GAODE_SURFACE_DISPATCH",
+        "policy_registry._gaode_decide_unknown",
+        "policy_registry._gaode_decide",
+        "policy_registry.is_gaode_allowed",
+        "policy_registry.gaode_match_pattern",
+        "pretool-tool-policy._emit_gaode_block",
+        "pretool-tool-policy._check_gaode_skill",
+        "pretool-tool-policy._check_gaode_bash",
+        "pretool-tool-policy._check_gaode_webfetch",
+        "pretool-tool-policy._check_gaode_read",
+        "pretool-tool-policy._gaode_pre_check",
+        "pretool-tool-policy._gaode_identity_pre_check",
+        "pretool-tool-policy.GAODE_BASH_SURFACES",
+        "pretool-tool-policy.GAODE_READ_TOOLS"
+      ],
+      "minimum_possible_lines_estimate": 400,
+      "justification_for_overage": "BA spec requires 8 new policy keys + 6 surface matchers (each requiring a separate matcher fn for testability) + 7 DO-NOT blocks (21 lines each, identical-by-design) + 78-line verification harness (Could-Have #8, BA-required). The matcher functions are minimum-sized — each is a 4-9 line scan; the size comes from the surface count, not from over-engineering. Per-function decomposition is mandated by the quality gate (30-line + 3-level caps), not an aesthetic choice. The 7 DO-NOT blocks are required by AC7 to be present in every non-allowlist project agent."
+    },
+    "fix_layer": "L1",
+    "scope_review_requested": false,
+    "blast_radius": [
+      {"modified": "/root/.claude/policies/tool-policy.v1.json", "imported_by": ["all hooks via lib.policy_registry.load_policy()"]},
+      {"modified": "/root/.claude/hooks/lib/policy_registry.py", "imported_by": ["/root/.claude/hooks/pretool-tool-policy.py"]},
+      {"modified": "/root/.claude/hooks/pretool-tool-policy.py", "imported_by": ["PreToolUse hook chain (settings.json)"]},
+      {"modified": "/root/.claude/hooks/lib/agent_resolver.py", "imported_by": ["/root/.claude/hooks/pretool-tool-policy.py"]},
+      {"modified": "/root/travel-planner/.claude/agents/meals.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/attractions.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/cafe.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/entertainment.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/shopping.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/accommodation.md", "imported_by": ["Claude Code subagent dispatch via /plan"]},
+      {"modified": "/root/travel-planner/.claude/agents/budget.md", "imported_by": ["Claude Code subagent dispatch via /plan"]}
+    ],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "scripts/verify-gaode-ban.sh: 30/30 PASS (6 surfaces x 5 role inputs + 5 negative + alias normalization). End-to-end stdin invocation of pretool-tool-policy.py confirmed: meals/Skill/gaode-maps -> exit 2 with stderr JSON {role:meals, surface:skill, matched_pattern:gaode-maps, deny_reason:...}. Hook is currently active and has been blocking dev's own gaode-touching Bash calls during this implementation (which is correct — dev is not in allowlist; tests run via separate processes with subagent_type=meals/transportation). Verified 7 banned agents have ## DO NOT block (Grep: 7/7); verified 0 imperative `python3 .../gaode-maps/scripts/...` lines remain across .claude/agents/. Verified timeline.md and transportation.md UNCHANGED (Grep: 0/2 have DO-NOT block, as expected — they ARE allowed). policy_registry.py grew 280->480 lines (under 800 cap)."
+    },
+    "qa_ready": true,
+    "qa_notes": "Run `bash scripts/verify-gaode-ban.sh` for the deterministic 30-case matrix. For end-to-end: pipe synthetic payloads to `python3 /root/.claude/hooks/pretool-tool-policy.py` (see self_verification notes for example). AC1-AC8 mapping: AC1=skill matcher (verify-gaode-ban skill rows); AC2=bash-token+path (bash-token rows + manual wrapper.sh test); AC3=network host (network-host rows + WebFetch end-to-end); AC4=env var (env-var rows incl. AMAP_TOKEN export); AC5=read-path (read-path rows; requires CLAUDE_PROJECT_DIR=/root/travel-planner); AC6=identity-default-deny + alias (None rows + alias 'transport' row); AC7=DO-NOT block in 7 banned agents (Grep '## DO NOT \\(harness-enforced\\)' .claude/agents/ -> 7 files, timeline+transportation NOT in list); AC8=non-gaode unaffected (5 negative rows in verify-gaode-ban + manual rednote/google-maps test).",
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(scripts/verify-gaode-ban.sh:*)",
+        "reason": "Allow execution of gaode-ban verification harness created for spec-20260508-221237 M1"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(/root/travel-planner/scripts/verify-gaode-ban.sh:*)",
+        "reason": "Same as above with absolute path"
+      }
+    ],
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "M2 ticket should reorder /root/travel-planner/.claude/commands/plan.md as its first task — between M1 close and M2 close, plan.md still contains 9 positive 'use gaode' instructions that the harness will deny. Deny output is JSON-shaped on stderr (interpretable, no silent hang) but UX is degraded.",
+    "Consider extending gaode_denied_bash_resolved_path_prefixes with /scripts/fetch-images-batch.py OR adding fetch-images-batch.py to gaode_denied_bash_tokens — the script directly calls restapi.amap.com via env var. Currently no subagent invokes it (verified Grep), but it represents a transit-via-wrapper bypass risk if a future subagent ever does.",
+    "Future M5 cycle: documentation parity for global agents at /root/.claude/agents/{ba,qa,dev,pm,product-owner,ui-specialist,user}.md (live in /dev/shm/dev-workspace/dot-claude). They are already covered by harness default-deny but lack the prompt-layer DO-NOT block."
+  ]
+}
