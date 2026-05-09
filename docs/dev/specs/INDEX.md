@@ -1,7 +1,7 @@
 # specs
 
-*Last updated: 2026-05-09T08:55:30Z*
-**Total entries**: 24
+*Last updated: 2026-05-09T12:44:23Z*
+**Total entries**: 33
 **Convention**: kebab
 
 ## Tree
@@ -25,6 +25,15 @@ specs/
 │       ├── `manifest.json.lock` - lock file
 │       ├── `orchestrator.md` - orchestrator view of spec-20260506-092951
 │       └── `qa.md` - qa view of spec-20260506-092951
+├── spec-20260508-221237/
+│   └── views/
+│       ├── `ba.md` - ba view of spec-20260508-221237
+│       ├── `dev.md` - dev view of spec-20260508-221237
+│       ├── `manifest.json` - json config
+│       ├── `manifest.json.lock` - lock file
+│       ├── `orchestrator.md` - orchestrator view of spec-20260508-221237
+│       ├── `qa.md` - qa view of spec-20260508-221237
+│       └── `ui-specialist.md` - ui-specialist view of spec-20260508-221237
 ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
