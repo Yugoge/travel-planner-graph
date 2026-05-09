@@ -35,6 +35,15 @@ from lib.policy_registry import is_gaode_allowed, normalize_gaode_agent_id
 G = base64.b64decode("Z2FvZGUtbWFwcw==").decode()  # "gaode-maps"
 AMAP = base64.b64decode("YW1hcA==").decode()  # "amap"
 
+# Cycle-3 redev (arch-11 + style-inspector finding closure):
+# Derive test fixture paths from CLAUDE_PROJECT_DIR rather than hardcoding
+# /root/travel-planner. Falls back to /root/travel-planner only when env
+# var is unset (preserves cycle-1 behavior).
+PROJECT = os.environ.get("CLAUDE_PROJECT_DIR", "/root/travel-planner")
+SKILL_PATH = f"{PROJECT}/.claude/skills/{G}/skill.md"
+BASH_PATH = f"{PROJECT}/.claude/commands/scripts/{G}/scripts/poi.py"
+DATA_NEG = f"{PROJECT}/data/foo.json"
+
 # Expected matrix:
 #   surface, target, role, expected_allowed
 CASES = [
@@ -50,6 +59,9 @@ CASES = [
     ("bash-token", f"python3 /x/{G}/scripts/poi.py", "meals", False),
     ("bash-token", f"python3 /x/{G}/scripts/poi.py", "dev", False),
     ("bash-token", f"python3 /x/{G}/scripts/poi.py", None, False),
+    # Bash resolved-path matcher (cycle-3 arch-11 NEW branch)
+    ("bash-resolved-path", f"bash {BASH_PATH}", "timeline", True),
+    ("bash-resolved-path", f"bash {BASH_PATH}", "meals", False),
     # Network host matcher
     ("network-host", f"curl https://restapi.{AMAP}.com/v3/place", "timeline", True),
     ("network-host", f"curl https://restapi.{AMAP}.com/v3/place", "transportation", True),
@@ -63,16 +75,16 @@ CASES = [
     ("env-var", "export AMAP_TOKEN=xyz && python3 ./client.py", "dev", False),
     ("env-var", "echo $AMAP_KEY", None, False),
     # Read path matcher (uses CLAUDE_PROJECT_DIR-relative anchor)
-    ("read-path", f"/root/travel-planner/.claude/skills/{G}/skill.md", "timeline", True),
-    ("read-path", f"/root/travel-planner/.claude/skills/{G}/skill.md", "meals", False),
-    ("read-path", f"/root/travel-planner/.claude/skills/{G}/skill.md", "dev", False),
-    ("read-path", f"/root/travel-planner/.claude/skills/{G}/skill.md", None, False),
+    ("read-path", SKILL_PATH, "timeline", True),
+    ("read-path", SKILL_PATH, "meals", False),
+    ("read-path", SKILL_PATH, "dev", False),
+    ("read-path", SKILL_PATH, None, False),
     # Negative cases: non-gaode targets should be allowed for everyone
     ("skill", "rednote", "meals", True),
     ("bash-token", "python3 /x/google-maps/scripts/places.py", "meals", True),
     ("network-host", "curl https://maps.googleapis.com/maps/api/geocode", "meals", True),
     ("env-var", "echo $GOOGLE_API_KEY", "meals", True),
-    ("read-path", "/root/travel-planner/data/foo.json", "meals", True),
+    ("read-path", DATA_NEG, "meals", True),
 ]
 
 # Force CLAUDE_PROJECT_DIR for read-path tests (the policy anchors absolute
