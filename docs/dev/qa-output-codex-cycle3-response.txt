@@ -3432,3 +3432,74 @@ hook: Stop
 hook: Stop
 hook: Stop
 hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+2026-05-09T16:03:34.933327Z ERROR codex_core::session: failed to record rollout items: thread 019e0d75-1868-7581-a5ba-5c4822063e0a not found
+tokens used
+96,350
+Codex feedback: I would not sign off on the BA ticket as written. Findings (1) and (2) are valid blockers; (3) is partly right but needs reframing.
+
+## 1. Policy Write/Edit/MultiEdit for timeline/transportation
+
+Valid security regression.
+
+- Ticket grants `Write`, `Edit`, `MultiEdit` in policy: `docs/dev/ticket-20260509-114002.md:331-332`, `350-351`.
+- Actual agents only declare `Read`, `Bash`, `Skill`: `.claude/agents/timeline.md:7-10`, `.claude/agents/transportation.md:10-13`.
+- Both prompts explicitly forbid Write/Edit due the Feb. 13 data-loss incident: `.claude/agents/timeline.md:21-35`, `.claude/agents/transportation.md:22-35`.
+
+The prompt prohibition is not an enforcement boundary. With the proposed role, `policy_registry.is_allowed()` allows direct writes to `data/.../timeline.json` because `Write/Edit/MultiEdit` are in `allowed_tools` and `*/data/` is in `allowed_write_path_prefixes`.
+
+Also, the ownership hook does not save this:
+- It only handles `Write|Edit`, not `MultiEdit`.
+- It allows writes to owned files; it does not enforce “Write tool forbidden.”
+
+Required BA fix: policy roles should not authorize `Write`, `Edit`, or `MultiEdit` for these agents. Prefer explicit `denied_tools: ["Write", "Edit", "MultiEdit", "NotebookEdit"]`; keep persistence through `Bash` + `scripts/save.py`.
+
+Add AC: timeline/transportation direct `Write`, `Edit`, and `MultiEdit` to their own `data/.../*.json` must exit nonzero.
+
+## 2. Shape-based dispatch and documentation blackhole
+
+Valid. BA has moved the false-positive risk from bash-token scanning to read-path scanning.
+
+The inconsistency is internal:
+
+- Decision 1 says path-shaped leaves, including `Edit.old_string-with-path`, are fed to read-path matcher: `docs/dev/ticket-20260509-114002.md:316-320`.
+- AC12 requires blocking an embedded banned skill path inside `Edit.old_string`: `docs/dev/ticket-20260509-114002.md:445-450`.
+- AC15 only protects docs containing free text without a slash/path: `docs/dev/ticket-20260509-114002.md:463-468`.
+
+So either:
+- scanner treats the whole leaf as one path → AC12 will not actually block `old_string:"path = '/root/.../skill.md'"`; or
+- scanner extracts embedded path substrings → documentation edits containing that path will be blocked.
+
+Required BA fix: do not scan content fields like `old_string` / `new_string` for read-path. Scan only fields semantically used as paths/globs/filenames. Add AC15 case where a BA-editable docs file contains `see /root/.claude/skills/<banned-maps>/skill.md` in `old_string`; expected result must not be a gaode-policy denial.
+
+## 3. AC9 end-to-end positive tests
+
+Partly agree, but not for the exact read-path reason.
+
+Current code’s read-path standard fallthrough only checks `denied_path_prefixes`; it does not enforce `allowed_path_prefixes`: `/root/.claude/hooks/lib/policy_registry.py:247-251`. The proposed timeline/transportation roles also do not define read denies. So a `Read` of the banned skill path by timeline would pass standard policy after the gaode allowlist pre-check.
+
+However, AC9/T2 is still under-specified and can fail end-to-end:
+
+- AC9 says all six surfaces exit 0 for timeline/transportation: `docs/dev/ticket-20260509-114002.md:426-431`.
+- Decision 3 says T2 covers allowlist roles across every gaode-relevant tool, including `WebFetch`, MCP tools, `NotebookEdit`, etc.: `docs/dev/ticket-20260509-114002.md:365-367`.
+- Proposed roles do not allow `WebFetch`, MCP tools, or `NotebookEdit`, so those allowlist-positive cases will fail standard `allowed_tools` after gaode pre-check.
+
+Required BA fix: split AC9 into:
+1. gaode pre-check allowlist behavior for all six surfaces; and
+2. full hook exit-0 only for tools actually allowed by the role, e.g. `Skill`, `Bash`, `Read`.
+
+For network-host positive coverage, use allowed `Bash` fixtures, not MCP/WebFetch, unless the role intentionally grants those tools.
+
+## Additional blocker
+
+AC15 uses `subagent_type:"meals"` and expects `Read` to exit 0, but current policy has no `roles.meals`; cycle 3 only adds timeline/transportation. Current hook returns generic deny: `unknown role meals`.
+
+So AC15 as written will fail unless BA either adds least-privilege roles for the data agents or changes the false-positive regression tests to use an existing policy role such as `ba`/`qa`.
