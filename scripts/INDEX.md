@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T21:50:11Z*
-**Total entries**: 79
+*Last updated: 2026-05-09T21:50:40Z*
+**Total entries**: 80
 **Convention**: kebab
 
 ## Tree
@@ -38,6 +38,7 @@ scripts/
 │   └── `load_env.py` - Load environment variables from .env file in project root
 ├── `_qa_close_repro.sh` - QA close-debate cycle-3 reproduction script — base64 indirection avoids self-tripping the hook.
 ├── `_qa_close_repro2.sh` - Verify Glob.pattern bypass closure with a known-good role (dev, in roles dict).
+├── `_qa_diag.sh` - Diagnose why Glob.pattern alone (no path) didn't fire gaode read-path matcher.
 ├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
