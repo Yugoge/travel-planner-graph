@@ -1,0 +1,58 @@
+You are an adversarial reviewer (gpt-5.5, xhigh reasoning). Banned brand obfuscated for transport: g-aode = the Chinese mapping vendor name "g a o d e", a-map = "a m a p". You may use either form in your response.
+
+CONTEXT:
+
+A harness-policy hook in a Claude Code project bans a specific vendor's tools/skills/paths/URLs/env vars from being touched by 7 banned content-generation subagent roles. Two roles (timeline, transportation) are allowlisted to use the vendor.
+
+The hook is a PreToolUse JSON-stdin filter: receives {tool_name, tool_input, subagent_type}, exits 0 (allow) or 2 (deny).
+
+PRIOR REVISION-2 used an explicit per-tool field whitelist:
+  Read-path matcher receives:
+    Read.file_path
+    Glob.pattern, Glob.path
+    Grep.path, Grep.glob
+    Edit.file_path, Write.file_path, MultiEdit.file_path, NotebookEdit.notebook_path
+    [...mcp playwright filename / paths fields...]
+
+CRITICAL DEFECT FOUND BY YOU IN REVISION-2 (now being addressed as REVISION-3):
+- The scanner treats Glob.path and Glob.pattern as INDEPENDENT fields. Real semantics: pattern is RELATIVE to path. So Glob(path="/root/travel-planner/.claude/skills", pattern="g-aode-maps/**") — neither field alone matches "/.claude/skills/g-aode-maps/", but the COMPOSED real glob target "/root/travel-planner/.claude/skills/g-aode-maps/**" does. A banned subagent could trivially bypass via parent-path + denied-subdir-as-pattern.
+
+REVISION-3 DESIGN (please critique):
+
+1. Decision 1 REVISION-3 — composed-path scan ADDED to existing field-whitelist scan:
+   - For Glob: scanner now constructs composed_candidate = os.path.realpath(os.path.join(Glob.path, Glob.pattern.replace("**","").replace("*",""))) and feeds it to read-path matcher.
+   - For Grep: composed_candidate = os.path.realpath(os.path.join(Grep.path, Grep.glob.replace("**","").replace("*","")))
+   - Independent-field scans of Glob.path alone, Glob.pattern alone, Grep.path alone, Grep.glob alone REMAIN (catches the simpler case where either alone resolves under denied prefix).
+   - Composed-path scan ADDS coverage for the parent-of-denied + denied-subdir-as-pattern case.
+   - When path or pattern is missing/empty, composed-path scan is skipped (no synthesis).
+   - When pattern is absolute (starts with /), os.path.join discards the path arg and uses pattern alone — already covered by independent-field scan, no double-deny risk.
+
+2. AC12 REVISION-3 adds 3 new payloads:
+   (a) POSITIVE composed-path Glob bypass attempt:
+       {tool_name:"Glob", tool_input:{path:"/root/travel-planner/.claude/skills", pattern:"g-aode-maps/**"}, subagent_type:"meals"} → exit 2 surface:read-path matched_pattern containing "g-aode-maps"
+   (b) POSITIVE composed-path Grep bypass attempt:
+       {tool_name:"Grep", tool_input:{pattern:"foo", path:"/root/travel-planner/.claude/commands/scripts", glob:"g-aode-maps/**/*.py"}, subagent_type:"meals"} → exit 2 surface:read-path matched_pattern containing "g-aode-maps"
+   (c) NEGATIVE composed-path regression-guard (allowlist agent's legitimate composed glob):
+       {tool_name:"Grep", tool_input:{pattern:"x", path:"/root/travel-planner/data", glob:"**/timeline.json"}, subagent_type:"transportation"} → exit 0 (composed candidate "/root/travel-planner/data/timeline.json" not under denied prefix; transportation also has fallthrough allowlist anyway)
+
+3. T2 (AC16) fixture set extended with the 3 cases above. T2 verifier exercises composed-path scenarios via subprocess JSON stdin — not just independent-field scenarios.
+
+4. AC9b reword (minor wording fix):
+   OLD text: "WebFetch + MCP playwright + NotebookEdit are NOT in the role's tool surface — the standard `_check_tool_lists` will deny them with 'tool X not in allowed_tools' BEFORE gaode pre-check fires."
+   NEW text: "Per the actual hook ordering in pretool-tool-policy.py:198 (gaode pre-check at line 198 runs BEFORE _check_targets at line 200), gaode pre-check runs FIRST. For allowlisted roles (timeline/transportation), gaode pre-check ALLOWS via fallthrough; the standard `_check_tool_lists` then runs SECOND and denies non-allowed tools. End-state for non-allowed tools: exit 2 with 'tool X not in allowed_tools' reason. AC9b enumerates only Skill/Bash/Read where BOTH checks pass."
+
+5. AC18 <trip> placeholder replaced with concrete fixture slug "beijing-lijiang-dali-20260418-100846" (verified to exist in /root/travel-planner/data/).
+
+QUESTIONS:
+
+Q1. Is the composed-candidate synthesis formula correct? Specifically: pattern.replace("**","").replace("*","") strips wildcards leaving the literal directory portion. Is this the right way to expose the denied-prefix substring for the read-path matcher? Are there pattern shapes that defeat this (e.g., {abc,def}/, **xyz, ?)?
+
+Q2. Does composed-path scan introduce new false-positive risk? Specifically, if an allowlisted agent does Glob(path="/root/travel-planner", pattern="data/g-aode-maps-results.json"), composed candidate would be "/root/travel-planner/data/g-aode-maps-results.json" — is this under denied prefix? It should NOT be (denied prefix is "/.claude/skills/g-aode-maps/" specifically; "g-aode-maps" as a substring elsewhere is intentionally not a denied target per the cycle-1 design).
+
+Q3. Should the composed-path scan ONLY fire when independent-field scans both PASS (so there's no double-deny / which-surface-wins ambiguity)? Or should it run unconditionally and the first-deny-wins semantic naturally handle the ordering?
+
+Q4. Is there a 4th (and 5th, 6th, ...) bypass class I should also worry about? Specifically: are there other Claude tool field combinations where the real semantic target is a JOIN/COMPOSE of multiple fields that the scanner currently treats independently? Examples to consider: NotebookEdit (notebook_path + cell_id?), MultiEdit (file_path + edits[].new_string?), mcp__playwright__browser_take_screenshot (filename + element/ref?).
+
+Q5. Is the AC9b reword accurate against the actual hook source code at /root/.claude/hooks/pretool-tool-policy.py:186-200? You can verify: lines 186 (resolve_agent_type), 192-194 (identity-default-deny pre-check), 198 (gaode pre-check), 200 (standard _check_targets / _check_tool_lists).
+
+Reply with CODEX_FEEDBACK followed by your numbered answers + any critical finding I missed. Be substantive; if my REVISION-3 closes the bypass cleanly, say so explicitly. If not, name the survivor class concretely.
