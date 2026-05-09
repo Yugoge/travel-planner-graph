@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-06T14:33:48Z*
-**Total entries**: 73
+*Last updated: 2026-05-09T12:41:44Z*
+**Total entries**: 74
 **Convention**: kebab
 
 ## Tree
@@ -78,6 +78,7 @@ scripts/
 ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
 ├── `verify-plan-integrity.py` - Codex-signed deploy-blocking integrity verifier for travel-plan trips
 └── `verify-tool-restrictions.py` - Tool Restrictions Verification Script
 ```
