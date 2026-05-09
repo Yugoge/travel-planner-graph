@@ -1,0 +1,172 @@
+{
+  "request_id": "20260509-114002",
+  "task_id": "20260509-114002",
+  "timestamp": "2026-05-09T12:11:00Z",
+  "mode": "ba_validation",
+  "spec_id": "spec-20260508-221237",
+  "ba_artifact_paths": {
+    "ticket": "/root/travel-planner/docs/dev/ticket-20260509-114002.md",
+    "context": "/root/travel-planner/docs/dev/context-20260509-114002.json",
+    "spec": "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md",
+    "specialist_findings": "/root/travel-planner/docs/dev/scratch-20260509-114002/specialist-findings.md"
+  },
+  "verdict": "fail",
+  "summary": "BA's M1 milestone scoping is defensible and the harness/policy schema design is sound. However, the affected-files list is materially incomplete in two specific ways that the spec itself names verbatim, and one significant out-of-scope observation is missing. (1) Spec §5.1 line 90 enumerates seven additional banned agents (`ba`, `qa`, `dev`, `pm`, `product-owner`, `ui-specialist`, `user`) that BA acknowledges in Edge Cases as also requiring the DO-NOT block 'for documentation parity', but then omits from the affected-files list. (2) `/root/travel-planner/scripts/fetch-images-batch.py` makes direct REST calls to `restapi.amap.com` using `AMAP_MAPS_API_KEY` env var (lines 154-158, 395-436, etc.) and shells out to the gaode poi_search.py script — this is a significant code-level gaode reference NOT mentioned in BA's out-of-scope observations. (3) `/root/travel-planner/.claude/commands/plan.md` contains 9+ positive instructions to use gaode-maps (lines 100, 397, 417, 423, 1103, 1144, 1577, 1641, 1673) — orchestrator-level prompt that will become contradictory with the harness ban. Not in BA's affected-files list, not in out-of-scope observations. These omissions are documentation/scope gaps that dev needs explicit guidance on; either the affected-files list expands or BA must explicitly justify omission in writing. Other dimensions (evidence quality on cited line numbers, specialist alignment on single-hook design, AC testability, alias canonicalization rationale) verify cleanly.",
+  "user_verbatim_complaint": "Spec §5.1 verbatim: 系统性彻底禁止除了 timeline 和 transport 以外的 subagent 使用任何高德地图 skill。使用 harness 原则，并且在 prompt 中也禁止。 Plus user covering phrase '全部' (whole spec, decomposed into 5 milestones; M1 = §5.1+§5.4+§5.13C foundation).",
+  "objections": [
+    {
+      "id": "OBJ-1",
+      "dimension": "affected_file_accuracy",
+      "severity": "major",
+      "summary": "Affected-files list omits 7 agents that spec §5.1 explicitly names as banned",
+      "ba_claim": "BA's affected-files list (Technical Hints) names exactly 11 files: 4 hook/policy files + 7 agent files (meals, attractions, accommodation, cafe, entertainment, shopping, budget). The 6 user-level agent files (ba, qa, dev, pm, product-owner, ui-specialist) — which spec §5.1 line 90 enumerates verbatim as 'Out-of-scope agents (must be banned)' — are NOT in the affected-files list.",
+      "evidence": "Spec line 90 verbatim: 'Out-of-scope agents (must be banned): meals, attractions, accommodation, cafe, entertainment, shopping, ba, qa, dev, pm, product-owner, ui-specialist, budget, user, plus any other agent not on the allowlist (default-deny).' BA's Edge Cases section explicitly recognizes the gap: 'Recommendation: add the DO-NOT block to ALL non-allowlist agent .md files for documentation parity; let the harness be the actual enforcement.' But the affected-files list (line 217-229 of ticket) does NOT include them. Spec §5.1 line 86 verbatim: 'every affected agent definition file under .claude/agents/ MUST contain an explicit ## DO NOT section'. The word 'every' is unconditional. Verified by `ls /root/.claude/agents/`: ba.md, dev.md, pm.md, product-owner.md, qa.md, ui-specialist.md all exist as user-level agent files. user.md also exists.",
+      "why_it_matters": "Either (a) BA expands affected-files to include the 6+1 user-level agents (consistent with spec verbatim and BA's own Edge Cases recommendation), OR (b) BA explicitly documents in scope_excluded with a written rationale why the user-level agents are out-of-scope for M1 (e.g., 'these are infrastructure agents that structurally cannot reach travel-planner gaode invocations and the harness default-deny suffices'). Currently the ticket has neither: the spec demands them, BA admits the gap, but the affected-files list silently excludes them. Dev cannot tell whether to touch them or not.",
+      "required_fix": "Add an explicit decision in scope_boundary OR affected_files: either (1) include /root/.claude/agents/{ba,qa,dev,pm,product-owner,ui-specialist,user}.md in the modify list with the DO-NOT block, OR (2) add a paragraph under scope.excluded explicitly naming each of these 7 user-level agent files and writing the rationale (default-deny by harness; documentation parity deferred to M5 or out of project scope). Either resolution is acceptable; ambiguity is not."
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "investigation_completeness",
+      "severity": "major",
+      "summary": "Out-of-scope observations missed `scripts/fetch-images-batch.py` (direct gaode REST + script invocation in user code)",
+      "ba_claim": "BA's out_of_scope_observations lists 4 items: save_translate.py (data-layer tagging), gaode-maps/scripts/*.py (bannable scripts not modified), skills/gaode-maps/skill.md (user-invocable preserved), CLAUDE.md (auto-inventory). Claims the search was thorough.",
+      "evidence": "Grep `(gaode|amap|高德)` in `/root/travel-planner/scripts/` returns: fetch-images-batch.py:63 invokes .claude/commands/scripts/gaode-maps/scripts/poi_search.py via subprocess; fetch-images-batch.py:154-158 builds `https://restapi.amap.com/v3/geocode/geo` URL directly using `AMAP_MAPS_API_KEY` env var; fetch-images-batch.py:395 has a `_gaode_search` method; lines 410, 436, 509, 514, 564, 568, 1078, 1089 reference gaode in image-fetching logic. This script is invoked by the user (not a subagent) for image enrichment, but it shells out to the same poi_search.py and ALSO calls amap REST directly — both surfaces the new policy explicitly bans for non-allowlist agents.",
+      "why_it_matters": "(a) If a banned subagent (e.g., images agent if one is added later, or current pipeline shelling) ever invokes `python3 scripts/fetch-images-batch.py`, the script internally calls gaode but the harness only inspects the outer Bash command. The bash-token matcher would not match `fetch-images-batch.py` (no gaode token in the wrapper command) — only the bash-resolved-path matcher would, and `fetch-images-batch.py` does NOT live under a gaode prefix. Result: a banned agent could invoke gaode transitively via this wrapper, defeating the ban. (b) The script ITSELF reads AMAP_KEY env var and POSTs to amap REST — if a banned agent ever runs it, the agent_id-keyed policy doesn't catch the in-process gaode call. BA must either (i) add this script to the affected-files list to block subagent invocation, (ii) document it as a known coverage gap in out_of_scope_observations with security_relevant=true, or (iii) explicitly note that the script is user-invoked-only (no subagent currently invokes it) — each of which is a legitimate posture but ABSENT from the BA spec.",
+      "required_fix": "Add a 5th out-of-scope observation entry naming /root/travel-planner/scripts/fetch-images-batch.py with line numbers, classifying as in_user_path=false (since user-invoked, not subagent-invoked today), security_relevant=true (because it would be a transit-via-wrapper bypass for the gaode ban if any subagent ever calls it). Optionally extend gaode_denied_bash_resolved_path_prefixes or add a new gaode_denied_bash_token entry for `fetch-images-batch.py` if BA judges the bypass risk warrants harness coverage in M1. At minimum: document the gap so dev does not silently inherit a hole."
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "investigation_completeness",
+      "severity": "major",
+      "summary": "Out-of-scope observations missed `.claude/commands/plan.md` (9+ orchestrator-level positive gaode instructions)",
+      "ba_claim": "BA's out_of_scope_observations does not mention plan.md. The affected-files list includes 7 agent .md files but no command files.",
+      "evidence": "Grep `(gaode|amap|高德)` in /root/travel-planner/.claude/commands/ returns plan.md:100,397,417,423,1103,1144,1577,1641,1673 — all positive instructions to the orchestrator like 'Agent researches using gaode-maps/rednote', 'use gaode-maps (China) or google-maps (international) to obtain GPS coordinates', 'use MCP tools (gaode-maps, google-maps, rednote) and update working files', 'NEVER use WebSearch, WebFetch, or gaode-maps MCP tools yourself'. plan.md is the /plan slash-command entrypoint that orchestrates the entire travel-planning flow. After M1 lands, the orchestrator's own prompt will say 'tell content agents to use gaode-maps' while the harness blocks them — this is a direct contradiction that surfaces as immediate runtime failure on the next /plan invocation.",
+      "why_it_matters": "Spec §5.1 second clause: '在 prompt 中也禁止' (also forbid in prompts). This is plural — 'prompts' includes orchestrator prompts that instruct subagent behavior, not just the subagent .md files. BA's M2 outline (Future Cycles) says plan.md is rewritten in M2 ('plan.md inverted to content (multi-option) → user-review → timeline → transportation'), so M2 will naturally rewrite these — but M1 ships and the orchestrator's prompt still actively instructs gaode invocation by banned agents. The 'consistency' between harness and prompt is broken FOR THE M1 WINDOW. Either: (a) M1 is incomplete until plan.md's positive gaode instructions are also updated (or at minimum gated with a 'pending M2' note), or (b) BA explicitly documents this as a known M1→M2 inconsistency window.",
+      "required_fix": "Add either: (1) plan.md to affected_files with a focused edit removing the 9 positive gaode instructions to non-allowlist agents (preserve mentions only where they reference timeline/transportation); OR (2) an out_of_scope_observation entry naming plan.md:100,397,417,423,1103,1144,1577,1641,1673 with the explicit note 'M1 ships with the orchestrator prompt instructing gaode invocation by banned agents; the harness will block, producing runtime denials on /plan invocation between M1 close and M2 close. M2 rewrites plan.md per Future Cycles outline.' The second option is acceptable IF BA confirms the orchestrator's deny output is interpretable by the user (not a silent hang). The first option is preferable because spec §5.1 clause 2 demands prompt-layer consistency."
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "evidence_quality",
+      "severity": "minor",
+      "summary": "BA's claim 'meals.md:79 has positive gaode instruction' verifies, but the broader claim 'each banned agent has positive gaode references' lists `cafe.md:146` and `meals.md:146` as schema/dict mentions (skill name in JSON template), not as imperative invocation instructions",
+      "ba_claim": "BA Evidence/Measured: '6 banned agents have gaode references in their prompts (Grep result: meals.md:79,146,165,397,412,423,425; cafe.md:7,86,146; ...)'. Implication: every reference is an imperative gaode instruction that must be removed/rewritten.",
+      "evidence": "Verified by direct grep: meals.md:79 IS a positive imperative ('source venv && python3 .../gaode-maps/.../poi_search.py keyword ...'). meals.md:146 is `\"skill\": \"gaode-maps\",` — a JSON template field describing the skill name in a structured output, not an instruction to invoke. cafe.md:146 is the same. The grep result is correct but the implication that 'every line needs rewriting' overstates: some lines are skill-name references in output schema templates, others are imperative invocations. Dev needs the disambiguation to avoid breaking the schema templates.",
+      "why_it_matters": "Minor severity because dev will read each line in context anyway. But the ticket's task description ('Remove or rewrite each banned agent's existing positive gaode instructions') would benefit from per-line classification: 'imperative instruction (must be rewritten to rednote-only)' vs 'schema template field (preserve gaode-maps as a valid skill enum value, since timeline/transportation legitimately produce this)'. Without disambiguation, dev might delete the schema reference and break the output schema validators downstream.",
+      "required_fix": "Refine the per-file line lists in ticket Evidence/Measured: classify each line as either 'imperative-invocation (REMOVE/REWRITE)' or 'schema-template-or-comment (PRESERVE)'. Specifically: meals.md:79,397,412,423,425 = imperative; meals.md:146,165 = schema template / common-skills list (preserve gaode-maps as enum value because timeline/transportation still use it). Same disambiguation for the other 5 banned agents."
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "minor",
+      "summary": "AC2's bash-token check needs the FULL command string, but existing `_extract_targets()` returns only WRITE paths for Bash — implementation pitfall not flagged",
+      "ba_claim": "BA Technical Hints line 220: 'extend `_extract_targets` to surface-classify; insert `is_gaode_allowed` call BEFORE standard `is_allowed`'. AC2: 'hook exits 2 with surface: bash-token (matched on gaode-maps/)'.",
+      "evidence": "Read of /root/.claude/hooks/pretool-tool-policy.py:47-67: `_extract_targets` for Bash returns `[None] + extract_bash_write_paths(command)`. The command string itself is consumed by `extract_bash_write_paths` and discarded; only WRITE paths flow downstream to `_check_targets`. The existing `_check_targets` at line 82-92 sees only `[None, write_path1, write_path2, ...]` for Bash — it has NO access to the original command text. AC2's bash-token matcher needs to scan the original command string for tokens like 'gaode-maps/'. Without restructuring `_extract_targets` to surface the raw command (or adding a separate `_check_gaode_bash_token(command, role)` call in `main()` BEFORE `_check_targets`), the bash-token check will fail to find tokens in `cd /tmp && python3 wrapper.sh` style commands where no write paths are extracted.",
+      "why_it_matters": "This is a genuine implementation trap: a naive 'extend _check_targets' approach will not see the bash command string. BA's spec correctly mentions 'Bash classifier resolves first non-flag token' and 'scans the full command for gaode_denied_bash_tokens', but the technical hint to 'extend _extract_targets' implies dev will reuse the existing target-list pattern, which silently drops the command. Dev should be explicitly told to either (a) refactor _extract_targets for Bash to include the raw command as a special target type, or (b) add a separate gaode-pre-check stage in main() BEFORE the standard target loop that has access to data['tool_input']['command'].",
+      "required_fix": "Add a sentence to Technical Hints under 'Affected files' #2: 'For Bash, the gaode bash-token + bash-resolved-path + env-var + network-host matchers MUST receive the full command string (data[\\'tool_input\\'][\\'command\\']), NOT the WRITE-path list returned by extract_bash_write_paths(). Recommend a new pre-check stage in main() between resolve_agent_type and _check_targets: `_check_gaode_bash(role, command)` that runs all 4 bash-related gaode matchers against the raw string and exits 2 on first hit. The standard _check_targets continues unchanged for non-gaode write-path checks.'"
+    },
+    {
+      "id": "OBJ-6",
+      "dimension": "scope_alignment",
+      "severity": "info",
+      "summary": "M1-only scoping of '全部' is defensible but the milestone roadmap's coverage of all 14 §5.x subsections needs one explicit verification",
+      "ba_claim": "BA scopes M1 to §5.1+§5.4+§5.13C; M2 covers §5.2+§5.5+§5.7+§5.8+§5.9A/C+§5.13A/B; M3 covers §5.6+§5.9B/D/E+§5.10+§5.13D; M4 covers §5.11; M5 covers specialist-identified gaps. Claims this covers all of '全部'.",
+      "evidence": "Spec subsection enumeration: §5.1, §5.2, §5.3 (revoked by §5.12), §5.4, §5.5, §5.6, §5.7 (A/B/C/D), §5.8, §5.9 (A/B/C/D/E), §5.10, §5.11, §5.12, §5.13 (A/B/C/D). Cross-referencing milestone_roadmap.scope_sections in context JSON: M1=[§5.1, §5.4, §5.13C], M2=[§5.2, §5.5, §5.7 A/B/D, §5.8, §5.9 A/C, §5.13 A/B], M3=[§5.6, §5.9 B/D/E, §5.10, §5.13D], M4=[§5.11], M5=[beyond spec]. Not explicitly assigned: §5.3 (correctly noted as revoked by §5.12 in specialist findings), §5.7C (the §5.7C↔§5.3 contradiction resolved by §5.12 per spec line 381), §5.12 (cross-cutting; BA says 'documented in M2 schema design'), §5.13A (spec markers — BA says 'already in spec'). These are arguably non-actionable (revoked, cross-cutting policy, or self-referential), so the milestone roadmap does in fact cover every actionable §5.x subsection.",
+      "why_it_matters": "Informational only. The roadmap is complete; this objection just documents the verification trace so future cycles can confirm. Note: §5.13A 'spec markers' and §5.7C '§5.3 backcompat clause' are NOT separately implementable — they are spec-internal annotations, not requirements. BA's milestone breakdown is therefore complete by exclusion.",
+      "required_fix": "No change required. Optional: add a single sentence to the Future Cycles section noting 'Subsections §5.3 (revoked by §5.12), §5.7C (resolved by §5.12), §5.12 (cross-cutting policy), §5.13A (spec markers) are not separately scheduled because they are not independently actionable.'"
+    },
+    {
+      "id": "OBJ-7",
+      "dimension": "evidence_quality",
+      "severity": "info",
+      "summary": "Verification of cited BA evidence (positive)",
+      "ba_claim": "BA cites tool-policy.v1.json has 0 of 5 required new keys; agent_resolver.py:21 documents LOW-10 fail-open; meals.md:79, attractions.md:84, cafe.md:86, entertainment.md:82, shopping.md:84, accommodation.md:394 contain positive gaode instructions; timeline.md:361,440 and transportation.md:94 are legitimate allowlisted users.",
+      "evidence": "All directly verified by Read/Grep this session: (a) tool-policy.v1.json top-level keys = ['policy_version', 'default_action', '_shared_protected_path_prefixes', '_note', 'roles']; no gaode_* keys; policy_version=1. (b) agent_resolver.py:17-21 docstring contains 'LOW-10 (2026-05-07): callers MUST NOT hard-block on `None`' verbatim. (c) Per-file line numbers: meals.md:79 = `python3 .../gaode-maps/scripts/poi_search.py keyword ...` (CONFIRMED imperative); attractions.md:84 = same pattern (CONFIRMED); cafe.md:86 = same (CONFIRMED); entertainment.md:82 = same (CONFIRMED); shopping.md:84 = same (CONFIRMED); accommodation.md:394 = `Use Skill tool to invoke gaode-maps skill for POI search` (CONFIRMED imperative). (d) timeline.md:361 = '3. Query routing options via gaode-maps skill:' (CONFIRMED legitimate); transportation.md:94 = 'See .claude/commands/scripts/gaode-maps/skill.md for usage' (CONFIRMED legitimate).",
+      "why_it_matters": "Positive: BA's evidence is grep-verified accurate at the line-number level. This builds confidence in the rest of BA's analysis. Per Anti-Fraud Principle 4, claims with line-level evidence pass scrutiny.",
+      "required_fix": "No change required. Counter-positive evidence noted for transparency."
+    },
+    {
+      "id": "OBJ-8",
+      "dimension": "evidence_quality",
+      "severity": "info",
+      "summary": "Verification: alias canonicalization (transport→transportation) is justified by user spec text",
+      "ba_claim": "BA states: 'aliases like transport MUST be normalized to transportation BEFORE the allowlist check (§5.13C #6)'. Adds gaode_allowlist_aliases: {transport: transportation}.",
+      "evidence": "Spec §5.1 line 81 verbatim: '系统性彻底禁止除了 timeline 和 transport 以外的 subagent' — uses shorthand 'transport'. Spec §5.1 line 88: 'Allowlist (only these two agents may call gaode-maps skills): timeline, transportation' — uses canonical 'transportation'. Spec §5.13C #6 verbatim: 'the allowlist binds to canonical agent IDs timeline and transportation (NOT shorthand transport). The hook MUST compare on the canonical form; any alias resolves to the canonical name before the check.' This explicitly mandates alias-to-canonical normalization. BA's gaode_allowlist_aliases mapping correctly captures this. Verified by Read of /root/travel-planner/.claude/agents/transportation.md frontmatter: name = 'transportation' (the canonical form). No file 'transport.md' exists — confirmed by `ls /root/travel-planner/.claude/agents/`. So 'transport' is exclusively a user-text shorthand, never a canonical agent_type.",
+      "why_it_matters": "Positive. BA's alias design directly traces to spec §5.13C #6 verbatim and is consistent with the actual filesystem state.",
+      "required_fix": "No change required. Counter-positive evidence noted for transparency."
+    },
+    {
+      "id": "OBJ-9",
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "info",
+      "summary": "AC1-AC8 testability verification",
+      "ba_claim": "8 acceptance criteria (AC1-AC8) covering all 6 surfaces × allowlist/non-allowlist combinations + identity-default-deny + alias normalization + DO-NOT block presence + backward-compat.",
+      "evidence": "AC1 (Skill matcher): testable via subprocess call to a Python harness simulating a Skill tool input — measurable hook exit code + stderr JSON shape. AC2 (Bash token + resolved path): testable via two subprocess calls with crafted Bash commands; matched_pattern verifiable in stderr. AC3 (Network host): testable via curl + WebFetch crafted inputs. AC4 (Env var): testable via Bash echo/export crafted inputs. AC5 (Read/Grep/Glob): testable via Read tool input crafted with target path. AC6 (Identity-default-deny + alias): testable via 8 sub-cases (missing agent_id, alias 'transport', canonical 'timeline'/'transportation' across 6 surfaces). AC7 (DO-NOT block presence): testable via grep `## DO NOT (harness-enforced)` across 7 files; exact 1 match each. AC8 (Backward-compat): testable via running a representative non-gaode tool sample across all roles and confirming v1 behavior preserved. All 8 ACs map to runnable commands.",
+      "why_it_matters": "Positive verification — no PASS_AS_SUBSTITUTE risk identified in the AC literal text. AC7's grep recipe is the right test for the DO-NOT block presence (literal string match is unambiguous). AC2's bash-resolved-path test does have the implementation pitfall noted in OBJ-5 but the AC text itself is testable; the trap is in the implementation hint, not in the AC.",
+      "required_fix": "No change required. Counter-positive evidence noted for transparency."
+    },
+    {
+      "id": "OBJ-10",
+      "dimension": "scope_alignment",
+      "severity": "info",
+      "summary": "M1's claim 'zero dependencies on the 6 specialist-flagged contradictions' verifies",
+      "ba_claim": "BA Future Cycles section: 'M1 has zero dependencies on the deferred questions. Shipping M1 first reduces risk for every later cycle.'",
+      "evidence": "The 6 deferred questions (C1 cascade undo, C2 iCal time-anchor, C3 --auto override, C4 409-soft, C6 drag semantics, po-31 trips-list, po-7 multi-traveler) all concern UX/persistence/data-shape decisions in M2-M5. M1 is a pure harness/policy/prompt change with no UX, no data shape, no orchestration touch. The gaode allowlist canonicalization (§5.13C #6) does NOT depend on identifying any other canonical agent name — only timeline and transportation are at issue, and both are unambiguously named in the agent .md frontmatter. Verified by inspection of /root/travel-planner/.claude/agents/{timeline,transportation}.md frontmatter — both use the canonical name. No deferred question intersects with M1's deliverables.",
+      "why_it_matters": "Positive verification. M1's independence is sound; orchestrator can dispatch M1 immediately without waiting for spec-level resolutions of C1-C6/po-31/po-7.",
+      "required_fix": "No change required. Counter-positive evidence noted for transparency."
+    },
+    {
+      "id": "OBJ-11",
+      "dimension": "scope_alignment",
+      "severity": "info",
+      "summary": "Gaode-scoped fail-CLOSED preserving global LOW-10 fail-open is defensible",
+      "ba_claim": "BA: 'Fail-CLOSED on unresolved agent_id is gaode-scoped only; global LOW-10 fail-open posture for non-gaode tools preserved'.",
+      "evidence": "The asymmetric design is justified by the threat model: gaode calls are low-frequency from banned agents (currently zero — BA's invariant is 'no banned agent should ever call gaode'), so a false-deny during the dispatch race is recoverable (user re-runs). For non-gaode tools, LOW-10 documents that false-denies during dispatch race break legitimate first-write workflows — high frequency, high cost. The asymmetry correctly reflects the cost/benefit. Verified by reading /root/.claude/hooks/lib/agent_resolver.py:17-22 docstring which explicitly documents the LOW-10 contract for non-gaode tools. The hole this MIGHT leave: a banned agent that gets dispatched at the exact moment its agent-index entry is missing AND tries to call gaode would be blocked by the new fail-CLOSED; it cannot retry its way around (the agent_id remains missing for the same dispatch attempt). This is the intended behavior — the false-deny is the safer posture for gaode.",
+      "why_it_matters": "Positive verification. The asymmetric fail-posture is internally consistent with the documented LOW-10 contract and the spec §5.13C #5 demand for default-deny. No 'hole' is left in the gaode policy because the fail-CLOSED is universal for the gaode surface set.",
+      "required_fix": "No change required. Counter-positive evidence noted for transparency."
+    }
+  ],
+  "dimension_summary": {
+    "evidence_quality": {
+      "verdict": "pass",
+      "objections": ["OBJ-4", "OBJ-7", "OBJ-8"],
+      "notes": "BA's cited file:line evidence is grep-verified accurate. Minor refinement needed on per-line classification of 'imperative vs schema template' references (OBJ-4)."
+    },
+    "scope_alignment": {
+      "verdict": "pass",
+      "objections": ["OBJ-6", "OBJ-10", "OBJ-11"],
+      "notes": "M1-only milestone scoping is defensible; '全部' decomposes into 5 milestones covering all 14 §5.x actionable subsections. Asymmetric fail-CLOSED is sound."
+    },
+    "investigation_completeness": {
+      "verdict": "fail",
+      "objections": ["OBJ-2", "OBJ-3"],
+      "notes": "Two significant gaode-touching surfaces missed in out-of-scope observations: scripts/fetch-images-batch.py (direct REST + script invocation in user code) and .claude/commands/plan.md (9 orchestrator-level positive gaode instructions). Either include in affected_files or document explicitly with rationale."
+    },
+    "affected_file_accuracy": {
+      "verdict": "fail",
+      "objections": ["OBJ-1"],
+      "notes": "Affected-files list silently omits the 7 user-level agents (ba/qa/dev/pm/product-owner/ui-specialist/user) that spec §5.1 line 90 enumerates verbatim as banned. BA's own Edge Cases acknowledges the gap but does not resolve it. Required: explicit decision in scope_boundary or affected_files."
+    },
+    "spec_text_vs_execution_drift": {
+      "verdict": "pass_with_minor",
+      "objections": ["OBJ-5", "OBJ-9"],
+      "notes": "AC1-AC8 are all testable as written with no PASS_AS_SUBSTITUTE risk. One implementation pitfall in the technical-hint guidance for AC2 bash-token: existing _extract_targets does not surface the raw command, requiring dev to either refactor or add a pre-check stage. Document the pitfall to prevent silent miss."
+    }
+  },
+  "passed_dimensions": ["evidence_quality", "scope_alignment", "spec_text_vs_execution_drift"],
+  "failed_dimensions": ["investigation_completeness", "affected_file_accuracy"],
+  "verdict_rationale": "Two of five dimensions fail (affected_file_accuracy, investigation_completeness) due to material omissions BA must resolve before dev dispatch. The omissions are not opinion-level disagreements; they are spec-verbatim gaps (spec §5.1 line 90 names 7 agents that BA does not list) and grep-verified missed surfaces (scripts/fetch-images-batch.py, .claude/commands/plan.md) that the new harness ban will interact with. Required: BA returns with either expanded affected-files coverage OR explicit written rationales for omission in scope.excluded / out_of_scope_observations. Other dimensions pass cleanly — the policy schema design, alias canonicalization, AC testability, and milestone independence are all sound. This is fixable in a single BA revision turn.",
+  "self_verification": {
+    "claims_total": 11,
+    "claims_with_evidence": 11,
+    "claims_superficial": 0,
+    "superficial_details": [],
+    "confidence": "high",
+    "verification_methods_used": ["direct Read of /root/.claude/policies/tool-policy.v1.json", "direct Read of /root/.claude/hooks/pretool-tool-policy.py", "direct Read of /root/.claude/hooks/lib/agent_resolver.py", "Grep across /root/travel-planner/.claude/agents/", "Grep across /root/travel-planner/scripts/", "Grep across /root/travel-planner/.claude/commands/", "ls /root/.claude/agents/", "Read of spec-20260508-221237.md sections 5.1, 5.4, 5.13C", "Read of specialist-findings.md", "frontmatter inspection of timeline.md and transportation.md"]
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
