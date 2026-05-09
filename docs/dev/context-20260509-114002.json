@@ -462,5 +462,109 @@
     "status": "not_requested",
     "feedback_summary": null,
     "feedback_incorporated": null
+  },
+  "cycle_3": {
+    "trigger": "/redev --codex after /close --codex returned CLOSE: NO with 4 findings; user verbatim directive '永久彻底修复' (permanently and thoroughly fix)",
+    "scope_summary": "Treat the architectural CLASS that produced the 4 close-report findings, not just the 4 surfaced symptoms. Adopt arch-prop-1 (content scanner, shape-dispatched), arch-prop-2 T2+T3 verifiers, arch-prop-3A timeline+transportation as policy roles, arch-6 partial heredoc-body extraction + python -m module recognition. Fix BA-QA r2 line 179. Defer arch-10 PostToolUse JSON validator.",
+    "decisions": {
+      "1_content_scanner": {
+        "adopted": true,
+        "refinement": "shape-based dispatch: path-shaped string-leaves -> read-path matcher; URL-shaped (http://, https://) -> network-host matcher; OTHER strings (free text) NOT scanned. Bash-token + env-var matchers stay scoped to Bash.command only. This refinement is REQUIRED to avoid the documentation-blackhole regression demonstrated empirically when BA's own bash command containing literal 'amap' was blocked by surface:bash-token. Closes arch-1, arch-2, close-report findings 1+2 without prohibiting documentation/code-review reads."
+      },
+      "2_timeline_transportation_roles": {
+        "adopted": true,
+        "form": "arch-prop-3A — add roles.timeline + roles.transportation to tool-policy.v1.json with allowed_tools=[Read,Glob,Grep,Bash,Write,Edit,MultiEdit,Skill] and allowed_write_path_prefixes=[*/data/, */docs/dev/timeline-, */docs/dev/specs/*/timeline-, */docs/dev/overnight/] (transportation analogous). policy_version 2->3. Closes arch-3, arch-4, close-report finding 3."
+      },
+      "3_t2_integration_verifier": {
+        "adopted": true,
+        "artifact": "scripts/verify-gaode-ban-integration.sh (NEW); spawns python3 pretool-tool-policy.py as subprocess; ~80 cases bounded by (banned_role x allowlist_role) x (gaode-relevant tool name) x (gaode-target, non-gaode-target)"
+      },
+      "4_t3_contract_verifier": {
+        "adopted": true,
+        "artifact": "scripts/verify-gaode-ban-contract.sh (NEW) + scripts/lib/mcp-tool-catalog.json (NEW fixture); enumerates 35+ MCP tool names taking string-valued URL/path/code/filename args"
+      },
+      "5_heredoc_body_extraction": {
+        "adopted": true,
+        "implementation": "NEW helper bash_write_targets.extract_heredoc_bodies(command) -> list[str] inverse of existing command_without_heredoc_bodies; each body fed to 4 bash matchers as virtual command. Plus extend bash matcher to recognize 'python3 -m <module>' / 'python -m <module>' patterns and match <module> against gaode_denied_bash_tokens."
+      },
+      "6_token_extensions": {
+        "adopted": true,
+        "narrowing": "Add 'gaode_', 'amap_', 'gaode-', 'amap-' to gaode_denied_bash_tokens (Bash.command-scoped only per Decision 1 refinement). False-positive risk on names like gaode_data_export accepted per '永久彻底修复' priority."
+      },
+      "7_ba_qa_r2_json_fix": {
+        "adopted": true,
+        "fix": "ba-qa-report-20260509-114002-r2.json:179: replace literal parenthetical outside string with concatenated single-string form: '系统性彻底禁止 (systematic and complete prohibition)'"
+      },
+      "8_post_tool_use_json_validator": {
+        "adopted": false,
+        "reason": "DEFER to separate harness-quality cycle. Preventive (catches future BA-QA r2 typos at write time) but not curative for THIS spec; close-report finding 4 is fixed in-place by Decision 7. Recorded in out_of_scope_observations ledger."
+      },
+      "9_minor_cleanup_arch_7_8_9_11": {
+        "adopted": true,
+        "items": [
+          "arch-7: T2 fixture row pins subagent_type field name (regression guard)",
+          "arch-8: docstring comment in policy_registry._gaode_skill_match documenting case-insensitive skill match vs case-sensitive allowlist",
+          "arch-9: docstring comment in policy_registry._gaode_substring_signal documenting substring-with-scheme gating",
+          "arch-11: T1 (verify-gaode-ban.sh) extended with bash-resolved-path branch case (currently omitted)"
+        ]
+      }
+    },
+    "new_acceptance_criteria": [
+      "AC9 end-to-end positive: timeline/transportation invoke gaode through all 6 surfaces -> exit 0",
+      "AC10 Glob.pattern bypass closed (close-report finding 2)",
+      "AC11 MCP browser_navigate / browser_evaluate / browser_run_code bypass closed (close-report finding 2)",
+      "AC12 Edit.old_string content scan path-shaped + URL-shaped only; free-text NOT a false-positive (regression guard for Decision 1 refinement)",
+      "AC13 bash heredoc body extracted into per-virtual-command bash matchers",
+      "AC14 BA-QA r2 JSON parses (close-report finding 4)",
+      "AC15 documentation false-positive NOT introduced (regression guard for shape-based scanner)",
+      "AC16 T2 integration verifier passes 100%",
+      "AC17 T3 contract verifier passes for every MCP tool in catalog"
+    ],
+    "files_to_modify_cycle_3": [
+      "/root/.claude/policies/tool-policy.v1.json",
+      "/root/.claude/hooks/pretool-tool-policy.py",
+      "/root/.claude/hooks/lib/policy_registry.py",
+      "/root/.claude/hooks/lib/bash_write_targets.py",
+      "/root/travel-planner/scripts/verify-gaode-ban.sh",
+      "/root/travel-planner/docs/dev/ba-qa-report-20260509-114002-r2.json"
+    ],
+    "files_to_create_cycle_3": [
+      "/root/travel-planner/scripts/verify-gaode-ban-integration.sh",
+      "/root/travel-planner/scripts/verify-gaode-ban-contract.sh",
+      "/root/travel-planner/scripts/lib/mcp-tool-catalog.json"
+    ],
+    "files_NOT_modified_cycle_3": [
+      "All 7 banned agent .md files (cycle-1 DO-NOT block + positive-instruction removal already shipped)",
+      "timeline.md / transportation.md (allowlist preserved; agent prompts unchanged)",
+      "tool-policy.v1.json gaode_* keys (cycle 1 set them; cycle 3 only ADDS 2 new role entries and bumps version)",
+      "scripts/fetch-images-batch.py (M5 deferred per cycle 1 BA decision)",
+      ".claude/commands/plan.md (M2 owns rewrite)",
+      "/root/.claude/agents/{ba,qa,dev,pm,product-owner,ui-specialist,user}.md (cycle 1 BA decision; documented out of scope)"
+    ],
+    "out_of_scope_observations_cycle_3": [
+      {
+        "ts": "2026-05-09T15:42:40Z",
+        "task_id": "20260509-114002",
+        "file": "(PostToolUse hook NOT_YET_EXISTING)",
+        "line": null,
+        "observation": "arch-10: a PostToolUse JSON-syntax validator on docs/dev/*.json would catch the BA-QA r2 line-179 class of bug at write time, preventing recurrence. Out of THIS cycle (preventive not curative; close-report finding 4 is fixed in-place by AC14). Recommend separate harness-quality cycle.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "goal_completeness_check": {
+      "close_report_finding_1_glob_pattern": "AC10 (content scanner shape-dispatch sends path-shaped Glob.pattern to read-path matcher)",
+      "close_report_finding_2_mcp_network": "AC11 (content scanner shape-dispatch sends URL-shaped mcp__* args to network-host matcher)",
+      "close_report_finding_3_ac6_unverified": "AC9 (Decision 2: timeline/transportation as first-class roles + AC9 end-to-end positive test)",
+      "close_report_finding_4_invalid_json": "AC14 (Decision 7: trivial in-place repair)",
+      "expected_close_verdict_after_cycle_3": "CLOSE: YES (unanimous QA + Codex), provided AC9-AC17 all PASS"
+    },
+    "codex_consult_cycle_3": {
+      "invoked": true,
+      "status": "failed_environmental",
+      "failure_mode": "The very harness this cycle hardens (cycle-1's gaode_denied_bash_tokens) BLOCKED the BA agent's bash command containing literal 'amap' when invoking codex CLI. PreToolUse exit 2 with surface:bash-token matched_pattern:amap. Empirical demonstration of the false-positive risk that motivates Decision 1's shape-based dispatch refinement.",
+      "feedback_summary": "Self-review substituted: (a) C-question (false-positive risk) demonstrated empirically via the very hook trip that prevented codex invocation; (b) refined Decision 1 to shape-based dispatch (path-shaped -> read-path matcher; URL-shaped -> network-host matcher; free-text NOT scanned); (c) refined Decision 6 narrowing to keep additions Bash.command-scoped only; (d) added AC15 regression guard for documentation false-positive prevention.",
+      "feedback_incorporated": "Decision 1 shape-based dispatch (vs naive all-leaves-to-all-matchers); AC12 narrowed to path-shaped + URL-shaped + free-text negative case; AC15 added as explicit regression guard for the documentation-blackhole class of regression."
+    }
   }
 }
