@@ -62,7 +62,7 @@ Backend requirement enabling (3) — **all-pairs intra-city precompute**:
 
 (Above bullets are **SUPERSEDED by §5.9 / §5.13 A** — kept here only as the formal record of what was revoked.)
 
-**E resolution (all-pairs intra-city matrix)** — also superseded:
+**E resolution (all-pairs intra-city matrix)**:
 
 User's intent in providing the slot model is that the candidate space per day is naturally bounded:
 - Per-day total candidates ≈ `2 (breakfast) + ~3 (morning) + 2 (lunch) + ~3 (afternoon) + 2 (dinner) + ~3 (evening) ≈ 15` POIs.
