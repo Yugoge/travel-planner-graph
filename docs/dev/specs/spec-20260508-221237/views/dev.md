@@ -171,6 +171,8 @@ Two export formats are required from the web UI (and ideally also via a CLI comm
 - File naming: `<trip-id>.pdf` and `<trip-id>.ics` written to a documented output directory (e.g. `data/<trip-id>/exports/`).
 - Re-export overwrites previous output for the same trip-id (atomic write recommended: write to `.tmp` then rename).
 
+**D. Acceptance evidence**
+
 ### 5.12: No backwards compatibility
 
 - Old trip HTML outputs were **static, non-interactive** documents. They are frozen artifacts and remain viewable as-is regardless of any new architecture. Nothing the new pipeline does breaks them.
