@@ -100,10 +100,7 @@ For each day in the trip:
    **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool.**
 
    - **For global destinations**: Use Google Maps
-   - **For China destinations**: Use Gaode Maps POI search via Bash:
-     ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<cafe_query>" "<city>" "050000"
-     ```
+   - **For China destinations**: Use RedNote-driven discovery only. Surface cafes as `name_local` + `location_local` strings; coordinate resolution is owned by the downstream `timeline` agent. The harness will REJECT any `gaode-maps` invocation from this agent (see DO NOT section above).
    - **For authentic recommendations (China)**: Use RedNote search via Bash:
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20
