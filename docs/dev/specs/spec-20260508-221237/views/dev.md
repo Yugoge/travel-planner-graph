@@ -15,58 +15,12 @@
 
 ---
 
-## Section 1: Before — Current implementation surface
-
-**A. Current gaode-maps access surface**
+## Section 1 — implementation files to modify (cross-ref ba.md baseline)
 
 - Skill definition: `/root/travel-planner/.claude/skills/gaode-maps/skill.md` (user-invocable: true; allowed_tools = `Task, Read, Bash`).
-- **Critical**: in subagent context, gaode-maps is NOT invoked through the `Skill` tool — agents shell out via Bash to scripts under `/root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/*.py` (e.g. `poi_search.py`, routing scripts). A Skill-matcher hook alone would NOT block current usage.
-- Agents that currently reference gaode-maps in their prompt (must be banned except where allowlisted):
-  - `transportation.md` — KEEP (allowlist; lines 88-94 use Gaode routing for inter-city; SECONDS→minutes conversion warning).
-  - `meals.md` (lines 83-84) — BAN.
-  - `attractions.md` (lines 82-85, category code `110000`) — BAN.
-  - `accommodation.md` — BAN.
-  - `cafe.md` — BAN.
-  - `entertainment.md` — BAN.
-  - `shopping.md` — BAN.
-  - `timeline.md` (lines 312-440) — KEEP (allowlist; intra-city `travel_segments` API-driven).
-- Current harness enforcement: NONE per-skill. `.claude/hooks/pretool-subagent-enforce.py` enforces workflow-phase sequencing (Gate 4) but does not gate skill/script names.
-
-**B. Current planning flow (single-plan, post-hoc review — opposite of target)**
-
 - Entrypoint: `.claude/commands/plan.md`.
-  - Phase 1 — BA requirement + skeleton.
-  - Phase 2 — skeleton init + validation.
-  - **Phase 3 (Step 8)** — 6 content agents run in parallel; `transportation` runs alongside them (NOT as a downstream step).
-  - **Phase 3 (Step 10)** — `timeline` runs serially **after** all content agents, automatically. No user approval required before timeline runs.
-  - **Phase 4 (lines 668-856)** — day-by-day USER REVIEW happens AFTER timeline+transport are already built. User sees the assembled day and can: accept / request changes (re-invokes content agents via Step 15) / accept-all-remaining.
-- Output shape:
-  - `meals.json` per day: `{breakfast:{primary, alternatives[]}, lunch:{...}, dinner:{...}}`. The `alternatives` field is in the schema but typically empty in real data (e.g. `data/dali-kunming-test-20260504-142555/meals.json`).
-  - `attractions / entertainment / shopping / cafe / accommodation`: similar `primary` + optional `alternatives` pattern, but alternatives unpopulated in practice.
-  - `transportation.json`: a single optimal option per location-change day (no alternatives surface).
 
----
-
-## Section 5.1: Harness ban — Skill matcher
-
-1. **Harness layer (authoritative)**: a PreToolUse hook MUST block any `Skill` tool call whose skill name matches `gaode-maps*` / `scripts:gaode-maps*` when the calling subagent is not in the allowlist `{timeline, transportation}`. Harness rejection is the source of truth — prompt rules alone are insufficient (see global lessons §11, "must explicitly list what is FORBIDDEN, not just what is allowed").
-2. **Prompt layer (defense-in-depth)**: every affected agent definition file under `.claude/agents/` MUST contain an explicit `## DO NOT` section naming `gaode-maps` / `高德地图` / `scripts:gaode-maps*` as forbidden, with the rationale and the allowed alternatives (e.g., rednote for content discovery; google-maps where applicable).
-
-**Allowlist (only these two agents may call gaode-maps skills)**: `timeline`, `transportation`.
-
-**Out-of-scope agents (must be banned)**: `meals`, `attractions`, `accommodation`, `cafe`, `entertainment`, `shopping`, `ba`, `qa`, `dev`, `pm`, `product-owner`, `ui-specialist`, `budget`, `user`, plus any other agent not on the allowlist (default-deny).
-
----
-
-## Section 5.2: Refactor day-planning flow (state machine)
-
-1. **Content agents produce multiple options, not a single pick.** Each business / content subagent (`meals`, `attractions`, `accommodation`, `cafe`, `entertainment`, `shopping`) MUST return **several** candidate options for every slot/plan they own — not a single locked-in recommendation. Minimum count and option schema to be defined in the dev plan; default expectation: ≥3 options per slot where the candidate pool exists, with each option carrying enough metadata (name, location summary, why-fits-user, rough cost, source citation) for the user to choose.
-2. **Day-level Plan/review presents all options.** During each day's Plan/review step, ALL options across all slots are surfaced to the user in a unified, scannable view. This is the user-facing decision surface.
-3. **User selection is a hard gate.** No downstream timing/routing work runs until the user explicitly picks one option per slot (or accepts a default).
-4. **After user approval, timeline + transportation are invoked in sequence:**
-   - `timeline` agent: builds the day's chronological timeline AND designs **intra-city** (市内) transit between the user-chosen items.
-   - `transportation` agent: designs **inter-city** (市际) transport segments (HSR, flights, long-distance ground) on days that change cities.
-5. The two geo agents (`timeline`, `transportation`) are the ONLY agents permitted to call gaode-maps (cross-reference §5.1).
+## §5.2 state-machine implementation requirements
 
 - A documented day-planning state machine: `draft-options → user-review → user-selected → timeline → transportation → finalized`. State transitions are explicit; downstream stages refuse to run on a day still in `draft-options` or `user-review`.
 - Schema additions: per-slot `options[]` array with selection marker (`selected: true|false` or `selected_option_id`); validator rejects a day entering `timeline` stage with any slot lacking a selection.
