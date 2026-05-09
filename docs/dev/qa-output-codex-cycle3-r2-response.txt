@@ -4120,3 +4120,35 @@ hook: Stop
 hook: Stop
 hook: Stop
 hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+2026-05-09T17:18:25.470345Z ERROR codex_core::session: failed to record rollout items: thread 019e0db9-760e-7661-8a0f-1bfa5a566961 not found
+tokens used
+123,263
+CODEX_FEEDBACK: I do **not** concur with an unconditional PASS. The 9 prior objections look mostly resolved, but REVISION-2 introduced/missed two blockers.
+
+1. **Critical missed bypass: `Glob/Grep` path + pattern composition.**  
+   REVISION-2 scans `Glob.pattern`, `Glob.path`, `Grep.path`, `Grep.glob` as separate fields (`docs/dev/ticket-20260509-114002.md:329-336,361`). That misses real tool semantics where `pattern/glob` is relative to `path`. Example class:
+   - `Glob(path:"/root/travel-planner/.claude/skills", pattern:"g-aode-maps/**")`
+   - `Grep(path:"/root/travel-planner/.claude/commands/scripts", glob:"g-aode-maps/**/*.py", pattern:"x")`  
+   Scanning each field independently can allow both: parent `path` is not under the denied prefix, and relative glob alone does not resolve under it. Fix: scanner must synthesize joined candidates for `Glob.path + Glob.pattern` and `Grep.path + Grep.glob`, with AC12 fixtures.
+
+2. **Major fixture drift: `/root/.claude/...` vs project `.claude`.**  
+   The actual in-scope skill is under `/root/travel-planner/.claude/...` (`ticket:20`; old AC5 also used project path at `ticket:216`). Current verifier forces `CLAUDE_PROJECT_DIR=/root/travel-planner` (`scripts/verify-gaode-ban.sh:78-84`). REVISION-2 AC9/AC11/AC12 switched several payloads to `/root/.claude/...` (`ticket:504,525-527,537-541`). If tests run with project-root anchoring, these may fail to hit the intended read-path deny. Use `/root/travel-planner/.claude/...` or explicitly add/test global prefixes.
+
+3. **AC18 `<trip>` placeholder:** non-blocking because `denied_tools` fires before path checks, so the path value is irrelevant for expected denial. Still, replace `<trip>` with a concrete fixture like `fixture-trip` and enumerate transportation payloads to avoid verifier ambiguity.
+
+4. **`Grep.pattern` not whitelisted:** correct. It is content/query text, not an IO path. Scanning it would recreate the AC15 documentation false-positive. The missing part is not `Grep.pattern`; it is composed `Grep.path + Grep.glob`.
+
+5. **AC9b env-var payload:** should exit 0 for allowlisted `timeline` once the role exists. Bash matcher precedence does not cause DENY; any matched g/a-map surface returns allow for canonical allowlisted roles. Only failure mode is role-table/resolver not producing `timeline`.
+
+6. **Minor text contradiction:** AC9b says standard `_check_tool_lists` denies WebFetch/MCP before g/a-map pre-check (`ticket:485,495`), contradicting earlier spec/current hook ordering that g/a-map pre-check runs before standard checks (`ticket:109,171,245`). Correct wording: pre-check allows for allowlisted role, then tool-list denies unsupported tools.
+
+Verdict: **PASS is premature** until at least points 1 and 2 are corrected.
