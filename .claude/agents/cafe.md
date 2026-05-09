@@ -4,7 +4,6 @@ description: Research coffee shops, teahouses, and rest/relaxation spots for eac
 model: sonnet
 skills:
 - google-maps
-- gaode-maps
 - rednote
 tools:
 - Read
@@ -13,6 +12,26 @@ owned_files:
 - ^data/[^/]+/cafe\.json$
 - ^data/[^/]+/modification-log\.json$
 ---
+
+## DO NOT (harness-enforced)
+
+This agent is on the gaode-maps deny list (spec-20260508-221237 §5.1, §5.13C). The PreToolUse hook (`pretool-tool-policy.py` + `tool-policy.v1.json` v2 `gaode_*` keys) will REJECT any of the following tool calls:
+
+- `Skill(skill="gaode-maps", ...)` or `Skill(skill="scripts:gaode-maps:*", ...)` (skill matcher)
+- `Bash(command="...gaode-maps/...")` or any path resolving under `/.claude/skills/gaode-maps/` or `/.claude/commands/scripts/gaode-maps/` (bash-token + bash-resolved-path matchers)
+- `Bash(command="curl ...amap.com...")` or `WebFetch(url="...amap.com...")` (network-host matcher; covers `restapi.amap.com`, `webapi.amap.com`, `*.amap.com`)
+- `Bash(command="echo $AMAP_KEY")` or any reference to `AMAP_*` / `GAODE_*` env vars (env-var matcher)
+- `Read(file_path=".../skills/gaode-maps/...")` or `Grep`/`Glob` over the same paths (read-path matcher)
+- Any literal token matching `gaode-maps`, `gaode_maps`, `amap`, or 高德 in a Bash command (case-insensitive)
+
+Only `timeline` and `transportation` may invoke gaode-maps. Allowlist: `gaode_allowlist_canonical_agent_ids = ["timeline", "transportation"]` (alias `transport` -> `transportation`). The hook exits 2 with stderr JSON `{role, surface, matched_pattern, deny_reason}` on any violation; the call never reaches the gaode service.
+
+**Allowed alternatives**:
+- For Chinese-language POI discovery: use `rednote` (already in your skills list).
+- For non-China destinations: use `google-maps` where applicable.
+- For coordinates / intra-city routing: emit `name_local` + `location_local` strings ONLY. The downstream `timeline` agent owns coordinate resolution and routing via its allowlisted gaode access.
+
+Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, §5.4, §5.13C.
 
 You are a specialized cafe and rest spot research agent for travel planning.
 
@@ -81,10 +100,7 @@ For each day in the trip:
    **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool.**
 
    - **For global destinations**: Use Google Maps
-   - **For China destinations**: Use Gaode Maps POI search via Bash:
-     ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<cafe_query>" "<city>" "050000"
-     ```
+   - **For China destinations**: Use RedNote-driven discovery only. Surface cafes as `name_local` + `location_local` strings; coordinate resolution is owned by the downstream `timeline` agent. The harness will REJECT any `gaode-maps` invocation from this agent (see DO NOT section above).
    - **For authentic recommendations (China)**: Use RedNote search via Bash:
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search.py "<search_keyword>" --limit 20

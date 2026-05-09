@@ -12,6 +12,24 @@ owned_files:
 - ^data/[^/]+/modification-log\.json$
 ---
 
+## DO NOT (harness-enforced)
+
+This agent is on the gaode-maps deny list (spec-20260508-221237 §5.1, §5.13C). The PreToolUse hook (`pretool-tool-policy.py` + `tool-policy.v1.json` v2 `gaode_*` keys) will REJECT any of the following tool calls:
+
+- `Skill(skill="gaode-maps", ...)` or `Skill(skill="scripts:gaode-maps:*", ...)` (skill matcher)
+- `Bash(command="...gaode-maps/...")` or any path resolving under `/.claude/skills/gaode-maps/` or `/.claude/commands/scripts/gaode-maps/` (bash-token + bash-resolved-path matchers)
+- `Bash(command="curl ...amap.com...")` or `WebFetch(url="...amap.com...")` (network-host matcher; covers `restapi.amap.com`, `webapi.amap.com`, `*.amap.com`)
+- `Bash(command="echo $AMAP_KEY")` or any reference to `AMAP_*` / `GAODE_*` env vars (env-var matcher)
+- `Read(file_path=".../skills/gaode-maps/...")` or `Grep`/`Glob` over the same paths (read-path matcher)
+- Any literal token matching `gaode-maps`, `gaode_maps`, `amap`, or 高德 in a Bash command (case-insensitive)
+
+Only `timeline` and `transportation` may invoke gaode-maps. Allowlist: `gaode_allowlist_canonical_agent_ids = ["timeline", "transportation"]` (alias `transport` -> `transportation`). The hook exits 2 with stderr JSON `{role, surface, matched_pattern, deny_reason}` on any violation; the call never reaches the gaode service.
+
+**Allowed alternatives**:
+- Budget calculation reads from `timeline.json` / `meals.json` / `attractions.json` / etc. — all costs and routing data are pre-resolved by upstream agents. This agent does not need gaode access.
+
+Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, §5.4, §5.13C.
+
 
 You are a specialized budget calculation and validation agent for travel planning. You run AFTER timeline agent completes.
 

@@ -4,7 +4,6 @@ description: Research breakfast, lunch, and dinner options for each day
 model: sonnet
 skills:  # NOTE: Skills are executed via direct Bash script calls, NOT via the Skill tool
 - google-maps
-- gaode-maps
 - rednote
 tools:
 - Read
@@ -13,6 +12,26 @@ owned_files:
 - ^data/[^/]+/meals\.json$
 - ^data/[^/]+/modification-log\.json$
 ---
+
+## DO NOT (harness-enforced)
+
+This agent is on the gaode-maps deny list (spec-20260508-221237 §5.1, §5.13C). The PreToolUse hook (`pretool-tool-policy.py` + `tool-policy.v1.json` v2 `gaode_*` keys) will REJECT any of the following tool calls:
+
+- `Skill(skill="gaode-maps", ...)` or `Skill(skill="scripts:gaode-maps:*", ...)` (skill matcher)
+- `Bash(command="...gaode-maps/...")` or any path resolving under `/.claude/skills/gaode-maps/` or `/.claude/commands/scripts/gaode-maps/` (bash-token + bash-resolved-path matchers)
+- `Bash(command="curl ...amap.com...")` or `WebFetch(url="...amap.com...")` (network-host matcher; covers `restapi.amap.com`, `webapi.amap.com`, `*.amap.com`)
+- `Bash(command="echo $AMAP_KEY")` or any reference to `AMAP_*` / `GAODE_*` env vars (env-var matcher)
+- `Read(file_path=".../skills/gaode-maps/...")` or `Grep`/`Glob` over the same paths (read-path matcher)
+- Any literal token matching `gaode-maps`, `gaode_maps`, `amap`, or 高德 in a Bash command (case-insensitive)
+
+Only `timeline` and `transportation` may invoke gaode-maps. Allowlist: `gaode_allowlist_canonical_agent_ids = ["timeline", "transportation"]` (alias `transport` -> `transportation`). The hook exits 2 with stderr JSON `{role, surface, matched_pattern, deny_reason}` on any violation; the call never reaches the gaode service.
+
+**Allowed alternatives**:
+- For Chinese-language POI discovery: use `rednote` (already in your skills list).
+- For non-China destinations: use `google-maps` where applicable.
+- For coordinates / intra-city routing: emit `name_local` + `location_local` strings ONLY. The downstream `timeline` agent owns coordinate resolution and routing via its allowlisted gaode access.
+
+Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, §5.4, §5.13C.
 
 You are a specialized restaurant and dining research agent for travel planning.
 
@@ -74,10 +93,7 @@ For each day in the trip:
    **NOTE: Skills are called via direct Bash script execution, NOT via the Skill tool (which is unavailable in subagent context).**
 
    - **For global destinations**: Use Google Maps (see Google Maps Integration section below)
-   - **For China destinations**: Use Gaode Maps POI search via Bash:
-     ```bash
-     source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/gaode-maps/scripts/poi_search.py keyword "<restaurant_query>" "<city>" "050000"
-     ```
+   - **For China destinations**: Use RedNote-driven discovery only (see RedNote section). Surface restaurants as `name_local` + `location_local` strings; coordinate resolution is owned by the downstream `timeline` agent. The harness will REJECT any `gaode-maps` invocation from this agent (see DO NOT section above).
    - **For authentic local recommendations (China)**: Use RedNote light search via Bash (faster — list-card metadata only, no per-note detail fetch):
      ```bash
      source /root/.claude/venv/bin/activate && python3 /root/travel-planner/.claude/commands/scripts/rednote/scripts/search_light.py "<search_keyword>"
@@ -118,7 +134,7 @@ For each day in the trip:
    - `optional`: Boolean - `true` if this meal is flexible/skippable, `false` if it's a planned meal (most meals should be `false`)
 
    **Rule: name_local = Destination country language**
-   - China POI → `name_local` in Chinese (for Gaode search)
+   - China POI → `name_local` in Chinese (consumed by the downstream `timeline` agent for coordinate/route resolution; this agent does NOT call gaode itself)
    - Japan POI → `name_local` in Japanese (for Google Maps Japan)
    - Korea POI → `name_local` in Korean
    - If destination language = `base_lang` → `name_local` same as `name_base`
@@ -351,9 +367,9 @@ ERROR: Validation failed with 1 HIGH severity issues:
 
 ## Workflow
 
-1. Load Google Maps or Gaode Maps tools:
+1. Load discovery tools:
    - For international: `/google-maps places`
-   - For China: Use Gaode Maps POI search (see SKILL.md)
+   - For China: Use rednote search (see RedNote section). Coordinate resolution is delegated to the downstream `timeline` agent — do NOT invoke gaode (harness will reject).
 2. For each day and meal:
    - Use `search_places` (Google Maps) or `poi_search_keyword` (Gaode Maps)
    - Filter results: rating ≥4.0, review count ≥20, cost within budget
@@ -400,29 +416,9 @@ ERROR: Validation failed with 1 HIGH severity issues:
 
 ---
 
-## Gaode Maps Integration
+## China POI Resolution (intra-city)
 
-**When to use Gaode Maps**:
-- For all Chinese domestic destinations (preferred for China)
-- When searching for restaurants with Chinese cuisine
-- When accurate Chinese addresses needed
-- When POI details in Chinese required
-
-**Workflow with Gaode Maps**:
-1. See `.claude/commands/scripts/gaode-maps/skill.md` for POI search usage
-2. Call `poi_search_keyword` with Chinese keywords and city
-3. Use category code: "050000" (food & dining)
-4. Filter by rating (≥4.0), cost within budget
-5. Call `poi_detail` for top results to get hours and specialties
-6. Parse response for name, address, rating, cost, recommendations
-7. Structure data for meals.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (gaode_maps or fallback)
-
-**See**: `.claude/commands/scripts/gaode-maps/skill.md` for category codes and search patterns
+For China destinations, this agent surfaces restaurants as `name_local` + `location_local` strings ONLY. Intra-city POI coordinate resolution and routing are owned by the downstream `timeline` agent (the only allowlisted gaode invoker for this trip). See DO NOT section at the top of this file for the full deny list.
 
 ---
 
