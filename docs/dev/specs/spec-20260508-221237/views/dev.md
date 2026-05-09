@@ -135,6 +135,8 @@ The budget recomputes automatically on each of:
 - Therefore budget recompute is local CPU work — no external API, no rate limit. Suitable for synchronous response on every UI event.
 - For perf, the budget endpoint accepts a delta (changed slot/segment) and returns both the per-day total and the affected breakdown lines, so the front-end can patch the display without a full re-render.
 
+**E. Acceptance evidence**
+
 ### 5.11: Export — PDF and iCal
 
 User addition (2026-05-09):
