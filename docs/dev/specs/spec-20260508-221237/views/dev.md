@@ -50,8 +50,6 @@ Default mode (without `--auto`) remains the user-gated flow from §5.2.
 
 ### 5.6: Web UI overhaul — drag-and-drop timeline with all-pairs intra-city routing
 
-(UI specifics — candidates panel, drag/drop, layout — in ui-specialist.md.)
-
 Backend requirement enabling (3) — **all-pairs intra-city precompute**:
 
 - For every day, `timeline` agent MUST compute the intra-city travel segment between every ordered pair of POIs that appear anywhere on that day — including all `options[]` candidates, not just the currently selected items.
