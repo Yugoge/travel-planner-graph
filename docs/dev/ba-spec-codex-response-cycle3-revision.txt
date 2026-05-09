@@ -2263,3 +2263,75 @@ hook: Stop
 hook: Stop
 hook: Stop
 hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+2026-05-09T16:18:54.787423Z ERROR codex_core::session: failed to record rollout items: thread 019e0d85-f56b-7ac3-ad18-67f2d56d0da1 not found
+tokens used
+49,928
+CODEX_FEEDBACK:
+
+Q1: REV-1 is sound for the Feb-13 direct-tool regression class.
+
+- `denied_tools` is supported and checked before `allowed_tools`, so `Write/Edit/MultiEdit/NotebookEdit` stay blocked even if someone later re-adds them to `allowed_tools`.
+- This blocks direct Claude tool writes and direct writes triggered after a `Skill` instruction, because any later `Write/Edit/...` call is still checked as the same subagent role.
+- Residual risk: `Bash` remains intentionally allowed. A Bash command can still write via `scripts/save.py` or via any indirect script behavior the hook cannot introspect. That is acceptable only if the intended persistence boundary is “Bash + save.py”; it is not equivalent to “timeline/transportation can never mutate files.” Document this as accepted residual risk.
+- Also note: Bash redirection writes detected by the existing Bash write-target extractor will be treated as `Write` and denied, but undetected indirect writes through Python code are not controlled by `denied_tools`.
+
+Q2: REV-3 mostly fixes the AC12/AC15 inconsistency, but you missed at least one important field.
+
+Blocking issue: add `Grep.glob` to the path/glob whitelist. QA/Codex explicitly flagged the `Grep.glob` bypass class; your REV-3 includes `Grep.path` but not `Grep.glob`.
+
+For the six architect-listed MCP vectors, your list covers the main fields:
+
+- `browser_navigate.url`
+- `browser_evaluate.function`
+- `browser_run_code.code`
+- `browser_take_screenshot.filename`
+- `browser_file_upload.paths[]`
+- Gmail send content/body env-var case
+
+Possible additional Playwright filename fields, if you want the catalog to be exhaustive: `browser_snapshot.filename`, `browser_console_messages.filename`, `browser_network_requests.filename`. These are output-save paths, not the same exfil class as upload paths, so not necessarily critical.
+
+Key caveat: field-whitelist reintroduces “missed field” risk by design. Mitigate with the T3 catalog test and make “new MCP string path/URL field requires catalog update” an explicit contract.
+
+Q3: REV-4 is directionally correct, but tighten the wording.
+
+The AC9 split is the right fix:
+
+- AC9a: helper-level `is_g-aode_allowed()` for all six surfaces.
+- AC9b: full-hook positive only for tools actually allowed by timeline/transportation: `Skill`, `Bash`, `Read`.
+
+However, Bash fixtures may not prove the exact branch you think they prove. A Bash command containing an a-map host or `$A-MAP_KEY` may match `bash-token` before `network-host` or `env-var`, depending matcher order. That is fine for “allowlisted role exits 0,” but not fine for branch-specific telemetry.
+
+Recommendation: keep branch-specific surface assertions in AC9a/T1; use AC9b only for end-to-end allowlist fallthrough.
+
+Also add an explicit Bash resolved-path positive fixture, not just curl/env-var:
+
+- `python3 /root/.../g-aode-maps/scripts/x.py` equivalent → exit 0 for timeline/transportation.
+
+Q4: Gmail-body env-var scanning is the right call.
+
+Do not keep the “content fields are never scanned” rule pure. That rule should apply to local documentation/code edit content fields, not outbound network-effect tools.
+
+Rationale:
+
+- `Edit.old_string`, `Write.content`, etc. are local content fields and scanning them caused the documentation blackhole.
+- Gmail send body is an outbound exfil channel. Exfil semantics dominate content-field semantics.
+
+Refine the exception: scan outbound Gmail message content/metadata fields, not just `body` if the schema also has `subject`, `html`, `text`, etc. At minimum, AC should pin the body case QA named.
+
+Q5: Yes — one likely 5th critical remains: `Grep.glob`.
+
+Your REV-3/AC rewrite must explicitly scan `Grep.glob` as a path/glob field. Otherwise the original “forgotten per-tool field” regression survives in a QA-flagged field.
+
+Secondary non-critical notes:
+
+- REV-6 fnmatch globs are narrower than `*/data/`, but `*` can match slashes, so they do not exactly mirror `^data/[^/]+/...$`.
+- With `denied_tools`, `allowed_write_path_prefixes` are mostly defense-in-depth for future policy drift; they will not authorize detected Bash writes because detected Bash writes are checked as `Write` and denied first.

@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-09T16:09:40Z*
-**Total entries**: 270
+*Last updated: 2026-05-09T16:19:25Z*
+**Total entries**: 272
 **Convention**: kebab
 
 ## Tree
@@ -78,6 +78,8 @@ dev/
 ├── `ba-spec-20260416-172720.md` - BA Specification: Fix silent data loss bug in POI agents — slot-level merge
 ├── `ba-spec-20260417-001800.md` - BA Specification: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 ├── `ba-spec-20260418-153011.md` - BA Specification: Currency System Architecture Redesign
+├── `ba-spec-codex-prompt-cycle3-revision.txt` - txt file
+├── `ba-spec-codex-response-cycle3-revision.txt` - txt file
 ├── `cleanliness-inspector-report-20260505-061047.json` - json config
 ├── `cleanliness-inspector-report-20260505-123425.json` - json config
 ├── `cleanliness-inspector-report-20260505-124619.json` - json config
