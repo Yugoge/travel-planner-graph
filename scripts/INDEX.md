@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T21:53:38Z*
-**Total entries**: 86
+*Last updated: 2026-05-09T22:05:20Z*
+**Total entries**: 87
 **Convention**: kebab
 
 ## Tree
@@ -39,6 +39,7 @@ scripts/
 ├── `_qa_close_repro.sh` - QA close-debate cycle-3 reproduction script — base64 indirection avoids self-tripping the hook.
 ├── `_qa_close_repro2.sh` - Verify Glob.pattern bypass closure with a known-good role (dev, in roles dict).
 ├── `_qa_close_repro_v2.sh` - Re-reproduce cycle-1 close-report findings with explicit CLAUDE_PROJECT_DIR.
+├── `_qa_codex_verify.sh` - Verify the 4 critical Codex bypass claims independently.
 ├── `_qa_diag.sh` - Diagnose why Glob.pattern alone (no path) didn't fire gaode read-path matcher.
 ├── `_qa_diag2.sh` - Diagnose what abspath gives for the bare pattern.
 ├── `_qa_diag3.sh` - Test the EXACT cycle-1 finding-1 reproduction.
