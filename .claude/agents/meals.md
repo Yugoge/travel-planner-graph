@@ -416,29 +416,9 @@ ERROR: Validation failed with 1 HIGH severity issues:
 
 ---
 
-## Gaode Maps Integration
+## China POI Resolution (intra-city)
 
-**When to use Gaode Maps**:
-- For all Chinese domestic destinations (preferred for China)
-- When searching for restaurants with Chinese cuisine
-- When accurate Chinese addresses needed
-- When POI details in Chinese required
-
-**Workflow with Gaode Maps**:
-1. See `.claude/commands/scripts/gaode-maps/skill.md` for POI search usage
-2. Call `poi_search_keyword` with Chinese keywords and city
-3. Use category code: "050000" (food & dining)
-4. Filter by rating (≥4.0), cost within budget
-5. Call `poi_detail` for top results to get hours and specialties
-6. Parse response for name, address, rating, cost, recommendations
-7. Structure data for meals.json
-
-**Error Handling**:
-- Implement retry logic (3 attempts with exponential backoff)
-- On permanent failure: report error to user
-- Always include data source in output (gaode_maps or fallback)
-
-**See**: `.claude/commands/scripts/gaode-maps/skill.md` for category codes and search patterns
+For China destinations, this agent surfaces restaurants as `name_local` + `location_local` strings ONLY. Intra-city POI coordinate resolution and routing are owned by the downstream `timeline` agent (the only allowlisted gaode invoker for this trip). See DO NOT section at the top of this file for the full deny list.
 
 ---
 
