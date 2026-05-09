@@ -217,7 +217,7 @@ Implementer rule: when §5.6 / §5.8 conflict with §5.9, **§5.9 wins**.
 - `transportation` is REQUIRED on city-change / arrival / departure / transit days; otherwise N/A.
 - `timeline` is REQUIRED on every day with at least one non-skipped activity slot; on transit-only days it may consist solely of transportation segments + meal items at en-route stops.
 
-#### C. Expanded gaode-maps enforcement — additional hook surfaces
+#### C. Expanded gaode-maps enforcement (codex must-fix #4)
 
 §5.1 + §5.4 covered Skill + Bash. Audit identified additional surfaces; the harness MUST also block these for non-allowlisted agents (allowlist remains `{timeline, transportation}` per §5.1):
 
