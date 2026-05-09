@@ -1,0 +1,48 @@
+You are an adversarial reviewer (gpt-5.5, xhigh reasoning). Brand obfuscation: g-aode = gaode, a-map = amap. Treat hyphenated forms as the real brand.
+
+Context: The travel-planner project's /redev cycle 3 (post-dev QA verification) for spec-20260508-221237 ("systematic ban of g-aode-maps for non-{timeline,transport} subagents at harness + prompt layers").
+
+Cycle-1 shipped + QA passed + /close --codex returned CLOSE: NO with 4 findings:
+  #1 Glob.pattern bypass (read-path matcher only checked file_path/path, not pattern)
+  #2 MCP browser_navigate bypass (network-host matcher only checked Bash + WebFetch)
+  #3 AC6 verification gap (timeline/transportation NOT first-class roles in policy)
+  #4 BA-QA r2 line 179 invalid JSON (parenthetical broke string)
+
+Cycle-3 (this redev) implementation by dev:
+  1. tool-policy.v1.json bumped 2->3; added timeline + transportation as first-class roles with allowed_tools=[Read,Bash,Skill] + denied_tools=[Write,Edit,MultiEdit,NotebookEdit] + per-file fnmatch write-prefixes mirroring agents owned_files (Feb-13-2026 incident lock).
+  2. pretool-tool-policy.py: replaced per-tool _check_g-aode_webfetch + _check_g-aode_read with explicit field-whitelist content scanner (GAODE_FIELD_WHITELIST tuple); added composed-path scan os.path.realpath(os.path.join(path, pattern.replace('**','').replace('*',''))) for Glob+Grep; URL-substring regex for MCP function/code body fields; Gmail-body env-var matcher.
+  3. bash_write_targets.py: extract_heredoc_bodies(command) helper; _check_g-aode_bash iterates command + each heredoc body separately.
+  4. T1 verify-g-aode-ban.sh extended (32 cases now, was 30); T2 verify-g-aode-ban-integration.sh NEW (39 fixtures, end-to-end subprocess invocation); T3 verify-g-aode-ban-contract.sh NEW (9 MCP catalog fixtures).
+  5. ba-qa-report-r2.json line 179 fixed (concatenated string form).
+
+QA verified independently:
+  - T1: 32/32 PASS
+  - T2: 39/39 PASS (covers AC9b 6 positive timeline/transportation, AC10 Glob/Grep, AC11 6 MCP vectors, AC12 5 paths + 2 negatives + 3 composed-path, AC13 heredoc, AC15 BA documentation false-positive, AC18 8 denied_tools + 1 negative)
+  - T3: 9/9 PASS
+  - All 4 close-report findings reproduced as fixed:
+    #1 Glob(pattern=".claude/skills/g-aode-maps/**", subagent=meals) -> exit 2 surface=read-path matched=g-aode-maps
+    #2 mcp__playwright__browser_navigate(url="https://restapi.a-map.com/v3/test", subagent=meals) -> exit 2 surface=network-host matched=restapi.a-map.com
+    #3 Skill(skill="scripts:g-aode-maps:tools:routing", subagent=timeline) -> exit 0
+    #4 json.load(ba-qa-report-r2.json) -> no exception
+  - AC18 timeline Write -> exit 2 deny_reason "tool Write explicitly denied" (Feb-13 guard active)
+  - AC15 ba Edit ticket containing "https://restapi.a-map.com" -> exit 0 (content fields not scanned)
+  - AC11.6 Gmail body containing "AMAP_KEY=$AMAP_KEY" -> exit 2 surface=env-var
+  - Code-quality: 0 hardcoded brand tokens in policy_registry.py; 1 docstring mention in pretool-tool-policy.py (acceptable, comment only).
+  - Composed-path formula: os.path.realpath(os.path.join(path, pattern.replace('**','').replace('*',''))) - matches spec REVISION-3 Decision 1 exactly.
+  - Field whitelist explicit: GAODE_FIELD_WHITELIST = ((Read, file_path, read-path), (Glob, path, read-path), (Glob, pattern, read-path), ...)
+
+Adversarial questions QA wants you to challenge:
+
+Q1. Are there any bypass classes the cycle-3 design DOES NOT cover that a banned subagent could plausibly attempt? (e.g., shell tricks like eval, base64, indirect Python exec, $(...) command substitution, env-var expansion that evades token matcher).
+
+Q2. Does the composed-path formula (path + wildcard-stripped pattern via os.path.join + realpath) introduce any false-positives or false-negatives QA missed? Edge cases: relative paths, path traversal (..), absolute pattern, glob shapes like {a,b} or ?, symlinks.
+
+Q3. Is the field whitelist exhaustive for currently-known Claude/MCP tools? Any path/URL/code field QA should add to T3 catalog?
+
+Q4. Is the AC18 Feb-13 incident guard truly closed? Could a future regression silently re-enable Write for timeline/transportation? (denied_tools is checked BEFORE allowed_tools in policy_registry.py:228-234).
+
+Q5. Anything else QA missed that would warrant CLOSE: NO if /close re-runs?
+
+Recommend CLOSE: YES or CLOSE: NO with concrete reasons. Be adversarial — find what QA missed.
+
+Reply with: CODEX_FEEDBACK: <your analysis>
