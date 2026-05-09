@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T17:53:07Z*
-**Total entries**: 76
+*Last updated: 2026-05-09T17:53:39Z*
+**Total entries**: 77
 **Convention**: kebab
 
 ## Tree
@@ -79,6 +79,7 @@ scripts/
 ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+├── `verify-gaode-ban-contract.sh` - Description: T3 contract verifier — validates every MCP tool in the catalog
 ├── `verify-gaode-ban-integration.sh` - Description: T2 integration verifier — spawns pretool-tool-policy.py as subprocess,
 ├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
 ├── `verify-plan-integrity.py` - Codex-signed deploy-blocking integrity verifier for travel-plan trips
