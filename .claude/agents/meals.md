@@ -134,7 +134,7 @@ For each day in the trip:
    - `optional`: Boolean - `true` if this meal is flexible/skippable, `false` if it's a planned meal (most meals should be `false`)
 
    **Rule: name_local = Destination country language**
-   - China POI → `name_local` in Chinese (for Gaode search)
+   - China POI → `name_local` in Chinese (consumed by the downstream `timeline` agent for coordinate/route resolution; this agent does NOT call gaode itself)
    - Japan POI → `name_local` in Japanese (for Google Maps Japan)
    - Korea POI → `name_local` in Korean
    - If destination language = `base_lang` → `name_local` same as `name_base`
