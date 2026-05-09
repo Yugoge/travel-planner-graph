@@ -1,0 +1,69 @@
+USER REQUIREMENT: BA cycle-3 ticket (revision after QA rejection) for spec-20260508-221237 §5.13C harness ban. QA found 4 critical defects + 5 minor. I am the BA revising. Validate my proposed fixes catch the regressions QA + Codex flagged.
+
+OUT OF SCOPE: hypothetical attacks not in user threat model, broad refactor, style.
+
+Banned brand obfuscated: g-aode = gaode, a-map = amap (cycle-1 hook blocks the literals in Bash, hence obfuscation in this prompt).
+
+Context files (you can read them via your shell):
+- /root/travel-planner/docs/dev/ticket-20260509-114002.md (cycle-3 section starts line 306; AC9-AC17 lines 426-475)
+- /root/travel-planner/docs/dev/ba-qa-report-20260509-114002-cycle3.json (QA's 9 objections)
+- /root/travel-planner/docs/dev/qa-output-codex-cycle3-response.txt lines 3367-3505 (your prior verdict)
+- /root/.claude/policies/tool-policy.v1.json (NO existing role uses denied_tools; verified)
+- /root/.claude/hooks/lib/policy_registry.py:228-234 (denied_tools IS supported, checked BEFORE allowed_tools)
+- /root/travel-planner/.claude/agents/timeline.md:7-10, transportation.md:10-13 (both declare tools=[Read,Bash,Skill])
+- /root/travel-planner/.claude/agents/{meals,attractions,cafe,entertainment,shopping}.md tools=[Read,Bash]; accommodation+budget=[Read,Bash,Skill]
+
+MY PROPOSED REVISIONS — challenge each:
+
+REV-1 (replaces OBJ-1): Decision 2 narrows roles.timeline.allowed_tools and roles.transportation.allowed_tools to ["Read", "Bash", "Skill"] — verbatim mirror of agent .md tools field. ADDS roles.timeline.denied_tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"] and same for transportation (denied_tools is supported in policy_registry.py:229 and is checked BEFORE allowed_tools, so this provides defense-in-depth: even if a future cleanup added Write to allowed_tools, denied_tools wins). Persistence flows through Bash → scripts/save.py per timeline.md:31-34. NEW AC18: payload {tool_name:Write, tool_input:{file_path:"/root/travel-planner/data/<trip>/timeline.json"}, subagent_type:timeline} → exit 2 with reason containing "tool Write explicitly denied"; analogous for Edit, MultiEdit, NotebookEdit on both roles.
+
+REV-2 (replaces OBJ-2): AC15 changed to use subagent_type:"ba" (an existing role with Read/Edit in allowed_tools and write paths under */docs/dev/ba-* / */docs/dev/ticket-*). Three sub-payloads:
+  (a) Read /root/travel-planner/docs/dev/ticket-20260509-114002.md → exit 0 (BA can read ticket; gaode-policy must NOT deny because file is not under denied_read_path_prefixes)
+  (b) Grep pattern="g-aode-maps" path="/root/travel-planner/docs/" → exit 0 (Grep.pattern is free-text NOT scanned per Decision 1 refinement; Grep.path is documentation, not under denied prefixes)
+  (c) Edit file_path="/root/travel-planner/docs/dev/ticket-20260509-114002.md" old_string="see /root/.claude/skills/g-aode-m-aps/skill.md" new_string="ditto" subagent_type=ba → MUST NOT return gaode-policy:* deny. Either exit 0 (since per REV-3 below, content fields are NOT scanned), or non-gaode policy deny if some other rule fires. Test asserts deny shape, when present, is NOT gaode-policy.
+
+REV-3 (replaces OBJ-3): Decision 1 narrowed. Replace "shape-based dispatch by path/URL detection on every leaf" with explicit FIELD WHITELIST. The content scanner walks ONLY these tool-input fields per tool name:
+  - Read.file_path, Glob.pattern, Glob.path, Grep.path (NOT Grep.pattern), Edit.file_path, Write.file_path, MultiEdit.file_path, NotebookEdit.notebook_path → fed to read-path matcher
+  - WebFetch.url, mcp__playwright__browser_navigate.url → fed to network-host matcher
+  - mcp__playwright__browser_take_screenshot.filename, mcp__playwright__browser_file_upload.paths[] → fed to read-path matcher
+  - mcp__playwright__browser_evaluate.function, mcp__playwright__browser_run_code.code → URL-shape regex (https?://[^\s\'"`]+) match on string; matched URLs fed to network-host matcher (free text in code stays unscanned)
+  - mcp__claude_ai_*.* (every string field) → URL-shape regex; matched URLs fed to network-host matcher
+  - Bash.command → 4 bash matchers as today (token, resolved-path, network-host, env-var)
+  - Edit.old_string / Edit.new_string / MultiEdit.edits[].old_string|new_string / Write.content / NotebookEdit.new_source → NOT SCANNED (content fields). Documentation Edits referencing banned paths in old_string are NEVER blocked by gaode-policy.
+This is BA's commitment: AC12 changes accordingly — Edit.old_string content scan is REMOVED. AC12 now tests Read.file_path / Glob.pattern / mcp__playwright__browser_take_screenshot.filename only. AC15 documentation regression guard tests that Edit.old_string="see /.../skill.md" exits without gaode-policy deny.
+
+REV-4 (replaces OBJ-4): AC9 split. AC9a tests is_gaode_allowed(timeline, surface, target) returns True for all 6 surfaces in isolation (helper-level T1). AC9b tests full-hook exit 0 ONLY for the (role, tool) pairs the role legitimately uses: (timeline|transportation, Skill, gaode skill name), (timeline|transportation, Bash, "curl https://restapi.a-map.com/v3/place"), (timeline|transportation, Read, "/root/.claude/skills/g-aode-maps/skill.md"). Network-host coverage uses Bash+curl, not WebFetch/MCP. The env-var surface tested via Bash command containing $A-MAP_KEY → exit 0 for timeline/transportation (allowlist).
+
+REV-5 (replaces OBJ-5): AC11 enumerates all 6 architect-listed MCP vectors:
+  - mcp__playwright__browser_navigate.url
+  - mcp__playwright__browser_evaluate.function (URL embedded)
+  - mcp__playwright__browser_run_code.code (URL embedded)
+  - mcp__playwright__browser_take_screenshot.filename (path-shaped under denied prefix)
+  - mcp__playwright__browser_file_upload.paths[] (path-shaped under denied prefix)
+  - mcp__claude_ai_Gmail__send (env-var exfil — tests payload {to:"x@y", body:"$A-MAP_KEY"} → exit 2 surface:env-var if scanner hits Gmail body, OR exit 0 if Gmail body is content-field per REV-3 — NEED YOUR JUDGMENT: should Gmail body be scanned for env-var refs since it's an exfil channel, or is it content-field per REV-3 spirit? My current proposal: Gmail body IS scanned for env-var matches because Gmail send is a network-effect tool not a documentation tool — exfil semantics dominate over content-field semantics here. Document explicitly in Decision 1 as the ONE exception to the "content fields not scanned" rule.)
+
+REV-6 (replaces OBJ-6): roles.timeline.allowed_write_path_prefixes narrowed to:
+  ["*/data/*/timeline.json", "*/data/*/sync-report.json", "*/data/*/modification-log.json", "*/docs/dev/timeline-", "*/docs/dev/specs/*/timeline-", "*/docs/dev/overnight/"]
+roles.transportation.allowed_write_path_prefixes:
+  ["*/data/*/transportation.json", "*/data/*/modification-log.json", "*/docs/dev/transportation-", "*/docs/dev/specs/*/transportation-", "*/docs/dev/overnight/"]
+Mirrors agent owned_files regexes via fnmatch-style glob. Cross-agent file-ownership violation closed at policy layer. Note: per REV-1 these write prefixes are MOOT because Write/Edit are in denied_tools — but kept as defense-in-depth for the Skill or Bash-spawned-write surfaces (none currently exist; future-proofing).
+
+REV-7 (replaces OBJ-7): Adopt QA's codex workaround. This very prompt is the demonstration. Document the pattern in BA spec under codex_consult.method.
+
+REV-8 (replaces OBJ-8): Decision 6 unchanged (false-positive risk on names like g-aode_data_export accepted per "永久彻底修复" priority; Bash.command-scoped per Decision 1).
+
+REV-9 (replaces OBJ-9): Decision 8 unchanged (defer arch-10 to ledger).
+
+QUESTIONS for you (CODEX_FEEDBACK):
+
+Q1: Does REV-1's denied_tools strategy actually prevent the Feb-13 regression class? Are there other tool surfaces (e.g., Skill calling a script that internally calls Write) that bypass denied_tools? If yes, what's the residual risk?
+
+Q2: Does REV-3's field-whitelist approach close arch-1 (per-tool field-list miss) for the in-scope MCP tools, or are there fields I missed? Any MCP tool with a path/URL field not in my list?
+
+Q3: Does REV-4's AC9 split actually verify the g-aode-allowlist mechanism end-to-end for the surfaces that matter (Skill + Bash + Read + env-var via Bash), or am I leaving a verification gap?
+
+Q4: REV-5's Gmail-body-exfil exception — is this the right call (g-aode-policy CAN scan Gmail body), or should I keep the rule pure (content fields never scanned, accept the Gmail exfil risk and document)? Trade-off analysis please.
+
+Q5: Any 5th critical I missed?
+
+Reply prefixed with CODEX_FEEDBACK: <answers>.
