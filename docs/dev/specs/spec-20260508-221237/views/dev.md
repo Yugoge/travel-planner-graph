@@ -105,6 +105,8 @@ Therefore E is resolved as **option E1 by virtue of the slot model** (no explici
 - Cache invalidation: a POI's coordinate change invalidates all cache entries involving that POI.
 - Rate-limit guard: backend coalesces simultaneous requests for the same key (in-flight de-dup) to avoid duplicate gaode hits when the user drags rapidly.
 
+**E. Acceptance evidence (revising §5.6)**
+
 ### 5.10: Live budget recompute on every web-UI edit
 
 User addition (2026-05-09):
