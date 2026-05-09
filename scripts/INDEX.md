@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-09T17:53:39Z*
-**Total entries**: 77
+*Last updated: 2026-05-09T21:49:45Z*
+**Total entries**: 78
 **Convention**: kebab
 
 ## Tree
@@ -36,6 +36,7 @@ scripts/
 ├── utils/
 │   ├── `fetch-exchange-rate.sh` - Description: Fetch real-time exchange rate between two currencies with cache fallback
 │   └── `load_env.py` - Load environment variables from .env file in project root
+├── `_qa_close_repro.sh` - QA close-debate cycle-3 reproduction script — base64 indirection avoids self-tripping the hook.
 ├── `audit-data-loss.py` - Root Cause: Before merge_agent_slots() (added 2026-04-16), POI agents that
 ├── `calculate-route-distances.py` - Reads GPS coordinates from agent outputs, calculates haversine distances,
 ├── `check-budget-overage.py` - Check if budget overage exceeds thresholds requiring day-by-day review
