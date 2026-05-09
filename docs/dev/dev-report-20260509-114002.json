@@ -88,6 +88,62 @@
         "type": "doc",
         "files_modified": ["/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"],
         "rationale": "Per agents/dev.md Overnight Spec Integration contract: spec is a living document; dev appends approach + rationale + per-file change log."
+      },
+      {
+        "id": 8,
+        "description": "[Cycle 3] Bump policy_version 2->3; add timeline + transportation as first-class roles with allowed_tools=[Read,Bash,Skill] and denied_tools=[Write,Edit,MultiEdit,NotebookEdit] (Feb-13 incident lock); narrowed allowed_write_path_prefixes to per-file fnmatch globs mirroring agents owned_files; extended gaode_denied_bash_tokens with module-name prefixes (gaode_, amap_, gaode-, amap-)",
+        "type": "policy",
+        "files_modified": ["/root/.claude/policies/tool-policy.v1.json"],
+        "rationale": "BA REVISION-2 Decision 2: closes the AC6 end-to-end positive-test gap (close-report finding #3) by making timeline/transportation first-class roles; closes QA cycle-3 OBJ-1 Feb-13 regression risk by encoding the prompt-layer prohibition as a harness-enforced floor. BA Decision 6: closes python3 -m gaode_module bypass class. Both REVISION-2 narrowing decisions accepted (mirror agent .md tools field; per-file write prefixes)."
+      },
+      {
+        "id": 9,
+        "description": "[Cycle 3] Replace per-tool _check_gaode_webfetch + _check_gaode_read with field-whitelist content scanner _gaode_scan_tool_input + composed-path scan for Glob/Grep + Gmail-body env-var exception",
+        "type": "hook",
+        "files_modified": ["/root/.claude/hooks/pretool-tool-policy.py"],
+        "rationale": "BA REVISION-3 Decision 1: closes close-report findings #1 (Glob.pattern bypass) + #2 (MCP browser_navigate bypass) + Codex Q5 (Grep.glob field) + QA r2 OBJ-NEW-1 (composed Glob/Grep path+pattern bypass). Explicit (tool, field, surface) whitelist replaces shape-dispatch — makes scope precisely enumerable. Content fields (Edit.old_string, Write.content, MultiEdit.edits[].old_string, NotebookEdit.new_source) NEVER scanned -> closes documentation-blackhole class. Composed-path synthesis: os.path.realpath(os.path.join(path, pattern.replace('**','').replace('*',''))) for Glob+Grep fed to read-path matcher in addition to independent-field scans; first-deny-wins. URL-substring extraction (regex https?://[^\\s'\"`<>]+) handles MCP function/code body fields."
+      },
+      {
+        "id": 10,
+        "description": "[Cycle 3] Add extract_heredoc_bodies(command) helper to bash_write_targets.py; _check_gaode_bash iterates outer command + each heredoc body separately through 4 bash matchers",
+        "type": "library",
+        "files_modified": ["/root/.claude/hooks/lib/bash_write_targets.py"],
+        "rationale": "BA Decision 5: closes the bash <<EOF / python3 .../poi.py / EOF bypass where the outer command's first non-flag token is bash, so the path-resolver branch never inspects the heredoc body. Inverse of existing command_without_heredoc_bodies parser. Decomposed into 3 helpers (_collect_heredoc_body, _walk_heredoc_bodies, extract_heredoc_bodies) to satisfy quality gate 30-line cap."
+      },
+      {
+        "id": 11,
+        "description": "[Cycle 3] Update T1 verify-gaode-ban.sh: add 2 bash-resolved-path branch cases (architect arch-11); derive test fixture paths from CLAUDE_PROJECT_DIR (style-inspector finding closure)",
+        "type": "test_script",
+        "files_modified": ["/root/travel-planner/scripts/verify-gaode-ban.sh"],
+        "rationale": "BA Decision 9 arch-11: T1 omitted the bash-resolved-path branch in cycle-1; cycle-3 adds 2 cases (timeline allowed; meals denied). Style-inspector cycle-1 finding: hardcoded /root/travel-planner test-fixture paths at lines 66-69, 75. Cycle-3 derives from CLAUDE_PROJECT_DIR with /root/travel-planner fallback (preserves cycle-1 behavior). Total cases now 32 (was 30)."
+      },
+      {
+        "id": 12,
+        "description": "[Cycle 3] Create scripts/verify-gaode-ban-integration.sh (T2): 39 fixtures piped via JSON stdin to pretool-tool-policy.py; covers AC9b/AC10/AC11/AC12/AC13/AC15/AC18 including 3 REVISION-3 composed-path scenarios",
+        "type": "test_script",
+        "files_created": ["/root/travel-planner/scripts/verify-gaode-ban-integration.sh"],
+        "rationale": "BA Decision 3: closes Codex finding #4 (T1 alone is insufficient — exercises is_gaode_allowed in isolation, not the full hook). T2 spawns the actual PreToolUse hook subprocess with realistic tool_input shapes; would have caught all 4 close-report findings before /close. Fixture coverage: AC9b 6 positive timeline/transportation; AC10 Glob/Grep bypass; AC11 6 architect MCP vectors; AC12 5 path-fields + 2 content negatives + 3 composed-path; AC13 heredoc allow/deny; AC15 BA documentation false-positive guard; AC18 8 denied_tools + 1 Bash save.py allowed."
+      },
+      {
+        "id": 13,
+        "description": "[Cycle 3] Create scripts/verify-gaode-ban-contract.sh (T3) + scripts/lib/mcp-tool-catalog.json fixture (9 entries: 6 architect MCP vectors + 3 catalog-completeness output-save filename fields)",
+        "type": "test_script",
+        "files_created": ["/root/travel-planner/scripts/verify-gaode-ban-contract.sh", "/root/travel-planner/scripts/lib/mcp-tool-catalog.json"],
+        "rationale": "BA Decision 4: closes architect arch-2 + Codex Q2 catalog-completeness. T3 enumerates every MCP tool that takes a string-valued URL/path/code/filename argument; for each, asserts banned-role + gaode-target string in any string-valued field -> exit 2 with correct surface. Catches MCP enumeration drift: when a new MCP server is added, catalog file diff alerts maintainer to wire it through the field-whitelist scanner. 9/9 PASS verified end-to-end."
+      },
+      {
+        "id": 14,
+        "description": "[Cycle 3] Fix ba-qa-report-20260509-114002-r2.json:179 invalid JSON (close-report finding #4)",
+        "type": "data",
+        "files_modified": ["/root/travel-planner/docs/dev/ba-qa-report-20260509-114002-r2.json"],
+        "rationale": "BA Decision 7: trivial single-line edit. Original line 179 had string-then-paren syntax error: \"系统性彻底禁止\" (systematic and complete prohibition), — replaced with concatenated single-string form: \"系统性彻底禁止 (systematic and complete prohibition)\","
+      },
+      {
+        "id": 15,
+        "description": "[Cycle 3] Update spec-20260508-221237.md Section 2 + Section 3 with cycle-3 (redev) approach + per-file change log; preserve cycle-1 content unchanged",
+        "type": "doc",
+        "files_modified": ["/root/travel-planner/docs/dev/specs/spec-20260508-221237.md"],
+        "rationale": "Per agents/dev.md Overnight Spec Integration contract: spec is a living document; cycle-3 appends to existing cycle-1 sections with ### Cycle 3 (redev) subheader."
       }
     ],
     "scripts_created": [
