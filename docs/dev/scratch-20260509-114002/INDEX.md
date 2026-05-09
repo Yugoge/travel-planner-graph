@@ -1,12 +1,13 @@
 # scratch-20260509-114002
 
-*Last updated: 2026-05-09T11:55:42Z*
-**Total entries**: 1
+*Last updated: 2026-05-09T15:40:45Z*
+**Total entries**: 2
 **Convention**: kebab
 
 ## Tree
 ```
 scratch-20260509-114002/
+├── `architect-redev-findings.md` - Architect findings — /redev cycle for spec-20260508-221237 M1
 └── `specialist-findings.md` - Specialist Consultation Findings — spec-20260508-221237
 ```
 
