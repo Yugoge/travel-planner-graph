@@ -67,17 +67,32 @@ def make_payload(tool, field, kind):
     raise ValueError(f"unknown kind: {kind}")
 
 
-def run_hook(payload):
+GLOBAL_HOOK = "/root/.claude/hooks/pretool-tool-policy.py"
+
+
+def _run_one(hook_path, payload):
     env = {"PATH": "/usr/bin:/bin", "HOME": "/root", "CLAUDE_PROJECT_DIR": PROJECT}
-    r = subprocess.run(
-        [PYTHON, HOOK],
+    return subprocess.run(
+        [PYTHON, hook_path],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         env=env,
         timeout=10,
     )
-    return r.returncode, r.stderr.strip()
+
+
+def run_hook(payload):
+    """Chain GLOBAL pretool-tool-policy.py then project-local gaode hook.
+
+    Cycle-4 manual reorg (2026-05-09): see verify-gaode-ban-integration.sh
+    for full rationale.
+    """
+    for hook in (GLOBAL_HOOK, HOOK):
+        r = _run_one(hook, payload)
+        if r.returncode != 0:
+            return r.returncode, r.stderr.strip()
+    return 0, ""
 
 
 def main():
