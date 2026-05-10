@@ -11,7 +11,7 @@
 set -euo pipefail
 
 PYTHON="${PYTHON:-python3}"
-HOOK="${HOOK:-/root/.claude/hooks/pretool-tool-policy.py}"
+HOOK="${HOOK:-/root/travel-planner/.claude/hooks/pretool-gaode-policy.py}"
 PROJECT="${CLAUDE_PROJECT_DIR:-/root/travel-planner}"
 
 if [[ ! -f "$HOOK" ]]; then
