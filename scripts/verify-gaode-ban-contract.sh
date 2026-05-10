@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PYTHON="${PYTHON:-python3}"
-HOOK="${HOOK:-/root/.claude/hooks/pretool-tool-policy.py}"
+HOOK="${HOOK:-/root/travel-planner/.claude/hooks/pretool-gaode-policy.py}"
 CATALOG="${CATALOG:-/root/travel-planner/scripts/lib/mcp-tool-catalog.json}"
 PROJECT="${CLAUDE_PROJECT_DIR:-/root/travel-planner}"
 
@@ -67,17 +67,34 @@ def make_payload(tool, field, kind):
     raise ValueError(f"unknown kind: {kind}")
 
 
-def run_hook(payload):
+GLOBAL_HOOK = "/root/.claude/hooks/pretool-tool-policy.py"
+
+
+def _run_one(hook_path, payload):
     env = {"PATH": "/usr/bin:/bin", "HOME": "/root", "CLAUDE_PROJECT_DIR": PROJECT}
-    r = subprocess.run(
-        [PYTHON, HOOK],
+    return subprocess.run(
+        [PYTHON, hook_path],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         env=env,
         timeout=10,
     )
-    return r.returncode, r.stderr.strip()
+
+
+def run_hook(payload):
+    """Chain GLOBAL pretool-tool-policy.py then project-local gaode hook.
+
+    Cycle-4 manual reorg (2026-05-09): see verify-gaode-ban-integration.sh
+    for full rationale.
+    """
+    # Project-local first: gaode-policy is a strictly additive precondition
+    # layer over the global tool-policy. See verify-gaode-ban-integration.sh.
+    for hook in (HOOK, GLOBAL_HOOK):
+        r = _run_one(hook, payload)
+        if r.returncode != 0:
+            return r.returncode, r.stderr.strip()
+    return 0, ""
 
 
 def main():

@@ -15,7 +15,7 @@ owned_files:
 
 ## DO NOT (harness-enforced)
 
-This agent is on the gaode-maps deny list (spec-20260508-221237 §5.1, §5.13C). The PreToolUse hook (`pretool-tool-policy.py` + `tool-policy.v1.json` v2 `gaode_*` keys) will REJECT any of the following tool calls:
+This agent is on the gaode-maps deny list (spec-20260508-221237 §5.1, §5.13C). The PreToolUse hook (`pretool-gaode-policy.py` + `.claude/policies/gaode-policy.json` keys) will REJECT any of the following tool calls:
 
 - `Skill(skill="gaode-maps", ...)` or `Skill(skill="scripts:gaode-maps:*", ...)` (skill matcher)
 - `Bash(command="...gaode-maps/...")` or any path resolving under `/.claude/skills/gaode-maps/` or `/.claude/commands/scripts/gaode-maps/` (bash-token + bash-resolved-path matchers)
