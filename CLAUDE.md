@@ -8,6 +8,6 @@
 <!-- AUTO:claude-inventory -->
 - **commands**: 6 files
 - **agents**: 9 files
-- **hooks**: 52 files
+- **hooks**: 53 files
 - **skills**: 1 active
 <!-- /AUTO:claude-inventory -->

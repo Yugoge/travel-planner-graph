@@ -1,13 +1,15 @@
 # hooks
 
-*Last updated: 2026-05-06T11:29:53Z*
-**Total entries**: 54
+*Last updated: 2026-05-10T08:40:47Z*
+**Total entries**: 57
 **Convention**: kebab
 
 ## Tree
 ```
 hooks/
 ├── lib/
+│   ├── `gaode_policy.py` - Self-contained copy of gaode-related functions from
+│   ├── `heredoc_extract.py` - Self-contained copy of extract_heredoc_bodies (and supporting parsers)
 │   └── `todo_canonical.py` - Shared canonical todo validation utilities
 ├── `audit-slashcommand.sh` - audit-slashcommand.sh
 ├── `auto-commit.sh` - ============================================================================
@@ -41,6 +43,7 @@ hooks/
 ├── `pretool-block-production-files.sh` - PreToolUse hook: Block Write/Edit to production paths from dev environment.
 ├── `pretool-block-production.sh` - PreToolUse hook: Block Playwright navigation to production URLs
 ├── `pretool-docker-build-guard.sh` - Hook: PreToolUse:Bash
+├── `pretool-gaode-policy.py` - Standalone hook reading
 ├── `pretool-overnight-hook-guard.py` - PreToolUse Hook: Overnight session file modification guard
 ├── `pretool-quality-gate.py` - PreToolUse Hook: Quality gate for Write/Edit operations
 ├── `pretool-subagent-enforce.py` - PreToolUse Hook: Enforce subagent invocation at designated workflow steps
