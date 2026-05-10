@@ -1,12 +1,13 @@
 # lib
 
-*Last updated: 2026-05-10T08:38:25Z*
-**Total entries**: 2
-**Convention**: lower
+*Last updated: 2026-05-10T08:39:22Z*
+**Total entries**: 3
+**Convention**: kebab
 
 ## Tree
 ```
 lib/
+├── `gaode_policy.py` - Self-contained copy of gaode-related functions from
 ├── `heredoc_extract.py` - Self-contained copy of extract_heredoc_bodies (and supporting parsers)
 └── `todo_canonical.py` - Shared canonical todo validation utilities
 ```
