@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PYTHON="${PYTHON:-python3}"
-HOOKS_DIR="${HOOKS_DIR:-/root/.claude/hooks}"
+HOOKS_DIR="${HOOKS_DIR:-/root/travel-planner/.claude/hooks}"
 
 if [[ ! -d "$HOOKS_DIR/lib" ]]; then
   echo "Error: hooks lib not found at $HOOKS_DIR/lib" >&2
@@ -27,8 +27,8 @@ import base64
 import os
 import sys
 
-sys.path.insert(0, os.environ.get("HOOKS_DIR", "/root/.claude/hooks"))
-from lib.policy_registry import is_gaode_allowed, normalize_gaode_agent_id
+sys.path.insert(0, os.environ.get("HOOKS_DIR", "/root/travel-planner/.claude/hooks"))
+from lib.gaode_policy import is_gaode_allowed, normalize_gaode_agent_id
 
 # Construct test strings at runtime so this harness file itself does not
 # embed literal gaode tokens (would otherwise trip its own future calls).
