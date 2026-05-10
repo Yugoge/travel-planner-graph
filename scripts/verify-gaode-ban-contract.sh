@@ -88,7 +88,9 @@ def run_hook(payload):
     Cycle-4 manual reorg (2026-05-09): see verify-gaode-ban-integration.sh
     for full rationale.
     """
-    for hook in (GLOBAL_HOOK, HOOK):
+    # Project-local first: gaode-policy is a strictly additive precondition
+    # layer over the global tool-policy. See verify-gaode-ban-integration.sh.
+    for hook in (HOOK, GLOBAL_HOOK):
         r = _run_one(hook, payload)
         if r.returncode != 0:
             return r.returncode, r.stderr.strip()
