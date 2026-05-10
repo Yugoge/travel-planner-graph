@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PYTHON="${PYTHON:-python3}"
-HOOK="${HOOK:-/root/.claude/hooks/pretool-tool-policy.py}"
+HOOK="${HOOK:-/root/travel-planner/.claude/hooks/pretool-gaode-policy.py}"
 CATALOG="${CATALOG:-/root/travel-planner/scripts/lib/mcp-tool-catalog.json}"
 PROJECT="${CLAUDE_PROJECT_DIR:-/root/travel-planner}"
 
