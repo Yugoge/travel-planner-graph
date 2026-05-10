@@ -47,29 +47,47 @@ DATA_TIMELINE = f"{PROJECT}/data/beijing-lijiang-dali-20260418-100846/timeline.j
 DATA_TRANSPORT = f"{PROJECT}/data/beijing-lijiang-dali-20260418-100846/transportation.json"
 
 
-def run_hook(payload):
-    """Run pretool-tool-policy.py with payload on stdin; return (exit, stderr_json)."""
+GLOBAL_HOOK = "/root/.claude/hooks/pretool-tool-policy.py"
+
+
+def _run_one(hook_path, payload):
     env = {
         "PATH": "/usr/bin:/bin",
         "HOME": "/root",
         "CLAUDE_PROJECT_DIR": PROJECT,
     }
-    r = subprocess.run(
-        [PYTHON, HOOK],
+    return subprocess.run(
+        [PYTHON, hook_path],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         env=env,
         timeout=10,
     )
-    stderr_json = None
-    se = r.stderr.strip()
-    if se.startswith("BLOCKED by tool-policy.v1: "):
-        try:
-            stderr_json = json.loads(se.split(": ", 1)[1].split("\n")[0])
-        except (ValueError, IndexError):
-            pass
-    return r.returncode, stderr_json, se
+
+
+def run_hook(payload):
+    """Chain GLOBAL pretool-tool-policy.py then project-local gaode hook.
+
+    Cycle-4 manual reorg (2026-05-09): the gaode policy lives in the
+    project-local hook; the standard role-table check (allowed_tools /
+    denied_tools / write paths for timeline + transportation) lives in
+    the global tool-policy.v1.json. Production fires both; the verifier
+    must mirror that. Returns the FIRST non-zero exit, or (0, None, '')
+    if both pass.
+    """
+    for hook in (GLOBAL_HOOK, HOOK):
+        r = _run_one(hook, payload)
+        if r.returncode != 0:
+            stderr_json = None
+            se = r.stderr.strip()
+            if se.startswith("BLOCKED by tool-policy.v1: "):
+                try:
+                    stderr_json = json.loads(se.split(": ", 1)[1].split("\n")[0])
+                except (ValueError, IndexError):
+                    pass
+            return r.returncode, stderr_json, se
+    return 0, None, ""
 
 
 def case(name, payload, expected_exit, expected_surface=None,
