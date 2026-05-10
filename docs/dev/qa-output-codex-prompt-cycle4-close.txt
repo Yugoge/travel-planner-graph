@@ -1,0 +1,48 @@
+USER REQUIREMENT: User invoked /close --codex --force-equivalent for cycle 4 of spec-20260508-221237 (task 20260509-114002). User's directive verbatim: "harness 是项目级别的全部移动" (harness is project-level — move everything from global dot-claude to project-local). Cycle 4's deliverable is the manual MOVE itself. Decide: should QA give CLOSE: YES or CLOSE: NO?
+
+SCOPE: find bugs / contract violations / scope-shrinkage / fraud-pattern instances that prevent or threaten the user's stated requirement (project-local harness move with downstream consumability for /commit /push).
+
+OUT OF SCOPE:
+- Adjacent improvements to the g-aode policy itself (cycle 4 is a MOVE, not a re-design)
+- The 5 read-path bypasses cycle-3 already negotiated as user-accepted residual risk via /close --force
+- Hypothetical multi-project conflicts the user did not raise as concern
+- Style preferences
+
+CYCLE 4 ARTIFACTS:
+- New project-local files: /root/travel-planner/.claude/policies/g-aode-policy.json (17 lines, 8 g-aode_* keys self-contained), /root/travel-planner/.claude/hooks/pretool-g-aode-policy.py (~205 lines), /root/travel-planner/.claude/hooks/lib/g-aode_policy.py (~280 lines), /root/travel-planner/.claude/hooks/lib/heredoc_extract.py (~85 lines), /root/travel-planner/.claude/settings.json (PreToolUse hook entry added)
+- Dot-claude reverts: 4 lib/hook files reverted to HEAD; tool-policy.v1.json reverted then surgically re-augmented with ONLY roles.timeline + roles.transportation entries (8 g-aode_* keys removed); policy_version 1->2.
+- 7 banned agent .md files updated with new policy reference path.
+- 3 verify scripts retargeted (HOOKS_DIR + import path); T2/T3 chain BOTH global tool-policy.py and project-local pretool-g-aode-policy.py.
+- 80/80 verifier PASS (T1 32/32, T2 39/39, T3 9/9). QA independently re-ran all three.
+
+PRIOR HISTORY:
+- Cycle 1+3 already shipped via commit e2c5949 (force-closed by user after 2 NO debates).
+- Cycle 1+3 close-report ends with `CLOSE: YES (FORCED)` after force-override audit block at bottom.
+
+QA DRAFT VERDICT: CLOSE: NO
+
+QA's reasoning:
+1. Workflow Integrity Bullet 1 (Downstream consumability) FAIL: commit.sh at /dev/shm/dev-workspace/dot-claude/hooks/commit.sh:462 reads `dev-report-{task_id}.json` exactly. The cycle 4 dev-report uses non-canonical filename `dev-report-20260509-114002-cycle4.json`. The canonical-path file `dev-report-20260509-114002.json` STILL EXISTS from cycle 1+3 (already committed in e2c5949). It lists global dot-claude paths that are now REVERTED (e.g. /root/.claude/hooks/pretool-tool-policy.py — back to HEAD). The 5 NEW project-local source files (.claude/policies/g-aode-policy.json, hooks/pretool-g-aode-policy.py, lib/g-aode_policy.py, lib/heredoc_extract.py, settings.json) are NOT in cycle-1+3 dev-report's files_modified/files_created and NOT under docs/dev/. So commit.sh's `task_owned` matcher (line 569: planned-set OR docs/dev-prefix-with-task-id-in-basename) will classify them as `unrelated` and EXCLUDE them. The cycle-4 commit-manifest JSON at /root/travel-planner/docs/dev/commit-manifest-20260509-114002-cycle4.json exists but commit.sh does NOT consume manifest files. Net: /commit 20260509-114002 will produce a commit MISSING the actual hook source files; the project-local hooks would not be checked into git; the close is non-self-deployable.
+
+2. Workflow Integrity Bullet 4 (Self-deployability) FAIL: same root cause as bullet 1. The harness MOVE is not consumable through the standard /commit pipeline.
+
+3. Architectural soundness of move: the dot-claude reverts removed the g-aode pre-check from the GLOBAL hook, leaving project-local enforcement only. But timeline/transportation role entries STILL live in the global tool-policy.v1.json (because the global hook still runs and needs to recognize them). Split ownership: g-aode allowlist policy lives project-local, but timeline/transportation role declarations live globally.
+
+4. Self-blocking still active: cycle-4 hook self-blocks the literal token "g-aode-" — even QA's verifier invocations get blocked unless using shell wildcard alternates (verify-g?ode-ban-integration.sh). Working as designed but operationally awkward.
+
+5. NEW within-diff inspector findings (advisory, not blocking per inspector):
+   - GLOBAL_HOOK hardcoded as Python module-level constant in 2 verifier scripts (verify-g-aode-ban-integration.sh:50 and verify-g-aode-ban-contract.sh:70) instead of env-var parameterization
+   - tool-policy.v1.json _note has hyphen-vs-underscore typo for project-local file references (says g-aode_policy.json, actual is g-aode-policy.json)
+
+6. Pre-existing bypasses (cycle 3's 5 read-path bypasses with **/, parent-scan, user-global) STILL EXIST in project-local hook because cycle 4 was a MOVE not a fix. Per Section 5.4 rule 1+2 these are out of cycle-4 scope (already user-accepted via cycle-3 force-close).
+
+7. The 80/80 verifier pass preserves cycle-3 PASS state. Functional behavior intact. Move is functionally correct.
+
+QUESTIONS FOR CODEX:
+A. Is the `-cycle4` dev-report filename a SHOWSTOPPER for /commit, or is there a graceful path I'm missing? E.g., could the close-report append a note instructing user to invoke /commit with -m so it bypasses dev-report-driven path discovery? Look at commit.sh implementation if needed.
+B. Is the 2-layer split (g-aode policy local + timeline/transportation roles global) architecturally sound or does it violate single-source-of-truth?
+C. Cycle-4 was framed as "manual move per user directive". Should the close honor user's intent ("everything is project-level") even if commit-path consumability is broken, OR should I block on Bullet 1+4 fail?
+D. NEW within-diff inspector findings (GLOBAL_HOOK hardcode, _note typo): per AC-2.6 NEW-violation = CLOSE: NO. But inspector itself flagged them advisory. Resolve.
+E. Should QA recommend dev fix the dev-report filename before close (cycle 4b), OR force-close cycle 4 again, OR genuinely fail and require redev?
+
+Reply with CODEX_FEEDBACK: + your verdict recommendation + reasoning. Be adversarial — this is the LAST line of defense before the close artifacts ship.
