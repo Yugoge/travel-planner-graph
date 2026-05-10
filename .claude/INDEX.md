@@ -1,7 +1,7 @@
 # .claude
 
-*Last updated: 2026-05-06T11:11:51Z*
-**Total entries**: 250
+*Last updated: 2026-05-10T08:41:38Z*
+**Total entries**: 290
 **Convention**: kebab
 
 ## Tree
@@ -127,10 +127,29 @@
 │   │   ├── `test-validator.json` - json config
 │   │   ├── `ui-specialist.json` - json config
 │   │   └── `user.json` - json config
+│   ├── dev-20260506-141814/
+│   │   ├── `architect.json` - json config
+│   │   ├── `ba.json` - json config
+│   │   ├── `cleaner.json` - json config
+│   │   ├── `cleanliness-inspector.json` - json config
+│   │   ├── `dev.json` - json config
+│   │   ├── `git-edge-case-analyst.json` - json config
+│   │   ├── `pm.json` - json config
+│   │   ├── `product-owner.json` - json config
+│   │   ├── `prompt-inspector.json` - json config
+│   │   ├── `qa.json` - json config
+│   │   ├── `rule-inspector.json` - json config
+│   │   ├── `style-inspector.json` - json config
+│   │   ├── `test-executor.json` - json config
+│   │   ├── `test-validator.json` - json config
+│   │   ├── `ui-specialist.json` - json config
+│   │   └── `user.json` - json config
 │   ├── `agent-index.json` - json config
 │   └── `agent-index.json.lock` - lock file
 ├── hooks/
 │   ├── lib/
+│   │   ├── `gaode_policy.py` - Self-contained copy of gaode-related functions from
+│   │   ├── `heredoc_extract.py` - Self-contained copy of extract_heredoc_bodies (and supporting parsers)
 │   │   └── `todo_canonical.py` - Shared canonical todo validation utilities
 │   ├── `audit-slashcommand.sh` - audit-slashcommand.sh
 │   ├── `auto-commit.sh` - ============================================================================
@@ -164,6 +183,7 @@
 │   ├── `pretool-block-production-files.sh` - PreToolUse hook: Block Write/Edit to production paths from dev environment.
 │   ├── `pretool-block-production.sh` - PreToolUse hook: Block Playwright navigation to production URLs
 │   ├── `pretool-docker-build-guard.sh` - Hook: PreToolUse:Bash
+│   ├── `pretool-gaode-policy.py` - Standalone hook reading
 │   ├── `pretool-overnight-hook-guard.py` - PreToolUse Hook: Overnight session file modification guard
 │   ├── `pretool-quality-gate.py` - PreToolUse Hook: Quality gate for Write/Edit operations
 │   ├── `pretool-subagent-enforce.py` - PreToolUse Hook: Enforce subagent invocation at designated workflow steps
@@ -184,6 +204,8 @@
 │   ├── `stop-overnight-timelock.py` - Stop Hook: Block conversation termination until overnight end-time
 │   ├── `stop-workflow-enforce.py` - Stop Hook: Enforce workflow structural integrity before allowing Claude to stop
 │   └── `userprompt-doc-sync-check.py` - UserPromptSubmit Hook: Periodic file deletion detection for doc-sync
+├── policies/
+│   └── `gaode-policy.json` - json config
 ├── skills/
 │   └── gaode-maps/
 │       ├── examples/
@@ -219,7 +241,20 @@
 │   │   ├── `cp-state-qa-2.json.lock` - lock file
 │   │   ├── `cp-state-qa.json` - json config
 │   │   └── `cp-state-qa.json.lock` - lock file
-│   └── spec-20260506-092951/
+│   ├── spec-20260506-092951/
+│   │   ├── `cp-state-ba-2.json` - json config
+│   │   ├── `cp-state-ba-2.json.lock` - lock file
+│   │   ├── `cp-state-ba.json` - json config
+│   │   ├── `cp-state-ba.json.lock` - lock file
+│   │   ├── `cp-state-dev-2.json` - json config
+│   │   ├── `cp-state-dev-2.json.lock` - lock file
+│   │   ├── `cp-state-dev.json` - json config
+│   │   ├── `cp-state-dev.json.lock` - lock file
+│   │   ├── `cp-state-qa-2.json` - json config
+│   │   ├── `cp-state-qa-2.json.lock` - lock file
+│   │   ├── `cp-state-qa.json` - json config
+│   │   └── `cp-state-qa.json.lock` - lock file
+│   └── spec-20260508-221237/
 │       ├── `cp-state-ba-2.json` - json config
 │       ├── `cp-state-ba-2.json.lock` - lock file
 │       ├── `cp-state-ba.json` - json config
@@ -230,8 +265,14 @@
 │       ├── `cp-state-dev.json.lock` - lock file
 │       ├── `cp-state-qa-2.json` - json config
 │       ├── `cp-state-qa-2.json.lock` - lock file
+│       ├── `cp-state-qa-3.json` - json config
+│       ├── `cp-state-qa-3.json.lock` - lock file
 │       ├── `cp-state-qa.json` - json config
-│       └── `cp-state-qa.json.lock` - lock file
+│       ├── `cp-state-qa.json.lock` - lock file
+│       ├── `cp-state-ui-specialist-2.json` - json config
+│       ├── `cp-state-ui-specialist-2.json.lock` - lock file
+│       ├── `cp-state-ui-specialist.json` - json config
+│       └── `cp-state-ui-specialist.json.lock` - lock file
 ├── worktrees/
 │   └── overnight-20260412-c6ec78c9/
 │       ├── config/
@@ -252,7 +293,6 @@
 ├── `index.md` - .claude Index
 ├── `PROJECT-DOCS.md` - Travel Planner Project Documentation
 ├── `settings.json` - json config
-├── `workflow-05ea71ff-7f37-424e-a560-2bf20dca2fe7.json` - json config
 ├── `workflow-0e35f08c-7f82-47ec-ba8a-1b00e087405a.json` - json config
 ├── `workflow-32d47198-5235-445b-97f7-a627757b50a8.json` - json config
 ├── `workflow-d3bf2777-cd14-4492-b890-4e34af2bc49f.json` - json config
