@@ -92,7 +92,7 @@ CASES = [
 if not os.environ.get("CLAUDE_PROJECT_DIR"):
     os.environ["CLAUDE_PROJECT_DIR"] = "/root/travel-planner"
     # Reset cache so policy reload picks up the new env.
-    from lib import policy_registry as _pr
+    from lib import gaode_policy as _pr
     _pr._reset_cache_for_tests()
 
 # Sanity: alias canonicalization
