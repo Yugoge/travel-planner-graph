@@ -76,7 +76,11 @@ def run_hook(payload):
     must mirror that. Returns the FIRST non-zero exit, or (0, None, '')
     if both pass.
     """
-    for hook in (GLOBAL_HOOK, HOOK):
+    # Project-local first: it only fires on gaode surfaces; if it returns 0
+    # the global hook handles standard role-table checks. This ordering
+    # matches the production semantic intent (gaode-policy is a strictly
+    # additive precondition layer over the global tool-policy).
+    for hook in (HOOK, GLOBAL_HOOK):
         r = _run_one(hook, payload)
         if r.returncode != 0:
             stderr_json = None
