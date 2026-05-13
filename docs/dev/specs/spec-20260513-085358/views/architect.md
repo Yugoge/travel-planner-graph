@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED VIEW for architect | source: docs/dev/specs/spec-20260513-085358.md | extracted: 2026-05-13T09:00:00Z -->
+<!-- AUTO-GENERATED VIEW for architect | source: docs/dev/specs/spec-20260513-085358.md | extracted: 2026-05-13T09:15:00Z -->
 
 # architect view of spec-20260513-085358
 
@@ -7,17 +7,19 @@
 
 ---
 
-## Role Mandate
+## Acceptance Criterion
 
-(No explicit architect role definition in monolith — section retained for structural conformance.)
+User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
 
 ---
 
-## Structural / Architectural Anchors
+## Entity-ID Baseline
 
-- `scripts/generate-html-interactive.py:599-1179` — `_merge_day_data` spans **581 lines** (cap 30 → refactor mandatory before any incremental fix).
-- `scripts/generate-html-interactive.py:470-508` — `_get_timeline_time(name_base, name_local, day_timeline)` three-tier fallback: exact match (479-483) → parenthetical-stripped base match (484-495) → substring match (496-507). Returns `{"start","end"}` or `None`. All tiers are string-similarity heuristics.
 - Entity-ID baseline — only ID-like field is `gaode_id` (string, used as image-cache key prefix `gaode_{gaode_id}` at `generate-html-interactive.py:272-315, 672, 718, 759, 805`). No `poi_id`, `entity_id`, or UUID present in `attractions.json` / `meals.json` / `budget.json`. Cross-file linkage today is name-string based; introducing a unified entity-ID is a new field surface for M2 schema migration.
+
+---
+
+## Schema Asymmetry — Data Evidence
 
 - **Schema asymmetry concrete data evidence (Section 5 item 10)**:
   - `data/china-20260412-092624/meals.json` Day 12 `lunch` top-level keys = `['primary', 'alternatives']` (nested dict-of-objects with sibling `alternatives:[]` array of 2 items).
@@ -26,7 +28,7 @@
 
 ---
 
-## Schema Asymmetry
+## Schema Asymmetry — Bug 10
 
 **Schema 不对称**
 
