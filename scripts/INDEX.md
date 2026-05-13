@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-13T07:30:19Z*
-**Total entries**: 89
+*Last updated: 2026-05-13T08:16:53Z*
+**Total entries**: 90
 **Convention**: kebab
 
 ## Tree
@@ -55,6 +55,7 @@ scripts/
 ├── `check-location-continuity.sh` - Validate that all location changes have corresponding location_change objects
 ├── `check_plan_integrity.py` - Cross-file referential-integrity linter (spec-20260506-092951 §5.7).
 ├── `clean-redundant-fields.py` - Clean Redundant Fields from Agent Data
+├── `day13_chengdu_match.py` - so the renderer surfaces them with dashed-border + Optional badge, matching Chengdu Day 5/6
 ├── `deploy-travel-plans.sh` - Deploy travel plan HTML to GitHub Pages
 ├── `detect-location-changes.py` - Reads day-by-day plan and identifies when travelers move between cities
 ├── `fetch-images-batch.py` - Batch image fetcher using skill scripts directly
