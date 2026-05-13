@@ -466,15 +466,26 @@ def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
 def _merge_existing_slots(agent_file, agent_data, data):
     """Merge update into existing multi-day file at the slot/key level.
 
-    Automatic default behavior: called whenever the target file exists.
-    Preserves sibling slots and day metadata not present in the update.
-    Safe for both partial-day (POI) and complete-day (timeline) payloads.
+    AC9: for meals, emits demoted-primary audit lines before the merge.
     """
     existing_data = load_agent_json(agent_file, validate=False)
+    _emit_demoted_primary_audit_for_meals(agent_file.stem, existing_data, agent_data)
     merged = merge_agent_slots(existing_data, agent_data, agent_file.stem)
     day_count = len(data.get('data', {}).get('days', []))
     print(f"Merge mode (slots): Merged {day_count} day(s) at slot level", file=sys.stderr)
     return merged
+
+
+def _emit_demoted_primary_audit_for_meals(stem, existing_data, update_data):
+    """AC9 — meals only. Emit stderr audit lines for meal_slot primary
+    replacements where the old primary is NOT explicitly listed in
+    incoming alternatives[]. Save does NOT auto-preserve."""
+    if stem != 'meals':
+        return
+    from lib.semantic_lint import audit_demoted_primaries
+    msgs = audit_demoted_primaries(existing_data, update_data, MEAL_TYPES)
+    for m in msgs:
+        print(m, file=sys.stderr)
 
 def _do_save(agent_file, agent, agent_data, create_backup, issues):
     """Perform atomic write and report result. Returns True on success."""

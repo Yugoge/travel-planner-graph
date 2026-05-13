@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-13T22:11:21Z*
-**Total entries**: 91
+*Last updated: 2026-05-13T22:16:10Z*
+**Total entries**: 92
 **Convention**: kebab
 
 ## Tree
@@ -26,7 +26,8 @@ scripts/
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 │   ├── `mcp-tool-catalog.json` - json config
 │   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
-│   └── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
+│   ├── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
+│   └── `semantic_lint.py` - Cross-domain duplicate detection (AC8), meal_slot demoted-primary audit
 ├── tests/
 │   ├── `test_json_io_ownership.py` - Iter 2 (spec-20260505-221501 / W2): verifies the persistence-layer
 │   └── `test_merge_agent_slots.py` - Root Cause Fix reference (L4): the former merge_agent_days() performed full
