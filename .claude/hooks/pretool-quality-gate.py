@@ -12,6 +12,7 @@ Exit codes: 0 = allow, 2 = block
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
