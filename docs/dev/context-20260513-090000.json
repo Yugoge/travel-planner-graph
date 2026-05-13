@@ -424,22 +424,72 @@
       "acceptance": "AC10, AC11",
       "rationale": "Bug 8 documentation (N/A Cloudflare) + Bug 13 dashboard share the same write-set.",
       "constraints": [
-        "Bug 13: link from README.md 'Project Status' section + docs/index.md root-level-files list (codex F13 — file alone may be too hidden)",
+        "Bug 13: link from README.md 'Project Status' section + docs/index.md root-level-files list",
         "Bug 8: document Cloudflare-purge as N/A with rationale, not just absence",
         "feature-status.md must contain BOTH M1-M5 milestone table AND 13-bug per-status table",
         "Do NOT reshape README structure; ADD a small section only"
       ]
-    }
-  ],
-  "deferred_bugs": [
+    },
     {
-      "bug_id": 4,
-      "name": "renderer file legacy size",
-      "deferral_target": "M2",
-      "deferral_rationale": "Codex F4: BYPASS cannot 'fix' Bug 4; only refactor (split _merge_day_data into helpers) or baseline-aware gate would close it honestly. Tracked in feature-status.md as deferred-M2.",
-      "interim_mitigation": "BYPASS_QUALITY_GATE env-var (W1) allows W2 to Edit the file in this cycle; permanent fix requires split."
+      "id": "W7",
+      "name": "renderer-split",
+      "bugs": [4],
+      "files": [
+        "scripts/generate-html-interactive.py",
+        "scripts/lib/render_day_data.py (NEW)",
+        "tests/test_render_day_data_byte_identity.py (NEW, optional but recommended)"
+      ],
+      "sequencing": "Strictly AFTER W2 completes (shared file scripts/generate-html-interactive.py); env: BYPASS_QUALITY_GATE=1 per AC-DISPATCH",
+      "acceptance": "AC12",
+      "rationale": "Round-2 OBJ-1 + codex round-2 Q1: BYPASS cannot 'fix' Bug 4 (only addresses Bug 5 doc-mismatch). The user's own RCA at spec-20260513-085358 line 159 prescribes '拆 _merge_day_data 把 helpers'. W7 is the mechanical lift-and-shift of the 10 sections (lines 599-1179) into 9 helpers <=30 lines each in scripts/lib/render_day_data.py. Runs AFTER W2 to preserve W2's bug-1/2/3 logic verbatim.",
+      "helper_enumeration": [
+        {"name": "build_skeleton", "extracts": "lines 603-635", "purpose": "initial merged-dict construction"},
+        {"name": "merge_meals", "extracts": "lines 637-682 (includes W2 Bug-1 alternatives loop)", "purpose": "meals slot merging with primary + alternatives"},
+        {"name": "merge_cafe", "extracts": "lines 685-728", "purpose": "cafe array merging"},
+        {"name": "merge_attractions", "extracts": "lines 730-771", "purpose": "attractions array merging"},
+        {"name": "merge_entertainment", "extracts": "lines 773-815", "purpose": "entertainment array merging"},
+        {"name": "merge_shopping", "extracts": "lines 817-895", "purpose": "shopping array merging"},
+        {"name": "merge_accommodation", "extracts": "lines 897-948", "purpose": "accommodation block merging"},
+        {"name": "merge_transportation", "extracts": "lines 950-1166 (includes travel_segments 1136-1159)", "purpose": "transportation + travel-segments merging"},
+        {"name": "calculate_budget_total", "extracts": "lines 1167-1176", "purpose": "final budget aggregation"}
+      ],
+      "constraints": [
+        "MUST preserve W2's bug-1/2/3 edits verbatim across the extraction",
+        "Each helper <=30 lines; orchestrator _merge_day_data <=30 lines; whole file <=800 lines",
+        "AC invariant (codex round-2 Q1): byte-identical merged-dict pre/post refactor for all 15 days of china-20260412-092624 corpus, NOT byte-identical HTML",
+        "Test harness MUST snapshot merged-dict via json.dumps(sort_keys=True) and diff",
+        "BYPASS_QUALITY_GATE=1 required in env (per AC-DISPATCH)"
+      ]
+    },
+    {
+      "id": "W8",
+      "name": "schema-reject-and-shape-normalizer",
+      "bugs": [10],
+      "files": [
+        "schemas/attractions.schema.json",
+        "schemas/shopping.schema.json",
+        "schemas/entertainment.schema.json",
+        "scripts/lib/save_translate.py"
+      ],
+      "sequencing": "Strictly AFTER W5 completes (shared file scripts/lib/save_translate.py); sequential not parallel",
+      "acceptance": "AC13",
+      "rationale": "Round-2 OBJ-2 + codex round-2 Q2: Bug 10 deferral was 'not defensible vs 全部' per QA. Codex round-2 Q2 ruled accept-but-ignore is silent-data-loss trap. The minimum-safe step is explicit REJECTION (option (i)) of alternatives[] on attractions/shopping/entertainment in BANNED_AD_HOC_KEYS with a guiding error message pointing at M2 unification. Plus a shape-normalizer (_normalize_to_canonical_record) for W5's cross-domain dedup to operate shape-agnostically. Renderer takes NO Bug-10 changes. W8 is sequential after W5 (codex round-2 Q3: shared file scripts/lib/save_translate.py).",
+      "deliverables": {
+        "schema_changes": "Schemas already have additionalProperties:false on item objects which implicitly rejects alternatives[]; W8 MAY add a no-op comment block citing M2 unification plan (no functional schema edit required) OR explicit documentation field. The binding rejection lives in save_translate.py.",
+        "save_translate_changes": "Extend BANNED_AD_HOC_KEYS with agent-scoped rejection: add an agent_aware_banned_keys dict {'attractions': ['alternatives'], 'shopping': ['alternatives'], 'entertainment': ['alternatives']} (meals exempted because meals legitimately uses primary+alternatives[]). Modify reject_banned() to accept agent name and apply scoped rejection.",
+        "shape_normalizer": "_normalize_to_canonical_record(item: dict, shape: str) -> dict — see AC13 for exact contract",
+        "guiding_error_message": "Unknown field 'alternatives' for agent '<agent>': not yet supported on attractions/shopping/entertainment shape (only meals uses primary+alternatives[]). Full unification is M2 spec scope; for this cycle, use the flat list + optional:true shape."
+      },
+      "constraints": [
+        "MUST NOT add accept-but-ignore semantics for alternatives[] on attractions/shopping/entertainment (codex round-2 Q2 silent-data-loss trap)",
+        "Renderer (W2/W7) MUST take NO Bug-10 changes",
+        "Meals agent exempted from the new rejection rule (legitimately uses alternatives[])",
+        "Shape-normalizer round-trip MUST be lossless: _denormalize(_normalize_to_canonical_record(x, s), s) == x"
+      ]
     }
   ],
+  "deferred_bugs": [],
+  "deferred_bugs_note": "Round-1 deferred Bug 4 and reduced Bug 10 to no-op. Round-2 (per OBJ-1 and OBJ-2) promoted both to dedicated workers (W7 and W8). Zero deferred bugs.",
   "context": {
     "codebase_state": "git status shows: M on many files (cycle-residual modifications); 8 .bak files in data/china-20260412-092624 (separate cleanup cycle); .claude/skills/google-maps is an uncommitted local symlink (absolute path, non-portable)",
     "recent_commits": [
