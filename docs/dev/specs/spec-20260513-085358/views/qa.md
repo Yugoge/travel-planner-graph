@@ -7,6 +7,48 @@
 
 ---
 
+## Role Mandate
+
+## Section 1: Before
+
+<!-- WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context) -->
+<!-- WHAT: Screenshot path + text description of the current state BEFORE any fix attempt. -->
+<!-- This establishes the baseline so later cycles can compare. -->
+
+### Cycle 1
+
+## Section 4: Current State
+
+<!-- WHO WRITES: QA (after each verification) -->
+<!-- WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths. -->
+<!-- This gives the next cycle's Dev concrete data to work with instead of vague "it failed". -->
+
+### Cycle 1
+
+_Not yet populated._
+
+## Section 6: Why Not Met
+
+<!-- WHO WRITES: QA (when verdict is fail) -->
+<!-- WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5). -->
+<!-- Must include evidence: actual value vs expected value. -->
+
+### Cycle 1
+
+_Not yet populated._
+
+## Section 7: What Must Be Done
+
+<!-- WHO WRITES: QA (on fail) or PM-Retro -->
+<!-- WHAT: Prescriptive next step for this specific issue. Not generic advice -- a concrete action. -->
+<!-- Example: "Increase padding from 8px to 16px in Chat.tsx:42" not "fix the padding" -->
+
+### Cycle 1
+
+_Not yet populated._
+
+---
+
 ## Acceptance Criterion
 
 User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
