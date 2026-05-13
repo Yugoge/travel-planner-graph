@@ -231,7 +231,7 @@ def main() -> None:
         if not content or not file_path:
             sys.exit(0)
 
-        if is_exempt(file_path):
+        if is_exempt(file_path) or _bypass_quality_gate(file_path):
             sys.exit(0)
 
         ext = Path(file_path).suffix
