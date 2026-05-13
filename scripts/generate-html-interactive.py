@@ -674,7 +674,7 @@ class InteractiveHTMLGenerator:
                         "links": meal.get("links", {})
                     }
                     merged["budget"]["meals"] += cost
-
+                    merged["meal_alternatives"].extend(self._build_meal_alternatives(meal_slot, meal_type, meal_time))
 
         # Merge cafe (array-based, like entertainment)
         if self.cafe and "days" in self.cafe:
