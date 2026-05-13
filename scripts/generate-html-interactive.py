@@ -596,6 +596,12 @@ class InteractiveHTMLGenerator:
         if cards:
             merged["intra_routes"] = cards
 
+    def _merge_and_finalize_day(self, day_skel: dict) -> dict:
+        """Merge day data and apply post-merge backfill for optional alt times."""
+        merged_day = self._merge_day_data(day_skel)
+        self._backfill_optional_times(merged_day)
+        return merged_day
+
     def _backfill_optional_times(self, merged: dict) -> None:
         """Backfill time on optional alt items (attractions/entertainment/shopping)
         so they render in Timeline with dashed-border + Optional badge, matching
