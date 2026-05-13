@@ -692,6 +692,13 @@ def _add_flag_args(parser):
     parser.add_argument("--no-validate", action="store_true", help="Skip validation")
     parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
     parser.add_argument("--no-backup", action="store_true", help="Skip backups")
+    _add_semantic_flag_args(parser)
+
+
+def _add_semantic_flag_args(parser):
+    """Semantic-lint and per-day args."""
+    parser.add_argument("--strict-dedup", action="store_true",
+                        help="Escalate cross-domain dedup WARN to BLOCK (AC8).")
     parser.add_argument("--day", type=int, default=None,
                         help="Per-day write (spec 5.3): integer 1..N. "
                              "MANDATORY for single-agent saves. --days "
