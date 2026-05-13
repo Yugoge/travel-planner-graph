@@ -596,6 +596,32 @@ class InteractiveHTMLGenerator:
         if cards:
             merged["intra_routes"] = cards
 
+    def _build_meal_alternatives(self, meal_slot: dict, meal_type: str, meal_time) -> list:
+        """Build timeline-renderable alternative meal entries from meal_slot.alternatives."""
+        out = []
+        for alt in meal_slot.get("alternatives", []) or []:
+            a_nb, a_nl = alt.get("name_base", ""), alt.get("name_local", "")
+            out.append({
+                "name_base": a_nb, "name_local": a_nl,
+                "location_base": alt.get("location_base", ""),
+                "location_local": alt.get("location_local", ""),
+                "coordinates": alt.get("coordinates", {}),
+                "cost": self._to_display_currency(alt.get("cost", 0), alt.get("currency_local", "CNY")),
+                "cost_local": alt.get("cost", 0),
+                "cuisine_base": alt.get("cuisine_base", ""), "cuisine_local": alt.get("cuisine_local", ""),
+                "signature_dishes_base": alt.get("signature_dishes_base", ""),
+                "signature_dishes_local": alt.get("signature_dishes_local", ""),
+                "notes_base": alt.get("notes_base", ""), "notes_local": alt.get("notes_local", ""),
+                "optional": True, "is_alternative": True, "_mealType": meal_type,
+                "image": self._get_placeholder_image("meal", poi_name=a_nl or a_nb,
+                    gaode_id=alt.get("gaode_id", ""), name_base=a_nb, name_local=a_nl,
+                    location_base=alt.get("location_base", ""),
+                    location_local=alt.get("location_local", ""),
+                    is_home=self._is_home_location(alt)),
+                "time": meal_time, "links": alt.get("links", {})
+            })
+        return out
+
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data.
         Time data sourced exclusively from timeline.json (single source of truth).
