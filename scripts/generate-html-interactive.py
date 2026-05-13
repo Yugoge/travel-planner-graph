@@ -622,16 +622,10 @@ class InteractiveHTMLGenerator:
             "transportation": None,
             "shopping": [],
             "cafe": [],
-            "budget": {
-                "meals": 0,
-                "attractions": 0,
-                "entertainment": 0,
-                "accommodation": 0,
-                "shopping": 0,
-                "cafe": 0,
-                "transportation": 0,
-                "total": 0
-            }
+            "budget": {"meals": 0, "attractions": 0, "entertainment": 0,
+                       "accommodation": 0, "shopping": 0, "cafe": 0,
+                       "transportation": 0, "total": 0},
+            "meal_alternatives": []
         }
 
         for meal_type in ["breakfast", "lunch", "dinner"]:
