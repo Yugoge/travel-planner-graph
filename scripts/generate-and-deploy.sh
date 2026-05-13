@@ -32,11 +32,12 @@ if [ -z "$1" ]; then
 fi
 
 PLAN_ID="$1"
+shift
 FETCH_FORCE=""
 FETCH_DAY_FILTER=""
 
 # Parse optional arguments
-while [ "$#" -gt 1 ]; do
+while [ "$#" -gt 0 ]; do
     case "$1" in
         --force)
             FETCH_FORCE="--force"
