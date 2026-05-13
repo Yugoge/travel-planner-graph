@@ -20,30 +20,6 @@
 
 ## Pipeline Workflow
 
-> WHO WRITES: BA (on first analysis)
-> WHAT: Verbatim quote from user's requirement or focus string.
-> This is the single source of truth for what "done" means. Do not paraphrase.
-
-> WHO WRITES: Dev (after each implementation attempt)
-> WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed).
-> This prevents the next cycle's Dev from repeating the same approach.
-
-> WHO WRITES: Dev (after each implementation)
-> WHAT: Exact file changes with line numbers and old->new values.
-> FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue`
-
-> WHO WRITES: QA (after each verification)
-> WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths.
-> This gives the next cycle's Dev concrete data to work with instead of vague "it failed".
-
-> WHO WRITES: QA (when verdict is fail)
-> WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5).
-> Must include evidence: actual value vs expected value.
-
-> WHO WRITES: QA (on fail) or PM-Retro
-> WHAT: Prescriptive next step for this specific issue. Not generic advice -- a concrete action.
-> Example: "Increase padding from 8px to 16px in Chat.tsx:42" not "fix the padding"
-
 ---
 
 ## Spec Header
