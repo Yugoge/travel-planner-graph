@@ -788,7 +788,7 @@ def main():
         success = save_single_agent(
             trip_slug=args.trip, agent=args.agent, data=data,
             skip_validation=args.no_validate, allow_high=args.allow_high,
-            create_backup=not args.no_backup,
+            create_backup=not args.no_backup, strict_dedup=args.strict_dedup,
         )
     sys.exit(0 if success else 1)
 
