@@ -596,6 +596,21 @@ class InteractiveHTMLGenerator:
         if cards:
             merged["intra_routes"] = cards
 
+    def _backfill_optional_times(self, merged: dict) -> None:
+        """Backfill time on optional alt items (attractions/entertainment/shopping)
+        so they render in Timeline with dashed-border + Optional badge, matching
+        the meal_alternatives pattern. Each optional item without a timeline
+        entry inherits time from the most-recent non-optional sibling.
+        """
+        for key in ("attractions", "entertainment", "shopping"):
+            last_primary_time = None
+            for it in merged.get(key, []):
+                if not it.get("optional") and it.get("time"):
+                    last_primary_time = it["time"]
+                elif it.get("optional") and not it.get("time") and last_primary_time:
+                    it["time"] = last_primary_time
+                    it["is_alternative"] = True
+
     def _build_meal_alternatives(self, meal_slot: dict, meal_type: str, meal_time) -> list:
         """Build timeline-renderable alternative meal entries from meal_slot.alternatives."""
         out = []
