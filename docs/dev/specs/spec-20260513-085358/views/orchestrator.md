@@ -6,6 +6,10 @@
 
 ---
 
+## Role Mandate
+
+## Pipeline Workflow
+
 ## Acceptance Criterion (verbatim)
 
 User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
