@@ -1,0 +1,73 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W2",
+  "timestamp": "2026-05-13T22:13:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W2.json",
+  "dev": {
+    "status": "blocked",
+    "files_modified": [],
+    "files_created": [],
+    "tasks_completed": [],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "blast_radius": [
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": []}
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — see spec-20260513-085358 Section 5 (Bugs 1, 2, 3) for systematic-state evidence",
+      "why_issue_occurred": "Renderer was built primary-only (Bug 1), uses brittle 3-tier string-similarity name matching (Bug 2), and filters out time-null items (Bug 3) without surfacing them.",
+      "how_fix_addresses_root": "Planned 3 edits: (1) Bug 1 — add alternatives[] loop for MEALS ONLY at ~line 643/2792-2797; (2) Bug 2 — add gaode_id Tier-0 fast-path in _get_timeline_time and thread gaode_id through 6 call sites; (3) Bug 3 — separate unscheduled-optionals branch in TimelineView render. NONE of these edits could be applied — see blocking_issues."
+    },
+    "diff_stats": {
+      "files_changed": 0,
+      "lines_added": 0,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 60,
+      "justification_for_overage": "N/A — no edits applied due to gate block"
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": false,
+    "qa_notes": "No code changes applied. AC1/AC2/AC3 cannot be evaluated. Orchestrator must set BYPASS_QUALITY_GATE=1 in the W2 subagent's PROCESS environment (not merely instruct the subagent to do so in its inner bash shells) and re-dispatch, OR W1 must implement the sentinel-file alternative mechanism documented in context.json.orchestrator_dispatch_contract.alternative_mechanism."
+  },
+  "ac1_verification": "BLOCKED — no Edit applied to meals primary/alternatives loop. AC1 untestable.",
+  "ac2_verification": "BLOCKED — no Edit applied to _get_timeline_time gaode_id fast-path. AC2 untestable.",
+  "ac3_verification": "BLOCKED — no Edit applied to TimelineView unscheduled-optionals split. AC3 untestable.",
+  "preserved_for_w7": [],
+  "blocking_issues": [
+    {
+      "id": "BLOCK-W2-1",
+      "severity": "critical",
+      "category": "dispatch_contract_violation",
+      "description": "Pre-entry verification per AC-DISPATCH: os.environ.get('BYPASS_QUALITY_GATE') is UNSET in this subagent's process environment. The orchestrator's dispatch prompt included the verbatim env-var directive but did NOT actually set the env-var in the subagent's process. Setting `export BYPASS_QUALITY_GATE=1` inside a Bash tool call does NOT persist across tool calls (each Bash invocation is a fresh shell) and is NOT inherited by the PreToolUse hook subprocess that the harness spawns for Edit/Write tool calls. The hook reads os.environ from the harness's parent process, which was started without this env-var.",
+      "evidence": "(1) Bash echo of $BYPASS_QUALITY_GATE returns empty/UNSET on entry. (2) First Edit attempt against scripts/generate-html-interactive.py (3376 lines) blocked by pretool-quality-gate.py with `File has 3416 lines (max 800)` (lines counted from the proposed post-edit content). (3) /root/travel-planner/.claude/hooks/pretool-quality-gate.py:51 implements env-var bypass only; no sentinel-file fallback wired (grep 'sentinel\\|dev-registry\\|qa.json' = 0 hits)."
+    }
+  ],
+  "request_to_orchestrator": {
+    "type": "REQUEST_PAUSE_AND_REDISPATCH",
+    "summary": "Orchestrator must set BYPASS_QUALITY_GATE=1 in the W2 subagent's PROCESS environment (the env passed to the Claude subprocess that runs me), not merely include the directive as inline prompt text.",
+    "remediation_options": [
+      "Option A (env-var, primary mechanism per AC-DISPATCH): orchestrator launches the W2 subagent with BYPASS_QUALITY_GATE=1 in its execve environment (e.g. via env BYPASS_QUALITY_GATE=1 <claude-subagent-cmd>). The current dispatch only included the directive as natural-language prompt text, which the subagent's Bash tool calls cannot propagate to the harness's hook subprocess.",
+      "Option B (sentinel-file, alternative mechanism per AC-DISPATCH): orchestrator instructs W1 to extend .claude/hooks/pretool-quality-gate.py to also bypass when a sentinel file exists (e.g. .claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag). Then create that sentinel before re-dispatching W2."
+    ],
+    "post_redispatch_action": "On re-entry with BYPASS_QUALITY_GATE=1 actually set (or sentinel file present), W2 will apply 3 surgical edits (Bug 1, 2, 3) to scripts/generate-html-interactive.py per the AC1/AC2/AC3 acceptance criteria and the constraints listed in the dispatch prompt (meals-only alternatives[]; gaode_id fast-path with name fallback; unscheduled-optionals as separate cards section, NOT invented times)."
+  },
+  "recommendations": [
+    "OBJ-4 was a major round-2 BA-QA objection precisely about W1->W2 env-var coupling fragility. This block is exactly the failure mode OBJ-4 warned about. The orchestrator dispatch contract specifies BOTH primary (env-var) and alternative (sentinel-file) mechanisms — but only one needs to actually be wired-and-set per cycle. This cycle has the directive in dispatch-prompt text but not in process env, and no sentinel-file fallback was wired by W1.",
+  "Long-term fix: future dispatch contracts should encode env-var injection at the harness-launch level (so the subagent's parent process inherits it), or always prefer the sentinel-file mechanism since it survives any shell-level fragility.",
+    "self_verification was NOT performed (no build to verify; no smoke-check possible)."
+  ],
+  "self_verification": {
+    "build": "skipped",
+    "smoke_check": "skipped (blocked before any edit)",
+    "notes": "No edits applied; nothing to verify."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
