@@ -596,53 +596,6 @@ class InteractiveHTMLGenerator:
         if cards:
             merged["intra_routes"] = cards
 
-    def _merge_and_finalize_day(self, day_skel: dict) -> dict:
-        """Merge day data and apply post-merge backfill for optional alt times."""
-        merged_day = self._merge_day_data(day_skel)
-        self._backfill_optional_times(merged_day)
-        return merged_day
-
-    def _backfill_optional_times(self, merged: dict) -> None:
-        """Backfill time on optional alt items (attractions/entertainment/shopping)
-        so they render in Timeline with dashed-border + Optional badge, matching
-        the meal_alternatives pattern. Each optional item without a timeline
-        entry inherits time from the most-recent non-optional sibling.
-        """
-        for key in ("attractions", "entertainment", "shopping"):
-            last_primary_time = None
-            for it in merged.get(key, []):
-                if not it.get("optional") and it.get("time"):
-                    last_primary_time = it["time"]
-                elif it.get("optional") and not it.get("time") and last_primary_time:
-                    it["time"] = last_primary_time
-                    it["is_alternative"] = True
-
-    def _build_meal_alternatives(self, meal_slot: dict, meal_type: str, meal_time) -> list:
-        """Build timeline-renderable alternative meal entries from meal_slot.alternatives."""
-        out = []
-        for alt in meal_slot.get("alternatives", []) or []:
-            a_nb, a_nl = alt.get("name_base", ""), alt.get("name_local", "")
-            out.append({
-                "name_base": a_nb, "name_local": a_nl,
-                "location_base": alt.get("location_base", ""),
-                "location_local": alt.get("location_local", ""),
-                "coordinates": alt.get("coordinates", {}),
-                "cost": self._to_display_currency(alt.get("cost", 0), alt.get("currency_local", "CNY")),
-                "cost_local": alt.get("cost", 0),
-                "cuisine_base": alt.get("cuisine_base", ""), "cuisine_local": alt.get("cuisine_local", ""),
-                "signature_dishes_base": alt.get("signature_dishes_base", ""),
-                "signature_dishes_local": alt.get("signature_dishes_local", ""),
-                "notes_base": alt.get("notes_base", ""), "notes_local": alt.get("notes_local", ""),
-                "optional": True, "is_alternative": True, "_mealType": meal_type,
-                "image": self._get_placeholder_image("meal", poi_name=a_nl or a_nb,
-                    gaode_id=alt.get("gaode_id", ""), name_base=a_nb, name_local=a_nl,
-                    location_base=alt.get("location_base", ""),
-                    location_local=alt.get("location_local", ""),
-                    is_home=self._is_home_location(alt)),
-                "time": meal_time, "links": alt.get("links", {})
-            })
-        return out
-
     def _merge_day_data(self, day_skeleton: dict) -> dict:
         """Merge skeleton day with agent data.
         Time data sourced exclusively from timeline.json (single source of truth).
@@ -669,10 +622,16 @@ class InteractiveHTMLGenerator:
             "transportation": None,
             "shopping": [],
             "cafe": [],
-            "budget": {"meals": 0, "attractions": 0, "entertainment": 0,
-                       "accommodation": 0, "shopping": 0, "cafe": 0,
-                       "transportation": 0, "total": 0},
-            "meal_alternatives": []
+            "budget": {
+                "meals": 0,
+                "attractions": 0,
+                "entertainment": 0,
+                "accommodation": 0,
+                "shopping": 0,
+                "cafe": 0,
+                "transportation": 0,
+                "total": 0
+            }
         }
 
         for meal_type in ["breakfast", "lunch", "dinner"]:
@@ -721,7 +680,7 @@ class InteractiveHTMLGenerator:
                         "links": meal.get("links", {})
                     }
                     merged["budget"]["meals"] += cost
-                    merged["meal_alternatives"].extend(self._build_meal_alternatives(meal_slot, meal_type, meal_time))
+
 
         # Merge cafe (array-based, like entertainment)
         if self.cafe and "days" in self.cafe:
@@ -1465,7 +1424,8 @@ class InteractiveHTMLGenerator:
         merged_days = []
         if "days" in self.skeleton:
             for day_skel in self.skeleton["days"]:
-                merged_days.append(self._merge_and_finalize_day(day_skel))
+                merged_day = self._merge_day_data(day_skel)
+                merged_days.append(merged_day)
 
         # Group days into trips
         trips = self._group_days_by_location(merged_days)
@@ -2836,7 +2796,6 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
       add(primary, 'meal', L(catKey, lang));
     }
   });
-  day.meal_alternatives?.forEach(m => add(m, 'meal', L('cat_' + m._mealType, lang)));
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
