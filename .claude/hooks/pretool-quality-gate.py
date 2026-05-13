@@ -43,6 +43,17 @@ def is_exempt(file_path: str) -> bool:
     return False
 
 
+def _bypass_quality_gate(file_path: str) -> bool:
+    """Break-glass bypass (spec-20260513-085358 Bug 5, AC4).
+    Mirrors BYPASS_DAY_GUARD pattern from pretool-validate-data-write.py:54.
+    NOT default-enabled; stderr log on activation makes it auditable.
+    """
+    if os.environ.get('BYPASS_QUALITY_GATE', '') == '1':
+        print(f'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — {file_path}', file=sys.stderr)
+        return True
+    return False
+
+
 def get_final_content(data: dict) -> tuple[str, str]:
     """Get the content that would result from this operation.
 
