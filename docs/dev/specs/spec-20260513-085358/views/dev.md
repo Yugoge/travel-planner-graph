@@ -7,6 +7,30 @@
 
 ---
 
+## Role Mandate
+
+## Section 2: What Was Attempted
+
+<!-- WHO WRITES: Dev (after each implementation attempt) -->
+<!-- WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed). -->
+<!-- This prevents the next cycle's Dev from repeating the same approach. -->
+
+### Cycle 1
+
+_Not yet populated._
+
+## Section 3: What Was Changed
+
+<!-- WHO WRITES: Dev (after each implementation) -->
+<!-- WHAT: Exact file changes with line numbers and old->new values. -->
+<!-- FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue` -->
+
+### Cycle 1
+
+_Not yet populated._
+
+---
+
 ## Acceptance Criterion
 
 User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
