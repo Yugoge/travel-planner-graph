@@ -1,0 +1,110 @@
+<!-- AUTO-GENERATED VIEW for qa | source: docs/dev/specs/spec-20260513-085358.md | extracted: 2026-05-13T09:00:00Z -->
+
+# qa view of spec-20260513-085358
+
+**Monolith**: docs/dev/specs/spec-20260513-085358.md
+**Extraction**: content-block level (no section-level mapping)
+
+---
+
+## Role Mandate
+
+> WHO WRITES: QA (after each verification)
+> WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths.
+> This gives the next cycle's Dev concrete data to work with instead of vague "it failed".
+
+> WHO WRITES: QA (when verdict is fail)
+> WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5).
+> Must include evidence: actual value vs expected value.
+
+---
+
+## Acceptance Criterion (Section 5)
+
+User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
+
+Context: the user is requesting that the systematic bugs and improvement opportunities surfaced during the 2026-05-13 `/review china/2026-04-12/` session be recorded as a new spec, intended as a prerequisite to the deferred M2-M5 milestones of spec-20260508-221237 (drag-and-drop web UI overhaul). The bug enumeration the user is asking me to record follows verbatim from my immediately-prior message to the user:
+
+---
+
+## Baseline Observations (Section 1)
+
+Baseline snapshot taken during user-driven `/review china/2026-04-12/ 从上海开始` session on 2026-05-13.
+
+Triggering observations (live URL https://travel.life-ai.app/china/2026-04-12/, Day 12 + Day 13):
+
+- Day 12 alternatives (沈大成 / 光明邨 / 1221) absent from Timeline View despite presence in `data/china-20260412-092624/meals.json`. Confirmed via `curl … | grep -c` returning 0.
+- Day 12 optional attractions/shopping/entertainment items in their respective JSON files but ALSO absent from Timeline View until the user manually added per-item timeline.json entries to match Chengdu Day 5 pattern.
+- Multiple agent-dispatched edits in the same session created divergent / duplicated timeline entries: e.g., "Huaihai-Wukang-Shaanxi Heritage Walk + Moller Villa" (from attractions-agent) and "Wukang Road & Anfu Road — Boutique Stroll (Primary)" (from shopping-agent) at the SAME 15:20-17:30 slot for Day 12.
+- `scripts/fetch-images-batch.py` failed with `FileNotFoundError: image-fetch helper(s) missing: [PosixPath('/root/travel-planner/.claude/skills/google-maps/scripts/places.py')]` after commit 46a46d5 migrated the helper to `.claude/commands/scripts/google-maps/`; only `.claude/skills/gaode-maps` symlink was created, the `google-maps` counterpart was not.
+- `scripts/generate-html-interactive.py` already at 3376 lines / `_merge_day_data` at 582 lines. `pretool-quality-gate.py` blocks any edit (caps are 800 / 30). One dev-agent attempt to add a 25-line meal-alternatives helper triggered the gate.
+- The advertised `BYPASS_QUALITY_GATE=1` env override was reported by a dev-agent as not wired in the hook code.
+- `save.py` slot-merge does not update top-level aggregate fields. After Day 13 budget recompute, `trip_total` in `data/china-20260412-092624/budget.json` remained stale at 23416 vs. correct 23340.
+- `scripts/generate-and-deploy.sh` `--day` flag silently ignored due to argument parser not shifting `$1` before option loop (lines 39-54 area).
+
+The full bug enumeration produced during this session is captured verbatim in Section 5 below.
+
+---
+
+## Measurable Evidence for Verification
+
+- **Cloudflare purge absence (Section 5 item 8)**: confirmed via `find /root/travel-planner/scripts /root/deploy /root/travel-planner/.claude -name "*purge*" -o -name "*cf-cache*" -o -name "*cloudflare*"`. Zero matches in repo deployment paths. The two hits under `.claude/worktrees/overnight-20260412-c6ec78c9/infra/cloudflare-xhs-proxy` and `node_modules/@cloudflare` are unrelated to the travel-planner deployment pipeline. Environment scan `env | grep -iE "CLOUDFLARE|CF_"` empty. `scripts/deploy-travel-plans.sh` and `scripts/generate-and-deploy.sh` contain no Cloudflare API calls — deploy relies solely on Cloudflare's `cf-cache-status: DYNAMIC` pass-through.
+
+- **Optional-no-time-drop precise filter location (Section 5 item 3)**: the rejection happens at `scripts/generate-html-interactive.py:2770-2781` in the `add()` closure of the Timeline JSX generator. Verbatim filter: `if (item?.time?.start && item?.time?.end && item.time.start !== '00:00' && item.time.end !== '00:00' && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end))`. Upstream cause: `_get_timeline_time()` at `:508` returns `None` when name-string doesn't match any timeline.json key (`return None` end of Tier-3 substring fallback), the Python merge passes `time: null` into the per-day data, the JS `add()` then drops it silently. Anchors `:2792-2797` (meal loop) cited earlier are correct for the meal-only consumption pattern but NOT the filter — the filter is line 2770-2781.
+
+- **Schema asymmetry concrete data evidence (Section 5 item 10)**:
+  - `data/china-20260412-092624/meals.json` Day 12 `lunch` top-level keys = `['primary', 'alternatives']` (nested dict-of-objects with sibling `alternatives:[]` array of 2 items).
+  - `data/china-20260412-092624/attractions.json` Day 12 `attractions` = flat `list` of 3 items, every item carrying an `optional` boolean flag at the item level; no `primary`/`alternatives` keys anywhere in the file.
+  - Same shape difference in `entertainment.json` (flat list + `optional`) and `shopping.json` (flat list + `optional`). The renderer therefore has two code paths: `_merge_day_data` calls `meal_slot.get("primary", meal_slot)` for meals at `:643` (drops alts) vs. flat-iteration `for attr in day_attractions["attractions"]` for attractions at `:735-ish` (includes every item; relies on Timeline `add()` filter for display gating).
+
+- **Demoted-primary state-machine gap (Section 5 item 12) — direct session evidence**:
+  - Iteration 1 (2026-05-13 early): meals-agent dispatched with "change Day 12 lunch primary to 裕兴记蟹黄面". Agent's output (this session): "Day 12 lunch alternatives: 老正兴菜馆(福州路) demoted to alt[0]; 沈大成 and 光明邨 preserved as alt[1]/alt[2]". Same pattern for dinner: "苏浙汇(新天地) demoted to alt[0]".
+  - Iteration 2 (2026-05-13 user follow-up): user complaint verbatim "你回归了一堆被淘汰的餐馆" (you regressed eliminated restaurants). Required a separate dev-agent invocation to explicitly DELETE the demoted items.
+  - Today's state: `grep -c '老正兴\|苏浙汇' data/china-20260412-092624/meals.json` Day 12 = 0 (cleaned). But no state machine in `scripts/save.py`, `scripts/lib/save_translate.py`, or any agent prompt prevents the same regression on the next primary-replacement turn. The default agent behaviour is "preserve old primary as alternative" — should be "delete unless explicitly retained".
+
+---
+
+## Bug Enumeration (verification targets)
+
+**Renderer / generate-html-interactive.py**
+
+1. 餐厅alts硬编码丢弃 — line 643 `meal_slot.get("primary", meal_slot)` 直接丢 `alternatives[]`。所有日期的餐厅alts (包括成都Day 5周记牛王庙) 永远不渲染。Spec §5.6 期望多选项，但implementation只读primary。
+2. time-attachment靠name字符串匹配 — `_get_timeline_time()` Tier1/2/3 fallback 全是字符串匹配。换个括号、加个后缀就失败。应该用entity ID。
+3. optional项必须有timeline条目才能渲染 — 仅在域 JSON 标 `optional:true` 不够；Timeline JS line 2793 filter 没time就drop。没有自动从域JSON继承时间的机制。
+
+**Quality gate**
+
+4. `generate-html-interactive.py` 3376 lines, `_merge_day_data` 582 lines 都远超 cap (800/30)。任何edit都被gate拒。无法增量修复。
+5. `BYPASS_QUALITY_GATE=1` env var 在文档里but no-op — dev agent发现实际code没wired这个flag。
+
+**部署链**
+
+6. `fetch-images-batch.py` 硬编码 `.claude/skills/google-maps/scripts/places.py` — commit 46a46d5 迁移到 `.claude/commands/scripts/google-maps/` 但只给gaode建了symlink，google-maps没建。silent fail。
+7. `generate-and-deploy.sh --day` flag parser bug — line 39-54 没 shift `$1`。
+8. Cloudflare无purge脚本 — 依赖 `cf-cache-status: DYNAMIC` pass-through，没控制权。
+9. `save.py` slot-merge不更新top-level聚合 — Day 13 budget变了，`trip_total` 还是stale 23416 (应是23340)。
+
+**Schema 不对称**
+
+10. Meals用 `primary + alternatives[]` (嵌套), attractions/shopping/entertainment 用 flat list + `optional:true` — 这种不对称是所有混乱的根源。renderer/JS需要处理两套shape，agent经常混用。
+
+**Agent行为**
+
+11. 没有跨域dedup — Day 12 timeline中"Huaihai-Wukang-Shaanxi Walk + Moller Villa" 和 "Wukang Road & Anfu Road — Boutique Stroll" 同时段同活动，attractions-agent和shopping-agent各加一遍。
+12. demoted primary 默认保留为 alternative — 你换primary后老的成"被淘汰餐馆" alt，需要你显式说"删除"。
+
+**Spec/implementation脱节**
+
+13. M1-M5 进度无dashboard — 你不查spec/completion文档就不知道drag-drop只是spec里写过。Feature status应该有可见标记。
+
+**为什么hook没拦住"垃圾schema"**
+
+`pretool-validate-data-write.py` 实际拦的：banned keys (`plan_label`, `is_alternative`, `_isAlternative`, `tier`, `bundle_id`, `priority_label`); null required fields; empty coordinates; null location_change. `save.py` + `save_translate.py` 实际做的：user-language → schema translation; banned-keys rejection; slot-level merge (按day). 这些都是字段级语法检查。但本session加的"垃圾"是：timeline key 用了描述性后缀 (例如 `"Shanghai Tower Observatory (上海中心大厦) — Morning Alternative"`、`"Wukang Road & Anfu Road — Boutique Stroll (Primary)"`) — 字段级 schema 合法（key是string，value有 `start_time/end_time/duration_minutes/optional`），但命名规范是garbage (描述性labels混进venue name namespace); attractions/shopping/entertainment 跨域重复同一活动 — 字段级合法，语义层重复; agents 把demoted primaries留作alts — 字段级合法，业务逻辑错误。
+
+**总结的根本缺陷 — hook只做字段级语法验证，没做语义级验证**
+
+- 没有 entity-ID — 一切靠 name string match，suffix污染namespace
+- 没有跨域 dedup check — attractions+shopping+entertainment 可同时段同名
+- 没有"primary替换→old primary必须explicitly保留/删除"的状态机
+- 没有 timeline ↔ attractions/shopping/entertainment 的名字一致性 lint
+- 没有 trip_total/aggregate 自动重算
