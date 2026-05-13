@@ -512,15 +512,31 @@ def _report_save_warnings(issues: list) -> None:
         print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
 
 def _prepare_agent_data(data, agent_file, trip_slug, agent: str = ""):
-    """Unwrap; spec 5.9 translate; auto-merge."""
+    """Unwrap; translate; reject-banned; merge; AC7 trip_total recompute."""
+    agent_data = _translate_and_reject(data, agent)
+    if agent_file.exists():
+        agent_data = _merge_existing_slots(agent_file, agent_data, data)
+    _maybe_recompute_trip_total(agent, agent_data)
+    return agent_data
+
+
+def _translate_and_reject(data, agent):
     from lib.save_translate import walk_translate, reject_banned
     agent_data = data.get("data") if "data" in data else data
     walk_translate(agent_data)
     if agent:
         reject_banned(agent, agent_data)
-    if agent_file.exists():
-        agent_data = _merge_existing_slots(agent_file, agent_data, data)
     return agent_data
+
+
+def _maybe_recompute_trip_total(agent, agent_data):
+    """AC7 — recompute data.trip_total = sum days[].budget.total on budget save."""
+    if agent != 'budget':
+        return
+    from lib.semantic_lint import recompute_trip_total
+    nt = recompute_trip_total(agent_data)
+    if nt is not None:
+        print(f"[save] trip_total recomputed: {nt} (sum of days[].budget.total)", file=sys.stderr)
 
 def save_single_agent(
     trip_slug: str, agent: str, data: Dict[str, Any],
