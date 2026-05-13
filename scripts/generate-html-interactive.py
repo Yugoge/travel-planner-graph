@@ -1459,8 +1459,7 @@ class InteractiveHTMLGenerator:
         merged_days = []
         if "days" in self.skeleton:
             for day_skel in self.skeleton["days"]:
-                merged_day = self._merge_day_data(day_skel)
-                merged_days.append(merged_day)
+                merged_days.append(self._merge_and_finalize_day(day_skel))
 
         # Group days into trips
         trips = self._group_days_by_location(merged_days)
