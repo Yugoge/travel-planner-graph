@@ -9,13 +9,13 @@
 
 ## Role Mandate
 
-> WHO WRITES: Dev (after each implementation attempt)
-> WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed).
-> This prevents the next cycle's Dev from repeating the same approach.
+<!-- WHO WRITES: Dev (after each implementation attempt) -->
+<!-- WHAT: Per-cycle record of what approach was tried, what the rationale was, and why it failed (if it failed). -->
+<!-- This prevents the next cycle's Dev from repeating the same approach. -->
 
-> WHO WRITES: Dev (after each implementation)
-> WHAT: Exact file changes with line numbers and old->new values.
-> FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue`
+<!-- WHO WRITES: Dev (after each implementation) -->
+<!-- WHAT: Exact file changes with line numbers and old->new values. -->
+<!-- FORMAT: - **file.tsx:42** -- `property: oldValue` -> `property: newValue` -->
 
 ---
 
