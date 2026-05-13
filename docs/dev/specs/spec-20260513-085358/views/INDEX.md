@@ -1,7 +1,7 @@
 # views
 
-*Last updated: 2026-05-13T21:12:42Z*
-**Total entries**: 5
+*Last updated: 2026-05-13T21:13:38Z*
+**Total entries**: 7
 **Convention**: kebab
 
 ## Tree
@@ -10,6 +10,8 @@ views/
 ├── `architect.md` - architect view of spec-20260513-085358
 ├── `ba.md` - ba view of spec-20260513-085358
 ├── `dev.md` - dev view of spec-20260513-085358
+├── `manifest.json` - json config
+├── `manifest.json.lock` - lock file
 ├── `orchestrator.md` - orchestrator view of spec-20260513-085358
 └── `qa.md` - qa view of spec-20260513-085358
 ```

@@ -7,6 +7,12 @@
 
 ---
 
+## Role Mandate
+
+(No explicit architect role definition in monolith — section retained for structural conformance.)
+
+---
+
 ## Structural / Architectural Anchors
 
 - `scripts/generate-html-interactive.py:599-1179` — `_merge_day_data` spans **581 lines** (cap 30 → refactor mandatory before any incremental fix).
