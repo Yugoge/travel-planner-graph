@@ -23,6 +23,7 @@ Total subdirectories: 7 top-level (archive, clean, debug, dev, guides, reference
 
 - `README.md` - Folder documentation
 - `index.md` - This file (auto-generated inventory)
+- `feature-status.md` - M1-M5 spec milestone tracker + per-bug status (spec-20260513-085358)
 - `image-fallback-status.md` - Image fallback implementation status
 - `TEST-REPORT-UNIFIED-SCRIPTS.md` - Unified scripts test report
 - `UNIFIED-SCRIPTS-ARCHITECTURE.md` - Unified scripts architecture doc
