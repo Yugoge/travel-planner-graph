@@ -56,27 +56,42 @@
       ]
     },
     "success_criteria": [
-      "AC1 Day 12 lunch alternatives visible in Timeline View",
+      "AC1 Day 12 lunch alternatives visible in Timeline View; primary screenshot + text-grep fallback curl|grep '沈大成' AND '光明邨' >=1 (per OBJ-3)",
       "AC2 gaode_id fast-path returns without falling through to string tiers",
-      "AC3 optional-no-time items render in Unscheduled section, not dropped",
+      "AC3 optional-no-time items render in Unscheduled section; primary screenshot + text-grep fallback curl|grep 'Unscheduled|Optional' >=1 (per OBJ-3)",
       "AC4 BYPASS_QUALITY_GATE=1 exits 0 with stderr log",
-      "AC5 fetch-images-batch.py does not raise FileNotFoundError on clean checkout",
-      "AC6 --day 1-5 forwarded and consumed",
+      "AC5 fetch-images-batch.py does not raise FileNotFoundError on clean checkout AND absolute-symlink-commit branch is REJECTED (per OBJ-6)",
+      "AC6 --day 1-5 forwarded and consumed; OLD loud-exit-1 'Unknown option <plan-id>' symptom fixed (per OBJ-5)",
       "AC7 trip_total auto-recomputed to sum of days[].budget.total",
-      "AC8 cross-domain dedup WARNs on duplicate names",
+      "AC8 cross-domain dedup WARNs on duplicate names (uses W8 normalizer for shape-agnostic detection)",
       "AC9 demoted primary dropped (not auto-preserved as alternative)",
       "AC10 feature-status.md exists with M1-M5 and 13-bug tables, linked from README + index",
-      "AC11 Cloudflare-purge documented as N/A in feature-status.md"
+      "AC11 Cloudflare-purge documented as N/A in feature-status.md",
+      "AC12 (NEW per OBJ-1) Bug 4 W7: _merge_day_data extracted into 9 helpers in scripts/lib/render_day_data.py each <=30 lines; file <=800 lines; intermediate merged-dict byte-identical for all 15 days (codex round-2 Q1 invariant)",
+      "AC13 (NEW per OBJ-2) Bug 10 W8: schemas attractions/shopping/entertainment reject alternatives[] via BANNED_AD_HOC_KEYS agent-scoped extension; _normalize_to_canonical_record() shape-normalizer added to save_translate.py; renderer takes NO Bug-10 changes (codex round-2 Q2)",
+      "AC-DISPATCH (NEW per OBJ-4) Orchestrator dispatch prompt for W2/W7 MUST include BYPASS_QUALITY_GATE=1 clause; W2/W7 worker MUST verify on entry + PAUSE+REPORT if absent; alternative sentinel-file path acceptable"
     ],
     "constraints": [
-      "W1 (gate-bypass) MUST land before W2 (renderer) opens any Edit on the 3376-line file",
-      "Workers must NOT edit files outside their assigned write-set (file-disjoint guarantee)",
-      "Renderer ACs require live browser verification on desktop 1440x900 + mobile 390x844 (codex F-verification)",
-      "No defensive alternatives[] reads at attractions/shopping/entertainment renderer code (codex F-Bug10)",
+      "W1 (gate-bypass) MUST land before W2 / W7 (renderer) opens any Edit on the 3376-line file",
+      "Workers must NOT edit files outside their assigned write-set (file-disjoint guarantee EXCEPT shared-file sequencing W2->W7 and W5->W8 below)",
+      "W7 MUST run AFTER W2 completes (shared file scripts/generate-html-interactive.py); MUST preserve W2's bug-1/2/3 edits verbatim",
+      "W8 MUST run AFTER W5 completes (shared file scripts/lib/save_translate.py); MUST NOT add accept-but-ignore semantics on alternatives[] for flat shapes (codex round-2 Q2)",
+      "W3 MUST NOT commit the absolute-path symlink; choose relative-symlink OR path-constant migration (OBJ-6 / AC5)",
+      "Renderer ACs require live browser verification on desktop 1440x900 + mobile 390x844 (primary) OR text-grep fallback (acceptable substitute per OBJ-3)",
+      "No defensive alternatives[] reads at attractions/shopping/entertainment renderer code (codex round-1 F-Bug10)",
       "No invented timeline times for Bug 3 (codex F3)",
       "BYPASS_QUALITY_GATE not default-enabled (codex F-Bug4-3)",
-      "Symlink portability: relative not absolute, OR migrate to path constant in fetch-images-batch.py"
-    ]
+      "Orchestrator MUST inject BYPASS_QUALITY_GATE=1 in W2/W7 dispatch env per AC-DISPATCH"
+    ],
+    "orchestrator_dispatch_contract": {
+      "applicable_workers": ["W2", "W7"],
+      "primary_mechanism": "env-var",
+      "required_env_var": "BYPASS_QUALITY_GATE=1",
+      "dispatch_prompt_clause_verbatim": "Set BYPASS_QUALITY_GATE=1 in your shell environment before any Edit on scripts/generate-html-interactive.py. The file is 3376 lines and exceeds the quality-gate MAX_FILE_LINES cap; without this env-var your first Edit will be blocked.",
+      "worker_entry_verification": "First action MUST be `os.environ.get('BYPASS_QUALITY_GATE') == '1'` (or shell equivalent). If absent, PAUSE and emit REQUEST to orchestrator before any tool call.",
+      "alternative_mechanism": "sentinel-file: W1 may implement a code path where existence of .claude/dev-registry/dev-20260513-090000/qa.json (or equivalent sentinel) flips BYPASS auto-on inside the hook. If W1 implements this, env-var dispatch becomes optional and sentinel is the binding contract.",
+      "binding_choice_documented_in": "W1 worker's deliverables MUST document which of {env-var, sentinel-file} is the binding contract for this cycle."
+    }
   },
   "scope_boundary": {
     "in_user_path": [
