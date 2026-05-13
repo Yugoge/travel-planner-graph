@@ -2816,6 +2816,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
       add(primary, 'meal', L(catKey, lang));
     }
   });
+  day.meal_alternatives?.forEach(m => add(m, 'meal', L('cat_' + m._mealType, lang)));
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
   // Root cause fix: shopping items were missing from timeline - add them here
