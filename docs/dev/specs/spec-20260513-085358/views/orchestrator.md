@@ -8,13 +8,13 @@
 
 ## Role Mandate (from spec)
 
-> WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context)
-> WHAT: Screenshot path + text description of the current state BEFORE any fix attempt.
-> This establishes the baseline so later cycles can compare.
+<!-- WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context) -->
+<!-- WHAT: Screenshot path + text description of the current state BEFORE any fix attempt. -->
+<!-- This establishes the baseline so later cycles can compare. -->
 
-> WHO WRITES: PM-Retro
-> WHAT: Issue-specific traps, warnings, and things to watch out for in the next cycle/session.
-> Example: "This file is imported by 12 components -- changes here cascade widely"
+<!-- WHO WRITES: PM-Retro -->
+<!-- WHAT: Issue-specific traps, warnings, and things to watch out for in the next cycle/session. -->
+<!-- Example: "This file is imported by 12 components -- changes here cascade widely" -->
 
 ---
 
