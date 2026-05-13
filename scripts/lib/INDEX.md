@@ -1,7 +1,7 @@
 # lib
 
-*Last updated: 2026-05-09T17:51:05Z*
-**Total entries**: 6
+*Last updated: 2026-05-13T22:15:34Z*
+**Total entries**: 7
 **Convention**: kebab
 
 ## Tree
@@ -12,7 +12,8 @@ lib/
 ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 ├── `mcp-tool-catalog.json` - json config
 ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
-└── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
+├── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
+└── `semantic_lint.py` - Cross-domain duplicate detection (AC8), meal_slot demoted-primary audit
 ```
 
 ---
