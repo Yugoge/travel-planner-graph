@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-10T11:57:54Z*
-**Total entries**: 286
+*Last updated: 2026-05-13T21:40:36Z*
+**Total entries**: 291
 **Convention**: kebab
 
 ## Tree
@@ -26,12 +26,15 @@ dev/
 │   │   └── views/
 │   ├── spec-20260508-221237/
 │   │   └── views/
+│   ├── spec-20260513-085358/
+│   │   └── views/
 │   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
 │   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
 │   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
 │   ├── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
 │   ├── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
-│   └── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
+│   ├── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
+│   └── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `architect-report-init.json` - json config
@@ -209,6 +212,7 @@ dev/
 ├── `dev-report-20260506-141814.json` - json config
 ├── `dev-report-20260509-114002-cycle4.json` - json config
 ├── `dev-report-20260509-114002.json` - json config
+├── `dev-report-20260509-114002.json.cycle1+3.bak` - bak file
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
@@ -292,7 +296,8 @@ dev/
 ├── `ticket-20260506-081545.md` - BA Specification: /redev fix 3 close blockers from cycle 20260505-231740 — ITERATION 2
 ├── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 ├── `ticket-20260506-141814.md` - BA Specification: Close residual gaps from spec-20260506-092951 (2-item follow-on)
-└── `ticket-20260509-114002.md` - BA Specification: M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block
+├── `ticket-20260509-114002.md` - BA Specification: M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block
+└── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle
 ```
 
 ---
