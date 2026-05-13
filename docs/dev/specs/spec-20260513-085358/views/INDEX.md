@@ -1,12 +1,13 @@
 # views
 
-*Last updated: 2026-05-13T21:12:20Z*
-**Total entries**: 3
+*Last updated: 2026-05-13T21:12:21Z*
+**Total entries**: 4
 **Convention**: kebab
 
 ## Tree
 ```
 views/
+├── `architect.md` - architect view of spec-20260513-085358
 ├── `ba.md` - ba view of spec-20260513-085358
 ├── `dev.md` - dev view of spec-20260513-085358
 └── `qa.md` - qa view of spec-20260513-085358
