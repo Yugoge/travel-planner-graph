@@ -7,6 +7,18 @@
 
 ---
 
+## Role Mandate
+
+## Section 8: Attention Notes
+
+<!-- WHO WRITES: PM-Retro -->
+<!-- WHAT: Issue-specific traps, warnings, and things to watch out for in the next cycle/session. -->
+<!-- Example: "This file is imported by 12 components -- changes here cascade widely" -->
+
+_Not yet populated._
+
+---
+
 ## Acceptance Criterion
 
 User directive (verbatim): "📝 把这些bug记成新spec 暨M2前置spec"
