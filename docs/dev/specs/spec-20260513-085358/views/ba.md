@@ -9,9 +9,9 @@
 
 ## Role Mandate
 
-> WHO WRITES: BA (on first analysis)
-> WHAT: Verbatim quote from user's requirement or focus string.
-> This is the single source of truth for what "done" means. Do not paraphrase.
+<!-- WHO WRITES: BA (on first analysis) -->
+<!-- WHAT: Verbatim quote from user's requirement or focus string. -->
+<!-- This is the single source of truth for what "done" means. Do not paraphrase. -->
 
 ---
 
