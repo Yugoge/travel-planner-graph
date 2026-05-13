@@ -7,6 +7,16 @@
 
 ---
 
+## Role Mandate
+
+## Section 5: User's Acceptance Criterion
+
+<!-- WHO WRITES: BA (on first analysis) -->
+<!-- WHAT: Verbatim quote from user's requirement or focus string. -->
+<!-- This is the single source of truth for what "done" means. Do not paraphrase. -->
+
+---
+
 ## Spec Header
 
 # Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
