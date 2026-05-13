@@ -541,7 +541,7 @@ def _maybe_recompute_trip_total(agent, agent_data):
 def save_single_agent(
     trip_slug: str, agent: str, data: Dict[str, Any],
     skip_validation: bool = False, allow_high: bool = False,
-    create_backup: bool = True,
+    create_backup: bool = True, strict_dedup: bool = False,
 ) -> bool:
     """Save single agent data with validation."""
     trip_dir = DATA_DIR / trip_slug
@@ -555,7 +555,18 @@ def save_single_agent(
         print(f"Merge failed: {e}", file=sys.stderr)
         return False
     envelope = {"agent": agent, "status": "complete", "data": agent_data}
-    ok, issues, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
+    if not _run_pre_save_checks(envelope, trip_dir, agent, skip_validation,
+                                allow_high, strict_dedup):
+        return False
+    _, issues, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
+    return _do_save(agent_file, agent, agent_data, create_backup, issues)
+
+
+def _run_pre_save_checks(envelope, trip_dir, agent, skip_validation,
+                         allow_high, strict_dedup):
+    """Run all pre-save gates; True = clear to save, False = abort."""
+    trip_slug = trip_dir.name
+    ok, _, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
     if not ok:
         print(f"\nSave aborted due to validation errors", file=sys.stderr)
         return False
@@ -565,7 +576,16 @@ def save_single_agent(
         return False
     if check_currency_mismatch(agent, envelope, trip_dir):
         return False
-    return _do_save(agent_file, agent, agent_data, create_backup, issues)
+    return _run_cross_domain_dedup_check(agent, envelope, trip_dir, strict_dedup)
+
+
+def _run_cross_domain_dedup_check(agent, envelope, trip_dir, strict_dedup):
+    """AC8 — cross-domain dedup; WARN by default, BLOCK with strict_dedup."""
+    from lib.semantic_lint import check_cross_domain_dedup
+    findings = check_cross_domain_dedup(agent, envelope, trip_dir, strict=strict_dedup)
+    if findings and strict_dedup:
+        return False
+    return True
 
 def _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high):
     """Phase 1: validate all agents. Returns dict of results."""
