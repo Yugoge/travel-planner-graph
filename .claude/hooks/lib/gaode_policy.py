@@ -11,9 +11,9 @@ $CLAUDE_PROJECT_DIR when available, falling back to the absolute path
 when run outside a Claude session).
 
 Public API:
-  is_gaode_allowed(role, surface, target) -> (bool, reason)
+  is_gaode_allowed(role, surface, target, tool_name=None) -> (bool, reason)
   normalize_gaode_agent_id(role) -> canonical role
-  gaode_match_pattern(surface, target) -> matched pattern or None
+  gaode_match_pattern(surface, target, tool_name=None) -> matched pattern or None
 
 Six matcher surfaces:
   skill              - Skill(skill="gaode-maps", ...)
@@ -22,6 +22,13 @@ Six matcher surfaces:
   network-host       - Bash/WebFetch/MCP URL with banned amap host
   env-var            - Bash command referencing AMAP_KEY etc.
   read-path          - Read/Glob/Grep/Edit file_path under banned prefix
+
+read-path layered match (M5, policy_version=2, 2026-05-14):
+  1. project-anchored prefix (M1 behavior, untouched)
+  2. user-global anchored prefix (roots: /root/, /dev/shm/.../dot-claude)
+  3. substring (gaode-maps, gaode_maps): path-like targets only
+  4. strict path-segment (amap): rejects 'foo-amap-bar' false positives
+  5. parent-of-banned (Glob/Grep only): closes parent-scan leak
 
 Moved from global policy_registry.py per cycle-4 manual reorg
 (spec-20260508-221237, 2026-05-09): the gaode harness is travel-planner-
