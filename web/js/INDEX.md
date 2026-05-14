@@ -1,12 +1,13 @@
 # js
 
-*Last updated: 2026-05-14T17:32:10Z*
-**Total entries**: 1
-**Convention**: lower
+*Last updated: 2026-05-14T17:32:22Z*
+**Total entries**: 2
+**Convention**: kebab
 
 ## Tree
 ```
 js/
+├── `offline.js` - js file
 └── `state.js` - js file
 ```
 
