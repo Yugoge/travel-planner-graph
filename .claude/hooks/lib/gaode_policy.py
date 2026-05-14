@@ -497,13 +497,16 @@ def _gaode_decide(matched_pattern: str, role, surface: str) -> Tuple[bool, str]:
     )
 
 
-def is_gaode_allowed(role, surface: str, target) -> Tuple[bool, str]:
-    """Return (allowed, reason) for a (role, surface, target) triple."""
+def is_gaode_allowed(role, surface: str, target, tool_name: Optional[str] = None) -> Tuple[bool, str]:
+    """Return (allowed, reason) for a (role, surface, target) triple.
+
+    tool_name (optional): caller's tool name; enables context-sensitive logic
+    on read-path (parent-scan denial fires only for Glob/Grep).
+    """
     try:
-        matcher = _GAODE_SURFACE_DISPATCH.get(surface)
-        if matcher is None:
+        if surface not in _GAODE_SURFACE_DISPATCH:
             return (True, "gaode-policy: unknown-surface")
-        matched_pattern = matcher(target)
+        matched_pattern = _dispatch_match(surface, target, tool_name=tool_name)
         if not matched_pattern:
             return (True, "gaode-policy: not-a-gaode-target")
         return _gaode_decide(matched_pattern, role, surface)
@@ -512,7 +515,8 @@ def is_gaode_allowed(role, surface: str, target) -> Tuple[bool, str]:
         return (False, "gaode-policy: fail-closed-exception")
 
 
-def gaode_match_pattern(surface: str, target):
+def gaode_match_pattern(surface: str, target, tool_name: Optional[str] = None):
     """Helper for the hook to retrieve the matched pattern for telemetry."""
-    matcher = _GAODE_SURFACE_DISPATCH.get(surface)
-    return None if matcher is None else matcher(target)
+    if surface not in _GAODE_SURFACE_DISPATCH:
+        return None
+    return _dispatch_match(surface, target, tool_name=tool_name)
