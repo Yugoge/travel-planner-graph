@@ -1,12 +1,13 @@
 # js
 
-*Last updated: 2026-05-14T17:33:12Z*
-**Total entries**: 4
+*Last updated: 2026-05-14T17:33:32Z*
+**Total entries**: 5
 **Convention**: kebab
 
 ## Tree
 ```
 js/
+├── `budget.js` - js file
 ├── `offline.js` - js file
 ├── `routing.js` - js file
 ├── `save.js` - js file
