@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-14T09:20:45Z*
-**Total entries**: 303
+*Last updated: 2026-05-14T09:27:52Z*
+**Total entries**: 305
 **Convention**: kebab
 
 ## Tree
@@ -225,6 +225,7 @@ dev/
 ├── `dev-report-20260513-090000-W5.json` - json config
 ├── `dev-report-20260513-090000-W6.json` - json config
 ├── `dev-report-20260513-090000-W8.json` - json config
+├── `dev-report-20260513-090000.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
@@ -288,6 +289,7 @@ dev/
 ├── `qa-report-20260506-104100.json` - json config
 ├── `qa-report-20260506-141814.json` - json config
 ├── `qa-report-20260509-114002.json` - json config
+├── `qa-report-20260513-090000.json` - json config
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
