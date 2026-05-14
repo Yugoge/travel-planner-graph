@@ -1,7 +1,7 @@
 # server
 
-*Last updated: 2026-05-14T14:28:25Z*
-**Total entries**: 4
+*Last updated: 2026-05-14T14:28:49Z*
+**Total entries**: 5
 **Convention**: kebab
 
 ## Tree
@@ -10,6 +10,7 @@ server/
 ├── `budget.py` - Aggregates costs from day.json, transportation.json, route_cache.json. No
 ├── `common.py` - Provides:
 ├── `route.py` - Spec: spec-20260508-221237 §5.9 + §5.13 D #7
+├── `save.py` - Receives a batch of mutations for a single day. Applies them to day-NN.json
 └── `trip.py` - Calls trip_contract.load_trip to assemble meta + days + transportation +
 ```
 
