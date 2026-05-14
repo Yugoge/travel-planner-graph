@@ -13,6 +13,9 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
+sys.path.insert(0, str(Path(__file__).parent / "lib"))
+import render_day_data as _rd  # noqa: E402
+
 
 class InteractiveHTMLGenerator:
     """Generate interactive React travel plan from skeleton and agent data"""
