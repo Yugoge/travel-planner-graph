@@ -7,7 +7,10 @@
  */
 
 const OFFLINE_THRESHOLD_MS = 5000;
+const RECONNECT_PROBE_MS = 5000;
 let _firstFailureAt = null;
+let _offlineTimer = null;
+let _reconnectTimer = null;
 let _isOffline = false;
 let _onlineHandler = () => {};
 
