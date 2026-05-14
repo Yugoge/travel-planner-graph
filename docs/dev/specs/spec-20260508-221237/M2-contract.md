@@ -59,6 +59,15 @@ Cross-slot semantics that JSON Schema cannot express live in
 The legacy per-agent envelope schemas under `schemas/*.schema.json` (without `v2/`)
 remain valid until M3 migrates content agents.
 
+**Category schemas role**: the per-category v2 schemas (`meals.schema.json`,
+`accommodation.schema.json`, etc.) are documented option-shape REFERENCES used
+by M3 content agents for self-validation and for IDE autocomplete. The runtime
+v2 day validator (`scripts/lib/trip_contract/validators.py`) only enforces
+`option_base` shape; per-category extension fields (cuisine, accommodation_type,
+etc.) are NOT cross-validated against the slot's `slot_id`. M3 content agents
+own the category-vs-slot consistency check (e.g. dinner option must extend
+meal_item with `meal_kind="dinner"`) when emitting per-day files.
+
 ---
 
 ## 3. The `option` shape (locked Q3c)
