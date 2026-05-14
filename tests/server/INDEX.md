@@ -1,13 +1,14 @@
 # server
 
-*Last updated: 2026-05-14T18:12:22Z*
-**Total entries**: 3
+*Last updated: 2026-05-14T18:12:45Z*
+**Total entries**: 4
 **Convention**: kebab
 
 ## Tree
 ```
 server/
 ├── `conftest.py` - Handlers are called directly (not over HTTP) to avoid port allocation in CI
+├── `test_budget_endpoint.py` - Tests call handle_budget() directly. No HTTP port allocated
 ├── `test_route_endpoint.py` - Tests call handle_route() directly. No HTTP port allocated
 └── `test_save_endpoint.py` - Tests call handle_save() directly. No HTTP port allocated
 ```
