@@ -19,7 +19,7 @@ const NAMED_SLOTS = [
 ];
 
 let _seqCounter = 0;
-const _latestSeen = new Map();
+const _latestIssued = new Map(); // key -> int (latest REQUEST seq, set at issue time)
 
 function _pairKey(fromOptId, toOptId, mode) {
   return `${fromOptId}:${toOptId}:${mode}`;
