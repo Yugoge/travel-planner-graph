@@ -734,7 +734,7 @@ travel-planner/
 │   ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
 │   ├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
 │   ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
-│   ├── `plan-validate-v2.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
+│   ├── `validate-trip-contract.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 │   ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 │   ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 │   ├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
