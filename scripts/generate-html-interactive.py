@@ -467,21 +467,20 @@ class InteractiveHTMLGenerator:
         
         return brands
 
-    def _get_timeline_time(self, name_base: str, name_local: str, day_timeline: dict) -> dict:
-        """Look up time from timeline.json for a POI by name matching.
-        Returns {"start": "HH:MM", "end": "HH:MM"} or None.
-        """
+    def _get_timeline_time(self, name_base: str, name_local: str, day_timeline: dict,
+                           gaode_id: str = "") -> dict:
+        """Bug-2: Tier-0 gaode_id fast-path; falls back to name tiers."""
         if not day_timeline:
             return None
+        t0 = self._match_gaode_id_in_timeline(gaode_id, day_timeline)
+        if t0: return t0
         for item_name in [name_base, name_local]:
             if not item_name:
                 continue
-            # Tier 1: Exact match
             if item_name in day_timeline:
                 entry = day_timeline[item_name]
                 if isinstance(entry, dict) and entry.get("start_time"):
                     return {"start": entry["start_time"], "end": entry.get("end_time", "")}
-        # Tier 2: Base-name match (strip parentheticals)
         for item_name in [name_base, name_local]:
             if not item_name:
                 continue
@@ -493,7 +492,6 @@ class InteractiveHTMLGenerator:
                 if item_base.lower() == tl_base.lower():
                     if tl_val.get("start_time"):
                         return {"start": tl_val["start_time"], "end": tl_val.get("end_time", "")}
-        # Tier 3: Substring match
         for item_name in [name_base, name_local]:
             if not item_name:
                 continue

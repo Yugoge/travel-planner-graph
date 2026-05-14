@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-13T22:18:04Z*
-**Total entries**: 92
+*Last updated: 2026-05-14T09:01:40Z*
+**Total entries**: 94
 **Convention**: kebab
 
 ## Tree
@@ -26,6 +26,8 @@ scripts/
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 │   ├── `mcp-tool-catalog.json` - json config
 │   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+│   ├── `react_template.tpl` - tpl file
+│   ├── `render_day_data.py` - Each helper is <=30 lines per the project quality gate. The renderer
 │   ├── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 │   └── `semantic_lint.py` - Cross-domain duplicate detection (AC8), meal_slot demoted-primary audit
 ├── tests/
