@@ -349,8 +349,11 @@ def validate_day_v2(
     position: str = "$",
     is_first_night: bool = False,
 ) -> list[ValidationError]:
-    """Orchestrator: run all M2 cross-slot validations on one day."""
+    """Orchestrator: run JSON Schema + cross-slot semantic validations on one day."""
     errs: list[ValidationError] = []
+    # 1. JSON Schema (shape, enums, required fields, additionalProperties)
+    errs.extend(validate_against_v2_schema(day_dict, "day.schema.json", position))
+    # 2. Cross-slot semantic rules (cannot be expressed in JSON Schema)
     errs.extend(_check_legacy_shape(day_dict, position))
     errs.extend(_check_schema_version(day_dict, position))
     errs.extend(_check_slot_presence(day_dict, position))
