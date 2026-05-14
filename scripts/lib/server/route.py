@@ -62,8 +62,15 @@ def _try_cache_hit(store: TripStore, req: dict) -> dict | None:
 
 
 def _resolve_gaode_script(project_dir: Path) -> Path | None:
+    # Build candidate list at call time so GAODE_ROUTE_SCRIPT env-var is
+    # read on each invocation (supports monkeypatching in tests).
+    candidates: list[Path] = []
+    env_script = os.environ.get("GAODE_ROUTE_SCRIPT")
+    if env_script:
+        candidates.append(Path(env_script))
+    candidates.extend(_GAODE_ROUTE_SCRIPT_HARDCODED)
     checked = []
-    for p in _GAODE_ROUTE_SCRIPT_CANDIDATES:
+    for p in candidates:
         candidate = p if p.is_absolute() else project_dir / p
         checked.append(candidate)
         if candidate.exists():
