@@ -1,7 +1,7 @@
 # trip-contract
 
-*Last updated: 2026-05-14T11:27:45Z*
-**Total entries**: 6
+*Last updated: 2026-05-14T11:27:46Z*
+**Total entries**: 7
 **Convention**: kebab
 
 ## Tree
@@ -9,6 +9,7 @@
 trip-contract/
 ├── `arrival-day.json` - json config
 ├── `city-change-day.json` - json config
+├── `late-arrival-day.json` - json config
 ├── `legacy-shape-day.json` - json config
 ├── `meta.json` - json config
 ├── `normal-day.json` - json config
