@@ -28,11 +28,7 @@ from .common import TripStore, atomic_write_json, load_json_or_default
 # IGNORED (AC-M5.5 identity test).
 TIMELINE_AGENT_ID = "timeline"
 
-_GAODE_ROUTE_SCRIPT_CANDIDATES = []
-_env_script = os.environ.get("GAODE_ROUTE_SCRIPT")
-if _env_script:
-    _GAODE_ROUTE_SCRIPT_CANDIDATES.append(Path(_env_script))
-_GAODE_ROUTE_SCRIPT_CANDIDATES += [
+_GAODE_ROUTE_SCRIPT_HARDCODED = [
     Path(".claude/skills/gaode-maps/scripts/routing.py"),
     Path(".claude/skills/gaode-maps/scripts/route.py"),
     Path(".claude/skills/gaode-maps/scripts/inter-city-route.py"),
