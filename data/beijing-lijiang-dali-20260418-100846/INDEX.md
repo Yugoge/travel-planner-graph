@@ -1,8 +1,8 @@
 # beijing-lijiang-dali-20260418-100846
 
-*Last updated: 2026-05-14T18:11:30Z*
+*Last updated: 2026-05-14T18:11:35Z*
 **Total entries**: 23
-**Convention**: lower
+**Convention**: kebab
 
 ## Tree
 ```
