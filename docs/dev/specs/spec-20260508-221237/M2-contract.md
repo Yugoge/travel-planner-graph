@@ -204,7 +204,26 @@ Field: `day.stage`. Per-day, NOT per-trip (codex Q2).
 
 When `day.stage` is in `{user-selected, timeline, transportation, finalized}`,
 every non-skipped slot (including accommodation) MUST have
-`selected_option_id != null`. Validator emits `STAGE_GATE_VIOLATION` otherwise.
+`selected_option_id != null`, AND that id MUST exist in `slot.options[]`
+(rule `SELECTED_OPTION_ID_NOT_IN_OPTIONS`). Slot option_ids must be unique
+within the slot (rule `OPTION_ID_DUPLICATE`).
+
+### Demote-edit dependency calculation (M4 server contract)
+
+When the user re-edits a finalized day N, the server MUST:
+1. Demote `day_N.stage` from finalized -> user-selected (or earlier per the
+   user action) using `validate_state_transition(..., has_user_consent=True)`.
+2. Invalidate intra-day route_cache entries where `from_option_id` or
+   `to_option_id` references any option_id in day N.
+3. Invalidate transportation segments with `owning_day == N` AND segments where
+   `arrive_day == N` (the cross-day arrivals).
+4. If day N's accommodation was selected via `selected_by="locked-from-day-N"`
+   and the source day's selection just changed, re-propagate the lock to N.
+5. Day N+1...end remain finalized; ONLY day N demotes. The server MAY surface
+   a UI banner ("This change affected day N; downstream days are still finalized
+   but may need review") but it does not auto-demote them.
+
+This dependency rule lives here in M2 contract so M4 implements it consistently.
 
 ---
 
