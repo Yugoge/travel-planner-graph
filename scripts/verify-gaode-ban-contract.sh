@@ -48,15 +48,20 @@ SKILL_PATH = f"{PROJECT}/.claude/skills/{G}/skill.md"
 AMAP_URL = f"https://restapi.{AMAP}.com/v3/place"
 
 
+USER_GLOBAL_SKILL = f"/root/.claude/skills/{G}/skill.md"
+RAMDISK_SKILL = f"/dev/shm/dev-workspace/dot-claude/skills/{G}/skill.md"
+USER_GLOBAL_PARENT = "/root/.claude/skills"
+SEGMENT_TOKEN_PATH = f"/root/.claude/skills/{AMAP}/skill.md"
+SUBSTRING_UNDERSCORE_PATH = (
+    f"/x/" + base64.b64decode("Z2FvZGVfbWFwcw==").decode() + "/skill.md"
+)
+
+
 def make_payload(tool, field, kind):
     """Build a tool_input dict that exercises the (tool, field, kind) entry."""
     if kind == "direct":
-        if field in ("filename",):
-            return {field: SKILL_PATH}
         if field == "url":
             return {field: AMAP_URL}
-        if field == "file_path":
-            return {field: SKILL_PATH}
         return {field: SKILL_PATH}
     if kind == "url-substring":
         return {field: f"async () => {{ await fetch('{AMAP_URL}'); }}"}
@@ -64,6 +69,21 @@ def make_payload(tool, field, kind):
         return {field: [SKILL_PATH]}
     if kind == "gmail-body":
         return {"to": "x@y.z", "subject": "k", field: "AMAP_KEY=$AMAP_KEY"}
+    # M5 cycle-3 bypass closure match-kinds (policy_version=2, 2026-05-14):
+    if kind == "wildcard-prefix":
+        return {field: f"**/*{G}*"}
+    if kind == "user-global-root":
+        return {field: USER_GLOBAL_SKILL}
+    if kind == "ramdisk-symlink":
+        return {field: RAMDISK_SKILL}
+    if kind == "parent-scan-glob":
+        return {field: f"/root/.claude/skills/{G}/**"}
+    if kind == "parent-scan-grep":
+        return {"pattern": "x", field: USER_GLOBAL_PARENT}
+    if kind == "segment-token":
+        return {field: SEGMENT_TOKEN_PATH}
+    if kind == "substring-underscore":
+        return {field: SUBSTRING_UNDERSCORE_PATH}
     raise ValueError(f"unknown kind: {kind}")
 
 
