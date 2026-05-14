@@ -1,13 +1,14 @@
 # exporters
 
-*Last updated: 2026-05-14T17:37:11Z*
-**Total entries**: 1
-**Convention**: lower
+*Last updated: 2026-05-14T17:37:27Z*
+**Total entries**: 2
+**Convention**: kebab
 
 ## Tree
 ```
 exporters/
-└── `conftest.py` - Builds a v2 trip bundle layout on disk (data/<trip>/meta.json + days/day-NN.json
+├── `conftest.py` - Builds a v2 trip bundle layout on disk (data/<trip>/meta.json + days/day-NN.json
+└── `test_pdf_renderer.py` - PDF exporter tests: normal day, red-eye, missing image, atomic write.
 ```
 
 ---
