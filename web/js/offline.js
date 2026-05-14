@@ -22,6 +22,28 @@ function _flipOffline(next) {
   if (_isOffline === next) return;
   _isOffline = next;
   _onlineHandler(_isOffline);
+  if (next) {
+    _scheduleReconnectProbe();
+  } else if (_reconnectTimer) {
+    clearInterval(_reconnectTimer);
+    _reconnectTimer = null;
+  }
+}
+
+function _scheduleReconnectProbe() {
+  if (_reconnectTimer) clearInterval(_reconnectTimer);
+  _reconnectTimer = setInterval(async () => {
+    try {
+      const resp = await fetch("/api/trip/__probe__", { method: "GET" });
+      // ANY response (even 404) means the server is reachable.
+      if (resp.status > 0) {
+        _firstFailureAt = null;
+        _flipOffline(false);
+      }
+    } catch (_e) {
+      /* still offline; keep probing */
+    }
+  }, RECONNECT_PROBE_MS);
 }
 
 async function _doFetch(url, opts) {
