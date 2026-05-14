@@ -1,0 +1,183 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W8",
+  "timestamp": "2026-05-14T09:20:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W8.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/lib/save_translate.py",
+      "schemas/attractions.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/entertainment.schema.json"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "AC13(a) — schema-reject path for `alternatives` on attractions/shopping/entertainment via agent-scoped BANNED_AD_HOC_KEYS extension",
+        "type": "code",
+        "files_modified": ["scripts/lib/save_translate.py"],
+        "rationale": "Added module-level AGENT_SCOPED_BANNED_KEYS = {'attractions': ('alternatives',), 'shopping': ('alternatives',), 'entertainment': ('alternatives',)} (meals exempted because meals.schema.json $defs.meal_slot legitimately defines primary+alternatives[]). Added helpers _collect_agent_scoped_banned() + _scoped_in_dict() (split to satisfy MAX_NESTING=3 gate), _agent_scoped_guidance() for the verbatim guiding error message from BA spec AC13, and _reject_agent_scoped(). Extended public reject_banned(agent, agent_data) with a single trailing call to _reject_agent_scoped() — the pre-existing function body length is preserved exactly (no 'worsen' regression on the quality gate). When an attractions/shopping/entertainment payload contains 'alternatives' anywhere in its tree, reject_banned() prints 'Error: Unknown field [\\'alternatives\\'] for agent \\'<agent>\\': not yet supported on attractions/shopping/entertainment shape (only meals uses primary+alternatives[]). Full unification is M2 spec scope; for this cycle, use the flat list + optional:true shape.' and sys.exit(1). Meals payload bypasses the scoped check entirely (scoped_keys lookup returns None for 'meals')."
+      },
+      {
+        "id": 2,
+        "description": "AC13(b) — shape-normalizer _normalize_to_canonical_record(item, shape) + inverse _denormalize() with lossless round-trip",
+        "type": "code",
+        "files_modified": ["scripts/lib/save_translate.py"],
+        "rationale": "Added module constants SHAPE_MEALS_NESTED='meals_nested' and SHAPE_FLAT_OPTIONAL='flat_optional'. Forward path: _normalize_meals_slot() splits a meals slot {primary, alternatives[]} into an ordered list of canonical records — primary first then alternatives in source-order, each carrying _canonical_role ('primary'|'alternative'|'flat'), _canonical_slot (meal_type or None), and _canonical_alt_index (int or None). _normalize_flat_item() maps a flat-shape item dict to a single canonical record. Inverse path: _denormalize_meals() rebuilds the slot by (a) emitting a 'primary' key only when a primary record is present and (b) emitting an 'alternatives' key only when at least one alternative record exists — preserving the source absence of 'alternatives' when meals slots have only primary (per meals.schema.json which marks 'alternatives' as optional). _strip_canonical_fields() removes the three bookkeeping fields. _denormalize() inverse for flat shape is the strip alone. Unknown shape raises ValueError naming the two valid constants. The canonical record format means W5's check_cross_domain_dedup() (scripts/lib/semantic_lint.py) can be retrofitted to call _normalize_to_canonical_record() once and compare shape-agnostically; W5's handoff notes confirm this upgrade is deferred to a follow-up."
+      },
+      {
+        "id": 3,
+        "description": "AC13(a) schema documentation — $comment block on attractions/shopping/entertainment schemas citing M2 unification plan",
+        "type": "config",
+        "files_modified": ["schemas/attractions.schema.json", "schemas/shopping.schema.json", "schemas/entertainment.schema.json"],
+        "rationale": "Added a top-level $comment field (standard JSON-Schema 2020-12 annotation — no semantic effect on validation) on each of attractions/shopping/entertainment.schema.json pointing at (a) the schema's existing additionalProperties:false as the structural rejection mechanism for alternatives at item level, (b) the M2 unification deferral in docs/feature-status.md, and (c) the binding enforcement point in scripts/lib/save_translate.py AGENT_SCOPED_BANNED_KEYS / _reject_agent_scoped(). Verified each schema still parses as JSON and passes Draft202012Validator.check_schema(). The binding rejection lives in save_translate.py per the BA spec; the schema $comment is documentation only."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — pre-existing systematic state (Bug 10 schema asymmetry: meals.schema.json uses primary+alternatives[] but attractions/shopping/entertainment use a flat list with optional:true)",
+      "why_issue_occurred": "The four POI-shape schemas were authored at different times for different sub-problems; meals legitimately needed primary+alternatives[] for restaurant fallback, while the others were modeled as a flat list. No save-layer guard ever enforced 'agents writing attractions/shopping/entertainment must not include alternatives[]', so a careless agent payload could silently smuggle the field — schema rejection at validate-time would catch it, but only after the file write. The renderer would then have no support and the data would be silently dropped.",
+      "how_fix_addresses_root": "Two complementary changes: (1) the writing path now rejects 'alternatives' on the three flat-shape agents with a guiding error message pointing at the M2 unification scope and the current correct shape (flat list + optional:true); (2) the shape-normalizer provides a single canonical record format so cross-shape callers (W5's cross-domain dedup) can compare items shape-agnostically without each caller re-implementing the shape switch. Codex round-2 Q2 explicitly ruled out the accept-but-ignore middle option as a silent-data-loss trap; this implementation enforces the hard reject."
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": 196,
+      "lines_removed": 1,
+      "new_symbols_introduced": [
+        "AGENT_SCOPED_BANNED_KEYS (module constant)",
+        "SHAPE_MEALS_NESTED (module constant)",
+        "SHAPE_FLAT_OPTIONAL (module constant)",
+        "_scoped_in_dict (save_translate.py)",
+        "_collect_agent_scoped_banned (save_translate.py)",
+        "_agent_scoped_guidance (save_translate.py)",
+        "_reject_agent_scoped (save_translate.py)",
+        "_normalize_meals_alts (save_translate.py)",
+        "_normalize_meals_slot (save_translate.py)",
+        "_normalize_flat_item (save_translate.py)",
+        "_normalize_to_canonical_record (save_translate.py, public)",
+        "_CANONICAL_FIELDS (module constant)",
+        "_strip_canonical_fields (save_translate.py)",
+        "_collect_meals_records (save_translate.py)",
+        "_denormalize_meals (save_translate.py)",
+        "_denormalize (save_translate.py)"
+      ],
+      "minimum_possible_lines_estimate": 120,
+      "justification_for_overage": "save_translate.py grew from 84 → 277 lines (193 net). 120 lines is the minimum for the documented function surface (constants + 3 reject helpers + 3 normalize helpers + 3 denormalize helpers + docstrings); the additional 73 lines are gate-driven splits: _scoped_in_dict was extracted from _collect_agent_scoped_banned to satisfy MAX_NESTING=3; _normalize_meals_alts was extracted from _normalize_meals_slot to keep the latter under MAX_FUNC_LINES=30; _collect_meals_records was extracted from _denormalize_meals for the same reason. The pre-existing reject_banned() body is preserved byte-for-byte (no quality-gate 'no worsen' regression); only a single trailing call to _reject_agent_scoped() is appended. Schema $comment edits are 1 line each * 3 files = 3 lines."
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "All four verifications passed in-session (see ac13_verification below). QA can replay with the synthetic Python harness inline in the verification block. Note: this worker does NOT modify the renderer (W2/W7 territory) per BA constraint 'Renderer MUST take NO Bug-10 changes (codex round-2 Q2)'. W5's existing semantic_lint.py _norm_name() v1 normalizer remains unchanged; the canonical-record upgrade for cross-domain dedup is documented as a follow-up in the W5 handoff (not in scope for this worker).",
+    "permissions_to_add": [],
+    "self_verification": {
+      "build": "pass (python -m py_compile scripts/lib/save_translate.py; jsonschema.Draft202012Validator.check_schema on all 3 modified schemas)",
+      "smoke_check": "pass (10 synthetic tests — 4 reject-path cases, 4 round-trip cases on live corpus, 1 meals-exemption case, 1 invalid-shape case — all PASS)",
+      "notes": "No quality-gate violations on save_translate.py. All 3 schemas re-validated as valid Draft202012 schemas after the $comment annotation."
+    }
+  },
+  "blast_radius": [
+    {
+      "modified": "scripts/lib/save_translate.py",
+      "imported_by": [
+        "scripts/save.py (reject_banned called by W5's _translate_and_reject)",
+        "scripts/lib/semantic_lint.py (W5 deferred upgrade to consume _normalize_to_canonical_record in a follow-up cycle)"
+      ]
+    },
+    {
+      "modified": "schemas/attractions.schema.json",
+      "imported_by": [
+        "scripts/validate.py (via $id reference; $comment is a no-op annotation)",
+        ".claude/hooks/pretool-validate-data-write.py (write-time strict-schema check; unchanged by $comment)"
+      ]
+    },
+    {
+      "modified": "schemas/shopping.schema.json",
+      "imported_by": [
+        "scripts/validate.py",
+        ".claude/hooks/pretool-validate-data-write.py"
+      ]
+    },
+    {
+      "modified": "schemas/entertainment.schema.json",
+      "imported_by": [
+        "scripts/validate.py",
+        ".claude/hooks/pretool-validate-data-write.py"
+      ]
+    }
+  ],
+  "ac13_verification": {
+    "ac": "AC13 — Bug 10 schema-reject + shape-normalizer",
+    "reject_path_attractions": {
+      "status": "PASS",
+      "input": "{'agent':'attractions','data':{'days':[{'day':12,'date':'2026-04-23','attractions':[],'alternatives':[{'name_base':'Foo'}]}]}}",
+      "result": "SystemExit(1) — stderr contains 'Unknown field [\\'alternatives\\'] for agent \\'attractions\\': not yet supported on attractions/shopping/entertainment shape (only meals uses primary+alternatives[]). Full unification is M2 spec scope; for this cycle, use the flat list + optional:true shape.'"
+    },
+    "reject_path_shopping": {
+      "status": "PASS",
+      "result": "SystemExit(1) with guiding message naming agent='shopping'"
+    },
+    "reject_path_entertainment": {
+      "status": "PASS",
+      "result": "SystemExit(1) with guiding message naming agent='entertainment'"
+    },
+    "meals_exempted": {
+      "status": "PASS",
+      "input": "meals payload with slot.alternatives=[{'name_base':'Bar'}]",
+      "result": "reject_banned('meals', payload) returns normally — no SystemExit. AGENT_SCOPED_BANNED_KEYS.get('meals') is None so the scoped check short-circuits."
+    },
+    "round_trip_meals_with_alternatives": {
+      "status": "PASS",
+      "input": "data/china-20260412-092624/meals.json Day 12 lunch slot (primary + 4 alternatives)",
+      "result": "_denormalize(_normalize_to_canonical_record(slot, 'meals_nested'), 'meals_nested') == slot (deep equality, including dict key order via Python 3.7+ insertion semantics)"
+    },
+    "round_trip_meals_primary_only": {
+      "status": "PASS",
+      "input": "data/china-20260412-092624/meals.json Day 1 breakfast (primary only, no 'alternatives' key)",
+      "result": "Round-trip preserves the absence of the 'alternatives' key (rebuilt dict has no such key, matching source)"
+    },
+    "round_trip_attractions": {
+      "status": "PASS",
+      "input": "data/china-20260412-092624/attractions.json Day 12 [0] (Huaihai-Wukang heritage walk, full nested item)",
+      "result": "Lossless round-trip via SHAPE_FLAT_OPTIONAL"
+    },
+    "round_trip_shopping": {
+      "status": "PASS",
+      "input": "data/china-20260412-092624/shopping.json Day 12 [0]",
+      "result": "Lossless round-trip via SHAPE_FLAT_OPTIONAL"
+    },
+    "round_trip_entertainment": {
+      "status": "PASS",
+      "input": "first day with entertainment in data/china-20260412-092624/entertainment.json",
+      "result": "Lossless round-trip via SHAPE_FLAT_OPTIONAL"
+    },
+    "invalid_shape_raises": {
+      "status": "PASS",
+      "result": "_normalize_to_canonical_record({}, 'bogus_shape') raises ValueError mentioning both valid shape constants"
+    }
+  },
+  "shape_normalizer_interface": {
+    "forward": "_normalize_to_canonical_record(item: dict, shape: str) -> list[dict] | dict",
+    "inverse": "_denormalize(canonical: list[dict] | dict, shape: str) -> dict",
+    "shape_constants": [
+      "SHAPE_MEALS_NESTED = 'meals_nested' — input is a meals slot dict {primary, alternatives?}; output is list[canonical_record]",
+      "SHAPE_FLAT_OPTIONAL = 'flat_optional' — input is a single flat POI item dict; output is one canonical_record"
+    ],
+    "canonical_record_shape": "Source-item dict fields PLUS _canonical_role ('primary'|'alternative'|'flat'), _canonical_slot (meal_type str for meals shape, None for flat), _canonical_alt_index (int source-order index for meals alternatives, None otherwise).",
+    "round_trip_invariant": "_denormalize(_normalize_to_canonical_record(x, shape), shape) == x for every realistic x; verified on 5 live corpus items (meals × 2, attractions × 1, shopping × 1, entertainment × 1)."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Follow-up: retrofit scripts/lib/semantic_lint.py:_norm_name() and check_cross_domain_dedup() to call _normalize_to_canonical_record() so the shape-agnostic comparison consumes the canonical record's name fields directly (instead of the v1 whitespace+lowercase normalizer). Out of scope for W8 per W5 handoff.",
+    "M2 spec scope: full unification of meals.schema.json (primary+alternatives[]) with attractions/shopping/entertainment.schema.json (flat+optional). Once unified, the AGENT_SCOPED_BANNED_KEYS entries for the three flat domains can be removed and the renderer can iterate alternatives[] across all four domains uniformly.",
+    "Optional hardening: extend the agent-scoped reject path to additional ad-hoc keys that surface from agent payloads (e.g. 'primary_choice', 'options') without further BA approval — the AGENT_SCOPED_BANNED_KEYS dict is now a single point of extension."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
