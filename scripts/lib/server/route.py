@@ -67,8 +67,8 @@ def _try_cache_hit(store: TripStore, req: dict) -> dict | None:
 
 def _resolve_gaode_script(project_dir: Path) -> Path | None:
     checked = []
-    for rel in _GAODE_ROUTE_SCRIPT_CANDIDATES:
-        candidate = project_dir / rel if not Path(rel).is_absolute() else Path(rel)
+    for p in _GAODE_ROUTE_SCRIPT_CANDIDATES:
+        candidate = p if p.is_absolute() else project_dir / p
         checked.append(candidate)
         if candidate.exists():
             return candidate
