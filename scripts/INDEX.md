@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-14T14:29:48Z*
-**Total entries**: 117
+*Last updated: 2026-05-14T17:35:44Z*
+**Total entries**: 120
 **Convention**: kebab
 
 ## Tree
@@ -22,7 +22,9 @@ scripts/
 │   └── `hook-todo-state-tracker.py` - PostToolUse Hook: Output checklist progress after every TodoWrite call
 ├── lib/
 │   ├── exporters/
-│   │   └── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+│   │   ├── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+│   │   ├── `ical_renderer.py` - Produces a VCALENDAR with one VEVENT per selected slot + per inter-city
+│   │   └── `pdf_renderer.py` - A4 portrait, one day per page, CJK font embedded (WenQuanYi Zen Hei primary,
 │   ├── server/
 │   │   ├── `budget.py` - Aggregates costs from day.json, transportation.json, route_cache.json. No
 │   │   ├── `common.py` - Provides:
@@ -83,6 +85,7 @@ scripts/
 ├── `day13_dinner_g26.py` - Sit-down 本帮菜 (HOMES) impossible. Change primary to G26 on-train meal order,
 ├── `deploy-travel-plans.sh` - Deploy travel plan HTML to GitHub Pages
 ├── `detect-location-changes.py` - Reads day-by-day plan and identifies when travelers move between cities
+├── `export-pdf.py` - Usage: python3 scripts/export-pdf.py --trip <trip_id>
 ├── `fetch-images-batch.py` - Batch image fetcher using skill scripts directly
 ├── `fix-day2-hotel-checkin.py` - Fix Day 2 Hotel Check-in Script
 ├── `fix-duration-units.py` - Fix duration_minutes field by detecting and correcting unit conversion errors
