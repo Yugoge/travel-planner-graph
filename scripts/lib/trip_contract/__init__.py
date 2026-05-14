@@ -35,6 +35,7 @@ from .state_machine import (
 from .day_type import expected_skips_for_day, is_slot_skipped, get_day_type
 from .transport import pick_owning_day
 from .legacy import detect_legacy_shape
+from .json_schema import validate_against_v2_schema
 from .validators import validate_day_v2, validate_meta_v2, validate_trip_v2
 from .api_contract import (
     RouteRequest,
