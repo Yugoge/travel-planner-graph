@@ -89,8 +89,41 @@ export function flushNow(state) {
   }
 }
 
-window.addEventListener("beforeunload", () => {
-  for (const [, q] of _queues) {
-    if (q.timer) clearTimeout(q.timer);
+/* On unload, synchronously hand pending mutations to the server using
+ * sendBeacon (the only API that survives navigation). Without this, a
+ * refresh inside the 300ms debounce window loses the latest mutation
+ * and AC #5 (refresh recovery) regresses. */
+function _beaconFlush(state) {
+  if (!navigator.sendBeacon) return;
+  for (const [dayN, q] of _queues) {
+    if (q.timer) {
+      clearTimeout(q.timer);
+      q.timer = null;
+    }
+    if (q.mutations.length === 0) continue;
+    const body = {
+      trip_id: state.trip_id,
+      day: dayN,
+      editor_session: state.ui.editor_session,
+      mutations: q.mutations,
+    };
+    q.mutations = [];
+    const blob = new Blob([JSON.stringify(body)], {
+      type: "application/json",
+    });
+    try {
+      navigator.sendBeacon("/api/save", blob);
+    } catch (_e) {
+      /* best-effort */
+    }
   }
+}
+
+let _beaconState = null;
+export function bindBeaconState(state) {
+  _beaconState = state;
+}
+
+window.addEventListener("beforeunload", () => {
+  if (_beaconState) _beaconFlush(_beaconState);
 });
