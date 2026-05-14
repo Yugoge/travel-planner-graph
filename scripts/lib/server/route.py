@@ -251,6 +251,8 @@ def handle_route(
     if script is None:
         return _unknown_response(req, "gaode-skill-not-installed")
     segment = _invoke_gaode(script, req, store, project_dir, gaode_timeout_s)
+    if segment is _COORDS_UNKNOWN:
+        return _unknown_response(req, "coords-not-in-trip-data")
     if segment is None:
         return _error_response(req, "gaode-call-failed")
     key = _cache_key(req["from_option_id"], req["to_option_id"], req["mode"])
