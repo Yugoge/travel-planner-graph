@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/poi-common.schema.json",
+  "title": "M2 v2 POI Common Definitions",
+  "description": "Shared definitions for M2 options-first per-day file shape (spec-20260508-221237). Distinct from legacy schemas/poi-common.schema.json which serves the per-agent-envelope shape. M3 will migrate agents to emit v2 directly; until then v1 and v2 coexist.",
+  "$defs": {
+    "iso_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date in YYYY-MM-DD format."
+    },
+    "iso_timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?([+-]\\d{2}:\\d{2}|Z)?$",
+      "description": "ISO 8601 local-or-zoned timestamp; trailing zone optional, seconds optional."
+    },
+    "hhmm": {
+      "type": "string",
+      "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+      "description": "Time of day HH:MM 24-hour."
+    },
+    "currency_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code."
+    },
+    "coordinates": {
+      "type": "object",
+      "description": "Geographic coordinates. CANONICAL: {lat,lng}.",
+      "properties": {
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "lng": {"type": "number", "minimum": -180, "maximum": 180}
+      },
+      "required": ["lat", "lng"],
+      "additionalProperties": false
+    },
+    "city_context": {
+      "type": "object",
+      "description": "MANDATORY per-option context locked by Q3c (BA ticket-20260514-103616). Identifies which trip-leg this option belongs to, the role the city plays for that leg, and the validity window during which the option is geographically reachable.",
+      "properties": {
+        "city_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable identifier (slug) for the city, e.g. 'beijing'."
+        },
+        "city_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name in primary language."
+        },
+        "leg_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Zero-indexed leg within the trip itinerary; consecutive same-city days share the same leg_index."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["origin", "destination", "en_route", "overnight"],
+          "description": "Role this city plays for this option's day. origin=depart-from; destination=arrive-into; en_route=pass-through (transit); overnight=sleep-here."
+        },
+        "valid_after_ts": {
+          "$ref": "#/$defs/iso_timestamp",
+          "description": "Earliest local timestamp at which this option becomes reachable on this day (e.g. arrival_ts for a destination role)."
+        },
+        "valid_before_ts": {
+          "$ref": "#/$defs/iso_timestamp",
+          "description": "Latest local timestamp at which this option remains reachable on this day (e.g. departure_ts for an origin role)."
+        }
+      },
+      "required": ["city_id", "city_name", "leg_index", "role"],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Per-option selection provenance (§5.2 + §5.7 D + Q3h). Set when an option is selected by user, --auto policy, or auto-lock propagation.",
+      "properties": {
+        "selected_by": {
+          "type": "string",
+          "enum": ["user", "auto", "locked-from-day-N", "system"],
+          "description": "Origin of the selection."
+        },
+        "selected_reason": {
+          "type": "string",
+          "description": "Human-readable rationale, e.g. 'fit_score=0.87; tied=false'."
+        },
+        "selected_at": {
+          "$ref": "#/$defs/iso_timestamp",
+          "description": "Timestamp at which selection was recorded."
+        },
+        "locked_from_day": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "When selected_by='locked-from-day-N', the source day number; null otherwise."
+        }
+      },
+      "required": ["selected_by"],
+      "additionalProperties": false
+    },
+    "option_base": {
+      "type": "object",
+      "description": "Common per-option fields used by every slot category (meals, accommodation, attractions, cafe, entertainment, shopping). Slot-specific schemas extend this with category fields via allOf.",
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable per-option identifier within the day; e.g. 'meal-d3-lunch-1'."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name in primary user language."
+        },
+        "name_local": {
+          "type": "string",
+          "description": "Name in local script; may be empty."
+        },
+        "location_summary": {
+          "type": "string",
+          "description": "Short human-readable address or neighborhood label."
+        },
+        "coordinates": {"$ref": "#/$defs/coordinates"},
+        "cost": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Estimated cost in currency_local. null if unknown (renders as 'cost: unknown' per Q3g)."
+        },
+        "currency_local": {"$ref": "#/$defs/currency_code"},
+        "fit_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Agent-computed fit-to-user-requirements score 0..1. Used by --auto policy primary tiebreaker (§5.7 D)."
+        },
+        "why_fits_user": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Concise rationale explaining why this option fits the user profile."
+        },
+        "source_agent": {
+          "type": "string",
+          "enum": ["meals", "accommodation", "attractions", "cafe", "entertainment", "shopping"],
+          "description": "The content agent that produced this option."
+        },
+        "source_citation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string"},
+              "url": {"type": "string"},
+              "display_text": {"type": "string"}
+            },
+            "required": ["type"],
+            "additionalProperties": true
+          },
+          "description": "Source links / citations supporting this option."
+        },
+        "city_context": {"$ref": "#/$defs/city_context"},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "is_home": {
+          "type": "boolean",
+          "description": "True if option is a private home (suppresses external image lookup)."
+        }
+      },
+      "required": [
+        "option_id",
+        "name",
+        "location_summary",
+        "cost",
+        "fit_score",
+        "why_fits_user",
+        "source_agent",
+        "city_context"
+      ]
+    },
+    "slot_envelope": {
+      "type": "object",
+      "description": "Per-slot envelope wrapping options[] with selection state and skip semantics. Used by all 6 named slots and accommodation.",
+      "properties": {
+        "slot_id": {
+          "type": "string",
+          "enum": ["breakfast", "morning_activity", "lunch", "afternoon_activity", "dinner", "evening_activity", "accommodation"],
+          "description": "One of the 7 canonical slot identifiers."
+        },
+        "options": {
+          "type": "array",
+          "description": "Candidate options offered by content agents. Floors enforced by validator (meals: >=2/slot; first-night accommodation: >=3).",
+          "items": {"$ref": "#/$defs/option_base"}
+        },
+        "selected_option_id": {
+          "type": ["string", "null"],
+          "description": "option_id of chosen option, or null if no selection yet (allowed in draft-options/user-review stages only)."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "Slot is intentionally absent on this day. Allowed per day_type tolerance (§5.13 B)."
+        },
+        "skipped_reason": {
+          "type": ["string", "null"],
+          "enum": [null, "pre-arrival", "post-departure", "in-transit", "city-change", "red-eye-spans-prior-day", "user-omit", "buffer-rest"],
+          "description": "Required non-null when skipped=true. Validator rejects skipped slots with skipped_reason=null."
+        },
+        "late_arrival_placeholder": {
+          "type": "boolean",
+          "description": "Dinner-only marker: arrival_ts >= 21:00 local; slot is NOT skipped, but options should be limited to late-night-friendly venues."
+        }
+      },
+      "required": ["slot_id", "options", "selected_option_id", "skipped", "skipped_reason"],
+      "additionalProperties": false
+    }
+  }
+}
