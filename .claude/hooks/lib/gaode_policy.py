@@ -461,6 +461,19 @@ _GAODE_SURFACE_DISPATCH = {
 }
 
 
+# Surfaces whose matcher accepts a tool_name kwarg for context-sensitive logic.
+_TOOL_AWARE_SURFACES = ("read-path",)
+
+
+def _dispatch_match(surface: str, target, tool_name: Optional[str] = None):
+    matcher = _GAODE_SURFACE_DISPATCH.get(surface)
+    if matcher is None:
+        return None
+    if surface in _TOOL_AWARE_SURFACES:
+        return matcher(target, tool_name=tool_name)
+    return matcher(target)
+
+
 def _gaode_decide_unknown(surface: str, matched_pattern: str) -> Tuple[bool, str]:
     if _gaode_fail_closed():
         return (
