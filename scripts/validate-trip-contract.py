@@ -6,11 +6,11 @@ data/<trip>/meta.json, and data/<trip>/transportation.json against the v2 contra
 defined in scripts/lib/trip_contract/.
 
 Usage:
-  python3 scripts/plan-validate-v2.py path/to/day-NN.json
-  python3 scripts/plan-validate-v2.py path/to/meta.json
-  python3 scripts/plan-validate-v2.py path/to/trip-dir/
-  python3 scripts/plan-validate-v2.py --json path/to/...
-  python3 scripts/plan-validate-v2.py --fixtures
+  python3 scripts/validate-trip-contract.py path/to/day-NN.json
+  python3 scripts/validate-trip-contract.py path/to/meta.json
+  python3 scripts/validate-trip-contract.py path/to/trip-dir/
+  python3 scripts/validate-trip-contract.py --json path/to/...
+  python3 scripts/validate-trip-contract.py --fixtures
 
 Exit codes:
   0 = clean
