@@ -43,9 +43,9 @@ timeline_data = {
             "travel_segments": [
                 {
                     "name_base": "Walk to Museum",
-                    "name_local": "步行前往博物馆",
+                    "name_local": "Walk to Museum CJK",
                     "type_base": "walk",
-                    "type_local": "步行",
+                    "type_local": "Walk CJK",
                     "icon": "🚶",
                     "start_time": "08:30",
                     "end_time": "09:00",
