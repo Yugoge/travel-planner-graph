@@ -291,24 +291,45 @@ def _check_first_night_accommodation(day_dict: dict, position: str, is_first_nig
     return []
 
 
+def _check_selected_id_exists(slot: dict, slot_id: str, position: str) -> list[ValidationError]:
+    sel = slot.get("selected_option_id")
+    if sel is None:
+        return []
+    option_ids = [o.get("option_id") for o in _slot_options(slot)]
+    if sel not in option_ids:
+        return [ValidationError(
+            code="SELECTED_OPTION_ID_NOT_IN_OPTIONS",
+            path=f"{_slot_path(position, slot_id)}.selected_option_id",
+            message=f"selected_option_id={sel!r} not found in options[]: {option_ids}",
+        )]
+    duplicates = [oid for oid in option_ids if option_ids.count(oid) > 1]
+    if duplicates:
+        return [ValidationError(
+            code="OPTION_ID_DUPLICATE",
+            path=f"{_slot_path(position, slot_id)}.options",
+            message=f"duplicate option_id values in slot: {sorted(set(duplicates))}",
+        )]
+    return []
+
+
 def _check_stage_gate(day_dict: dict, position: str) -> list[ValidationError]:
     """If stage >= user-selected, every non-skipped slot must have selected_option_id."""
     stage = day_dict.get("stage", "draft-options")
     stage_idx = STAGE_INDEX.get(stage, 0)
     user_selected_idx = STAGE_INDEX["user-selected"]
-    if stage_idx < user_selected_idx:
-        return []
     errs: list[ValidationError] = []
     for slot_id in NAMED_SLOTS + [ACCOMMODATION_SLOT]:
         slot = _slot_dict(day_dict, slot_id) or {}
         if slot.get("skipped"):
             continue
-        if slot.get("selected_option_id") is None:
+        if stage_idx >= user_selected_idx and slot.get("selected_option_id") is None:
             errs.append(ValidationError(
                 code="STAGE_GATE_VIOLATION",
                 path=f"{_slot_path(position, slot_id)}.selected_option_id",
                 message=f"stage={stage!r} requires non-skipped slot {slot_id!r} to have selected_option_id",
             ))
+        # Always verify selected_option_id (when present) actually exists in options[]
+        errs.extend(_check_selected_id_exists(slot, slot_id, position))
     return errs
 
 
