@@ -467,6 +467,17 @@ class InteractiveHTMLGenerator:
         
         return brands
 
+    def _match_gaode_id_in_timeline(self, gaode_id, day_timeline):
+        """Bug-2 Tier-0: exact gaode_id match in timeline entries."""
+        if not gaode_id or not day_timeline:
+            return None
+        for tl_val in day_timeline.values():
+            if not isinstance(tl_val, dict):
+                continue
+            if tl_val.get("gaode_id") == gaode_id and tl_val.get("start_time"):
+                return {"start": tl_val["start_time"], "end": tl_val.get("end_time", "")}
+        return None
+
     def _get_timeline_time(self, name_base: str, name_local: str, day_timeline: dict,
                            gaode_id: str = "") -> dict:
         """Bug-2: Tier-0 gaode_id fast-path; falls back to name tiers."""
