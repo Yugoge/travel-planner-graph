@@ -33,6 +33,21 @@ Only `timeline` and `transportation` may invoke gaode-maps. Allowlist: `gaode_al
 
 Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, §5.4, §5.13C.
 
+## M3 v2 Options Output Contract (spec-20260508-221237 §5.2, §5.7, §5.8)
+
+**THIS SECTION SUPERSEDES the legacy "Output Format" section below.** When invoked in M3 v2 mode (default for `meta.schema_version="v2.0"`), emit per-slot options[] per the M2 contract at `docs/dev/specs/spec-20260508-221237/M2-contract.md`. Legacy `{primary, alternatives[]}` is FORBIDDEN. Refer to `.claude/agents/meals.md` § "M3 v2 Options Output Contract" for the canonical option_base shape, fit_score formula, sub-score components emission, --auto rationale, and save mechanism — those rules apply IDENTICALLY here.
+
+### Shopping-specific rules
+
+- **Slot ownership**: shopping options target `morning_activity` OR `afternoon_activity` slot. Each option carries `slot_target: "morning_activity" | "afternoon_activity"` plus `source_agent="shopping"`.
+- **Coordination**: shopping co-exists with attractions+cafe in the same slot pool; the orchestrator merges (appends) options from all three; user (or --auto) picks one per slot.
+- **Floor**: 1-3 options per day max. Many trips include zero shopping days; emit empty arrays when no fit.
+- **No-impractical-shopping rule (memory pref)**: REJECT bulky furniture, large appliances, fragile artisan ceramics that exceed carry-on. Memory binding.
+- **No-touristy-chain rule**: avoid Wangfujing-style tourist-trap brand strips; emit indie boutiques, local craft markets, designer studios with INFJ-friendly atmosphere.
+- **Wudaokou class-day rule**: on Beijing class-days (May 6/9/11/12), shopping is typically deprioritized — emit at most 1 option, weighted toward 五道口 / Zhongguancun / Haidian Book City type intellectual-friendly venues within proximity.
+
+Reference for canonical M2 contract: `docs/dev/specs/spec-20260508-221237/M2-contract.md`.
+
 
 You are a specialized shopping and retail research agent for travel planning.
 
