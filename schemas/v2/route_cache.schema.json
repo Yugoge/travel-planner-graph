@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/route_cache.schema.json",
+  "title": "M2 v2 Route Cache File",
+  "description": "Schema for data/<trip>/route_cache.json. Lazy-populated by /api/route on user drag-drop (§5.9). Keyed by 'from_option_id:to_option_id:mode'. Cache invalidation: any POI coordinate change invalidates entries referencing that option_id.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "string", "const": "v2.0"},
+    "entries": {
+      "type": "object",
+      "description": "Map: cache_key -> RouteEntry. cache_key format: '<from_option_id>:<to_option_id>:<mode>'.",
+      "additionalProperties": {"$ref": "#/$defs/route_entry"}
+    }
+  },
+  "required": ["schema_version", "entries"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "route_entry": {
+      "type": "object",
+      "properties": {
+        "from_option_id": {"type": "string"},
+        "to_option_id": {"type": "string"},
+        "mode": {"type": "string", "enum": ["walk", "taxi", "metro", "bus", "transit", "car", "ferry"]},
+        "duration_min": {"type": ["number", "null"], "minimum": 0},
+        "distance_km": {"type": ["number", "null"], "minimum": 0},
+        "mode_detail": {"type": "string"},
+        "cost": {"type": ["number", "null"], "minimum": 0},
+        "polyline": {"type": "string"},
+        "fetched_ts": {"$ref": "poi-common.schema.json#/$defs/iso_timestamp"},
+        "status": {
+          "type": "string",
+          "enum": ["ok", "unresolved", "error"],
+          "description": "ok=routed; unresolved=gaode returned no path; error=transient failure (UI shows retry)."
+        }
+      },
+      "required": ["mode", "fetched_ts", "status"],
+      "additionalProperties": false
+    }
+  }
+}
