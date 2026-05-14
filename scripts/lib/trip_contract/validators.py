@@ -154,7 +154,11 @@ def _permissive_reasons_for_day_type(day_type: str) -> set[str]:
     if day_type == "red-eye":
         base.update({"red-eye-spans-prior-day"})
     if day_type == "city-change":
-        base.update({"city-change", "in-transit"})
+        base.update({"city-change", "in-transit", "pre-arrival", "post-departure"})
+    if day_type == "departure":
+        base.update({"post-departure"})
+    if day_type == "arrival":
+        base.update({"pre-arrival"})
     return base
 
 
