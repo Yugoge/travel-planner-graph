@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
+# Description: Verify gaode-maps harness ban (spec-20260508-221237 M1 + M5).
 # Usage: verify-gaode-ban.sh [policy-path]
 # Exit codes: 0=all PASS, 1=one or more FAIL, 2=harness invocation error
 #
@@ -7,8 +7,18 @@
 # bash-resolved-path, network-host, env-var, read-path) against five role
 # inputs (timeline, transportation, meals, dev, missing-agent-id) and
 # prints PASS/FAIL per case. The script does NOT run the PreToolUse hook
-# end-to-end; it imports lib.policy_registry.is_gaode_allowed and asserts
+# end-to-end; it imports lib.gaode_policy.is_gaode_allowed and asserts
 # verdicts against the documented expected matrix.
+#
+# M5 (spec-20260508-221237, 2026-05-14, policy_version=2) adds CASES_M5:
+# 16 cases covering cycle-3 read-path bypasses (wildcard-prefix Glob.pattern,
+# parent-scan Grep, /root/.claude user-global root, ramdisk symlink target,
+# nested-wildcard-middle pattern, relative wildcard pattern, AMAP strict
+# segment match, gaode_maps substring match) plus false-positive guards
+# (amap embedded in word, amap_pinned dir name, legitimate maps.txt) plus
+# positive allowlist regressions (timeline + transportation under
+# user-global root) plus parent-Read-NOT-denied (Read on parent dir is
+# not a leak; only Glob/Grep recursive descent is).
 
 set -euo pipefail
 

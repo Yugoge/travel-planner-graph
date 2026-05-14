@@ -1,6 +1,6 @@
 # scripts
 
-*Last updated: 2026-05-14T11:46:06Z*
+*Last updated: 2026-05-14T14:15:37Z*
 **Total entries**: 107
 **Convention**: kebab
 
@@ -111,7 +111,7 @@ scripts/
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
 ├── `verify-gaode-ban-contract.sh` - Description: T3 contract verifier — validates every MCP tool in the catalog
 ├── `verify-gaode-ban-integration.sh` - Description: T2 integration verifier — spawns pretool-tool-policy.py as subprocess,
-├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
+├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1 + M5).
 ├── `verify-plan-integrity.py` - Codex-signed deploy-blocking integrity verifier for travel-plan trips
 └── `verify-tool-restrictions.py` - Tool Restrictions Verification Script
 ```
