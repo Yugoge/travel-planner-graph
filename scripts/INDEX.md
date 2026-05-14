@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-14T09:02:01Z*
-**Total entries**: 94
+*Last updated: 2026-05-14T11:31:15Z*
+**Total entries**: 106
 **Convention**: kebab
 
 ## Tree
@@ -21,6 +21,16 @@ scripts/
 │   ├── `hook-session-start.py` - SessionStart Hook: Display count of due reviews on session startup
 │   └── `hook-todo-state-tracker.py` - PostToolUse Hook: Output checklist progress after every TodoWrite call
 ├── lib/
+│   ├── trip_contract/
+│   │   ├── `api_contract.py` - Consumed by:
+│   │   ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
+│   │   ├── `day_type.py` - Computes which slots a day is EXPECTED to skip given its day_type and
+│   │   ├── `errors.py` - Validation error types.
+│   │   ├── `legacy.py` - Walks any JSON-shaped object and returns paths where the legacy
+│   │   ├── `loaders.py` - data/<trip>/{meta.json, days/day-NN.json, transportation.json, route_cache.json,
+│   │   ├── `state_machine.py` - Per codex Q2: gating uses min(day.stage), NOT max. A trip may only advance to a
+│   │   ├── `transport.py` - §5.13 B red-eye ownership rule (cp-07): owning_day == depart_day, always.
+│   │   └── `validators.py` - Public:
 │   ├── `html_generator.py` - Reusable HTML generator module for travel plans
 │   ├── `image_fetcher.py` - Image Fetcher Module
 │   ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
@@ -28,6 +38,7 @@ scripts/
 │   ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
 │   ├── `react_template.tpl` - tpl file
 │   ├── `render_day_data.py` - Each helper is <=30 lines per the project quality gate. The renderer
+│   ├── `render_html_builders.py` - W7 refactor (spec-20260513-085358): module-level functions take the
 │   ├── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 │   └── `semantic_lint.py` - Cross-domain duplicate detection (AC8), meal_slot demoted-primary audit
 ├── tests/
@@ -79,6 +90,7 @@ scripts/
 ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
 ├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
+├── `plan-validate-v2.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 ├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
