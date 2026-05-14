@@ -442,11 +442,15 @@ function _allRequiredSlotsFilled(day) {
 
 function _onApproveDay() {
   const dayN = getActiveDayNumber();
+  // Backend mutation handler key is "stage" with `to_stage` per save.py:69.
   queueSave(state, dayN, {
-    type: "advance_stage",
-    from: "user-review",
-    to: "user-selected",
+    type: "stage",
+    to_stage: "user-selected",
   });
+  // Optimistic local update so renderApproveButton() disables immediately.
+  const day = _getDay(dayN);
+  if (day) day.stage = "user-selected";
+  renderAll();
 }
 
 function renderExportButtons() {
