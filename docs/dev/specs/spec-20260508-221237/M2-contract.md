@@ -367,7 +367,7 @@ calls). M5 hook verifies zero deny events from exporter agent_ids.
 ## 10. Validator rule catalog
 
 All rules implemented in `scripts/lib/trip_contract/validators.py`. Run via
-`scripts/plan-validate-v2.py` (or `scripts/plan-validate.py --v2` which
+`scripts/validate-trip-contract.py` (or `scripts/plan-validate.py --v2` which
 forwards). Codes are stable for downstream tooling.
 
 | Code | Severity | Trigger |
