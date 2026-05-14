@@ -1,14 +1,15 @@
 # trip_contract
 
-*Last updated: 2026-05-14T11:22:57Z*
-**Total entries**: 2
+*Last updated: 2026-05-14T11:22:58Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
 ```
 trip_contract/
 ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
-└── `errors.py` - Validation error types.
+├── `errors.py` - Validation error types.
+└── `loaders.py` - data/<trip>/{meta.json, days/day-NN.json, transportation.json, route_cache.json,
 ```
 
 ---
