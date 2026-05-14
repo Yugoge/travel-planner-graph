@@ -1,7 +1,7 @@
 # specs
 
-*Last updated: 2026-05-14T09:28:25Z*
-**Total entries**: 43
+*Last updated: 2026-05-14T18:16:07Z*
+**Total entries**: 44
 **Convention**: kebab
 
 ## Tree
@@ -26,14 +26,15 @@ specs/
 │       ├── `orchestrator.md` - orchestrator view of spec-20260506-092951
 │       └── `qa.md` - qa view of spec-20260506-092951
 ├── spec-20260508-221237/
-│   └── views/
-│       ├── `ba.md` - ba view of spec-20260508-221237
-│       ├── `dev.md` - dev view of spec-20260508-221237
-│       ├── `manifest.json` - json config
-│       ├── `manifest.json.lock` - lock file
-│       ├── `orchestrator.md` - orchestrator view of spec-20260508-221237
-│       ├── `qa.md` - qa view of spec-20260508-221237
-│       └── `ui-specialist.md` - ui-specialist view of spec-20260508-221237
+│   ├── views/
+│   │   ├── `ba.md` - ba view of spec-20260508-221237
+│   │   ├── `dev.md` - dev view of spec-20260508-221237
+│   │   ├── `manifest.json` - json config
+│   │   ├── `manifest.json.lock` - lock file
+│   │   ├── `orchestrator.md` - orchestrator view of spec-20260508-221237
+│   │   ├── `qa.md` - qa view of spec-20260508-221237
+│   │   └── `ui-specialist.md` - ui-specialist view of spec-20260508-221237
+│   └── `M2-contract.md` - M2 Contract — spec-20260508-221237
 ├── spec-20260513-085358/
 │   └── views/
 │       ├── `architect.md` - architect view of spec-20260513-085358
