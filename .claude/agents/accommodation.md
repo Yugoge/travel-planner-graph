@@ -5,6 +5,7 @@ model: sonnet
 skills:
 - google-maps
 - airbnb
+- rednote
 tools:
 - Read
 - Bash
