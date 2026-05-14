@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-14T14:17:36Z*
-**Total entries**: 107
+*Last updated: 2026-05-14T14:29:48Z*
+**Total entries**: 117
 **Convention**: kebab
 
 ## Tree
@@ -21,6 +21,15 @@ scripts/
 │   ├── `hook-session-start.py` - SessionStart Hook: Display count of due reviews on session startup
 │   └── `hook-todo-state-tracker.py` - PostToolUse Hook: Output checklist progress after every TodoWrite call
 ├── lib/
+│   ├── exporters/
+│   │   └── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+│   ├── server/
+│   │   ├── `budget.py` - Aggregates costs from day.json, transportation.json, route_cache.json. No
+│   │   ├── `common.py` - Provides:
+│   │   ├── `export.py` - Invokes scripts/export-pdf.py or scripts/export-ical.py (M6 worker output)
+│   │   ├── `route.py` - Spec: spec-20260508-221237 §5.9 + §5.13 D #7
+│   │   ├── `save.py` - Receives a batch of mutations for a single day. Applies them to day-NN.json
+│   │   └── `trip.py` - Calls trip_contract.load_trip to assemble meta + days + transportation +
 │   ├── trip_contract/
 │   │   ├── `api_contract.py` - Consumed by:
 │   │   ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
@@ -97,6 +106,7 @@ scripts/
 ├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
 ├── `save.py` - Unified Data Saving Script — Batch Validation and Atomic Writes.
 ├── `save.py.backup` - backup file
+├── `serve-trip.py` - Spec: spec-20260508-221237 §5.13 D + M2-contract.md §9
 ├── `strip-image-url-fields.py` - Description: Recursively strip "image_url" keys from JSON files (PATH B image migration).
 ├── `sync-agent-data.py` - Agent Data Synchronization Script
 ├── `test-load-py.sh` - Description: Comprehensive test suite for scripts/load.py
