@@ -67,9 +67,9 @@ timeline_data = {
                 },
                 {
                     "name_base": "Walk to Restaurant",
-                    "name_local": "步行前往餐厅",
+                    "name_local": "Walk to Restaurant CJK",
                     "type_base": "walk",
-                    "type_local": "步行",
+                    "type_local": "Walk CJK",
                     "icon": "🚶",
                     "start_time": "17:00",
                     "end_time": "18:30",
