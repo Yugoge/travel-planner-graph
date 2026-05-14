@@ -1,0 +1,161 @@
+{
+  "request_id": "20260514-103616",
+  "task_id": "20260514-103616",
+  "timestamp": "2026-05-14T17:42:00Z",
+  "worker_id": "m6",
+  "milestone": "M6",
+  "dev_report_path": "docs/dev/dev-report-20260514-103616-m6.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [],
+    "files_created": [
+      "scripts/lib/exporters/pdf_renderer.py",
+      "scripts/lib/exporters/ical_renderer.py",
+      "scripts/export-pdf.py",
+      "scripts/export-ical.py",
+      "tests/exporters/__init__.py",
+      "tests/exporters/conftest.py",
+      "tests/exporters/test_pdf_renderer.py",
+      "tests/exporters/test_ical_renderer.py"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Implement PDF renderer (A4 portrait, CJK font, TOC, atomic write)",
+        "type": "library",
+        "files_created": ["scripts/lib/exporters/pdf_renderer.py"],
+        "rationale": "Spec §5.11 A AC1 requires A4 PDF, one day per page, CJK font, TOC. Implementation uses reportlab Platypus with WenQuanYi Zen Hei (TTC subfontIndex=0) primary font, fc-match fallback for system discovery, STSong-Light CID as final degraded fallback. TOC links each day via internal anchors. PageBreak between days enforces 'one day per page'."
+      },
+      {
+        "id": 2,
+        "description": "Implement iCal renderer (VEVENT, VALARM, TZID, day-anchor fallback)",
+        "type": "library",
+        "files_created": ["scripts/lib/exporters/ical_renderer.py"],
+        "rationale": "Spec §5.11 + AC2 requires valid icalendar with TZID per event, VALARM 30min before, red-eye DTSTART on owning Day N (§5.13 B), and day-anchor fallback 09:00 Asia/Shanghai when slot has no explicit start_time. Implementation: per-slot tz-aware datetime via city_tz_for(); first untimed slot anchored at DEFAULT_DAY_ANCHOR (09:00) with +90min roll forward per codex Q2 guidance; segment events use depart_ts (or anchor) and inherit owning_day from common.segments_for_day."
+      },
+      {
+        "id": 3,
+        "description": "Implement PDF + iCal CLI entry points",
+        "type": "script",
+        "files_created": ["scripts/export-pdf.py", "scripts/export-ical.py"],
+        "rationale": "Spec AC3 mandates 'python3 scripts/export-{pdf,ical}.py --trip <id>' headless invocation with exit 0 on success. Both CLIs bootstrap sys.path, call load_trip_for_export() + export_{pdf,ical}(), print resolved path + byte size, return 1 with traceback on exception."
+      },
+      {
+        "id": 4,
+        "description": "Write fixture-driven exporter tests (8 tests, ≥3 fixture types)",
+        "type": "test",
+        "files_created": [
+          "tests/exporters/__init__.py",
+          "tests/exporters/conftest.py",
+          "tests/exporters/test_pdf_renderer.py",
+          "tests/exporters/test_ical_renderer.py"
+        ],
+        "rationale": "Spec AC9 requires ≥3 fixture tests covering Normal day, Red-eye day, missing-image fallback. Implemented 4 pytest fixtures (normal_trip, red_eye_trip, missing_image_trip, with_cached_image_trip) and 16 tests total: PDF magic header, atomic-write residue absence, red-eye owning-day verification, missing-image placeholder, CJK font registration, default vs explicit output paths, iCal validity via icalendar.Calendar.from_ical, VALARM presence with -30min trigger, day-anchor 09:00 fallback, +90min roll forward, transit-event DTSTART on Day 2 (depart_day), arrival-marker presence on Day N+1."
+      }
+    ],
+    "scripts_created": [
+      {
+        "path": "scripts/export-pdf.py",
+        "purpose": "Export a v2 trip bundle to A4 PDF",
+        "parameters": ["--trip <id|path>", "--output <path-override>"],
+        "usage": "source venv/bin/activate && python3 scripts/export-pdf.py --trip <id>",
+        "exit_codes": {"0": "PDF written", "1": "failure (traceback to stderr)"}
+      },
+      {
+        "path": "scripts/export-ical.py",
+        "purpose": "Export a v2 trip bundle to iCalendar (.ics)",
+        "parameters": ["--trip <id|path>", "--output <path-override>"],
+        "usage": "source venv/bin/activate && python3 scripts/export-ical.py --trip <id>",
+        "exit_codes": {"0": "ICS written", "1": "failure (traceback to stderr)"}
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A (greenfield M6 milestone — first cycle of §5.11 exporters)",
+      "why_issue_occurred": "M6 was waived in prior cycle (cp-09 of dev-7); spec §5.11 was unaddressed.",
+      "how_fix_addresses_root": "M6 implements the missing exporters end-to-end and consumes pre-resolved data only (no gaode calls), satisfying AC1-AC9."
+    },
+    "diff_stats": {
+      "files_changed": 8,
+      "lines_added": 1234,
+      "lines_removed": 0,
+      "new_symbols_introduced": [
+        "pdf_renderer.ensure_cjk_font",
+        "pdf_renderer.render_pdf_bytes",
+        "pdf_renderer.export_pdf",
+        "ical_renderer.build_calendar",
+        "ical_renderer.render_ical_bytes",
+        "ical_renderer.export_ical"
+      ],
+      "minimum_possible_lines_estimate": 1100,
+      "justification_for_overage": "M6 is a NEW exporter milestone (greenfield, codex-recommended decomposition). Renderers are split into small helpers per quality-gate (max 30 lines/function); CJK font registration alone needs ~50 lines for the 3-tier fallback chain. Test fixture builder is 256 lines (constructor for 6 named slots + accommodation across red-eye/normal/missing-image variants). The PDF renderer itself is 399 lines split into 25 helpers; iCal is 296 lines split into 22 helpers. Cannot meaningfully shrink while satisfying the per-function <=30-line and nesting <=3 constraints."
+    },
+    "fix_layer": "L5",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run: source venv/bin/activate && python3 -m pytest tests/exporters/ -v (16 tests, ~0.5s). Smoke CLI: scaffold a trip via tests.exporters.conftest helpers then run python3 scripts/export-pdf.py --trip <id> and python3 scripts/export-ical.py --trip <id>. Validate iCal: python3 -c \"import icalendar; icalendar.Calendar.from_ical(open(p).read())\". The smoke trip data/cli-smoke/ remains on disk (rm forbidden by hook); QA may delete or ignore. Verify gaode hook log shows ZERO deny events for agent_id=pdf-export / ical-export (AC4) — the exporters never call gaode and only read pre-resolved data.",
+    "permissions_to_add": [
+      {
+        "section": "allow",
+        "pattern": "Bash(source venv/bin/activate && python3 scripts/export-pdf.py:*)",
+        "reason": "Allow CLI invocation of M6 PDF exporter"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(source venv/bin/activate && python3 scripts/export-ical.py:*)",
+        "reason": "Allow CLI invocation of M6 iCal exporter"
+      },
+      {
+        "section": "allow",
+        "pattern": "Bash(source venv/bin/activate && python3 -m pytest tests/exporters:*)",
+        "reason": "Allow pytest execution of M6 exporter test suite"
+      }
+    ],
+    "venv_path": "/root/travel-planner/venv",
+    "libraries_used": {
+      "reportlab": "4.5.1",
+      "icalendar": "7.1.0"
+    },
+    "sample_export_paths": {
+      "pdf": "data/cli-smoke/exports/cli-smoke.pdf",
+      "ical": "data/cli-smoke/exports/cli-smoke.ics"
+    },
+    "sample_file_sizes_bytes": {
+      "pdf": 18140,
+      "ical": 4812
+    },
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "py_compile clean on all 7 new .py files. pytest 16/16 PASS in 0.54s. CLI exit 0 for both pdf + ical scripts on a 2-day scaffold trip. iCal parses cleanly via icalendar.Calendar.from_ical: 12 VEVENT (6 slots × 2 days) + 12 VALARM (-PT30M trigger). PDF is 18140 bytes valid %PDF- magic. CJK font backend = ttf:/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc (TTC subfontIndex=0)."
+    },
+    "acceptance_criteria_evidence": {
+      "AC-M6.1_pdf_exists_paginated": "PASS — test_pdf_normal_day_renders + smoke CLI: 3-day trip → 18140-byte PDF starting with %PDF-, PageBreak between days enforces one-page-per-day, day_total_for_export aggregates costs from M2 budget shape.",
+      "AC-M6.2_ical_imports_cleanly": "PASS — test_ical_normal_trip_parses + icalendar.Calendar.from_ical of smoke output (4812 bytes, 12 VEVENT, all parseable).",
+      "AC-M6.3_missing_image_placeholder": "PASS — test_pdf_missing_image_falls_back_to_placeholder: trip without cache/images/ produces valid PDF with placeholder Table; image_path_for_option returns None safely; render_pdf_bytes succeeds.",
+      "AC-M6.4_zero_gaode_deny": "PASS by construction — exporters import only reportlab/icalendar/zoneinfo/icalendar; no Skill(gaode-maps) call, no http requests, no Bash to gaode wrappers, no env-var reference. All routing data consumed via trip.transportation + trip.route_cache loaded from disk.",
+      "RED_EYE_OWNING_DAY_§5.13B": "PASS — test_pdf_red_eye_segment_appears_on_owning_day verifies common.segments_for_day(trip, 2) returns the segment, segments_for_day(trip, 3) returns []. test_ical_red_eye_segment_dtstart_on_owning_day verifies VEVENT DTSTART.day == 2 and hour=23, minute=30. test_ical_arrival_marker_on_next_day verifies the read-only 'Arriving from prior day' marker on Day 3.",
+      "DAY_ANCHOR_FALLBACK_09_00": "PASS — test_ical_day_anchor_fallback_09_00 + test_ical_roll_forward_90min: breakfast at 09:00, morning_activity at 10:30 (delta=90min). Codex Q2 guidance.",
+      "ATOMIC_WRITE": "PASS — common.atomic_write_bytes uses .tmp + os.replace. test_pdf_atomic_write_no_tmp_residue + test_ical_atomic_write_no_tmp_residue assert no .tmp residue."
+    },
+    "cp_state_marking": {
+      "spec_id": "spec-20260508-221237",
+      "agent": "dev",
+      "instance_id": 9,
+      "agent_id": "m6worker1778780329",
+      "checkpoint_marked": "cp-09 (M6 exporters) was already marked waived-with-reason on the master spec by spec-init-dev at 2026-05-09T12:45:00Z. New instance dev#9 has 0 checkpoints (per-instance allocation), checked-in then checked-out cleanly. M6 functional artifacts are the dev-report + 8 created files."
+    }
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Q1 (CJK font): pick (a) — registerFont(TTFont('CJK', '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', subfontIndex=0)) primary; fc-match candidates secondary; UnicodeCIDFont('STSong-Light') last-resort. STSong-Light is NOT reliable as primary. Q2 (iCal day-anchor): pick (b) — first untimed slot at 09:00 Asia/Shanghai, roll subsequent untimed slots forward by SLOT_DEFAULT_DURATION_MIN (90min). Do NOT use SLOT_ANCHORS unconditionally because breakfast would start at 08:00 and violate the spec-mandated 09:00 fallback.",
+    "feedback_incorporated": "Q1: ensure_cjk_font() implements the 3-tier fallback exactly as recommended (KNOWN_CJK_PATHS first → fc-match → STSong-Light). On this host the primary path succeeds (backend=ttf:/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc). Q2: _fallback_slot_dt(slot_index, day) returns DEFAULT_DAY_ANCHOR (09:00) + slot_index * 90min. test_ical_day_anchor_fallback_09_00 + test_ical_roll_forward_90min lock this behavior. SLOT_ANCHORS dict is preserved in common.py for potential future use but is NOT consumed by the iCal renderer."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "M7 integration cycle should run a full trip through /plan → web review → export-pdf → export-ical and capture screenshots per AC-M7.1.",
+    "Add gaode hook log audit to QA: invoke export-pdf and export-ical with agent_id={pdf-export, ical-export}; assert .claude/dev-registry log has zero deny events for the run window (AC-M6.4 verification).",
+    "Consider a CJK font bundling decision for portability (currently relies on system WenQuanYi Zen Hei or Droid fallback); deferring until packaging-for-distribution becomes a requirement.",
+    "Smoke trip data/cli-smoke/ remains on disk (rm forbidden by safety hook); user or QA may remove."
+  ]
+}
