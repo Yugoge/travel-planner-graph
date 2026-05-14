@@ -95,7 +95,9 @@ async function _fetchTrip(trip_id) {
   state.meta = data.meta || null;
   state.days = Array.isArray(data.days) ? data.days : [];
   state.transportation = data.transportation || { segments: [] };
-  state.route_cache = data.route_cache || {};
+  // route_cache may arrive as {schema_version, entries} (loaders.py) OR flat dict.
+  const rc = data.route_cache || {};
+  state.route_cache = rc && rc.entries ? rc.entries : rc;
 }
 
 export async function init() {
