@@ -1,12 +1,26 @@
 # schemas
 
-*Last updated: 2026-05-14T09:19:08Z*
-**Total entries**: 13
+*Last updated: 2026-05-14T11:18:58Z*
+**Total entries**: 27
 **Convention**: kebab
 
 ## Tree
 ```
 schemas/
+├── v2/
+│   ├── `accommodation.schema.json` - json config
+│   ├── `attractions.schema.json` - json config
+│   ├── `budget.schema.json` - json config
+│   ├── `cafe.schema.json` - json config
+│   ├── `day.schema.json` - json config
+│   ├── `entertainment.schema.json` - json config
+│   ├── `meals.schema.json` - json config
+│   ├── `meta.schema.json` - json config
+│   ├── `poi-common.schema.json` - json config
+│   ├── `route_cache.schema.json` - json config
+│   ├── `shopping.schema.json` - json config
+│   ├── `timeline.schema.json` - json config
+│   └── `transportation.schema.json` - json config
 ├── `accommodation.schema.json` - json config
 ├── `attractions.schema.json` - json config
 ├── `budget.schema.json` - json config
