@@ -63,8 +63,8 @@ def _opt(option_id: str, name: str, name_local: str | None, cost: float | None,
 
 def _meal_options(slot_id: str, day_n: int) -> list[dict]:
     return [
-        _opt(f"{slot_id}-{day_n}-1", f"{slot_id.title()} A", f"{slot_id}A 中文", 80.0),
-        _opt(f"{slot_id}-{day_n}-2", f"{slot_id.title()} B", f"{slot_id}B 中文", 95.0),
+        _opt(f"{slot_id}-{day_n}-1", f"{slot_id.title()} A", f"{slot_id}A CJK-Name", 80.0),
+        _opt(f"{slot_id}-{day_n}-2", f"{slot_id.title()} B", f"{slot_id}B CJK-Name", 95.0),
     ]
 
 
