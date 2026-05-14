@@ -83,12 +83,57 @@ def _build_gaode_env(project_dir: Path) -> dict:
     return env
 
 
+_MODE_TO_COMMAND = {
+    "walk": "walking",
+    "walking": "walking",
+    "transit": "transit",
+    "car": "driving",
+    "taxi": "driving",
+    "driving": "driving",
+    "cycling": "cycling",
+}
+
+
+def _mode_to_command(mode: str) -> str:
+    return _MODE_TO_COMMAND.get(mode, "driving")
+
+
+def _coords_string(option_id: str, store: "TripStore", trip_id: str) -> str | None:
+    """Return 'lon,lat' string for the given option_id by scanning day files.
+
+    Gaode convention: longitude first.
+    Returns None if the option cannot be resolved to coordinates.
+    """
+    trip_dir = store.trip_dir(trip_id)
+    days_dir = trip_dir / "days"
+    if not days_dir.exists():
+        return None
+    for day_file in sorted(days_dir.glob("day-*.json")):
+        try:
+            day = json.loads(day_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        for slot in day.values():
+            if not isinstance(slot, dict):
+                continue
+            for opt in slot.get("options", []):
+                if opt.get("option_id") == option_id:
+                    loc = opt.get("location_coords") or opt.get("coordinates")
+                    if loc and isinstance(loc, dict):
+                        lon = loc.get("lon") or loc.get("lng") or loc.get("longitude")
+                        lat = loc.get("lat") or loc.get("latitude")
+                        if lon is not None and lat is not None:
+                            return f"{lon},{lat}"
+    return None
+
+
 def _run_gaode_subprocess(
-    script: Path, payload: str, env: dict, timeout_s: float
+    script: Path, command: str, from_coords: str, to_coords: str,
+    env: dict, timeout_s: float
 ) -> subprocess.CompletedProcess | None:
     try:
         return subprocess.run(
-            ["python3", str(script), "--json", payload],
+            ["python3", str(script), command, from_coords, to_coords],
             env=env, capture_output=True, text=True,
             timeout=timeout_s, check=False,
         )
@@ -104,15 +149,16 @@ def _parse_json_or_none(s: str) -> dict | None:
 
 
 def _invoke_gaode(
-    script: Path, req: dict, project_dir: Path, timeout_s: float
+    script: Path, req: dict, store: "TripStore", project_dir: Path, timeout_s: float
 ) -> dict | None:
-    payload = json.dumps({
-        "from_option_id": req["from_option_id"],
-        "to_option_id": req["to_option_id"],
-        "mode": req["mode"],
-    })
+    command = _mode_to_command(req.get("mode", "driving"))
+    from_coords = _coords_string(req["from_option_id"], store, req["trip_id"])
+    to_coords = _coords_string(req["to_option_id"], store, req["trip_id"])
+    if from_coords is None or to_coords is None:
+        # Coordinates not resolvable from trip data; cannot call gaode
+        return None
     env = _build_gaode_env(project_dir)
-    result = _run_gaode_subprocess(script, payload, env, timeout_s)
+    result = _run_gaode_subprocess(script, command, from_coords, to_coords, env, timeout_s)
     if result is None or result.returncode != 0:
         return None
     return _parse_json_or_none(result.stdout)
