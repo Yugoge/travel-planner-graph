@@ -105,9 +105,9 @@ timeline_data = {
             "travel_segments": [
                 {
                     "name_base": "Metro to Temple District",
-                    "name_local": "乘地铁前往寺庙区",
+                    "name_local": "Metro to Temple District CJK",
                     "type_base": "metro",
-                    "type_local": "地铁",
+                    "type_local": "Metro CJK",
                     "icon": "🚇",
                     "start_time": "09:00",
                     "end_time": "10:00",
