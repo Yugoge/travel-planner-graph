@@ -44,8 +44,95 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 ## Usage
 
 ```
-/plan [destination]
+/plan [destination] [--auto]
 ```
+
+`--auto` (Q3j locked): bypass per-day user review gate and auto-pick by fit_score. Provenance writes `selected_by="auto"`. Validator errors STILL halt the run.
+
+## M3 v2 Pipeline Overview (spec-20260508-221237 §5.2, M2-contract.md)
+
+**THIS PIPELINE SUPERSEDES the legacy parallel-content-plus-transportation flow in Step 8 onward.** When the trip's `data/<trip>/meta.json` declares `schema_version="v2.0"`, the orchestrator follows this strict order:
+
+```
+Step 8       → 6 content agents in parallel (meals + accommodation + attractions + cafe + entertainment + shopping).
+               Transportation REMOVED from Step 8. Each agent emits slot.options[] per its owned slot
+               into data/<trip>/days/day-NN.json. Stage stays at "draft-options".
+Step 9       → Validator gate (legacy step number; now: pre-user-gate validation).
+               Runs scripts/validate-trip-contract.py on every day file. Halts run on any error
+               (LEGACY_SHAPE_FORBIDDEN, SLOT_REQUIRED_PRESENT, MEAL_SLOT_FLOOR, etc.).
+               --auto does NOT bypass this gate.
+Step 8.5     → Per-day user review hard gate (NEW, Q3i locked).
+               Orchestrator presents per-day candidate panel (or hands off to M4 web app
+               via `python3 scripts/serve-trip.py --trip <id> --host 127.0.0.1 --port 8765 --open`).
+               User MUST click explicit "Approve day selections & build timeline" button per day;
+               drag-drop alone does NOT advance stage.
+               Per-day stage transition: draft-options → user-review → user-selected.
+               --auto SKIPS this gate entirely; orchestrator auto-picks by fit_score (see § "--auto policy").
+Step 9 (new) → Timeline agent (was Step 10 legacy).
+               Gate: blocking_stage(days) >= "user-selected" (i.e. ALL days approved).
+               Builds intra-city segments for the SELECTED sequence only (NOT all-pairs matrix per §5.9).
+               Exposes route_pair handler for M4 server /api/route lazy endpoint.
+               Advances each day to stage="timeline".
+Step 10 (new)→ Transportation agent (was Step 8 legacy parallel sibling).
+               Gate: blocking_stage(days) >= "timeline".
+               Emits inter-city segments with owning_day = depart_day (§5.13 B red-eye rule).
+               Advances days it touched to stage="transportation".
+Step 11 (new)→ Budget agent — pure delta-aware aggregator (was Step 12 legacy).
+               No gaode, no live network. Aggregates from already-resolved option.cost values.
+               Exposes recompute_day(day_data, delta?) handler for M4 server /api/budget/recompute.
+               Per-day + per-trip + per-slot breakdown output.
+               Advances each clean day to stage="finalized".
+```
+
+Stage rollups (M2-contract §6):
+- `blocking_stage(days) = min(day.stage)` — gates pipeline advancement; timeline cannot run until ALL days reach `user-selected`.
+- `furthest_stage(days) = max(day.stage)` — for DISPLAY ONLY; never for gating.
+- Per-day approval is per-day, but downstream global stages (timeline / transportation / budget) wait for ALL days to clear.
+
+### --auto policy (§5.7 D)
+
+```
+fit_score = 0.40 * user_pref_match
+          + 0.25 * memory_profile_fit
+          + 0.15 * cost_within_budget
+          + 0.10 * proximity_signal     # coarse; hard gate on Wudaokou class-days (May 6/9/11/12) for Jade
+          + 0.10 * source_credibility
+```
+
+Tiebreaker order on equal fit_score:
+1. `cost` ascending
+2. `proximity_signal` (distance-to-day-base) ascending
+3. `option_id` lexicographic
+
+Provenance written per auto-picked option:
+
+```jsonc
+{
+  "selected_by": "auto",
+  "selected_reason": "fit_score=0.87; user=0.92; memory=0.83; budget=1.00; proximity=0.65; source=0.70; tied=false; tiebreaker=null",
+  "selected_at": "2026-05-14T11:00:00+08:00",
+  "locked_from_day": null
+}
+```
+
+Sub-score components MUST be embedded in `selected_reason` per codex M3 review (full 5 sub-scores, not just top contributor).
+
+### Same-city accommodation auto-lock cascade (§5.7 B)
+
+At Step 8 emit time, accommodation agent marks day_N+1.accommodation as a continuation marker (selected_option_id=null, provenance.selected_by="locked-pending-from-day-N"). Real propagation happens at SELECTION time:
+
+- **--auto path**: after auto-picking day_N's accommodation, orchestrator cascades the chosen `option_id` to day_N+1...end-of-same-city-run, sets `provenance.selected_by="locked-from-day-N"`, and invalidates any downstream timeline/budget/transportation segments that already referenced the prior placeholder.
+- **User-gated path**: on M4 server `/api/save` `advance_stage` from `user-review` to `user-selected` for day_N, server propagates day_N's selected accommodation to day_N+1...end-of-same-city-run AND invalidates intra-day route_cache entries + transportation segments whose `owning_day` falls in that range (per M2-contract §6 Demote-edit dependency calculation).
+- If user picks a DIFFERENT accommodation for day_N during 8.5 review, the same propagation+invalidation runs on the new selection.
+
+### Stage gate enforcement at orchestrator level
+
+Before invoking timeline (Step 9 new): verify `blocking_stage(days) >= "user-selected"`. If lower, emit error pointing at the lowest-stage days and either (a) re-open the Step 8.5 user gate, or (b) abort with `STAGE_GATE_VIOLATION`. Same gate at Step 10 (transportation needs `>= "timeline"`) and Step 11 (budget needs `>= "transportation"`).
+
+### --auto edge cases (codex M3 review)
+
+- --auto must HALT on any validator error (`LEGACY_SHAPE_FORBIDDEN`, `SLOT_REQUIRED_PRESENT`, `MEAL_SLOT_FLOOR`, `CITY_CONTEXT_REQUIRED`, etc.) even when bypassing the user gate. Validator errors are surfaced to plan output; user must re-invoke (e.g. with fixed agent prompts).
+- --auto only bypasses user review (Step 8.5). All validator gates, stage gates, and the M2 contract still apply.
 
 ## Orchestrator Rules
 
@@ -361,16 +448,24 @@ bash scripts/check-location-continuity.sh {destination-slug}
 
 ### Phase 3: Specialist Agent Execution
 
-#### Step 8: Invoke Parallel Agents (6 agents simultaneously)
+#### Step 8: Invoke Parallel Content Agents (6 content agents simultaneously — v2 pipeline)
 
-**Invoke these agents in parallel using Task tool**:
+**M3 v2 mode** (default when `meta.schema_version="v2.0"`): TRANSPORTATION IS REMOVED FROM THIS STEP. It now runs in Step 10 (new) after the user-review gate AND timeline. Cafe is added to the parallel set.
 
-1. **meals-agent**
-2. **accommodation-agent**
-3. **attractions-agent**
-4. **entertainment-agent**
-5. **shopping-agent**
-6. **transportation-agent** (only processes days with location_change)
+**Invoke these 6 content agents in parallel using Task tool**:
+
+1. **meals-agent** — owns slots: breakfast, lunch, dinner
+2. **accommodation-agent** — owns slot: accommodation (and applies same-city pending-lock marker per §5.7 B)
+3. **attractions-agent** — owns slot_target: morning_activity / afternoon_activity (with slot_target field)
+4. **cafe-agent** — owns slot_target: morning_activity OR afternoon_activity (rest-spot insertion, one slot per day)
+5. **entertainment-agent** — owns slot: evening_activity
+6. **shopping-agent** — owns slot_target: morning_activity / afternoon_activity (deprioritized on class-days)
+
+Each agent emits `slot.options[]` per the M2 contract (see `docs/dev/specs/spec-20260508-221237/M2-contract.md` and each agent's own M3 v2 contract section). Day files keep `stage="draft-options"` after this step.
+
+**Parallel-write safety**: agents share the same `data/<trip>/days/day-NN.json` file. Use `scripts/save.py --day <N> --agent <name> --slot <slot_id>` so file-locking + per-slot merge applies. Each agent writes only its owned slot(s); never the entire day file.
+
+**Legacy mode** (trips without v2 schema_version — frozen per §5.12): use the legacy 6-agent block below INCLUDING transportation-agent. Not changing legacy behavior.
 
 **Invocation Pattern**:
 ```
@@ -485,7 +580,72 @@ source venv/bin/activate && python scripts/validate-agent-outputs.py data/{desti
 
 If critical issues found, extract specific errors and re-invoke relevant agents with fix instructions.
 
+#### Step 8.5 (NEW v2): Per-Day User Review Hard Gate (Q3i locked)
+
+**This step is SKIPPED when `--auto` flag is set.** Otherwise, this gate MUST pass before Step 9 (timeline) runs.
+
+**Stage transitions managed here**: each day transitions `draft-options` → `user-review` → `user-selected` per-day via explicit user action. Drag-drop alone does NOT advance stage (per Q3i lock).
+
+**Two invocation paths**:
+
+1. **CLI orchestrator path** (legacy plan run from terminal): orchestrator presents a per-day candidate summary inline and prompts user for per-day approval. Mark each day's `stage="user-review"` on display. Wait for user input: "approve day N" → mark day N's `stage="user-selected"` AND propagate same-city accommodation lock cascade (see § "Same-city accommodation auto-lock cascade" above).
+
+2. **M4 web app path** (recommended): orchestrator pauses CLI, instructs user to launch:
+   ```bash
+   source venv/bin/activate && python3 scripts/serve-trip.py --trip <destination-slug> --host 127.0.0.1 --port 8765 --open
+   ```
+   User reviews candidates in browser, clicks per-day "Approve day selections & build timeline" button. M4 server invokes `/api/save advance_stage` mutation, transitions day's `stage`, propagates same-city accom lock, returns 202. Orchestrator polls trip state until `blocking_stage(days) >= "user-selected"` (i.e. ALL days approved) before resuming.
+
+**Progress indicator**: orchestrator surfaces "X of N days approved (blocking_stage=<stage>)" so user knows what remains. Timeline (Step 9) does NOT invoke until ALL days reach `user-selected`.
+
+**--auto path** (Step 8.5 BYPASS): orchestrator iterates each day, for each non-skipped slot:
+1. Sort `slot.options[]` by `fit_score` descending.
+2. Apply tiebreakers: cost asc → proximity_signal asc → option_id lex.
+3. Pick top option, set `slot.selected_option_id` + `provenance = {selected_by: "auto", selected_reason: "fit_score=...; user=...; memory=...; budget=...; proximity=...; source=...; tied=<bool>; tiebreaker=<key or null>", selected_at: <iso>, locked_from_day: null}`.
+4. After picking day N's accommodation, cascade to day N+1...end-of-same-city-run with `selected_by="locked-from-day-N"`.
+5. Advance day's `stage="user-selected"`.
+
+**Validator re-run after gate (whether user-gated or --auto)**:
+```bash
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<destination-slug>/days/*.json
+```
+Halt on any error before Step 9. Validator errors are NEVER bypassed by --auto (codex M3 review).
+
+---
+
+#### Step 9 (NEW v2; was Step 10 legacy): Invoke Timeline Agent (Serial, post-gate)
+
+**Stage gate**: orchestrator MUST verify `blocking_stage(days) >= "user-selected"` before invoking timeline. If not, ABORT with `STAGE_GATE_VIOLATION` and surface the missing days.
+
+```bash
+source venv/bin/activate && python3 -c "from scripts.lib import trip_contract as tc; b=tc.load_trip(__import__('pathlib').Path('data/<destination-slug>')); s=tc.blocking_stage(b.days); assert s>='user-selected', f'STAGE_GATE_VIOLATION: blocking_stage={s}'"
+```
+
+Timeline agent now builds intra-city segments for the SELECTED sequence only (NOT all-pairs matrix per §5.9 supersession). It also exposes the `route_pair(from_option_id, to_option_id, mode)` handler for the M4 server `/api/route` lazy endpoint. See `.claude/agents/timeline.md` § "M3 v2 Selected-Only Timeline + /api/route Handler" for the full handler contract.
+
+After successful timeline build, each day transitions `user-selected` → `timeline`.
+
+#### Step 10 (NEW v2; was Step 8 legacy parallel sibling): Invoke Transportation Agent (Serial, post-timeline)
+
+**Stage gate**: `blocking_stage(days) >= "timeline"`. Abort if lower.
+
+Transportation agent consumes the FINAL user-selected day data + already-built timeline segments. Emits inter-city segments to `data/<destination-slug>/transportation.json` with `owning_day = depart_day` (§5.13 B red-eye rule). See `.claude/agents/transportation.md` § "M3 v2 Post-Gate Consumer + owning_day Rule".
+
+After successful transportation build, days the agent touched transition `timeline` → `transportation`.
+
+#### Step 11 (NEW v2; was Step 12 legacy): Invoke Budget Agent (Serial, delta-aware aggregator)
+
+**Stage gate**: `blocking_stage(days) >= "transportation"`. Abort if lower.
+
+Budget agent is now a pure delta-aware aggregator. NO gaode, NO live network. Aggregates from already-resolved `option.cost`, `segment.cost`, `route_cache.json`. Exposes `recompute_day(day_data, delta?)` handler for M4 server `/api/budget/recompute`. Per-day + per-trip + per-slot breakdown output. See `.claude/agents/budget.md` § "M3 v2 Delta-Aware Aggregator".
+
+After successful budget aggregation (validator clean), each day transitions `transportation` → `finalized`.
+
+---
+
 #### Step 10: Invoke Timeline Agent with Route Optimization (Serial)
+
+> **LEGACY STEP — applies only to non-v2 trips** (i.e. `meta.schema_version` absent or < `v2.0`). For v2 trips, use Step 9 (NEW v2) above.
 
 **Architecture Note - Root Cause Reference (commit 795bea0)**: This step delegates route optimization and timeline creation to timeline-agent as a unified workflow. Orchestrator must NOT execute scripts directly - all implementation details are handled by the subagent.
 

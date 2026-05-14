@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/transportation.schema.json",
+  "title": "M2 v2 Inter-City Transportation File",
+  "description": "Schema for data/<trip>/transportation.json. Holds inter-city segments (flights, trains, long-distance bus). Each segment has owning_day = depart_day per §5.13 B red-eye rule (cp-07): a segment with depart_ts on Day N and arrive_ts on Day N+1 belongs to Day N for budget+timeline+PDF; Day N+1 renders as 'arriving from prior day' with no duplicate budget.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "string", "const": "v2.0"},
+    "segments": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/segment"}
+    }
+  },
+  "required": ["schema_version", "segments"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "segment": {
+      "type": "object",
+      "properties": {
+        "segment_id": {"type": "string", "minLength": 1},
+        "owning_day": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Day this segment is attributed to for budget/timeline/PDF/iCal. ALWAYS equals depart_day even when arrive_day differs (red-eye rule §5.13 B / Q3 cp-07)."
+        },
+        "depart_day": {"type": "integer", "minimum": 1},
+        "arrive_day": {"type": "integer", "minimum": 1},
+        "from_city_id": {"type": "string", "minLength": 1},
+        "from_city_name": {"type": "string"},
+        "to_city_id": {"type": "string", "minLength": 1},
+        "to_city_name": {"type": "string"},
+        "depart_ts": {"$ref": "poi-common.schema.json#/$defs/iso_timestamp"},
+        "arrive_ts": {"$ref": "poi-common.schema.json#/$defs/iso_timestamp"},
+        "mode": {
+          "type": "string",
+          "enum": ["flight", "high-speed-train", "train", "bus", "ferry", "car", "other"]
+        },
+        "cost": {"type": ["number", "null"], "minimum": 0},
+        "currency_local": {"$ref": "poi-common.schema.json#/$defs/currency_code"},
+        "carrier": {"type": "string"},
+        "route_number": {"type": "string"},
+        "depart_point": {"type": "string"},
+        "arrive_point": {"type": "string"},
+        "passengers": {"type": "array", "items": {"type": "string"}},
+        "booking_required": {"type": "boolean"},
+        "notes": {"type": "string"},
+        "notes_local": {"type": "string"}
+      },
+      "required": ["segment_id", "owning_day", "depart_day", "arrive_day", "from_city_id", "to_city_id", "depart_ts", "arrive_ts", "mode"],
+      "additionalProperties": false
+    }
+  }
+}

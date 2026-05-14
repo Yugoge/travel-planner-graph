@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/meta.schema.json",
+  "title": "M2 v2 Trip Meta File",
+  "description": "Schema for data/<trip>/meta.json. Holds trip-level metadata: schema version, day count, city legs, currency, last-saved timestamp, current-editor session for last-writer-wins concurrency. Per-day data lives in data/<trip>/days/day-NN.json (Q3a).",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "string", "const": "v2.0"},
+    "trip_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "URL-safe slug; matches data/<trip_id>/ directory name."
+    },
+    "title": {"type": "string", "minLength": 1},
+    "title_local": {"type": "string"},
+    "currency_local": {"$ref": "poi-common.schema.json#/$defs/currency_code"},
+    "user_budget": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Optional user-stated budget in currency_local."
+    },
+    "day_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "start_date": {"$ref": "poi-common.schema.json#/$defs/iso_date"},
+    "end_date": {"$ref": "poi-common.schema.json#/$defs/iso_date"},
+    "legs": {
+      "type": "array",
+      "description": "Ordered list of trip legs (one per city visit). Each leg covers consecutive day numbers in the same city.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "leg_index": {"type": "integer", "minimum": 0},
+          "city_id": {"type": "string", "minLength": 1},
+          "city_name": {"type": "string", "minLength": 1},
+          "first_day": {"type": "integer", "minimum": 1},
+          "last_day": {"type": "integer", "minimum": 1}
+        },
+        "required": ["leg_index", "city_id", "city_name", "first_day", "last_day"],
+        "additionalProperties": false
+      }
+    },
+    "travelers": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Traveler names; consumed by split-day rendering and PDF/iCal."
+    },
+    "last_saved_ts": {"$ref": "poi-common.schema.json#/$defs/iso_timestamp"},
+    "current_editor_session": {
+      "type": ["string", "null"],
+      "description": "Concurrency identity (Q3e local-only no-auth). Mismatched save returns 409-soft."
+    },
+    "auto_mode_used": {
+      "type": "boolean",
+      "description": "True if --auto was passed to /plan and used for option selection."
+    }
+  },
+  "required": ["schema_version", "trip_id", "title", "currency_local", "day_count", "start_date", "end_date", "legs"],
+  "additionalProperties": false
+}

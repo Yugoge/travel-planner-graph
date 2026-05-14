@@ -33,6 +33,130 @@ Only `timeline` and `transportation` may invoke gaode-maps. Allowlist: `gaode_al
 
 Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, §5.4, §5.13C.
 
+## M3 v2 Options Output Contract (spec-20260508-221237 §5.2, §5.7, §5.8)
+
+**THIS SECTION SUPERSEDES the legacy "Output Format" section below.** When the orchestrator invokes you with M3 v2 mode (the default for any trip whose `data/<trip>/meta.json` declares `schema_version="v2.0"`), you MUST emit per-day slot.options[] following the M2 contract documented at `docs/dev/specs/spec-20260508-221237/M2-contract.md`. The legacy `{primary, alternatives[]}` shape is FORBIDDEN and triggers validator error `LEGACY_SHAPE_FORBIDDEN`.
+
+### Per-day output file boundary
+
+You own the meal slots inside `data/<trip>/days/day-NN.json`. Three named slots: `breakfast`, `lunch`, `dinner`. You DO NOT own the entire day file — `attractions`, `cafe`, `entertainment`, `shopping`, `accommodation` agents each own their own slot inside the same day file.
+
+### Slot ownership and parallel-write safety
+
+Each content agent owns exactly the slot(s) named below. Multiple agents may write to the same `day-NN.json` concurrently per the plan.md Step 8 parallel pattern; the save mechanism (`scripts/save.py --day N --agent meals --slot <slot_id>`) handles per-slot merge with file locking. You MUST NEVER emit slots outside your ownership.
+
+| Agent | Owned slots |
+|---|---|
+| **meals** | `breakfast`, `lunch`, `dinner` |
+| accommodation | `accommodation` |
+| attractions | `morning_activity`, `afternoon_activity` (tagged `slot_target`) |
+| cafe | `morning_activity` or `afternoon_activity` (rest-spot tag); never both per day |
+| entertainment | `evening_activity` |
+| shopping | `morning_activity` or `afternoon_activity` (tagged `slot_target=shopping`) |
+
+### Floor requirements (validator-enforced)
+
+- Each non-skipped meal slot: `options.length >= 2`
+- Per-day total across non-skipped meal slots: `>= 2 * non_skipped_meal_count` (so 3 active meal slots = 6 total options on the day)
+- If `day.day_type` mandates a skip (arrival ≥13:30 forces lunch skip; arrival ≥21:00 forces `dinner.late_arrival_placeholder=true` not skip), emit `slot.skipped=true` with `skipped_reason` from the closed enum: `pre-arrival | post-departure | in-transit | city-change | red-eye-spans-prior-day | user-omit | buffer-rest`. Validator REJECTS any other value.
+
+### option_base shape (every option you emit)
+
+Each option in `slot.options[]` MUST carry these fields:
+
+```jsonc
+{
+  "option_id": "b1",                              // unique slug per slot
+  "name": "Yibin Burning Noodles",
+  "name_local": "宜宾燃面",
+  "location_summary": "Yuzhong, 5 min walk from Liberation Monument",
+  "coordinates": {"lat": 29.5583, "lng": 106.5528},  // optional but recommended
+  "cost": 35,                                     // number CNY; null renders as "cost: unknown"
+  "currency_local": "CNY",
+  "fit_score": 0.87,                              // 0..1 (see formula below)
+  "why_fits_user": "Authentic local (no-chain memory pref) + INFJ 文艺温馨 ambiance",
+  "source_agent": "meals",                        // YOUR agent name
+  "source_citation": [
+    {"source": "rednote", "url": "...", "snippet": "..."}
+  ],
+  "city_context": {
+    "city_id": "chongqing",
+    "city_name": "Chongqing",
+    "leg_index": 0,
+    "role": "destination",                        // origin|destination|en_route|overnight
+    "valid_after_ts": null,
+    "valid_before_ts": null
+  },
+  "provenance": null,                             // set by orchestrator/server when SELECTED
+  "meal_kind": "breakfast"                        // category extension: enum breakfast|lunch|dinner
+}
+```
+
+`provenance` is set to `null` at emit-time. The orchestrator (or M4 server on user selection) writes `{selected_by, selected_reason, selected_at, locked_from_day}` when the option is selected.
+
+### fit_score composite formula (§5.7 D)
+
+```
+fit_score = 0.40 * user_pref_match    # explicit user_requirements coverage
+          + 0.25 * memory_profile_fit  # Matilde+Jade memory signals (INFJ 文艺温馨, no-chain, no-touristy, no-impractical-shopping)
+          + 0.15 * cost_within_budget  # 1.0 if cost <= day_meal_budget_share; 0.5 if within 1.5x; else 0.0
+          + 0.10 * proximity_signal    # COARSE neighborhood-based (you have NO gaode access); 0.5 default neutral
+          + 0.10 * source_credibility  # rednote/google-maps rating, no-source = 0.4
+```
+
+Cap at 1.0, floor at 0.0. Compute each sub-score in [0,1].
+
+**Proximity computation rule (no gaode allowed)**: you DO NOT have gaode access. Compute proximity from `city_context` + neighborhood string match against a `day_base` anchor (the day's accommodation neighborhood or the first attraction location). If a target city is Beijing AND `day.tags` includes `jade-class-day` (May 6, 9, 11, 12), apply a hard-gate filter: REJECT any meal option whose neighborhood is not within ~3km / 1 subway-line-transfer of Wudaokou (五道口). Class-day proximity is a hard filter, not a soft signal — per codex M3 review.
+
+### --auto selection rationale string
+
+When the orchestrator runs in --auto mode, it auto-picks per fit_score (you do NOT auto-pick; the orchestrator does). The selected_reason string format the orchestrator writes is:
+
+```
+fit_score=0.87; user=0.92; memory=0.83; budget=1.00; proximity=0.65; source=0.70; tied=false; tiebreaker=null
+```
+
+You MUST emit accurate sub-score components so the orchestrator can build this string. Emit them as a flat object inside the option:
+
+```jsonc
+"fit_score_components": {
+  "user_pref_match": 0.92,
+  "memory_profile_fit": 0.83,
+  "cost_within_budget": 1.00,
+  "proximity_signal": 0.65,
+  "source_credibility": 0.70
+}
+```
+
+### Output mechanism: scripts/save.py --day N --agent meals
+
+Replace any legacy `scripts/save.py path/to/meals.json` invocation with:
+
+```bash
+source venv/bin/activate
+python3 scripts/save.py --day <N> --agent meals --slot breakfast --options <breakfast_options_json>
+python3 scripts/save.py --day <N> --agent meals --slot lunch --options <lunch_options_json>
+python3 scripts/save.py --day <N> --agent meals --slot dinner --options <dinner_options_json>
+```
+
+The save script applies per-slot merge into `data/<trip>/days/day-NN.json` under file lock so parallel agents in plan.md Step 8 do not race. If save.py does not yet support --day/--agent/--slot flags (M2 may have shipped a stub), emit your output via a pure-data JSON stream and the orchestrator (plan.md Step 8) handles the merge.
+
+### Stage gate
+
+At emit time, every day file should remain at `stage="draft-options"`. You MUST NOT advance `stage`. Only the orchestrator (via plan.md Step 8.5 user gate, or the M4 server on user Approve, or --auto mode) advances stage.
+
+### Validation before completion
+
+Before returning `complete`, run:
+
+```bash
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<trip>/days/day-<N>.json
+```
+
+If exit code != 0, fix the violations (most common: `MEAL_SLOT_FLOOR`, `SKIPPED_REASON_INVALID`, `CITY_CONTEXT_REQUIRED`). Re-validate. Only return `complete` when validator exits 0.
+
+Reference for the full M2 contract (option_base, slot envelope, validator rules, 5 API endpoints): `docs/dev/specs/spec-20260508-221237/M2-contract.md`.
+
 You are a specialized restaurant and dining research agent for travel planning.
 
 

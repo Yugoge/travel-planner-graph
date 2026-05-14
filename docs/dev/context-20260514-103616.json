@@ -1,0 +1,452 @@
+{
+  "request_id": "20260514-103616",
+  "task_id": "20260514-103616",
+  "spec_id": "spec-20260508-221237",
+  "timestamp": "2026-05-14T10:36:16Z",
+  "requirement": {
+    "original": "已经完成了M1，现在彻底永久完成剩下的全部内容",
+    "translation": "M1 is done, now thoroughly and permanently complete all remaining content.",
+    "clarified": "Decompose spec-20260508-221237 §5.2 through §5.13 A/B/D into milestones suitable for single-mega-cycle BA + parallel dev dispatch. M1 (§5.1 + §5.4 + §5.13 C gaode systematic ban) shipped at commit 8b934b8 cycle 4 on 2026-05-13. Remaining = options-first day-planning system + server-backed web app + PDF/iCal exporters + harness extensions for §5.13 C #1-#6.",
+    "what": "Schema overhaul (options[] + 6 named slots + state machine + day-type tolerance), pipeline reorder (content -> user-review-gate -> timeline -> transportation), --auto mode with fit-score, server-backed web app (drag-drop + autosave + lazy gaode routing + live budget), PDF + iCal exporters, expanded gaode harness ban surfaces #1-#6.",
+    "why": "User explicitly directs '彻底永久完成' — no more partial closures; full §5.2-§5.13 A/B/D coverage in one BA cycle, parallel dev dispatch.",
+    "where": ["schemas/", ".claude/agents/", ".claude/commands/plan.md", ".claude/hooks/pretool-gaode-policy.py", "scripts/", "web/ (NEW)", "tests/", "docs/dev/specs/spec-20260508-221237.md"],
+    "scope": {
+      "included": [
+        "§5.2 options-first refactor with user-selection hard gate",
+        "§5.5 --auto mode with fit-score",
+        "§5.6 web UI overhaul drag-and-drop timeline (per §5.9 supersession: lazy routing only, no all-pairs matrix)",
+        "§5.7 A meals floor (>=2/slot, >=6/day) + B accommodation floor (>=3 first-night) + same-city auto-lock + D --auto policy fit-score+cost+distance tiebreakers",
+        "§5.8 6 named slots model",
+        "§5.9 lazy intra-city routing on user drag-drop",
+        "§5.10 live budget recompute on every web-UI edit",
+        "§5.11 PDF + iCal exports",
+        "§5.12 no backwards compatibility (legacy trips frozen)",
+        "§5.13 A explicit supersession markers in spec",
+        "§5.13 B day-type tolerance table (7 types incl. red-eye ownership)",
+        "§5.13 D web app persistence + concurrency contract"
+      ],
+      "excluded": [
+        "Legacy trip data migration (§5.12 explicit)",
+        "Undo/redo (Q3d defer)",
+        "Diff view for --auto (Q3h defer)",
+        "Bulk override for --auto (Q3h defer; manual override existing)",
+        "Trip lifecycle delete/archive (out of user-need-scope this cycle)",
+        "Production hardening / multi-user auth (Q3e local-only)",
+        "Live image downloading during PDF export (Q3f local cache only)"
+      ]
+    },
+    "success_criteria": [
+      "Schema validator rejects {primary, alternatives[]} legacy shape with LEGACY_SHAPE_FORBIDDEN error",
+      "plan.md halts at user-review gate without --auto; proceeds with --auto",
+      "Web app at http://127.0.0.1:8765/trip/<id> serves drag-drop UI with autosave 300ms debounce",
+      "Lazy gaode routing fires on adjacency change; cache hit on re-drop",
+      "Live budget recomputes within ~100ms of every UI mutation",
+      "Same-city accommodation auto-locks day N+1 to day N selection",
+      "Day-type validator tolerates skipped slots per arrival/departure/transit thresholds (16:00 / 13:30 / 21:00)",
+      "Red-eye segments owned by depart_day; no duplicate budget on arrive_day",
+      "PDF export produces A4 portrait, CJK-rendering, 1 day per page, costs match budget",
+      "iCal export imports cleanly into calendar apps with VALARM 30 min before",
+      "Gaode harness denies non-allowlisted agents on all 6 §5.13 C surfaces (read paths, network, env-vars, wrappers, identity, alias)",
+      "Mobile parity: tap-to-place workflow on <640px viewport produces identical mutations to desktop drag-drop"
+    ],
+    "constraints": [
+      "No emoji in code/comments/commit messages (project rule)",
+      "Auto-commit via refs/checkpoints/<branch> only; HEAD master never advances on PostToolUse",
+      "Server binds 127.0.0.1 only (local-only no-auth per Q3e)",
+      "Exporters MUST NOT call gaode (verified by M5 hook)",
+      "Web app server-side MUST set agent_id=timeline on outbound /api/route calls (verified by M5)"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "schemas/*.schema.json",
+      "scripts/plan-validate.py",
+      "scripts/lib/trip_contract.py",
+      ".claude/agents/{meals,accommodation,attractions,cafe,entertainment,shopping,timeline,transportation,budget}.md",
+      ".claude/commands/plan.md",
+      "scripts/serve-trip.py",
+      "web/**",
+      ".claude/hooks/pretool-gaode-policy.py",
+      ".claude/policies/gaode-policy.json",
+      "scripts/verify-gaode-ban*.sh",
+      "scripts/export-pdf.py",
+      "scripts/export-ical.py",
+      "scripts/lib/exporters/**",
+      "tests/fixtures/trip-contract/**",
+      "docs/dev/specs/spec-20260508-221237.md",
+      "docs/dev/specs/spec-20260508-221237/M2-contract.md"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/trip_contract.py (M2 produces, M3-M6 consume)",
+      "scripts/lib/json_io.py (existing, used by save.py and validator)",
+      "scripts/save.py (legacy save path; new web app /api/save bypasses but exporters may consume same data files)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/generate-html-interactive.py (legacy renderer kept for §5.12 frozen trips)",
+      "data/<legacy-trip>/ files (out of scope per §5.12)",
+      "scripts/_qa_*.{sh,py} (cycle-3 scratch; cleanup deferred to M7)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {"ts": "2026-05-14T10:36Z", "task_id": "20260514-103616", "file": "scripts/generate-html-interactive.py", "line": 530, "observation": "Legacy renderer's 6 merge_X helpers superseded by new web app; kept readable for §5.12 frozen trips. Out of user-need path for THIS cycle.", "in_user_path": false, "security_relevant": false},
+    {"ts": "2026-05-14T10:36Z", "task_id": "20260514-103616", "file": "data/china-20260412-092624/", "line": null, "observation": "Legacy trip files; will fail new validator (correct per §5.12). No migration owed.", "in_user_path": false, "security_relevant": false},
+    {"ts": "2026-05-14T10:36Z", "task_id": "20260514-103616", "file": "scripts/_qa_close_repro.sh", "line": null, "observation": "Cycle-3 scratch script; cleanup deferred to M7 cp-06 cleanliness inspector.", "in_user_path": false, "security_relevant": false}
+  ],
+  "root_cause_analysis": {
+    "symptom": "User says §5.2-§5.13 A/B/D not yet implemented; only M1 (§5.1 + §5.4 + §5.13 C) shipped at commit 8b934b8.",
+    "root_cause": "Cycles 1-4 of spec-20260508-221237 focused exclusively on the gaode ban (M1 cluster); the entire options-first content + web app + exporters work has had 0 prior implementation attempts.",
+    "root_cause_commit": "N/A — no regression; greenfield work for M2-M7.",
+    "why_introduced": "Spec was authored 2026-05-08 with all sections at once; iterative cycles 1-4 closed §5.1+§5.4+§5.13 C surface-by-surface but never opened §5.2-§5.13 A/B/D scope.",
+    "why_problematic": "User now demands '彻底永久完成剩下的全部内容' in one mega-cycle.",
+    "timeline": "2026-05-08 spec authored; 2026-05-09 user clarifications + codex audit; cycles 1-4 closed M1; 2026-05-14 user demands M2-M7 mega-cycle.",
+    "affected_files": ["see scope_boundary.in_user_path"],
+    "evidence_type": "mixed",
+    "observations": [
+      "schemas/meals.schema.json:61 declares {primary,alternatives[]} — observed via Bash grep",
+      ".claude/commands/plan.md:364 Step 8 runs content+transportation in parallel — observed via Bash grep",
+      ".claude/commands/plan.md:488 Step 10 timeline before Step 14 user review — observed via Bash grep",
+      "0 web server files exist (find returned 0 hits for serve/server/flask/fastapi) — observed via Bash find",
+      "9 agent .md files exist under .claude/agents/ — observed via ls"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["M1", "剩下", "全部内容"],
+    "localization_evidence": "User's verbatim statement explicitly identifies M1 as done and 剩下的全部内容 (all remaining content) as the scope; orchestrator's PRE-LOADED specialist observations + spec Section 5 verbatim quotes localize 'remaining' to §5.2-§5.13 A/B/D (M1 = §5.1+§5.4+§5.13 C confirmed by commit 8b934b8 message).",
+    "located_source": "docs/dev/specs/spec-20260508-221237.md:295-685 (§5.2-§5.13 A/B/D)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "N/A - greenfield (no regression)",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L3+L4+L5",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "已经完成了M1", "classification": "background", "acceptance_criterion": "N/A (factual statement; cited as starting state)"},
+    {"id": "R2", "source_phrase": "现在彻底永久完成剩下的全部内容", "classification": "user-need", "acceptance_criterion": "Master ticket decomposes §5.2-§5.13 A/B/D into M2-M7 milestones; each milestone has atomic checkpoints + ACs + affected_files; orchestrator can dispatch parallel dev workers per milestone after sequential M2 lock."}
+  ],
+  "component_chain": [
+    {"file": "schemas/meals.schema.json", "line_range": "61-67", "role": "current single-pick {primary, alternatives[]} shape", "imports_from": ["scripts/plan-validate.py (consumer)", ".claude/agents/meals.md (producer)"], "evidence": "grep -n primary|alternatives schemas/meals.schema.json", "verified_via": "grep"},
+    {"file": ".claude/commands/plan.md", "line_range": "362-575", "role": "Step 8 parallel content+transport, Step 10 timeline serial", "imports_from": [".claude/agents/{meals,...,transportation,timeline}.md"], "evidence": "grep -n 'Step 8\\|Step 10' .claude/commands/plan.md", "verified_via": "grep"},
+    {"file": "scripts/generate-html-interactive.py", "line_range": "530-575", "role": "legacy static renderer; merges per-day data into HTML", "imports_from": ["scripts/lib/render_day_data.py"], "evidence": "Read scripts/generate-html-interactive.py:530-575", "verified_via": "Read"},
+    {"file": ".claude/hooks/pretool-gaode-policy.py", "line_range": "N/A", "role": "M1 substring-based gaode block (Skill + Bash); needs §5.13 C #1-#6 extension", "imports_from": [".claude/policies/gaode-policy.json"], "evidence": "ls .claude/hooks/pretool-gaode-policy.py", "verified_via": "Bash"}
+  ],
+  "pre_existing_guards": [
+    {"file": ".claude/hooks/pretool-gaode-policy.py", "line": 0, "type": "policy", "code_snippet": "M1 substring-based gaode block on Skill + Bash for non-allowlisted agents", "purpose": "Prevent banned agents from invoking gaode; M5 EXTENDS this guard, must NOT remove or weaken existing M1 patterns", "removal_authorized": false},
+    {"file": "scripts/plan-validate.py", "line": 0, "type": "validator", "code_snippet": "Existing skeleton/timeline validators", "purpose": "Reject malformed plans; M2 EXTENDS with options[] + state-machine rules; existing validators MUST be preserved (only added to, not removed)", "removal_authorized": false},
+    {"file": ".claude/hooks/pretool-validate-data-write.py", "line": 0, "type": "validator", "code_snippet": "Write-time strict-schema PreToolUse hook on data/**/*.json (blocks plan_label/null-required/empty-coordinates/null-location_change)", "purpose": "Prevent banned-keys writes; M2 schema migration MUST keep these write-time guards intact (or extend, not remove)", "removal_authorized": false},
+    {"file": ".claude/hooks/posttool-git-checkpoint.sh", "line": 0, "type": "policy", "code_snippet": "Auto-commit redirected to refs/checkpoints/<branch>", "purpose": "HEAD master never advances on PostToolUse; M2-M7 work MUST flow through this mechanism", "removal_authorized": false},
+    {"file": ".claude/hooks/stop-git-commit.sh", "line": 0, "type": "policy", "code_snippet": "Stop-time commit gating", "purpose": "Prevent direct master commits during dev cycle", "removal_authorized": false}
+  ],
+  "regression_investigation_checklist": null,
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop primary + 375x667 mobile parity",
+    "theme": "light",
+    "locale": "zh + en mixed",
+    "auth_state": "logged-out (local-only no-auth per Q3e)",
+    "data_state": "trips authored by new pipeline only; legacy trips out of scope per §5.12",
+    "browser": "Chrome desktop + Mobile Safari iOS",
+    "url_path": "http://127.0.0.1:8765/trip/<trip_id>"
+  },
+  "evidence": {
+    "observed": "User: 已经完成了M1，现在彻底永久完成剩下的全部内容",
+    "measured": {
+      "value": "M1 cluster (§5.1+§5.4+§5.13 C) shipped at commit 8b934b8 (cycle 4 manual move). Remaining §5.2-§5.13 A/B/D has 0 implementation. schemas/meals.schema.json:61 still single-pick. plan.md:364 still parallel transport. plan.md:488 timeline before review. 0 web server files.",
+      "location": "git log + docs/dev/specs/spec-20260508-221237.md:273-693 + schemas/meals.schema.json:61-67 + .claude/commands/plan.md:362-703"
+    },
+    "expected": {
+      "value": "options[] schema + 6 named slots + state machine + day-type tolerance + plan.md content->review->timeline->transportation order + --auto fit-score + server-backed web app at 127.0.0.1:8765 + PDF + iCal exporters + gaode harness #1-#6 surfaces",
+      "source": "docs/dev/specs/spec-20260508-221237.md §5.2-§5.13 (verbatim user requirement)"
+    },
+    "gap": "10 schema files + 9 agent .md + 1 plan.md reorder + 1 validator rewrite + 1 brand-new web-app tree + 2 brand-new exporter scripts + harness extension covering 5.13 C #1-#6"
+  },
+  "scope_expansion": {
+    "search_pattern": "primary.*\\$ref|Step 8: Invoke Parallel|generate-html-interactive",
+    "search_scope": "/root/travel-planner/{schemas,.claude,scripts,docs}",
+    "user_reported": ["§5.2-§5.13 A/B/D"],
+    "additional_found": ["scripts/generate-html-interactive.py legacy renderer (kept)", "data/<legacy-trip>/* (out of scope per §5.12)"],
+    "all_occurrences": ["see scope_boundary.in_user_path"]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "spec-20260508-221237 Section 5 verbatim user requirements (user-confirmed 2026-05-09 + 2026-05-13)",
+    "url_or_location": "/root/travel-planner/docs/dev/specs/spec-20260508-221237.md:273-693",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "/root/travel-planner/CLAUDE.md (no role table — project has no design system color tokens; only inventory counters)",
+      "note": "No CLAUDE.md role table exists; UI work in M4 must define its own minimal token table (background, text, primary action, error, muted) and document in web/css/main.css. Multi-authority conflict detection N/A (single source: M4's own choice)."
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing (永久) + dedup_hit (4th cycle of this spec for M1 cluster; 0 cycles for M2-M7)",
+    "attempts": [
+      {"artifact_path": "docs/dev/close-report-20260509-114002.md (cycle 1)", "proposed_solution": "harness PreToolUse hook on Skill + Bash gaode-maps tokens", "actual_change": "1 hook + 7 agent DO-NOT blocks + verifiers", "outcome": "/close --codex NO — 4 bypasses (Glob.pattern, MCP network, AC6 gap, JSON invalid)", "failure_category": "wrong_scope", "target_layer": "L5"},
+      {"artifact_path": "docs/dev/close-report-20260509-114002.md (cycle 3 redev)", "proposed_solution": "prefix-anchored read-path matcher + heredoc body extraction + JSON repair", "actual_change": "T2/T3 verifiers + composed-path scan", "outcome": "/close --codex NO — 5 NEW within-diff bypasses (wildcard-prefix, parent-scan, user-global path)", "failure_category": "symptom_treatment", "target_layer": "L5"},
+      {"artifact_path": "commit 8b934b8 (cycle 4 manual move)", "proposed_solution": "project-local hook + substring-based detection", "actual_change": "project-local pretool-gaode-policy.py + 7 agent .md", "outcome": "80/80 verifier PASS; user-need 禁止使用 satisfied; force-closed past commit.sh contract drift", "failure_category": "other (artifact contract drift, not functional)", "target_layer": "L5"}
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3+L4+L5",
+      "differs_from_all_priors": true,
+      "rationale": "M1 cluster was pure L5 harness on existing surface. M2-M7 is greenfield vertical feature build crossing L3 (schema) + L4 (pipeline + state machine + --auto + validator) + L5 (web server + exporters + harness extensions for new surfaces #1-#6). Failure modes from M1 (under-specified surfaces, literal-vs-substring matching) are pre-empted in M2 sequential lock + M5 explicit surface enumeration."
+    }
+  },
+  "milestones": [
+    {
+      "id": "M2",
+      "title": "Schema / API / State-Machine Lock (sequential)",
+      "spec_sections": ["§5.2", "§5.7 A/B", "§5.8", "§5.9", "§5.13 B", "§5.13 D #7 (API contract)"],
+      "user_visible": false,
+      "depends_on": [],
+      "dispatch_phase": "A (sequential, first)",
+      "checkpoints": 12,
+      "affected_files": [
+        "schemas/meals.schema.json",
+        "schemas/accommodation.schema.json",
+        "schemas/attractions.schema.json",
+        "schemas/cafe.schema.json",
+        "schemas/entertainment.schema.json",
+        "schemas/shopping.schema.json",
+        "schemas/timeline.schema.json",
+        "schemas/transportation.schema.json",
+        "schemas/budget.schema.json",
+        "schemas/poi-common.schema.json",
+        "scripts/plan-validate.py",
+        "scripts/lib/trip_contract.py",
+        "tests/fixtures/trip-contract/",
+        "docs/dev/specs/spec-20260508-221237/M2-contract.md"
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Agents + Orchestrator (pipeline reorder + --auto)",
+      "spec_sections": ["§5.2", "§5.5", "§5.7 D", "§5.13 B"],
+      "user_visible": true,
+      "depends_on": ["M2"],
+      "dispatch_phase": "B (parallel)",
+      "checkpoints": 9,
+      "affected_files": [
+        ".claude/agents/meals.md",
+        ".claude/agents/accommodation.md",
+        ".claude/agents/attractions.md",
+        ".claude/agents/cafe.md",
+        ".claude/agents/entertainment.md",
+        ".claude/agents/shopping.md",
+        ".claude/agents/timeline.md",
+        ".claude/agents/transportation.md",
+        ".claude/agents/budget.md",
+        ".claude/commands/plan.md"
+      ]
+    },
+    {
+      "id": "M4",
+      "title": "Server-backed Web App (drag-drop + autosave + lazy routing + budget)",
+      "spec_sections": ["§5.6", "§5.9", "§5.10", "§5.13 D"],
+      "user_visible": true,
+      "depends_on": ["M2"],
+      "dispatch_phase": "B (parallel)",
+      "checkpoints": 15,
+      "affected_files": [
+        "scripts/serve-trip.py",
+        "web/index.html",
+        "web/css/main.css",
+        "web/js/state.js",
+        "web/js/drag.js",
+        "web/js/routing.js",
+        "web/js/budget.js",
+        "web/js/save.js",
+        "web/js/offline.js",
+        "web/js/mobile.js"
+      ],
+      "split_option": "If single dev cycle exceeds token budget, orchestrator may partition into M4a (scripts/serve-trip.py + API endpoints) and M4b (web/** front-end) — file-disjoint within M4 scope."
+    },
+    {
+      "id": "M5",
+      "title": "Harness extensions for §5.13 C #1-#6",
+      "spec_sections": ["§5.13 C"],
+      "user_visible": false,
+      "depends_on": ["M2 (only for /api shape reference; can start when M2 cp-08 lands)"],
+      "dispatch_phase": "B (parallel; AC-M5.5 backend-identity verification observes M4)",
+      "checkpoints": 8,
+      "affected_files": [
+        ".claude/hooks/pretool-gaode-policy.py",
+        ".claude/policies/gaode-policy.json",
+        "scripts/verify-gaode-ban-contract.sh",
+        "scripts/verify-gaode-ban-integration.sh",
+        "scripts/verify-gaode-ban.sh"
+      ]
+    },
+    {
+      "id": "M6",
+      "title": "Exporters (PDF + iCal)",
+      "spec_sections": ["§5.11"],
+      "user_visible": true,
+      "depends_on": ["M2"],
+      "dispatch_phase": "B (parallel)",
+      "checkpoints": 8,
+      "affected_files": [
+        "scripts/export-pdf.py",
+        "scripts/export-ical.py",
+        "scripts/lib/exporters/common.py",
+        "scripts/lib/exporters/pdf_renderer.py",
+        "scripts/lib/exporters/ical_renderer.py"
+      ]
+    },
+    {
+      "id": "M7",
+      "title": "Integration + E2E + spec section updates + cleanliness",
+      "spec_sections": ["§5.13 A (supersession markers in spec)", "§5.3 stale backcompat marker"],
+      "user_visible": true,
+      "depends_on": ["M3", "M4", "M5", "M6"],
+      "dispatch_phase": "C (sequential, last)",
+      "checkpoints": 6,
+      "affected_files": [
+        "docs/dev/specs/spec-20260508-221237.md",
+        "CLAUDE.md (project root)",
+        "tests/e2e/"
+      ]
+    }
+  ],
+  "parallel_dispatch_plan": {
+    "phase_A_sequential": ["M2"],
+    "phase_B_parallel": ["M3", "M4", "M5", "M6"],
+    "phase_C_sequential": ["M7"],
+    "file_disjointness_verified": true,
+    "disjointness_proof": "M2 owns schemas/ + scripts/plan-validate.py + scripts/lib/trip_contract.py + tests/fixtures/. M3 owns .claude/agents/*.md + .claude/commands/plan.md. M4 owns scripts/serve-trip.py + web/**. M5 owns .claude/hooks/pretool-gaode-policy.py + .claude/policies/gaode-policy.json + scripts/verify-gaode-ban*.sh. M6 owns scripts/export-pdf.py + scripts/export-ical.py + scripts/lib/exporters/. ZERO file overlap across {M3,M4,M5,M6}."
+  },
+  "locked_decisions": {
+    "Q3a_file_boundary": "per-day; data/<trip>/{meta.json, days/day-NN.json, transportation.json, route_cache.json, exports/, cache/images/}",
+    "Q3b_arrival_thresholds": "lunch skip >=13:30; afternoon skip >=16:00; dinner late-arrival placeholder >=21:00",
+    "Q3c_city_context": "mandatory on every option; {city_id, city_name, leg_index, role:origin|destination|en_route|overnight, valid_after_ts, valid_before_ts}",
+    "Q3d_undo_redo": "DEFER to follow-up spec",
+    "Q3e_auth_model": "local-only no-auth; bind 127.0.0.1; current_editor_session is concurrency identity not auth",
+    "Q3f_pdf_images": "local cached images only (data/<trip>/cache/images/); placeholder for missing; no live download",
+    "Q3g_empty_state": "skipped=muted 'skipped — <reason>'; required-empty=red+error+export-disabled; route=unknown→retry; cost=line continues 'cost: unknown'",
+    "Q3h_auto_trust": "rationale REQUIRED (fit_score + selected_reason); diff view DEFER; bulk override DEFER (manual override exists)",
+    "Q3i_review_gesture": "explicit per-day 'Approve day selections & build timeline' button; drag/drop alone does NOT advance stage",
+    "Q3j_entry_path": "/plan '<req>' [--auto] (existing) for planning; python3 scripts/serve-trip.py --trip <id> --host 127.0.0.1 --port 8765 --open for web review"
+  },
+  "addressed_risks": {
+    "architect": {
+      "risk_1_legacy_unloadability": "addressed: §5.12 + M2 AC-M2.2 + M4 server only loads new-shape trips",
+      "risk_2_identity_spoofing": "addressed: M4 cp-13 + M5 cp-05",
+      "risk_3_autosave_route_race": "addressed: M2 cp-08 + M4 cp-05 (request_seq monotonic)",
+      "risk_4_per_trip_vs_per_day": "addressed: locked Q3a in M2 cp-04 (per-day)",
+      "risk_5_budget_route_shared_state": "addressed: M4 cp-06 server-side single-writer + M4 cp-08 last-writer-wins"
+    },
+    "product_owner": {
+      "stale_backcompat_5.3": "addressed: M7 cp-04 marks SUPERSEDED",
+      "100ms_vs_1s_tension": "addressed: budget local CPU ~100ms; route lazy ~1s; two-phase implicit",
+      "513D2_513B_513B_red_eye_pdf_ical": "addressed: M2 cp-07 single owning_day, both exporters consume",
+      "missing_acs_undo": "DEFER Q3d",
+      "missing_acs_autosave_failure": "addressed: M4 cp-11 offline banner",
+      "missing_acs_schema_skew": "addressed: M2 cp-04 schema_version in meta.json",
+      "missing_acs_auth": "locked Q3e",
+      "missing_acs_image": "locked Q3f",
+      "missing_acs_ical_regen": "addressed: M4 cp-12 advance_stage",
+      "missing_acs_lifecycle": "DEFER (out of user-need scope)",
+      "missing_acs_empty_state": "locked Q3g"
+    },
+    "user_specialist": {
+      "review_gesture": "locked Q3i",
+      "entry_path": "locked Q3j",
+      "undo": "DEFER Q3d",
+      "multi_day_progress": "addressed M4 cp-12 (button per-day)",
+      "lock_visibility": "addressed M4 cp-15 + §5.7 B locked-card UI",
+      "mobile": "addressed M4 cp-10",
+      "auto_trust": "locked Q3h"
+    },
+    "codex_q4": {
+      "contract_drift": "addressed: M2 sequential + M2 cp-11 fixtures + AC-M2.2",
+      "old_pipeline_leak": "addressed: M3 cp-05 + AC-M3.1",
+      "gaode_fail_open": "addressed: M4 cp-13 + M5 cp-05 + AC-M4.6 + AC-M5.5"
+    }
+  },
+  "context": {
+    "codebase_state": "M tracking changes in 30+ data/* files (auto-checkpoint), spec views/, agent INDEX.md; clean otherwise. Master branch HEAD = 8b934b8.",
+    "recent_commits": [
+      "8b934b8 feat(harness): land project-local gaode-maps ban (cycle 4 manual move)",
+      "e2c5949 feat(harness+policy+agents): land spec-20260508-221237 M1 (cycles 1+3 force-closed)",
+      "1441e52 feat(harness+data): land spec-20260506-092951 root-cause hardening cycles 1-3"
+    ],
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {"python": "3", "node": "n/a (vanilla JS for M4)", "git_hooks": "53 hooks active"}
+  },
+  "development_approach": {
+    "strategy": "A-prime: contract-first Tech-DAG with parallel lanes. Sequential M2 schema/API/state-machine lock, then file-disjoint parallel {M3, M4, M5, M6}, then sequential M7 integration.",
+    "files_to_create": [
+      "scripts/lib/trip_contract.py",
+      "tests/fixtures/trip-contract/",
+      "docs/dev/specs/spec-20260508-221237/M2-contract.md",
+      "scripts/serve-trip.py",
+      "web/index.html",
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/drag.js",
+      "web/js/routing.js",
+      "web/js/budget.js",
+      "web/js/save.js",
+      "web/js/offline.js",
+      "web/js/mobile.js",
+      "scripts/export-pdf.py",
+      "scripts/export-ical.py",
+      "scripts/lib/exporters/common.py",
+      "scripts/lib/exporters/pdf_renderer.py",
+      "scripts/lib/exporters/ical_renderer.py"
+    ],
+    "files_to_modify": [
+      "schemas/meals.schema.json",
+      "schemas/accommodation.schema.json",
+      "schemas/attractions.schema.json",
+      "schemas/cafe.schema.json",
+      "schemas/entertainment.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/timeline.schema.json",
+      "schemas/transportation.schema.json",
+      "schemas/budget.schema.json",
+      "schemas/poi-common.schema.json",
+      "scripts/plan-validate.py",
+      ".claude/agents/meals.md",
+      ".claude/agents/accommodation.md",
+      ".claude/agents/attractions.md",
+      ".claude/agents/cafe.md",
+      ".claude/agents/entertainment.md",
+      ".claude/agents/shopping.md",
+      ".claude/agents/timeline.md",
+      ".claude/agents/transportation.md",
+      ".claude/agents/budget.md",
+      ".claude/commands/plan.md",
+      ".claude/hooks/pretool-gaode-policy.py",
+      ".claude/policies/gaode-policy.json",
+      "scripts/verify-gaode-ban-contract.sh",
+      "scripts/verify-gaode-ban-integration.sh",
+      "scripts/verify-gaode-ban.sh",
+      "docs/dev/specs/spec-20260508-221237.md",
+      "CLAUDE.md"
+    ],
+    "validation_approach": "Per-milestone QA: each dev worker's output gets independent QA against its ACs. M7 runs full E2E + screenshots desktop+mobile + all M5 verifier scripts. /close --codex final gate."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true,
+    "no_emoji_in_code": true,
+    "auto_commit_via_refs_checkpoints": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Spec is fully specified by user clarifications + codex audit; established patterns (server-backed JSON state, per-day file boundary, last-writer-wins concurrency, autosave debounce, lazy on-demand routing) are well-known industry techniques (Google Docs / Notion / Linear concurrency model; Trello drag-drop; Kanban autosave). No novel architecture warrants additional web research."
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Q1: pick A-prime contract-first Tech-DAG with parallel lanes (reject pure A and pure B). Q2: minimum partition is sequential M2 schema-lock + parallel {M3-agents+orchestrator, M4-webapp, M5-harness, M6-exporters} + sequential M7 integration. Q3: 10 picks (per-day file boundary; 16:00/13:30/21:00 thresholds; mandatory city_context; defer undo; local-only no-auth; local image cache only; per-state empty UI; rationale required defer diff/bulk; explicit Approve button; CLI launch). Q4 risks: contract drift → M2 lock+fixtures+LEGACY_SHAPE_FORBIDDEN; old pipeline leak → plan.md patch+timeline-refuses-draft; gaode fail-open → /api/route sets agent_id=timeline server-side+default-deny.",
+    "feedback_incorporated": "ALL of codex's picks adopted verbatim into milestone definitions, ACs, and locked decisions table."
+  }
+}

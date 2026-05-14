@@ -1,0 +1,103 @@
+{
+  "request_id": "20260514-103616",
+  "timestamp": "2026-05-14T12:30:00+08:00",
+  "inspector": "style-inspector",
+  "spec_id": "spec-20260508-221237",
+  "cycle": 5,
+  "scope": "changed-files",
+  "changed_files_count": 41,
+  "violations": [
+    {
+      "standard": "meaningful-naming",
+      "severity": "critical",
+      "location": "scripts/plan-validate-v2.py",
+      "finding": "Script filename uses forbidden '-v2' version suffix pattern. The name communicates only a version increment, not the script's distinguishing purpose (M2 v2 contract validation as opposed to the legacy v1 field-presence validator).",
+      "recommendation": "Rename to a purpose-descriptive name such as scripts/validate-trip-contract.py or scripts/plan-validate-m2.py. Update all references in .claude/commands/plan.md:61, .claude/agents/budget.md:112, .claude/agents/meals.md:153.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "merge-similar-scripts",
+      "severity": "critical",
+      "location": "scripts/export-pdf.py + scripts/export-ical.py",
+      "finding": "The two export entry-point scripts are structurally identical thin wrappers (49 vs 48 lines, same argparse shape: --trip, --output; same load_trip_for_export + render + error-handling pattern). The only difference is the renderer called and the output extension. The lib/server/export.py server handler already unifies both under a 'kind' parameter, but the standalone CLI scripts duplicate the pattern instead of sharing it.",
+      "recommendation": "Merge into a single scripts/export-trip.py --format pdf|ical [--trip <id>] [--output <path>]. This also eliminates the naming ambiguity between the CLI scripts and the server handler.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/lib/server/route.py:30-33",
+      "finding": "Hardcoded tuple of gaode skill script relative paths with no parameter override: _GAODE_ROUTE_SCRIPT_CANDIDATES = ('.claude/skills/gaode-maps/scripts/route.py', '.claude/skills/gaode-maps/scripts/inter-city-route.py'). If the skill is installed at a different location or if the filenames change, the server silently falls back to 'gaode-skill-not-installed' with no diagnostic. There is no environment variable or config key to override the candidate list.",
+      "recommendation": "Accept the skill path via environment variable: GAODE_SKILL_DIR or GAODE_ROUTE_SCRIPT, falling back to the current candidate list. Example: candidates = (os.environ.get('GAODE_ROUTE_SCRIPT'), '.claude/skills/gaode-maps/scripts/route.py', ...) with None entries filtered out.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "english-only",
+      "severity": "critical",
+      "location": "tests/exporters/conftest.py:66-67,74,81",
+      "finding": "Chinese characters in test fixture data strings used as name_local values: 'breakfastA 中文', 'breakfastB 中文', 'morning_activity 景点', '酒店 1/2/3'. While these simulate realistic CJK trip data, the strings are embedded directly in source code comments and string literals rather than being loaded from an external fixture file. Per Standard 6, code/script source must be English-only; CJK content must live in docs/ or external data files.",
+      "recommendation": "Move the CJK fixture strings to a JSON data file under tests/fixtures/ and load them in conftest.py. Alternatively, use transliterated placeholders (e.g. 'Chinese-Name-A') in code and document the CJK content separately.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "english-only",
+      "severity": "critical",
+      "location": "tests/exporters/conftest.py:168",
+      "finding": "Chinese string '导出测试行程' hardcoded as title_local in _build_meta(). This is embedded in Python source, not a data file.",
+      "recommendation": "Replace with English placeholder 'Export Test Trip' or load from an external fixture JSON.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "english-only",
+      "severity": "critical",
+      "location": "tests/server/conftest.py:110",
+      "finding": "Chinese string '测试行程' hardcoded as title_local in _build_meta(). Embedded in Python source.",
+      "recommendation": "Replace with English placeholder 'Test Trip' or load from an external fixture JSON.",
+      "introduced_in_diff": true
+    },
+    {
+      "standard": "english-only",
+      "severity": "critical",
+      "location": "tests/e2e/test_state_machine.py:126",
+      "finding": "Chinese string 'E2E 测试行程' hardcoded as title_local in test meta dict. Embedded in Python source.",
+      "recommendation": "Replace with English placeholder 'E2E Test Trip'.",
+      "introduced_in_diff": true
+    }
+  ],
+  "standards_passed": [
+    "no-inline-code — no inline bash/python logic blocks found in any changed .md file (CLAUDE.md is metadata-only)",
+    "use-source-venv — no direct python3 calls in any changed .sh or .md file; only CLAUDE.md changed among .md files and it contains no python3 references",
+    "integer-step-numbering — no decimal or letter step numbering found in any changed .md file",
+    "concise-documentation — all changed .md files (CLAUDE.md) are concise and functional; no verbose prose detected",
+    "parameterized-scripts — all script parameters use argparse with defaults or env-var overrides; DEFAULT_HOST/DEFAULT_PORT in serve-trip.py are properly exposed as --host/--port CLI args with documented defaults per Q3e local-only spec; hardcoded path in route.py is flagged separately under no-hardcoded-values",
+    "dangling-references — scripts/plan-validate-v2.py, scripts/serve-trip.py referenced in plan.md and agent files all exist on disk; scripts/lib/json_io.py referenced in budget.md:347 exists; all relative imports within scripts/lib/trip_contract/ and scripts/lib/server/ resolve to present files",
+    "merge-conflicts — no unresolved merge conflict markers (<<<<<<< / ======= / >>>>>>>) found in any of the 41 changed files"
+  ],
+  "notes": [
+    "Standard 7 (merge-similar-scripts) flags export-pdf.py + export-ical.py as a pair. The server-side lib/server/export.py already implements the unified pattern. The CLI wrappers duplicate it without the mode parameter.",
+    "Standard 3 exemption: python3 references in plan-validate-v2.py, export-pdf.py, export-ical.py, and serve-trip.py docstrings are usage examples inside Python triple-quoted docstrings, NOT executable shell commands. Standard 3 scopes to .sh and .md files only.",
+    "Standard 2 (no-hardcoded-values) exemption applied to: DEFAULT_HOST='127.0.0.1' and DEFAULT_PORT=8765 in serve-trip.py — these are spec-mandated defaults per Q3e (local-only no-auth) and are fully parameterized via argparse --host/--port. Color hex values in pdf_renderer.py (#222222, #888888, etc.) are display constants, not environment-specific values.",
+    "Standard 6 scope: The standard exempts docs/ only. Test source files (.py in tests/) are in scope. The CJK strings in test conftest.py files are embedded in Python source code as string literals, not in data files or docs/."
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 7,
+    "critical": 7,
+    "files_audited": 41,
+    "files_total": 41,
+    "rounds_completed": 1,
+    "violation_breakdown": {
+      "meaningful-naming": 1,
+      "merge-similar-scripts": 1,
+      "no-hardcoded-values": 1,
+      "english-only": 4,
+      "no-inline-code": 0,
+      "use-source-venv": 0,
+      "integer-step-numbering": 0,
+      "concise-documentation": 0,
+      "parameterized-scripts": 0,
+      "dangling-references": 0,
+      "merge-conflicts": 0
+    }
+  }
+}

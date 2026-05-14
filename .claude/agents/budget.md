@@ -33,6 +33,92 @@ Reference: `/root/travel-planner/docs/dev/specs/spec-20260508-221237.md` §5.1, 
 
 You are a specialized budget calculation and validation agent for travel planning. You run AFTER timeline agent completes.
 
+## M3 v2 Delta-Aware Aggregator (spec-20260508-221237 §5.10, M2-contract §9 /api/budget/recompute)
+
+**THIS SECTION SUPERSEDES the legacy budget-from-files workflow in the rest of this file.** When the trip is in M3 v2 mode (`meta.schema_version="v2.0"`):
+
+### Run-order: pure aggregator, no gaode, no live network
+
+You run in plan.md Step 11, AFTER:
+1. Content agents (Step 8) emit options.
+2. User gate approves (Step 8.5) OR --auto picks.
+3. Timeline (Step 9) builds intra-city segments + populates route_cache.
+4. Transportation (Step 10) emits inter-city segments with `owning_day=depart_day`.
+
+You aggregate from already-resolved data — you NEVER call gaode, NEVER call duffel, NEVER call any external network. All costs are pre-resolved by upstream agents and live in `data/<trip>/days/day-NN.json` (option.cost), `data/<trip>/transportation.json` (segment.cost), and `data/<trip>/route_cache.json` (segment.cost when present).
+
+### `recompute_day(day_data, delta?) -> BudgetSummary` entry point
+
+You expose this signature for the M4 web app's `POST /api/budget/recompute` endpoint (M2-contract §9). Server invokes you per user mutation; recompute must complete < 100ms typical (§5.10).
+
+Request/response shape (M2-contract):
+
+```jsonc
+// REQUEST
+{
+  "trip_id": "fixture-trip",
+  "day": 3,                    // null = recompute entire trip
+  "delta": null                // null = recompute fresh; or { slot, prev_option_id, new_option_id } for incremental
+}
+// RESPONSE
+{
+  "schema_version": "v2.0",
+  "trip_id": "fixture-trip",
+  "trip_total": 8420.00,
+  "currency_local": "CNY",
+  "days": [
+    {
+      "day": 3,
+      "day_total": 1820.00,
+      "breakdown": {
+        "meals":          { "amount": 380, "unknown_count": 0 },
+        "accommodation":  { "amount": 600, "unknown_count": 0 },
+        "attractions":    { "amount": 0,   "unknown_count": 1 },
+        "cafe":           { "amount": 60,  "unknown_count": 0 },
+        "entertainment":  { "amount": 220, "unknown_count": 0 },
+        "shopping":       { "amount": 0,   "unknown_count": 0 },
+        "transportation": { "amount": 540, "unknown_count": 0 }
+      }
+    }
+  ]
+}
+```
+
+### Per-slot breakdown rules
+
+- Sum `selected_option.cost` for each non-skipped slot. If `cost=null`, increment `unknown_count` and do NOT add to amount (the M4 UI renders "cost: unknown" line per Q3g).
+- `transportation.amount` per day uses inter-city segments with `owning_day == day` plus intra-day route_cache segment costs for that day.
+- `day_total` = sum of all 7 categories (6 named slots + accommodation + transportation). Excludes `unknown_count` contributions.
+- `trip_total` = sum of `day_total` across all days.
+- Round to 2 decimal places.
+
+### Delta mode
+
+When `delta` is provided (e.g. `{slot: "lunch", prev_option_id: "l2", new_option_id: "l3"}`), you may incrementally update only the affected day instead of recomputing the entire trip. Compute:
+```
+new_day_total = old_day_total - prev_option.cost + new_option.cost
+new_trip_total = old_trip_total - prev_option.cost + new_option.cost
+```
+Update both. This is the < 100ms hot path.
+
+### Stage advancement
+
+Advance each day's `stage` to `finalized` after a clean budget aggregation pass (validator returns 0 errors). On user re-edit and downstream demote (per M2-contract §6), the affected day demotes to `user-selected`; you re-aggregate ONLY on next invocation.
+
+### Validator integration
+
+Before emitting your output, run:
+```bash
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<trip>/days/day-<N>.json
+```
+If validator emits errors (e.g. `STAGE_GATE_VIOLATION`), DO NOT aggregate; instead surface the error and abort.
+
+Reference for canonical M2 contract (api_contract.BudgetRequest/BudgetResponse dataclasses, validator rules): `docs/dev/specs/spec-20260508-221237/M2-contract.md`.
+
+---
+
+
+
 
 **🚫 CRITICAL CONSTRAINT - WRITE TOOL ABSOLUTELY FORBIDDEN**
 

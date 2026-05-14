@@ -57,9 +57,9 @@ timeline_data = {
             "travel_segments": [
                 {
                     "name_base": "Taxi to City Museum",
-                    "name_local": "打车前往市博物馆",
+                    "name_local": "Taxi to City Museum CJK",
                     "type_base": "taxi",
-                    "type_local": "出租车",
+                    "type_local": "Taxi CJK",
                     "icon": "🚕",
                     "start_time": "14:30",
                     "end_time": "15:00",
@@ -67,9 +67,9 @@ timeline_data = {
                 },
                 {
                     "name_base": "Walk to Restaurant",
-                    "name_local": "步行前往餐厅",
+                    "name_local": "Walk to Restaurant CJK",
                     "type_base": "walk",
-                    "type_local": "步行",
+                    "type_local": "Walk CJK",
                     "icon": "🚶",
                     "start_time": "17:00",
                     "end_time": "18:30",
@@ -105,9 +105,9 @@ timeline_data = {
             "travel_segments": [
                 {
                     "name_base": "Metro to Temple District",
-                    "name_local": "乘地铁前往寺庙区",
+                    "name_local": "Metro to Temple District CJK",
                     "type_base": "metro",
-                    "type_local": "地铁",
+                    "type_local": "Metro CJK",
                     "icon": "🚇",
                     "start_time": "09:00",
                     "end_time": "10:00",

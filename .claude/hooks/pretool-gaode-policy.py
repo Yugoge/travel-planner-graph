@@ -89,7 +89,7 @@ def _resolve_role(data: dict):
 
 
 def _emit_gaode_block(role, tool, surface: str, target, reason: str) -> None:
-    matched = gaode_match_pattern(surface, target)
+    matched = gaode_match_pattern(surface, target, tool_name=tool)
     payload = {
         "role": role,
         "tool": tool,
@@ -105,7 +105,7 @@ def _emit_gaode_block(role, tool, surface: str, target, reason: str) -> None:
 def _check_gaode_one(role, tool_name: str, surface: str, target) -> None:
     if target is None or target == "":
         return
-    allowed, reason = is_gaode_allowed(role, surface, target)
+    allowed, reason = is_gaode_allowed(role, surface, target, tool_name=tool_name)
     if not allowed:
         _emit_gaode_block(role, tool_name, surface, target, reason)
         sys.exit(2)

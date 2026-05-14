@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Description: Verify gaode-maps harness ban (spec-20260508-221237 M1).
+# Description: Verify gaode-maps harness ban (spec-20260508-221237 M1 + M5).
 # Usage: verify-gaode-ban.sh [policy-path]
 # Exit codes: 0=all PASS, 1=one or more FAIL, 2=harness invocation error
 #
@@ -7,8 +7,18 @@
 # bash-resolved-path, network-host, env-var, read-path) against five role
 # inputs (timeline, transportation, meals, dev, missing-agent-id) and
 # prints PASS/FAIL per case. The script does NOT run the PreToolUse hook
-# end-to-end; it imports lib.policy_registry.is_gaode_allowed and asserts
+# end-to-end; it imports lib.gaode_policy.is_gaode_allowed and asserts
 # verdicts against the documented expected matrix.
+#
+# M5 (spec-20260508-221237, 2026-05-14, policy_version=2) adds CASES_M5:
+# 16 cases covering cycle-3 read-path bypasses (wildcard-prefix Glob.pattern,
+# parent-scan Grep, /root/.claude user-global root, ramdisk symlink target,
+# nested-wildcard-middle pattern, relative wildcard pattern, AMAP strict
+# segment match, gaode_maps substring match) plus false-positive guards
+# (amap embedded in word, amap_pinned dir name, legitimate maps.txt) plus
+# positive allowlist regressions (timeline + transportation under
+# user-global root) plus parent-Read-NOT-denied (Read on parent dir is
+# not a leak; only Glob/Grep recursive descent is).
 
 set -euo pipefail
 
@@ -34,6 +44,7 @@ from lib.gaode_policy import is_gaode_allowed, normalize_gaode_agent_id
 # embed literal gaode tokens (would otherwise trip its own future calls).
 G = base64.b64decode("Z2FvZGUtbWFwcw==").decode()  # "gaode-maps"
 AMAP = base64.b64decode("YW1hcA==").decode()  # "amap"
+GU = base64.b64decode("Z2FvZGVfbWFwcw==").decode()  # "gaode_maps"
 
 # Cycle-3 redev (arch-11 + style-inspector finding closure):
 # Derive test fixture paths from CLAUDE_PROJECT_DIR rather than hardcoding
@@ -111,9 +122,43 @@ for surface, target, role, expected in CASES:
         fails += 1
     print(f"{status}: surface={surface} role={role_disp} expected_allowed={expected} actual_allowed={allowed} reason={reason}")
 
+# M5 (policy_version=2, 2026-05-14): tool-name aware read-path cases.
+# 5-tuple: (label, target, tool_name, role, expected_allowed).
+PROJ = os.environ.get("CLAUDE_PROJECT_DIR", "/root/travel-planner")
+CASES_M5 = [
+    ("M5.1 BYPASS wildcard-prefix Glob.pattern", f"**/*{G}*", "Glob", "meals", False),
+    ("M5.2 BYPASS parent-scan Grep on user-global", "/root/.claude/skills/", "Grep", "meals", False),
+    ("M5.3 BYPASS user-global Read", f"/root/.claude/skills/{G}/skill.md", "Read", "meals", False),
+    ("M5.4 BYPASS ramdisk dot-claude Read", f"/dev/shm/dev-workspace/dot-claude/skills/{G}/skill.md", "Read", "meals", False),
+    ("M5.5 BYPASS user-global wildcard Glob", f"/root/.claude/skills/{G}/**", "Glob", "meals", False),
+    ("M5.6 BYPASS nested wildcard middle", f"src/**/{G}/skill.md", "Glob", "meals", False),
+    ("M5.7 BYPASS rel wildcard pattern", f"{G}/**", "Glob", "meals", False),
+    ("M5.8 AMAP strict segment denial", f"/root/.claude/skills/{AMAP}/skill.md", "Read", "meals", False),
+    ("M5.9 gaode_maps underscore substring denial", f"/x/{GU}/skill.md", "Read", "meals", False),
+    # False-positive guards: short alias must NOT over-deny
+    ("M5.10 amap embedded in word allowed", f"/docs/foo-{AMAP}-bar.md", "Read", "meals", True),
+    ("M5.11 amap_pinned dir name allowed", f"/data/{AMAP}_pinned/y.txt", "Read", "meals", True),
+    ("M5.12 legitimate maps.txt allowed", "/data/notes/maps.txt", "Read", "meals", True),
+    # Positive regressions: allowlisted roles still pass
+    ("M5.13 user-global allowed for timeline", f"/root/.claude/skills/{G}/skill.md", "Read", "timeline", True),
+    ("M5.14 parent-scan allowed for transportation", "/root/.claude/skills/", "Grep", "transportation", True),
+    # Read on parent dir is NOT a leak (only recursive Glob/Grep is)
+    ("M5.15 Read on parent dir NOT denied", "/root/.claude/skills/", "Read", "meals", True),
+    # Composed dotdot already closed in M1 (re-assertion regression-guard)
+    ("M5.16 composed dotdot already-closed", f"{PROJ}/.claude/policies/../skills/{G}/skill.md", "Read", "meals", False),
+]
+for label, target, tool, role, expected in CASES_M5:
+    allowed, reason = is_gaode_allowed(role, "read-path", target, tool_name=tool)
+    status = "PASS" if allowed == expected else "FAIL"
+    if status == "FAIL":
+        fails += 1
+    role_disp = role if role is not None else "<missing-agent-id>"
+    print(f"{status}: {label} tool={tool} role={role_disp} expected_allowed={expected} actual_allowed={allowed} reason={reason}")
+
+total = len(CASES) + len(CASES_M5) + 1  # +1 for alias canonicalization sanity
 if fails:
-    print(f"\n{fails} FAIL out of {len(CASES) + 1} cases")
+    print(f"\n{fails} FAIL out of {total} cases")
     sys.exit(1)
-print(f"\nAll {len(CASES) + 1} cases PASS")
+print(f"\nAll {total} cases PASS")
 sys.exit(0)
 PYEOF

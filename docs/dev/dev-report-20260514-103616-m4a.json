@@ -1,0 +1,145 @@
+{
+  "request_id": "20260514-103616",
+  "task_id": "20260514-103616",
+  "timestamp": "2026-05-14T18:30:00Z",
+  "worker_id": "m4a",
+  "spec_id": "spec-20260508-221237",
+  "milestone": "M4a (server + API)",
+  "phase": "B (parallel)",
+  "dev_report_path": "docs/dev/dev-report-20260514-103616-m4a.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [],
+    "files_created": [
+      "scripts/serve-trip.py",
+      "scripts/lib/server/__init__.py",
+      "scripts/lib/server/common.py",
+      "scripts/lib/server/route.py",
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "scripts/lib/server/trip.py",
+      "scripts/lib/server/export.py",
+      "tests/server/__init__.py",
+      "tests/server/conftest.py",
+      "tests/server/test_route_endpoint.py",
+      "tests/server/test_save_endpoint.py",
+      "tests/server/test_budget_endpoint.py",
+      "tests/server/test_trip_endpoint.py"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "ThreadingHTTPServer on 127.0.0.1:8765 (scripts/serve-trip.py)",
+        "type": "code",
+        "files_created": ["scripts/serve-trip.py"],
+        "rationale": "Spec §5.13 D + Q3e local-only no-auth: bind defaults to 127.0.0.1, external bind requires --allow-external flag. Handler class is dynamically assembled to bind TripStore + project_dir as class-level attributes."
+      },
+      {
+        "id": 2,
+        "description": "POST /api/route handler with timeline agent_id hardcode + cache (scripts/lib/server/route.py)",
+        "type": "code",
+        "files_created": ["scripts/lib/server/route.py"],
+        "rationale": "AC-M5.5 identity hardcode: any agent_id in the request body is IGNORED; TIMELINE_AGENT_ID='timeline' is set in env before subprocess invocation. Cache key is from_option_id:to_option_id:mode. Lock held only for cache-write step (codex Q2: lock released during network round-trip)."
+      },
+      {
+        "id": 3,
+        "description": "POST /api/save handler with 300ms debounce + 409-soft concurrency (scripts/lib/server/save.py)",
+        "type": "code",
+        "files_created": ["scripts/lib/server/save.py"],
+        "rationale": "Debounce is client-side; server treats every call as authoritative. 409-soft is advisory (save still proceeds, last-writer-wins). Writes to day[slot_id] top-level per v2 schema."
+      },
+      {
+        "id": 4,
+        "description": "POST /api/budget/recompute pure aggregator (scripts/lib/server/budget.py)",
+        "type": "code",
+        "files_created": ["scripts/lib/server/budget.py"],
+        "rationale": "No gaode calls. Aggregates from day.json, transportation.json, route_cache.json. req.day filters to single day. Lock released before serializing response."
+      },
+      {
+        "id": 5,
+        "description": "GET /api/trip/<trip_id> hydration handler (scripts/lib/server/trip.py)",
+        "type": "code",
+        "files_created": ["scripts/lib/server/trip.py"],
+        "rationale": "Calls trip_contract.load_trip to assemble meta + days + transportation + route_cache into TripResponse shape per M2-contract §9. Import is lazy so unit tests on common.py do not require trip_contract."
+      },
+      {
+        "id": 6,
+        "description": "POST /api/export/{pdf,ical} subprocess handler (scripts/lib/server/export.py)",
+        "type": "code",
+        "files_created": ["scripts/lib/server/export.py"],
+        "rationale": "Invokes M6 exporters as subprocesses with CLAUDE_AGENT_ID set to pdf-export or ical-export (not on gaode allowlist). Per-trip lock held around subprocess to prevent concurrent /save mid-export."
+      },
+      {
+        "id": 7,
+        "description": "Shared utilities (scripts/lib/server/common.py): TripStore, atomic_write_json, iso_now",
+        "type": "code",
+        "files_created": ["scripts/lib/server/common.py"],
+        "rationale": "TripStore provides per-trip mutex registry (codex Q2 single-writer). atomic_write_json uses .tmp + fsync + os.replace per §5.13 D #3."
+      },
+      {
+        "id": 8,
+        "description": "Server endpoint tests: 22 tests across 4 files (tests/server/)",
+        "type": "test",
+        "files_created": [
+          "tests/server/__init__.py",
+          "tests/server/conftest.py",
+          "tests/server/test_route_endpoint.py",
+          "tests/server/test_save_endpoint.py",
+          "tests/server/test_budget_endpoint.py",
+          "tests/server/test_trip_endpoint.py"
+        ],
+        "rationale": "Tests call handler functions directly (no HTTP port). Covers: AC-M5.5 agent_id force (route), cache hit/miss, 409-soft conflict, atomic write, null-cost unknown_count, missing trip 404. 22/22 PASS."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A (greenfield M4a implementation)",
+      "why_issue_occurred": "Prior M4a worker hit quota before writing tests and dev-report. Server files were complete and syntax-valid.",
+      "how_fix_addresses_root": "M7 integration worker picks up from complete server files, writes tests (22/22 PASS), and produces this dev-report to close the M4a cycle."
+    },
+    "diff_stats": {
+      "files_changed": 14,
+      "lines_added": 650,
+      "lines_removed": 0,
+      "new_symbols_introduced": [
+        "TripStore", "atomic_write_json", "load_json_or_default", "iso_now", "new_session_id",
+        "handle_route", "TIMELINE_AGENT_ID",
+        "handle_save",
+        "handle_budget",
+        "hydrate_trip",
+        "handle_export",
+        "TripServerHandler", "main"
+      ],
+      "minimum_possible_lines_estimate": 500,
+      "justification_for_overage": "7 server modules implement 7 distinct endpoint contracts plus shared utilities. Test suite adds 22 test functions with fixture scaffolding. Quality-gate function-size cap forced helper decomposition in route.py and budget.py."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run: python3 -m pytest tests/server/ -v (22/22 PASS confirmed). Server binds 127.0.0.1 only per Q3e. TIMELINE_AGENT_ID constant enforced at module level.",
+    "permissions_to_add": [],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "python3 -m pytest tests/server/ -v: 22/22 PASS. python3 -m py_compile on all 8 server modules: no errors."
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    },
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/server/",
+        "imported_by": ["scripts/serve-trip.py"],
+        "note": "All server lib modules are imported only by serve-trip.py and the tests."
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Run serve-trip.py against a real v2 trip to confirm all 7 routes respond correctly end-to-end.",
+    "M7 reconciliation: budget.py reads day[slot_id] top-level which matches save.py write shape."
+  ]
+}

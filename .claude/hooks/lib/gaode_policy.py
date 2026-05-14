@@ -11,9 +11,9 @@ $CLAUDE_PROJECT_DIR when available, falling back to the absolute path
 when run outside a Claude session).
 
 Public API:
-  is_gaode_allowed(role, surface, target) -> (bool, reason)
+  is_gaode_allowed(role, surface, target, tool_name=None) -> (bool, reason)
   normalize_gaode_agent_id(role) -> canonical role
-  gaode_match_pattern(surface, target) -> matched pattern or None
+  gaode_match_pattern(surface, target, tool_name=None) -> matched pattern or None
 
 Six matcher surfaces:
   skill              - Skill(skill="gaode-maps", ...)
@@ -22,6 +22,13 @@ Six matcher surfaces:
   network-host       - Bash/WebFetch/MCP URL with banned amap host
   env-var            - Bash command referencing AMAP_KEY etc.
   read-path          - Read/Glob/Grep/Edit file_path under banned prefix
+
+read-path layered match (M5, policy_version=2, 2026-05-14):
+  1. project-anchored prefix (M1 behavior, untouched)
+  2. user-global anchored prefix (roots: /root/, /dev/shm/.../dot-claude)
+  3. substring (gaode-maps, gaode_maps): path-like targets only
+  4. strict path-segment (amap): rejects 'foo-amap-bar' false positives
+  5. parent-of-banned (Glob/Grep only): closes parent-scan leak
 
 Moved from global policy_registry.py per cycle-4 manual reorg
 (spec-20260508-221237, 2026-05-09): the gaode harness is travel-planner-
@@ -299,11 +306,156 @@ def _gaode_env_var_match(command):
     return None
 
 
-def _gaode_read_path_match(target):
+_PATHLIKE_EXTS = (
+    ".md", ".py", ".json", ".sh", ".js", ".ts", ".tsx", ".yaml", ".yml",
+    ".txt", ".css", ".html",
+)
+
+
+def _is_pathlike(target: str) -> bool:
+    """True if target has '/' or '*' or ends with a common code/doc extension."""
+    if not isinstance(target, str) or not target:
+        return False
+    if "/" in target or "*" in target:
+        return True
+    low = target.lower()
+    return any(low.endswith(ext) for ext in _PATHLIKE_EXTS)
+
+
+def _path_segments(target: str) -> list:
+    """Tokenize on '/' AND on '.' within basenames. NOT on '-' or '_'."""
+    out = []
+    for seg in target.split("/"):
+        if not seg:
+            continue
+        out.append(seg)
+        if "." in seg:
+            out.extend([p for p in seg.split(".") if p])
+    return out
+
+
+def _substring_match(text_lower: str, substrings: list):
+    for s in substrings:
+        if isinstance(s, str) and s and s.lower() in text_lower:
+            return s
+    return None
+
+
+def _segment_token_match(target: str, tokens: list):
+    """Return token if it forms a whole path segment / basename stem of target."""
+    if not tokens:
+        return None
+    lowered = {t.lower() for t in tokens if isinstance(t, str) and t}
+    for seg in _path_segments(target):
+        if seg.lower() in lowered:
+            return seg.lower()
+    return None
+
+
+def _anchor_prefix_at_root(root: str, prefix: str) -> Optional[str]:
+    if not isinstance(root, str) or not root:
+        return None
+    if not isinstance(prefix, str) or not prefix:
+        return None
+    return os.path.normpath(os.path.join(root, prefix.lstrip("/")))
+
+
+def _user_global_one_root(root: str, target_canonical: str, prefixes: list):
+    """Check one root x all prefixes; return matched prefix or None."""
+    for prefix in prefixes:
+        anchored = _anchor_prefix_at_root(root, prefix)
+        if anchored and _path_is_prefix(anchored, target_canonical):
+            return prefix
+    return None
+
+
+def _user_global_anchored_match(target_canonical: str, prefixes: list, roots: list):
+    """Return matched prefix when target lies under <root><prefix>."""
+    for root in roots or []:
+        hit = _user_global_one_root(root, target_canonical, prefixes)
+        if hit:
+            return hit
+    return None
+
+
+def _user_global_match_any_candidate(prefixes: list, roots: list, candidates: list):
+    for cand in candidates:
+        hit = _user_global_anchored_match(cand, prefixes, roots)
+        if hit:
+            return hit
+    return None
+
+
+def _parent_one_root(root: str, target_norm: str, prefixes: list):
+    for prefix in prefixes:
+        banned = _anchor_prefix_at_root(root, prefix)
+        if banned and banned != target_norm and banned.startswith(target_norm + os.sep):
+            return prefix
+    return None
+
+
+def _parent_of_banned_match(target_canonical: str, prefixes: list, roots: list):
+    """Return matched prefix when target is a strict ancestor of any banned subtree."""
+    all_roots = [_project_dir()] + list(roots or [])
+    target_norm = os.path.normpath(target_canonical).rstrip(os.sep)
+    for root in all_roots:
+        hit = _parent_one_root(root, target_norm, prefixes)
+        if hit:
+            return hit
+    return None
+
+
+def _parent_scan_match_any_candidate(prefixes: list, roots: list, candidates: list):
+    for cand in candidates:
+        hit = _parent_of_banned_match(cand, prefixes, roots)
+        if hit:
+            return hit
+    return None
+
+
+def _substring_or_segment_match(target: str, substrings: list, segment_tokens: list):
+    hit = _substring_match(target.lower(), substrings)
+    if hit:
+        return f"substring:{hit}"
+    hit = _segment_token_match(target, segment_tokens)
+    if hit:
+        return f"segment:{hit}"
+    return None
+
+
+_PARENT_SCAN_TOOLS = ("Glob", "Grep")
+
+
+def _read_path_policy_fields():
+    policy = load_policy() or {}
+    return (
+        policy.get("gaode_denied_read_path_prefixes", []) or [],
+        policy.get("gaode_denied_read_path_substrings", []) or [],
+        policy.get("gaode_denied_read_path_segment_tokens", []) or [],
+        policy.get("gaode_denied_read_path_user_global_roots", []) or [],
+    )
+
+
+def _gaode_read_path_match(target, tool_name: Optional[str] = None):
     if not target or not isinstance(target, str):
         return None
-    prefixes = (load_policy() or {}).get("gaode_denied_read_path_prefixes", []) or []
-    return _match_any_prefix(prefixes, _candidate_targets(target))
+    prefixes, substrings, seg_tokens, user_roots = _read_path_policy_fields()
+    candidates = _candidate_targets(target)
+    hit = _match_any_prefix(prefixes, candidates)
+    if hit:
+        return hit
+    hit = _user_global_match_any_candidate(prefixes, user_roots, candidates)
+    if hit:
+        return f"user-global:{hit}"
+    if _is_pathlike(target):
+        hit = _substring_or_segment_match(target, substrings, seg_tokens)
+        if hit:
+            return hit
+    if tool_name in _PARENT_SCAN_TOOLS:
+        hit = _parent_scan_match_any_candidate(prefixes, user_roots, candidates)
+        if hit:
+            return f"parent-of-banned:{hit}"
+    return None
 
 
 _GAODE_SURFACE_DISPATCH = {
@@ -314,6 +466,19 @@ _GAODE_SURFACE_DISPATCH = {
     "env-var": _gaode_env_var_match,
     "read-path": _gaode_read_path_match,
 }
+
+
+# Surfaces whose matcher accepts a tool_name kwarg for context-sensitive logic.
+_TOOL_AWARE_SURFACES = ("read-path",)
+
+
+def _dispatch_match(surface: str, target, tool_name: Optional[str] = None):
+    matcher = _GAODE_SURFACE_DISPATCH.get(surface)
+    if matcher is None:
+        return None
+    if surface in _TOOL_AWARE_SURFACES:
+        return matcher(target, tool_name=tool_name)
+    return matcher(target)
 
 
 def _gaode_decide_unknown(surface: str, matched_pattern: str) -> Tuple[bool, str]:
@@ -339,13 +504,16 @@ def _gaode_decide(matched_pattern: str, role, surface: str) -> Tuple[bool, str]:
     )
 
 
-def is_gaode_allowed(role, surface: str, target) -> Tuple[bool, str]:
-    """Return (allowed, reason) for a (role, surface, target) triple."""
+def is_gaode_allowed(role, surface: str, target, tool_name: Optional[str] = None) -> Tuple[bool, str]:
+    """Return (allowed, reason) for a (role, surface, target) triple.
+
+    tool_name (optional): caller's tool name; enables context-sensitive logic
+    on read-path (parent-scan denial fires only for Glob/Grep).
+    """
     try:
-        matcher = _GAODE_SURFACE_DISPATCH.get(surface)
-        if matcher is None:
+        if surface not in _GAODE_SURFACE_DISPATCH:
             return (True, "gaode-policy: unknown-surface")
-        matched_pattern = matcher(target)
+        matched_pattern = _dispatch_match(surface, target, tool_name=tool_name)
         if not matched_pattern:
             return (True, "gaode-policy: not-a-gaode-target")
         return _gaode_decide(matched_pattern, role, surface)
@@ -354,7 +522,8 @@ def is_gaode_allowed(role, surface: str, target) -> Tuple[bool, str]:
         return (False, "gaode-policy: fail-closed-exception")
 
 
-def gaode_match_pattern(surface: str, target):
+def gaode_match_pattern(surface: str, target, tool_name: Optional[str] = None):
     """Helper for the hook to retrieve the matched pattern for telemetry."""
-    matcher = _GAODE_SURFACE_DISPATCH.get(surface)
-    return None if matcher is None else matcher(target)
+    if surface not in _GAODE_SURFACE_DISPATCH:
+        return None
+    return _dispatch_match(surface, target, tool_name=tool_name)
