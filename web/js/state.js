@@ -11,7 +11,7 @@
  */
 
 import { wrappedFetch, setOnlineHandler } from "./offline.js";
-import { queueSave } from "./save.js";
+import { queueSave, bindBeaconState } from "./save.js";
 import { requestRouteForAdjacency } from "./routing.js";
 import { recomputeBudget, renderBudget } from "./budget.js";
 import { initDesktopDrag } from "./drag.js";
