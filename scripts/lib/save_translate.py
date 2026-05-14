@@ -93,6 +93,48 @@ def _collect_banned(o, found):
             _collect_banned(v, found)
 
 
+def _scoped_in_dict(o, banned_keys, found):
+    for k in o.keys():
+        if k in banned_keys:
+            found.append(k)
+    for v in o.values():
+        _collect_agent_scoped_banned(v, banned_keys, found)
+
+
+def _collect_agent_scoped_banned(o, banned_keys, found):
+    """Recursively collect any of banned_keys appearing as a dict key."""
+    if isinstance(o, dict):
+        _scoped_in_dict(o, banned_keys, found)
+    elif isinstance(o, list):
+        for v in o:
+            _collect_agent_scoped_banned(v, banned_keys, found)
+
+
+def _agent_scoped_guidance(agent, found_unique):
+    """W8 AC13 guiding error message for agent-scoped rejection."""
+    return (
+        f"Unknown field {found_unique} for agent '{agent}': not yet "
+        "supported on attractions/shopping/entertainment shape (only "
+        "meals uses primary+alternatives[]). Full unification is M2 "
+        "spec scope; for this cycle, use the flat list + optional:true "
+        "shape."
+    )
+
+
+def _reject_agent_scoped(agent, agent_data):
+    """W8 AC13: agent-scoped rejection for alternatives[] on flat shapes."""
+    scoped_keys = AGENT_SCOPED_BANNED_KEYS.get(agent)
+    if not scoped_keys:
+        return
+    found = []
+    _collect_agent_scoped_banned(agent_data, scoped_keys, found)
+    if not found:
+        return
+    msg = _agent_scoped_guidance(agent, sorted(set(found)))
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
 def reject_banned(agent: str, agent_data) -> None:
     found = []
     _collect_banned(agent_data, found)
@@ -103,3 +145,4 @@ def reject_banned(agent: str, agent_data) -> None:
                "(spec-20260506-092951 §5.9).")
         print(f"Error: {msg}", file=sys.stderr)
         sys.exit(1)
+    _reject_agent_scoped(agent, agent_data)
