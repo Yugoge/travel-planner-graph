@@ -1,12 +1,13 @@
 # trip_contract
 
 *Last updated: 2026-05-14T11:24:19Z*
-**Total entries**: 7
+**Total entries**: 8
 **Convention**: kebab
 
 ## Tree
 ```
 trip_contract/
+├── `api_contract.py` - Consumed by:
 ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
 ├── `day_type.py` - Computes which slots a day is EXPECTED to skip given its day_type and
 ├── `errors.py` - Validation error types.
