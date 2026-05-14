@@ -271,6 +271,70 @@ CASES.append(("AC18 neg timeline Bash save.py allowed",
               {"tool_name": "Bash", "tool_input": {"command": f"python3 {PROJECT}/scripts/save.py --day 1 --agent timeline /tmp/p.json"},
                "subagent_type": "timeline"}, 0))
 
+# -------- M5 (policy_version=2) bypass-closure end-to-end --------
+USER_GLOBAL_SKILL = f"/root/.claude/skills/{G}/skill.md"
+RAMDISK_SKILL = f"/dev/shm/dev-workspace/dot-claude/skills/{G}/skill.md"
+USER_GLOBAL_PARENT = "/root/.claude/skills"
+
+# M5.B1-M5.B7 close cycle-3 bypasses end-to-end through the hook.
+CASES.append(("M5.B1 Glob wildcard-prefix pattern denied (dev)",
+              {"tool_name": "Glob", "tool_input": {"pattern": f"**/*{G}*"}, "subagent_type": "dev"},
+              2, "read-path", G))
+CASES.append(("M5.B2 Grep parent-scan on user-global denied (dev)",
+              {"tool_name": "Grep", "tool_input": {"pattern": "x", "path": USER_GLOBAL_PARENT}, "subagent_type": "dev"},
+              2, "read-path", G))
+CASES.append(("M5.B3 Read user-global skill denied (meals)",
+              {"tool_name": "Read", "tool_input": {"file_path": USER_GLOBAL_SKILL}, "subagent_type": "meals"},
+              2, "read-path", G))
+CASES.append(("M5.B4 Read ramdisk dot-claude skill denied (meals)",
+              {"tool_name": "Read", "tool_input": {"file_path": RAMDISK_SKILL}, "subagent_type": "meals"},
+              2, "read-path", G))
+CASES.append(("M5.B5 Glob user-global wildcard denied (dev)",
+              {"tool_name": "Glob", "tool_input": {"pattern": f"/root/.claude/skills/{G}/**"}, "subagent_type": "dev"},
+              2, "read-path", G))
+CASES.append(("M5.B6 Glob nested wildcard middle denied (dev)",
+              {"tool_name": "Glob", "tool_input": {"pattern": f"src/**/{G}/skill.md"}, "subagent_type": "dev"},
+              2, "read-path", G))
+CASES.append(("M5.B7 Glob relative wildcard pattern denied (dev)",
+              {"tool_name": "Glob", "tool_input": {"pattern": f"{G}/**"}, "subagent_type": "dev"},
+              2, "read-path", G))
+
+# AC-M5.5 backend identity test: /api/route identity-default-deny semantics.
+# The M2 contract specifies /api/route MUST set agent_id="timeline" server-side
+# on every outbound gaode call. If agent_id is missing or unknown on a
+# gaode-relevant call, the hook MUST DENY with identity-default-deny.
+# (Simulated by Skill/Bash invocations representing the server-side outbound
+# call. The hook does not see /api/route HTTP traffic directly; M4's
+# scripts/serve-trip.py is responsible for emitting the right agent_id.)
+SKILL_PREFIX_AMAP = base64.b64decode("c2NyaXB0czpnYW9kZS1tYXBz").decode()
+ROUTE_BASH = f"curl https://restapi.{AMAP}.com/v3/direction/walking"
+CASES.append(("AC-M5.5a /api/route stdin agent_id=timeline ALLOWED",
+              {"tool_name": "Skill", "tool_input": {"skill": SKILL_PREFIX_AMAP},
+               "agent_id": "timeline"}, 0))
+CASES.append(("AC-M5.5b /api/route stdin agent_id missing DENIED (identity-default-deny)",
+              {"tool_name": "Skill", "tool_input": {"skill": SKILL_PREFIX_AMAP}},
+              2, "skill", None, None, "identity-default-deny"))
+CASES.append(("AC-M5.5c /api/route stdin agent_id=meals DENIED (not in allowlist)",
+              {"tool_name": "Skill", "tool_input": {"skill": SKILL_PREFIX_AMAP},
+               "agent_id": "meals"}, 2, "skill", None, None, "not in allowlist"))
+CASES.append(("AC-M5.5d /api/route Bash agent_id=timeline ALLOWED",
+              {"tool_name": "Bash", "tool_input": {"command": ROUTE_BASH},
+               "agent_id": "timeline"}, 0))
+CASES.append(("AC-M5.5e /api/route Bash agent_id missing DENIED (identity-default-deny)",
+              {"tool_name": "Bash", "tool_input": {"command": ROUTE_BASH}},
+              2, None, None, None, "identity-default-deny"))
+CASES.append(("AC-M5.5f /api/route Bash agent_id=meals DENIED (not in allowlist)",
+              {"tool_name": "Bash", "tool_input": {"command": ROUTE_BASH},
+               "agent_id": "meals"}, 2, None, None, None, "not in allowlist"))
+
+# AC-M5.6 alias-blocked: 'transport' is canonicalized to 'transportation'.
+# Aliases in the allowlist resolve and ALLOW; any non-canonical role that does
+# not resolve via the alias map default-denies. (M5 verifies the allowed alias
+# path; canonical denial paths are covered by the meals/dev cases above.)
+CASES.append(("AC-M5.6 alias 'transport' resolves to 'transportation' ALLOWED",
+              {"tool_name": "Skill", "tool_input": {"skill": SKILL_PREFIX_AMAP},
+               "agent_id": "transport"}, 0))
+
 
 def run_all():
     fails = 0
