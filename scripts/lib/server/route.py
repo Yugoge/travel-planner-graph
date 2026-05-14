@@ -66,10 +66,13 @@ def _try_cache_hit(store: TripStore, req: dict) -> dict | None:
 
 
 def _resolve_gaode_script(project_dir: Path) -> Path | None:
+    checked = []
     for rel in _GAODE_ROUTE_SCRIPT_CANDIDATES:
-        candidate = project_dir / rel
+        candidate = project_dir / rel if not Path(rel).is_absolute() else Path(rel)
+        checked.append(candidate)
         if candidate.exists():
             return candidate
+    logging.warning("gaode route script not found; checked: %s", checked)
     return None
 
 
