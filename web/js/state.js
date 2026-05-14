@@ -118,6 +118,7 @@ export async function init() {
   initDesktopDrag(commit, requestSelectMutation);
   initMobile(commit, requestSelectMutation);
   setOnlineHandler(_onOnlineStateChange);
+  bindBeaconState(state);
   renderAll();
   recomputeBudget(state, getActiveDayNumber());
 }
