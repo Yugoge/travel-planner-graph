@@ -123,7 +123,7 @@ def test_step2_validator_accepts_draft_options():
         "schema_version": "v2.0",
         "trip_id": "e2e-test",
         "title": "E2E Test Trip",
-        "title_local": "E2E 测试行程",
+        "title_local": "E2E Test Trip CJK",
         "currency_local": "CNY",
         "user_budget": 5000,
         "day_count": 1,
