@@ -1786,7 +1786,7 @@ def main():
 
 if __name__ == "__main__":
     # M2 (spec-20260508-221237): forward --v2 invocations to the v2 validator,
-    # which lives in a separate file (scripts/plan-validate-v2.py) to keep the
+    # which lives in a separate file (scripts/validate-trip-contract.py) to keep the
     # legacy v1 validator's quality-gate baseline unchanged.
     if "--v2" in sys.argv:
         import os

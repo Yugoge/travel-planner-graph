@@ -130,6 +130,9 @@ Accommodation is its own category and doesn't overlap with other POI types. Howe
      - Prefer local neighborhood experience
 
 3. **Research accommodations**:
+   - **For China destinations**: Use RedNote-driven discovery only (harness will REJECT gaode-maps — see DO NOT section). Surface accommodations as `name_local` + `location_local` strings; GPS coordinates are handled downstream by the `timeline` agent.
+     - For rednote search: use `mcp__rednote__search_notes` or the light search script
+   - **For global destinations**: Use google-maps (search_places with type "lodging") and/or airbnb skill for vacation rentals.
    - **For rentals**: Use Skill tool with `airbnb`
    - Search for vacation rentals by location and dates
    - Location should be central to planned activities
