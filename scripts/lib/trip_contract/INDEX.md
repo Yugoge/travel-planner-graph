@@ -1,13 +1,14 @@
 # trip_contract
 
-*Last updated: 2026-05-14T11:22:58Z*
-**Total entries**: 4
+*Last updated: 2026-05-14T11:24:16Z*
+**Total entries**: 5
 **Convention**: kebab
 
 ## Tree
 ```
 trip_contract/
 ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
+├── `day_type.py` - Computes which slots a day is EXPECTED to skip given its day_type and
 ├── `errors.py` - Validation error types.
 ├── `loaders.py` - data/<trip>/{meta.json, days/day-NN.json, transportation.json, route_cache.json,
 └── `state_machine.py` - Per codex Q2: gating uses min(day.stage), NOT max. A trip may only advance to a
