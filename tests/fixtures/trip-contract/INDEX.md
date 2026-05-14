@@ -1,7 +1,7 @@
 # trip-contract
 
-*Last updated: 2026-05-14T11:45:32Z*
-**Total entries**: 8
+*Last updated: 2026-05-14T11:45:34Z*
+**Total entries**: 9
 **Convention**: kebab
 
 ## Tree
@@ -14,7 +14,8 @@ trip-contract/
 ├── `legacy-shape-day.json` - json config
 ├── `meta.json` - json config
 ├── `normal-day.json` - json config
-└── `red-eye-day.json` - json config
+├── `red-eye-day.json` - json config
+└── `transit-only-day.json` - json config
 ```
 
 ---
