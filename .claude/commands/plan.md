@@ -448,16 +448,24 @@ bash scripts/check-location-continuity.sh {destination-slug}
 
 ### Phase 3: Specialist Agent Execution
 
-#### Step 8: Invoke Parallel Agents (6 agents simultaneously)
+#### Step 8: Invoke Parallel Content Agents (6 content agents simultaneously — v2 pipeline)
 
-**Invoke these agents in parallel using Task tool**:
+**M3 v2 mode** (default when `meta.schema_version="v2.0"`): TRANSPORTATION IS REMOVED FROM THIS STEP. It now runs in Step 10 (new) after the user-review gate AND timeline. Cafe is added to the parallel set.
 
-1. **meals-agent**
-2. **accommodation-agent**
-3. **attractions-agent**
-4. **entertainment-agent**
-5. **shopping-agent**
-6. **transportation-agent** (only processes days with location_change)
+**Invoke these 6 content agents in parallel using Task tool**:
+
+1. **meals-agent** — owns slots: breakfast, lunch, dinner
+2. **accommodation-agent** — owns slot: accommodation (and applies same-city pending-lock marker per §5.7 B)
+3. **attractions-agent** — owns slot_target: morning_activity / afternoon_activity (with slot_target field)
+4. **cafe-agent** — owns slot_target: morning_activity OR afternoon_activity (rest-spot insertion, one slot per day)
+5. **entertainment-agent** — owns slot: evening_activity
+6. **shopping-agent** — owns slot_target: morning_activity / afternoon_activity (deprioritized on class-days)
+
+Each agent emits `slot.options[]` per the M2 contract (see `docs/dev/specs/spec-20260508-221237/M2-contract.md` and each agent's own M3 v2 contract section). Day files keep `stage="draft-options"` after this step.
+
+**Parallel-write safety**: agents share the same `data/<trip>/days/day-NN.json` file. Use `scripts/save.py --day <N> --agent <name> --slot <slot_id>` so file-locking + per-slot merge applies. Each agent writes only its owned slot(s); never the entire day file.
+
+**Legacy mode** (trips without v2 schema_version — frozen per §5.12): use the legacy 6-agent block below INCLUDING transportation-agent. Not changing legacy behavior.
 
 **Invocation Pattern**:
 ```
