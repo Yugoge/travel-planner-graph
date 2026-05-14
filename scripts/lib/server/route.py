@@ -101,10 +101,31 @@ def _mode_to_command(mode: str) -> str:
     return _MODE_TO_COMMAND.get(mode, "driving")
 
 
+def _extract_coords_from_opt(opt: dict) -> str | None:
+    """Return 'lon,lat' from an option dict, or None if not present."""
+    loc = opt.get("location_coords") or opt.get("coordinates")
+    if not loc or not isinstance(loc, dict):
+        return None
+    lon = loc.get("lon") or loc.get("lng") or loc.get("longitude")
+    lat = loc.get("lat") or loc.get("latitude")
+    if lon is not None and lat is not None:
+        return f"{lon},{lat}"
+    return None
+
+
+def _scan_slot_for_option(slot: dict, option_id: str) -> str | None:
+    """Scan a slot dict (top-level or nested under 'slots') for option_id."""
+    for opt in slot.get("options", []):
+        if opt.get("option_id") == option_id:
+            return _extract_coords_from_opt(opt)
+    return None
+
+
 def _coords_string(option_id: str, store: "TripStore", trip_id: str) -> str | None:
     """Return 'lon,lat' string for the given option_id by scanning day files.
 
     Gaode convention: longitude first.
+    Scans both top-level slot keys and the nested day['slots'] dict (v2 schema).
     Returns None if the option cannot be resolved to coordinates.
     """
     trip_dir = store.trip_dir(trip_id)
@@ -116,17 +137,21 @@ def _coords_string(option_id: str, store: "TripStore", trip_id: str) -> str | No
             day = json.loads(day_file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
+        # Scan top-level slot keys (save.py shape used by server tests)
         for slot in day.values():
             if not isinstance(slot, dict):
                 continue
-            for opt in slot.get("options", []):
-                if opt.get("option_id") == option_id:
-                    loc = opt.get("location_coords") or opt.get("coordinates")
-                    if loc and isinstance(loc, dict):
-                        lon = loc.get("lon") or loc.get("lng") or loc.get("longitude")
-                        lat = loc.get("lat") or loc.get("latitude")
-                        if lon is not None and lat is not None:
-                            return f"{lon},{lat}"
+            result = _scan_slot_for_option(slot, option_id)
+            if result is not None:
+                return result
+        # Scan nested day["slots"] dict (canonical v2 schema shape)
+        nested_slots = day.get("slots")
+        if isinstance(nested_slots, dict):
+            for slot in nested_slots.values():
+                if isinstance(slot, dict):
+                    result = _scan_slot_for_option(slot, option_id)
+                    if result is not None:
+                        return result
     return None
 
 
