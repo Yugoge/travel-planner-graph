@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/budget.schema.json",
+  "title": "M2 v2 Budget Snapshot",
+  "description": "In-memory shape returned by POST /api/budget/recompute (§5.10). Server is single-writer; never persisted to disk in M2 (recomputed on demand from day files + transportation.json). Schema documented for M4 server contract.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "string", "const": "v2.0"},
+    "trip_id": {"type": "string"},
+    "trip_total": {"type": "number", "minimum": 0},
+    "currency_local": {"$ref": "poi-common.schema.json#/$defs/currency_code"},
+    "user_budget": {"type": ["number", "null"], "minimum": 0},
+    "overage": {"type": ["number"], "description": "trip_total - user_budget; negative means under-budget."},
+    "days": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "day": {"type": "integer", "minimum": 1},
+          "day_total": {"type": "number", "minimum": 0},
+          "breakdown": {
+            "type": "object",
+            "description": "Per-slot breakdown. Keys are slot_ids (breakfast etc + accommodation + transportation).",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "amount": {"type": "number", "minimum": 0},
+                "unknown_count": {"type": "integer", "minimum": 0, "description": "Number of selections with cost=null in this slot."}
+              },
+              "required": ["amount"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["day", "day_total", "breakdown"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "trip_id", "trip_total", "currency_local", "days"],
+  "additionalProperties": false
+}
