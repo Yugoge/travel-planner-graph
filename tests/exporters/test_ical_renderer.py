@@ -32,15 +32,17 @@ def test_ical_atomic_write_no_tmp_residue(normal_trip: Path) -> None:
 
 
 def test_ical_alarms_present(normal_trip: Path) -> None:
+    from datetime import timedelta
     trip = load_trip_for_export(str(normal_trip))
     data = render_ical_bytes(trip)
     cal = _parse(data)
     for event in cal.walk("VEVENT"):
         alarms = [c for c in event.subcomponents if c.name == "VALARM"]
         assert len(alarms) >= 1, f"VEVENT missing VALARM: {event.get('UID')}"
-        trigger = alarms[0].get("TRIGGER")
-        assert "PT30M" in str(trigger).upper() or "-PT30M" in str(trigger).upper(), (
-            f"Expected 30-minute trigger, got {trigger}"
+        trigger_dt = alarms[0].get("TRIGGER").dt
+        # icalendar parses negative duration as a timedelta
+        assert trigger_dt == timedelta(minutes=-30), (
+            f"Expected -30min trigger, got {trigger_dt}"
         )
 
 
