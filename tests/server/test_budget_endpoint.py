@@ -64,6 +64,29 @@ def test_day_total_matches_known_costs(
 # Missing cost (null) -> unknown_count increments, amount stays 0.
 # ---------------------------------------------------------------------------
 
+def test_trip_total_is_all_days_when_day_filter_specified(
+    scaffolded_trip: Path, store: TripStore, trip_id: str
+):
+    """trip_total must equal sum of ALL days even when req.day=1 filters the breakdown.
+
+    The conftest scaffolds a 2-day trip. Day 1 and Day 2 each have the same
+    slot costs (meals + activities + accommodation). Requesting day=1 must
+    return a breakdown with only 1 entry but trip_total covering both days.
+    """
+    resp_all = handle_budget(store, _req(trip_id))
+    expected_trip_total = resp_all["trip_total"]
+
+    resp_day1 = handle_budget(store, _req(trip_id, day=1))
+    # breakdown filtered to day 1 only
+    assert len(resp_day1["days"]) == 1
+    assert resp_day1["days"][0]["day"] == 1
+    # trip_total must still cover all days
+    assert abs(resp_day1["trip_total"] - expected_trip_total) < 0.01
+    # sanity: trip_total must be > day1_total (2-day trip with equal costs)
+    day1_total = resp_day1["days"][0]["day_total"]
+    assert resp_day1["trip_total"] > day1_total
+
+
 def test_null_cost_counts_as_unknown(
     data_root: Path, store: TripStore
 ):
