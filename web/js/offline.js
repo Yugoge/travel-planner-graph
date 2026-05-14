@@ -89,6 +89,11 @@ export async function wrappedFetch(url, opts) {
 function _trackFailure() {
   if (_firstFailureAt === null) {
     _firstFailureAt = Date.now();
+    // Also schedule a deterministic flip even if no follow-up fetch occurs.
+    if (_offlineTimer) clearTimeout(_offlineTimer);
+    _offlineTimer = setTimeout(() => {
+      if (_firstFailureAt !== null) _flipOffline(true);
+    }, OFFLINE_THRESHOLD_MS);
     return;
   }
   if (Date.now() - _firstFailureAt >= OFFLINE_THRESHOLD_MS) {
