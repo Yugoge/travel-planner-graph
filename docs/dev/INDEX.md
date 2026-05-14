@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-14T20:04:26Z*
-**Total entries**: 335
+*Last updated: 2026-05-14T20:17:54Z*
+**Total entries**: 337
 **Convention**: kebab
 
 ## Tree
@@ -175,6 +175,7 @@ dev/
 ├── `context-20260513-090000.json` - json config
 ├── `context-20260514-103616.json` - json config
 ├── `context-20260514-200000.json` - json config
+├── `context-20260514-200530.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `cycle-20260505-231740.md` - Cycle Artifact: 20260505-231740
 ├── `dev-report-20260320-213000.json` - json config
@@ -341,7 +342,8 @@ dev/
 ├── `ticket-20260509-114002.md` - BA Specification: M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block
 ├── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle (round-2 remediation)
 ├── `ticket-20260514-103616.md` - BA Master Ticket: Complete spec-20260508-221237 §5.2-§5.13 (post-M1)
-└── `ticket-20260514-200000.md` - BA Specification: spec-20260508-221237-redev1 Close Blockers (6 fixes)
+├── `ticket-20260514-200000.md` - BA Specification: spec-20260508-221237-redev1 Close Blockers (6 fixes)
+└── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
 ```
 
 ---
