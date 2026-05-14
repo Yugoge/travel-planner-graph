@@ -44,8 +44,95 @@ Multi-agent travel planning system using specialized domain agents for comprehen
 ## Usage
 
 ```
-/plan [destination]
+/plan [destination] [--auto]
 ```
+
+`--auto` (Q3j locked): bypass per-day user review gate and auto-pick by fit_score. Provenance writes `selected_by="auto"`. Validator errors STILL halt the run.
+
+## M3 v2 Pipeline Overview (spec-20260508-221237 §5.2, M2-contract.md)
+
+**THIS PIPELINE SUPERSEDES the legacy parallel-content-plus-transportation flow in Step 8 onward.** When the trip's `data/<trip>/meta.json` declares `schema_version="v2.0"`, the orchestrator follows this strict order:
+
+```
+Step 8       → 6 content agents in parallel (meals + accommodation + attractions + cafe + entertainment + shopping).
+               Transportation REMOVED from Step 8. Each agent emits slot.options[] per its owned slot
+               into data/<trip>/days/day-NN.json. Stage stays at "draft-options".
+Step 9       → Validator gate (legacy step number; now: pre-user-gate validation).
+               Runs scripts/plan-validate-v2.py on every day file. Halts run on any error
+               (LEGACY_SHAPE_FORBIDDEN, SLOT_REQUIRED_PRESENT, MEAL_SLOT_FLOOR, etc.).
+               --auto does NOT bypass this gate.
+Step 8.5     → Per-day user review hard gate (NEW, Q3i locked).
+               Orchestrator presents per-day candidate panel (or hands off to M4 web app
+               via `python3 scripts/serve-trip.py --trip <id> --host 127.0.0.1 --port 8765 --open`).
+               User MUST click explicit "Approve day selections & build timeline" button per day;
+               drag-drop alone does NOT advance stage.
+               Per-day stage transition: draft-options → user-review → user-selected.
+               --auto SKIPS this gate entirely; orchestrator auto-picks by fit_score (see § "--auto policy").
+Step 9 (new) → Timeline agent (was Step 10 legacy).
+               Gate: blocking_stage(days) >= "user-selected" (i.e. ALL days approved).
+               Builds intra-city segments for the SELECTED sequence only (NOT all-pairs matrix per §5.9).
+               Exposes route_pair handler for M4 server /api/route lazy endpoint.
+               Advances each day to stage="timeline".
+Step 10 (new)→ Transportation agent (was Step 8 legacy parallel sibling).
+               Gate: blocking_stage(days) >= "timeline".
+               Emits inter-city segments with owning_day = depart_day (§5.13 B red-eye rule).
+               Advances days it touched to stage="transportation".
+Step 11 (new)→ Budget agent — pure delta-aware aggregator (was Step 12 legacy).
+               No gaode, no live network. Aggregates from already-resolved option.cost values.
+               Exposes recompute_day(day_data, delta?) handler for M4 server /api/budget/recompute.
+               Per-day + per-trip + per-slot breakdown output.
+               Advances each clean day to stage="finalized".
+```
+
+Stage rollups (M2-contract §6):
+- `blocking_stage(days) = min(day.stage)` — gates pipeline advancement; timeline cannot run until ALL days reach `user-selected`.
+- `furthest_stage(days) = max(day.stage)` — for DISPLAY ONLY; never for gating.
+- Per-day approval is per-day, but downstream global stages (timeline / transportation / budget) wait for ALL days to clear.
+
+### --auto policy (§5.7 D)
+
+```
+fit_score = 0.40 * user_pref_match
+          + 0.25 * memory_profile_fit
+          + 0.15 * cost_within_budget
+          + 0.10 * proximity_signal     # coarse; hard gate on Wudaokou class-days (May 6/9/11/12) for Jade
+          + 0.10 * source_credibility
+```
+
+Tiebreaker order on equal fit_score:
+1. `cost` ascending
+2. `proximity_signal` (distance-to-day-base) ascending
+3. `option_id` lexicographic
+
+Provenance written per auto-picked option:
+
+```jsonc
+{
+  "selected_by": "auto",
+  "selected_reason": "fit_score=0.87; user=0.92; memory=0.83; budget=1.00; proximity=0.65; source=0.70; tied=false; tiebreaker=null",
+  "selected_at": "2026-05-14T11:00:00+08:00",
+  "locked_from_day": null
+}
+```
+
+Sub-score components MUST be embedded in `selected_reason` per codex M3 review (full 5 sub-scores, not just top contributor).
+
+### Same-city accommodation auto-lock cascade (§5.7 B)
+
+At Step 8 emit time, accommodation agent marks day_N+1.accommodation as a continuation marker (selected_option_id=null, provenance.selected_by="locked-pending-from-day-N"). Real propagation happens at SELECTION time:
+
+- **--auto path**: after auto-picking day_N's accommodation, orchestrator cascades the chosen `option_id` to day_N+1...end-of-same-city-run, sets `provenance.selected_by="locked-from-day-N"`, and invalidates any downstream timeline/budget/transportation segments that already referenced the prior placeholder.
+- **User-gated path**: on M4 server `/api/save` `advance_stage` from `user-review` to `user-selected` for day_N, server propagates day_N's selected accommodation to day_N+1...end-of-same-city-run AND invalidates intra-day route_cache entries + transportation segments whose `owning_day` falls in that range (per M2-contract §6 Demote-edit dependency calculation).
+- If user picks a DIFFERENT accommodation for day_N during 8.5 review, the same propagation+invalidation runs on the new selection.
+
+### Stage gate enforcement at orchestrator level
+
+Before invoking timeline (Step 9 new): verify `blocking_stage(days) >= "user-selected"`. If lower, emit error pointing at the lowest-stage days and either (a) re-open the Step 8.5 user gate, or (b) abort with `STAGE_GATE_VIOLATION`. Same gate at Step 10 (transportation needs `>= "timeline"`) and Step 11 (budget needs `>= "transportation"`).
+
+### --auto edge cases (codex M3 review)
+
+- --auto must HALT on any validator error (`LEGACY_SHAPE_FORBIDDEN`, `SLOT_REQUIRED_PRESENT`, `MEAL_SLOT_FLOOR`, `CITY_CONTEXT_REQUIRED`, etc.) even when bypassing the user gate. Validator errors are surfaced to plan output; user must re-invoke (e.g. with fixed agent prompts).
+- --auto only bypasses user review (Step 8.5). All validator gates, stage gates, and the M2 contract still apply.
 
 ## Orchestrator Rules
 
