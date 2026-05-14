@@ -144,32 +144,59 @@ def _check_slot_presence(day_dict: dict, position: str) -> list[ValidationError]
     return errs
 
 
-def _check_skipped_actual(slot: dict, slot_id: str, expected_reason: Optional[str], position: str) -> list[ValidationError]:
-    """Rules for a slot whose skipped=True."""
-    errs: list[ValidationError] = []
-    actual_reason = slot.get("skipped_reason")
+def _permissive_reasons_for_day_type(day_type: str) -> set[str]:
+    """Skip reasons permitted on a given day_type even when not mandated by arrival_ts."""
+    base = {"user-omit"}
+    if day_type == "transit-only":
+        base.update({"in-transit"})
+    if day_type == "buffer":
+        base.update({"buffer-rest"})
+    if day_type == "red-eye":
+        base.update({"red-eye-spans-prior-day"})
+    if day_type == "city-change":
+        base.update({"city-change", "in-transit"})
+    return base
+
+
+def _check_skip_reason_value(actual_reason: Optional[str], slot_id: str, position: str) -> list[ValidationError]:
     if actual_reason is None:
-        errs.append(ValidationError(
+        return [ValidationError(
             code="SKIPPED_REASON_REQUIRED",
             path=f"{position}.slots.{slot_id}.skipped_reason",
             message="skipped=true requires non-null skipped_reason",
-        ))
-    elif actual_reason not in VALID_SKIP_REASONS:
-        errs.append(ValidationError(
+        )]
+    if actual_reason not in VALID_SKIP_REASONS:
+        return [ValidationError(
             code="SKIPPED_REASON_INVALID",
             path=f"{position}.slots.{slot_id}.skipped_reason",
             message=f"reason {actual_reason!r} not in {sorted(VALID_SKIP_REASONS)}",
-        ))
-    elif expected_reason is None and actual_reason not in {"user-omit", "buffer-rest"}:
-        errs.append(ValidationError(
+        )]
+    return []
+
+
+def _check_skip_reason_match(actual_reason: str, expected_reason: Optional[str], day_type: str, slot_id: str, position: str) -> list[ValidationError]:
+    if expected_reason is not None and actual_reason != expected_reason:
+        return [ValidationError(
+            code="SKIP_REASON_MISMATCH",
+            path=f"{position}.slots.{slot_id}.skipped_reason",
+            message=f"day-type expects {expected_reason!r}; got {actual_reason!r}",
+        )]
+    if expected_reason is None and actual_reason not in _permissive_reasons_for_day_type(day_type):
+        return [ValidationError(
             code="UNJUSTIFIED_SKIP",
             path=f"{position}.slots.{slot_id}",
-            message=(
-                f"slot skipped reason={actual_reason!r} but day_type does not require it; "
-                "use 'user-omit' or 'buffer-rest' for discretionary skips"
-            ),
-        ))
-    return errs
+            message=f"slot skipped reason={actual_reason!r} not permitted on day_type={day_type!r}",
+        )]
+    return []
+
+
+def _check_skipped_actual(slot: dict, slot_id: str, expected_reason: Optional[str], day_type: str, position: str) -> list[ValidationError]:
+    """Rules for a slot whose skipped=True. Validates reason value, then matches against day_type."""
+    actual_reason = slot.get("skipped_reason")
+    errs = _check_skip_reason_value(actual_reason, slot_id, position)
+    if errs:
+        return errs
+    return _check_skip_reason_match(actual_reason, expected_reason, day_type, slot_id, position)
 
 
 def _check_skipped_missing(slot_id: str, expected_reason: str, day_type: str, position: str) -> list[ValidationError]:
