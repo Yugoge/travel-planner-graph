@@ -1791,5 +1791,5 @@ if __name__ == "__main__":
     if "--v2" in sys.argv:
         import os
         v2_args = [a for a in sys.argv[1:] if a != "--v2"]
-        os.execvp(sys.executable, [sys.executable, str(Path(__file__).parent / "plan-validate-v2.py"), *v2_args])
+        os.execvp(sys.executable, [sys.executable, str(Path(__file__).parent / "validate-trip-contract.py"), *v2_args])
     main()

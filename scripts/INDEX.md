@@ -1,6 +1,6 @@
 # scripts
 
-*Last updated: 2026-05-14T17:35:52Z*
+*Last updated: 2026-05-14T19:45:51Z*
 **Total entries**: 121
 **Convention**: kebab
 
@@ -104,7 +104,6 @@ scripts/
 ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
 ├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
-├── `plan-validate-v2.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 ├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
@@ -123,6 +122,7 @@ scripts/
 ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+├── `validate-trip-contract.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 ├── `verify-gaode-ban-contract.sh` - Description: T3 contract verifier — validates every MCP tool in the catalog
 ├── `verify-gaode-ban-integration.sh` - Description: T2 integration verifier — spawns pretool-tool-policy.py as subprocess,
 ├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1 + M5).
