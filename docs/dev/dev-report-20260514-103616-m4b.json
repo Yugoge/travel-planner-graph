@@ -1,0 +1,208 @@
+{
+  "request_id": "20260514-103616",
+  "task_id": "20260514-103616",
+  "timestamp": "2026-05-14T17:48:00Z",
+  "worker_id": "m4b",
+  "spec_id": "spec-20260508-221237",
+  "milestone": "M4b (web app UI — JS + tests)",
+  "phase": "B (parallel)",
+  "dev_report_path": "docs/dev/dev-report-20260514-103616-m4b.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "web/index.html",
+      "web/css/main.css"
+    ],
+    "files_created": [
+      "web/js/state.js",
+      "web/js/save.js",
+      "web/js/offline.js",
+      "web/js/routing.js",
+      "web/js/budget.js",
+      "web/js/drag.js",
+      "web/js/mobile.js",
+      "tests/web/MANUAL-TEST-PLAN.md"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Author web/js/state.js — central reactive store, hydration via GET /api/trip, candidates/timeline/budget renderers, mutation entry-point requestSelectMutation -> commit -> queueSave + renderAll + recomputeBudget chain. Day-picker + Approve-day button + export gating.",
+        "type": "code",
+        "files_created": ["web/js/state.js"],
+        "rationale": "Single coordinator avoids dependency cycles; circular ES imports between state<->routing and state<->mobile are call-time only and safe."
+      },
+      {
+        "id": 2,
+        "description": "Author web/js/save.js — 300ms debounce per-day mutation queue + POST /api/save with editor_session; flips conflict_409_soft on response. beforeunload uses navigator.sendBeacon to flush pending debounced mutations (codex finding #9).",
+        "type": "code",
+        "files_created": ["web/js/save.js"],
+        "rationale": "AC #5 refresh recovery requires no mutation loss inside the 300ms window; sendBeacon survives navigation."
+      },
+      {
+        "id": 3,
+        "description": "Author web/js/offline.js — wrappedFetch JSON helper; deterministic 5s timer flips offline (codex finding #6); reconnect probe every 5s pings /api/trip/__probe__ to recover.",
+        "type": "code",
+        "files_created": ["web/js/offline.js"],
+        "rationale": "Original idempotent-failure logic required a SECOND fetch failure to flip; codex flagged this as fragile. Replaced with explicit setTimeout + recovery probe."
+      },
+      {
+        "id": 4,
+        "description": "Author web/js/routing.js — POST /api/route with monotonic _seqCounter; latest-issued (NOT latest-seen) per-pair race filter (codex finding #10); calls recomputeBudget after route response (Phase-2 budget retrigger per codex finding #5).",
+        "type": "code",
+        "files_created": ["web/js/routing.js"],
+        "rationale": "AC #7 requires only latest seq paints. Comparing response seq to latest-RESPONSE was wrong; comparing to latest-REQUEST is correct."
+      },
+      {
+        "id": 5,
+        "description": "Author web/js/budget.js — POST /api/budget/recompute with own activeReqSeq stale-drop; renders trip-total + day-total + breakdown rows; 'cost: unknown' line preserved (Q3g).",
+        "type": "code",
+        "files_created": ["web/js/budget.js"],
+        "rationale": "Single-writer client cache; budget panel always reflects last-completed recompute."
+      },
+      {
+        "id": 6,
+        "description": "Author web/js/drag.js — desktop HTML5 drag-drop. dataTransfer 'application/x-trip-option' JSON payload + text/plain fallback. Mismatched-category drop rejected with data-drop-reject visual flash.",
+        "type": "code",
+        "files_created": ["web/js/drag.js"],
+        "rationale": "HTML5 DnD natively works on desktop; no library needed (codex Q4 advisory)."
+      },
+      {
+        "id": 7,
+        "description": "Author web/js/mobile.js — <640px tab-collapse + tap-to-select + tap-to-place. Always activates default tab on mobile init (codex finding #7); same select mutation as desktop drag (AC #3 parity).",
+        "type": "code",
+        "files_created": ["web/js/mobile.js"],
+        "rationale": "AC #3 mobile parity; codex confirmed tap-to-place is acceptable, no touch-drag preview required."
+      },
+      {
+        "id": 8,
+        "description": "Edit web/index.html — added .card-selected and .slot-drop[data-drop-reject] CSS rules.",
+        "type": "css",
+        "files_modified": ["web/css/main.css"],
+        "rationale": "New UI states introduced by drag.js (rejected drop) and state.js (selected card) need visible affordance; consistent with token table."
+      },
+      {
+        "id": 9,
+        "description": "Apply codex finding #3 — change Approve-day mutation from {type:'advance_stage'} to {type:'stage', to_stage:'user-selected'} matching the M4a save handler key (save.py:69-72).",
+        "type": "fix",
+        "files_modified": ["web/js/state.js"],
+        "rationale": "Backend handler dictionary keys 'select|skip|stage|route_ref'; sending advance_stage was a no-op. Without this fix, AC #4 stage-advance would silently drop."
+      },
+      {
+        "id": 10,
+        "description": "Apply codex finding #4 — handle route_cache hydration shape {schema_version, entries} from loaders.py.",
+        "type": "fix",
+        "files_modified": ["web/js/state.js"],
+        "rationale": "loaders.load_route_cache returns the file as-is; UI now extracts .entries when present."
+      },
+      {
+        "id": 11,
+        "description": "Apply codex finding #1 mitigation — optimistic write also targets day[slot_id] (top-level) so client state matches the post-save shape that backend save.py writes (day.setdefault(slot_id, ...)).",
+        "type": "fix",
+        "files_modified": ["web/js/state.js"],
+        "rationale": "Without this, optimistic UI shows nested-slots updated, but next hydration returns top-level slots that diverge. Reader still tries both shapes for full back-compat."
+      },
+      {
+        "id": 12,
+        "description": "Author tests/web/MANUAL-TEST-PLAN.md covering all 10 acceptance criteria + cross-worker integration gaps for M7.",
+        "type": "docs",
+        "files_created": ["tests/web/MANUAL-TEST-PLAN.md"],
+        "rationale": "Project has no headless browser harness; vanilla-JS no-build module set is verified manually per BA test scaffold."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A (greenfield M4b after M4a shipped)",
+      "why_issue_occurred": "M4 was originally one milestone; orchestrator partitioned into M4a (backend) + M4b (frontend) due to token budget. Prior M4b worker (dev-8 instance) hit quota after only delivering index.html + main.css.",
+      "how_fix_addresses_root": "This M4b cycle resumes from the partial scaffold and ships the 7 JS modules + manual test plan, plus surgical CSS additions for new UI states. No backend or schema files touched (file-disjoint scope per A-prime partition)."
+    },
+    "diff_stats": {
+      "files_changed": 10,
+      "lines_added": 1473,
+      "lines_removed": 0,
+      "new_symbols_introduced": [
+        "init",
+        "renderAll",
+        "commit",
+        "requestSelectMutation",
+        "getActiveDayNumber",
+        "setActiveDay",
+        "getDay",
+        "getSlot",
+        "queueSave",
+        "flushNow",
+        "bindBeaconState",
+        "wrappedFetch",
+        "setOnlineHandler",
+        "isOffline",
+        "requestRouteForAdjacency",
+        "recomputeBudget",
+        "renderBudget",
+        "initDesktopDrag",
+        "initMobile",
+        "isMobileViewport",
+        ".card-selected",
+        ".slot-drop[data-drop-reject]"
+      ],
+      "minimum_possible_lines_estimate": 900,
+      "justification_for_overage": "M4b is a greenfield 7-module ES system implementing 10 acceptance criteria across reactive state, debounced autosave, 5-endpoint API client, monotonic-seq race filter, two-phase budget, offline detection with reconnect probe, desktop drag, mobile tap-place, and refresh recovery. Quality-gate function-size cap (max 30 lines) forced helper-function decomposition that moderately inflates raw line count. Estimate of 900 lines reflects an absolute minimum given the AC count; actual 1473 lines is within 1.6x of that minimum, dominated by docstrings, helper functions for the gate, and a 168-line MANUAL-TEST-PLAN.md (manual QA artifact, not production code)."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run scripts/serve-trip.py against a v2-shape trip (e.g. fixture-trip with multiple days copied to a per-day layout). Open in Chrome desktop 1440x900 + DevTools mobile-emulation 375x667. Walk MANUAL-TEST-PLAN.md AC #1-#10. Smoke verification confirmed during dev: server returns HTTP 200 for /trip/<id>, /web/js/state.js, /web/css/main.css, /api/trip/<id>, POST /api/budget/recompute. Codex (gpt-5.5 xhigh) raised 10 substantive findings; 7 are fixed in this cycle, 3 are flagged as cross-worker integration items for M7 (see implementation_notes).",
+    "implementation_notes": [
+      "Cross-worker gap A (codex finding #2): scripts/lib/server/budget.py reads day.get('breakfast') top-level; canonical day.slots.breakfast costs are missed. Out of M4b scope (M4a-owned). M4b reader handles both shapes; optimistic write targets day[slot_id] to match M4a save shape. M7 must reconcile.",
+      "Cross-worker gap B (codex finding #2 part 2): handle_budget(day=N) returns trip_total over only day N. UI displays as-returned. M7 must verify M4a aggregator semantics.",
+      "Cross-worker gap C (codex finding #8): UI export-gating uses 'all required slots filled' heuristic, NOT the full validators.py rule catalog. Schema-invalid-but-filled days could enable Export. M7 should wire validator output into hydration response so UI gates on real validation status.",
+      "Quality-gate-30-line function cap (.claude/hooks/pretool-quality-gate.py) blocked initial state.js draft; refactored into 30+ named helpers. No scope expansion; same logic, more functions.",
+      "Module dependency graph: state -> {save, routing, budget, drag, mobile, offline}; save -> offline; routing -> {state(renderAll), budget(recomputeBudget), offline}; mobile -> state(state, getActiveDayNumber); drag -> state(getActiveDayNumber), mobile(isMobileViewport). Two ES circular imports (state<->routing, state<->mobile) are bound at call-time, never at module init -- safe per ES module spec.",
+      "M4b deliberately did NOT modify backend (scripts/lib/server/, scripts/serve-trip.py) or schema files per file-disjoint A-prime partition. All adjustments are frontend-only.",
+      "tests/web/INDEX.md and tests/web/README.md were auto-generated by an index-rebuild hook after MANUAL-TEST-PLAN.md was written; not authored by M4b dev."
+    ],
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "All 7 JS modules pass `node --check` syntax verification. Live smoke test against scripts/serve-trip.py with a 5-day fixture trip: GET /trip/<id> -> 200 (serves index.html), GET /web/js/state.js -> 200, GET /web/css/main.css -> 200, GET /api/trip/<id> -> 200 (5 days hydrated), POST /api/budget/recompute -> 200 (well-formed BudgetResponse). No JS errors visible in headless verification (full DOM render verification is the QA manual-test responsibility per project no-build no-headless-harness convention)."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "M7 should reconcile cross-worker contract drift between save.py slot writes (top-level day[slot_id]) and the canonical day.slots[slot_id] shape declared in M2-contract.md §4. Either save.py is patched to write nested or hydration normalizes to flat -- pick ONE shape and document.",
+    "M7 budget aggregator (M4a budget.py) needs slot-path fix to read both day[slot_id] AND day.slots[slot_id]; trip_total semantics need to actually sum across all days.",
+    "M7 should expose validators.py rule violations in /api/trip hydration response so UI export-gating is correctness-gated (not just completeness-gated).",
+    "When user invokes /plan with --auto, ensure M3 emits provenance.selected_by='auto' on every selection; M4b card-rationale renders only when this exact key+value is present.",
+    "Future enhancement (out of M4b scope): WebSocket or polling-based live update for tab-B when tab-A saves, so 409-soft is preempted by an automatic refresh prompt rather than the next save attempt.",
+    "Future enhancement (out of M4b scope): touch Pointer Events drag preview on mobile -- codex confirmed tap-to-place is acceptable, but a finger-following ghost card could be added later for parity polish."
+  ],
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex (gpt-5.5 xhigh, /var/tmp/codex-outputs/codex-output-401898-1778780091.txt) confirmed both design questions: (a) tap-to-place is acceptable per spec; touch-drag preview is scope creep; (b) inline below-slot validation is acceptable, toast is worse. Then surfaced 10 substantive blockers/threats: (1) save shape mismatch nested vs top-level, (2) budget aggregator wrong slot path + wrong trip_total semantics, (3) Approve-day mutation type mismatch (advance_stage vs stage), (4) route_cache hydration shape mismatch ({schema_version,entries} vs flat), (5) route arrival not retriggering budget (two-phase semantic), (6) offline detection requires second failure (no timer), (7) mobile initial layout doesn't collapse panes, (8) export gating too shallow (no validator integration), (9) beforeunload doesn't flush pending debounced save, (10) race filter compares to latest-seen instead of latest-issued.",
+    "feedback_incorporated": "Fixed 7 in-scope findings: #3 (mutation type), #4 (route_cache shape), #5 (route->budget retrigger), #6 (offline timer + reconnect probe), #7 (mobile initial collapse), #9 (sendBeacon flush), #10 (latest-issued race filter). Mitigated #1 partially (optimistic write also targets top-level day[slot_id] to match backend post-save shape; reader handles both shapes). Surfaced #2 and #8 as cross-worker integration items for M7 in implementation_notes (M4b is forbidden from modifying scripts/lib/server/ per file-disjoint partition)."
+  },
+  "cp_state_marked": {
+    "instance": "dev-8 (resumed from prior quota-failed M4b run)",
+    "agent_id": "m4b-1778780843-840285",
+    "checkpoints_marked_done": ["cp-10"],
+    "checked_out": true,
+    "note": "cp-10 covers the entire web-app server + UI; M4a shipped the server, M4b shipped the UI. The cp-10 checkpoint description literally enumerates 5 endpoints which are M4a's deliverable, but the original BA decomposition treated the web-app as a single cp; orchestrator A-prime partition split implementation across two workers. Marking cp-10 done from the M4b side reflects 'the UI half of the web-app is complete'."
+  },
+  "blast_radius": [
+    {
+      "modified": "web/index.html",
+      "imported_by": [],
+      "note": "Index is the only HTML; served by scripts/serve-trip.py:_serve_index. No inbound imports."
+    },
+    {
+      "modified": "web/css/main.css",
+      "imported_by": ["web/index.html"],
+      "note": "Single CSS file referenced via <link>."
+    },
+    {
+      "modified": "web/js/*.js (all 7)",
+      "imported_by": ["web/index.html"],
+      "note": "Module graph rooted at state.js (the single <script type=module> in index.html). No backend or other web tree depends on these."
+    }
+  ]
+}
