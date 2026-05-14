@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-14T19:39:57Z*
-**Total entries**: 329
+*Last updated: 2026-05-14T20:04:26Z*
+**Total entries**: 335
 **Convention**: kebab
 
 ## Tree
@@ -17,7 +17,12 @@ dev/
 │   ├── `architect-redev-findings.md` - Architect findings — /redev cycle for spec-20260508-221237 M1
 │   └── `specialist-findings.md` - Specialist Consultation Findings — spec-20260508-221237
 ├── screenshots/
-│   └── dev-20260505-123425/
+│   ├── dev-20260505-123425/
+│   ├── `blocker6-desktop-card-select.png` - png file
+│   ├── `blocker6-desktop-drag.png` - png file
+│   ├── `blocker6-desktop-export.png` - png file
+│   ├── `blocker6-desktop-load.png` - png file
+│   └── `blocker6-mobile.png` - png file
 ├── specs/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
@@ -244,6 +249,7 @@ dev/
 ├── `dev-report-20260514-103616-m6.json` - json config
 ├── `dev-report-20260514-103616-m7.json` - json config
 ├── `dev-report-20260514-103616.json` - json config
+├── `dev-report-20260514-200000.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
