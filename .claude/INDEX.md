@@ -1,7 +1,7 @@
 # .claude
 
-*Last updated: 2026-05-14T19:45:27Z*
-**Total entries**: 354
+*Last updated: 2026-05-14T20:02:35Z*
+**Total entries**: 355
 **Convention**: kebab
 
 ## Tree
@@ -354,6 +354,7 @@
 │       └── `xiaohongshu-search.png` - png file
 ├── `index.md` - .claude Index
 ├── `PROJECT-DOCS.md` - Travel Planner Project Documentation
+├── `scheduled_tasks.lock` - lock file
 ├── `settings.json` - json config
 ├── `workflow-0a534494-870e-4c16-989e-e11e07d688c0.json` - json config
 ├── `workflow-0e35f08c-7f82-47ec-ba8a-1b00e087405a.json` - json config
