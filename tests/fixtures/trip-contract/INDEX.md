@@ -1,12 +1,13 @@
 # trip-contract
 
-*Last updated: 2026-05-14T11:27:43Z*
-**Total entries**: 2
+*Last updated: 2026-05-14T11:27:44Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
 ```
 trip-contract/
+├── `arrival-day.json` - json config
 ├── `meta.json` - json config
 └── `normal-day.json` - json config
 ```
