@@ -1,0 +1,316 @@
+{
+  "request_id": "20260514-200000",
+  "task_id": "20260514-200000",
+  "timestamp": "2026-05-14T20:00:00+08:00",
+  "spec_id": "spec-20260508-221237-redev1",
+  "parent_task_id": "20260514-103616",
+  "redev": true,
+  "codex_required": true,
+  "requirement": {
+    "original": "Fix all 6 close blockers from close-report-20260514-103616.md (CLOSE: NO) so that re-close on spec-20260508-221237 produces CLOSE: YES.",
+    "clarified": "Apply 6 targeted fixes: rename plan-validate-v2.py, remove CJK from test source, add env-var override + warning log to route.py, fix gaode subprocess CLI call interface, fix budget trip_total day-scoping, and capture live browser evidence via Playwright.",
+    "what": "6 close-gate blockers: 2 style, 1 env-var/logging, 1 CLI correctness, 1 logic bug, 1 verification gap",
+    "why": "Close-report verdict was CLOSE: NO; all 6 must be resolved before re-close attempt",
+    "where": ["scripts/lib/server/route.py", "scripts/lib/server/budget.py", "scripts/plan-validate-v2.py", "tests/exporters/conftest.py", "tests/server/conftest.py", "tests/e2e/test_state_machine.py", ".claude/settings.json", ".claude/commands/plan.md", ".claude/agents/budget.md", ".claude/agents/meals.md", "scripts/plan-validate.py", "docs/dev/specs/spec-20260508-221237/M2-contract.md", "scripts/INDEX.md", "tests/server/test_budget_endpoint.py"],
+    "scope": {
+      "included": ["rename plan-validate-v2.py to validate-trip-contract.py and update all references", "replace CJK string literals in test Python source with ASCII placeholders", "add GAODE_ROUTE_SCRIPT env-var override and logging.warning to route.py", "fix _run_gaode_subprocess to use positional args (routing.py <command> <origin> <destination>)", "fix handle_budget trip_total to sum all days before day-filter is applied", "capture Playwright browser evidence for 5 golden-path scenarios (desktop + mobile)"],
+      "excluded": ["editing dev-report JSON artifacts from prior closed cycles", "fixing pre-existing test failures (test_plan_validate_schema_inference.py, W3)", "M5 verifier self-blocking (W1)", "schemas/v2/README.md stats (W2)", "adjacent hardening or style improvements not in the 6 blockers"]
+    },
+    "success_criteria": [
+      "python3 scripts/validate-trip-contract.py --help exits 0; scripts/plan-validate-v2.py does not exist",
+      "grep -r '[一-鿿]' tests/ returns zero matches in .py files",
+      "GAODE_ROUTE_SCRIPT env-var sets first candidate; logging.warning fires when all candidates fail",
+      "gaode subprocess called as: python3 routing.py <command> <from_coords> <to_coords>",
+      "POST /api/budget/recompute with day=N returns trip_total covering all days",
+      "Playwright screenshots captured for 5 golden-path scenarios at docs/dev/screenshots/blocker6-*.png",
+      "pytest ≥ 67/67 in-scope tests pass after all 5 code fixes"
+    ],
+    "constraints": [
+      "Do NOT call gaode-maps API or amap.com",
+      "Do NOT modify implementation files beyond the 6 targeted fixes",
+      "Do NOT retroactively edit historical dev-report JSON files",
+      "Read each file before editing"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/validate-trip-contract.py",
+      "scripts/lib/server/route.py",
+      "scripts/lib/server/budget.py",
+      "tests/exporters/conftest.py",
+      "tests/server/conftest.py",
+      "tests/e2e/test_state_machine.py",
+      ".claude/settings.json",
+      ".claude/commands/plan.md",
+      ".claude/agents/budget.md",
+      ".claude/agents/meals.md",
+      "scripts/plan-validate.py",
+      "docs/dev/specs/spec-20260508-221237/M2-contract.md",
+      "scripts/INDEX.md",
+      "tests/server/test_budget_endpoint.py"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": [
+      "docs/dev/dev-report-20260514-103616-m2.json",
+      "docs/dev/dev-report-20260514-103616.json"
+    ]
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "close-report-20260514-103616.md returned CLOSE: NO citing 6 specific blockers",
+    "root_cause": "Prior dev cycle (20260514-103616) implemented M-features but did not address close-gate checklist items: naming convention, test source language standard, route.py CLI interface correctness, route.py env-override gap, budget.py trip_total scoping bug, and mandatory live browser evidence",
+    "root_cause_commit": "N/A — the close-report is the authority, not a git commit",
+    "why_introduced": "M-feature implementation cycle focused on functional correctness of new features, not on close-gate style and verification requirements",
+    "why_problematic": "Each of the 6 blockers independently prevents CLOSE: YES; all must be resolved together",
+    "timeline": "Blockers were introduced during task-id 20260514-103616",
+    "affected_files": ["scripts/plan-validate-v2.py", "scripts/lib/server/route.py", "scripts/lib/server/budget.py", "tests/exporters/conftest.py", "tests/server/conftest.py", "tests/e2e/test_state_machine.py"],
+    "evidence_type": "mixed",
+    "observations": [
+      "scripts/plan-validate-v2.py exists (observed: ls)",
+      "tests/exporters/conftest.py line 66 contains Chinese characters (observed: file read)",
+      "tests/exporters/conftest.py line 74 contains Chinese characters (observed: file read)",
+      "tests/exporters/conftest.py line 81 contains Chinese characters (observed: file read)",
+      "tests/exporters/conftest.py line 168 contains Chinese characters (observed: file read)",
+      "tests/server/conftest.py line 110 contains Chinese characters (observed: file read)",
+      "tests/e2e/test_state_machine.py line 126 contains Chinese characters (observed: file read)",
+      "route.py line 82 calls python3 <script> --json <payload> (observed: file read)",
+      "budget.py line 176 sums day_entries for trip_total where day_entries is filtered by req.day (observed: file read)",
+      "Codex confirmed routing.py uses positional args: routing.py <command> <origin> <destination> (observed: Codex gpt-5.5 xhigh consultation reading worktree copy)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["plan-validate-v2", "CJK", "route.py", "gaode", "budget", "trip_total", "browser verification"],
+    "localization_evidence": "All 6 blockers traced to specific file:line via direct file reads. Gaode CLI interface confirmed via Codex consultation reading .claude/worktrees/overnight-20260412-c6ec78c9/.claude/skills/gaode-maps/scripts/routing.py (hook-blocked from BA direct read; Codex as unrestricted process confirmed the interface).",
+    "located_source": "scripts/plan-validate-v2.py (rename); tests/*/conftest.py (CJK); scripts/lib/server/route.py:30-33,82 (env-var + CLI); scripts/lib/server/budget.py:176 (trip_total); no file (browser evidence gap)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not applicable — blockers are close-gate items identified by /close, not regressions",
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "Rename plan-validate-v2.py (5-min fix)", "acceptance_criterion": "scripts/validate-trip-contract.py exists; scripts/plan-validate-v2.py does not; all references updated"},
+    {"id": "R2", "source_phrase": "Move CJK strings from test source to external fixture files", "acceptance_criterion": "grep -r '[一-鿿]' tests/ returns zero .py matches"},
+    {"id": "R3", "source_phrase": "add env-var override to route.py", "acceptance_criterion": "GAODE_ROUTE_SCRIPT env-var sets first candidate; logging.warning fires on total failure"},
+    {"id": "R4", "source_phrase": "verify and fix route.py gaode skill CLI interface", "acceptance_criterion": "subprocess called with positional args routing.py <command> <from> <to>; cache-miss returns non-error status when skill present"},
+    {"id": "R5", "source_phrase": "budget trip_total day-scoping", "acceptance_criterion": "POST /api/budget/recompute with day=N returns trip_total summing all days"},
+    {"id": "R6", "source_phrase": "M4b live browser verification", "acceptance_criterion": "Playwright screenshots at docs/dev/screenshots/blocker6-*.png for 5 golden-path scenarios on desktop+mobile"}
+  ],
+  "fix_items": [
+    {
+      "id": "F1",
+      "title": "Rename plan-validate-v2.py to validate-trip-contract.py",
+      "layer": "L1",
+      "files_to_modify": [
+        {"path": "scripts/plan-validate-v2.py", "action": "rename to scripts/validate-trip-contract.py"},
+        {"path": ".claude/settings.json", "line": 64, "change": "update Bash allow entry to validate-trip-contract.py"},
+        {"path": ".claude/commands/plan.md", "lines": "61, 610", "change": "replace plan-validate-v2.py with validate-trip-contract.py"},
+        {"path": ".claude/agents/budget.md", "line": 112, "change": "replace plan-validate-v2.py with validate-trip-contract.py"},
+        {"path": ".claude/agents/meals.md", "line": 153, "change": "replace plan-validate-v2.py with validate-trip-contract.py"},
+        {"path": "scripts/plan-validate.py", "lines": "1789, 1794", "change": "update os.execvp target to validate-trip-contract.py"},
+        {"path": "docs/dev/specs/spec-20260508-221237/M2-contract.md", "lines": "370, 457", "change": "replace references"},
+        {"path": "scripts/INDEX.md", "line": 107, "change": "replace reference"}
+      ],
+      "acceptance_criterion": "python3 scripts/validate-trip-contract.py --help exits 0; ls scripts/plan-validate-v2.py returns file-not-found"
+    },
+    {
+      "id": "F2",
+      "title": "Remove CJK string literals from Python test source",
+      "layer": "L3",
+      "files_to_modify": [
+        {"path": "tests/exporters/conftest.py", "line": 66, "change": "f'{slot_id}A 中文' -> f'{slot_id}A CJK-Name'"},
+        {"path": "tests/exporters/conftest.py", "line": 74, "change": "f'{slot_id} 景点' -> f'{slot_id} CJK-Attraction'"},
+        {"path": "tests/exporters/conftest.py", "line": 81, "change": "'酒店 {i}' -> 'Hotel-CJK {i}'"},
+        {"path": "tests/exporters/conftest.py", "line": 168, "change": "'导出测试行程' -> 'Export Test Trip CJK'"},
+        {"path": "tests/server/conftest.py", "line": 110, "change": "'测试行程' -> 'Test Trip CJK'"},
+        {"path": "tests/e2e/test_state_machine.py", "line": 126, "change": "'E2E 测试行程' -> 'E2E Test Trip CJK'"}
+      ],
+      "acceptance_criterion": "grep -r '[一-鿿]' tests/ returns zero matches in .py files; pytest suite still passes"
+    },
+    {
+      "id": "F3",
+      "title": "Add GAODE_ROUTE_SCRIPT env-var override and fallback warning to route.py",
+      "layer": "L4",
+      "files_to_modify": [
+        {"path": "scripts/lib/server/route.py", "lines": "30-33", "change": "prepend os.environ.get('GAODE_ROUTE_SCRIPT', '') to candidates; add logging.warning when all candidates fail; add 'routing.py' as first hardcoded candidate"}
+      ],
+      "implementation_hint": "Filter empty string from candidates tuple to avoid path resolution on empty string. The warning should fire inside the candidate-discovery function after all candidates are exhausted.",
+      "acceptance_criterion": "GAODE_ROUTE_SCRIPT=/custom/path sets first candidate; logging.warning fires when all candidates fail"
+    },
+    {
+      "id": "F4",
+      "title": "Fix gaode subprocess CLI interface in route.py",
+      "layer": "L4",
+      "root_cause_detail": "route.py line 82 calls python3 <script> --json <payload>. Actual routing.py uses positional args: routing.py <command> <origin_coords> <destination_coords>. Command maps: walk->walking, taxi->driving, driving->driving, transit->transit, cycling->cycling.",
+      "script_name_correction": "The actual gaode skill script is named routing.py (not route.py or inter-city-route.py). _GAODE_ROUTE_SCRIPT_CANDIDATES must include routing.py as a candidate (done in F3).",
+      "files_to_modify": [
+        {"path": "scripts/lib/server/route.py", "change": "replace _run_gaode_subprocess and _invoke_gaode to use positional-arg call: ['python3', str(script), command, from_coords, to_coords]; preserve existing coordinate-lookup logic; map mode field to routing.py command vocabulary"}
+      ],
+      "acceptance_criterion": "Cache-miss route request invokes subprocess as positional args; test stub for successful gaode call uses positional format; tests/server/test_route_endpoint.py passes"
+    },
+    {
+      "id": "F5",
+      "title": "Fix handle_budget trip_total day-scoping bug",
+      "layer": "L4",
+      "root_cause_detail": "budget.py handle_budget line 176: trip_total = sum(d['day_total'] for d in day_entries) where day_entries was filtered by req.day before this line. Must compute all_day_entries unconditionally for trip_total, then filter for the response days array.",
+      "files_to_modify": [
+        {"path": "scripts/lib/server/budget.py", "lines": "160-178", "change": "compute all_day_entries from all_days before filtering; trip_total = sum over all_day_entries; day_entries = filtered subset for response"},
+        {"path": "tests/server/test_budget_endpoint.py", "change": "add or extend test asserting trip_total covers all days when day=1 is specified on a 2-day trip"}
+      ],
+      "fix_pseudocode": "all_day_entries = [_compute_day(d) for d in all_days]; trip_total = sum(e['day_total'] for e in all_day_entries); day_n = req.get('day'); day_entries = [e for e in all_day_entries if e['day'] == day_n] if day_n is not None else all_day_entries",
+      "acceptance_criterion": "POST /api/budget/recompute with day=1 on 2-day trip returns trip_total == day1_total + day2_total; existing test_aggregates_day_costs_correctly still passes"
+    },
+    {
+      "id": "F6",
+      "title": "Capture live browser evidence via Playwright",
+      "layer": "L2",
+      "server_start": "python3 scripts/serve-trip.py --host 127.0.0.1 --port 8765 --trip china-20260412-092624",
+      "scenarios": [
+        {"id": "S1", "viewport": "1440x900", "action": "navigate to http://127.0.0.1:8765, verify trip loads", "evidence": "docs/dev/screenshots/blocker6-desktop-load.png"},
+        {"id": "S2", "viewport": "1440x900", "action": "click candidate card in day 1, verify .card-selected class", "evidence": "docs/dev/screenshots/blocker6-desktop-card-select.png"},
+        {"id": "S3", "viewport": "1440x900", "action": "drag candidate to slot, verify slot update and budget recompute", "evidence": "docs/dev/screenshots/blocker6-desktop-drag.png"},
+        {"id": "S4", "viewport": "1440x900", "action": "click Export PDF button, verify POST /api/export/pdf fires", "evidence": "docs/dev/screenshots/blocker6-desktop-export.png"},
+        {"id": "S5", "viewport": "390x844", "action": "navigate to trip URL in mobile viewport, verify tab-collapse, tap-to-select", "evidence": "docs/dev/screenshots/blocker6-mobile.png"}
+      ],
+      "acceptance_criterion": "All 5 screenshot files exist at docs/dev/screenshots/blocker6-*.png; dev-report references each screenshot path"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/plan-validate-v2.py",
+      "line_range": "1-end",
+      "role": "v2 trip bundle validator CLI; must be renamed",
+      "imports_from": ["lib/trip_contract"],
+      "evidence": "file existence confirmed by ls; references confirmed in .claude/settings.json:64 and plan-validate.py:1789,1794",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/route.py",
+      "line_range": "30-90",
+      "role": "handles POST /api/route; resolves gaode script candidates; calls subprocess",
+      "imports_from": ["lib/server/common"],
+      "evidence": "_GAODE_ROUTE_SCRIPT_CANDIDATES at lines 30-33; _run_gaode_subprocess at line 82 confirmed by file read",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/budget.py",
+      "line_range": "160-178",
+      "role": "handle_budget: aggregates day costs into trip_total and day breakdown",
+      "imports_from": ["lib/server/common"],
+      "evidence": "trip_total bug at line 176 confirmed by file read; _select_target_days at line 169 confirmed",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [],
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- mixed (backend/CLI/config); BA investigation does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, or (4) screenshot evidence. Browser verification (Fix 6) is delegated to dev subagent.",
+    "viewport": null,
+    "theme": null,
+    "locale": null,
+    "auth_state": null,
+    "data_state": null,
+    "browser": null,
+    "url_path": null
+  },
+  "evidence": {
+    "observed": "close-report-20260514-103616.md verdict CLOSE: NO with 6 enumerated blockers",
+    "measured": {
+      "value": "scripts/plan-validate-v2.py exists; 6 CJK locations in test .py files; route.py:82 uses --json payload call; budget.py:176 sums filtered day_entries only",
+      "location": "multiple: see fix_items[].files_to_modify for exact file:line"
+    },
+    "expected": {
+      "value": "scripts/validate-trip-contract.py; zero CJK in test .py; positional-arg subprocess call; trip_total = sum all days; Playwright evidence",
+      "source": "docs/dev/specs/spec-20260508-221237-redev1.md (CLOSE: NO blocker list)"
+    },
+    "gap": "6 discrete gaps as enumerated in fix_items"
+  },
+  "scope_expansion": {
+    "search_pattern": "plan-validate-v2.py; [一-鿿] in tests/**/*.py; _run_gaode_subprocess; trip_total; day_entries",
+    "search_scope": "scripts/; tests/; .claude/; docs/dev/specs/",
+    "user_reported": ["scripts/plan-validate-v2.py", "scripts/lib/server/route.py", "scripts/lib/server/budget.py", "tests/exporters/conftest.py", "tests/server/conftest.py", "tests/e2e/test_state_machine.py"],
+    "additional_found": ["docs/dev/specs/spec-20260508-221237/M2-contract.md", "scripts/INDEX.md", ".claude/settings.json", ".claude/commands/plan.md", ".claude/agents/budget.md", ".claude/agents/meals.md", "scripts/plan-validate.py"],
+    "all_occurrences": [
+      ".claude/settings.json:64",
+      ".claude/commands/plan.md:61",
+      ".claude/commands/plan.md:610",
+      ".claude/agents/budget.md:112",
+      ".claude/agents/meals.md:153",
+      "scripts/plan-validate.py:1789",
+      "scripts/plan-validate.py:1794",
+      "docs/dev/specs/spec-20260508-221237/M2-contract.md:370",
+      "docs/dev/specs/spec-20260508-221237/M2-contract.md:457",
+      "scripts/INDEX.md:107",
+      "tests/exporters/conftest.py:66",
+      "tests/exporters/conftest.py:74",
+      "tests/exporters/conftest.py:81",
+      "tests/exporters/conftest.py:168",
+      "tests/server/conftest.py:110",
+      "tests/e2e/test_state_machine.py:126",
+      "scripts/lib/server/route.py:30-33",
+      "scripts/lib/server/route.py:82",
+      "scripts/lib/server/budget.py:176"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "docs/dev/specs/spec-20260508-221237-redev1.md (blocker list from /close verdict) + direct file reads + Codex gpt-5.5 xhigh consultation on gaode routing.py interface",
+    "url_or_location": "docs/dev/specs/spec-20260508-221237-redev1.md; .claude/worktrees/overnight-20260412-c6ec78c9/.claude/skills/gaode-maps/scripts/routing.py (Codex read)",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/dev-report-20260514-103616.md",
+        "proposed_solution": "Implement M1-M5 of spec-20260508-221237",
+        "actual_change": "New scripts, server handlers, tests, schema v2",
+        "outcome": "CLOSE: NO — 6 close-gate blockers unaddressed",
+        "failure_category": "wrong_scope",
+        "target_layer": "L2"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "Prior cycle implemented features; this cycle resolves close-gate style + correctness + verification gaps that the feature cycle left open. Different layer (L3 data/CLI correctness vs L2 structural feature)."
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; 164 uncommitted files; prior M1-M5 implementation landed but not yet closed",
+    "recent_commits": "b34faf4 test(generate-html-interactiv): fix 13 enumerated bugs; 8b934b8 feat(harness): land project-local gaode-maps ban; e2c5949 feat(harness+policy+agents): land spec-20260508-221237 M1; 1441e52 feat(harness+data): land spec-20260506-092951 root-cause hardening cycles 1-3",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Single sequential dev worker; apply fixes F1→F2→F3→F4→F5 then run pytest; then F6 (Playwright); commit all; re-run /close",
+    "files_to_create": ["scripts/validate-trip-contract.py (rename of plan-validate-v2.py)", "docs/dev/screenshots/blocker6-*.png (Playwright evidence)"],
+    "files_to_modify": ["scripts/lib/server/route.py", "scripts/lib/server/budget.py", "tests/exporters/conftest.py", "tests/server/conftest.py", "tests/e2e/test_state_machine.py", "tests/server/test_budget_endpoint.py", ".claude/settings.json", ".claude/commands/plan.md", ".claude/agents/budget.md", ".claude/agents/meals.md", "scripts/plan-validate.py", "docs/dev/specs/spec-20260508-221237/M2-contract.md", "scripts/INDEX.md"],
+    "validation_approach": "pytest ≥ 67/67 after F1-F5; Playwright screenshots after F6; then /close re-attempt"
+  },
+  "dispatch_plan": {
+    "workers": 1,
+    "mode": "sequential",
+    "order": ["F1", "F2", "F3", "F4", "F5", "pytest", "F6", "commit", "close"],
+    "rationale": "All 6 fixes are in the same codebase; sequential is safe; F6 (browser) requires F1-F5 to be applied and tested first"
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex (gpt-5.5 xhigh) confirmed: (1) Blocker 4 localization_blocked-for-BA approach is correct; dev must read the skill directly. (2) Budget bug reading is correct — trip_total sums filtered day_entries; fix pattern from spec is the right approach. (3) Dev-report retroactive editing is out of scope (historical artifacts). (4) Single sequential dev pass is safe. Codex also independently verified routing.py uses positional args: routing.py <command> <origin> <destination> — confirmed the --json call is wrong. Additionally noted that _GAODE_ROUTE_SCRIPT_CANDIDATES lists route.py and inter-city-route.py but the actual script is routing.py — Fix 3 must add routing.py as a candidate.",
+    "feedback_incorporated": "Added routing.py as first hardcoded candidate in F3 implementation hint; confirmed positional-arg call format in F4 root_cause_detail; excluded dev-report editing from scope (Won't Have); F1-F5 then pytest then F6 sequential order set in dispatch_plan"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}
