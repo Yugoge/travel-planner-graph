@@ -5,7 +5,7 @@ beyond the conftest fixtures from tests/server/conftest.py (re-imported here).
 
 Scenario:
   1. Synthetic trip starts at blocking_stage='draft-options'.
-  2. plan-validate-v2 equivalent (validate_trip_v2) accepts draft-options.
+  2. validate-trip-contract equivalent (validate_trip_v2) accepts draft-options.
   3. Stage mutation advances day 1 to 'user-selected'.
   4. State machine allows timeline (blocking_stage >= 'user-selected').
   5. Slot mutation marks day 1 breakfast as unselected -> timeline blocked.
