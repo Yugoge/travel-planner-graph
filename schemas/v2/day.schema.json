@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-planner/schemas/v2/day.schema.json",
+  "title": "M2 v2 Per-Day File",
+  "description": "Schema for data/<trip>/days/day-NN.json. M2 introduces this per-day file boundary (Q3a). Each file holds one day's 6 named activity slots + accommodation slot, day-type, stage, and arrival/departure timestamps. NO {primary, alternatives[]} legacy shape allowed; LEGACY_SHAPE_FORBIDDEN raised by validator.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v2.0",
+      "description": "Bound to v2 contract; bump only on incompatible change."
+    },
+    "day": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Day number 1-indexed."
+    },
+    "date": {
+      "$ref": "poi-common.schema.json#/$defs/iso_date"
+    },
+    "city_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical city identifier (slug). Matches options' city_context.city_id when role=overnight."
+    },
+    "city_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "leg_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index into the trip itinerary's leg list. Same city across consecutive days shares one leg_index."
+    },
+    "day_type": {
+      "type": "string",
+      "enum": ["normal", "arrival", "departure", "city-change", "red-eye", "transit-only", "buffer"],
+      "description": "§5.13 B day-type tolerance category (Q3a/Q3b)."
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["draft-options", "user-review", "user-selected", "timeline", "transportation", "finalized"],
+      "description": "§5.2 per-day planning state. Forward-only within session (undo deferred per Q3d). Editing a finalized day demotes only that day + invalidates adjacent route_cache and transportation segments."
+    },
+    "arrival_ts": {
+      "type": ["string", "null"],
+      "description": "Local arrival timestamp on this day (ISO 8601). Required when day_type in {arrival, city-change}; null otherwise."
+    },
+    "departure_ts": {
+      "type": ["string", "null"],
+      "description": "Local departure timestamp on this day. Required when day_type in {departure, city-change, red-eye}; null otherwise."
+    },
+    "slots": {
+      "type": "object",
+      "description": "The 6 named time-slots (§5.8). Every slot key MUST be present even when slot.skipped=true; this prevents silent omission.",
+      "properties": {
+        "breakfast": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"},
+        "morning_activity": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"},
+        "lunch": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"},
+        "afternoon_activity": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"},
+        "dinner": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"},
+        "evening_activity": {"$ref": "poi-common.schema.json#/$defs/slot_envelope"}
+      },
+      "required": ["breakfast", "morning_activity", "lunch", "afternoon_activity", "dinner", "evening_activity"],
+      "additionalProperties": false
+    },
+    "accommodation": {
+      "$ref": "poi-common.schema.json#/$defs/slot_envelope",
+      "description": "Orthogonal accommodation slot (one per night). selected_option_id may be auto-locked from prior day when same-city continuation (§5.7 B)."
+    },
+    "intra_city_routes": {
+      "type": "object",
+      "description": "Lazy-populated by /api/route on user drag-drop (§5.9). NOT pre-computed at plan time. Keys are 'from_option_id:to_option_id:mode'.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "duration_min": {"type": "number", "minimum": 0},
+          "distance_km": {"type": "number", "minimum": 0},
+          "mode": {"type": "string"},
+          "cost": {"type": ["number", "null"]},
+          "polyline": {"type": "string"},
+          "fetched_ts": {"$ref": "poi-common.schema.json#/$defs/iso_timestamp"},
+          "status": {"type": "string", "enum": ["ok", "unresolved", "stale"]}
+        },
+        "required": ["status"],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Non-fatal validator/agent warnings to render in UI."
+    }
+  },
+  "required": [
+    "schema_version",
+    "day",
+    "date",
+    "city_id",
+    "city_name",
+    "leg_index",
+    "day_type",
+    "stage",
+    "slots",
+    "accommodation"
+  ],
+  "additionalProperties": false,
+
+  "$comment": "Cross-slot rules NOT expressible in pure JSON Schema (per-day meal floor >=6, first-night accommodation >=3, day-type tolerance, state-machine gating, LEGACY_SHAPE_FORBIDDEN substring detection on options[]) live in scripts/lib/trip_contract.py and are run by scripts/plan-validate.py --v2 mode. JSON Schema covers shape only.",
+
+  "$defs": {
+    "_legacy_shape_marker": {
+      "type": "object",
+      "description": "Internal marker; if a JSON document has top-level 'primary' or item-level 'alternatives' keys, scripts/lib/trip_contract.py raises LEGACY_SHAPE_FORBIDDEN. JSON Schema cannot do anywhere-deep negation cleanly, so this is enforced in code.",
+      "not": {
+        "anyOf": [
+          {"required": ["primary"]},
+          {"required": ["alternatives"]}
+        ]
+      }
+    }
+  }
+}
