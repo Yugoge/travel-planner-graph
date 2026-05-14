@@ -150,7 +150,7 @@ At emit time, every day file should remain at `stage="draft-options"`. You MUST 
 Before returning `complete`, run:
 
 ```bash
-source venv/bin/activate && python3 scripts/plan-validate-v2.py data/<trip>/days/day-<N>.json
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<trip>/days/day-<N>.json
 ```
 
 If exit code != 0, fix the violations (most common: `MEAL_SLOT_FLOOR`, `SKIPPED_REASON_INVALID`, `CITY_CONTEXT_REQUIRED`). Re-validate. Only return `complete` when validator exits 0.
