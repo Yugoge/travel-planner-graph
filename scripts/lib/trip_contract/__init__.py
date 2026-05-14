@@ -78,6 +78,7 @@ __all__ = [
     "get_day_type",
     "pick_owning_day",
     "detect_legacy_shape",
+    "validate_against_v2_schema",
     "validate_day_v2",
     "validate_meta_v2",
     "validate_trip_v2",
