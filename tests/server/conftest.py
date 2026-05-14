@@ -107,7 +107,7 @@ def _build_meta(trip_id: str, day_count: int) -> dict:
         "schema_version": "v2.0",
         "trip_id": trip_id,
         "title": "Test Trip",
-        "title_local": "测试行程",
+        "title_local": "Test Trip CJK",
         "currency_local": "CNY",
         "user_budget": 10000,
         "day_count": day_count,
