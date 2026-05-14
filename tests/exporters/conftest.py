@@ -78,7 +78,7 @@ def _activity_options(slot_id: str, day_n: int, cost: float | None = 50.0) -> li
 
 def _accom_options(day_n: int, cost: float = 700.0) -> list[dict]:
     return [
-        _opt(f"acc-{day_n}-{i}", f"Hotel {i}", f"酒店 {i}", cost + i * 50,
+        _opt(f"acc-{day_n}-{i}", f"Hotel {i}", f"Hotel-CJK {i}", cost + i * 50,
              source_agent="accommodation")
         for i in range(1, 4)
     ]
