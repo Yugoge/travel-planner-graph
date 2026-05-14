@@ -58,7 +58,7 @@ Step 8       → 6 content agents in parallel (meals + accommodation + attractio
                Transportation REMOVED from Step 8. Each agent emits slot.options[] per its owned slot
                into data/<trip>/days/day-NN.json. Stage stays at "draft-options".
 Step 9       → Validator gate (legacy step number; now: pre-user-gate validation).
-               Runs scripts/plan-validate-v2.py on every day file. Halts run on any error
+               Runs scripts/validate-trip-contract.py on every day file. Halts run on any error
                (LEGACY_SHAPE_FORBIDDEN, SLOT_REQUIRED_PRESENT, MEAL_SLOT_FLOOR, etc.).
                --auto does NOT bypass this gate.
 Step 8.5     → Per-day user review hard gate (NEW, Q3i locked).
