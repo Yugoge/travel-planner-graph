@@ -176,15 +176,19 @@ def _parse_json_or_none(s: str) -> dict | None:
         return None
 
 
+_COORDS_UNKNOWN = object()  # sentinel: coords not found, return unknown status
+
+
 def _invoke_gaode(
     script: Path, req: dict, store: "TripStore", project_dir: Path, timeout_s: float
-) -> dict | None:
+) -> "dict | None | object":
+    """Return segment dict on success, _COORDS_UNKNOWN if coords unresolvable, None on subprocess failure."""
     command = _mode_to_command(req.get("mode", "driving"))
     from_coords = _coords_string(req["from_option_id"], store, req["trip_id"])
     to_coords = _coords_string(req["to_option_id"], store, req["trip_id"])
     if from_coords is None or to_coords is None:
-        # Coordinates not resolvable from trip data; cannot call gaode
-        return None
+        # Coordinates optional in v2 schema; treat as unknown (not error)
+        return _COORDS_UNKNOWN
     env = _build_gaode_env(project_dir)
     result = _run_gaode_subprocess(script, command, from_coords, to_coords, env, timeout_s)
     if result is None or result.returncode != 0:
