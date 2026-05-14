@@ -73,7 +73,9 @@ def expected_skips_for_day(day_dict: dict) -> dict[str, Optional[str]]:
         if arr_hhmm is not None:
             _expect_arrival_skips(_hhmm_to_minutes(arr_hhmm), expected)
 
-    if day_type in {"departure", "city-change"}:
+    # Departure-side skips only apply to pure 'departure' days (not city-change,
+    # where after arrival the destination city's evening slots are LIVE).
+    if day_type == "departure":
         dep_hhmm = _ts_to_hhmm(day_dict.get("departure_ts"))
         if dep_hhmm is not None:
             _expect_departure_skips(_hhmm_to_minutes(dep_hhmm), expected)
