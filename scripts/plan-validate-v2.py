@@ -93,17 +93,32 @@ def _print_results(target: Path, errs: list, json_out: bool) -> int:
     return _emit_text(target, errs)
 
 
+EXPECTED_FAIL_FIXTURES = {"legacy-shape-day.json"}
+
+
+def _classify_fixture_result(name: str, error_count: int) -> int:
+    """Return 0 when result matches expectation, 1 when it does not."""
+    if name in EXPECTED_FAIL_FIXTURES:
+        if error_count == 0:
+            print(f"UNEXPECTED PASS: {name} should have failed validation")
+            return 1
+        print(f"EXPECTED-FAIL OK: {name}")
+        return 0
+    return 1 if error_count else 0
+
+
 def _run_fixtures() -> int:
-    """Validate every JSON fixture under tests/fixtures/trip-contract/."""
+    """Validate every JSON fixture; expected-fail fixtures invert exit contribution."""
     fix_dir = _PROJECT_ROOT / "tests" / "fixtures" / "trip-contract"
     if not fix_dir.is_dir():
         print(f"fixture dir not found: {fix_dir}", file=sys.stderr)
         return 2
-    rc = 0
+    unexpected = 0
     for p in sorted(fix_dir.glob("*.json")):
         errs = _validate_target(p)
-        rc += _print_results(p, errs, json_out=False)
-    return 1 if rc else 0
+        error_count = _print_results(p, errs, json_out=False)
+        unexpected += _classify_fixture_result(p.name, error_count)
+    return 1 if unexpected else 0
 
 
 def main() -> int:

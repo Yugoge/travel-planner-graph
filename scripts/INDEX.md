@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-14T11:31:32Z*
-**Total entries**: 106
+*Last updated: 2026-05-14T11:46:06Z*
+**Total entries**: 107
 **Convention**: kebab
 
 ## Tree
@@ -26,6 +26,7 @@ scripts/
 │   │   ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
 │   │   ├── `day_type.py` - Computes which slots a day is EXPECTED to skip given its day_type and
 │   │   ├── `errors.py` - Validation error types.
+│   │   ├── `json_schema.py` - Loads schemas/v2/*.schema.json and runs the appropriate one against a payload
 │   │   ├── `legacy.py` - Walks any JSON-shaped object and returns paths where the legacy
 │   │   ├── `loaders.py` - data/<trip>/{meta.json, days/day-NN.json, transportation.json, route_cache.json,
 │   │   ├── `state_machine.py` - Per codex Q2: gating uses min(day.stage), NOT max. A trip may only advance to a
