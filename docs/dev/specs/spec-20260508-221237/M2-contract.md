@@ -454,7 +454,7 @@ Six fixtures under `tests/fixtures/trip-contract/`:
 | `legacy-shape-day.json`  | smuggled `{primary, alternatives[]}` | FAIL with `LEGACY_SHAPE_FORBIDDEN` |
 
 Run: `python3 -m pytest tests/test_trip_contract_fixtures.py -v` or
-`python3 scripts/plan-validate-v2.py --fixtures`.
+`python3 scripts/validate-trip-contract.py --fixtures`.
 
 ---
 
