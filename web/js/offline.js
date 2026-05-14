@@ -78,6 +78,10 @@ export async function wrappedFetch(url, opts) {
   try {
     const result = await _doFetch(url, opts);
     _firstFailureAt = null;
+    if (_offlineTimer) {
+      clearTimeout(_offlineTimer);
+      _offlineTimer = null;
+    }
     _flipOffline(false);
     return result;
   } catch (err) {
