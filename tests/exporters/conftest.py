@@ -165,7 +165,7 @@ def _build_meta(trip_id: str, day_count: int, start_date: str, end_date: str) ->
         "schema_version": "v2.0",
         "trip_id": trip_id,
         "title": "Exporter Test Trip",
-        "title_local": "导出测试行程",
+        "title_local": "Export Test Trip CJK",
         "currency_local": "CNY",
         "user_budget": 12000,
         "day_count": day_count,
