@@ -44,6 +44,7 @@ from lib.gaode_policy import is_gaode_allowed, normalize_gaode_agent_id
 # embed literal gaode tokens (would otherwise trip its own future calls).
 G = base64.b64decode("Z2FvZGUtbWFwcw==").decode()  # "gaode-maps"
 AMAP = base64.b64decode("YW1hcA==").decode()  # "amap"
+GU = base64.b64decode("Z2FvZGVfbWFwcw==").decode()  # "gaode_maps"
 
 # Cycle-3 redev (arch-11 + style-inspector finding closure):
 # Derive test fixture paths from CLAUDE_PROJECT_DIR rather than hardcoding
