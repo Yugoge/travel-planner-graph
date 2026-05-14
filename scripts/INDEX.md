@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-14T17:35:44Z*
-**Total entries**: 120
+*Last updated: 2026-05-14T17:35:52Z*
+**Total entries**: 121
 **Convention**: kebab
 
 ## Tree
@@ -85,6 +85,7 @@ scripts/
 ├── `day13_dinner_g26.py` - Sit-down 本帮菜 (HOMES) impossible. Change primary to G26 on-train meal order,
 ├── `deploy-travel-plans.sh` - Deploy travel plan HTML to GitHub Pages
 ├── `detect-location-changes.py` - Reads day-by-day plan and identifies when travelers move between cities
+├── `export-ical.py` - Usage: python3 scripts/export-ical.py --trip <trip_id>
 ├── `export-pdf.py` - Usage: python3 scripts/export-pdf.py --trip <trip_id>
 ├── `fetch-images-batch.py` - Batch image fetcher using skill scripts directly
 ├── `fix-day2-hotel-checkin.py` - Fix Day 2 Hotel Check-in Script
