@@ -124,19 +124,22 @@ function _refreshCardClasses() {
   });
 }
 
+let _mobileLayoutApplied = false;
+
 function _applyMobileLayout() {
   const mobile = isMobileViewport();
   const tabs = document.getElementById("mobile-tabs");
   if (tabs) tabs.hidden = !mobile;
   if (mobile) {
-    // Default tab on first apply is candidates
-    if (
-      !document.querySelector("#mobile-tabs .tab[aria-pressed='true']")
-    ) {
+    // ALWAYS collapse other panes on first mobile activation. The HTML scaffold
+    // ships with a tab pre-marked aria-pressed=true but no data-mobile-hidden
+    // on the panes, so without this call all three panes stack visibly.
+    if (!_mobileLayoutApplied) {
       _activateTab("candidates");
+      _mobileLayoutApplied = true;
     }
   } else {
-    // Desktop: show all panes
+    _mobileLayoutApplied = false;
     for (const p of ["candidates", "timeline", "budget"]) {
       const el = document.getElementById(`pane-${p}`);
       if (el) delete el.dataset.mobileHidden;
