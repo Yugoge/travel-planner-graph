@@ -344,9 +344,9 @@ HTML_HEAD = (
 HTML_SCRIPT = (
     '  <script type="text/babel">\n'
     "    // Embedded PLAN_DATA\n"
-    "    const PLAN_DATA = {plan_data_json};\n"
-    '    const CURRENCY_SYMBOL = "{symbol}";\n\n'
-    "    {react_template}\n\n"
+    "    const PLAN_DATA = __PLAN_DATA__;\n"
+    '    const CURRENCY_SYMBOL = "__SYMBOL__";\n\n'
+    "    __REACT_TEMPLATE__\n\n"
     "    // Render app\n"
     "    const root = ReactDOM.createRoot(document.getElementById('root'));\n"
     "    root.render(<NotionTravelApp />);\n"
@@ -359,8 +359,10 @@ def generate_html(gen):
     plan_data = gen.generate_plan_data()
     plan_data_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
     react_template = gen._read_react_template()
-    head = HTML_HEAD.format(title=plan_data["trip_summary"]["description"])
-    script = HTML_SCRIPT.format(plan_data_json=plan_data_json,
-                                symbol=gen._display_symbol,
-                                react_template=react_template)
+    title = plan_data["trip_summary"]["description"]
+    head = HTML_HEAD.replace("__TITLE__", title)
+    script = (HTML_SCRIPT
+              .replace("__PLAN_DATA__", plan_data_json)
+              .replace("__SYMBOL__", gen._display_symbol)
+              .replace("__REACT_TEMPLATE__", react_template))
     return head + script

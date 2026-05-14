@@ -1,7 +1,7 @@
 # lib
 
-*Last updated: 2026-05-13T22:15:34Z*
-**Total entries**: 7
+*Last updated: 2026-05-14T09:10:44Z*
+**Total entries**: 10
 **Convention**: kebab
 
 ## Tree
@@ -12,6 +12,9 @@ lib/
 ├── `json_io.py` - Root Cause Fix: Prevents schema violations like meals in travel_segments
 ├── `mcp-tool-catalog.json` - json config
 ├── `mcp_client.py` - Base MCP client for communicating with MCP servers via JSON-RPC 2.0 over stdio
+├── `react_template.tpl` - tpl file
+├── `render_day_data.py` - Each helper is <=30 lines per the project quality gate. The renderer
+├── `render_html_builders.py` - W7 refactor (spec-20260513-085358): module-level functions take the
 ├── `save_translate.py` - User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 └── `semantic_lint.py` - Cross-domain duplicate detection (AC8), meal_slot demoted-primary audit
 ```
