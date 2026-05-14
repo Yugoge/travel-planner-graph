@@ -1,12 +1,13 @@
 # v2
 
-*Last updated: 2026-05-14T11:16:30Z*
-**Total entries**: 2
+*Last updated: 2026-05-14T11:16:31Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
 ```
 v2/
+├── `accommodation.schema.json` - json config
 ├── `meals.schema.json` - json config
 └── `poi-common.schema.json` - json config
 ```
