@@ -6,7 +6,8 @@
  */
 
 import { wrappedFetch } from "./offline.js";
-import { renderAll } from "./state.js";
+import { renderAll, getActiveDayNumber, state as appState } from "./state.js";
+import { recomputeBudget } from "./budget.js";
 
 const NAMED_SLOTS = [
   "breakfast",
