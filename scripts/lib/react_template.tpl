@@ -1047,6 +1047,34 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                 </Section>
               )}
 
+              {/* Bug-3: Unscheduled / Optional section for items lacking a timeline time slot */}
+              {day.unscheduled_optionals && day.unscheduled_optionals.length > 0 && (
+                <Section title="Unscheduled / Optional" icon="🗓️">
+                  <div style={categoryRowStyle}>
+                    <div style={scrollContainerStyle} className="category-scroll-container">
+                      {day.unscheduled_optionals.map((it, i) => (
+                        <div key={i} style={cardStyle('#9b9a97', false, true)}
+                          onClick={() => onItemClick && onItemClick(it, it._category)}
+                        >
+                          <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                              {it._category} · Optional
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {getDisplayName(it, lang)}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#9b9a97', lineHeight: 1.5, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '3px' }}>
+                              {lang === 'local' && it.notes_local ? it.notes_local : it.notes_base}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={fadeStyle} />
+                  </div>
+                </Section>
+              )}
+
               {/* Accommodation */}
               {day.accommodation && (
                 <Section title={L('accommodation', lang)} icon="🏨">
