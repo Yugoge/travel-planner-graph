@@ -396,8 +396,9 @@ def _check_legs_contiguous(legs: list[dict], day_count: int) -> list[ValidationE
 
 
 def validate_meta_v2(meta_dict: dict) -> list[ValidationError]:
-    """Cross-field rules for meta.json beyond JSON Schema."""
+    """JSON Schema + cross-field rules for meta.json."""
     errs: list[ValidationError] = []
+    errs.extend(validate_against_v2_schema(meta_dict, "meta.schema.json", "$"))
     sv = meta_dict.get("schema_version")
     if sv != SCHEMA_VERSION:
         errs.append(ValidationError(
