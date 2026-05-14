@@ -24,6 +24,7 @@ from .constants import (
 )
 from .day_type import expected_skips_for_day, _hhmm_to_minutes, _ts_to_hhmm
 from .errors import ValidationError
+from .json_schema import validate_against_v2_schema
 from .legacy import detect_legacy_shape
 
 
