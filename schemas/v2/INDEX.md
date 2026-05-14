@@ -1,7 +1,7 @@
 # v2
 
-*Last updated: 2026-05-14T11:16:32Z*
-**Total entries**: 5
+*Last updated: 2026-05-14T11:16:33Z*
+**Total entries**: 6
 **Convention**: kebab
 
 ## Tree
@@ -10,6 +10,7 @@ v2/
 ├── `accommodation.schema.json` - json config
 ├── `attractions.schema.json` - json config
 ├── `cafe.schema.json` - json config
+├── `entertainment.schema.json` - json config
 ├── `meals.schema.json` - json config
 └── `poi-common.schema.json` - json config
 ```
