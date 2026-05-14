@@ -1,8 +1,8 @@
 # e2e
 
-*Last updated: 2026-05-14T18:15:00Z*
+*Last updated: 2026-05-14T18:15:14Z*
 **Total entries**: 1
-**Convention**: lower
+**Convention**: kebab
 
 ## Tree
 ```

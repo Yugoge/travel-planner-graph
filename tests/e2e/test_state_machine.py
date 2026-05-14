@@ -117,13 +117,23 @@ def test_step1_trip_starts_at_draft_options():
 def test_step2_validator_accepts_draft_options():
     """draft-options days must pass validation without stage-related errors."""
     days = [_make_day(1, "draft-options")]
+    leg = {"leg_index": 0, "city_id": "test-city", "city_name": "Test City",
+            "first_day": 1, "last_day": 1}
     meta = {
         "schema_version": "v2.0",
         "trip_id": "e2e-test",
-        "day_count": 1,
+        "title": "E2E Test Trip",
+        "title_local": "E2E 测试行程",
         "currency_local": "CNY",
+        "user_budget": 5000,
+        "day_count": 1,
         "start_date": "2026-06-01",
         "end_date": "2026-06-01",
+        "legs": [leg],
+        "travelers": ["Yuge"],
+        "last_saved_ts": "2026-06-01T10:00:00+08:00",
+        "current_editor_session": None,
+        "auto_mode_used": False,
     }
     errs = [e for e in tc.validate_meta_v2(meta) if e.severity == "error"]
     assert errs == [], "\n".join(str(e) for e in errs)
