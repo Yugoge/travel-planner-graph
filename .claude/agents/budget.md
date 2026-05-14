@@ -109,7 +109,7 @@ Advance each day's `stage` to `finalized` after a clean budget aggregation pass 
 
 Before emitting your output, run:
 ```bash
-source venv/bin/activate && python3 scripts/plan-validate-v2.py data/<trip>/days/day-<N>.json
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<trip>/days/day-<N>.json
 ```
 If validator emits errors (e.g. `STAGE_GATE_VIOLATION`), DO NOT aggregate; instead surface the error and abort.
 
