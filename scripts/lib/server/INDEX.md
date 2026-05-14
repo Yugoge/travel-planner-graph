@@ -1,12 +1,13 @@
 # server
 
-*Last updated: 2026-05-14T14:27:31Z*
-**Total entries**: 3
+*Last updated: 2026-05-14T14:28:25Z*
+**Total entries**: 4
 **Convention**: kebab
 
 ## Tree
 ```
 server/
+├── `budget.py` - Aggregates costs from day.json, transportation.json, route_cache.json. No
 ├── `common.py` - Provides:
 ├── `route.py` - Spec: spec-20260508-221237 §5.9 + §5.13 D #7
 └── `trip.py` - Calls trip_contract.load_trip to assemble meta + days + transportation +
