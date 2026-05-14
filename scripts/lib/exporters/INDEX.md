@@ -1,13 +1,14 @@
 # exporters
 
-*Last updated: 2026-05-14T14:28:59Z*
-**Total entries**: 1
-**Convention**: lower
+*Last updated: 2026-05-14T17:34:15Z*
+**Total entries**: 2
+**Convention**: kebab
 
 ## Tree
 ```
 exporters/
-└── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+├── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+└── `pdf_renderer.py` - A4 portrait, one day per page, CJK font embedded (WenQuanYi Zen Hei primary,
 ```
 
 ---
