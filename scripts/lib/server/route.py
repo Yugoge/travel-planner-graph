@@ -98,7 +98,7 @@ _MODE_TO_COMMAND = {
 
 
 def _mode_to_command(mode: str) -> str:
-    return _MODE_TO_COMMAND.get(mode, "driving")
+    return _MODE_TO_COMMAND.get(mode, "walking")
 
 
 def _extract_coords_from_opt(opt: dict) -> str | None:
