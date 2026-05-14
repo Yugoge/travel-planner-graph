@@ -221,29 +221,41 @@ def _check_late_arrival_dinner(day_dict: dict, position: str) -> list[Validation
     return []
 
 
+def _check_one_meal_slot(slot: dict, meal_slot: str, position: str) -> tuple[list[ValidationError], int]:
+    opts = _slot_options(slot)
+    errs: list[ValidationError] = []
+    if len(opts) < 2:
+        errs.append(ValidationError(
+            code="MEAL_SLOT_FLOOR",
+            path=f"{position}.slots.{meal_slot}.options",
+            message=f"meal slot needs >=2 options, got {len(opts)} (§5.7 A)",
+        ))
+    return errs, len(opts)
+
+
 def _check_meal_floors(day_dict: dict, position: str) -> list[ValidationError]:
+    """Per spec: each meal slot >=2 options; per-day floor = 2 * non_skipped_count."""
     errs: list[ValidationError] = []
     slots = day_dict.get("slots", {})
-    meal_total_options = 0
-    any_nonskipped = False
+    total = 0
+    non_skipped = 0
     for meal_slot in ("breakfast", "lunch", "dinner"):
         slot = slots.get(meal_slot, {}) or {}
         if slot.get("skipped"):
             continue
-        any_nonskipped = True
-        opts = _slot_options(slot)
-        if len(opts) < 2:
-            errs.append(ValidationError(
-                code="MEAL_SLOT_FLOOR",
-                path=f"{position}.slots.{meal_slot}.options",
-                message=f"meal slot needs >=2 options, got {len(opts)} (§5.7 A)",
-            ))
-        meal_total_options += len(opts)
-    if any_nonskipped and meal_total_options < 6:
+        non_skipped += 1
+        slot_errs, count = _check_one_meal_slot(slot, meal_slot, position)
+        errs.extend(slot_errs)
+        total += count
+    floor = 2 * non_skipped
+    if non_skipped > 0 and total < floor:
         errs.append(ValidationError(
             code="MEAL_DAY_FLOOR",
             path=f"{position}.slots",
-            message=f"day needs >=6 meal options across breakfast+lunch+dinner, got {meal_total_options} (§5.7 A)",
+            message=(
+                f"day needs >=2 options per non-skipped meal slot ({non_skipped} active "
+                f"-> floor={floor}), got {total} (§5.7 A)"
+            ),
         ))
     return errs
 
