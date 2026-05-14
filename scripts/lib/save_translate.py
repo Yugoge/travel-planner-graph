@@ -4,6 +4,13 @@ User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 existing schema's `optional` boolean. Banned ad-hoc keys (plan_label,
 is_alternative, tier, bundle_id, priority_label, _isAlternative) are
 rejected with explicit error.
+
+W8 (spec-20260513-085358 AC13) adds agent-scoped rejection of
+`alternatives` on attractions/shopping/entertainment (flat shape).
+Meals exempted (legitimately uses primary+alternatives[] per
+schemas/meals.schema.json $defs.meal_slot). Plus shape-normalizer
+_normalize_to_canonical_record() so cross-shape callers can operate
+shape-agnostically; round-trip is lossless via _denormalize().
 """
 
 from __future__ import annotations
@@ -23,6 +30,20 @@ BANNED_AD_HOC_KEYS = (
     'plan_label', 'is_alternative', '_isAlternative',
     'tier', 'bundle_id', 'priority_label',
 )
+
+# W8 AC13: agent-scoped rejection. The literal field 'alternatives' is
+# REJECTED on these three flat-shape domains because their schemas do
+# not yet support primary+alternatives[]. Meals is exempted because its
+# schema explicitly defines meal_slot = {primary, alternatives[]}.
+AGENT_SCOPED_BANNED_KEYS = {
+    'attractions': ('alternatives',),
+    'shopping': ('alternatives',),
+    'entertainment': ('alternatives',),
+}
+
+# Canonical-record shape names used by _normalize_to_canonical_record().
+SHAPE_MEALS_NESTED = 'meals_nested'
+SHAPE_FLAT_OPTIONAL = 'flat_optional'
 
 
 def _norm(s):
