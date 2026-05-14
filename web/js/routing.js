@@ -84,6 +84,9 @@ export async function requestRouteForAdjacency(state, dayN, slotId) {
   const key = _pairKey(pair.fromOptId, pair.toOptId, pair.mode);
   _seqCounter += 1;
   const mySeq = _seqCounter;
+  // Record latest-ISSUED at request time so an older in-flight request that
+  // returns AFTER a newer one is dropped (codex finding #10).
+  _latestIssued.set(key, mySeq);
   state.ui._computing[key] = true;
   renderAll();
   try {
@@ -94,13 +97,16 @@ export async function requestRouteForAdjacency(state, dayN, slotId) {
   } finally {
     delete state.ui._computing[key];
     renderAll();
+    // Phase-2 budget retrigger: route arrival changes transportation cost,
+    // so recompute the active day's budget once route is resolved.
+    if (mySeq === _latestIssued.get(key)) {
+      recomputeBudget(state, dayN);
+    }
   }
 }
 
 function _handleRouteResponse(state, key, mySeq, resp) {
-  const seenSeq = _latestSeen.get(key) || 0;
-  if (mySeq < seenSeq) return;
-  _latestSeen.set(key, mySeq);
+  if (mySeq < (_latestIssued.get(key) || 0)) return; // stale; drop
   if (resp && resp.status === "ok" && resp.segment) {
     state.route_cache[key] = {
       duration_min: resp.segment.duration_min,
@@ -114,8 +120,6 @@ function _handleRouteResponse(state, key, mySeq, resp) {
 }
 
 function _markUnknown(state, key, mySeq) {
-  const seenSeq = _latestSeen.get(key) || 0;
-  if (mySeq < seenSeq) return;
-  _latestSeen.set(key, mySeq);
+  if (mySeq < (_latestIssued.get(key) || 0)) return;
   state.route_cache[key] = { status: "unresolved" };
 }
