@@ -192,9 +192,24 @@ def _check_day_type_tolerance(day_dict: dict, position: str) -> list[ValidationE
         actual_skipped = bool(slot.get("skipped", False))
         expected_reason = expected.get(slot_id)
         if actual_skipped:
-            errs.extend(_check_skipped_actual(slot, slot_id, expected_reason, position))
+            errs.extend(_check_skipped_actual(slot, slot_id, expected_reason, day_type, position))
         elif expected_reason is not None:
             errs.extend(_check_skipped_missing(slot_id, expected_reason, day_type, position))
+    # Accommodation skip semantics: only red-eye day_type permits accommodation skip
+    acc = day_dict.get(ACCOMMODATION_SLOT, {}) or {}
+    if acc.get("skipped"):
+        if day_type != "red-eye":
+            errs.append(ValidationError(
+                code="ACCOMMODATION_UNJUSTIFIED_SKIP",
+                path=f"{position}.{ACCOMMODATION_SLOT}",
+                message=f"accommodation may only be skipped on red-eye days; day_type={day_type!r}",
+            ))
+        elif acc.get("skipped_reason") != "red-eye-spans-prior-day":
+            errs.append(ValidationError(
+                code="ACCOMMODATION_SKIP_REASON_INVALID",
+                path=f"{position}.{ACCOMMODATION_SLOT}.skipped_reason",
+                message="accommodation skip on red-eye day requires reason='red-eye-spans-prior-day'",
+            ))
     return errs
 
 
