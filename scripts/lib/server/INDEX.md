@@ -1,13 +1,14 @@
 # server
 
-*Last updated: 2026-05-14T14:26:06Z*
-**Total entries**: 1
-**Convention**: lower
+*Last updated: 2026-05-14T14:26:36Z*
+**Total entries**: 2
+**Convention**: kebab
 
 ## Tree
 ```
 server/
-└── `common.py` - Provides:
+├── `common.py` - Provides:
+└── `trip.py` - Calls trip_contract.load_trip to assemble meta + days + transportation +
 ```
 
 ---
