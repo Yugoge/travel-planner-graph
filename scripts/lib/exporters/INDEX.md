@@ -1,13 +1,14 @@
 # exporters
 
-*Last updated: 2026-05-14T17:34:15Z*
-**Total entries**: 2
+*Last updated: 2026-05-14T17:35:33Z*
+**Total entries**: 3
 **Convention**: kebab
 
 ## Tree
 ```
 exporters/
 ├── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+├── `ical_renderer.py` - Produces a VCALENDAR with one VEVENT per selected slot + per inter-city
 └── `pdf_renderer.py` - A4 portrait, one day per page, CJK font embedded (WenQuanYi Zen Hei primary,
 ```
 
