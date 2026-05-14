@@ -71,7 +71,7 @@ def _meal_options(slot_id: str, day_n: int) -> list[dict]:
 def _activity_options(slot_id: str, day_n: int, cost: float | None = 50.0) -> list[dict]:
     return [
         _opt(f"{slot_id}-{day_n}-1", f"{slot_id.title()} Spot",
-             f"{slot_id} 景点", cost,
+             f"{slot_id} CJK-Attraction", cost,
              source_agent="attractions"),
     ]
 
