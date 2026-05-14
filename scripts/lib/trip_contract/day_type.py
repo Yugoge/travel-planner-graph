@@ -80,10 +80,10 @@ def expected_skips_for_day(day_dict: dict) -> dict[str, Optional[str]]:
         if dep_hhmm is not None:
             _expect_departure_skips(_hhmm_to_minutes(dep_hhmm), expected)
 
-    if day_type == "transit-only":
-        for s in NAMED_SLOTS:
-            expected[s] = "in-transit"
-
+    # transit-only and buffer days: skips are PERMITTED (with reasons in-transit /
+    # buffer-rest) but never MANDATED. We do not pre-populate `expected` here;
+    # validators.py allows discretionary skips with these reasons via the
+    # _check_skipped_actual permissive-reason path.
     return expected
 
 
