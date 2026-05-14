@@ -57,9 +57,9 @@ timeline_data = {
             "travel_segments": [
                 {
                     "name_base": "Taxi to City Museum",
-                    "name_local": "打车前往市博物馆",
+                    "name_local": "Taxi to City Museum CJK",
                     "type_base": "taxi",
-                    "type_local": "出租车",
+                    "type_local": "Taxi CJK",
                     "icon": "🚕",
                     "start_time": "14:30",
                     "end_time": "15:00",

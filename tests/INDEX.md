@@ -1,7 +1,7 @@
 # tests
 
-*Last updated: 2026-05-14T11:28:28Z*
-**Total entries**: 20
+*Last updated: 2026-05-14T20:00:13Z*
+**Total entries**: 37
 **Convention**: kebab
 
 ## Tree
@@ -9,17 +9,34 @@
 tests/
 ├── data/
 │   └── `baseline_merged_dicts_china_20260412.json` - json config
+├── e2e/
+│   └── `test_state_machine.py` - Uses trip_contract.state_machine directly. No server, no HTTP, no filesystem
+├── exporters/
+│   ├── `conftest.py` - Builds a v2 trip bundle layout on disk (data/<trip>/meta.json + days/day-NN.json
+│   ├── `test_ical_renderer.py` - iCal exporter tests: validity, red-eye ownership, day-anchor fallback, alarms.
+│   └── `test_pdf_renderer.py` - PDF exporter tests: normal day, red-eye, missing image, atomic write.
 ├── fixtures/
 │   └── trip-contract/
 │       ├── `arrival-day.json` - json config
+│       ├── `buffer-day.json` - json config
 │       ├── `city-change-day.json` - json config
+│       ├── `departure-day.json` - json config
 │       ├── `late-arrival-day.json` - json config
 │       ├── `legacy-shape-day.json` - json config
 │       ├── `meta.json` - json config
 │       ├── `normal-day.json` - json config
-│       └── `red-eye-day.json` - json config
+│       ├── `red-eye-day.json` - json config
+│       └── `transit-only-day.json` - json config
 ├── scripts/
 │   └── `validate-schema-references.py` - Checks that all 6 agent .md files and plan.md contain schema validation
+├── server/
+│   ├── `conftest.py` - Handlers are called directly (not over HTTP) to avoid port allocation in CI
+│   ├── `test_budget_endpoint.py` - Tests call handle_budget() directly. No HTTP port allocated
+│   ├── `test_route_endpoint.py` - Tests call handle_route() directly. No HTTP port allocated
+│   ├── `test_save_endpoint.py` - Tests call handle_save() directly. No HTTP port allocated
+│   └── `test_trip_endpoint.py` - Tests call hydrate_trip() directly. No HTTP port allocated
+├── web/
+│   └── `MANUAL-TEST-PLAN.md` - M4b Web UI — Manual Test Plan
 ├── `test_json_io_direct.py` - Test json_io library directly (not through save.py).
 ├── `test_plan_validate_schema_inference.py` - Unit tests for schema-driven inference logic in scripts/plan-validate.py
 ├── `test_render_day_data_byte_identity.py` - Verifies that the post-refactor _merge_day_data produces the same merged
