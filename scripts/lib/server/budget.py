@@ -166,14 +166,22 @@ def handle_budget(store: TripStore, req: dict) -> dict[str, Any]:
     """
     trip_id = req["trip_id"]
     meta, days, transportation, route_cache = _read_trip_snapshot(store, trip_id)
-    targets = _select_target_days(days, req.get("day"))
-    day_entries = [
-        _compute_day_entry(d, n, transportation, route_cache) for n, d in targets
+    # Compute all days unconditionally so trip_total always covers the full trip.
+    all_pairs = list(enumerate(days, start=1))
+    all_day_entries = [
+        _compute_day_entry(d, n, transportation, route_cache) for n, d in all_pairs
     ]
+    trip_total = sum(e["day_total"] for e in all_day_entries)
+    # Filter for the response breakdown only if a specific day is requested.
+    req_day = req.get("day")
+    if req_day is not None:
+        day_entries = [e for e in all_day_entries if e["day"] == req_day]
+    else:
+        day_entries = all_day_entries
     return {
         "schema_version": SCHEMA_VERSION,
         "trip_id": trip_id,
-        "trip_total": sum(d["day_total"] for d in day_entries),
+        "trip_total": trip_total,
         "currency_local": meta.get("currency_local", "CNY"),
         "days": day_entries,
     }
