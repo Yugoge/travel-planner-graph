@@ -607,7 +607,7 @@ If critical issues found, extract specific errors and re-invoke relevant agents 
 
 **Validator re-run after gate (whether user-gated or --auto)**:
 ```bash
-source venv/bin/activate && python3 scripts/plan-validate-v2.py data/<destination-slug>/days/*.json
+source venv/bin/activate && python3 scripts/validate-trip-contract.py data/<destination-slug>/days/*.json
 ```
 Halt on any error before Step 9. Validator errors are NEVER bypassed by --auto (codex M3 review).
 
