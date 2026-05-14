@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-14T09:56:38Z*
-**Total entries**: 310
+*Last updated: 2026-05-14T10:57:17Z*
+**Total entries**: 311
 **Convention**: kebab
 
 ## Tree
@@ -316,7 +316,8 @@ dev/
 ├── `ticket-20260506-104100.md` - BA Specification: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 ├── `ticket-20260506-141814.md` - BA Specification: Close residual gaps from spec-20260506-092951 (2-item follow-on)
 ├── `ticket-20260509-114002.md` - BA Specification: M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block
-└── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle (round-2 remediation)
+├── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle (round-2 remediation)
+└── `ticket-20260514-103616.md` - BA Master Ticket: Complete spec-20260508-221237 §5.2-§5.13 (post-M1)
 ```
 
 ---
