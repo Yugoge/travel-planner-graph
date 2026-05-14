@@ -4,6 +4,10 @@ This repository contains auto-generated travel plans from the travel-planner.
 
 **Live Site:** [https://Yugoge.github.io/travel-planner-graph/](https://Yugoge.github.io/travel-planner-graph/)
 
+## Project Status
+
+See [`docs/feature-status.md`](docs/feature-status.md) for the M1-M5 spec milestone tracker and the per-bug status table for the active `/dev` cycle.
+
 ## Travel Plans
 
 - [China Feb 15 Mar 7 2026 - 2026-02-10](https://Yugoge.github.io/travel-planner-graph/china-feb-15-mar-7-2026/2026-02-10/)

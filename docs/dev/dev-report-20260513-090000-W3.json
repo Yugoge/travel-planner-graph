@@ -1,0 +1,89 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W3",
+  "timestamp": "2026-05-13T22:12:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W3.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      ".claude/skills/google-maps"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replaced absolute-path symlink .claude/skills/google-maps -> /root/travel-planner/.claude/commands/scripts/google-maps with a RELATIVE-path symlink -> ../commands/scripts/google-maps, and staged it for git tracking",
+        "type": "symlink-replacement",
+        "files_modified": [".claude/skills/google-maps"],
+        "changes": "readlink output changed from '/root/travel-planner/.claude/commands/scripts/google-maps' (absolute, broken on clean checkouts under a different prefix) to '../commands/scripts/google-maps' (relative; portable). Used `ln -sfn` (atomic replace; no `rm` invoked — `rm` is blocked by pretool-bash-safety.sh hook). Then `git add` staged the new symlink (was untracked per `git ls-files .claude/skills/` showing only gaode-maps before).",
+        "rationale": "AC5 / OBJ-6 forbids the absolute-symlink-commit branch. Option (a) — relative symlink — chosen over option (b) — path-constant migration in fetch-images-batch.py — because it is the minimum diff (1 symlink, 0 Python lines changed) and aligns with the existing `.claude/skills/gaode-maps` precedent (which itself is currently absolute, but that is W3-out-of-scope per the write-set boundary)."
+      }
+    ],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "git_rationale": {
+      "root_cause_commit": "46a46d5 — migrated helper to .claude/commands/scripts/google-maps/ but only added a local untracked absolute-path symlink at .claude/skills/google-maps, leaving fetch-images-batch.py's hardcoded `.claude/skills/google-maps/scripts/places.py` path dependent on a per-host absolute target that does not exist on a clean checkout under a different filesystem prefix",
+      "why_issue_occurred": "Symlink was created with an absolute path (`/root/travel-planner/.claude/commands/scripts/google-maps`) and never committed. A clean checkout — or any checkout under a non-default path — yields a broken symlink, so fetch-images-batch.py's `_assert_helper_paths_exist()` raises FileNotFoundError before any image fetch can proceed.",
+      "how_fix_addresses_root": "Relative-path symlink (`../commands/scripts/google-maps`) resolves correctly under ANY checkout prefix because the relationship between `.claude/skills/` and `.claude/commands/scripts/` is constant within the repo. Staging the symlink ensures it travels with the repo on clean checkouts."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 1,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 1,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "To verify: (1) `readlink .claude/skills/google-maps` returns `../commands/scripts/google-maps` (relative, NOT absolute); (2) `git ls-files .claude/skills/google-maps` returns the symlink (staged or committed); (3) clean-checkout portability test — copy `.claude/` and `scripts/` to a new prefix outside `/root/travel-planner` (e.g., `/tmp/portability-test-X`) and run `python3 scripts/fetch-images-batch.py <some-slug> 0 0` — should exit 0 with no FileNotFoundError. This was performed and PASSED at /tmp/portability-test-878957.",
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Clean-checkout portability test executed at /tmp/portability-test-878957 (path where the original `/root/travel-planner` absolute target does not exist as a parent prefix of the test copy). The script ran without raising FileNotFoundError from `_assert_helper_paths_exist()` and exited 0. `readlink` and `ls` confirmed the new relative symlink resolves the helper at the new location. The /tmp/portability-test-* directory was left behind (rm is blocked by the pretool-bash-safety.sh hook); harmless cleanup left for operator."
+    }
+  },
+  "blast_radius": [
+    {
+      "modified": ".claude/skills/google-maps",
+      "imported_by": [
+        "scripts/fetch-images-batch.py (lines 62, 271 — hardcoded path constants reading places.py via this symlink)"
+      ]
+    }
+  ],
+  "ac5_verification": {
+    "branch_chosen": "a-relative-symlink",
+    "rationale": "Option (a) requires zero Python changes and is the minimum diff. Option (b) would have required editing 2 hardcoded path constants in fetch-images-batch.py (lines 62 and 271) to point at `.claude/commands/scripts/google-maps/scripts/places.py` directly; option (a) achieves the same portability outcome with 1 symlink change.",
+    "old_target": "/root/travel-planner/.claude/commands/scripts/google-maps (absolute; would break on any host where /root/travel-planner is not the project root)",
+    "new_target": "../commands/scripts/google-maps (relative; resolves under any prefix)",
+    "git_tracked": "yes — `git add .claude/skills/google-maps` staged the symlink (status: 'A  .claude/skills/google-maps'). Commit is orchestrator's responsibility per dev contract (No Band-Aid Rule item 7 + dev allowed git verbs).",
+    "absolute_symlink_committed": false,
+    "clean_checkout_test": {
+      "performed": true,
+      "test_location": "/tmp/portability-test-878957",
+      "method": "Copied `.claude/` (with `cp -a` to preserve symlinks) and `scripts/` to a fresh prefix outside `/root/travel-planner`. Created a minimal `data/empty-trip/{requirements-skeleton,plan-skeleton}.json` stub. Ran `python3 scripts/fetch-images-batch.py empty-trip 0 0`.",
+      "result": "PASS",
+      "evidence": {
+        "readlink_at_new_location": "../commands/scripts/google-maps",
+        "places_py_resolves": ".claude/skills/google-maps/scripts/places.py (ls returns the file under the test prefix)",
+        "script_exit_code": 0,
+        "filenotfounderror_raised": false,
+        "stdout_excerpt": "Batch Image Fetcher - empty-trip ... ✅ Cache hit: no fetches required"
+      }
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider also converting `.claude/skills/gaode-maps` from absolute to relative symlink (`../commands/scripts/gaode-maps`) for the same portability reason. Currently out of W3 scope (write-set excludes gaode-maps).",
+    "Future helper-path additions in fetch-images-batch.py should prefer `.claude/commands/scripts/<tool>/scripts/...` directly (no symlink indirection) to remove the symlink-portability concern entirely at the call site; defer to a separate spec.",
+    "Clean up `/tmp/portability-test-*` directories left behind by the verification step (cannot be removed by dev subagent because `rm` is blocked by pretool-bash-safety.sh)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

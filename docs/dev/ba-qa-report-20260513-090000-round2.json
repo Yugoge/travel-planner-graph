@@ -1,0 +1,232 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "timestamp": "2026-05-13T22:10:00Z",
+  "mode": "ba-validation",
+  "round": 2,
+  "spec_id": "spec-20260513-085358",
+  "ba_artifacts_reviewed": {
+    "ticket": "docs/dev/ticket-20260513-090000.md",
+    "context_json": "docs/dev/context-20260513-090000.json",
+    "spec_md": "docs/dev/specs/spec-20260513-085358.md",
+    "round1_qa_report": "docs/dev/ba-qa-report-20260513-090000.json"
+  },
+  "user_verbatim_directive": "全部一次性完成",
+
+  "verdict": "pass",
+  "objections_resolved": ["OBJ-1", "OBJ-2", "OBJ-3", "OBJ-4", "OBJ-5", "OBJ-6"],
+  "objections_unresolved": [],
+  "new_objections": [],
+
+  "summary": "All 6 round-1 objections genuinely resolved with proof in both ticket-20260513-090000.md and context-20260513-090000.json. BA promoted Bug 4 from deferred to W7 (mechanical refactor with 9 enumerated helpers <=30 lines each in scripts/lib/render_day_data.py + byte-identical merged-dict invariant per codex round-2 Q1). BA promoted Bug 10 from no-op to W8 (schema-reject path via agent-scoped BANNED_AD_HOC_KEYS extension + _normalize_to_canonical_record shape-normalizer, with codex round-2 Q2 'accept-but-ignore = silent-data-loss trap' ruling explicitly honored). AC1 and AC3 amended with runnable curl|grep text-grep fallback recipes. AC-DISPATCH section + orchestrator_dispatch_contract object document the env-var clause + worker entry verification + alternative sentinel-file path. Bug 7 evidence section + AC6 corrected to 'loud exit 1 with Unknown option <plan-id>' (not silent). AC5 explicitly rejects absolute-symlink-commit branch, requires relative-symlink OR path-constant migration + clean-checkout portability test. File-disjointness re-audit confirms 8-worker plan: W2+W7 share generate-html-interactive.py with W7-after-W2 sequential declared; W5+W8 share save_translate.py with W8-after-W5 sequential declared; all other 6 workers remain file-disjoint. All 13 ACs (AC1-AC13 + AC-DISPATCH) are runnable by next-cycle QA without ambiguity.",
+
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null,
+    "note": "Round-2 verification is mechanical against round-1 objections. Codex consultation already invoked in round-1 and round-2 BA design phase per ba-qa-report-20260513-090000.json codex_consult.feedback_summary and context-20260513-090000.json codex_consult.feedback_summary."
+  },
+
+  "per_objection_verification": [
+    {
+      "id": "OBJ-1",
+      "dimension": "scope_alignment",
+      "original_severity": "critical",
+      "resolution_required": "Add W7 worker for Bug 4 mechanical refactor (split _merge_day_data into <30-line helpers in scripts/lib/render_day_data.py)",
+      "resolution_evidence": {
+        "worker_table_entry": "ticket line 89 + lines 358-359; context lines 442-471",
+        "files": ["scripts/generate-html-interactive.py (shared with W2)", "scripts/lib/render_day_data.py (NEW)", "tests/test_render_day_data_byte_identity.py (NEW)"],
+        "sequencing_declared": "After W2 (strict sequential on shared file); BYPASS_QUALITY_GATE=1 required",
+        "acceptance_criterion": "AC12 (ticket lines 267-283)",
+        "helper_enumeration": "9 helpers enumerated by name + line-range + purpose in context lines 454-464 AND ticket AC12 lines 270-279: build_skeleton, merge_meals, merge_cafe, merge_attractions, merge_entertainment, merge_shopping, merge_accommodation, merge_transportation, calculate_budget_total",
+        "line_count_constraint": "<=30 lines per helper; <=30 lines for orchestrator _merge_day_data; <=800 lines for whole file",
+        "byte_identity_invariant": "AC12 codex round-2 Q1: byte-identical INTERMEDIATE merged-dict for all 15 days via json.dumps(sort_keys=True) + diff -u; test harness specified"
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "scope_alignment",
+      "original_severity": "critical",
+      "resolution_required": "Add Bug 10 schema scaffold/reject path",
+      "resolution_evidence": {
+        "worker_table_entry": "ticket line 90 + lines 359; context lines 473-498",
+        "files": ["schemas/attractions.schema.json", "schemas/shopping.schema.json", "schemas/entertainment.schema.json", "scripts/lib/save_translate.py (shared with W5)"],
+        "sequencing_declared": "Strictly AFTER W5 (codex round-2 Q3 ruling honored)",
+        "acceptance_criterion": "AC13 (ticket lines 285-296)",
+        "codex_q2_ruling_honored": "YES - ticket line 14 + context line 547 explicitly cite codex round-2 Q2 'Accepting it before renderer support creates a silent-data-loss trap. A hard reject forces agents to wait for the full implementation.' AC13 implements explicit REJECT path via agent-scoped BANNED_AD_HOC_KEYS extension (meals exempted). NO accept-but-ignore semantics.",
+        "shape_normalizer": "_normalize_to_canonical_record(item, shape) added to save_translate.py with round-trip lossless contract; callable by W5 cross-domain dedup linter for shape-agnostic detection",
+        "renderer_no_changes": "AC13 explicit: 'renderer (W2/W7) takes NO Bug-10 changes — flat-shape attractions/shopping/entertainment continue to render via the existing optional:true semantic'",
+        "guiding_error_message": "AC13 specifies verbatim error message pointing at M2 unification plan"
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "spec_text_vs_execution_drift",
+      "original_severity": "major",
+      "resolution_required": "Add text-grep fallback recipes to AC1 and AC3",
+      "resolution_evidence": {
+        "ac1_fallback": "ticket line 196: 'curl https://travel.life-ai.app/china/2026-04-12/ | grep -c \"沈大成\" returns >= 1 AND curl <url> | grep -c \"光明邨\" returns >= 1. Live-browser screenshot is the preferred evidence; text-grep is acceptable substitute when browser unavailable.'",
+        "ac3_fallback": "ticket line 210: 'curl <deployed-url> | grep -E \"Unscheduled|Optional\" returns >= 1 match AND the optional item's name_local is present in the page HTML'",
+        "context_json_mirrored": "context line 59-61: success_criteria entries for AC1/AC3 include 'primary screenshot + text-grep fallback' language",
+        "runnable_by_qa": "Both fallback recipes are pure shell/grep commands runnable without browser tooling"
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "investigation_completeness",
+      "original_severity": "major",
+      "resolution_required": "Document explicit W2 dispatch-contract clause + entry verification OR sentinel-file auto-detect",
+      "resolution_evidence": {
+        "ac_dispatch_section": "ticket lines 298-302: AC-DISPATCH explicit clause requiring orchestrator dispatch prompt to include literal env-var clause AND worker entry verification AND PAUSE+REPORT if absent",
+        "context_orchestrator_dispatch_contract": "context lines 86-94: orchestrator_dispatch_contract object with verbatim dispatch_prompt_clause_verbatim, worker_entry_verification, alternative sentinel-file mechanism, binding_choice_documented_in (W1 worker's deliverables)",
+        "applies_to_both_workers": "ticket line 298 + context line 87: applies to W2 AND W7 (the two workers Editing the 3376-line file)",
+        "alternative_path_present": "Both ticket (line 302) and context (line 92) document sentinel-file approach (.claude/dev-registry/dev-20260513-090000/qa.json existence flips BYPASS auto-on inside the hook) as acceptable substitute"
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "evidence_quality",
+      "original_severity": "minor",
+      "resolution_required": "Correct Bug 7 symptom phrasing from 'silently ignored' to 'loud exit 1'",
+      "resolution_evidence": {
+        "ticket_evidence_section": "ticket line 49: 'Symptom is loud exit 1 with `Unknown option <plan-id>` error, NOT silent ignore (QA-verified via live reproduction)'",
+        "ac6_corrected": "ticket lines 226-232: 'does NOT exit 1 with `Unknown option china-20260412-092624` (the OLD loud-error symptom — NOT silent)'",
+        "obj_5_callout": "ticket line 17 explicit: 'OBJ-5 (Bug 7 symptom phrasing) -> resolved: corrected to loud exit 1 with Unknown option <plan-id>'"
+      },
+      "verdict": "resolved"
+    },
+    {
+      "id": "OBJ-6",
+      "dimension": "affected_file_accuracy",
+      "original_severity": "minor",
+      "resolution_required": "Tighten AC5 to forbid absolute-symlink-commit branch",
+      "resolution_evidence": {
+        "ac5_relative_or_path_constant": "ticket lines 218-224: AC5 declares 'EITHER (a) `.claude/skills/google-maps` symlink is REPLACED with a **relative-path** symlink (e.g., `../commands/scripts/google-maps`) and committed, OR (b) `scripts/fetch-images-batch.py` is changed to read directly from `.claude/commands/scripts/google-maps/scripts/places.py` (NO symlink dependency)'",
+        "absolute_symlink_explicitly_rejected": "ticket line 223: '**the absolute-symlink-commit branch (the existing `/root/travel-planner/.claude/commands/scripts/google-maps` target) is REJECTED**'",
+        "clean_checkout_portability_test": "ticket line 224: 'a clean-checkout test on a host where `/root/travel-planner` does NOT exist as the absolute path must work (this verifies portability)'",
+        "constraint_section_mirror": "ticket line 342: 'W3 MUST resolve absolute-symlink portability — absolute-symlink-commit FORBIDDEN (OBJ-6 / AC5)'"
+      },
+      "verdict": "resolved"
+    }
+  ],
+
+  "file_disjointness_re_audit": {
+    "worker_count": 8,
+    "shared_file_pairs": [
+      {
+        "file": "scripts/generate-html-interactive.py",
+        "workers": ["W2", "W7"],
+        "sequencing": "W7 strictly after W2",
+        "sequencing_declared_in": [
+          "ticket line 89 (worker table 'After W2')",
+          "ticket line 93 (file-overlap audit 'W7 strictly after W2')",
+          "ticket line 173 (edge-cases 'W7 + W2 sequencing')",
+          "ticket line 343 (constraints 'W7 MUST run AFTER W2')",
+          "ticket line 358 (revised worker table 'After W2')",
+          "context line 451 ('Strictly AFTER W2 completes (shared file scripts/generate-html-interactive.py)')",
+          "context line 77 (constraints 'W7 MUST run AFTER W2 completes')"
+        ],
+        "verdict": "sequential declared (PASS)"
+      },
+      {
+        "file": "scripts/lib/save_translate.py",
+        "workers": ["W5", "W8"],
+        "sequencing": "W8 strictly after W5",
+        "sequencing_declared_in": [
+          "ticket line 90 (worker table 'After W5 (sequential on shared file)')",
+          "ticket line 94 (file-overlap audit 'W8 strictly after W5 (codex round-2 Q3)')",
+          "ticket line 171 (edge-cases 'W8 runs strictly after W5 (codex round-2 Q3)')",
+          "ticket line 344 (constraints 'W8 MUST run AFTER W5')",
+          "ticket line 359 (revised worker table 'After W5')",
+          "context line 483 ('Strictly AFTER W5 completes (shared file scripts/lib/save_translate.py); sequential not parallel')",
+          "context line 78 (constraints 'W8 MUST run AFTER W5 completes')"
+        ],
+        "verdict": "sequential declared (PASS)"
+      }
+    ],
+    "file_disjoint_workers": [
+      "W1: .claude/hooks/pretool-quality-gate.py (disjoint)",
+      "W3: scripts/fetch-images-batch.py + .claude/skills/google-maps (disjoint)",
+      "W4: scripts/generate-and-deploy.sh (disjoint)",
+      "W5: scripts/save.py + scripts/lib/save_translate.py (sole writer for save.py + first writer for save_translate.py)",
+      "W6: docs/feature-status.md + README.md + docs/index.md (disjoint)"
+    ],
+    "disjointness_verdict": "PASS - 8-worker plan has exactly two shared-file pairs (W2+W7, W5+W8), both with strict sequential ordering declared in 7+ locations each. All other 6 workers are file-disjoint."
+  },
+
+  "ac_measurability_audit": {
+    "ac_count": 14,
+    "all_acs_runnable": true,
+    "per_ac_runnability": {
+      "AC1": "Runnable: curl + grep -c (text-grep fallback) OR Playwright screenshot",
+      "AC2": "Runnable: unit test on _get_timeline_time(gaode_id=...) returns time without falling through tiers",
+      "AC3": "Runnable: curl + grep -E 'Unscheduled|Optional' + name_local presence OR Playwright screenshot",
+      "AC4": "Runnable: invoke hook with BYPASS_QUALITY_GATE=1 vs unset; check exit codes + stderr log",
+      "AC5": "Runnable: clean-checkout fetch-images-batch.py invocation + symlink target inspection (must be relative or absent)",
+      "AC6": "Runnable: bash scripts/generate-and-deploy.sh <plan> --day 1-5; check no 'Unknown option' error + day-range echo + exit 0",
+      "AC7": "Runnable: save.py invocation + budget.json data.trip_total == sum(days[].budget.total) assertion",
+      "AC8": "Runnable: inject duplicate Wukang Road into attractions + shopping for same day; verify stderr WARN message",
+      "AC9": "Runnable: save.py meals.primary replacement test; verify alternatives[] does NOT contain old primary + stderr audit line present",
+      "AC10": "Runnable: file existence test docs/feature-status.md + grep for 'Project Status' link in README.md + grep for feature-status.md in docs/index.md",
+      "AC11": "Runnable: grep 'Cloudflare cache' + 'DYNAMIC pass-through' in docs/feature-status.md",
+      "AC12": "Runnable: python test harness tests/test_render_day_data_byte_identity.py loads china-20260412-092624, snapshots merged-dict for all 15 days pre/post refactor via json.dumps(sort_keys=True), asserts byte-equal + wc -l check + function-line-count check",
+      "AC13": "Runnable: save.py invocation with alternatives:[] key on attractions agent -> assert exit 1 + verbatim error message; meals agent same input -> assert success",
+      "AC-DISPATCH": "Runnable: inspect orchestrator dispatch prompt text for verbatim clause + worker logs for env-var check on entry"
+    },
+    "ambiguity_check": "No AC contains words like 'looks good', 'reasonable', 'appropriate', or other subjective terms. All ACs have measurable assertions."
+  },
+
+  "evidence_quality_audit": {
+    "bug_7_symptom_phrasing": {
+      "round1_problem": "Spec/cp-state said '--day flag silently ignored'",
+      "round2_correction": "ticket line 49: 'loud exit 1 with Unknown option <plan-id> error, NOT silent ignore (QA-verified via live reproduction)'",
+      "ac6_assertion": "ticket lines 228-232: asserts NO 'Unknown option <plan-id>' exit 1 + --day forwarded + exit 0",
+      "verdict": "corrected"
+    },
+    "all_other_evidence": "Round-1 verified 6/6 sampled claims. Round-2 added W7/W8 evidence which is internally consistent (line numbers 599-1179, 470-508, 643, etc. all match round-1 verified anchors)."
+  },
+
+  "scope_alignment_re_audit": {
+    "user_section5_bug_count": 13,
+    "ba_in_scope_count": 12,
+    "ba_doc_only_count": 1,
+    "ba_deferred_count": 0,
+    "round1_narrowed_bugs_now_resolved": [
+      {
+        "bug_id": 4,
+        "round1_status": "deferred to M2 with feature-status.md tracking only",
+        "round2_status": "W7 mechanical refactor with 9 enumerated helpers + byte-identical merged-dict invariant",
+        "resolution_verdict": "fully_in_scope"
+      },
+      {
+        "bug_id": 10,
+        "round1_status": "NO renderer changes; no schema action; pure deferral",
+        "round2_status": "W8 schema-reject via agent-scoped BANNED_AD_HOC_KEYS + shape-normalizer; codex Q2 silent-data-loss trap ruling explicitly honored",
+        "resolution_verdict": "minimum_safe_in_scope"
+      }
+    ],
+    "scope_alignment_verdict": "satisfies '全部一次性完成' directive: 12 implemented + 1 documented-N/A (Bug 8 infrastructure constraint, not a defer) + 0 deferred. All 13 bugs receive a worker."
+  },
+
+  "passed_checks_summary": [
+    "All 6 round-1 objections resolved with specific evidence in ticket + context JSON",
+    "8 workers planned with explicit sequencing for the 2 shared-file pairs (W2+W7, W5+W8)",
+    "14 ACs (AC1-AC13 + AC-DISPATCH) all runnable by next-cycle QA without ambiguity",
+    "Codex round-2 Q1 byte-identical merged-dict invariant honored in AC12",
+    "Codex round-2 Q2 'accept-but-ignore = silent-data-loss trap' ruling honored in AC13 (hard reject path chosen)",
+    "Codex round-2 Q3 W5->W8 sequential-shared-file ruling honored",
+    "AC1/AC3 text-grep fallback recipes runnable without browser tooling",
+    "AC5 absolute-symlink-commit branch explicitly REJECTED with clean-checkout portability test required",
+    "AC6 Bug 7 symptom phrasing corrected from 'silently ignored' to 'loud exit 1'",
+    "AC-DISPATCH binds orchestrator env-var contract for W2/W7 with alternative sentinel-file substitute"
+  ],
+
+  "failed_checks_summary": [],
+
+  "required_remediation_actions": []
+}

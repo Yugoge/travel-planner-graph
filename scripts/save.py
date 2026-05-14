@@ -466,15 +466,26 @@ def check_time_conflicts(agent_data, trip_dir, agent: str) -> list:
 def _merge_existing_slots(agent_file, agent_data, data):
     """Merge update into existing multi-day file at the slot/key level.
 
-    Automatic default behavior: called whenever the target file exists.
-    Preserves sibling slots and day metadata not present in the update.
-    Safe for both partial-day (POI) and complete-day (timeline) payloads.
+    AC9: for meals, emits demoted-primary audit lines before the merge.
     """
     existing_data = load_agent_json(agent_file, validate=False)
+    _emit_demoted_primary_audit_for_meals(agent_file.stem, existing_data, agent_data)
     merged = merge_agent_slots(existing_data, agent_data, agent_file.stem)
     day_count = len(data.get('data', {}).get('days', []))
     print(f"Merge mode (slots): Merged {day_count} day(s) at slot level", file=sys.stderr)
     return merged
+
+
+def _emit_demoted_primary_audit_for_meals(stem, existing_data, update_data):
+    """AC9 — meals only. Emit stderr audit lines for meal_slot primary
+    replacements where the old primary is NOT explicitly listed in
+    incoming alternatives[]. Save does NOT auto-preserve."""
+    if stem != 'meals':
+        return
+    from lib.semantic_lint import audit_demoted_primaries
+    msgs = audit_demoted_primaries(existing_data, update_data, MEAL_TYPES)
+    for m in msgs:
+        print(m, file=sys.stderr)
 
 def _do_save(agent_file, agent, agent_data, create_backup, issues):
     """Perform atomic write and report result. Returns True on success."""
@@ -501,20 +512,36 @@ def _report_save_warnings(issues: list) -> None:
         print(f"   Warnings: {med} MEDIUM, {low} LOW", file=sys.stderr)
 
 def _prepare_agent_data(data, agent_file, trip_slug, agent: str = ""):
-    """Unwrap; spec 5.9 translate; auto-merge."""
+    """Unwrap; translate; reject-banned; merge; AC7 trip_total recompute."""
+    agent_data = _translate_and_reject(data, agent)
+    if agent_file.exists():
+        agent_data = _merge_existing_slots(agent_file, agent_data, data)
+    _maybe_recompute_trip_total(agent, agent_data)
+    return agent_data
+
+
+def _translate_and_reject(data, agent):
     from lib.save_translate import walk_translate, reject_banned
     agent_data = data.get("data") if "data" in data else data
     walk_translate(agent_data)
     if agent:
         reject_banned(agent, agent_data)
-    if agent_file.exists():
-        agent_data = _merge_existing_slots(agent_file, agent_data, data)
     return agent_data
+
+
+def _maybe_recompute_trip_total(agent, agent_data):
+    """AC7 — recompute data.trip_total = sum days[].budget.total on budget save."""
+    if agent != 'budget':
+        return
+    from lib.semantic_lint import recompute_trip_total
+    nt = recompute_trip_total(agent_data)
+    if nt is not None:
+        print(f"[save] trip_total recomputed: {nt} (sum of days[].budget.total)", file=sys.stderr)
 
 def save_single_agent(
     trip_slug: str, agent: str, data: Dict[str, Any],
     skip_validation: bool = False, allow_high: bool = False,
-    create_backup: bool = True,
+    create_backup: bool = True, strict_dedup: bool = False,
 ) -> bool:
     """Save single agent data with validation."""
     trip_dir = DATA_DIR / trip_slug
@@ -528,7 +555,18 @@ def save_single_agent(
         print(f"Merge failed: {e}", file=sys.stderr)
         return False
     envelope = {"agent": agent, "status": "complete", "data": agent_data}
-    ok, issues, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
+    if not _run_pre_save_checks(envelope, trip_dir, agent, skip_validation,
+                                allow_high, strict_dedup):
+        return False
+    _, issues, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
+    return _do_save(agent_file, agent, agent_data, create_backup, issues)
+
+
+def _run_pre_save_checks(envelope, trip_dir, agent, skip_validation,
+                         allow_high, strict_dedup):
+    """Run all pre-save gates; True = clear to save, False = abort."""
+    trip_slug = trip_dir.name
+    ok, _, _ = validate_data(trip_slug, agent, envelope, skip_validation, allow_high)
     if not ok:
         print(f"\nSave aborted due to validation errors", file=sys.stderr)
         return False
@@ -538,7 +576,16 @@ def save_single_agent(
         return False
     if check_currency_mismatch(agent, envelope, trip_dir):
         return False
-    return _do_save(agent_file, agent, agent_data, create_backup, issues)
+    return _run_cross_domain_dedup_check(agent, envelope, trip_dir, strict_dedup)
+
+
+def _run_cross_domain_dedup_check(agent, envelope, trip_dir, strict_dedup):
+    """AC8 — cross-domain dedup; WARN by default, BLOCK with strict_dedup."""
+    from lib.semantic_lint import check_cross_domain_dedup
+    findings = check_cross_domain_dedup(agent, envelope, trip_dir, strict=strict_dedup)
+    if findings and strict_dedup:
+        return False
+    return True
 
 def _validate_all_agents(trip_slug, batch_data, skip_validation, allow_high):
     """Phase 1: validate all agents. Returns dict of results."""
@@ -645,6 +692,13 @@ def _add_flag_args(parser):
     parser.add_argument("--no-validate", action="store_true", help="Skip validation")
     parser.add_argument("--allow-high", action="store_true", help="Allow HIGH issues")
     parser.add_argument("--no-backup", action="store_true", help="Skip backups")
+    _add_semantic_flag_args(parser)
+
+
+def _add_semantic_flag_args(parser):
+    """Semantic-lint and per-day args."""
+    parser.add_argument("--strict-dedup", action="store_true",
+                        help="Escalate cross-domain dedup WARN to BLOCK (AC8).")
     parser.add_argument("--day", type=int, default=None,
                         help="Per-day write (spec 5.3): integer 1..N. "
                              "MANDATORY for single-agent saves. --days "
@@ -734,7 +788,7 @@ def main():
         success = save_single_agent(
             trip_slug=args.trip, agent=args.agent, data=data,
             skip_validation=args.no_validate, allow_high=args.allow_high,
-            create_backup=not args.no_backup,
+            create_backup=not args.no_backup, strict_dedup=args.strict_dedup,
         )
     sys.exit(0 if success else 1)
 

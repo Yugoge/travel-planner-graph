@@ -4,6 +4,13 @@ User-facing terms ('primary', 'Plan A', '主行程' etc.) map onto the
 existing schema's `optional` boolean. Banned ad-hoc keys (plan_label,
 is_alternative, tier, bundle_id, priority_label, _isAlternative) are
 rejected with explicit error.
+
+W8 (spec-20260513-085358 AC13) adds agent-scoped rejection of
+`alternatives` on attractions/shopping/entertainment (flat shape).
+Meals exempted (legitimately uses primary+alternatives[] per
+schemas/meals.schema.json $defs.meal_slot). Plus shape-normalizer
+_normalize_to_canonical_record() so cross-shape callers can operate
+shape-agnostically; round-trip is lossless via _denormalize().
 """
 
 from __future__ import annotations
@@ -23,6 +30,20 @@ BANNED_AD_HOC_KEYS = (
     'plan_label', 'is_alternative', '_isAlternative',
     'tier', 'bundle_id', 'priority_label',
 )
+
+# W8 AC13: agent-scoped rejection. The literal field 'alternatives' is
+# REJECTED on these three flat-shape domains because their schemas do
+# not yet support primary+alternatives[]. Meals is exempted because its
+# schema explicitly defines meal_slot = {primary, alternatives[]}.
+AGENT_SCOPED_BANNED_KEYS = {
+    'attractions': ('alternatives',),
+    'shopping': ('alternatives',),
+    'entertainment': ('alternatives',),
+}
+
+# Canonical-record shape names used by _normalize_to_canonical_record().
+SHAPE_MEALS_NESTED = 'meals_nested'
+SHAPE_FLAT_OPTIONAL = 'flat_optional'
 
 
 def _norm(s):
@@ -72,6 +93,48 @@ def _collect_banned(o, found):
             _collect_banned(v, found)
 
 
+def _scoped_in_dict(o, banned_keys, found):
+    for k in o.keys():
+        if k in banned_keys:
+            found.append(k)
+    for v in o.values():
+        _collect_agent_scoped_banned(v, banned_keys, found)
+
+
+def _collect_agent_scoped_banned(o, banned_keys, found):
+    """Recursively collect any of banned_keys appearing as a dict key."""
+    if isinstance(o, dict):
+        _scoped_in_dict(o, banned_keys, found)
+    elif isinstance(o, list):
+        for v in o:
+            _collect_agent_scoped_banned(v, banned_keys, found)
+
+
+def _agent_scoped_guidance(agent, found_unique):
+    """W8 AC13 guiding error message for agent-scoped rejection."""
+    return (
+        f"Unknown field {found_unique} for agent '{agent}': not yet "
+        "supported on attractions/shopping/entertainment shape (only "
+        "meals uses primary+alternatives[]). Full unification is M2 "
+        "spec scope; for this cycle, use the flat list + optional:true "
+        "shape."
+    )
+
+
+def _reject_agent_scoped(agent, agent_data):
+    """W8 AC13: agent-scoped rejection for alternatives[] on flat shapes."""
+    scoped_keys = AGENT_SCOPED_BANNED_KEYS.get(agent)
+    if not scoped_keys:
+        return
+    found = []
+    _collect_agent_scoped_banned(agent_data, scoped_keys, found)
+    if not found:
+        return
+    msg = _agent_scoped_guidance(agent, sorted(set(found)))
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
 def reject_banned(agent: str, agent_data) -> None:
     found = []
     _collect_banned(agent_data, found)
@@ -82,3 +145,133 @@ def reject_banned(agent: str, agent_data) -> None:
                "(spec-20260506-092951 §5.9).")
         print(f"Error: {msg}", file=sys.stderr)
         sys.exit(1)
+    _reject_agent_scoped(agent, agent_data)
+
+
+# ---------- W8 AC13: shape-normalizer ----------
+#
+# Canonical record carries the source item's fields plus bookkeeping:
+#   _canonical_role: 'primary' | 'alternative' | 'flat'
+#   _canonical_slot: meal_type for meals; None for flat domains
+#   _canonical_alt_index: int index within alternatives[]; None otherwise
+# Round-trip: _denormalize(_normalize_to_canonical_record(x, s), s) == x
+
+
+def _normalize_meals_alts(alts, meal_type, out):
+    for i, alt in enumerate(alts):
+        if not isinstance(alt, dict):
+            continue
+        rec = dict(alt)
+        rec['_canonical_role'] = 'alternative'
+        rec['_canonical_slot'] = meal_type
+        rec['_canonical_alt_index'] = i
+        out.append(rec)
+
+
+def _normalize_meals_slot(slot, meal_type):
+    """Convert meals slot {primary, alternatives[]} → list of canonical
+    records. Order: primary first, then alternatives[] in order."""
+    out = []
+    primary = slot.get('primary')
+    if isinstance(primary, dict):
+        rec = dict(primary)
+        rec['_canonical_role'] = 'primary'
+        rec['_canonical_slot'] = meal_type
+        rec['_canonical_alt_index'] = None
+        out.append(rec)
+    alts = slot.get('alternatives')
+    if isinstance(alts, list):
+        _normalize_meals_alts(alts, meal_type, out)
+    return out
+
+
+def _normalize_flat_item(item):
+    """Convert one flat-shape POI item → canonical record dict."""
+    rec = dict(item)
+    rec['_canonical_role'] = 'flat'
+    rec['_canonical_slot'] = None
+    rec['_canonical_alt_index'] = None
+    return rec
+
+
+def _normalize_to_canonical_record(item, shape):
+    """W8 AC13 shape-normalizer.
+
+    Map either schema shape to a single canonical record/list so callers
+    (e.g. semantic_lint.check_cross_domain_dedup) can operate
+    shape-agnostically.
+
+    item: meals_slot dict for shape=='meals_nested'; flat POI item dict
+          for shape=='flat_optional'.
+    shape: SHAPE_MEALS_NESTED or SHAPE_FLAT_OPTIONAL.
+    Returns list[dict] for meals_nested; dict for flat_optional.
+    Round-trip lossless via _denormalize().
+    """
+    if shape == SHAPE_MEALS_NESTED:
+        if not isinstance(item, dict):
+            return []
+        return _normalize_meals_slot(item, item.get('_meal_type'))
+    if shape == SHAPE_FLAT_OPTIONAL:
+        if not isinstance(item, dict):
+            return {}
+        return _normalize_flat_item(item)
+    raise ValueError(
+        f"Unknown shape '{shape}'. Use '{SHAPE_MEALS_NESTED}' "
+        f"or '{SHAPE_FLAT_OPTIONAL}'."
+    )
+
+
+_CANONICAL_FIELDS = ('_canonical_role', '_canonical_slot',
+                     '_canonical_alt_index')
+
+
+def _strip_canonical_fields(rec):
+    """Return a copy of rec without canonical bookkeeping fields."""
+    return {k: v for k, v in rec.items() if k not in _CANONICAL_FIELDS}
+
+
+def _collect_meals_records(records):
+    """Split canonical records → (primary_plain_or_None, alts_indexed)."""
+    primary_plain = None
+    alts_indexed = []
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        role = rec.get('_canonical_role')
+        plain = _strip_canonical_fields(rec)
+        if role == 'primary':
+            primary_plain = plain
+        elif role == 'alternative':
+            alts_indexed.append((rec.get('_canonical_alt_index', 0), plain))
+    return primary_plain, alts_indexed
+
+
+def _denormalize_meals(records):
+    """Inverse of _normalize_meals_slot: rebuild {primary, alternatives[]}.
+
+    Reconstruction policy: emit 'alternatives' key only when at least one
+    alternative record is present. Source meals slots without alternatives
+    have no 'alternatives' key per schema (optional); the round-trip
+    preserves that absence.
+    """
+    primary_plain, alts_indexed = _collect_meals_records(records)
+    out = {}
+    if primary_plain is not None:
+        out['primary'] = primary_plain
+    if alts_indexed:
+        alts_indexed.sort(key=lambda t: (t[0] is None, t[0]))
+        out['alternatives'] = [p for _, p in alts_indexed]
+    return out
+
+
+def _denormalize(canonical, shape):
+    """Inverse of _normalize_to_canonical_record. AC13 round-trip helper."""
+    if shape == SHAPE_MEALS_NESTED:
+        if not isinstance(canonical, list):
+            return {}
+        return _denormalize_meals(canonical)
+    if shape == SHAPE_FLAT_OPTIONAL:
+        if not isinstance(canonical, dict):
+            return {}
+        return _strip_canonical_fields(canonical)
+    raise ValueError(f"Unknown shape '{shape}'.")

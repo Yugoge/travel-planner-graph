@@ -1,0 +1,116 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W1-patch",
+  "timestamp": "2026-05-13T22:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W1-patch.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      ".claude/hooks/pretool-quality-gate.py"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Extended pretool-quality-gate.py with sentinel-file bypass path in parallel to W1's env-var path",
+        "type": "code-edit",
+        "files_modified": [".claude/hooks/pretool-quality-gate.py"],
+        "changes": "Added _bypass_reason(file_path) helper that checks env-var first (preserves W1), then globs .claude/dev-registry/dev-*/bypass-quality-gate.flag (requires sibling dev.json). _bypass_quality_gate() rewritten to delegate to _bypass_reason and print the returned audit string. Stderr audit lines distinguish the two paths verbatim (BYPASS_QUALITY_GATE=1 vs sentinel <path>).",
+        "rationale": "Round-2 OBJ-4 mitigation: env-var path is unreachable when the orchestrator cannot inject env into the subagent's Bash subprocess. Sentinel-file path is filesystem-mediated and survives subprocess boundaries. Both paths supported in parallel."
+      }
+    ],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "git_rationale": {
+      "root_cause_commit": "W1 dev-report-20260513-090000-W1.json wired BYPASS_QUALITY_GATE=1 env-var; Phase-B revealed env propagation across harness-spawned hook subprocess is unreliable",
+      "why_issue_occurred": "W1 chose env-var as sole binding contract; orchestrator cannot reliably propagate environment into per-tool-call hook subprocess invocations",
+      "how_fix_addresses_root": "Sentinel file under .claude/dev-registry/dev-*/bypass-quality-gate.flag is filesystem-mediated and observable by any process with cwd=project root, eliminating the env-propagation dependency while preserving the W1 env-var path as a still-supported alternative."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 22,
+      "lines_removed": 1,
+      "new_symbols_introduced": ["_bypass_reason"],
+      "minimum_possible_lines_estimate": 12,
+      "justification_for_overage": "Quality-gate hook applies a delta-check on its own functions (worsened-from-N-to-M test). The naive in-place extension grew _bypass_quality_gate from 11 to 19 lines and self-rejected. Extracting _bypass_reason as a separate small helper keeps _bypass_quality_gate at 9 lines (well under its original 11) and is the minimum diff that clears the hook's own quality bar. 23 lines total is only marginally above the 20-line guideline and is fully justified by the dogfood constraint."
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Verify by running the 4-test battery (TEST E/F/G/H below). Sentinel file path pattern is .claude/dev-registry/dev-*/bypass-quality-gate.flag (must have sibling dev.json). All 4 tests pass against this implementation.",
+    "blast_radius": [
+      {
+        "modified": ".claude/hooks/pretool-quality-gate.py",
+        "imported_by": [],
+        "note": "Hook is invoked by Claude harness per tool call (PreToolUse Write|Edit matcher), not imported by other Python. No code-level callers exist."
+      }
+    ],
+    "implementation_notes": [
+      "Sentinel sibling-check (dev.json existence) protects against stray .flag files in non-dev-registry directories or stale dev sessions where the dev.json was already cleaned but the flag remained.",
+      "Env-var path is checked BEFORE sentinel path (early return). In TEST H (both set), the env-var audit line is emitted; the sentinel is not evaluated. Acceptance criterion permits either path.",
+      "Bypass audit lines use the existing 'QUALITY GATE BYPASSED' prefix for grep-friendly log filtering.",
+      "Sentinel glob uses relative path .claude/dev-registry/...; hook must run with cwd=project root. This matches the existing pattern used elsewhere in the harness (PreToolUse hooks run with cwd inherited from the user's Claude session)."
+    ],
+    "self_verification": {
+      "build": "pass (python3 -c 'import py_compile; py_compile.compile(\".claude/hooks/pretool-quality-gate.py\", doraise=True)' — compiles clean)",
+      "smoke_check": "pass (all 4 acceptance tests E/F/G/H verified — see verification.tests below)",
+      "notes": "Existing W1 env-var behavior verified preserved (TEST G + TEST H emit env-var audit line)."
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "verification": {
+    "tests": [
+      {
+        "id": "TEST E",
+        "description": "No env-var, no sentinel → blocked (existing behavior preserved)",
+        "setup": "env -u BYPASS_QUALITY_GATE; sentinel file moved to /tmp",
+        "payload": "Write 901-line .py file (violates MAX_FILE_LINES=800)",
+        "expected": "exit=2, 'QUALITY GATE BLOCKED' stderr",
+        "actual": "exit=2, 'QUALITY GATE BLOCKED — /tmp/qg-test-violator.py:\\n  - File has 901 lines (max 800). Split into modules.'",
+        "result": "PASS"
+      },
+      {
+        "id": "TEST F",
+        "description": "No env-var, sentinel present → allow + sentinel-triggered audit line",
+        "setup": "env -u BYPASS_QUALITY_GATE; sentinel restored to .claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag",
+        "payload": "Write 901-line .py file (would normally block)",
+        "expected": "exit=0, stderr contains 'BYPASSED via sentinel <path>'",
+        "actual": "exit=0, 'QUALITY GATE BYPASSED via sentinel .claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag — /tmp/qg-test-violator.py'",
+        "result": "PASS"
+      },
+      {
+        "id": "TEST G",
+        "description": "Env-var set, sentinel absent → allow + env-var audit line (W1 behavior preserved)",
+        "setup": "BYPASS_QUALITY_GATE=1; sentinel file moved to /tmp",
+        "payload": "Write 901-line .py file",
+        "expected": "exit=0, stderr contains 'BYPASSED via BYPASS_QUALITY_GATE=1'",
+        "actual": "exit=0, 'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — /tmp/qg-test-violator.py'",
+        "result": "PASS"
+      },
+      {
+        "id": "TEST H",
+        "description": "Env-var set AND sentinel present → allow + exactly one audit line (either path acceptable per AC)",
+        "setup": "BYPASS_QUALITY_GATE=1; sentinel restored",
+        "payload": "Write 901-line .py file",
+        "expected": "exit=0, exactly one 'QUALITY GATE BYPASSED' line",
+        "actual": "exit=0, 'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — /tmp/qg-test-violator.py' (env-var checked first, sentinel not evaluated)",
+        "result": "PASS"
+      }
+    ],
+    "all_tests_pass": true
+  },
+  "sentinel_path_pattern": ".claude/dev-registry/dev-*/bypass-quality-gate.flag",
+  "sentinel_path_pattern_notes": "Glob is evaluated by hook with cwd=project root (i.e., /root/travel-planner). Hook additionally requires sibling .claude/dev-registry/dev-*/dev.json to exist (prevents stray flag files from triggering bypass on stale sessions). Orchestrator creates sentinel with: touch .claude/dev-registry/<active-dev-session-id>/bypass-quality-gate.flag where <active-dev-session-id> is the dev session directory (e.g., dev-20260513-090000) used for the current /dev cycle. Sentinel SHOULD be removed by orchestrator after dev cycle completes to keep audit-line state truthful for subsequent cycles.",
+  "blocking_issues": [],
+  "recommendations": [
+    "Orchestrator should add sentinel-create + sentinel-cleanup steps to the /dev cycle wrapper: 'touch .claude/dev-registry/<sid>/bypass-quality-gate.flag' before dispatching a worker that needs to edit a file already over the quality threshold, and 'rm -f' after the worker reports.",
+    "Consider documenting the sentinel mechanism in .claude/hooks/INDEX.md and in the quality-gate hook docstring at module level (not done by this worker to keep diff minimal; can be a follow-up doc-only commit).",
+    "If future workers add additional bypass mechanisms (e.g., per-file allowlist), extend _bypass_reason() rather than adding new branches in _bypass_quality_gate() — keeps the gate function under the delta-check threshold."
+  ]
+}

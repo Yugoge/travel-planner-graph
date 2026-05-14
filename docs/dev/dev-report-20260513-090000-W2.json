@@ -1,0 +1,87 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W2",
+  "timestamp": "2026-05-13T22:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W2.json",
+  "retry_round": 2,
+  "previous_block_id": "BLOCK-W2-1 (env-var coordination gap, dev-report-20260513-090000-W2.json prior version)",
+  "dev": {
+    "status": "blocked",
+    "files_modified": [],
+    "files_created": [
+      "/root/.claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag",
+      "/root/.claude/dev-registry/dev-20260513-090000/dev.json"
+    ],
+    "tasks_completed": [],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "blast_radius": [
+      {"modified": "scripts/generate-html-interactive.py", "imported_by": []}
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — dispatch coordination gap, not a code regression",
+      "why_issue_occurred": "W1-patch (dev-report-20260513-090000-W1-patch.json) wired the sentinel-file bypass into the PROJECT-LOCAL hook at /root/travel-planner/.claude/hooks/pretool-quality-gate.py (md5 4c6ba4d52112cb8b019298cd08fad5a6, 9082 bytes, contains _bypass_reason() at line 46 honoring env-var AND sentinel-file). However, /root/.claude/settings.json:380 binds the PreToolUse Edit/Write matcher to python3 \"$HOME/.claude/hooks/pretool-quality-gate.py\" = /root/.claude/hooks/pretool-quality-gate.py (md5 3544ce61a24d03eeba23da4ab8636e10, 13330 bytes, mtime Apr 25). The GLOBAL hook has NO bypass code at all (grep 'BYPASS_QUALITY_GATE|sentinel|bypass-quality-gate|_bypass' = 0 hits) — only no-net-worsening grandfathering, which blocks any edit that grows an already-oversized function.",
+      "how_fix_addresses_root": "Cannot proceed. The retry dispatch's promise that 'sentinel file is the binding bypass contract for this dispatch' is contradicted by the actual hook binding. Direct test confirms: cd /root && echo Edit-payload | python3 /root/.claude/hooks/pretool-quality-gate.py → exit 2 BLOCKED (no bypass audit line), while the same payload against /root/travel-planner/.claude/hooks/pretool-quality-gate.py → exit 0 BYPASSED. W1-patch fixed the wrong file."
+    },
+    "diff_stats": {
+      "files_changed": 0,
+      "lines_added": 0,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 60,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": true,
+    "qa_ready": false,
+    "qa_notes": "Blocked at pre-Edit stage by the binding hook (different file from the one W1-patch edited). No code change applied. AC1/AC2/AC3 untestable.",
+    "self_verification": {
+      "build": "skipped",
+      "smoke_check": "skipped",
+      "notes": "No edits made; nothing to verify."
+    }
+  },
+  "ac1_verification": "NOT VERIFIED — no edits landed. Day 12 lunch alternatives confirmed PRESENT in source data (data/china-20260412-092624/meals.json: data.days[day=12].lunch.alternatives = 2 items with name_local '沈大成(南京东路旗舰店)' and '光明邨大酒家(淮海中路)'); but renderer scripts/generate-html-interactive.py:643 still reads only meal_slot.primary, so any regenerated HTML continues to drop them. The text-grep fallback (grep -c '沈大成' output/<plan>.html >=1 AND grep -c '光明邨' output/<plan>.html >=1) cannot pass until the Bug-1 edit lands.",
+  "ac2_verification": "NOT VERIFIED — no edits landed. _get_timeline_time at line 470 retains its three-argument name-string signature; the BA-prescribed Tier-0 gaode_id fast-path (signature extension to accept optional gaode_id 4th arg + early-return on exact match) is unimplemented. Note: data/china-20260412-092624/timeline.json entries (15 days, keyed by name strings) currently carry only {start_time, end_time, duration_minutes, optional meal_ref} per entry — none carry a gaode_id field. The fast-path would therefore be INERT against today's corpus, which matches BA's 'PARTIAL fix' framing (codex F2 — forward-compat for M2 entity-ID migration, not a behavior change against today's data).",
+  "ac3_verification": "NOT VERIFIED — no edits landed. TimelineView JSX at lines 2762-3109 (inside _read_react_template) still uses the add() filter at lines 2770-2781 that drops items whose item.time.start/end is null or '00:00' or equal. The merge step at scripts/generate-html-interactive.py:730-895 (attractions/entertainment/shopping loops) does not sideline optional items without timeline matches — they receive time:null and are silently dropped. No 'Unscheduled / Optional' section was rendered.",
+  "preserved_for_w7": [],
+  "blocking_issues": [
+    {
+      "id": "BLOCK-W2-2",
+      "severity": "critical",
+      "category": "dispatch_coordination_gap",
+      "title": "Sentinel-file bypass mechanism does not reach the binding hook (W1-patch edited the wrong hook file)",
+      "evidence": [
+        "/root/.claude/settings.json:380 binds PreToolUse Edit/Write matcher to: python3 \"$HOME/.claude/hooks/pretool-quality-gate.py\" → resolves to /root/.claude/hooks/pretool-quality-gate.py (md5 3544ce61a24d03eeba23da4ab8636e10, 13330 bytes, mtime Apr 25 — predates W1-patch).",
+        "/root/travel-planner/.claude/hooks/pretool-quality-gate.py is a DIFFERENT file (md5 4c6ba4d52112cb8b019298cd08fad5a6, 9082 bytes, mtime May 13 22:23 — modified by W1-patch). It contains _bypass_reason at line 46 honoring both BYPASS_QUALITY_GATE=1 env-var and .claude/dev-registry/dev-*/bypass-quality-gate.flag sentinels.",
+        "grep 'BYPASS_QUALITY_GATE|sentinel|bypass-quality-gate|_bypass' /root/.claude/hooks/pretool-quality-gate.py → 0 hits. The binding global hook has zero bypass code.",
+        "Direct test #1: cd /root && echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/root/travel-planner/scripts/generate-html-interactive.py\",\"old_string\":\"x\",\"new_string\":\"y\"}}' | python3 /root/.claude/hooks/pretool-quality-gate.py → exit 2 QUALITY GATE BLOCKED (10 violations, NO bypass audit line).",
+        "Direct test #2: same payload against /root/travel-planner/.claude/hooks/pretool-quality-gate.py → exit 0 'QUALITY GATE BYPASSED via sentinel .claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag'. Confirms the W1-patched file works as designed but is not the one being invoked.",
+        "Single Edit attempt during this dispatch (Bug 2 Tier-0 gaode_id fast-path, +8 lines inside _get_timeline_time): blocked with 'Worsened: Function _get_timeline_time grew from 40 to 48 lines'. No bypass audit line emitted to stderr, confirming the binding hook never executed any bypass code path."
+      ],
+      "why_blocking": "All three Bug-1/2/3 target edits add lines to functions already over the 30-line cap (_merge_day_data 581 lines; _get_timeline_time 40 lines; _read_react_template 1822 lines for Bug-3 JSX changes). The binding global hook's no-net-worsening grandfather mode allows only edits that strictly do not grow any per-function metric — which forbids every prescribed surgical fix in W2's write-set.",
+      "required_resolution_options": [
+        "(A, RECOMMENDED — minimum-diff) Orchestrator (or user) ports the 18-line _bypass_reason+_bypass_quality_gate block from the project-local hook into /root/.claude/hooks/pretool-quality-gate.py and wires the check into main() before collect_violations(). Verifiable via the stdin-payload test above. After this lands, re-dispatch W2 with no other changes — the existing sentinel at .claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag will trip the bypass. Caveat per Subagent Hook Discipline: the W2 subagent MUST NOT edit hook files itself; this resolution is for the orchestrator or user.",
+        "(B) Orchestrator updates /root/.claude/settings.json:380 to invoke the project-local hook (/root/travel-planner/.claude/hooks/pretool-quality-gate.py) instead of the global one. Same hook-edit prohibition applies — orchestrator/user only.",
+        "(C) Run W7 FIRST (mechanical refactor of _merge_day_data into 9 small helpers in scripts/lib/render_day_data.py). After the renderer shrinks under 800 lines and individual functions go under 30 lines, re-dispatch W2 to land Bug 1/2/3 inside the new helper modules. Inverts the BA-spec-prescribed W2→W7 sequencing and complicates AC12's 'byte-identical merged-dict pre/post refactor' invariant (no post-W2 baseline to diff against). Not recommended.",
+        "(D) Out-of-scope alternative — would require W2 to author NEW small modules plus a shrinking refactor on generate-html-interactive.py that nets zero or negative per-function-line delta. Resembles W7 scope creep and is forbidden by 'File-disjoint vs all OTHER workers' constraint."
+      ],
+      "recommended_resolution": "(A). Single-file port preserves W1-patch's intent, matches AC-DISPATCH alternative_mechanism, and unblocks W2 with no other changes. Estimated 18 lines of edit to one hook file."
+    }
+  ],
+  "recommendations": [
+    "Orchestrator: execute resolution (A) — port _bypass_reason()+_bypass_quality_gate() from /root/travel-planner/.claude/hooks/pretool-quality-gate.py into /root/.claude/hooks/pretool-quality-gate.py and wire it at the top of main() before collect_violations(). Verify with: echo '<edit-payload>' | python3 /root/.claude/hooks/pretool-quality-gate.py → must exit 0 with 'QUALITY GATE BYPASSED via sentinel' audit line.",
+    "After (A) lands, re-dispatch W2 with the identical retry-dispatch prompt. The existing sentinel at /root/travel-planner/.claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag will be honored. Two sentinel mirrors now exist on the host (project-local + /root/.claude/dev-registry/dev-20260513-090000/bypass-quality-gate.flag created during this dispatch as a diagnostic remediation attempt); either will trip the bypass once the binding hook has the code.",
+    "Audit gap: W1-patch's dev report should have included a positive end-to-end test (e.g., 'echo <payload> | python3 <BINDING_HOOK_AS_PER_SETTINGS> exits 0') instead of merely verifying the file it edited honors the sentinel. The actual hook file that fires is determined by settings.json, not by which file W1-patch chose to edit. Future hook patches should resolve the binding via settings.json and patch THAT file.",
+    "Defensive analysis: this is exactly the failure mode that round-2 OBJ-4 warned about ('W1→W2 env-var coupling fragility'). The chosen sentinel-file alternative was supposed to make the coupling robust; it failed because the hook-file selection itself was the brittle link. A more robust design would have the orchestrator dispatch both (i) inject env-var into subagent execve, AND (ii) create sentinel, AND have W1 patch BOTH plausible hook locations OR (better) resolve binding-hook path from settings.json before editing.",
+    "No destructive operations attempted. No hook files modified by W2. No edits landed on scripts/generate-html-interactive.py. Two empty sentinel-mirror files created at /root/.claude/dev-registry/dev-20260513-090000/ (diagnostic remediation attempt — can be cleaned up by orchestrator or left in place harmlessly).",
+    "Codex consultation was NOT requested for this dispatch (dispatch prompt did not include --codex flag). Self-review applied: the block is deterministic and reproducible; the diagnosis is anchored in md5sums, settings.json line number, and grep counts; no contract violations occurred."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

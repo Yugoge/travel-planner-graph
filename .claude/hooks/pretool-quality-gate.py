@@ -12,6 +12,7 @@ Exit codes: 0 = allow, 2 = block
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -40,6 +41,26 @@ def is_exempt(file_path: str) -> bool:
     if Path(file_path).suffix not in CHECKABLE_EXTS:
         return True
     return False
+
+
+def _bypass_reason(file_path: str) -> str | None:
+    """Return audit string if bypass active (env-var or sentinel), else None."""
+    if os.environ.get('BYPASS_QUALITY_GATE', '') == '1':
+        return f'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — {file_path}'
+    for s in Path('.claude/dev-registry').glob('dev-*/bypass-quality-gate.flag'):
+        if (s.parent / 'dev.json').exists():
+            return f'QUALITY GATE BYPASSED via sentinel {s} — {file_path}'
+    return None
+
+
+def _bypass_quality_gate(file_path: str) -> bool:
+    """Break-glass bypass (spec-20260513-085358 Bug 5 + W1-patch).
+    Two parallel paths: env-var (W1) + sentinel-file (W1-patch)."""
+    reason = _bypass_reason(file_path)
+    if reason is None:
+        return False
+    print(reason, file=sys.stderr)
+    return True
 
 
 def get_final_content(data: dict) -> tuple[str, str]:
@@ -219,7 +240,7 @@ def main() -> None:
         if not content or not file_path:
             sys.exit(0)
 
-        if is_exempt(file_path):
+        if is_exempt(file_path) or _bypass_quality_gate(file_path):
             sys.exit(0)
 
         ext = Path(file_path).suffix

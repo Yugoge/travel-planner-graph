@@ -1,0 +1,67 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W1",
+  "timestamp": "2026-05-13T22:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W1.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      ".claude/hooks/pretool-quality-gate.py"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      "Added `import os` to .claude/hooks/pretool-quality-gate.py imports",
+      "Added _bypass_quality_gate(file_path) helper function mirroring BYPASS_DAY_GUARD single-line pattern from pretool-validate-data-write.py:54",
+      "Wired bypass check into main() via short-circuit OR with is_exempt() — zero net main() growth (preserves no-worsening invariant)",
+      "Stderr audit log emitted on bypass activation: 'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — <file_path>'",
+      "Verified AC4 with 4 command-line tests (block-no-var, allow-=1+log, block-=0, block-empty)"
+    ],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — pre-existing systematic state (Bug 5 of 13 in spec-20260513-085358 Section 5)",
+      "why_issue_occurred": "Hook gate documented BYPASS env-var in its module docstring intent but the env-var was never wired into the code path. grep BYPASS_QUALITY_GATE in hook before fix = 0 hits.",
+      "how_fix_addresses_root": "Added the actual `os.environ.get('BYPASS_QUALITY_GATE','')=='1'` check inside main()'s early-exit chain, with stderr audit log on activation. Mirrors the proven BYPASS_DAY_GUARD pattern from pretool-validate-data-write.py:54."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 12,
+      "lines_removed": 1,
+      "new_symbols_introduced": ["_bypass_quality_gate"],
+      "minimum_possible_lines_estimate": 8,
+      "justification_for_overage": "12 lines added: 1 import os, 9 helper-function lines (def + docstring + env check + log + return True/False), 1 modified line in main() (combined OR with is_exempt). Helper extraction was forced by the GLOBAL no-worsening invariant in /root/.claude/hooks/pretool-quality-gate.py which blocks any growth of main() beyond its pre-edit 41 lines. Inline check would have failed the gate. This is the minimum diff that (a) wires the bypass, (b) emits the audit log, (c) does not worsen any pre-existing metric."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Re-verify with: (1) without env-var: cat <stdin-json> | python3 .claude/hooks/pretool-quality-gate.py → exit 2 + 'QUALITY GATE BLOCKED'; (2) with BYPASS_QUALITY_GATE=1 prefix: exit 0 + 'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1' on stderr; (3) with BYPASS_QUALITY_GATE=0 or empty: exit 2 (confirms strict '1' check, not default-enabled).",
+    "blast_radius": [
+      {
+        "modified": ".claude/hooks/pretool-quality-gate.py",
+        "imported_by": [],
+        "note": "Hook scripts are invoked via subprocess by the harness (settings.json); not Python-imported. Direct callers: harness PreToolUse Write|Edit matcher only."
+      }
+    ],
+    "self_verification": {
+      "build": "pass (Python syntax + import os ok; hook executes against test payloads)",
+      "smoke_check": "pass (4/4 command-line tests verifying AC4 — see verification field)",
+      "notes": "Global /root/.claude/hooks/pretool-quality-gate.py also enforced no-worsening on this edit; the chosen helper-function + combined-OR structure preserved main() at exactly 41 lines."
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "bypass_binding_contract": "env-var",
+  "bypass_binding_contract_rationale": "Per context-20260513-090000.json line 87-94, orchestrator_dispatch_contract.primary_mechanism is 'env-var' (BYPASS_QUALITY_GATE=1). The alternative sentinel-file path is documented as 'acceptable substitute' but was not chosen. W1 implements ONLY the env-var code path. The env-var mechanism alone suffices for AC4 + AC-DISPATCH. Sentinel-file (.claude/dev-registry/dev-20260513-090000/qa.json) is NOT consulted by the hook in this implementation; the orchestrator must inject BYPASS_QUALITY_GATE=1 in the dispatch env for W2 and W7.",
+  "verification": "AC4 demonstrated via 4 repeatable command-line tests against the modified hook with a synthetic 900-line Write payload (exceeds MAX_FILE_LINES=800): TEST A (no env-var) → exit 2 + 'QUALITY GATE BLOCKED' on stderr [block confirmed]; TEST B (BYPASS_QUALITY_GATE=1) → exit 0 + 'QUALITY GATE BYPASSED via BYPASS_QUALITY_GATE=1 — /tmp/qgtest/big.py' on stderr [allow + audit log confirmed]; TEST C (BYPASS_QUALITY_GATE=0) → exit 2 [strict '1' check confirmed]; TEST D (BYPASS_QUALITY_GATE='') → exit 2 [not default-enabled confirmed]. All 3 AC4 sub-claims (a/b/c) and the not-default-enabled constraint are demonstrated.",
+  "blocking_issues": [],
+  "recommendations": [
+    "Orchestrator dispatch for W2 and W7 MUST include BYPASS_QUALITY_GATE=1 in the worker shell environment (per AC-DISPATCH + context-20260513-090000.json orchestrator_dispatch_contract).",
+    "W2/W7 workers MUST verify on entry: `os.environ.get('BYPASS_QUALITY_GATE') == '1'` (or shell equivalent). If absent, PAUSE and emit REQUEST to orchestrator before any Edit on scripts/generate-html-interactive.py.",
+    "Bypass activations are stderr-logged for audit; periodic review of subagent transcripts can surface unintended bypass use."
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W5",
+  "timestamp": "2026-05-13T22:50:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W5.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/save.py"
+    ],
+    "files_created": [
+      "scripts/lib/semantic_lint.py"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "AC7 — trip_total aggregate recompute on any save touching budget data",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "files_created": ["scripts/lib/semantic_lint.py"],
+        "rationale": "Added recompute_trip_total() in scripts/lib/semantic_lint.py and wired it via _maybe_recompute_trip_total() into _prepare_agent_data() so every save_single_agent() invocation with agent='budget' (whatever the cause: budget-agent re-save, or budget data touched indirectly via the merge slot path) recomputes data.trip_total = sum(data.days[].budget.total). Verified live on data/china-20260412-092624/budget.json: pre-save trip_total=23416 vs sum=13044 (stale); post-save trip_total=13044 == sum=13044. Stderr audit line: '[save] trip_total recomputed: 13044 (sum of days[].budget.total)'. Original budget.json restored after live verification."
+      },
+      {
+        "id": 2,
+        "description": "AC8 — cross-domain dedup WARN with optional --strict-dedup BLOCK escalation",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "files_created": ["scripts/lib/semantic_lint.py"],
+        "rationale": "Added check_cross_domain_dedup() in semantic_lint.py covering attractions/shopping/entertainment as POI_FLAT_DOMAINS. Compares each item's normalized name_base AND name_local against an index of the other two domains' existing same-day items. Wired into save_single_agent() via _run_pre_save_checks() → _run_cross_domain_dedup_check(). Default WARN level emits to stderr without aborting; --strict-dedup CLI flag escalates to BLOCK (save returns False, exit 1). v1 shape-agnostic normalizer is whitespace-stripped lower-case; W8 will provide canonical _normalize_to_canonical_record() that this v1 can be upgraded to call. Verified live with seeded duplicate 'Wukang Road & Anfu Road' on Day 12 — WARN emitted; --strict-dedup escalated to BLOCK + exit 1; also surfaced a real pre-existing duplicate '新天地' Day 13 (attractions vs shopping)."
+      },
+      {
+        "id": 3,
+        "description": "AC9 — demoted-primary state machine: drop old primary unless explicitly listed",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "files_created": ["scripts/lib/semantic_lint.py"],
+        "rationale": "Added audit_demoted_primaries() in semantic_lint.py. For each meal_slot whose existing primary differs from update primary, AND whose old primary is NOT explicitly listed (by normalized name) in incoming alternatives[], emit stderr audit line: '[save] demoted-primary policy: Day {N} {meal}: dropped \"{old-primary-name}\"; retained alternatives: [{list}]'. Save does NOT auto-preserve the old primary — the existing merge_agent_slots() does whole-slot replacement, so the old primary disappears unless the agent explicitly retained it. Wired via _emit_demoted_primary_audit_for_meals() in _merge_existing_slots() (called only when agent_file.stem == 'meals'). Verified live with two payloads: (a) replace Day 12 lunch primary with new item + empty alternatives → audit line emitted, saved file shows new primary and empty alternatives (old primary gone); (b) replace primary but include old primary in alternatives → NO audit line, saved file retains old primary as alt (agent's explicit choice respected). Both data states restored after verification."
+      },
+      {
+        "id": 4,
+        "description": "Added --strict-dedup CLI flag",
+        "type": "code",
+        "files_modified": ["scripts/save.py"],
+        "rationale": "Extends argparse via _add_semantic_flag_args() helper (the _add_flag_args was grandfathered at 10 lines so we delegate to a new helper). Flag flows through save_single_agent(strict_dedup=...) → _run_pre_save_checks → _run_cross_domain_dedup_check. Documented in --help text."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — pre-existing systematic state (see BA root_cause_analysis). Bugs 9/11/12 are semantic invariants the save layer never enforced.",
+      "why_issue_occurred": "Save layer was built field-correct (validation + merge_agent_slots) but had no semantic-level invariants. trip_total drifted when budget days were saved without re-aggregating; cross-domain duplicates accumulated unnoticed (Day 12 timeline.json carried both Huaihai-Wukang attraction and Wukang Road shopping for the same window); meal_slot primary replacement defaulted to whatever the agent submitted, with no audit of dropped primaries.",
+      "how_fix_addresses_root": "Three semantic invariants now enforced at the save layer: (1) on any budget save, trip_total is recomputed; (2) on any POI-flat save, cross-domain name collisions surface as WARN (or BLOCK with --strict-dedup); (3) on any meals save, primary replacements are audited and old primaries are dropped unless explicitly retained — making the agent's intent (preserve or drop) auditable instead of implicit."
+    },
+    "diff_stats": {
+      "files_changed": 2,
+      "lines_added": 351,
+      "lines_removed": 10,
+      "new_symbols_introduced": [
+        "scripts/lib/semantic_lint.py (whole new module)",
+        "_emit_demoted_primary_audit_for_meals (save.py)",
+        "_translate_and_reject (save.py)",
+        "_maybe_recompute_trip_total (save.py)",
+        "_run_pre_save_checks (save.py)",
+        "_run_cross_domain_dedup_check (save.py)",
+        "_add_semantic_flag_args (save.py)"
+      ],
+      "minimum_possible_lines_estimate": 250,
+      "justification_for_overage": "semantic_lint.py is a new module (287 lines) covering three independent semantic invariants (AC7/AC8/AC9), broken into single-purpose helpers to satisfy the project quality gate (max func 30 lines, max nesting 3, file <= 800 lines). save.py additions (~64 lines net) are mostly required by the gate's per-function 'no-worsen' rule: I couldn't grow existing functions, so I extracted thin wrappers (_translate_and_reject, _maybe_recompute_trip_total, _run_pre_save_checks, _run_cross_domain_dedup_check) instead of inlining. Without the gate constraints the same logic could land in ~150 lines."
+    },
+    "fix_layer": "L3-L4-mixed",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Three live verifications already completed by W5; QA can re-run with the commands documented in ac{7,8,9}_verification below. All three data files (budget/attractions/meals) restored to pre-test state after verification — git diff against the existing baseline shows no W5-induced data drift.",
+    "permissions_to_add": [],
+    "self_verification": {
+      "build": "pass (python -m py_compile both modified+created files)",
+      "smoke_check": "pass (3 live AC verifications on data/china-20260412-092624)",
+      "notes": "Quality gate accepted both writes (semantic_lint.py: clean; save.py: grandfathered with explicit no-worsen on existing functions). Pre-existing nesting-depth violation on save.py:401 is in _collect_meal_currency_pois() and untouched by W5 — flagged in 'Line 401' warning but not regressing."
+    }
+  },
+  "blast_radius": [
+    {
+      "modified": "scripts/save.py",
+      "imported_by": ["only docs/old artifacts; no live import graph dependency beyond direct CLI invocation by scripts/generate-and-deploy.sh and agent prompts"]
+    },
+    {
+      "modified": "scripts/lib/semantic_lint.py (new)",
+      "imported_by": ["scripts/save.py (lazy from lib.semantic_lint)"]
+    }
+  ],
+  "ac7_verification": {
+    "ac": "AC7 — trip_total auto-recompute",
+    "status": "PASS",
+    "before": "data.trip_total=23416, sum(days[].budget.total)=13044 (stale)",
+    "after": "data.trip_total=13044, sum=13044 (match)",
+    "command": "python3 scripts/save.py --trip china-20260412-092624 --agent budget --day 13 --input <touch-day13.json> --no-backup",
+    "stderr_audit": "[save] trip_total recomputed: 13044 (sum of days[].budget.total)",
+    "data_restored": true
+  },
+  "ac8_verification": {
+    "ac": "AC8 — cross-domain dedup WARN",
+    "status": "PASS",
+    "test_setup": "Injected attractions Day 12 item with name_base='Wukang Road & Anfu Road — Boutique Stroll (Primary)' (duplicate of existing shopping Day 12 item)",
+    "warn_output": "[save] cross-domain dedup WARN: 2 duplicate(s) detected:\n  WARN  Day 12: \"Wukang Road & Anfu Road — Boutique Stroll (Primary)\" appears in both attractions (this save) and shopping (sibling-existing)\n  WARN  Day 13: \"新天地\" appears in both attractions (this save) and shopping (sibling-existing)\n  (Use --strict-dedup to escalate WARN to BLOCK.)",
+    "warn_behavior": "Save proceeded (exit 0) — WARN level does not block.",
+    "strict_test": "Re-ran with --strict-dedup → exit 1, BLOCK message emitted, save aborted (file unchanged on disk after rollback to backup).",
+    "note": "Also surfaced a real pre-existing cross-domain duplicate '新天地' Day 13 between attractions and shopping (out of W5 scope; orchestrator may forward to data cleanup cycle).",
+    "data_restored": true
+  },
+  "ac9_verification": {
+    "ac": "AC9 — demoted-primary state machine",
+    "status": "PASS",
+    "case_a_no_retention": {
+      "setup": "Replace Day 12 lunch primary with 'Brand New Lunch Spot'; alternatives=[]",
+      "stderr_audit": "[save] demoted-primary policy: Day 12 lunch: dropped \"Yu Xing Ji Crab Roe Noodle Restaurant - People's Square Branch (裕兴记蟹黄面馆·人民广场店)\"; retained alternatives: []",
+      "post_save_state": "lunch.primary == 'Brand New Lunch Spot', lunch.alternatives == [] (old primary NOT auto-preserved)"
+    },
+    "case_b_explicit_retention": {
+      "setup": "Replace Day 12 lunch primary with 'Brand New Lunch Spot 2'; alternatives=[<old primary>]",
+      "stderr_audit": "(no audit line emitted — agent explicitly retained old primary)",
+      "post_save_state": "lunch.primary == 'Brand New Lunch Spot 2', lunch.alternatives contains old primary (agent's explicit choice respected)"
+    },
+    "data_restored": true
+  },
+  "handoff_to_w8": {
+    "shared_file": "scripts/lib/save_translate.py (W5 did NOT modify; W8 has clean slate)",
+    "interfaces_w8_will_extend": [
+      "Add _normalize_to_canonical_record(item, shape) → dict — canonical shape-normalizer for meals_slot and flat_optional. AC13 contract documented in BA spec section AC13.",
+      "Extend BANNED_AD_HOC_KEYS or add agent_aware_banned_keys = {'attractions':['alternatives'], 'shopping':['alternatives'], 'entertainment':['alternatives']} with meals exempted. Update reject_banned(agent, agent_data) to apply agent-scoped rejection with the guiding error message in AC13."
+    ],
+    "w5_dedup_normalizer_compatibility": "scripts/lib/semantic_lint.py:_norm_name() is a v1 minimal normalizer (whitespace+lowercase). When W8 lands _normalize_to_canonical_record(), W5's check_cross_domain_dedup() can be retrofitted in a follow-up to consume the canonical-record output. For this cycle the v1 normalizer is sufficient for AC8 verification (WARN level, no false-negative on the test corpus).",
+    "non_conflicts": "W5 added NO new fields to BANNED_AD_HOC_KEYS, did NOT touch _translate_one_dict(), and did NOT touch reject_banned()'s signature. W8 has full ownership of save_translate.py and may freely extend per AC13."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Real cross-domain duplicate found: '新天地' Day 13 appears in BOTH attractions.json and shopping.json. Not in W5 scope to clean (data cleanup is separate). Orchestrator may route to a small data-fix cycle, or accept WARN as informational.",
+    "W8 (after this) should consider whether check_cross_domain_dedup() should auto-upgrade to use _normalize_to_canonical_record(). A follow-up could shrink semantic_lint.py:_norm_name() to delegate.",
+    "Bug 9 trigger surface is currently agent=='budget'. If future cycles add e.g. an itinerary-rebuild agent that touches budget.json indirectly (unlikely given the explicit agent-file naming convention), the trigger may need broadening. The BA constraint said 'trigger on any save touching budget data, not only on budget-agent invocations' — this is satisfied by the agent name being 'budget' for every save that touches budget.json (current invariant)."
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "timestamp": "2026-05-13T21:50:00Z",
+  "mode": "ba-validation",
+  "spec_id": "spec-20260513-085358",
+  "ba_artifacts_reviewed": {
+    "ticket": "docs/dev/ticket-20260513-090000.md",
+    "context_json": "docs/dev/context-20260513-090000.json",
+    "spec_md": "docs/dev/specs/spec-20260513-085358.md"
+  },
+  "user_verbatim_directive": "全部一次性完成",
+  "user_verbatim_section5_ac": "📝 把这些bug记成新spec 暨M2前置spec",
+
+  "verdict": "fail",
+  "summary": "BA's plan addresses 11 of 13 bugs but defers Bug 4 entirely (no code change this cycle) and reduces Bug 10 to a no-op (no renderer changes for attractions/shopping/entertainment). Both decisions narrow the user's verbatim 'all-at-once' directive beyond what evidence supports. Bug 4's user-visible mitigation (split _merge_day_data into helpers under scripts/lib/) is technically achievable this cycle and was explicitly recommended in user's own RCA prose at spec-20260513-085358 line 159 ('拆 generate-html-interactive.py 把 _merge_day_data 拆 helpers'). Bug 10's user-named root cause ('所有混乱的根源') deserves at least a schema-migration scaffold worker, not pure deferral. Additionally, AC1/AC3 verification recipes require live browser screenshots without a runnable text-grep fallback, creating PASS_AS_SUBSTITUTE risk in the next cycle. W1->W2 env-var coupling is fragile and lacks an orchestrator-side hard gate. Evidence quality for the 11 in-scope bugs is solid (line-number anchors verified by sample-read of generate-html-interactive.py:643, :470-508, :2770-2781; pretool-quality-gate.py 0 BYPASS hits confirmed; budget.json trip_total=23416 vs sum=13044 confirmed; meals.json Day 12 alternatives 沈大成/光明邨 confirmed; generate-and-deploy.sh argv-parser reproduced). BA must re-plan to either include Bug 4 + Bug 10 fixes or escalate the scope-narrowing decision to the user for explicit approval.",
+
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex (gpt-5.5 xhigh) returned 5 substantive points: (Q1) Bug 4 deferral is NOT defensible vs '全部' without explicit user approval — either include it or get user sign-off. (Q2) Bug 10 'PARTIAL' is weak; if user RCA labels schema asymmetry the root cause, leaving it untouched risks the bug staying alive — needs full fix or documented non-root rebuttal. (Q3) 6-worker file-disjointness 'not proven'; W2 touches generate-html-interactive.py, W1 gate wiring may affect its write path, W5 spans multiple files — requires explicit write-set locks at orchestrator level. (Q4) W1->W2 env-var coupling IS fragile; needs documented contract + test, otherwise W2 can pass locally and fail under gate. (Q5) Live-browser-screenshot ACs are achievable only if the app/HTML can be launched and rendered — must be REAL desktop+mobile browser screenshots, not grep/curl substitutes.",
+    "feedback_incorporated": "All 5 Codex points are reflected in QA's objections list and final verdict. Codex Q1 -> objection scope_alignment_bug_4. Codex Q2 -> objection scope_alignment_bug_10. Codex Q3 -> objection affected_file_accuracy_worker_disjointness. Codex Q4 -> objection investigation_completeness_w1_w2_coupling. Codex Q5 -> objection spec_text_vs_execution_drift_ac1_ac3."
+  },
+
+  "objections": [
+    {
+      "id": "OBJ-1",
+      "dimension": "scope_alignment",
+      "severity": "critical",
+      "claim": "BA defers Bug 4 (renderer file 3376 lines, _merge_day_data 581 lines) entirely to M2 with no code change this cycle; only feature-status.md tracking entry. BA cites 'codex F4: BYPASS cannot fix Bug 4; only refactor or baseline-aware gate would close it honestly.'",
+      "evidence_against": "User's verbatim directive is '全部一次性完成' (complete EVERYTHING at once). User's own RCA prose in spec-20260513-085358 line 159 explicitly lists '拆 generate-html-interactive.py 把 _merge_day_data 拆 helpers' (split _merge_day_data into helpers) as a M2-prereq systematic-fix item. That recommendation is a code action, not a documentation action. BA can plan a W7 worker that EXTRACTS _merge_day_data into scripts/lib/render_day_data.py (e.g., 5-6 helper functions of <30 lines each) WITHOUT changing renderer behavior — this is a mechanical refactor, the safest possible form. BYPASS_QUALITY_GATE wired in W1 covers the write-time gate; W7 reduces the file/function under the cap. This honors '全部' without inventing scope (the action is in the user's own enumeration).",
+      "required_fix": "Add W7 worker: 'extract _merge_day_data into scripts/lib/render_day_data.py helpers (<=30 lines each); generate-html-interactive.py imports and calls them; no semantic change; verified by SHA-comparing rendered HTML output before and after refactor'. Sequencing: W7 runs AFTER W2 completes (since W2 modifies _merge_day_data internals). W7's AC: scripts/generate-html-interactive.py line count <= 800 AND _merge_day_data <= 30 lines AND output/travel-plan-china-20260412-092624.html byte-identical pre/post-refactor.",
+      "codex_concurrence": "Q1 — codex marked Bug 4 deferral 'not defensible as stated'."
+    },
+    {
+      "id": "OBJ-2",
+      "dimension": "scope_alignment",
+      "severity": "critical",
+      "claim": "BA's Bug 10 plan: 'NO renderer changes for attractions/shopping/entertainment alternatives[] reads. Keep flat-list + optional:true shape. Meals keeps primary+alternatives. Full unification deferred to M2.' This means the schema asymmetry user named 'all chaos's root' stays in the codebase after this cycle.",
+      "evidence_against": "User's verbatim RCA in spec Section 5 item 10: 'Meals用 primary + alternatives[] (嵌套), attractions/shopping/entertainment 用 flat list + optional:true — 这种不对称是所有混乱的根源。' (This asymmetry is the root of all chaos.) The user explicitly identified this as the deepest root cause, not just one of 13 bugs. BA's plan does ZERO migration work — meals stays nested, attractions/shopping/entertainment stays flat. The current cycle's 'fix' is to add defensive reads for meals only — preserving the asymmetry. A minimum-safe scaffold (e.g., add an optional alternatives:[] field to attractions/shopping/entertainment schemas with NO renderer enforcement yet; OR add a translator in save.py that normalizes both shapes to a single internal representation) would honor '全部' without breaking existing data. Pure deferral under-serves the user's stated requirement.",
+      "required_fix": "BA must either (a) propose a minimum-safe schema scaffold this cycle (e.g., extend attractions/shopping/entertainment schemas to ACCEPT optional alternatives:[] field, even if no data populates it yet, and add a save_translate.py normalizer that internally maps both shapes to a unified internal record — preserves backward-compat, paves migration path) OR (b) escalate the deferral to the user for explicit approval before this cycle dispatches dev. BA's current spec implicitly assumes deferral is OK; user said the opposite.",
+      "codex_concurrence": "Q2 — codex marked Bug 10 'PARTIAL is weak; risks leaving the bug alive; needs full fix or documented non-root rebuttal'."
+    },
+    {
+      "id": "OBJ-3",
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "major",
+      "claim": "AC1 literal text: 'screenshot captured at desktop 1440x900: docs/dev/screenshots/20260513-090000/ac1-desktop.png AND screenshot captured at mobile 390x844: docs/dev/screenshots/20260513-090000/ac1-mobile.png'. AC3 literal text: 'AND screenshot evidence at desktop + mobile captured'. No text-grep or curl fallback is specified.",
+      "evidence_against": "If QA in the next cycle cannot reach Playwright (e.g., the orchestrator dispatches QA without browser tooling), the literal recipe is unrunnable. The cycle then either FAILs (no screenshots = AC unmet) or PASS_AS_SUBSTITUTEs (QA verifies a different recipe than the AC declares). Both outcomes are bad. The minimum-safe AC text should declare BOTH a primary live-browser recipe AND a text-grep fallback recipe so QA can always produce evidence at the AC's literal level: AC1 fallback: `curl https://travel.life-ai.app/china/2026-04-12/ | grep -E '沈大成|光明邨'` MUST return >= 2 distinct matches in the Timeline View HTML region. AC3 fallback: same curl, grep for 'Unscheduled' or 'Optional' section heading + the optional item's name_local.",
+      "required_fix": "Amend AC1 to add: 'Fallback verification (text-only): curl <deployed-url> | grep -c \"沈大成\" returns >= 1 AND grep -c \"光明邨\" returns >= 1 in the Timeline View section. Live-browser screenshot is preferred evidence; text-grep is acceptable when browser tooling is unavailable.' Amend AC3 similarly. Update context-20260513-090000.json success_criteria to mirror.",
+      "codex_concurrence": "Q5 — codex marked 'AC must require real desktop + mobile browser screenshots, not grep/curl'; QA partially disagrees and requires BOTH (live primary + text fallback) to avoid PASS_AS_SUBSTITUTE."
+    },
+    {
+      "id": "OBJ-4",
+      "dimension": "investigation_completeness",
+      "severity": "major",
+      "claim": "BA's W1->W2 sequencing relies on the orchestrator setting BYPASS_QUALITY_GATE=1 in W2's dispatch environment. BA's only mitigation is 'W1 worker tests BYPASS by attempting a no-op Edit on the renderer file as part of its acceptance' — this verifies the gate wiring, NOT that the orchestrator will actually set the env-var for W2.",
+      "evidence_against": "If the orchestrator forgets the env-var (which is a coordination contract NOT enforced anywhere in the cycle's diff), W2 dev-worker will get blocked on the quality-gate on its first Edit. BA's spec leaves this enforcement gap unfilled. The fragility is asymmetric: W1 succeeds (wires the env-var read), W2 fails to even start. The cycle stalls.",
+      "required_fix": "BA must add either (a) an explicit orchestrator-contract clause to context-20260513-090000.json specifying that the dispatch prompt for W2 MUST include 'BYPASS_QUALITY_GATE=1 must be set in your shell environment before any Edit on scripts/generate-html-interactive.py' AND a verification step — OR (b) make the BYPASS auto-detect based on a sentinel file (e.g., .claude/dev-registry/dev-20260513-090000/qa.json existence) so W2 doesn't depend on env-var coordination. Option (a) is simpler. Either way, the dependency must be explicit, not implicit.",
+      "codex_concurrence": "Q4 — codex marked 'Yes, fragile. W1->W2 env-var coupling needs a documented contract plus tests'."
+    },
+    {
+      "id": "OBJ-5",
+      "dimension": "evidence_quality",
+      "severity": "minor",
+      "claim": "BA's Bug 7 evidence section says: 'while [ \"$#\" -gt 1 ] then case \"$1\" without initial shift; $1 remains PLAN_ID if user passes bash generate-and-deploy.sh <plan> --day 1-5, so --day is never matched.' The spec-20260513-085358 Section 1 line 29 and cp-state-qa.json cp-05 both say '--day flag silently ignored'.",
+      "evidence_against": "Live reproduction (QA verified): running `bash scripts/generate-and-deploy.sh foo --day 1-5` produces '❌ Error: Unknown option foo' AND exits 1 (NOT silent). The case fall-through hits `*) echo Error; exit 1`. The user-visible symptom is 'loud error, exits 1' — not 'silently ignored'. BA's prose description correctly identifies the mechanism (no initial shift) but the failure mode characterization carried from spec/cp-state is inaccurate.",
+      "required_fix": "Update BA spec evidence-section for Bug 7 to: 'No initial shift before option loop. Result: when user runs `bash deploy.sh <plan> --day 1-5`, $1=plan-id, case falls through to *), prints \"Unknown option <plan-id>\", exits 1 (loud error, not silent).' Update AC6 expected behavior to assert exit code 0 AND --day forwarded. This is minor (BA's mechanism is right; only the symptom phrasing drifts) but worth correcting before dev acts on the inaccurate prior context.",
+      "codex_concurrence": "Not surveyed (Q-set didn't cover Bug 7 specifically)."
+    },
+    {
+      "id": "OBJ-6",
+      "dimension": "affected_file_accuracy",
+      "severity": "minor",
+      "claim": "W3 plans to commit .claude/skills/google-maps symlink, which today is an absolute-path symlink: 'lrwxrwxrwx ... -> /root/travel-planner/.claude/commands/scripts/google-maps'. BA's spec edge-case discussion warns about this but doesn't bind W3 to fix it. W3's constraint section only says 'Resolve absolute-symlink portability issue: prefer relative symlink OR migrate path constant'.",
+      "evidence_against": "QA verified: ls -la .claude/skills/google-maps confirms it points to /root/travel-planner/.claude/commands/scripts/google-maps (absolute, non-portable across checkouts). If W3 chooses 'commit-symlink' branch without first converting to relative, the cycle ships a non-portable artifact. BA's spec leaves the branch choice to the dev worker; AC5 only requires 'no FileNotFoundError on clean checkout' which can be satisfied by either branch but only the relative-symlink branch is durable.",
+      "required_fix": "Tighten AC5 to require: 'EITHER (a) the symlink at .claude/skills/google-maps is REPLACED with a relative-path symlink and committed, OR (b) scripts/fetch-images-batch.py is changed to read directly from .claude/commands/scripts/google-maps/scripts/places.py (NO symlink dependency). The 'absolute-symlink commit' option is REJECTED.' This removes the latent portability risk.",
+      "codex_concurrence": "Q3 — codex noted file-disjointness 'not proven'; QA narrows to a specific durable-fix constraint."
+    }
+  ],
+
+  "evidence_audit": {
+    "claims_sampled": 6,
+    "claims_verified": 6,
+    "sample_details": [
+      {
+        "ba_claim": "scripts/generate-html-interactive.py:643 — meal = meal_slot.get('primary', meal_slot) drops alternatives[]",
+        "qa_verification": "Read scripts/generate-html-interactive.py:643 — exact line is `meal = meal_slot.get(\"primary\", meal_slot)`. Confirmed.",
+        "verdict": "verified"
+      },
+      {
+        "ba_claim": "scripts/generate-html-interactive.py:470-508 _get_timeline_time three-tier string-similarity matcher",
+        "qa_verification": "Read 465-510. Tier 1 exact match :479-483, Tier 2 base-name match (paren-stripped) :484-495, Tier 3 substring match :496-507, return None on no-match :508. Confirmed.",
+        "verdict": "verified"
+      },
+      {
+        "ba_claim": "scripts/generate-html-interactive.py:2770-2781 Timeline JS add() filter drops time-null items",
+        "qa_verification": "Read 2765-2800. Verbatim: `if (item?.time?.start && item?.time?.end && item.time.start !== '00:00' && item.time.end !== '00:00' && timeToMinutes(item.time.start) !== timeToMinutes(item.time.end))`. Confirmed.",
+        "verdict": "verified"
+      },
+      {
+        "ba_claim": ".claude/hooks/pretool-quality-gate.py 0 hits for BYPASS_QUALITY_GATE",
+        "qa_verification": "Read the full 252-line file + grep BYPASS_QUALITY_GATE. Zero hits in pretool-quality-gate.py; 2 hits in pretool-validate-data-write.py (the BYPASS_DAY_GUARD analog at line 55 + docstring at line 71). Confirmed unwired.",
+        "verdict": "verified"
+      },
+      {
+        "ba_claim": "data/china-20260412-092624/budget.json data.trip_total=23416 vs sum(days[].budget.total)=13044",
+        "qa_verification": "Python inspection: data.trip_total=23416, num days=15, sum=13044. Confirmed stale.",
+        "verdict": "verified"
+      },
+      {
+        "ba_claim": "data/china-20260412-092624/meals.json Day 12 lunch has alternatives [沈大成, 光明邨]",
+        "qa_verification": "Grep at line 1745-1791 of meals.json (Day 12 starts line 1645) confirms alternatives array with name_base 'Shen Da Cheng Dumpling Shop' (沈大成) and 'Guangming Village Restaurant' (光明邨). Confirmed.",
+        "verdict": "verified"
+      }
+    ]
+  },
+
+  "scope_alignment_audit": {
+    "user_section5_bug_count": 13,
+    "ba_in_scope_count": 11,
+    "ba_doc_only_count": 1,
+    "ba_deferred_count": 1,
+    "narrowed_bugs": [
+      {
+        "bug_id": 4,
+        "ba_decision": "deferred to M2 with feature-status.md tracking only",
+        "user_directive_match": "FAIL — user said '全部一次性完成' and user's own RCA proposes split as M2-prereq item, not M2 item itself",
+        "ba_rationale": "codex F4: BYPASS cannot fix Bug 4; only refactor would close it honestly",
+        "ba_rationale_validity": "Partially valid — the rationale shows why BYPASS doesn't fix Bug 4. It does NOT show why the refactor itself is out of scope this cycle. The refactor IS the user-prescribed action.",
+        "qa_recommendation": "Add W7 mechanical-refactor worker"
+      },
+      {
+        "bug_id": 10,
+        "ba_decision": "NO renderer changes; meals keeps primary+alternatives; attractions/shopping/entertainment unchanged",
+        "user_directive_match": "FAIL — user labelled schema asymmetry '所有混乱的根源' (root of all chaos)",
+        "ba_rationale": "codex F-Bug10: defensive alternatives[] reads would entrench dual-shape",
+        "ba_rationale_validity": "Valid for the SPECIFIC sub-choice (defensive reads), but BA used it to justify NO action at all. Schema scaffold (extend schemas to ACCEPT alternatives[] field without enforcement) is orthogonal to defensive reads and would honor '全部'.",
+        "qa_recommendation": "Add Bug 10 schema scaffold to W6 or new W8 worker"
+      }
+    ],
+    "scope_alignment_verdict": "narrowed beyond user intent"
+  },
+
+  "investigation_completeness_audit": {
+    "bugs_with_root_cause_documented": 13,
+    "bugs_with_code_anchor": 13,
+    "bugs_with_minimum_safe_fix_shape": 11,
+    "bugs_without_fix_shape": [
+      {
+        "bug_id": 4,
+        "reason": "BA marked as deferred; no fix shape documented in this cycle",
+        "investigation_completeness": "incomplete — even a deferred bug should have a documented future-fix shape; BA only points at 'split _merge_day_data into helpers' as M2 work without enumerating the 5-6 helper functions"
+      },
+      {
+        "bug_id": 10,
+        "reason": "BA marked as 'no renderer change'; no scaffold shape documented",
+        "investigation_completeness": "incomplete — full unification deferred to M2 without proposing any incremental step this cycle"
+      }
+    ],
+    "codex_feedback_incorporation": "BA claims 9 codex points incorporated. QA verified 8/9 are reflected in the spec text; the 9th (live-browser-verification on desktop+mobile) is reflected in AC1/AC3 but without a text-grep fallback recipe — creating the spec_text_vs_execution_drift risk flagged in OBJ-3."
+  },
+
+  "affected_file_accuracy_audit": {
+    "worker_write_set_verification": [
+      {
+        "worker": "W1",
+        "claimed_files": [".claude/hooks/pretool-quality-gate.py"],
+        "verified": true,
+        "file_exists": true,
+        "file_line_count": 252
+      },
+      {
+        "worker": "W2",
+        "claimed_files": ["scripts/generate-html-interactive.py"],
+        "verified": true,
+        "file_exists": true,
+        "file_line_count": 3376,
+        "note": "exceeds quality-gate MAX_FILE_LINES=800; requires W1 BYPASS env-var to edit"
+      },
+      {
+        "worker": "W3",
+        "claimed_files": ["scripts/fetch-images-batch.py", ".claude/skills/google-maps"],
+        "verified": true,
+        "file_exists": true,
+        "fetch-images-batch.py_line_count": 1202,
+        "symlink_status": "ABSOLUTE-PATH (non-portable); BA flags this but doesn't BIND W3 to fix it (see OBJ-6)"
+      },
+      {
+        "worker": "W4",
+        "claimed_files": ["scripts/generate-and-deploy.sh"],
+        "verified": true,
+        "file_exists": true,
+        "file_line_count": 217
+      },
+      {
+        "worker": "W5",
+        "claimed_files": ["scripts/save.py", "scripts/lib/save_translate.py", "scripts/lib/json_io.py (optional)"],
+        "verified": true,
+        "save.py_line_count": 742,
+        "save_translate.py_line_count": 84,
+        "json_io.py_line_count": 674
+      },
+      {
+        "worker": "W6",
+        "claimed_files": ["docs/feature-status.md (NEW)", "README.md (+link)", "docs/index.md (+link)"],
+        "verified": true,
+        "feature-status.md_exists": false,
+        "README.md_exists": true,
+        "docs/index.md_exists": true
+      }
+    ],
+    "file_disjointness_audit": {
+      "claimed_disjoint": true,
+      "actual_disjoint": true,
+      "note": "Workers do NOT share write-set files. Only IMPLICIT dependency: W2 cannot edit generate-html-interactive.py without W1's BYPASS wiring AND env-var set. This is a control-flow dependency, not a file-overlap dependency. Codex Q3 flagged 'not proven' — QA disagrees on file-disjointness specifically but agrees with codex's underlying concern about explicit write-set locks (see OBJ-4 about env-var coordination contract)."
+    }
+  },
+
+  "spec_text_vs_execution_drift_audit": {
+    "acs_with_runnable_recipe": ["AC2", "AC4", "AC5", "AC6", "AC7", "AC8", "AC9", "AC10", "AC11"],
+    "acs_with_drift_risk": [
+      {
+        "ac": "AC1",
+        "literal_text_says": "Timeline View for Day 12 contains visible entries for both '沈大成' AND '光明邨'; screenshot at desktop 1440x900 + mobile 390x844",
+        "drift_risk": "If browser tooling unavailable in next-cycle QA, the AC is unrunnable. Result: PASS_AS_SUBSTITUTE (QA verifies via curl|grep) or FAIL (no screenshots).",
+        "qa_recommendation": "Add explicit text-grep fallback recipe to AC1"
+      },
+      {
+        "ac": "AC3",
+        "literal_text_says": "Day 12 view shows the item in an 'Unscheduled / Optional' section; screenshot evidence at desktop + mobile",
+        "drift_risk": "Same as AC1 — unrunnable without browser tooling; no text fallback",
+        "qa_recommendation": "Add explicit text-grep fallback recipe to AC3"
+      }
+    ]
+  },
+
+  "location_overlap_audit": {
+    "section5_per_bug_location_keywords": {
+      "bug_1": ["renderer", "generate-html-interactive", "meal_slot", "primary", "alternatives"],
+      "bug_2": ["renderer", "_get_timeline_time", "name", "entity"],
+      "bug_3": ["renderer", "optional", "timeline"],
+      "bug_4": ["generate-html-interactive", "_merge_day_data", "3376", "lines"],
+      "bug_5": ["BYPASS_QUALITY_GATE", "env", "var"],
+      "bug_6": ["fetch-images-batch", "google-maps", "symlink"],
+      "bug_7": ["generate-and-deploy", "--day", "parser"],
+      "bug_8": ["Cloudflare", "purge"],
+      "bug_9": ["save.py", "trip_total", "budget"],
+      "bug_10": ["schema", "primary", "alternatives", "flat", "optional"],
+      "bug_11": ["dedup", "Day 12", "Wukang"],
+      "bug_12": ["primary", "alternative", "demoted"],
+      "bug_13": ["feature-status", "dashboard", "M1-M5"]
+    },
+    "ba_affected_files_token_set": ["scripts", "generate-html-interactive", "fetch-images-batch", "generate-and-deploy", "save", "save_translate", "json_io", "pretool-quality-gate", "skills", "google-maps", "feature-status", "README", "index"],
+    "per_bug_overlap_check": {
+      "bug_1": "intersect: generate-html-interactive — PASS",
+      "bug_2": "intersect: generate-html-interactive — PASS",
+      "bug_3": "intersect: generate-html-interactive — PASS",
+      "bug_4": "intersect: generate-html-interactive — PASS (but Bug 4 deferred — no W; see OBJ-1)",
+      "bug_5": "intersect: pretool-quality-gate — PASS",
+      "bug_6": "intersect: fetch-images-batch, google-maps — PASS",
+      "bug_7": "intersect: generate-and-deploy — PASS",
+      "bug_8": "intersect: feature-status (doc track) — PASS (acceptable for N/A bug)",
+      "bug_9": "intersect: save, trip_total — PASS",
+      "bug_10": "intersect: NONE in BA write-set (no schema files in affected_files) — FAIL",
+      "bug_11": "intersect: save, dedup — PASS",
+      "bug_12": "intersect: save, save_translate — PASS",
+      "bug_13": "intersect: feature-status — PASS"
+    },
+    "location_overlap_verdict": "Bug 10 has zero affected-file overlap with its Section 5 location keywords (schema, primary, alternatives, flat, optional). This is the file-level corroborating signal for OBJ-2: BA's plan does not touch the locations the user identified as the root cause. Other 12 bugs have proper overlap."
+  },
+
+  "passed_checks_summary": [
+    "11 of 13 bugs have correct file:line evidence (sample-spot verified 6/6).",
+    "11 of 13 bugs have minimum-safe fix shape proposed.",
+    "Worker file write-sets are mutually disjoint (no two workers write to the same file).",
+    "Codex consultation was actually invoked and 8 of 9 prior-round feedback points are reflected in the spec text.",
+    "9 of 11 ACs (AC2, AC4-AC11) have runnable text-only verification recipes."
+  ],
+
+  "failed_checks_summary": [
+    "Bug 4 narrowed without sufficient justification vs user's '全部' directive (OBJ-1).",
+    "Bug 10 narrowed without sufficient justification vs user's '所有混乱的根源' framing (OBJ-2).",
+    "AC1 and AC3 lack text-grep fallback recipes; PASS_AS_SUBSTITUTE risk (OBJ-3).",
+    "W1->W2 env-var coordination contract not made explicit in BA's dispatch design (OBJ-4).",
+    "Bug 7 symptom phrasing ('silently ignored') drifts from actual symptom ('loud exit 1') (OBJ-5).",
+    "W3 absolute-symlink risk left to dev's choice instead of bound by AC5 (OBJ-6)."
+  ],
+
+  "required_remediation_actions": [
+    "BA must add W7 worker for Bug 4 mechanical refactor (split _merge_day_data into <30-line helpers in scripts/lib/render_day_data.py).",
+    "BA must EITHER add Bug 10 schema scaffold to W6 (or new W8), OR escalate Bug 10 deferral to user for explicit approval.",
+    "BA must extend AC1 and AC3 with text-grep fallback recipes (curl|grep) so QA can produce literal AC evidence without browser tooling.",
+    "BA must add explicit W2 dispatch-contract clause: 'orchestrator MUST set BYPASS_QUALITY_GATE=1 in W2 env before dispatching; W2 worker MUST verify env-var presence on entry and PAUSE+REPORT if absent'.",
+    "BA must correct Bug 7 symptom phrasing in evidence section (loud exit 1, not silent).",
+    "BA must tighten AC5 to forbid the absolute-symlink-commit branch."
+  ]
+}

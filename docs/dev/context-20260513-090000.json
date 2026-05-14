@@ -1,0 +1,559 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "timestamp": "2026-05-13T22:00:00Z",
+  "round": 2,
+  "round_notes": "Round-2 remediation after BA-QA loop iteration 1 rejected (ba-qa-report-20260513-090000.json verdict=fail with 6 objections). All 6 objections resolved with proof; W7 (Bug 4) + W8 (Bug 10) added; AC1/AC3 text-grep fallback; AC5 absolute-symlink rejected; AC6 corrected; AC-DISPATCH env-var contract; AC12/AC13 added.",
+  "spec_id": "spec-20260513-085358",
+  "requirement": {
+    "original": "全部一次性完成",
+    "clarified": "Implement minimum-safe fixes for ALL 13 systematic bugs in spec-20260513-085358 Section 5 in a single /dev cycle, via 8 file-disjoint parallel dev-workers grouped by coherent write-set/root-cause. ZERO deferred bugs. Bug 4 -> W7 mechanical refactor (codex round-2 Q1 byte-identical merged-dict invariant). Bug 10 -> W8 schema-reject + shape-normalizer (codex round-2 Q2: accept-but-ignore is silent-data-loss trap).",
+    "what": "Fix 13 enumerated bugs (renderer alternatives + gaode-id fast-path + unscheduled-optionals; renderer-split mechanical refactor; gate BYPASS wiring; fetch-images helper path with absolute-symlink forbidden; deploy --day parser; save trip_total recompute; save cross-domain dedup; save demoted-primary state machine; schema-reject alternatives[] on flat shapes + shape-normalizer; feature-status dashboard) parallelized across 8 file-disjoint workers.",
+    "why": "User directive '全部一次性完成' on the M2-prerequisite bug spec. Per spec-20260503-091826 Section 5.1, implement smallest-safest-most-precise change per bug. Round-2 QA objections resolved by promoting Bug 4 and Bug 10 from deferred/no-op to dedicated workers with codex-validated invariants.",
+    "where": [
+      "scripts/generate-html-interactive.py",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-and-deploy.sh",
+      "scripts/save.py",
+      "scripts/lib/save_translate.py",
+      "scripts/lib/json_io.py",
+      "scripts/lib/render_day_data.py",
+      ".claude/hooks/pretool-quality-gate.py",
+      ".claude/skills/google-maps",
+      "schemas/attractions.schema.json",
+      "schemas/shopping.schema.json",
+      "schemas/entertainment.schema.json",
+      "docs/feature-status.md",
+      "README.md",
+      "docs/index.md",
+      "tests/test_render_day_data_byte_identity.py"
+    ],
+    "scope": {
+      "included": [
+        "Renderer: alternatives[] rendering for meals only (Bug 1, W2)",
+        "Renderer: gaode_id fast-path in _get_timeline_time() (Bug 2 partial, W2)",
+        "Renderer: unscheduled-optionals separate section (Bug 3, W2)",
+        "Renderer: mechanical refactor _merge_day_data -> 9 helpers in scripts/lib/render_day_data.py (Bug 4, W7)",
+        "Hook: BYPASS_QUALITY_GATE=1 env-var wiring (Bug 5, W1)",
+        "fetch-images: helper path resolution with absolute-symlink FORBIDDEN (Bug 6, W3)",
+        "Deploy: --day flag parser; loud-exit-1 symptom fixed (Bug 7, W4)",
+        "Docs: Cloudflare-purge N/A documentation (Bug 8, W6)",
+        "Save: trip_total aggregate recompute (Bug 9, W5)",
+        "Schemas: explicit reject alternatives[] on attractions/shopping/entertainment via BANNED_AD_HOC_KEYS + shape-normalizer in save_translate.py (Bug 10, W8)",
+        "Save: cross-domain dedup WARN with shape-normalizer reuse (Bug 11, W5)",
+        "Save: demoted-primary state machine (Bug 12, W5)",
+        "Docs: feature-status.md + README link + index link (Bug 13, W6)"
+      ],
+      "excluded": [
+        "Full entity-ID migration (deferred to M2 — codex F2)",
+        "Full schema unification of meals vs attractions/shopping/entertainment WITH renderer support (deferred to M2; W8 only adds reject + normalizer, not unification)",
+        "Renderer-defensive alternatives[] reads at attractions/shopping/entertainment (codex round-1 F-Bug10 + round-2 Q2 explicitly forbid — would entrench dual-shape OR create silent-data-loss trap)",
+        "Inventing timeline times for unscheduled optionals from domain JSON (codex F3 forbids)",
+        "Default-enabling BYPASS_QUALITY_GATE (codex F-Bug4-3 forbids; break-glass only)",
+        "Cloudflare purge implementation (infrastructure constraint, no API token in repo)",
+        "Agent prompt changes for Bug 12 (only save-side enforcement; agent .md files out of scope)",
+        "Schema accept-but-ignore semantics for alternatives[] on flat shapes (codex round-2 Q2: silent-data-loss trap)"
+      ]
+    },
+    "success_criteria": [
+      "AC1 Day 12 lunch alternatives visible in Timeline View; primary screenshot + text-grep fallback curl|grep '沈大成' AND '光明邨' >=1 (per OBJ-3)",
+      "AC2 gaode_id fast-path returns without falling through to string tiers",
+      "AC3 optional-no-time items render in Unscheduled section; primary screenshot + text-grep fallback curl|grep 'Unscheduled|Optional' >=1 (per OBJ-3)",
+      "AC4 BYPASS_QUALITY_GATE=1 exits 0 with stderr log",
+      "AC5 fetch-images-batch.py does not raise FileNotFoundError on clean checkout AND absolute-symlink-commit branch is REJECTED (per OBJ-6)",
+      "AC6 --day 1-5 forwarded and consumed; OLD loud-exit-1 'Unknown option <plan-id>' symptom fixed (per OBJ-5)",
+      "AC7 trip_total auto-recomputed to sum of days[].budget.total",
+      "AC8 cross-domain dedup WARNs on duplicate names (uses W8 normalizer for shape-agnostic detection)",
+      "AC9 demoted primary dropped (not auto-preserved as alternative)",
+      "AC10 feature-status.md exists with M1-M5 and 13-bug tables, linked from README + index",
+      "AC11 Cloudflare-purge documented as N/A in feature-status.md",
+      "AC12 (NEW per OBJ-1) Bug 4 W7: _merge_day_data extracted into 9 helpers in scripts/lib/render_day_data.py each <=30 lines; file <=800 lines; intermediate merged-dict byte-identical for all 15 days (codex round-2 Q1 invariant)",
+      "AC13 (NEW per OBJ-2) Bug 10 W8: schemas attractions/shopping/entertainment reject alternatives[] via BANNED_AD_HOC_KEYS agent-scoped extension; _normalize_to_canonical_record() shape-normalizer added to save_translate.py; renderer takes NO Bug-10 changes (codex round-2 Q2)",
+      "AC-DISPATCH (NEW per OBJ-4) Orchestrator dispatch prompt for W2/W7 MUST include BYPASS_QUALITY_GATE=1 clause; W2/W7 worker MUST verify on entry + PAUSE+REPORT if absent; alternative sentinel-file path acceptable"
+    ],
+    "constraints": [
+      "W1 (gate-bypass) MUST land before W2 / W7 (renderer) opens any Edit on the 3376-line file",
+      "Workers must NOT edit files outside their assigned write-set (file-disjoint guarantee EXCEPT shared-file sequencing W2->W7 and W5->W8 below)",
+      "W7 MUST run AFTER W2 completes (shared file scripts/generate-html-interactive.py); MUST preserve W2's bug-1/2/3 edits verbatim",
+      "W8 MUST run AFTER W5 completes (shared file scripts/lib/save_translate.py); MUST NOT add accept-but-ignore semantics on alternatives[] for flat shapes (codex round-2 Q2)",
+      "W3 MUST NOT commit the absolute-path symlink; choose relative-symlink OR path-constant migration (OBJ-6 / AC5)",
+      "Renderer ACs require live browser verification on desktop 1440x900 + mobile 390x844 (primary) OR text-grep fallback (acceptable substitute per OBJ-3)",
+      "No defensive alternatives[] reads at attractions/shopping/entertainment renderer code (codex round-1 F-Bug10)",
+      "No invented timeline times for Bug 3 (codex F3)",
+      "BYPASS_QUALITY_GATE not default-enabled (codex F-Bug4-3)",
+      "Orchestrator MUST inject BYPASS_QUALITY_GATE=1 in W2/W7 dispatch env per AC-DISPATCH"
+    ],
+    "orchestrator_dispatch_contract": {
+      "applicable_workers": ["W2", "W7"],
+      "primary_mechanism": "env-var",
+      "required_env_var": "BYPASS_QUALITY_GATE=1",
+      "dispatch_prompt_clause_verbatim": "Set BYPASS_QUALITY_GATE=1 in your shell environment before any Edit on scripts/generate-html-interactive.py. The file is 3376 lines and exceeds the quality-gate MAX_FILE_LINES cap; without this env-var your first Edit will be blocked.",
+      "worker_entry_verification": "First action MUST be `os.environ.get('BYPASS_QUALITY_GATE') == '1'` (or shell equivalent). If absent, PAUSE and emit REQUEST to orchestrator before any tool call.",
+      "alternative_mechanism": "sentinel-file: W1 may implement a code path where existence of .claude/dev-registry/dev-20260513-090000/qa.json (or equivalent sentinel) flips BYPASS auto-on inside the hook. If W1 implements this, env-var dispatch becomes optional and sentinel is the binding contract.",
+      "binding_choice_documented_in": "W1 worker's deliverables MUST document which of {env-var, sentinel-file} is the binding contract for this cycle."
+    }
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/generate-html-interactive.py",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-and-deploy.sh",
+      "scripts/save.py",
+      "scripts/lib/save_translate.py",
+      "scripts/lib/json_io.py",
+      ".claude/hooks/pretool-quality-gate.py",
+      ".claude/skills/google-maps",
+      "docs/feature-status.md",
+      "README.md",
+      "docs/index.md"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/semantic_lint.py (NEW — optional extraction target for cross-domain dedup logic)",
+      "schemas/meals.schema.json (READ-ONLY reference for primary+alternatives shape)",
+      "schemas/{attractions,shopping,entertainment}.schema.json (READ-ONLY reference for flat-list+optional shape)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "data/china-20260412-092624/*.json (data fixed-state used for AC verification; not modified by code workers)",
+      "data/china-20260412-092624/*.json.bak (8 stale .bak files; cleanup is separate cycle)",
+      "scripts/generate-html-interactive.py whole-file refactor (Bug 4 deferred)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-13T21:40:00Z",
+      "task_id": "20260513-090000",
+      "file": "scripts/generate-html-interactive.py",
+      "line": "599-1179",
+      "observation": "_merge_day_data is 581 lines (cap 30). Codex F4: BYPASS cannot 'fix' Bug 4; only refactor or baseline-aware gate would close it honestly. Tracked as deferred-M2.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-13T21:40:00Z",
+      "task_id": "20260513-090000",
+      "file": "data/china-20260412-092624/*.json",
+      "line": null,
+      "observation": "Schema asymmetry (meals nested vs attractions/shopping/entertainment flat) is schema-blessed today. Full unification requires schema + data migration across 4 domains. Deferred to M2.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-13T21:40:00Z",
+      "file": "data/china-20260412-092624/*.json.bak",
+      "line": null,
+      "task_id": "20260513-090000",
+      "observation": "8 .bak files present in git status. spec-20260506-092951 added .bak to .gitignore but these pre-existed; separate cleanup cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-13T21:40:00Z",
+      "task_id": "20260513-090000",
+      "file": "scripts/generate-html-interactive.py",
+      "line": null,
+      "observation": "No poi_id/entity_id/UUID anywhere in data files; only gaode_id. M2 entity-ID migration is the principled fix for Bug 2. This cycle only adds gaode_id fast-path.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "13 systematic bugs surfaced during 2026-05-13 china-20260412-092624 review (renderer drops meal alts; name-string match brittle; optional-no-time silently dropped; renderer file too big to edit; BYPASS unwired; helper-path broken; --day flag no-op; no Cloudflare purge; trip_total stale; schema asymmetry; no cross-domain dedup; default-preserve-old-primary; no feature-status dashboard).",
+    "root_cause": "13 distinct root causes — see per-bug measurement in evidence.measured field. Categorically: (a) renderer was built primary-only (Bug 1) with string-similarity name matching (Bug 2) and time-required filter (Bug 3); (b) hook gate documented BYPASS but never wired (Bug 5) and file accumulated to legacy size (Bug 4); (c) deploy chain has multiple hardcoded paths and shell-parser bug; (d) save path has no aggregate-recompute and no semantic linting; (e) docs lack milestone dashboard.",
+    "root_cause_commit": "N/A — pre-existing systematic state, not a single regressing commit. Closest commits: 1441e52 (spec-20260506-092951 root-cause hardening) touched adjacent territory but did not address these 13 bugs.",
+    "why_introduced": "Iterative single-purpose implementations accumulated across multiple cycles; each was schema-correct at field level but the system lacked semantic-level invariants (cross-domain dedup, primary-replacement state, aggregate consistency).",
+    "why_problematic": "User-visible content loss (Bug 1 drops alternatives), silent dropping (Bug 3), brittle name-matching (Bug 2), tooling friction (Bugs 4-5), broken deploy chain (Bugs 6-7), data drift (Bug 9), schema confusion (Bug 10), agent over-preservation (Bug 12).",
+    "timeline": "All 13 bugs surfaced during 2026-05-13 /review china/2026-04-12/ session. Spec-20260513-085358 recorded the enumeration at 2026-05-13T08:53:58Z.",
+    "affected_files": [
+      "scripts/generate-html-interactive.py (W2)",
+      "scripts/fetch-images-batch.py (W3)",
+      "scripts/generate-and-deploy.sh (W4)",
+      "scripts/save.py (W5)",
+      "scripts/lib/save_translate.py (W5)",
+      "scripts/lib/json_io.py (W5 optional)",
+      ".claude/hooks/pretool-quality-gate.py (W1)",
+      ".claude/skills/google-maps (W3)",
+      "docs/feature-status.md (W6 NEW)",
+      "README.md (W6 +link)",
+      "docs/index.md (W6 +link)"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "Bug 1 (observed: curl https://travel.life-ai.app/china/2026-04-12/ | grep -c '沈大成' = 0)",
+      "Bug 1 (inferred: scripts/generate-html-interactive.py:643 reads only meal_slot.primary)",
+      "Bug 2 (inferred: scripts/generate-html-interactive.py:470-508 _get_timeline_time three-tier string match)",
+      "Bug 3 (inferred: scripts/generate-html-interactive.py:2770-2781 add() filter rejects time-null items)",
+      "Bug 4 (observed: wc -l = 3376; _merge_day_data 581 lines)",
+      "Bug 5 (observed: grep BYPASS_QUALITY_GATE in hook = 0 hits)",
+      "Bug 6 (observed: .claude/skills/google-maps not git-tracked, local symlink absolute path)",
+      "Bug 7 (inferred: scripts/generate-and-deploy.sh:39-54 missing initial shift before $1 case)",
+      "Bug 8 (observed: find scripts/ deploy/ for purge/cf-cache/cloudflare = 0 hits)",
+      "Bug 9 (observed: data.trip_total=23416 vs sum(days[].budget.total)=13044 in live budget.json)",
+      "Bug 10 (observed: meals.json Day 12 lunch keys = ['primary','alternatives']; attractions.json Day 12 = flat list with optional field)",
+      "Bug 11 (observed: session evidence — Huaihai-Wukang and Wukang Road same-slot duplicate)",
+      "Bug 12 (observed: session evidence — meals-agent's default 'preserve old primary' required explicit user '删除')",
+      "Bug 13 (observed: find docs -name '*status*' returns only image-fallback-status.md unrelated)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["全部一次性完成", "13 bugs", "M2 前置spec"],
+    "localization_evidence": "Each of 13 bugs has measured code/data evidence in evidence.measured. Session transcript + spec-20260513-085358 Section 5 verbatim enumeration carry the user's identification of every bug.",
+    "located_source": "spec-20260513-085358 Section 5 items 1-13 + per-bug code anchors in this BA spec's Evidence section",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "not-applicable",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L3-L4-mixed",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "全部一次性完成",
+      "acceptance_criterion": "All 13 bugs from spec-20260513-085358 Section 5 are addressed in this /dev cycle: 11 implemented (Bugs 1, 2, 3, 5, 6, 7, 9, 11, 12, 13) + 1 documented-N/A (Bug 8) + 1 deferred-tracked (Bug 4). Bug 10's full unification is deferred to M2; the renderer takes no Bug-10 changes per codex F-Bug10."
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "470-508",
+      "role": "_get_timeline_time three-tier string-similarity matcher; W2 Bug 2 inserts Tier-0 gaode_id fast-path",
+      "imports_from": "leaf",
+      "evidence": "Read scripts/generate-html-interactive.py lines 470-508",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "637-682",
+      "role": "_merge_day_data meals loop reads meal_slot.primary; W2 Bug 1 adds parallel alternatives[] loop",
+      "imports_from": "leaf",
+      "evidence": "Read scripts/generate-html-interactive.py lines 630-690",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "2762-2810",
+      "role": "TimelineView React component + add() filter; W2 Bug 3 splits time-having vs unscheduled-optionals",
+      "imports_from": "leaf",
+      "evidence": "Read scripts/generate-html-interactive.py lines 2760-2810",
+      "verified_via": "Read"
+    },
+    {
+      "file": ".claude/hooks/pretool-quality-gate.py",
+      "line_range": "1-251",
+      "role": "PreToolUse Write/Edit gate; W1 Bug 5 adds os.environ.get('BYPASS_QUALITY_GATE')=='1' early-exit",
+      "imports_from": "leaf",
+      "evidence": "Read full file; grep BYPASS_QUALITY_GATE = 0 hits confirms unwired",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/fetch-images-batch.py",
+      "line_range": "60-72",
+      "role": "_helper_paths returns hardcoded paths including .claude/skills/google-maps; W3 Bug 6 fixes resolution",
+      "imports_from": "leaf",
+      "evidence": "Read scripts/fetch-images-batch.py lines 55-80, 260-285",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-and-deploy.sh",
+      "line_range": "39-54",
+      "role": "Argument parser missing initial shift; W4 Bug 7 fix",
+      "imports_from": "leaf",
+      "evidence": "Read scripts/generate-and-deploy.sh lines 30-64",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/save.py",
+      "line_range": "1-742",
+      "role": "Slot-merge orchestrator; W5 Bugs 9, 11, 12 add aggregate-recompute, cross-domain dedup, demoted-primary state machine",
+      "imports_from": "scripts/lib/json_io.py, scripts/lib/save_translate.py",
+      "evidence": "wc -l = 742; Read header; grep trip_total = 0 hits",
+      "verified_via": "both"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": ".claude/hooks/pretool-validate-data-write.py",
+      "line": 54,
+      "type": "if",
+      "code_snippet": "def _bypass(): return os.environ.get('BYPASS_DAY_GUARD', '') == '1'",
+      "purpose": "User-only escape hatch for raw data writes (spec-20260506-092951 §5.3). W1's BYPASS_QUALITY_GATE wiring should follow the SAME single-line pattern.",
+      "removal_authorized": false
+    },
+    {
+      "file": ".claude/hooks/pretool-validate-data-write.py",
+      "line": 29,
+      "type": "if",
+      "code_snippet": "DATA_AGENT_TYPES = {'meals', 'accommodation', ...}",
+      "purpose": "Restricts which agent_types can write data/**/*.json. W5's semantic-lint should respect this guard.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop + 390x844 mobile (renderer ACs require both)",
+    "theme": "light",
+    "locale": "zh-CN",
+    "auth_state": "logged-out",
+    "data_state": "with-data (data/china-20260412-092624 live corpus)",
+    "browser": "Chrome desktop + mobile-emulation",
+    "url_path": "https://travel.life-ai.app/china/2026-04-12/ + local output/travel-plan-china-20260412-092624.html"
+  },
+  "evidence": {
+    "observed": "13 bugs verbatim-enumerated in spec-20260513-085358 Section 5 + user directive '全部一次性完成'.",
+    "measured": {
+      "value": "Per-bug measured values listed in ticket-20260513-090000.md Evidence section",
+      "location": "ticket-20260513-090000.md Evidence section (Bug 1-13)"
+    },
+    "expected": {
+      "value": "Per-bug expected behavior listed in ticket-20260513-090000.md Evidence section",
+      "source": "spec-20260513-085358 Section 5 + codex feedback 2026-05-13T21:38Z"
+    },
+    "gap": "12 in-scope implementations + 1 doc-only + 1 deferred-M2"
+  },
+  "scope_expansion": {
+    "search_pattern": "13 distinct bug-specific patterns (one per bug)",
+    "search_scope": "scripts/**, .claude/hooks/**, data/china-20260412-092624/**, docs/**, README.md",
+    "user_reported": ["13 bugs in spec-20260513-085358 Section 5"],
+    "additional_found": [],
+    "all_occurrences": ["See ticket-20260513-090000.md Evidence section"]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "spec-20260513-085358 user-authored bug enumeration + BA's direct measurement of each cited file:line in this session + codex round-2 evidence anchors recorded in spec Section 1 + codex BA-draft adversarial review 2026-05-13T21:38Z",
+    "url_or_location": "docs/dev/specs/spec-20260513-085358.md Section 1 (code anchors) + Section 5 (user bug enumeration)",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "no project-specific role table (project CLAUDE.md is minimal, no design-token role table)",
+      "_note": "Travel-planner project does not declare a CTA/body/neutral role table. This cycle has no role-token verification requirement; the renderer ACs verify functional behavior, not color tokens."
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "ba_qa_loop_iteration_1_rejection",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260513-090000.md v1 + docs/dev/context-20260513-090000.json v1 (pre-remediation)",
+        "proposed_solution": "6 workers; Bug 4 deferred to M2 (no code change this cycle); Bug 10 reduced to no-op (no schema change, no renderer change for attractions/shopping/entertainment)",
+        "actual_change": "ba-spec written with 6 workers (W1-W6); 11 in-scope bugs + 1 doc-only (Bug 8) + 1 deferred (Bug 4); Bug 10 marked as 'NO renderer changes' with full unification deferred to M2",
+        "outcome": "QA verdict=fail (ba-qa-report-20260513-090000.json) with 6 objections: OBJ-1 critical (Bug 4 deferral not defensible vs '全部'), OBJ-2 critical (Bug 10 no-op narrowed beyond '所有混乱的根源'), OBJ-3 major (AC1/AC3 unrunnable without browser tooling), OBJ-4 major (W1->W2 env-var coupling fragile), OBJ-5 minor (Bug 7 symptom phrasing drift), OBJ-6 minor (W3 absolute-symlink risk uncapped)",
+        "failure_category": "wrong_scope",
+        "target_layer": "L3 (data shape) + L4 (logic)"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3 (data shape, schemas, helpers) + L4 (logic, dispatch contract) + L5 (mechanical refactor)",
+      "differs_from_all_priors": true,
+      "rationale": "Round-2 promotes Bug 4 from deferred to W7 mechanical refactor (codex round-2 Q1 validates byte-identical merged-dict invariant) and Bug 10 from no-op to W8 schema-reject + shape-normalizer (codex round-2 Q2 explicitly rules out both the round-1 no-op AND the accept-but-ignore middle option as silent-data-loss traps). The new layers (L5 mechanical refactor; L4 dispatch contract) were not in round-1 scope. AC1/AC3 text-grep fallbacks, AC5 absolute-symlink rejection, AC6 symptom correction, and AC-DISPATCH env-var contract are all new in round-2."
+    }
+  },
+  "parallel_workers": [
+    {
+      "id": "W1",
+      "name": "gate-bypass",
+      "bugs": [5],
+      "files": [".claude/hooks/pretool-quality-gate.py"],
+      "sequencing": "FIRST — sequential; must complete before W2 starts",
+      "acceptance": "AC4",
+      "rationale": "W2 cannot Edit the 3376-line renderer until BYPASS_QUALITY_GATE wiring exists AND orchestrator sets the env-var for W2.",
+      "constraints": [
+        "Follow existing BYPASS_DAY_GUARD single-line pattern from pretool-validate-data-write.py:54",
+        "Stderr log on activation",
+        "Do NOT default-enable"
+      ]
+    },
+    {
+      "id": "W2",
+      "name": "renderer",
+      "bugs": [1, 2, 3],
+      "files": ["scripts/generate-html-interactive.py"],
+      "sequencing": "After W1 (orchestrator MUST set BYPASS_QUALITY_GATE=1 in W2's env)",
+      "acceptance": "AC1, AC2, AC3",
+      "rationale": "Three logically-separate hunks in the same file (line 470-508 ID fast-path; line 637-682 + 2792-2797 meal alternatives; line 2770-2781 + ~~ unscheduled-optionals splitter). Single dev worker sequences these internally; file-disjoint vs all other workers.",
+      "constraints": [
+        "Bug 1: alternatives[] loop for meals ONLY (codex F-Bug10 forbids adding to attractions/shopping/entertainment)",
+        "Bug 2: gaode_id fast-path + name fallback (codex F2 forbids claiming entity-ID fix)",
+        "Bug 3: render unscheduled optionals as cards (codex F3 forbids inventing times)",
+        "Live browser verification required: desktop 1440x900 + mobile 390x844 (codex F-verification)"
+      ]
+    },
+    {
+      "id": "W3",
+      "name": "fetch-images",
+      "bugs": [6],
+      "files": ["scripts/fetch-images-batch.py", ".claude/skills/google-maps"],
+      "sequencing": "After W1 (parallel with W2/W4/W5/W6)",
+      "acceptance": "AC5",
+      "rationale": "Hardcoded path resolution; isolated to fetch-images-batch.py + optional git-add of symlink.",
+      "constraints": [
+        "Resolve absolute-symlink portability issue: prefer relative symlink OR migrate path constant to .claude/commands/scripts/google-maps directly",
+        "Clean-checkout test required (delete local symlink, re-run)"
+      ]
+    },
+    {
+      "id": "W4",
+      "name": "deploy-parser",
+      "bugs": [7],
+      "files": ["scripts/generate-and-deploy.sh"],
+      "sequencing": "After W1 (parallel)",
+      "acceptance": "AC6",
+      "rationale": "Isolated shell-script parser fix at lines 39-54.",
+      "constraints": [
+        "Initial shift before case loop OR rewrite loop to handle positional first",
+        "Verify --day 1-5 actually reaches fetch-images-batch.py"
+      ]
+    },
+    {
+      "id": "W5",
+      "name": "save-semantics",
+      "bugs": [9, 11, 12],
+      "files": ["scripts/save.py", "scripts/lib/save_translate.py", "scripts/lib/json_io.py (optional)", "scripts/lib/semantic_lint.py (NEW optional)"],
+      "sequencing": "After W1 (parallel)",
+      "acceptance": "AC7, AC8, AC9",
+      "rationale": "Codex F-grouping: save.py was double-routed in original plan (Group B trip_total vs Group C demoted-primary). Consolidate ALL save-semantic work in one worker.",
+      "constraints": [
+        "Bug 9: hook into existing slot-merge post-phase; trigger on any save touching budget data, not just budget-agent",
+        "Bug 11: WARN-level (not BLOCK) for v1 to avoid false positives on legitimate twin-mentions; --strict-dedup flag optional",
+        "Bug 12: default change is 'drop old primary unless explicitly listed in incoming alternatives[]' + stderr audit line",
+        "Extract cross-domain dedup into scripts/lib/semantic_lint.py if convenient for future chaining"
+      ]
+    },
+    {
+      "id": "W6",
+      "name": "docs-dashboard",
+      "bugs": [8, 13],
+      "files": ["docs/feature-status.md (NEW)", "README.md (+link)", "docs/index.md (+link)"],
+      "sequencing": "After W1 (parallel)",
+      "acceptance": "AC10, AC11",
+      "rationale": "Bug 8 documentation (N/A Cloudflare) + Bug 13 dashboard share the same write-set.",
+      "constraints": [
+        "Bug 13: link from README.md 'Project Status' section + docs/index.md root-level-files list",
+        "Bug 8: document Cloudflare-purge as N/A with rationale, not just absence",
+        "feature-status.md must contain BOTH M1-M5 milestone table AND 13-bug per-status table",
+        "Do NOT reshape README structure; ADD a small section only"
+      ]
+    },
+    {
+      "id": "W7",
+      "name": "renderer-split",
+      "bugs": [4],
+      "files": [
+        "scripts/generate-html-interactive.py",
+        "scripts/lib/render_day_data.py (NEW)",
+        "tests/test_render_day_data_byte_identity.py (NEW, optional but recommended)"
+      ],
+      "sequencing": "Strictly AFTER W2 completes (shared file scripts/generate-html-interactive.py); env: BYPASS_QUALITY_GATE=1 per AC-DISPATCH",
+      "acceptance": "AC12",
+      "rationale": "Round-2 OBJ-1 + codex round-2 Q1: BYPASS cannot 'fix' Bug 4 (only addresses Bug 5 doc-mismatch). The user's own RCA at spec-20260513-085358 line 159 prescribes '拆 _merge_day_data 把 helpers'. W7 is the mechanical lift-and-shift of the 10 sections (lines 599-1179) into 9 helpers <=30 lines each in scripts/lib/render_day_data.py. Runs AFTER W2 to preserve W2's bug-1/2/3 logic verbatim.",
+      "helper_enumeration": [
+        {"name": "build_skeleton", "extracts": "lines 603-635", "purpose": "initial merged-dict construction"},
+        {"name": "merge_meals", "extracts": "lines 637-682 (includes W2 Bug-1 alternatives loop)", "purpose": "meals slot merging with primary + alternatives"},
+        {"name": "merge_cafe", "extracts": "lines 685-728", "purpose": "cafe array merging"},
+        {"name": "merge_attractions", "extracts": "lines 730-771", "purpose": "attractions array merging"},
+        {"name": "merge_entertainment", "extracts": "lines 773-815", "purpose": "entertainment array merging"},
+        {"name": "merge_shopping", "extracts": "lines 817-895", "purpose": "shopping array merging"},
+        {"name": "merge_accommodation", "extracts": "lines 897-948", "purpose": "accommodation block merging"},
+        {"name": "merge_transportation", "extracts": "lines 950-1166 (includes travel_segments 1136-1159)", "purpose": "transportation + travel-segments merging"},
+        {"name": "calculate_budget_total", "extracts": "lines 1167-1176", "purpose": "final budget aggregation"}
+      ],
+      "constraints": [
+        "MUST preserve W2's bug-1/2/3 edits verbatim across the extraction",
+        "Each helper <=30 lines; orchestrator _merge_day_data <=30 lines; whole file <=800 lines",
+        "AC invariant (codex round-2 Q1): byte-identical merged-dict pre/post refactor for all 15 days of china-20260412-092624 corpus, NOT byte-identical HTML",
+        "Test harness MUST snapshot merged-dict via json.dumps(sort_keys=True) and diff",
+        "BYPASS_QUALITY_GATE=1 required in env (per AC-DISPATCH)"
+      ]
+    },
+    {
+      "id": "W8",
+      "name": "schema-reject-and-shape-normalizer",
+      "bugs": [10],
+      "files": [
+        "schemas/attractions.schema.json",
+        "schemas/shopping.schema.json",
+        "schemas/entertainment.schema.json",
+        "scripts/lib/save_translate.py"
+      ],
+      "sequencing": "Strictly AFTER W5 completes (shared file scripts/lib/save_translate.py); sequential not parallel",
+      "acceptance": "AC13",
+      "rationale": "Round-2 OBJ-2 + codex round-2 Q2: Bug 10 deferral was 'not defensible vs 全部' per QA. Codex round-2 Q2 ruled accept-but-ignore is silent-data-loss trap. The minimum-safe step is explicit REJECTION (option (i)) of alternatives[] on attractions/shopping/entertainment in BANNED_AD_HOC_KEYS with a guiding error message pointing at M2 unification. Plus a shape-normalizer (_normalize_to_canonical_record) for W5's cross-domain dedup to operate shape-agnostically. Renderer takes NO Bug-10 changes. W8 is sequential after W5 (codex round-2 Q3: shared file scripts/lib/save_translate.py).",
+      "deliverables": {
+        "schema_changes": "Schemas already have additionalProperties:false on item objects which implicitly rejects alternatives[]; W8 MAY add a no-op comment block citing M2 unification plan (no functional schema edit required) OR explicit documentation field. The binding rejection lives in save_translate.py.",
+        "save_translate_changes": "Extend BANNED_AD_HOC_KEYS with agent-scoped rejection: add an agent_aware_banned_keys dict {'attractions': ['alternatives'], 'shopping': ['alternatives'], 'entertainment': ['alternatives']} (meals exempted because meals legitimately uses primary+alternatives[]). Modify reject_banned() to accept agent name and apply scoped rejection.",
+        "shape_normalizer": "_normalize_to_canonical_record(item: dict, shape: str) -> dict — see AC13 for exact contract",
+        "guiding_error_message": "Unknown field 'alternatives' for agent '<agent>': not yet supported on attractions/shopping/entertainment shape (only meals uses primary+alternatives[]). Full unification is M2 spec scope; for this cycle, use the flat list + optional:true shape."
+      },
+      "constraints": [
+        "MUST NOT add accept-but-ignore semantics for alternatives[] on attractions/shopping/entertainment (codex round-2 Q2 silent-data-loss trap)",
+        "Renderer (W2/W7) MUST take NO Bug-10 changes",
+        "Meals agent exempted from the new rejection rule (legitimately uses alternatives[])",
+        "Shape-normalizer round-trip MUST be lossless: _denormalize(_normalize_to_canonical_record(x, s), s) == x"
+      ]
+    }
+  ],
+  "deferred_bugs": [],
+  "deferred_bugs_note": "Round-1 deferred Bug 4 and reduced Bug 10 to no-op. Round-2 (per OBJ-1 and OBJ-2) promoted both to dedicated workers (W7 and W8). Zero deferred bugs.",
+  "context": {
+    "codebase_state": "git status shows: M on many files (cycle-residual modifications); 8 .bak files in data/china-20260412-092624 (separate cleanup cycle); .claude/skills/google-maps is an uncommitted local symlink (absolute path, non-portable)",
+    "recent_commits": [
+      "1441e52 spec-20260506-092951 cycles 1-3 (write-time strict-schema hook, auto-commit redirect)",
+      "e2c5949 spec-20260508-221237 M1 gaode-maps systematic ban",
+      "8b934b8 spec-20260508-221237 M1 cycle 4 project-local move"
+    ],
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {
+      "python": "venv/bin/python3 (from scripts/save.py + scripts/fetch-images-batch.py setup)",
+      "node": "not directly used by these workers"
+    }
+  },
+  "development_approach": {
+    "strategy": "Six parallel workers (W1 sequential first, W2-W6 parallel after) per codex-revised file-disjoint grouping. Each worker handles ONE coherent issue (write-set + root cause) per agents/ba.md 'No-Multitasking Rule' — sub-bugs within a worker share file ownership and are logically connected (e.g., W2's three bugs all live in the renderer's Timeline View concerns).",
+    "files_to_create": [
+      "docs/feature-status.md",
+      "scripts/lib/semantic_lint.py (optional)",
+      "docs/dev/screenshots/20260513-090000/ (directory)"
+    ],
+    "files_to_modify": [
+      "scripts/generate-html-interactive.py",
+      "scripts/fetch-images-batch.py",
+      "scripts/generate-and-deploy.sh",
+      "scripts/save.py",
+      "scripts/lib/save_translate.py",
+      ".claude/hooks/pretool-quality-gate.py",
+      ".claude/skills/google-maps",
+      "README.md",
+      "docs/index.md"
+    ],
+    "validation_approach": "Per-AC: AC1-3 require live browser screenshots desktop+mobile; AC4 requires hook invocation test; AC5 requires clean-checkout fetch test; AC6 requires --day forwarding observation; AC7 requires before/after trip_total assertion; AC8 requires duplicate-injection test; AC9 requires primary-replacement test; AC10-11 require file existence + link presence."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "round": 2,
+    "feedback_summary": "Codex round-1 (2026-05-13T21:38Z): 9 points incorporated into round-1 ba-spec. Codex round-2 (2026-05-13T21:55Z) — 3 substantive design validations: Q1 W7 mechanical refactor AC invariant should be (b) byte-identical intermediate merged-dict for all 15 days, NOT (a) byte-identical HTML — the invariant belongs at the function boundary being refactored; HTML can stay identical while silently losing non-rendered fields. Q2 Bug 10 schema scaffold trap is REAL — codex picks option (i) schema REJECTS alternatives[] until M2 over (ii) accept+WARN or (iii) accept+inert; rationale: 'Accepting it before renderer support creates a silent-data-loss trap. A hard reject forces agents to wait for the full implementation.' Q3 W5+W8 file overlap on scripts/lib/save_translate.py: pick (b) sequential W8-after-W5 over (a) merge or (c) split files; rationale: 'Both intentionally touch the same file, so sequencing avoids conflicting edits while preserving one ownership surface. Splitting now risks premature architecture churn outside minimum-safe fixes.'",
+    "feedback_incorporated": "Round-2: AC12 invariant = byte-identical merged-dict (codex Q1). W8 = schema-reject path (codex Q2; reverses QA's suggested accept-but-ignore approach). W5+W8 = sequential not merged not split (codex Q3). All three round-2 design decisions documented in ticket Round-2 Remediation Summary, AC12, AC13, and Worker table sequencing.",
+    "round_1_summary": "Codex identified 9 points: (1) save.py was double-routed Groups B+C — consolidate to W5; (2) gate-bypass becomes W1 sequential-first; (3) renderer-defensive alternatives[] reads forbidden; (4) Bug 2 = gaode_id fast-path only; (5) Bug 3 = unscheduled-optionals cards not invented times; (6) BYPASS fixes Bug 5 not Bug 4; (7) Bug 8 = N/A in feature-status.md; (8) Bug 13 = link from README+index; (9) renderer verification requires live browser desktop+mobile."
+  },
+  "objection_resolutions": [
+    {"objection_id": "OBJ-1", "dimension": "scope_alignment", "severity": "critical", "resolution": "NEW W7 worker added; extracts _merge_day_data into 9 helpers in scripts/lib/render_day_data.py each <=30 lines; runs AFTER W2; AC12 enforces byte-identical merged-dict for all 15 days (codex round-2 Q1)"},
+    {"objection_id": "OBJ-2", "dimension": "scope_alignment", "severity": "critical", "resolution": "NEW W8 worker added; schemas attractions/shopping/entertainment REJECT alternatives[] via agent-scoped BANNED_AD_HOC_KEYS extension; _normalize_to_canonical_record shape-normalizer added to save_translate.py; renderer takes NO Bug-10 changes; codex round-2 Q2 explicitly ruled out accept-but-ignore as silent-data-loss trap"},
+    {"objection_id": "OBJ-3", "dimension": "spec_text_vs_execution_drift", "severity": "major", "resolution": "AC1 amended with text-grep fallback (curl|grep '沈大成','光明邨' >=1); AC3 amended with text-grep fallback (curl|grep 'Unscheduled|Optional' + optional item name_local); primary live-browser screenshot remains preferred"},
+    {"objection_id": "OBJ-4", "dimension": "investigation_completeness", "severity": "major", "resolution": "NEW AC-DISPATCH section + orchestrator_dispatch_contract object in JSON specifying primary env-var mechanism (BYPASS_QUALITY_GATE=1 in dispatch prompt + worker entry verification + PAUSE+REPORT if absent) AND alternative sentinel-file mechanism (acceptable substitute); applies to W2 AND W7"},
+    {"objection_id": "OBJ-5", "dimension": "evidence_quality", "severity": "minor", "resolution": "Bug 7 evidence section corrected: 'loud exit 1 with Unknown option <plan-id>' (not 'silently ignored'); AC6 expected behavior asserts no exit 1 with that error + exit 0 on success"},
+    {"objection_id": "OBJ-6", "dimension": "affected_file_accuracy", "severity": "minor", "resolution": "AC5 tightened: EITHER relative-path symlink committed OR scripts/fetch-images-batch.py path constant migrated to .claude/commands/scripts/google-maps/scripts/places.py; absolute-symlink-commit branch REJECTED; clean-checkout test on a host without /root/travel-planner must work"}
+  ]
+}

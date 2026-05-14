@@ -1,0 +1,102 @@
+{
+  "request_id": "20260513-090000",
+  "task_id": "20260513-090000",
+  "worker_id": "W4",
+  "timestamp": "2026-05-13T22:15:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260513-090000-W4.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/generate-and-deploy.sh"],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fix --day flag parser bug in generate-and-deploy.sh",
+        "type": "bash_script_edit",
+        "files_modified": ["scripts/generate-and-deploy.sh"],
+        "changes": "Added 'shift' immediately after 'PLAN_ID=\"$1\"' on line 35 to consume the positional plan-id argument; changed 'while [ \"$#\" -gt 1 ]' to 'while [ \"$#\" -gt 0 ]' on line 40 so the option loop processes the remaining args including a possible trailing --day argv.",
+        "rationale": "Root cause was that the option parser used 'while [ \"$#\" -gt 1 ]' AND 'case \"$1\"' with no prior shift, so $1 remained the plan-id ('test-plan-id', etc.) which fell through to the '*) Unknown option' catch-all and exited 1. Fix: shift past the plan-id first, then loop while args remain (>0)."
+      }
+    ],
+    "scripts_created": [],
+    "permissions_to_add": [],
+    "git_rationale": {
+      "root_cause_commit": "unknown (parser logic predates available history window for this fix)",
+      "why_issue_occurred": "Original parser pattern assumed 'while [ \"$#\" -gt 1 ]' was a guard against running off the end, but combined with 'case \"$1\"' and no leading shift, $1 still pointed at the positional plan-id during the first iteration, causing the catch-all branch to reject it.",
+      "how_fix_addresses_root": "shift consumes the positional plan-id BEFORE the option loop, so $1 inside the loop is always an option flag (or empty). The loop bound is corrected to >0 so a trailing --day in odd-arg-count invocations is still processed."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 2,
+      "lines_removed": 1,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 2,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run AC6 verification: (1) `bash scripts/generate-and-deploy.sh <plan-id> --day 1-5` must NOT print 'Unknown option <plan-id>' and must NOT exit 1 at the parser stage. (2) `bash -x scripts/generate-and-deploy.sh china-20260412-092624 --force --day 1-5 2>&1 | grep fetch-images-batch` must show '--day 1-5' in the python invocation line. (3) Existing flag combinations (no flags, --force only, --force --day, --day only, --bogus rejection) must all behave correctly with no regression.",
+    "self_verification": {
+      "build": "pass (bash -n scripts/generate-and-deploy.sh has no syntax errors implicit in successful invocations)",
+      "smoke_check": "pass",
+      "notes": "Verified all 5 flag-combination cases plus downstream --day forwarding via bash -x trace. No regressions."
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    },
+    "blast_radius": [
+      {
+        "modified": "scripts/generate-and-deploy.sh",
+        "imported_by": ["invoked directly by user / orchestrator; sourced by no other script (it is a top-level deploy wrapper)"]
+      }
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding a unit test or smoke test for the arg parser (e.g., a small shell test harness that asserts --day arg propagation under each flag combination) so future refactors of the option loop catch parser regressions before runtime.",
+    "Document the canonical invocation in the file header (currently lines 26-30 already do this — good)."
+  ],
+  "ac6_verification": {
+    "pre_edit_old_failure": {
+      "command": "bash scripts/generate-and-deploy.sh test-plan-id --day 1-5",
+      "stderr_output": "❌ Error: Unknown option 'test-plan-id'",
+      "note": "Captured pre-edit. The 'EXIT=0' shown in the harness output is from `echo $?` reading the head/pipe exit code (pipe successfully consumed first 5 lines), not the script. The script itself exited 1 inside the pipe — confirmed by the 'Unknown option' error message matching the line 49-50 path of the original parser."
+    },
+    "post_edit_new_behavior": [
+      {
+        "command": "bash scripts/generate-and-deploy.sh test-plan-id --day 1-5",
+        "observed": "Parser succeeds; script proceeds to the data-dir validation step (line 65) and fails there with 'Data directory not found: /root/travel-planner/data/test-plan-id'. NO 'Unknown option' error. Parser is no longer the failure point.",
+        "interpretation": "AC6 (a) satisfied — old failure mode no longer occurs."
+      },
+      {
+        "command": "bash -x scripts/generate-and-deploy.sh china-20260412-092624 --force --day 1-5 2>&1 | grep fetch-images-batch",
+        "observed": "+ python /root/travel-planner/scripts/fetch-images-batch.py china-20260412-092624 100 10 --force --day 1-5",
+        "interpretation": "AC6 (b) satisfied — '--day 1-5' is forwarded as positional argv to fetch-images-batch.py downstream."
+      },
+      {
+        "command": "bash scripts/generate-and-deploy.sh test-plan-id --force --day 1-5",
+        "observed": "Parser succeeds; data-dir error (same as case 1) — confirms --force and --day combined still parse.",
+        "interpretation": "No regression on --force + --day combination."
+      },
+      {
+        "command": "bash scripts/generate-and-deploy.sh test-plan-id --force",
+        "observed": "Parser succeeds; data-dir error.",
+        "interpretation": "No regression on --force only."
+      },
+      {
+        "command": "bash scripts/generate-and-deploy.sh test-plan-id",
+        "observed": "Parser succeeds (empty option loop); data-dir error.",
+        "interpretation": "No regression on no-flag invocation."
+      },
+      {
+        "command": "bash scripts/generate-and-deploy.sh test-plan-id --bogus",
+        "observed": "❌ Error: Unknown option '--bogus' (exits 1).",
+        "interpretation": "Catch-all behavior preserved — unknown flags still rejected loudly."
+      }
+    ]
+  }
+}
