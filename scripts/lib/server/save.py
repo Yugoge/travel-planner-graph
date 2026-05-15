@@ -62,7 +62,7 @@ def _apply_skip_mutation(day: dict, mut: dict) -> None:
     slot_id = mut.get("slot")
     if not slot_id:
         return
-    slot = day.setdefault(slot_id, {"slot_id": slot_id, "options": []})
+    slot = day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
     extra = mut.get("extra") or {}
     slot["skipped"] = bool(extra.get("skipped", True))
     slot["skipped_reason"] = extra.get("skipped_reason")
