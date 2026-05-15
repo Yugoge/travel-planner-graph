@@ -107,14 +107,16 @@ def test_null_cost_counts_as_unknown(
     }
     day = {
         "schema_version": "v2.0", "day": 1, "date": "2026-06-01",
-        "breakfast": null_opt,
-        "lunch": {"slot_id": "lunch", "options": [], "selected_option_id": None, "skipped": True},
-        "dinner": {"slot_id": "dinner", "options": [], "selected_option_id": None, "skipped": True},
-        "morning_activity": {"slot_id": "morning_activity", "options": [], "selected_option_id": None, "skipped": True},
-        "afternoon_activity": {"slot_id": "afternoon_activity", "options": [], "selected_option_id": None, "skipped": True},
-        "evening_activity": {"slot_id": "evening_activity", "options": [], "selected_option_id": None, "skipped": True},
+        "slots": {
+            "breakfast": null_opt,
+            "lunch": {"slot_id": "lunch", "options": [], "selected_option_id": None, "skipped": True},
+            "dinner": {"slot_id": "dinner", "options": [], "selected_option_id": None, "skipped": True},
+            "morning_activity": {"slot_id": "morning_activity", "options": [], "selected_option_id": None, "skipped": True},
+            "afternoon_activity": {"slot_id": "afternoon_activity", "options": [], "selected_option_id": None, "skipped": True},
+            "evening_activity": {"slot_id": "evening_activity", "options": [], "selected_option_id": None, "skipped": True},
+        },
         "accommodation": {"slot_id": "accommodation", "options": [], "selected_option_id": None, "skipped": True},
-        "intra_city_routes": [],
+        "intra_city_routes": {},
     }
     atomic_write_json(trip_dir / "days" / "day-01.json", day)
     atomic_write_json(trip_dir / "transportation.json", {"schema_version": "v2.0", "segments": []})
