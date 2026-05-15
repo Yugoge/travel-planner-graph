@@ -73,7 +73,7 @@ def _accom_slot(day_n: int) -> dict:
 
 
 def _build_day(day_n: int, date_str: str, stage: str = "draft-options") -> dict:
-    """Build a synthetic v2 day file. Slots sit at top-level day keys (save.py shape)."""
+    """Build a synthetic v2 day file matching schemas/v2/day.schema.json."""
     return {
         "schema_version": "v2.0",
         "day": day_n,
@@ -85,14 +85,16 @@ def _build_day(day_n: int, date_str: str, stage: str = "draft-options") -> dict:
         "stage": stage,
         "arrival_ts": None,
         "departure_ts": None,
-        "breakfast": _meal_slot("breakfast", day_n),
-        "morning_activity": _activity_slot("morning_activity", day_n),
-        "lunch": _meal_slot("lunch", day_n),
-        "afternoon_activity": _activity_slot("afternoon_activity", day_n),
-        "dinner": _meal_slot("dinner", day_n),
-        "evening_activity": _activity_slot("evening_activity", day_n),
+        "slots": {
+            "breakfast": _meal_slot("breakfast", day_n),
+            "morning_activity": _activity_slot("morning_activity", day_n),
+            "lunch": _meal_slot("lunch", day_n),
+            "afternoon_activity": _activity_slot("afternoon_activity", day_n),
+            "dinner": _meal_slot("dinner", day_n),
+            "evening_activity": _activity_slot("evening_activity", day_n),
+        },
         "accommodation": _accom_slot(day_n),
-        "intra_city_routes": [],
+        "intra_city_routes": {},
         "warnings": [],
     }
 
