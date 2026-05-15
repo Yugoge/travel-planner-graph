@@ -50,12 +50,26 @@ def _is_session_conflict(meta: dict, editor_session: str) -> bool:
     return current != editor_session
 
 
+_ACCOMMODATION_SLOT = "accommodation"
+
+
+def _get_or_create_slot(day: dict, slot_id: str) -> dict:
+    """Return the mutable slot dict for slot_id, respecting v2 schema paths.
+
+    accommodation stays at top-level day["accommodation"]; the 6 named slots
+    live under day["slots"][slot_id] per schemas/v2/day.schema.json lines 53-70.
+    """
+    if slot_id == _ACCOMMODATION_SLOT:
+        return day.setdefault(slot_id, {"slot_id": slot_id, "options": []})
+    return day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
+
+
 def _apply_select_mutation(day: dict, mut: dict) -> None:
     slot_id = mut.get("slot")
     option_id = mut.get("option_id")
     if not slot_id:
         return
-    slot = day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
+    slot = _get_or_create_slot(day, slot_id)
     slot["selected_option_id"] = option_id
 
 
@@ -63,7 +77,7 @@ def _apply_skip_mutation(day: dict, mut: dict) -> None:
     slot_id = mut.get("slot")
     if not slot_id:
         return
-    slot = day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
+    slot = _get_or_create_slot(day, slot_id)
     extra = mut.get("extra") or {}
     slot["skipped"] = bool(extra.get("skipped", True))
     slot["skipped_reason"] = extra.get("skipped_reason")
@@ -73,7 +87,7 @@ def _apply_stage_mutation(day: dict, mut: dict) -> None:
     to_stage = mut.get("to_stage")
     if not to_stage:
         return
-    old_stage = day.get("stage") or _STAGES[0]
+    old_stage = day["stage"] if "stage" in day else _STAGES[0]
     reason = validate_state_transition(old_stage, to_stage, has_user_consent=False)
     if reason is not None:
         raise StateMachineError(reason)

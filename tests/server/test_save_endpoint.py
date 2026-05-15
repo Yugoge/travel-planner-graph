@@ -119,3 +119,28 @@ def test_save_missing_trip_dir_does_not_crash(store: TripStore):
     req = _make_save_req("brand-new-trip", 1, [{"type": "stage", "to_stage": "draft-options"}])
     resp = handle_save(store, req)
     assert "saved_ts" in resp
+
+
+# ---------------------------------------------------------------------------
+# Stage machine: backward transition raises StateMachineError (M5 / AC4).
+# ---------------------------------------------------------------------------
+
+def test_backward_stage_mutation_raises_state_machine_error(
+    scaffolded_trip: Path, store: TripStore, trip_id: str
+):
+    """Backward stage transition must raise StateMachineError; day file must not be written."""
+    # Advance to user-selected first (forward transition -- must succeed).
+    req_fwd = _make_save_req(trip_id, 1, [{"type": "stage", "to_stage": "user-selected"}])
+    handle_save(store, req_fwd)
+    day_before = _read_day(store, trip_id, 1)
+    assert day_before.get("stage") == "user-selected"
+
+    # Attempt backward transition to draft-options -- must raise.
+    from lib.trip_contract.errors import StateMachineError
+    req_bwd = _make_save_req(trip_id, 1, [{"type": "stage", "to_stage": "draft-options"}])
+    with pytest.raises(StateMachineError):
+        handle_save(store, req_bwd)
+
+    # Day file must not have been modified (stage stays user-selected).
+    day_after = _read_day(store, trip_id, 1)
+    assert day_after.get("stage") == "user-selected"

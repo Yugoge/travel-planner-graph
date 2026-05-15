@@ -1,0 +1,137 @@
+{
+  "request_id": "20260515-102340",
+  "task_id": "20260515-102340",
+  "timestamp": "2026-05-15T10:23:40+08:00",
+  "dev_report_path": "docs/dev/dev-report-20260515-102340.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "scripts/lib/trip_contract/errors.py",
+      "scripts/serve-trip.py",
+      "web/js/state.js",
+      "requirements.txt",
+      "tests/server/conftest.py",
+      "tests/server/test_save_endpoint.py",
+      "tests/server/test_budget_endpoint.py"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "M1+M2: Fix save.py _apply_select_mutation and _apply_skip_mutation slot write paths",
+        "type": "bug_fix",
+        "files_modified": ["scripts/lib/server/save.py"],
+        "changes": "Added _get_or_create_slot() helper that routes accommodation to day['accommodation'] (top-level) and all 6 named slots to day['slots'][slot_id] per schemas/v2/day.schema.json:53-70. Both _apply_select_mutation and _apply_skip_mutation now use this helper.",
+        "rationale": "BA confirmed save.py:55 and :63 wrote day.setdefault(slot_id, ...) to top-level, violating schema additionalProperties:false at root. Codex adversarial review caught that a naive slots-only fix would misroute accommodation mutations — _get_or_create_slot() handles the bifurcation."
+      },
+      {
+        "id": 2,
+        "description": "M3: Fix budget.py _sum_slots to read from day['slots']",
+        "type": "bug_fix",
+        "files_modified": ["scripts/lib/server/budget.py"],
+        "changes": "Line 87: day.get(sid, {}) -> day.get('slots', {}).get(sid, {}). accommodation at budget.py:128 unchanged (correct top-level path per schema lines 67-70).",
+        "rationale": "BA confirmed budget.py:87 read slots from top-level, returning {} for every named slot and thus zero cost for all meals/activities."
+      },
+      {
+        "id": 3,
+        "description": "M4: Remove state.js lines 484-492 client-side top-level mirror workaround",
+        "type": "bug_fix",
+        "files_modified": ["web/js/state.js"],
+        "changes": "Deleted 9 lines: comment + if block that mirrored day[slotId] at top level as a workaround for the Bug 1 save.py pattern. commit() call preserved.",
+        "rationale": "BA confirmed the workaround was explicitly named as compensating for Bug 1; with Bug 1 fixed, it would actively re-corrupt day files."
+      },
+      {
+        "id": 4,
+        "description": "M5: Add StateMachineError to errors.py, wire validate_state_transition in save.py",
+        "type": "feature",
+        "files_modified": ["scripts/lib/trip_contract/errors.py", "scripts/lib/server/save.py"],
+        "changes": "errors.py: StateMachineError(TripContractError) class added. save.py: imported validate_state_transition, StateMachineError, STAGES; _apply_stage_mutation now calls validate_state_transition and raises StateMachineError on illegal backward transition; old_stage defaults to STAGES[0] only when 'stage' key is absent (not when it's None or empty string, per codex feedback).",
+        "rationale": "State machine module existed but was never called from the save handler. save.py:69-72 set day['stage'] unconditionally."
+      },
+      {
+        "id": 5,
+        "description": "M6: Add StateMachineError catch to serve-trip.py _handle_post_save",
+        "type": "feature",
+        "files_modified": ["scripts/serve-trip.py"],
+        "changes": "Added StateMachineError import. Wrapped handle_save() in try/except StateMachineError; returns HTTPStatus.CONFLICT (409) with {error: state_machine, detail: str(e)}. Existing 409-soft advisory path (HTTP 200) unchanged.",
+        "rationale": "BA spec AC4 requires HTTP 409 on backward stage transition at HTTP dispatch layer."
+      },
+      {
+        "id": 6,
+        "description": "M7: Add reportlab==4.5.1 and icalendar==7.1.0 to requirements.txt; install packages",
+        "type": "dependency",
+        "files_modified": ["requirements.txt"],
+        "changes": "Added two pinned entries in alphabetically ordered position. Both packages installed with pip install --break-system-packages. pip show confirms reportlab 4.5.1 and icalendar 7.1.0 are now present.",
+        "rationale": "Exporters import both at module level; neither was in requirements.txt, causing ImportError on /api/export endpoints."
+      },
+      {
+        "id": 7,
+        "description": "M8: Fix conftest.py _build_day() slot structure",
+        "type": "test_fix",
+        "files_modified": ["tests/server/conftest.py"],
+        "changes": "Moved 6 named slots under 'slots': {...} dict. Removed misleading 'Slots sit at top-level day keys (save.py shape)' comment. Changed intra_city_routes: [] to intra_city_routes: {} (matching schema type:object).",
+        "rationale": "Fixture was building day dicts with wrong v1 shape; all tests exercising the fixed code paths would have read correct (but mis-located) slot data. intra_city_routes[] was also wrong type."
+      },
+      {
+        "id": 8,
+        "description": "M9/AC8: Fix test_save_endpoint.py line 51 slot assertion",
+        "type": "test_fix",
+        "files_modified": ["tests/server/test_save_endpoint.py"],
+        "changes": "Line 51: day.get('breakfast', {}) -> day['slots']['breakfast']. Added test_backward_stage_mutation_raises_state_machine_error() (C1/AC4 unit test).",
+        "rationale": "With M8 fix, the slot lives under day['slots']['breakfast']; the old path would return {} and assertion would fail. AC4 required at minimum a unit test for backward transition."
+      },
+      {
+        "id": 9,
+        "description": "S1: Fix test_budget_endpoint.py test_null_cost_counts_as_unknown inline day dict",
+        "type": "test_fix",
+        "files_modified": ["tests/server/test_budget_endpoint.py"],
+        "changes": "Moved inline day dict's 6 named slots under 'slots': {...} key; changed intra_city_routes: [] to {}. test now exercises budget.py's fixed _sum_slots path.",
+        "rationale": "BA spec S1: fix any remaining test_budget_endpoint.py slot-path mismatches after conftest fix. This test builds its own day dict inline and would have read 0 from slots."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A - fresh v2 server implementation, not a regression",
+      "why_issue_occurred": "v2 schema placed slots under day['slots']; server handlers were written or copied from pre-v2 (flat) shape without updating slot access patterns. State machine module was never wired into save handler. Exporter packages were not added to requirements.txt.",
+      "how_fix_addresses_root": "All 4 slot path sites corrected to use v2 schema paths. validate_state_transition wired into save handler. Both pip packages added to requirements.txt and installed."
+    },
+    "diff_stats": {
+      "files_changed": 9,
+      "lines_added": 50,
+      "lines_removed": 21,
+      "new_symbols_introduced": ["StateMachineError", "_get_or_create_slot", "_ACCOMMODATION_SLOT", "test_backward_stage_mutation_raises_state_machine_error"],
+      "minimum_possible_lines_estimate": 40,
+      "justification_for_overage": "8 distinct bugs across 9 files; _get_or_create_slot helper added to prevent accommodation misrouting (caught by codex adversarial review as blocker); AC4 backward-transition test added (C1/required by spec AC4). All additions are directly mandated by BA spec or codex blocker fix."
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run pytest tests/server/ (24 tests, all pass). Key checks: (1) AC1: day file written after select/skip mutation has slot under day['slots'][slot_id], not top-level; accommodation mutations go to top-level day['accommodation']. (2) AC2: budget recompute returns non-zero meals/activities from day['slots']. (3) AC3: state.js requestSelectMutation no longer writes to day[slotId] top-level. (4) AC4: test_backward_stage_mutation_raises_state_machine_error confirms StateMachineError on backward transition; serve-trip.py _handle_post_save returns HTTP 409. (5) AC5: forward transitions still succeed (test_valid_save_writes_stage_mutation, test_409_soft_save_still_persists). (6) AC6: pip show reportlab icalendar confirms both packages installed. (7) AC7: _build_day() returns slots under 'slots' key, intra_city_routes is {}. (8) AC8: day['slots']['breakfast'] assertion passes.",
+    "permissions_to_add": [],
+    "implementation_notes": [
+      "Codex adversarial review flagged a blocker: the naive 'day.setdefault(slots, {}).setdefault(slot_id, ...)' fix would misroute accommodation mutations to day['slots']['accommodation'], violating schema. Fixed via _get_or_create_slot() helper that bifurcates on slot_id == 'accommodation'.",
+      "Codex flagged route_ref inconsistency (save.py:85 still treats intra_city_routes as list while fixture now has {}). This is an out_of_scope pre-existing defect documented in context.json out_of_scope_observations. Not fixed in this cycle.",
+      "old_stage defaulting changed from 'day.get(stage) or STAGES[0]' to 'day[stage] if stage in day else STAGES[0]' per codex feedback - distinguishes missing stage from invalid falsy values.",
+      "StateMachineError not re-exported from scripts/lib/trip_contract/__init__.py - minor inconsistency, out of scope per BA spec."
+    ]
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "pytest tests/server/ exits 0 with 24 tests passing. Two intermediate test failures encountered (test_null_cost_counts_as_unknown: budget test had old-style inline day dict; test_save_missing_trip_dir_does_not_crash: StateMachineError on empty old_stage) — both fixed. Codex adversarial review caught accommodation routing blocker; fixed via _get_or_create_slot(). All 24 tests pass after all corrections."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "save.py:85 _apply_route_ref_mutation still treats intra_city_routes as a list (pre-existing defect noted in context.json out_of_scope_observations) — separate cycle needed to fix intra_city_routes to object shape",
+    "Consider adding StateMachineError to scripts/lib/trip_contract/__init__.py public exports for consistency with package API pattern",
+    "AC7 schema validation assertion (validating conftest-built day file against schemas/v2/day.schema.json) would make regression detection faster — consider adding a conftest schema validation test in next cycle"
+  ],
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex found 1 blocker (accommodation routing: naive fix would write day['slots']['accommodation'] violating schema), 2 major QA gaps (AC4 not tested; no schema-regression assertion), 1 edge-case (old_stage defaulting with 'or' operator masks None/empty string), 1 minor (StateMachineError not re-exported from __init__).",
+    "feedback_incorporated": "Blocker fixed: added _get_or_create_slot() helper that routes accommodation to top-level and named slots to day['slots']. Edge-case fixed: old_stage uses 'stage in day' check instead of 'or'. AC4 gap partially closed: added test_backward_stage_mutation_raises_state_machine_error() test that asserts StateMachineError raised and day file unchanged. Schema-regression assertion and __init__.py export: out_of_scope, not in BA spec."
+  }
+}
