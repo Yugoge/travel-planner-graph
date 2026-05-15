@@ -6,68 +6,66 @@
   "iteration": 2,
   "verdict": "pass",
   "summary": "All 5 prior objections are resolved in the updated BA spec. The 2 blocking objections (OBJ-2 and OBJ-3) are fully addressed: OBJ-2 — M7(c) now requires intra_city_routes:{} in conftest, AC7 explicitly requires {}, and save.py:85 is documented in the out-of-scope observations table. OBJ-3 — test_save_endpoint.py:51 is now Must-Have M8 with 'WILL fail deterministically' language and a new AC8. The 3 non-blocking objections (OBJ-1, OBJ-4, OBJ-5) are also resolved: OBJ-1 corrected to 21 lines in context JSON; OBJ-4 import hint corrected to 'from lib.trip_contract.errors' with TripContractError subclass requirement; OBJ-5 AC4 now separates unit-testable raise from HTTP dispatch layer with explicit NOTE. Two new minor non-blocking observations identified by Codex adversarial review: (NEW-1) ticket.md:28 still reads '(22 lines)' — OBJ-1 was corrected in context JSON but not the ticket markdown; (NEW-2) budget.py:118 also treats intra_city_routes as a list but was not added to out-of-scope observations. Neither blocks dev. Verdict: PASS — BA spec ready for dev.",
-  "objections": [
-    {
-      "id": "OBJ-1",
-      "dimension": "evidence_quality",
-      "severity": "minor",
-      "blocking": false,
+  "prior_objections_resolution": {
+    "OBJ-1": {
+      "was_blocking": false,
       "title": "requirements.txt line count stated as 22, actual is 21",
-      "description": "BA's context JSON observation field states 'requirements.txt 22 lines confirmed by Read tool'. The actual wc -l count is 21, confirmed both by QA and by Codex CLI. The substance of the claim (no reportlab or icalendar entry) is correct. The line count error does not affect any AC but indicates an inaccuracy in BA's measured evidence.",
-      "ba_claim": "requirements.txt (22 lines) confirmed by Read tool",
-      "actual_finding": "wc -l /root/travel-planner/requirements.txt = 21; file has 21 entries, all on separate lines, with trailing newline",
-      "evidence": "wc -l confirms 21; python3 splitlines() confirms 21; Codex independently confirmed 21",
-      "recommended_fix": "Correct the observation to '21 lines' in the BA spec and context JSON. No AC impact."
+      "resolution_status": "partially_resolved",
+      "resolution_notes": "Context JSON corrected to '21 lines confirmed by Read tool'. Ticket.md:28 still reads '(22 lines)' — see NEW-1."
     },
-    {
-      "id": "OBJ-2",
-      "dimension": "investigation_completeness",
-      "severity": "major",
-      "blocking": true,
+    "OBJ-2": {
+      "was_blocking": true,
       "title": "conftest.py intra_city_routes:[] (array) contradicts schema type:object — BA did not flag as out_of_scope_observation",
-      "description": "tests/server/conftest.py:95 sets 'intra_city_routes': [] (a JSON array). schemas/v2/day.schema.json:71-88 defines intra_city_routes as type:object with string keys ('from_option_id:to_option_id:mode' format) and additionalProperties specifying a nested object shape. The fixture therefore fails schema validation on this field. BA's conftest.py component chain entry claims 'Synthetic trip data matches the v2 per-day-file schema' (conftest.py docstring). This is false for intra_city_routes. Furthermore, save.py:85 uses day.setdefault('intra_city_routes', []) and appends dicts as list items — also inconsistent with the schema's object shape. BA's scope (M7 conftest fix) only corrects slot path; it leaves intra_city_routes type wrong. BA did not record this as an out_of_scope_observation. Codex independently confirmed this gap.",
-      "ba_claim": "conftest.py fixture data matches the v2 per-day-file schema from schemas/v2/day.schema.json (docstring)",
-      "actual_finding": "conftest.py:95 intra_city_routes:[] is an array; schema line 72 requires type:object. Also save.py:85 uses setdefault('intra_city_routes',[]) treating it as a list. BA did not flag either.",
-      "evidence": "schemas/v2/day.schema.json:71-88 (type:object, additionalProperties:object); tests/server/conftest.py:95 ('[...]'); scripts/lib/server/save.py:85 ('day.setdefault(\"intra_city_routes\", [])'); Codex output confirmed gap.",
-      "recommended_fix": "BA must add an out_of_scope_observation documenting the intra_city_routes type mismatch (array vs object) in conftest.py and save.py. AC7 must be updated to also require intra_city_routes:{} (empty object, not []) in the corrected fixture. If dev fixes slot path but leaves intra_city_routes:[] in the fixture, the day file written by the fixture will still fail schema validation. This must be explicit in the spec."
+      "resolution_status": "resolved",
+      "resolution_notes": "M7(c) now requires intra_city_routes:[] to intra_city_routes:{} in conftest. AC7 adds explicit clause requiring {} not []. Out-of-Scope Observations table documents save.py:85. Evidence section calls out the pre-existing defect at conftest.py:95 and save.py:85 with schema reference. R6 in requirements_decomposition updated to include intra_city_routes:{} requirement."
     },
-    {
-      "id": "OBJ-3",
-      "dimension": "investigation_completeness",
-      "severity": "major",
-      "blocking": true,
-      "title": "test_save_endpoint.py:51 deterministically broken after Bug 1 fix — BA marks this as 'may need' instead of 'will break'",
-      "description": "tests/server/test_save_endpoint.py:51 reads 'slot = day.get(\"breakfast\", {})' from the top-level day dict after calling handle_save(). Once Bug 1 is fixed, save.py will write breakfast under day[\"slots\"][\"breakfast\"], not at day[\"breakfast\"]. The top-level day.get(\"breakfast\") will return {} (default), and the assertion 'slot.get(\"selected_option_id\") == \"breakfast-1-2\"' will fail deterministically. BA's S1 says 'run pytest... and fix any assertion-path mismatches caused by the new slot layout' with 'may also need slot-path updates'. The word 'may' is incorrect — this test WILL break. BA's investigation_completeness is deficient here: BA read conftest.py but did not read test_save_endpoint.py:51 to confirm the breakage, leaving it hedged when it should be stated as certain. Codex independently confirmed 'test_save_endpoint.py:51 reads day[\"breakfast\"]' as a confirmed break.",
-      "ba_claim": "tests/server/test_save_endpoint.py may also need slot-path updates but dev must confirm by running tests after conftest fix",
-      "actual_finding": "test_save_endpoint.py:51 'slot = day.get(\"breakfast\", {})' is a top-level read that will deterministically return {} after the Bug 1 fix. test_save_endpoint.py:64 'day.get(\"stage\")' is top-level and will still work (stage stays top-level). The slot assertion at line 52 will fail.",
-      "evidence": "tests/server/test_save_endpoint.py lines 50-52 read by QA; save.py Bug 1 fix moves slot write to day[\"slots\"][breakfast\"]; after fix, day.get(\"breakfast\",{}) returns {}",
-      "recommended_fix": "BA must change S1 from 'may also need' to 'will need' slot-path updates, and move the test_save_endpoint.py fix into scope as a Must-Have (or clearly state it is tested by S1 and WILL fail without a fix). The AC7 verification should additionally confirm that test_save_endpoint assertions are updated to read from day[\"slots\"][slot_id]."
+    "OBJ-3": {
+      "was_blocking": true,
+      "title": "test_save_endpoint.py:51 deterministically broken after Bug 1 fix — BA marked as 'may need' instead of 'will break'",
+      "resolution_status": "resolved",
+      "resolution_notes": "Promoted from S1 hedged language to Must-Have M8 with 'WILL fail deterministically' and confirmed-breakage rationale. AC8 added requiring pytest test exits 0. test_save_endpoint.py added to files_to_modify and in_user_path in context JSON."
     },
+    "OBJ-4": {
+      "was_blocking": false,
+      "title": "Technical hint for StateMachineError import path uses wrong style",
+      "resolution_status": "resolved",
+      "resolution_notes": "Import hint now reads 'from lib.trip_contract.errors import StateMachineError' with explicit NOT-from-scripts.lib note. TripContractError subclass requirement added. QA confirmed lib.trip_contract.errors import resolves from scripts/ root. Codex confirmed no blocking style conflict."
+    },
+    "OBJ-5": {
+      "was_blocking": false,
+      "title": "AC4 specifies HTTP 409 but tests call handle_save() directly — no HTTP layer exercised",
+      "resolution_status": "resolved",
+      "resolution_notes": "AC4 now separates two verification paths: (a) unit test asserting pytest.raises(StateMachineError) on handle_save(); (b) HTTP dispatch catch verifiable by integration test OR code review. NOTE added: 'cannot verify the HTTP 409 mapping without going through _handle_post_save()'. Codex confirmed code-review fallback is acceptable and not spec drift."
+    }
+  },
+  "new_observations": [
     {
-      "id": "OBJ-4",
+      "id": "NEW-1",
       "dimension": "evidence_quality",
       "severity": "minor",
       "blocking": false,
-      "title": "Technical hint for StateMachineError import path uses wrong style for save.py",
-      "description": "BA's technical hint states: 'import in save.py via from scripts.lib.trip_contract.errors import StateMachineError (adjust import path to match existing project import style in save.py)'. The parenthetical caveat is contradictory: save.py uses relative imports exclusively (from .common import ...). The absolute path 'from scripts.lib.trip_contract.errors' is the wrong style. The correct pattern, consistent with save.py:18 ('from .common import ...') and the state_machine hint ('from lib.trip_contract.state_machine import validate_state_transition'), would be either 'from lib.trip_contract.errors import StateMachineError' (matching the serve-trip.py context path) or a relative import style. BA also did not specify that StateMachineError should subclass TripContractError (which Codex flagged as best practice to maintain exception hierarchy consistency).",
-      "ba_claim": "import in save.py via 'from scripts.lib.trip_contract.errors import StateMachineError' (adjust import path to match existing project import style)",
-      "actual_finding": "save.py uses 'from .common import ...' (relative imports). The absolute-path hint is wrong. Immediately below in the same spec, the state machine import hint correctly uses 'from lib.trip_contract.state_machine import validate_state_transition'. The inconsistency may confuse dev.",
-      "evidence": "scripts/lib/server/save.py:18 'from .common import (TripStore, ...)'; BA Technical Hints section, StateMachineError location bullet",
-      "recommended_fix": "Correct the import hint to 'from lib.trip_contract.errors import StateMachineError' (matching serve-trip.py's import context) or 'from .errors import StateMachineError' if importing within the same package (not applicable here since errors.py is in trip_contract, not server). Also add a note that StateMachineError should subclass TripContractError for hierarchy consistency."
+      "title": "ticket.md:28 still reads '(22 lines)' after OBJ-1 was fixed only in context JSON",
+      "description": "docs/dev/ticket-20260515-102340.md line 28 still contains 'requirements.txt (22 lines) contains no entry for reportlab or icalendar'. The context JSON was corrected to 21 lines in the OBJ-1 fix, but the ticket markdown was not updated. Cosmetic residue; the substance (no reportlab or icalendar) is correct and no AC is affected. Codex independently flagged this.",
+      "file": "docs/dev/ticket-20260515-102340.md",
+      "line": 28,
+      "recommendation": "BA should update ticket.md:28 to read '(21 lines)' for consistency. Non-blocking."
     },
     {
-      "id": "OBJ-5",
-      "dimension": "spec_text_vs_execution_drift",
+      "id": "NEW-2",
+      "dimension": "investigation_completeness",
       "severity": "minor",
       "blocking": false,
-      "title": "AC4 specifies 'server returns HTTP 409' but tests call handle_save() directly — no HTTP layer exercised",
-      "description": "AC4 states 'THEN the server returns HTTP 409 with body {\"error\": \"state_machine\", \"detail\": \"<reason>\"}'. The existing test infrastructure (test_save_endpoint.py) calls handle_save() directly without going through the HTTP dispatch layer in serve-trip.py. This means a unit test of handle_save() will NOT verify the HTTP 409 mapping in _handle_post_save(). The AC literally requires HTTP 409, which can only be verified by either (a) a test that instantiates TripServerHandler or uses a test client, or (b) by separately testing the serve-trip.py catch block. BA did not address this gap. A dev who writes a StateMachineError raise in save.py but omits the try/except in serve-trip.py will pass handle_save() unit tests but fail AC4. Codex flagged this as 'add/require a test for serve-trip.py exception-to-409 mapping'.",
-      "ba_claim": "AC4: server returns HTTP 409 (verifiable by test)",
-      "actual_finding": "Test infrastructure calls handle_save() directly; serve-trip.py _handle_post_save() is never invoked in existing tests. AC4 as written requires HTTP-layer verification that the existing test architecture cannot provide without adding serve-trip.py integration tests.",
-      "evidence": "tests/server/test_save_endpoint.py:1-4 'Tests call handle_save() directly. No HTTP port allocated.'; serve-trip.py:209-212 _handle_post_save() is the HTTP catch point",
-      "recommended_fix": "Either (a) update AC4 to specify 'handle_save() raises StateMachineError; _handle_post_save() catches it and returns HTTP 409 — verified by a new integration test or by reading serve-trip.py code post-fix', or (b) add to S1 or M5 a requirement to add a minimal HTTP-layer test. The spec must not leave the HTTP-409 mapping unverifiable."
+      "title": "budget.py:118 also treats intra_city_routes as a list — not documented in out-of-scope observations",
+      "description": "scripts/lib/server/budget.py:118 reads 'refs = day.get(\"intra_city_routes\", [])' and iterates over it as a list of route refs in _intra_city_cost_for_day(). This is the same type mismatch as save.py:85 — intra_city_routes is type:object in the schema (lines 71-88), not an array. The out-of-scope observations table documents save.py:85 but not budget.py:118. Since route-ref handling is out-of-scope for this cycle, this is not a blocking gap, but the observation table is incomplete. Codex flagged this; QA confirmed by reading budget.py lines 110-130.",
+      "file": "scripts/lib/server/budget.py",
+      "line": 118,
+      "actual_code": "refs = day.get(\"intra_city_routes\", [])",
+      "recommendation": "BA may optionally add a second out-of-scope observation for budget.py:118. Non-blocking for this cycle — M3 only touches _sum_slots at line 87, not _intra_city_cost_for_day at line 118.",
+      "in_user_path": false,
+      "security_relevant": false
     }
   ],
+  "objections": [],
   "dimensions_verified": {
     "evidence_quality": {
       "status": "fail",
