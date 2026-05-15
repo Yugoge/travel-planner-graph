@@ -84,7 +84,7 @@ def _slot_cost(slot: dict) -> tuple[float, int]:
 
 
 def _sum_slots(day: dict, slot_ids: tuple[str, ...]) -> tuple[float, int]:
-    pairs = [_slot_cost(day.get(sid, {})) for sid in slot_ids]
+    pairs = [_slot_cost(day.get("slots", {}).get(sid, {})) for sid in slot_ids]
     return sum(a for a, _ in pairs), sum(u for _, u in pairs)
 
 
