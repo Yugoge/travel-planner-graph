@@ -481,15 +481,6 @@ export function requestSelectMutation({ slotId, optionId, dayN }) {
   const slot = _getSlotByKey(day, slotId);
   if (!slot) return;
   slot.selected_option_id = optionId;
-  // Mirror to top-level day[slot_id] so optimistic state matches backend
-  // post-save shape (save.py writes day.setdefault(slot_id, ...)).
-  if (slotId !== "accommodation" && slot !== day[slotId]) {
-    day[slotId] = day[slotId] || {
-      slot_id: slotId,
-      options: slot.options || [],
-    };
-    day[slotId].selected_option_id = optionId;
-  }
   commit({ type: "select", slot: slotId, option_id: optionId }, dayN);
   _scheduleRouteOnSelectionChange(dayN, slotId);
 }
