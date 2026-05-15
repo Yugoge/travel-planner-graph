@@ -23,6 +23,7 @@ from .common import (
 )
 from lib.trip_contract.state_machine import validate_state_transition
 from lib.trip_contract.errors import StateMachineError
+from lib.trip_contract.constants import STAGES as _STAGES
 
 SCHEMA_VERSION = "v2.0"
 
