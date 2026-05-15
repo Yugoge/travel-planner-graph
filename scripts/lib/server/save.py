@@ -73,7 +73,7 @@ def _apply_stage_mutation(day: dict, mut: dict) -> None:
     to_stage = mut.get("to_stage")
     if not to_stage:
         return
-    old_stage = day.get("stage", "")
+    old_stage = day.get("stage") or _STAGES[0]
     reason = validate_state_transition(old_stage, to_stage, has_user_consent=False)
     if reason is not None:
         raise StateMachineError(reason)
