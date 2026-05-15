@@ -70,8 +70,13 @@ def _apply_skip_mutation(day: dict, mut: dict) -> None:
 
 def _apply_stage_mutation(day: dict, mut: dict) -> None:
     to_stage = mut.get("to_stage")
-    if to_stage:
-        day["stage"] = to_stage
+    if not to_stage:
+        return
+    old_stage = day.get("stage", "")
+    reason = validate_state_transition(old_stage, to_stage, has_user_consent=False)
+    if reason is not None:
+        raise StateMachineError(reason)
+    day["stage"] = to_stage
 
 
 def _apply_route_ref_mutation(day: dict, mut: dict) -> None:
