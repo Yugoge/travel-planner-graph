@@ -209,7 +209,11 @@ class TripServerHandler(BaseHTTPRequestHandler):
 
     def _handle_post_save(self) -> None:
         body = _read_body(self)
-        resp = handle_save(self.store, body)
+        try:
+            resp = handle_save(self.store, body)
+        except StateMachineError as e:
+            _send_json(self, HTTPStatus.CONFLICT, {"error": "state_machine", "detail": str(e)})
+            return
         _send_json(self, HTTPStatus.OK, resp)
 
     def _handle_post_export(self, kind: str) -> None:
