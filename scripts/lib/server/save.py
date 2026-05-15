@@ -54,7 +54,7 @@ def _apply_select_mutation(day: dict, mut: dict) -> None:
     option_id = mut.get("option_id")
     if not slot_id:
         return
-    slot = day.setdefault(slot_id, {"slot_id": slot_id, "options": []})
+    slot = day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
     slot["selected_option_id"] = option_id
 
 
