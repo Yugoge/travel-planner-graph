@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-14T21:19:24Z*
-**Total entries**: 346
+*Last updated: 2026-05-15T10:33:52Z*
+**Total entries**: 347
 **Convention**: kebab
 
 ## Tree
@@ -352,7 +352,8 @@ dev/
 ├── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle (round-2 remediation)
 ├── `ticket-20260514-103616.md` - BA Master Ticket: Complete spec-20260508-221237 §5.2-§5.13 (post-M1)
 ├── `ticket-20260514-200000.md` - BA Specification: spec-20260508-221237-redev1 Close Blockers (6 fixes)
-└── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
+├── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
+└── `ticket-20260515-102340.md` - BA Specification: v2 Server Bug Fixes (4 bugs + 2 missing dependencies)
 ```
 
 ---
