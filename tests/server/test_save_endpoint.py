@@ -48,7 +48,7 @@ def test_valid_save_writes_selected_option(
     resp = handle_save(store, req)
     assert resp["conflict"] is None
     day = _read_day(store, trip_id, 1)
-    slot = day.get("breakfast", {})
+    slot = day["slots"]["breakfast"]
     assert slot.get("selected_option_id") == "breakfast-1-2"
 
 
