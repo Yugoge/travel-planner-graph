@@ -17,3 +17,7 @@ class ValidationError:
 
 class TripContractError(Exception):
     """Raised by callers that prefer exceptions to lists."""
+
+
+class StateMachineError(TripContractError):
+    """Raised when a stage transition is rejected by validate_state_transition."""
