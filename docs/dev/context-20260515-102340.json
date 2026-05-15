@@ -1,0 +1,313 @@
+{
+  "request_id": "20260515-102340",
+  "task_id": "20260515-102340",
+  "timestamp": "2026-05-15T10:23:40+08:00",
+  "requirement": {
+    "original": "Fix the four bugs preventing the v2 interactive travel planner server from working correctly, plus add two missing Python dependencies.",
+    "clarified": "Fix 4 bugs (save.py slot path, budget.py slot path, state.js workaround removal, stage machine enforcement) and add reportlab==4.5.1 and icalendar==7.1.0 to requirements.txt. Update tests/server/conftest.py to match corrected slot structure.",
+    "what": "Five targeted code changes + one requirements.txt addition + one test fixture correction",
+    "why": "All drag-and-drop interactions corrupt v2 day files (schema violation), budget always returns 0, stage machine is unenforced, and export endpoints fail with ImportError",
+    "where": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "web/js/state.js",
+      "requirements.txt",
+      "scripts/lib/trip_contract/errors.py",
+      "scripts/serve-trip.py",
+      "tests/server/conftest.py"
+    ],
+    "scope": {
+      "included": [
+        "save.py _apply_select_mutation and _apply_skip_mutation slot path fix",
+        "budget.py _sum_slots slot path fix (6 named slots only; accommodation untouched)",
+        "state.js lines 484-492 workaround deletion",
+        "StateMachineError exception class in errors.py",
+        "validate_state_transition call in save.py _apply_stage_mutation",
+        "HTTPStatus.CONFLICT catch in serve-trip.py _handle_post_save",
+        "reportlab==4.5.1 and icalendar==7.1.0 in requirements.txt",
+        "conftest.py _build_day() slot structure correction"
+      ],
+      "excluded": [
+        "Moving accommodation under day['slots']",
+        "Rewriting legacy top-level slot readers in exporters, validators, or other scripts",
+        "Broad data file migrations under data/",
+        "Route-cache invalidation, cascade undo, new stage UI",
+        "Any dependency beyond reportlab and icalendar"
+      ]
+    },
+    "success_criteria": [
+      "v2 day file written by save handler passes schemas/v2/day.schema.json validation",
+      "budget recompute returns non-zero meal/activity amounts from day['slots']",
+      "state.js requestSelectMutation makes no top-level day[slotId] write",
+      "POST /api/save with illegal backward stage transition returns HTTP 409",
+      "pip install -r requirements.txt installs reportlab and icalendar",
+      "pytest tests/server/ passes (no fixture-path regression)"
+    ],
+    "constraints": [
+      "accommodation key stays top-level on day dict — do NOT move under slots",
+      "existing 409-soft advisory behavior (HTTP 200 with conflict field) must not change",
+      "forward and same-stage transitions must continue to succeed"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "web/js/state.js",
+      "requirements.txt",
+      "scripts/lib/trip_contract/errors.py",
+      "scripts/serve-trip.py"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/trip_contract/state_machine.py",
+      "scripts/lib/trip_contract/constants.py",
+      "tests/server/conftest.py"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/exporters/common.py (iter_day_slots already reads day.get('slots', {}) correctly — no change needed)",
+      "tests/server/test_save_endpoint.py (may need assertion fixes after conftest change — dev to confirm by running tests)",
+      "tests/server/test_budget_endpoint.py (same)"
+    ]
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "All drag-and-drop slot interactions produce v2 day files with slots at wrong JSON path; budget always returns 0; stage transitions unconstrained; export endpoints fail on import",
+    "root_cause": "save.py and budget.py were written targeting a flat day-dict shape (legacy v1 pattern) that was superseded by the v2 schema placing named slots under day['slots']. The state machine module exists but was never wired into the save handler. The two exporter packages were added to the codebase without being added to requirements.txt.",
+    "root_cause_commit": "N/A — schema mismatch introduced when v2 server handlers were written; not a regression from a single commit",
+    "why_introduced": "v2 schema design placed slots under a 'slots' sub-object; server handlers were written or copied from pre-v2 code without updating the slot access pattern",
+    "why_problematic": "schemas/v2/day.schema.json line 107 has additionalProperties:false at root — any key not in the schema's 'properties' causes validation failure; slot keys written at root are rejected and slot keys read from root return empty dict, yielding zero costs",
+    "timeline": "N/A — fresh v2 server implementation, not a regression from working state",
+    "affected_files": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "web/js/state.js",
+      "requirements.txt"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "save.py:55 `day.setdefault(slot_id, ...)` confirmed by Read tool — writes slot_id key to top-level day dict (inferred: schema line 107 additionalProperties:false at root)",
+      "budget.py:87 `day.get(sid, {})` confirmed by Read tool — reads slot from top-level (inferred: should be day.get('slots', {}).get(sid, {}))",
+      "state.js:484 comment 'Mirror to top-level day[slot_id] so optimistic state matches backend post-save shape' confirmed by Read tool as explicit workaround for Bug 1",
+      "save.py:69-72 sets day['stage'] = to_stage with no validate_state_transition call; state_machine.py:16-42 provides that function (confirmed by Read tool)",
+      "requirements.txt 22 lines confirmed by Read tool; no reportlab or icalendar entry; pip show returns empty for both packages",
+      "schemas/v2/day.schema.json lines 53-66 confirmed: 'slots' object contains the 6 named slots; lines 67-70: accommodation is top-level separate key"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — server not running, no Playwright session)",
+    "complaint_location_keywords": ["save.py", "budget.py", "state.js", "requirements.txt", "slots", "stage"],
+    "localization_evidence": "All bugs localized by reading source files; schema is the tier_1 authoritative reference confirming the slot path mismatch",
+    "located_source": "scripts/lib/server/save.py:55, scripts/lib/server/budget.py:87, web/js/state.js:484-492, scripts/lib/server/save.py:69-72",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "N/A — not a regression; v2 server handlers never worked correctly on v2 data",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "save.py writes slot mutations to wrong path",
+      "acceptance_criterion": "_apply_select_mutation and _apply_skip_mutation write under day['slots'][slot_id]; written file passes schemas/v2/day.schema.json validation"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "budget.py reads slot data from wrong path",
+      "acceptance_criterion": "_sum_slots reads from day.get('slots', {}).get(sid, {}); /api/budget/recompute returns non-zero meal/activity amounts for a day with selections"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "state.js client-side workaround must be removed",
+      "acceptance_criterion": "Lines 484-492 deleted from requestSelectMutation; no top-level day[slotId] write remains; commit() call preserved"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "state machine never enforced server-side",
+      "acceptance_criterion": "Illegal backward stage transition returns HTTP 409; day file not written; forward/same-stage transitions return HTTP 200"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "reportlab and icalendar not in requirements.txt",
+      "acceptance_criterion": "requirements.txt contains reportlab==4.5.1 and icalendar==7.1.0; pip install -r requirements.txt installs both"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/serve-trip.py",
+      "line_range": "209-212",
+      "role": "HTTP dispatch layer for POST /api/save; calls handle_save()",
+      "imports_from": ["scripts/lib/server/save.py"],
+      "evidence": "Read tool: _handle_post_save() at line 209-212 calls handle_save(self.store, body)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/save.py",
+      "line_range": "50-125",
+      "role": "Mutation handler; _apply_select_mutation, _apply_skip_mutation, _apply_stage_mutation",
+      "imports_from": ["scripts/lib/trip_contract/state_machine.py (to be added)"],
+      "evidence": "Read tool: lines 50-72 confirmed; state_machine.py not currently imported",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/trip_contract/state_machine.py",
+      "line_range": "16-42",
+      "role": "validate_state_transition() — returns None on valid, error string on invalid",
+      "imports_from": ["scripts/lib/trip_contract/constants.py"],
+      "evidence": "Read tool: function signature and logic confirmed at lines 16-42",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/trip_contract/errors.py",
+      "line_range": "1-20",
+      "role": "Exception types; StateMachineError to be added here",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: file contains ValidationError dataclass and TripContractError; no StateMachineError yet",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/budget.py",
+      "line_range": "86-88",
+      "role": "_sum_slots reads slot dicts from day; Bug 2 fix here",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: line 87 `day.get(sid, {})` confirmed",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "478-495",
+      "role": "requestSelectMutation client-side handler; lines 484-492 are the workaround to delete",
+      "imports_from": ["web/js/save.js", "web/js/routing.js", "web/js/budget.js"],
+      "evidence": "Read tool: lines 484-492 confirmed with comment explicitly naming the workaround",
+      "verified_via": "Read"
+    },
+    {
+      "file": "tests/server/conftest.py",
+      "line_range": "75-97",
+      "role": "_build_day() fixture builder; currently places slots at top level (wrong path)",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: line 76 comment 'Slots sit at top-level day keys (save.py shape)'; lines 88-93 confirmed top-level placement",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/server/save.py",
+      "line": 152,
+      "type": "if",
+      "code_snippet": "conflict = \"409-soft\" if _is_session_conflict(meta, editor_session) else None",
+      "purpose": "Editor session conflict detection — returns 409-soft advisory in response body (not HTTP 409)",
+      "removal_authorized": false
+    },
+    {
+      "file": "web/js/state.js",
+      "line": 486,
+      "type": "if",
+      "code_snippet": "if (slotId !== \"accommodation\" && slot !== day[slotId]) {",
+      "purpose": "Workaround guard to avoid mirroring accommodation — this entire block (lines 486-492) is deleted as part of Bug 3 fix",
+      "removal_authorized": true
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- pure backend; cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, or (4) screenshot evidence",
+    "viewport": null,
+    "theme": null,
+    "locale": null,
+    "auth_state": null,
+    "data_state": null,
+    "browser": null,
+    "url_path": null
+  },
+  "evidence": {
+    "observed": "Four bugs make the v2 interactive server non-functional on v2 trip data; two Python dependencies are missing",
+    "measured": {
+      "value": "save.py:55 day.setdefault(slot_id,...); budget.py:87 day.get(sid,{}); state.js:484-492 explicit top-level mirror; save.py:69-72 unconditional stage set; requirements.txt has no reportlab or icalendar",
+      "location": "scripts/lib/server/save.py:55,63,69-72; scripts/lib/server/budget.py:87; web/js/state.js:484-492; requirements.txt"
+    },
+    "expected": {
+      "value": "Slots under day['slots'][slot_id]; budget reads day.get('slots',{}).get(sid,{}); no client workaround; stage validated before write; both packages in requirements.txt",
+      "source": "schemas/v2/day.schema.json lines 53-66 (tier_1_external)"
+    },
+    "gap": "All 6 named slots written/read at wrong dict path; stage machine exists but is never called; 2 import-level dependencies absent from pip requirements"
+  },
+  "scope_expansion": {
+    "search_pattern": "day\\.setdefault\\(slot_id|day\\.get\\(sid|day\\.get\\(\"breakfast|day\\.get\\(\"lunch",
+    "search_scope": "scripts/lib/server/, web/js/, tests/server/",
+    "user_reported": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "web/js/state.js",
+      "requirements.txt"
+    ],
+    "additional_found": [
+      "tests/server/conftest.py (fixture builds day with slots at top level; must be updated)"
+    ],
+    "all_occurrences": [
+      "scripts/lib/server/save.py:55 (_apply_select_mutation)",
+      "scripts/lib/server/save.py:63 (_apply_skip_mutation)",
+      "scripts/lib/server/budget.py:87 (_sum_slots)",
+      "web/js/state.js:484-492 (client workaround)",
+      "tests/server/conftest.py:88-93 (_build_day fixture)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_1_external",
+    "description": "schemas/v2/day.schema.json — the authoritative v2 day file contract; defines 'slots' object with 6 named slot properties and additionalProperties:false at root",
+    "url_or_location": "/root/travel-planner/schemas/v2/day.schema.json lines 53-66 (slots), 67-70 (accommodation top-level), 107 (additionalProperties:false)",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempt on this bug set; first cycle"
+    }
+  },
+  "context": {
+    "codebase_state": "v2 server implemented but non-functional on v2 data due to slot path mismatch introduced during initial implementation",
+    "recent_commits": "6920e9d test(close): 6 close-gate blockers; b34faf4 test(generate-html-interactiv): fix 13 enumerated bugs",
+    "file_contents": {},
+    "dependencies": {
+      "reportlab": "4.5.1 (latest available; not yet in requirements.txt)",
+      "icalendar": "7.1.0 (latest available; not yet in requirements.txt)"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Surgical per-file fixes targeting the exact wrong-path expressions identified by file reads; add StateMachineError exception type; wire validate_state_transition into save handler; update test fixture to match corrected schema shape",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/server/save.py",
+      "scripts/lib/server/budget.py",
+      "web/js/state.js",
+      "requirements.txt",
+      "scripts/lib/trip_contract/errors.py",
+      "scripts/serve-trip.py",
+      "tests/server/conftest.py"
+    ],
+    "validation_approach": "pytest tests/server/ to confirm no regressions; manual verification that _build_day() fixture places slots under 'slots' key"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Scope confirmed minimal. Key refinements: (1) accommodation stays top-level — v2 schema only places the 6 named activity slots under day['slots']; budget.py:128 day.get('accommodation', {}) is correct and must not change. (2) Bug 4 HTTP 409: typed exception (StateMachineError) caught in serve-trip.py is the cleaner approach; inline stage_error field is worse because the HTTP layer would not suppress the write. (3) requirements.txt pinned == style preferred (reportlab==4.5.1, icalendar==7.1.0). (4) tests/server/conftest.py _build_day() fixture update is in scope. (5) Scope creep to reject: rewriting legacy/top-level slot readers, moving accommodation under slots, route-cache invalidation, broad data migration.",
+    "feedback_incorporated": "Added explicit constraint that accommodation stays top-level; changed requirements.txt versions to pinned == values matching latest; added conftest.py to affected files list; added explicit AC7 for fixture update; added pre_existing_guard for budget.py:128 accommodation path"
+  }
+}
