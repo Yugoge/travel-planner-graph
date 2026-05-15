@@ -21,6 +21,8 @@ from .common import (
     load_json_or_default,
     iso_now,
 )
+from lib.trip_contract.state_machine import validate_state_transition
+from lib.trip_contract.errors import StateMachineError
 
 SCHEMA_VERSION = "v2.0"
 
