@@ -1,0 +1,110 @@
+{
+  "request_id": "cleanliness-20260515-102340",
+  "timestamp": "2026-05-15T10:23:40+00:00",
+  "inspector": "cleanliness-inspector",
+  "mode": "--changed-files",
+  "changed_files": [
+    "scripts/lib/server/save.py",
+    "scripts/lib/server/budget.py",
+    "scripts/lib/trip_contract/errors.py",
+    "scripts/serve-trip.py",
+    "web/js/state.js",
+    "requirements.txt",
+    "tests/server/conftest.py",
+    "tests/server/test_save_endpoint.py",
+    "tests/server/test_budget_endpoint.py"
+  ],
+  "findings": {
+    "misplaced_docs": [],
+    "naming_violations": [],
+    "archive_candidates": [],
+    "dev_context_files": [],
+    "temp_files": [],
+    "duplicate_scripts": [],
+    "duplicate_tests": [],
+    "non_functional_files": [],
+    "non_functional_folders": [],
+    "orphaned_subagents": [],
+    "unreferenced_scripts": [],
+    "orphaned_tests": [],
+    "historical_docs": [],
+    "docs_categorization": [],
+    "obsolete_functionality": [
+      {
+        "file": "scripts/lib/server/save.py",
+        "reason": "save.py _apply_route_ref_mutation (line 107) uses day.setdefault('intra_city_routes', []) — treats the field as a list of ref-dicts. But schemas/v2/day.schema.json declares intra_city_routes as a dict keyed by 'from_option_id:to_option_id:mode'. budget.py _intra_city_cost_for_day (line 118) also reads it as a list. This cycle's conftest.py fix changed intra_city_routes: [] -> {} (correct per schema), leaving save.py and budget.py with the stale list assumption. When a route_ref mutation fires in production the written shape diverges from schema. Tests pass only because intra_city_routes is always empty in fixtures.",
+        "confidence": "high",
+        "severity": "major",
+        "introduced_in_diff": true,
+        "detail": "conftest.py correctly changed intra_city_routes to {} (dict) in this diff; save.py line 107 and budget.py line 118 still use [] as default and iterate as list. The schema/implementation gap was pre-existing but the fixture fix exposed and widened it in this cycle. Recommendation: update _apply_route_ref_mutation and _intra_city_cost_for_day to use dict shape matching the schema."
+      }
+    ],
+    "orphan_commands": [],
+    "dead_functions": [
+      {
+        "file": "scripts/lib/server/budget.py",
+        "reason": "_select_target_days (lines 151-157) is defined at module level but never called anywhere — handle_budget inlines the same day-filter logic directly (lines 177-180). The function is dead code.",
+        "severity": "major",
+        "introduced_in_diff": false,
+        "detail": "Pre-existing: function existed in HEAD and was already unreferenced. Not introduced by this cycle's changes. Advisory only — non-blocking for close."
+      }
+    ],
+    "duplicate_content": [],
+    "style_violations": [
+      {
+        "file": "tests/server/test_save_endpoint.py",
+        "reason": "Inline import `from lib.trip_contract.errors import StateMachineError` inside test function body at line 139. All other imports in this file are at module level. Inline function-body imports should be module-level to be consistent and avoid re-import overhead.",
+        "severity": "minor",
+        "introduced_in_diff": true,
+        "detail": "The new test_backward_stage_mutation_raises_state_machine_error function added in this diff places the import inside the function body. Should be promoted to module level alongside existing imports (lines 13-14)."
+      },
+      {
+        "file": "tests/server/test_save_endpoint.py",
+        "reason": "`import json` at line 8 is unused. No json.* calls anywhere in the file.",
+        "severity": "minor",
+        "introduced_in_diff": false,
+        "detail": "Pre-existing unused import. Confirmed via AST analysis — json identifier never used as attribute receiver. Not introduced by this diff. Advisory only."
+      },
+      {
+        "file": "tests/server/test_budget_endpoint.py",
+        "reason": "`import json` at line 8 is unused. No json.* calls anywhere in the file.",
+        "severity": "minor",
+        "introduced_in_diff": false,
+        "detail": "Pre-existing unused import. Confirmed via AST analysis. Not introduced by this diff. Advisory only."
+      },
+      {
+        "file": "tests/server/test_budget_endpoint.py",
+        "reason": "Section divider comment '# Missing cost (null) -> unknown_count increments, amount stays 0.' at line 63 appears above test_trip_total_is_all_days_when_day_filter_specified, not above test_null_cost_counts_as_unknown where it belongs. The comment describes the wrong test.",
+        "severity": "minor",
+        "introduced_in_diff": false,
+        "detail": "Pre-existing misplaced section header comment. Not introduced by this diff. Advisory only."
+      },
+      {
+        "file": "tests/server/test_budget_endpoint.py",
+        "reason": "test_day_total_matches_known_costs docstring reads 'Day 1 total = breakfast(80) + lunch(80) + dinner(80) + 3 activities(50each) = 390.' but the function only asserts meals (240) and activities (150) breakdowns — not day_total. The actual day_total includes accommodation (800 CNY for acc-1-2). The docstring implies 390 is the day total, which is incorrect.",
+        "severity": "minor",
+        "introduced_in_diff": false,
+        "detail": "Pre-existing misleading docstring. Accommodation selected = acc-1-2 at 700+(2*50)=800 CNY, making actual day_total=1190, not 390. The test itself is correct; only the docstring arithmetic claim is wrong. Advisory only."
+      }
+    ]
+  },
+  "summary": {
+    "total_issues": 7,
+    "critical": 0,
+    "major": 2,
+    "minor": 5,
+    "new_in_diff": {
+      "major": 1,
+      "minor": 1,
+      "total": 2
+    },
+    "pre_existing_advisory": {
+      "major": 1,
+      "minor": 4,
+      "total": 5
+    },
+    "estimated_space_saved": "0 MB",
+    "blocking_for_close": true,
+    "blocking_reason": "1 major finding with introduced_in_diff: true (intra_city_routes list/dict type mismatch exposed by this cycle's conftest fix). 1 minor finding with introduced_in_diff: true (inline import in new test function)."
+  }
+}
