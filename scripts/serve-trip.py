@@ -46,6 +46,7 @@ from lib.server import (  # noqa: E402
     handle_export,
     hydrate_trip,
 )
+from lib.trip_contract.errors import StateMachineError  # noqa: E402
 
 
 DEFAULT_HOST = "127.0.0.1"
