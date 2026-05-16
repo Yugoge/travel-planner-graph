@@ -1,7 +1,7 @@
 # scripts
 
-*Last updated: 2026-05-15T11:07:34Z*
-**Total entries**: 121
+*Last updated: 2026-05-16T20:46:47Z*
+**Total entries**: 122
 **Convention**: kebab
 
 ## Tree
@@ -103,6 +103,7 @@ scripts/
 ├── `log-modification.py` - Modification Logging Helper - Append structured log entry to modification-log.json
 ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
 ├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
+├── `migrate_yunnan_v1_to_v2.py` - migrate_yunnan_v1_to_v2.py
 ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
 ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
