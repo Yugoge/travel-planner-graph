@@ -1,0 +1,371 @@
+{
+  "request_id": "20260517-071910",
+  "task_id": "20260517-071910",
+  "timestamp": "2026-05-17T07:19:10+08:00",
+  "complexity_tier": "STANDARD",
+
+  "requirement": {
+    "original": "Rewrite the serve-trip.py web frontend in Notion-style design, plus fix 3 bugs: (1) City label from accommodation, (2) Fixed-time transportation block, (3) Meal candidates unified pool. UI redesign: Notion-inspired aesthetic, white/light-gray background, Inter font, block-based card layout, minimal borders.",
+    "clarified": "Replace web/css/main.css with Notion-style stylesheet. Fix 3 JS bugs: (a) city label in state.js derives from accommodation city_context; (b) transportation callout block rendered in timeline for days with departure_ts/arrival_ts; (c) unified Meals candidate group with cross-slot drag-and-drop on desktop and mobile, including client-side option copy for persistence.",
+    "what": "Notion-style CSS rewrite + 3 behavioral bug fixes in state.js, drag.js, mobile.js, index.html",
+    "why": "Current dark theme is outdated; city label shows wrong data; transportation info is invisible; meal candidates are siloed preventing flexible assignment",
+    "where": ["web/css/main.css", "web/js/state.js", "web/js/drag.js", "web/js/mobile.js", "web/index.html"],
+    "scope": {
+      "included": [
+        "web/css/main.css — full rewrite with Notion tokens",
+        "web/js/state.js — M2 _buildMealsCandidateGroup, M3 _deriveCityName + split day picker, M4 _buildTransportCallout",
+        "web/js/drag.js — _isCompatible update for meals-any",
+        "web/js/mobile.js — _markTapTargets update for meals-any",
+        "web/index.html — header structure M5"
+      ],
+      "excluded": [
+        "serve-trip.py",
+        "save.py",
+        "budget.py",
+        "v2 day schema files",
+        "state.transportation.segments deep-rendering",
+        "gaode-maps calls"
+      ]
+    },
+    "success_criteria": [
+      "Notion CSS tokens (#37352f text, #2383e2 accent, #f7f6f3 page bg, #e0e0e0 border, Inter font) applied and verified in browser",
+      "Single Meals candidate group with cross-slot drop working on desktop and mobile; selection persists after reload",
+      "Day picker option text includes city name from accommodation city_context",
+      "Transportation callout block visible in Timeline for city-change/arrival/departure days",
+      "All existing JS element IDs intact; no functional regression in drag, tap, offline, export"
+    ],
+    "constraints": [
+      "No emoji in code or comments",
+      "No gaode-maps calls",
+      "No backend changes",
+      "All IDs (trip-title, save-status, conn-status, export-pdf, export-ical, banner-conflict, banner-offline, mobile-tabs, candidates-groups, timeline-slots, budget-breakdown, day-select, approve-day-btn, tpl-candidate-card, tpl-slot) must remain intact"
+    ]
+  },
+
+  "scope_boundary": {
+    "in_user_path": [
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/drag.js",
+      "web/js/mobile.js",
+      "web/index.html"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/server/budget.py — reads day.get('breakfast') directly; if accommodation slot shape changes this is affected, but M2 does not change slot shape",
+      "schemas/v2/transportation.schema.json — segment-level transport data exists but user requirement scopes display to day-level timestamps only"
+    ]
+  },
+
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-17T07:19:10+08:00",
+      "task_id": "20260517-071910",
+      "file": "schemas/v2/transportation.schema.json",
+      "line": null,
+      "observation": "state.transportation.segments contains richer from_city_name/to_city_name/mode fields per Codex finding F6. M4 only uses day-level departure_ts/arrival_ts per user requirement. Richer segment display is a future enhancement.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-17T07:19:10+08:00",
+      "task_id": "20260517-071910",
+      "file": "scripts/lib/server/budget.py",
+      "line": null,
+      "observation": "Codex found budget.py reads day.get('breakfast') directly. M2 does not change slot data shape (options[] are copied client-side, server shape unchanged). Not in user-need path for this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+
+  "root_cause_analysis": {
+    "symptom": "Three behavioral bugs in the live-editor UI: wrong city label, missing transport display, siloed meal pools; plus dark-themed CSS that doesn't match Notion aesthetic.",
+    "root_cause": "Bug 1: _populateDayPicker reads day.day_type for label but ignores accommodation city_context. Bug 2: renderTimeline never checks day.departure_ts/arrival_ts. Bug 3: renderCandidates and _isCompatible enforce strict slot-id equality with no cross-meal relaxation. CSS: original stylesheet predates Notion aesthetic directive.",
+    "root_cause_commit": "N/A — no single introducing commit; these are design gaps from initial implementation",
+    "why_introduced": "Initial implementation stored city_name as a flat day field and used strict slot matching for safety; transport timestamps were added to schema but never wired to UI; CSS was written before Notion design spec was provided.",
+    "why_problematic": "City label is wrong on city-change days where accommodation city differs from day.city_name. Transport info is invisible. Meal assignment is unnecessarily rigid.",
+    "timeline": "All bugs present since initial web editor implementation; no regression — design gaps.",
+    "affected_files": ["web/js/state.js", "web/js/drag.js", "web/js/mobile.js", "web/css/main.css", "web/index.html"],
+    "evidence_type": "inferred",
+    "observations": [
+      "web/js/state.js:564-565 renders 'Day N (day_type)' — no city — inferred from Read tool",
+      "web/js/state.js:290-299 renderTimeline loops ALL_SLOT_KEYS with no departure_ts/arrival_ts check — inferred from Read tool",
+      "web/js/drag.js:121-124 _isCompatible returns srcSlot===targetSlot — no meals-any exception — inferred from Read tool",
+      "web/js/mobile.js:107-113 _markTapTargets uses s.dataset.slotId === slotIdHint strict equality — inferred from Read tool",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-01.json:134 accommodation option city_context.city_name='Kunming' — inferred from Read tool",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-03.json:10-11 arrival_ts and departure_ts both non-null — inferred from Read tool"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no live browser session)",
+    "complaint_location_keywords": ["city label", "overnight accommodation", "fixed departure", "arrival times", "meal candidates", "breakfast", "lunch", "dinner", "Notion-style"],
+    "localization_evidence": "Source code read directly via Read tool. No live browser session. Root cause localized to specific functions by line number.",
+    "located_source": "web/js/state.js:564-565 (city label), web/js/state.js:290-299 (transport block), web/js/drag.js:121-124 + web/js/mobile.js:107-113 (meal pool), web/css/main.css:1-49 (CSS tokens)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression — design gaps from initial implementation",
+      "reproducibility_verified": false
+    }
+  },
+
+  "diagnosis_layer": "L4",
+
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "City on each day should derive from the overnight accommodation's city, not be a hardcoded field in the day JSON",
+      "acceptance_criterion": "Day picker option text for Day 3 includes 'Lijiang' derived from accommodation-3-1 city_context.city_name"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "No way to add inter-city transportation (fixed departure/arrival times) in the editor UI",
+      "acceptance_criterion": "Timeline shows .transport-callout block for day-03 with both departure_ts and arrival_ts formatted as HH:MM"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Candidates panel shows breakfast/lunch/dinner as separate pools. User wants all restaurants in ONE Meals pool",
+      "acceptance_criterion": "Single Meals group in candidates panel; a dinner-pool card can be dropped on Breakfast slot; selection persists after page reload"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "Redesign web/index.html + web/css/main.css to use a Notion-inspired aesthetic",
+      "acceptance_criterion": "CSS tokens --text:#37352f, --accent:#2383e2, --bg-page:#f7f6f3, --border:#e0e0e0, font includes Inter applied; page background is off-white; no heavy shadows"
+    }
+  ],
+
+  "component_chain": [
+    {
+      "file": "web/index.html",
+      "line_range": "1-127",
+      "role": "HTML shell — element IDs wired by state.js; link to main.css",
+      "imports_from": ["web/css/main.css", "web/js/state.js"],
+      "evidence": "Read tool: line 7 stylesheet link, line 125 module script",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "1-629",
+      "role": "Central store + renderer — renderCandidates, renderTimeline, _populateDayPicker, requestSelectMutation",
+      "imports_from": ["web/js/drag.js", "web/js/mobile.js", "web/js/save.js", "web/js/routing.js", "web/js/budget.js", "web/js/offline.js"],
+      "evidence": "Read tool: lines 13-18 imports; lines 180, 290, 478, 557 function definitions",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/drag.js",
+      "line_range": "1-130",
+      "role": "Desktop HTML5 drag-drop; _isCompatible enforces slot-category matching",
+      "imports_from": ["web/js/state.js", "web/js/mobile.js"],
+      "evidence": "Read tool: lines 9-10 imports; lines 121-124 _isCompatible",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/mobile.js",
+      "line_range": "1-148",
+      "role": "Mobile tap workflow; _markTapTargets highlights compatible drop zones",
+      "imports_from": ["web/js/state.js"],
+      "evidence": "Read tool: line 13 import; lines 107-113 _markTapTargets exact-match",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/css/main.css",
+      "line_range": "1-424",
+      "role": "All visual styling; CSS custom property tokens used by HTML/JS-applied classes",
+      "imports_from": [],
+      "evidence": "Read tool: lines 1-49 :root token block",
+      "verified_via": "Read"
+    }
+  ],
+
+  "pre_existing_guards": [
+    {
+      "file": "web/js/drag.js",
+      "line": 108,
+      "type": "if",
+      "code_snippet": "if (payload.slot_id && payload.slot_id !== slotId && !_isCompatible(payload.slot_id, slotId)) { _showRejectFeedback(drop); return; }",
+      "purpose": "Prevents cross-slot category drops — accommodation cannot go to meal slot etc.",
+      "removal_authorized": false
+    },
+    {
+      "file": "web/js/drag.js",
+      "line": 73,
+      "type": "if",
+      "code_snippet": "if (drop.dataset.droppable === 'false') return;",
+      "purpose": "Prevents dropping on skipped or missing slots",
+      "removal_authorized": false
+    },
+    {
+      "file": "web/js/mobile.js",
+      "line": 111,
+      "type": "if",
+      "code_snippet": "if (drop.dataset.droppable === 'false') return;",
+      "purpose": "Prevents tap-select on non-droppable slots",
+      "removal_authorized": false
+    },
+    {
+      "file": "web/js/state.js",
+      "line": 481,
+      "type": "if",
+      "code_snippet": "const slot = _getSlotByKey(day, slotId); if (!slot) return;",
+      "purpose": "Guards against mutation on missing slots",
+      "removal_authorized": false
+    }
+  ],
+
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+
+  "setup": {
+    "applicability": "applicable",
+    "reason": null,
+    "viewport": "1440x900 desktop primary; 390x844 mobile secondary",
+    "theme": "light",
+    "locale": "zh-CN trip data, English UI labels",
+    "auth_state": "N/A",
+    "data_state": "with-data (trip beijing-lijiang-dali-20260418-100846)",
+    "browser": "Chrome desktop + Safari iOS",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+
+  "evidence": {
+    "observed": "Rewrite serve-trip.py web frontend in Notion-style design, plus fix 3 bugs: city label, transportation block, unified meal candidates",
+    "measured": {
+      "value": "_populateDayPicker renders 'Day N (day_type)'; renderTimeline loops only ALL_SLOT_KEYS; _isCompatible returns srcSlot===targetSlot; _markTapTargets uses strict slotId equality; CSS uses --text:#1a1a1f, --primary:#2a59c8, nav-back hardcoded dark GitHub colors",
+      "location": "web/js/state.js:564-565, 290-299; web/js/drag.js:121-124; web/js/mobile.js:107-113; web/css/main.css:4-91"
+    },
+    "expected": {
+      "value": "City from accommodation city_context; transport callout for non-null timestamps; unified Meals group with cross-slot acceptance; Notion tokens #37352f/#2383e2/#f7f6f3/#e0e0e0, font Inter",
+      "source": "User requirement verbatim + day JSON files read in session"
+    },
+    "gap": "4 distinct gaps: wrong city source, missing transport display, strict meal-slot matching, non-Notion CSS palette"
+  },
+
+  "scope_expansion": {
+    "search_pattern": "renderCandidates|_isCompatible|_populateDayPicker|renderTimeline|departure_ts|_markTapTargets",
+    "search_scope": "web/js/**, web/css/**, web/index.html",
+    "user_reported": ["web/index.html", "web/css/main.css", "web/js/state.js", "web/js/drag.js"],
+    "additional_found": ["web/js/mobile.js"],
+    "all_occurrences": [
+      "web/js/state.js:185-188 (renderCandidates loop)",
+      "web/js/state.js:290-299 (renderTimeline loop)",
+      "web/js/state.js:557-570 (_populateDayPicker)",
+      "web/js/drag.js:121-124 (_isCompatible)",
+      "web/js/mobile.js:107-113 (_markTapTargets)"
+    ]
+  },
+
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Day JSON files read in this session confirm city_context structure; user verbatim requirement provides Notion token values",
+    "url_or_location": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json:134, day-03.json:10-11, 186; user requirement text",
+    "copy_allowed": true
+  },
+
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on this requirement combination. Git history shows Notion-style work only for static exporter (bf3d869f), not the live editor."
+    }
+  },
+
+  "context": {
+    "codebase_state": "web/ directory has 4 JS modules + 1 CSS + 1 HTML; all files read in this session",
+    "recent_commits": "212330d docs(travel-planner): add audit artifacts for cycle 20260514-200530",
+    "file_contents": {},
+    "dependencies": {
+      "web/js/state.js": ["drag.js", "mobile.js", "save.js", "routing.js", "budget.js", "offline.js"],
+      "web/js/drag.js": ["state.js", "mobile.js"],
+      "web/js/mobile.js": ["state.js"]
+    },
+    "environment": {
+      "serve_trip": "binds 127.0.0.1 only",
+      "trip_data": "data/beijing-lijiang-dali-20260418-100846/"
+    }
+  },
+
+  "development_approach": {
+    "strategy": "Parallel changes: (1) full CSS rewrite preserving all functional selector names; (2) state.js: add _buildMealsCandidateGroup, _deriveCityName, split day-picker, add _buildTransportCallout, patch requestSelectMutation for cross-meal option copy; (3) drag.js: update _isCompatible; (4) mobile.js: update _markTapTargets; (5) index.html: header structure update",
+    "files_to_create": [],
+    "files_to_modify": [
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/drag.js",
+      "web/js/mobile.js",
+      "web/index.html"
+    ],
+    "validation_approach": "QA: serve via python3 serve-trip.py against beijing-lijiang-dali trip. Verify AC1-AC10 by navigating to /trip/beijing-lijiang-dali-20260418-100846, switching to day-03, visual inspection of CSS tokens, transport callout, Meals group, cross-meal drag, day picker city label. Mobile: resize to 390px or use DevTools mobile emulation."
+  },
+
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex raised 7 findings. 5 are real bugs incorporated into the spec (F1: cross-meal persistence requires client-side option copy; F2: mobile.js must be added to scope; F3: data-origin-slot-id needed on meal cards; F4: _buildMealsCandidateGroup must be explicitly specified; F5: day-picker listener duplication must be avoided). 1 is out-of-scope (F6: state.transportation.segments deep-render — user requirement explicitly scopes to day-level timestamps). 1 is incorporated as AC constraint (F7: CSS rewrite must preserve functional state selectors).",
+    "findings": [
+      {
+        "issue": "Cross-meal drop will persist invalid selected_option_id if option not in target slot options[]",
+        "proposed_fix": "In requestSelectMutation, before setting selected_option_id, copy source option into target slot's options[] if not already present",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Without this fix, selection breaks after reload. Applied as Technical Hints implementation note and AC3 persistence criterion."
+      },
+      {
+        "issue": "Mobile _markTapTargets uses strict slotId equality, misses meals-any",
+        "proposed_fix": "Add web/js/mobile.js to scope; update _markTapTargets to use _isMealCompatible for meals-any",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Mobile workflow entirely broken without this. Added mobile.js to affected files."
+      },
+      {
+        "issue": "Meal cards need data-origin-slot-id for persistence and debugging",
+        "proposed_fix": "Add data-origin-slot-id attribute set to source slot (breakfast/lunch/dinner) on meal cards in _buildMealsCandidateGroup",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Needed for cross-meal option copy (F1 fix) to know the source option's slot."
+      },
+      {
+        "issue": "_buildMealsCandidateGroup is underspecified for selected/empty/skipped state",
+        "proposed_fix": "Specify dedicated _buildMealsCandidateGroup with de-dup, multi-slot selection check, all-skipped empty state",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Without this spec, dev has no guidance on edge cases. Added to Technical Hints."
+      },
+      {
+        "issue": "Calling _populateDayPicker inside renderAll() accumulates duplicate change event listeners",
+        "proposed_fix": "Split into _renderDayPickerOptions() (called from renderAll) and _wireDayPicker() (called once from init using sel.onchange = ...)",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Real runtime bug — each renderAll call (which happens on every mutation) would add another listener. Applied in Technical Hints and M3 spec."
+      },
+      {
+        "issue": "M4 should use state.transportation.segments for richer detail (from_city_name, mode, etc.)",
+        "proposed_fix": "Render from state.transportation.segments.find(s => s.depart_day === activeDay || s.arrive_day === activeDay)",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "User requirement explicitly says 'Read from day.departure_ts, day.arrival_ts, day.day_type. Display-only (read existing schema fields, no new API calls).' Segment-level display is out of user-need scope. Logged in out_of_scope_observations."
+      },
+      {
+        "issue": "Full CSS rewrite risks breaking functional state selectors (.card-candidate, [data-drop-active], etc.)",
+        "proposed_fix": "Add explicit AC that all functional CSS selectors are preserved",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Applied as AC9 and listed in Edge Cases section."
+      }
+    ],
+    "feedback_incorporated": "5 blockers/majors applied to spec; 1 observation logged to out_of_scope_observations; 1 major applied as AC9 constraint."
+  }
+}
