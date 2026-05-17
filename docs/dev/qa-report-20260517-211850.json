@@ -44,69 +44,70 @@
         "blocker": false,
         "required_fix": null
       },
-      "F5_save_payload": {
-        "verdict": "FAIL — spec payload does not match save.py contract (4 mismatches)",
-        "summary": "The spec defines: { trip_id, day: activeDay, slot_id, option_id }. The actual save.py expects: { trip_id, day: <integer day_n>, editor_session: <string>, mutations: [{ type: 'select', slot: slotId, option_id, origin_slot_id }] }. Mismatches: (1) slot_id at top level vs mutations[].slot — without mutations[] the handler calls req.get('mutations', []) which returns [] and silently drops the mutation; (2) editor_session missing — 409-soft concurrency detection is bypassed; (3) mutations[] array wrapper missing; (4) day: activeDay (0-indexed) writes to day-00.json which does not exist.",
-        "blocker": true,
-        "evidence": "save.py line 166: req.get('mutations', []). save.py line 52: _is_session_conflict checks editor_session. save.py line 36: _day_path uses f'day-{day_n:02d}.json' — day_n=0 produces 'day-00.json', files are day-01.json to day-09.json.",
-        "required_fix": "Spec Finding 5 / window.setEditorSelection pseudocode must show: fetch('/api/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: TRIP_ID, day: editorDay.day, editor_session: editorSessionRef.current, mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }] }) }). Remove the note 'activeDay used here is the 0-indexed position in data.days[]'. Note: editorDay.day is the absolute 1-indexed integer from the v2 schema, obtained via the day-number match described in F1 fix."
+      "F5_save_payload_RESOLVED": {
+        "verdict": "PASS — BLOCKER-1 resolved in Round 3 (mutations[] contract now correct)",
+        "summary": "Finding 5 now shows the correct contract: { trip_id, day: <absolute_1_indexed>, editor_session: <UUID>, mutations: [{ type: 'select', slot: <slotId>, option_id: <optionId>, origin_slot_id: null }] }. All 4 prior mismatches are resolved. Verified against save.py:200-203 and save.py:76.",
+        "blocker": false
       },
-      "F6_drop_zones": {
-        "verdict": "FAIL — attraction slot mapping is unimplementable as written",
-        "summary": "The spec says 'for attractions, map morning cards to morning_activity, afternoon to afternoon_activity, evening to evening_activity' but KanbanView renders attractions from day.attractions as a flat array with no time-of-day sub-categories. Codex verified: PLAN_DATA attraction objects have option_id=null and slot_id=null. There is no 'morning card' concept in KanbanView's attraction section.",
+      "F6_drop_zones_STILL_FAILING": {
+        "verdict": "FAIL — BLOCKER-A remains (contradictory guidance in Technical Hints line 404)",
+        "summary": "Finding 7b defines the correct name-based algorithm. But Technical Hints line 404 still says 'map morning cards to morning_activity' — the stale time-bucket approach. Both coexist in the same document. Codex confirmed hard blocker.",
         "blocker": true,
-        "evidence": "Python: PLAN_DATA.trips[2].days[0].attractions = [Shuhe Old Town, Baisha Old Town, Dali Old Town] — all have option_id=None, slot_id=None. v2 day-05.json has morning_activity=Shuhe Old Town, afternoon_activity=Baisha Old Town, evening_activity=Dali Old Town. KanbanView renders these as a flat list with no slot annotation.",
-        "required_fix": "Replace vague guidance with a concrete algorithm: for each PLAN_DATA attraction card, match to v2 activity slot by comparing opt.name===attraction.name_base or opt.name_local===attraction.name_local across editorDay.slots[morning_activity|afternoon_activity|evening_activity].options[]. The matched slot's slot_id becomes the drop zone's data-slot-id. For no-match fallback, use morning_activity. For empty activity slots with no visible PLAN_DATA card, render invisible zero-layout .slot-drop[data-slot-id] elements so all 6 slot types remain droppable."
+        "required_fix": "Delete stale sentence at line 404. Replace with: 'Use the F7b name-based algorithm from Finding 7b. Also: data-slot-id must be on the .slot-drop element itself per AC5.'"
       }
     },
 
-    "new_issue_from_codex": {
-      "id": "NEW-2",
-      "title": "setEditorSelections state update does not cause KanbanView to re-render with selected option",
-      "severity": "major",
-      "description": "KanbanView currently receives static PLAN_DATA.trips[selTrip].days[selDay] as its day prop. After drag-and-drop updates editorSelections React state, KanbanView does not re-render with the newly selected option. AC5 requires 'breakfast slot visually updates to show the selected candidate' — this cannot pass without a spec for merging editorSelections into KanbanView's data prop.",
-      "blocks_release": false,
-      "proposed_fix": "Spec should define an effectiveDay computed value for editor mode: start from published day object, for each slot in editorDay.slots where selected_option_id is in editorSelections, adapt the selected v2 option via adaptV2Option() and merge into the appropriate meal/attraction field. Pass effectiveDay (not raw PLAN_DATA day) to KanbanView in editor mode."
-    },
+    "new_blockers_in_round_3": [
+      {
+        "id": "BLOCKER-B",
+        "severity": "critical",
+        "title": "No effectiveDay merge contract — AC5 visual update unimplementable (promoted from MAJOR-1)",
+        "evidence": "react_template.tpl:1657-1658 — KanbanView receives static PLAN_DATA day prop. editorSelections state not connected. Codex confirmed hard blocker for AC5.",
+        "blocker": true,
+        "required_fix": "Add effectiveDay = useMemo(mergeEditorSelectionsIntoPublishedDay, [publishedDay, editorDay, editorSelections]) and pass EDITOR_MODE ? effectiveDay : publishedDay to KanbanView. Define merge behavior for meals and attractions."
+      },
+      {
+        "id": "BLOCKER-C",
+        "severity": "critical",
+        "title": "useEffect dependency [activeDay] is undefined; TRIP_ID not injected into page",
+        "evidence": "react_template.tpl:1645-1646 — state is selTrip/selDay, no activeDay. ticket:235 — tripId used without injection. Codex confirmed with PROPOSED_FIX.",
+        "blocker": true,
+        "required_fix": "Inject TRIP_ID alongside EDITOR_MODE. Fix useEffect: useEffect(() => { if (!EDITOR_MODE || !TRIP_ID) return; fetch(`/api/trip/${encodeURIComponent(TRIP_ID)}`).then(r=>r.json()).then(setEditorTripData); }, [TRIP_ID]);"
+      }
+    ],
 
-    "overall_assessment": "6 patches were applied. F2 (adapter), F3 (cache lock), and F4 (sidebar position) are correct and sufficient — those 3 prior blockers are resolved. F5 (save payload) has 4 concrete mismatches with save.py reality that cause drag-and-drop saves to silently no-op (mutations array missing) and fail to address the correct day file (0-indexed vs 1-indexed). F6 (drop zones) has an unimplementable attraction mapping because PLAN_DATA attractions have no slot_id. The F1 patch introduced a new index alignment bug — selDay misalignment between PLAN_DATA grouped trips and the flat editorTripData.days[]. Codex independently confirmed all 3 blockers. The spec is NOT ready for dev implementation.",
+    "overall_assessment": "Round 3 resolves BLOCKER-1 (F5 save payload — mutations[] contract now correct) and BLOCKER-3 (F1 day index — absolute-day find() algorithm now correct). 3 hard blockers remain: (A) BLOCKER-A: stale Technical Hints line 404 contradicts Finding 7b; (B) BLOCKER-B: no effectiveDay merge spec — AC5 visual update is unimplementable; (C) BLOCKER-C: useEffect [activeDay] is undefined and TRIP_ID is not injected. All 3 confirmed by Codex with concrete PROPOSED_FIX. Spec is NOT ready for dev implementation.",
 
     "findings": [
       {
-        "id": "BLOCKER-1",
+        "id": "BLOCKER-A",
         "severity": "critical",
-        "category": "wrong_field_contract",
-        "title": "F5: /api/save payload — 4 mismatches with actual save.py contract",
-        "location": "ticket-20260517-211850.md — Finding 5 resolution, window.setEditorSelection pseudocode, line 190-200",
-        "evidence": "save.py reads req['trip_id'], req['day'] (used in f'day-{day_n:02d}.json'), req['editor_session'], req.get('mutations', []). Spec shows flat { trip_id, day: activeDay, slot_id, option_id }. Without mutations[], handler returns [] and silently drops mutation. day=0 produces 'day-00.json'; no such file exists.",
-        "blocks_release": true
+        "category": "contradictory_guidance",
+        "title": "Stale Technical Hints line 404 contradicts Finding 7b attraction matching algorithm",
+        "location": "ticket-20260517-211850.md line 404 (Technical Hints Option A drop zone placement)",
+        "evidence": "ticket:239-249 defines name-based algorithm. ticket:404 says 'map morning cards to morning_activity' (time-bucket). Codex: 'a dev following the implementation section can implement the wrong algorithm'.",
+        "blocks_release": true,
+        "required_fix": "Delete stale sentence at line 404. Replace with F7b algorithm reference. Confirm data-slot-id on .slot-drop element itself per AC5."
       },
       {
-        "id": "BLOCKER-2",
+        "id": "BLOCKER-B",
         "severity": "critical",
-        "category": "unimplementable_guidance",
-        "title": "F6: Attraction-to-slot mapping — PLAN_DATA attraction cards have option_id=null/slot_id=null",
-        "location": "ticket-20260517-211850.md — Finding 4 drop zones, Technical Hints Option A drop zone placement, line 356-364",
-        "evidence": "Python verification: PLAN_DATA.trips[2].days[0].attractions[*].option_id=None, slot_id=None. No morning/afternoon sub-category exists in KanbanView flat attractions array.",
-        "blocks_release": true
-      },
-      {
-        "id": "BLOCKER-3",
-        "severity": "critical",
-        "category": "index_misalignment",
-        "title": "NEW (introduced by F1 patch): selDay index misalignment for multi-trip editorTripData access",
-        "location": "ticket-20260517-211850.md — Finding 7 resolution (CandidatesSidebar data source), line 209; Technical Hints CandidatesSidebar data source, line 345",
-        "evidence": "Codex verified PLAN_DATA.trips grouping: trips[0]=[abs1,abs2], trips[1]=[abs3,abs4], trips[2]=[abs5,abs6], trips[3]=[abs7], trips[4]=[abs8,abs9]. selDay resets to 0 on trip change. editorTripData.days[0]=abs1. selTrip=2, selDay=0 -> publishedDay=abs5 but editorTripData.days[0]=abs1.",
-        "blocks_release": true
-      },
-      {
-        "id": "MAJOR-1",
-        "severity": "major",
         "category": "missing_spec_detail",
-        "title": "NEW (Codex): No spec for merging editorSelections into KanbanView display after drop — AC5 cannot pass",
-        "location": "ticket-20260517-211850.md — M5, Finding 5 window.setEditorSelection bridge",
-        "evidence": "KanbanView receives static PLAN_DATA.trips[selTrip].days[selDay] as day prop (react_template.tpl:1799-1808). setEditorSelections state is not connected to this prop.",
-        "blocks_release": false
+        "title": "No effectiveDay merge contract — AC5 'slot visually updates' is unimplementable",
+        "location": "ticket-20260517-211850.md M5, Finding 5 window.setEditorSelection bridge, AC5 lines 309-314",
+        "evidence": "react_template.tpl:1657-1658 — day prop is static PLAN_DATA object. setEditorSelections state not connected. Codex: 'MAJOR-1 is a hard blocker for AC5'.",
+        "blocks_release": true,
+        "required_fix": "Add effectiveDay = useMemo(mergeEditorSelectionsIntoPublishedDay, ...) contract and pass to KanbanView in EDITOR_MODE. Define mergeEditorSelectionsIntoPublishedDay behavior for meal and attraction slots."
+      },
+      {
+        "id": "BLOCKER-C",
+        "severity": "critical",
+        "category": "undefined_variable",
+        "title": "useEffect dependency [activeDay] is undefined; TRIP_ID not injected into page",
+        "location": "ticket-20260517-211850.md line 235 (Finding 7 useEffect code)",
+        "evidence": "react_template.tpl:1645-1646 — state is selTrip/selDay, no activeDay. ticket:235 — uses tripId without injection. Codex confirmed with PROPOSED_FIX.",
+        "blocks_release": true,
+        "required_fix": "Inject TRIP_ID alongside EDITOR_MODE. Fix useEffect dependency to [TRIP_ID]."
       }
     ],
 
