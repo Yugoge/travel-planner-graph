@@ -1,0 +1,262 @@
+{
+  "request_id": "20260517-195000",
+  "task_id": "20260517-195000",
+  "timestamp": "2026-05-17T19:50:00Z",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "Fix three photo card layout regressions introduced in task 20260517-172103: (P0) timeline slot images render as giant heroes instead of compact thumbnails; (P1) .slot-selected has no flex layout so the thumbnail stacks above text; (P2) #trip-cover upscales 500px source images to 794px producing blur.",
+    "clarified": "Same as original — all three issues clearly scoped.",
+    "what": "Fix .slot-selected to flex row with 80px thumbnail left, text right; hide #trip-cover when naturalWidth < 800",
+    "why": "Prior cycle added photos with a shared .card-photo rule that breaks in the wider timeline pane; cover images are too low-res to display cleanly at full width",
+    "where": ["web/css/main.css", "web/js/state.js"],
+    "scope": {
+      "included": [
+        ".slot-selected CSS rule (lines 407-416)",
+        "new scoped .slot-selected .card-photo override (after line 425)",
+        "renderCover() onload guard in state.js (lines 162-164)"
+      ],
+      "excluded": [
+        "Base .card-photo rule",
+        "Candidate card layout",
+        "Images API / backend",
+        "CSS tokens",
+        "Drag functionality",
+        "object-position on #trip-cover",
+        "Trip metadata panel"
+      ]
+    },
+    "success_criteria": [
+      "img.card-photo inside .slot-selected renders at height <= 100px (target 80px)",
+      ".slot-selected computed display === flex",
+      "Candidate cards unaffected: img.card-photo in .card.card-candidate still 16/9 aspect ratio",
+      "#trip-cover hidden when naturalWidth < 800 (e.g. 500px Kunming image)",
+      "#trip-cover visible when naturalWidth >= 800"
+    ],
+    "constraints": [
+      "Do not alter base .card-photo rule",
+      "Scoped .slot-selected .card-photo override must appear after .card-photo in the CSS file",
+      "img.onload must be assigned as property (not addEventListener) to prevent accumulation on day switch",
+      "No object-position change on #trip-cover"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "web/css/main.css",
+      "web/js/state.js"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "Timeline slot photos render as 712x401px full-width heroes; cover shows blurry upscaled 500px images",
+    "root_cause": "Shared .card-photo rule uses width:100% + aspect-ratio:16/9, which is correct for ~235px candidate cards but produces ~712x401px in the 738px timeline pane. .slot-selected has display:block so image stacks above text. renderCover() shows cover unconditionally without naturalWidth check.",
+    "root_cause_commit": "20260517-172103 (photos feature addition)",
+    "why_introduced": "Photo feature added a single shared CSS class for all img elements, not accounting for differing pane widths",
+    "why_problematic": "The same width:100% resolves to very different sizes depending on the containing pane (235px candidate vs 738px timeline)",
+    "timeline": "Introduced in task 20260517-172103",
+    "affected_files": ["web/css/main.css", "web/js/state.js"],
+    "evidence_type": "inferred",
+    "observations": [
+      ".slot-selected { display: block } at main.css:407-408 (inferred: stacks children vertically)",
+      ".card-photo { width: 100%; aspect-ratio: 16/9 } at main.css:419-421 (inferred: 712px wide in 738px pane = 401px tall)",
+      "renderCover() at state.js:162-164 sets img.hidden=false then img.src=url with no naturalWidth check (inferred: always shows cover)",
+      "city_covers images are 500x374px natural from images.json (inferred from data file inspection)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no Playwright runtime measurement performed; live browser verification deferred to QA)",
+    "complaint_location_keywords": ["slot-selected", "card-photo", "trip-cover", "renderCover", "timeline"],
+    "localization_evidence": "Source code read at main.css:407-425 and state.js:154-169, 500-525. Measurements of computed CSS values at runtime not performed.",
+    "located_source": "web/css/main.css:407-425 (layout and photo rules), web/js/state.js:154-169 (cover render)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "task 20260517-172103 (photo feature addition, known causal commit)",
+      "commit_message": "feat: add photos to trip editor",
+      "confirmed_by": "user-reported causal commit",
+      "bisect_blocked": "not attempted — causal commit known from dispatch",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L2",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": ".slot-selected layout is vertical stack (block), not horizontal flex row",
+      "acceptance_criterion": ".slot-selected computed display equals flex; image left of name text"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "timeline slot images are full-width heroes (712x401px), not thumbnails",
+      "acceptance_criterion": "img.card-photo inside .slot-selected renders at height <= 100px"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "thumbnail on the left, text (name + meta) on the right in a single horizontal row",
+      "acceptance_criterion": "Name and meta divs appear to the right of the image in rendered layout"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "cover image is too wide/blurry for portrait source images",
+      "acceptance_criterion": "#trip-cover hidden when naturalWidth < 800"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "candidate cards in the right sidebar still show photos correctly",
+      "acceptance_criterion": "img.card-photo in .card.card-candidate still renders at 16/9 aspect ratio"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "web/css/main.css",
+      "line_range": "407-416",
+      "role": ".slot-selected block rule — controls layout of selected slot display",
+      "imports_from": ["leaf"],
+      "evidence": "Read main.css:395-440",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/css/main.css",
+      "line_range": "419-425",
+      "role": ".card-photo shared rule — controls ALL card photo img elements",
+      "imports_from": ["leaf"],
+      "evidence": "Read main.css:419-425; Grep card-photo in web/",
+      "verified_via": "both"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "154-169",
+      "role": "renderCover() — sets #trip-cover img src based on active day city",
+      "imports_from": ["leaf"],
+      "evidence": "Read state.js:154-169",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "500-525",
+      "role": "_writeSlotSelected() — builds .slot-selected DOM with img.card-photo + text children",
+      "imports_from": ["leaf"],
+      "evidence": "Read state.js:500-525",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "web/css/main.css",
+      "line": 436,
+      "type": "css-selector-negation",
+      "code_snippet": ".card-photo[hidden], #trip-cover[hidden] { display: none; }",
+      "purpose": "Ensures [hidden] attribute collapses photo elements to display:none (overrides flex/block display)",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh data / en UI",
+    "auth_state": "N/A (no auth)",
+    "data_state": "beijing-lijiang-dali trip loaded with images.json containing city_covers and POI photos",
+    "browser": "Chrome desktop",
+    "url_path": "/ (index.html, timeline tab active)"
+  },
+  "evidence": {
+    "observed": "Timeline slot images are full-width heroes ~712x401px; .slot-selected is vertical stack; cover image blurry at 794px rendered from 500px source",
+    "measured": {
+      "value": ".slot-selected { display: block }; .card-photo { width: 100%; aspect-ratio: 16/9 }; renderCover sets img.hidden=false unconditionally",
+      "location": "web/css/main.css:407-421, web/js/state.js:162-164"
+    },
+    "expected": {
+      "value": ".slot-selected display:flex with 80px thumbnail left, text right; #trip-cover hidden when naturalWidth < 800",
+      "source": "Published Notion-style reference page (user-provided) + Codex CSS/JS guidance (Q1, Q2 PROPOSED_FIX)"
+    },
+    "gap": "display:block vs flex; width:100% resolving to 712px vs target 80px; no naturalWidth guard on cover"
+  },
+  "scope_expansion": {
+    "search_pattern": ".card-photo|.slot-selected|renderCover|#trip-cover",
+    "search_scope": "web/",
+    "user_reported": ["web/css/main.css", "web/js/state.js"],
+    "additional_found": ["web/index.html (template contains img.card-photo — read-only, no change needed)"],
+    "all_occurrences": [
+      "web/css/main.css:407-416 (.slot-selected rule)",
+      "web/css/main.css:419-425 (.card-photo shared rule)",
+      "web/css/main.css:428-434 (#trip-cover rule)",
+      "web/css/main.css:436-439 ([hidden] overrides)",
+      "web/index.html:72 (#trip-cover img element — no change)",
+      "web/index.html:93 (tpl-candidate-card img.card-photo — no change)",
+      "web/js/state.js:154-169 (renderCover)",
+      "web/js/state.js:329-341 (_writeCardPhoto for candidate cards — no change)",
+      "web/js/state.js:500-525 (_writeSlotSelected)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Source code read in this session; Codex CSS/JS guidance (gpt-5.5 xhigh reasoning) for exact proposed fixes",
+    "url_or_location": "web/css/main.css:407-434, web/js/state.js:154-169, Codex session 019e37c6-8c29-7852-b660-f23a97be5fdc",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L2",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on this specific set of layout regressions"
+    }
+  },
+  "context": {
+    "codebase_state": "Post-task-20260517-172103 photo feature; photos working but layout wrong",
+    "recent_commits": "7b416587 feat(web): 3-column Notion layout; 8b7d4e0c fix(web): 3 close-gate blockers; dbb35f72 feat(web): Notion UI redesign",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Scoped CSS override under .slot-selected for thumbnail sizing + flex layout; JS onload guard in renderCover() for naturalWidth check. Minimal blast radius — only 3 CSS blocks and 1 JS block touched.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "web/css/main.css",
+      "web/js/state.js"
+    ],
+    "validation_approach": "QA: Playwright at 1440x900 desktop — measure computed style of img.card-photo in .slot-selected (height <= 100px, display on parent = flex); measure candidate card img (aspect-ratio still 16/9); verify Playwright page shows #trip-cover hidden for Kunming day (naturalWidth 500 < 800)"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex provided exact CSS for Q1 (flex row with 80px thumbnail scoped under .slot-selected, with :not(.card-photo) flex:1 rule for text children) and exact JS for Q2 (onload property assignment before img.src, naturalWidth check hides-or-shows). Q3 OBSERVATION_ONLY: do not add object-position:top; center crop is better for wide 21/9 city skyline crops.",
+    "findings": [
+      {
+        "issue": "Q1: .slot-selected needs display:flex + scoped .card-photo override (80x80px, aspect-ratio:auto) + text children flex:1",
+        "proposed_fix": ".slot-selected { display:flex; align-items:center; gap:12px; ... } .slot-selected .card-photo { flex:0 0 80px; width:80px; height:80px; aspect-ratio:auto; object-fit:cover; } .slot-selected > :not(.card-photo) { flex:1; min-width:0; }",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Exact proposed CSS incorporated into Technical Hints. BA refined: scoped override must follow base .card-photo in cascade order (Codex flagged this)."
+      },
+      {
+        "issue": "Q2: onload must be assigned as property before img.src; naturalWidth < 800 hides element; else branch nulls onload",
+        "proposed_fix": "img.onload = () => { if (img.naturalWidth < 800) { img.hidden=true; img.removeAttribute('src'); } }; img.hidden=false; img.src=url;",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated. BA refined the hidden-until-loaded pattern: img.hidden stays true until onload passes naturalWidth >= 800 check (prevents flicker of loading state). Codex original set img.hidden=false before onload fires; BA spec reverses to img.hidden=true until check passes."
+      },
+      {
+        "issue": "Q3: object-position:top would over-emphasize sky in wide 21/9 crops; center crop is better default for city skylines",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Accepted — no CSS change for object-position. Already excluded from scope per dispatch."
+      }
+    ],
+    "feedback_incorporated": "Q1 CSS applied verbatim with cascade-order note added. Q2 JS applied with BA refinement: img.hidden=true before src set (hidden-until-loaded pattern). Q3 observation logged; no action."
+  }
+}
