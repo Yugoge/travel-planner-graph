@@ -10,104 +10,88 @@
     "passed_user_requirement": false,
     "ac_alignment": false,
 
-    "round": 3,
-    "round_2_blockers_resolved": ["BLOCKER-1 (F5 save payload — mutations[] contract now correct)", "BLOCKER-3 (F1 absolute day index — find() algorithm now correct)"],
-    "round_3_blockers": [
-      "BLOCKER-A (= old BLOCKER-2): Stale Technical Hints line 404 contradicts Finding 7b attraction matching algorithm",
-      "BLOCKER-B (= old MAJOR-1 promoted): No effectiveDay merge contract — AC5 visual update unimplementable",
-      "BLOCKER-C (NEW from Codex): useEffect dependency [activeDay] undefined; TRIP_ID not injected"
-    ],
-
-    "patch_verdicts": {
-      "F1_data_source_RESOLVED": {
-        "verdict": "PASS — BLOCKER-3 resolved in Round 3 (Finding 1a absolute-day algorithm correct)",
-        "summary": "The patch correctly changed the data source from PLAN_DATA to GET /api/trip/<id>. However, the useEffect code passes editorTripData.days[activeDay] (array index) to CandidatesSidebar. Codex verified: PLAN_DATA.trips is grouped by city — trips[0]=[day1,day2], trips[1]=[day3,day4], trips[2]=[day5,day6], trips[3]=[day7], trips[4]=[day8,day9]. selDay resets to 0 when selTrip changes. editorTripData.days[] is a flat 9-element array indexed 0..8 = abs days 1..9. For selTrip=2, selDay=0: publishedDay=abs5, editorTripData.days[0]=abs1. Wrong-day candidates are shown.",
-        "blocker": true,
-        "new_issue": true,
-        "required_fix": "Replace editorTripData.days[activeDay] with a day-number match: const publishedDay = PLAN_DATA.trips[selTrip]?.days?.[selDay]; const editorDay = editorTripData?.days?.find(d => Number(d.day) === Number(publishedDay?.day)); Use editorDay everywhere (CandidatesSidebar props, save payload, drop-zone mapping)."
-      },
-      "F2_adapter": {
+    "round": 4,
+    "round_4_patches_verified": {
+      "BLOCKER-A": {
         "verdict": "PASS",
-        "summary": "adaptV2Option() is now defined in the spec with correct field mappings: name_base: opt.name, location_base: opt.location_summary, cost_display: Math.round(opt.cost)+' CNY'. Verified against actual v2 option keys. CNY hardcode is acceptable for the current China trip. Codex confirmed non-blocking.",
-        "blocker": false,
-        "required_fix": null
+        "evidence": "Grep confirmed 'morning cards' not present anywhere in ticket-20260517-211850.md. Lines 444-457 say 'Use the F7b name-based algorithm from Finding 7b for attraction drop zones.' Line 455 shows data-slot-id on .slot-drop element: <div className=\"slot-drop\" data-slot-id={slotId} data-droppable=\"true\">."
       },
-      "F3_cache_lock": {
+      "BLOCKER-B": {
         "verdict": "PASS",
-        "summary": "The per-trip lock is now held through the entire generate+write cycle. Invalidation also takes the per-trip lock. The stale-write race from the prior QA cycle is eliminated. Codex confirmed correct.",
-        "blocker": false,
-        "required_fix": null
+        "evidence": "Lines 277-302 specify effectiveDay = useMemo(() => mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections), [publishedDay, editorDay, editorSelections]). KanbanView receives EDITOR_MODE ? effectiveDay : publishedDay. Merge logic defined: localId??persistedId priority, adaptV2Option for meals, F7b name-based for activities."
       },
-      "F4_sidebar_position": {
+      "BLOCKER-C": {
         "verdict": "PASS",
-        "summary": "M2 now explicitly specifies: position: fixed; right: 0; top: 0; bottom: 0; width: 300px; z-index: 100. This is not a flex column and does not compress the 280px kanban cards. The layout compression blocker from the prior QA cycle is eliminated.",
-        "blocker": false,
-        "required_fix": null
-      },
-      "F5_save_payload_RESOLVED": {
-        "verdict": "PASS — BLOCKER-1 resolved in Round 3 (mutations[] contract now correct)",
-        "summary": "Finding 5 now shows the correct contract: { trip_id, day: <absolute_1_indexed>, editor_session: <UUID>, mutations: [{ type: 'select', slot: <slotId>, option_id: <optionId>, origin_slot_id: null }] }. All 4 prior mismatches are resolved. Verified against save.py:200-203 and save.py:76.",
-        "blocker": false
-      },
-      "F6_drop_zones_STILL_FAILING": {
-        "verdict": "FAIL — BLOCKER-A remains (contradictory guidance in Technical Hints line 404)",
-        "summary": "Finding 7b defines the correct name-based algorithm. But Technical Hints line 404 still says 'map morning cards to morning_activity' — the stale time-bucket approach. Both coexist in the same document. Codex confirmed hard blocker.",
-        "blocker": true,
-        "required_fix": "Delete stale sentence at line 404. Replace with: 'Use the F7b name-based algorithm from Finding 7b. Also: data-slot-id must be on the .slot-drop element itself per AC5.'"
+        "evidence": "Lines 422-442: published path .replace('__TRIP_ID__', 'null'), editor path .replace('__TRIP_ID__', json.dumps(trip_id)). Lines 237-242: useEffect dependency is [TRIP_ID] not [activeDay]. Both __EDITOR_MODE__ and __TRIP_ID__ present in HTML_SCRIPT."
       }
     },
 
-    "new_blockers_in_round_3": [
-      {
-        "id": "BLOCKER-B",
-        "severity": "critical",
-        "title": "No effectiveDay merge contract — AC5 visual update unimplementable (promoted from MAJOR-1)",
-        "evidence": "react_template.tpl:1657-1658 — KanbanView receives static PLAN_DATA day prop. editorSelections state not connected. Codex confirmed hard blocker for AC5.",
-        "blocker": true,
-        "required_fix": "Add effectiveDay = useMemo(mergeEditorSelectionsIntoPublishedDay, [publishedDay, editorDay, editorSelections]) and pass EDITOR_MODE ? effectiveDay : publishedDay to KanbanView. Define merge behavior for meals and attractions."
-      },
-      {
-        "id": "BLOCKER-C",
-        "severity": "critical",
-        "title": "useEffect dependency [activeDay] is undefined; TRIP_ID not injected into page",
-        "evidence": "react_template.tpl:1645-1646 — state is selTrip/selDay, no activeDay. ticket:235 — tripId used without injection. Codex confirmed with PROPOSED_FIX.",
-        "blocker": true,
-        "required_fix": "Inject TRIP_ID alongside EDITOR_MODE. Fix useEffect: useEffect(() => { if (!EDITOR_MODE || !TRIP_ID) return; fetch(`/api/trip/${encodeURIComponent(TRIP_ID)}`).then(r=>r.json()).then(setEditorTripData); }, [TRIP_ID]);"
-      }
-    ],
+    "overall_assessment": "Round 4: BLOCKER-A/B/C all confirmed resolved. Codex adversarial review (session 019e3831, gpt-5.5, xhigh) found 8 new hard blockers (D-K). The spec still cannot be implemented correctly. Requires Round 5 BA patch.",
 
-    "overall_assessment": "Round 3 resolves BLOCKER-1 (F5 save payload — mutations[] contract now correct) and BLOCKER-3 (F1 day index — absolute-day find() algorithm now correct). 3 hard blockers remain: (A) BLOCKER-A: stale Technical Hints line 404 contradicts Finding 7b; (B) BLOCKER-B: no effectiveDay merge spec — AC5 visual update is unimplementable; (C) BLOCKER-C: useEffect [activeDay] is undefined and TRIP_ID is not injected. All 3 confirmed by Codex with concrete PROPOSED_FIX. Spec is NOT ready for dev implementation.",
-
-    "findings": [
+    "all_findings": [
       {
-        "id": "BLOCKER-A",
         "severity": "critical",
-        "category": "contradictory_guidance",
-        "title": "Stale Technical Hints line 404 contradicts Finding 7b attraction matching algorithm",
-        "location": "ticket-20260517-211850.md line 404 (Technical Hints Option A drop zone placement)",
-        "evidence": "ticket:239-249 defines name-based algorithm. ticket:404 says 'map morning cards to morning_activity' (time-bucket). Codex: 'a dev following the implementation section can implement the wrong algorithm'.",
-        "blocks_release": true,
-        "required_fix": "Delete stale sentence at line 404. Replace with F7b algorithm reference. Confirm data-slot-id on .slot-drop element itself per AC5."
+        "id": "BLOCKER-D",
+        "location": "ticket-20260517-211850.md lines 446-450 vs lines 454-456; lines 194-198",
+        "issue": "Two contradictory drop-zone JSX snippets. Lines 446-450 (Option A) show inner .slot-drop WITHOUT data-slot-id. Lines 454-456 (corrected) show .slot-drop WITH data-slot-id. Also lines 194-198 say 'Users drop onto the section header' contradicting per-card instruction at line 452. Dev cannot determine canonical structure.",
+        "recommendation": "Delete lines 445-451 first snippet and lines 194-198 section-header instruction entirely. Keep ONLY lines 453-457 canonical snippet with data-slot-id on inner .slot-drop.",
+        "blocks_release": true
       },
       {
-        "id": "BLOCKER-B",
         "severity": "critical",
-        "category": "missing_spec_detail",
-        "title": "No effectiveDay merge contract — AC5 'slot visually updates' is unimplementable",
-        "location": "ticket-20260517-211850.md M5, Finding 5 window.setEditorSelection bridge, AC5 lines 309-314",
-        "evidence": "react_template.tpl:1657-1658 — day prop is static PLAN_DATA object. setEditorSelections state not connected. Codex: 'MAJOR-1 is a hard blocker for AC5'.",
-        "blocks_release": true,
-        "required_fix": "Add effectiveDay = useMemo(mergeEditorSelectionsIntoPublishedDay, ...) contract and pass to KanbanView in EDITOR_MODE. Define mergeEditorSelectionsIntoPublishedDay behavior for meal and attraction slots."
+        "id": "BLOCKER-E",
+        "location": "ticket-20260517-211850.md lines 446-450, lines 454-456",
+        "issue": "Both drop-zone snippets render visible 'Drop here' text as literal content inside the main page body. User requirement states pixel-identical to published page (R1). Visible 'Drop here' text violates R1.",
+        "recommendation": "Replace 'Drop here' text with a transparent absolute-position overlay div: no visible text, no border at idle, highlights on dragover only. Example: <div className=\"slot-drop\" data-slot-id={slotId} data-droppable=\"true\" style={{position:'absolute',inset:0,opacity:0}} />",
+        "blocks_release": true
       },
       {
-        "id": "BLOCKER-C",
         "severity": "critical",
-        "category": "undefined_variable",
-        "title": "useEffect dependency [activeDay] is undefined; TRIP_ID not injected into page",
-        "location": "ticket-20260517-211850.md line 235 (Finding 7 useEffect code)",
-        "evidence": "react_template.tpl:1645-1646 — state is selTrip/selDay, no activeDay. ticket:235 — uses tripId without injection. Codex confirmed with PROPOSED_FIX.",
-        "blocks_release": true,
-        "required_fix": "Inject TRIP_ID alongside EDITOR_MODE. Fix useEffect dependency to [TRIP_ID]."
+        "id": "BLOCKER-F",
+        "location": "ticket-20260517-211850.md AC5 GIVEN/WHEN; data/beijing-lijiang-dali-20260418-100846/days/day-01.json verified",
+        "issue": "AC5 GIVEN references 'Day 1 breakfast slot'. Verified day-01.json: breakfast slot has 0 options (options: []). The acceptance criterion is untestable against actual trip data. Only dinner has 2 options on Day 1.",
+        "recommendation": "Rewrite AC5 GIVEN to use 'Day 3, breakfast slot' (breakfast-3-1 confirmed present in day-03.json). Update WHEN/THEN to reference Day 3 breakfast.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-G",
+        "location": "ticket-20260517-211850.md lines 247-257 (F7b algorithm)",
+        "issue": "F7b name-based matching algorithm searches only day.attractions[]. Verified from actual data: day-03.json evening_activity slot option 'evening_activity-3-1' has name 'Lijiang Old Town Night Walk - Four Square Street' which comes from entertainment.json (name_base confirmed at line 83), NOT from attractions[]. F7b will silently fail to match any entertainment-sourced activity option.",
+        "recommendation": "Expand F7b to search day.attractions[], day.entertainment[], day.cafe[], and day.unscheduled_optionals[] when resolving card-to-slot mapping. Return first name_base/name_local match across all four collections.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-H",
+        "location": "ticket-20260517-211850.md line 373 vs line 435",
+        "issue": "Signature conflict for generate_editor_html(). Line 373 calls generate_editor_html(gen) with one argument. Line 435 defines/uses generate_editor_html(gen, trip_id) with two arguments. One call site will crash at runtime.",
+        "recommendation": "Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id) to match the two-argument signature at line 435.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-I",
+        "location": "ticket-20260517-211850.md AC1; react_template.tpl:1701-1705",
+        "issue": "AC1 tests 'getComputedStyle(document.body).fontFamily'. The react_template.tpl applies fontFamily on the root app <div> (line 1704), NOT on document.body. getComputedStyle(document.body) will not reflect the app's fontFamily even in the gold published page. AC1 will fail even for a correctly implemented feature.",
+        "recommendation": "Change AC1 WHEN to: document.querySelector('#root > div').style.fontFamily or getComputedStyle(document.querySelector('[style*=\"ui-sans-serif\"]')).fontFamily.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-J",
+        "location": "ticket-20260517-211850.md Finding 10 (lines 277-302) — effectiveDay merge contract",
+        "issue": "effectiveDay merge replaces publishedDay card objects with raw v2 slot option objects. v2 options lack image, time, notes_base, location_base fields that React cards render. Merged cards will render broken (no image, no time, no notes). The merge must use full PLAN_DATA card objects as baseline, only overlaying selection state, not replacing entire card objects.",
+        "recommendation": "Revise merge contract: keep publishedDay as read-only baseline. For meal slots, find the PLAN_DATA meal entry matching the selected option by name (not by replacing it with the raw v2 option). Mark it as selected visually. Do not call adaptV2Option on merged objects that will render in KanbanView — adaptV2Option output is for CandidatesSidebar display only.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-K",
+        "location": "react_template.tpl:4; ticket-20260517-211850.md Finding 10 effectiveDay spec",
+        "issue": "react_template.tpl line 4: const { useState, useEffect, useCallback } = React; — useMemo is NOT destructured. The spec's effectiveDay = useMemo(...) will throw ReferenceError: useMemo is not defined at render time, crashing the entire app.",
+        "recommendation": "Add useMemo to the spec's instruction for the template modification: change line 4 to const { useState, useEffect, useCallback, useMemo } = React; OR use React.useMemo(...) in the effectiveDay pseudocode.",
+        "blocks_release": true
       }
     ],
 
@@ -116,11 +100,11 @@
         "requirement_id": "R1",
         "source_phrase": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
         "criterion": "Editor main content area renders identical to published page (card dimensions, font, cover)",
-        "verification_method": "Spec analysis — shared react_template.tpl guarantees visual parity by construction. F4 confirmed position:fixed sidebar does not compress layout.",
-        "status": "pass",
-        "result": "pass",
-        "details": "Architectural approach guarantees visual parity. F4 ensures no layout compression.",
-        "evidence": "react_template.tpl:1704 (ui-sans-serif), :726-729 (200px cover), :784-785 (cardW=280, cardH=320). M2 specifies position:fixed sidebar."
+        "verification_method": "Spec analysis — shared react_template.tpl guarantees structural parity, but BLOCKER-E (visible Drop here text) and BLOCKER-J (effectiveDay merge replaces card objects) would break visual parity at runtime.",
+        "status": "fail",
+        "result": "fail",
+        "details": "Architecture correct but BLOCKER-E and BLOCKER-J would produce non-identical rendering.",
+        "evidence": "BLOCKER-E: drop-zone snippets add visible text. BLOCKER-J: merge replaces PLAN_DATA card objects with raw v2 options lacking image/time/notes."
       },
       {
         "requirement_id": "R2",
@@ -129,26 +113,26 @@
         "verification_method": "React template features preserved by construction",
         "status": "pass",
         "result": "pass",
-        "details": "All published features (language toggle, map toggle, timeline view, budget, item sidebar) are preserved by sharing the React template.",
+        "details": "All published features preserved by sharing React template.",
         "evidence": "react_template.tpl:1647-1654 — all useState flags present."
       },
       {
         "requirement_id": "R3",
         "source_phrase": "直接复制原始html生成机制然后将你的全部动态html机制加载上面",
         "criterion": "serve-trip.py uses React template as editor shell with editor components injected",
-        "verification_method": "Spec analysis — 3 blocking implementation gaps prevent working implementation",
+        "verification_method": "Spec analysis — 8 blocking gaps prevent functioning implementation",
         "status": "fail",
         "result": "fail",
-        "details": "Architecture is correct but 3 blockers prevent functioning: F5 saves silently no-op, F6 activity drop zones lack slot identity, F1 index misalignment shows wrong-day candidates.",
-        "evidence": "save.py mutations[] requirement verified. PLAN_DATA attraction option_id=null verified. editorTripData.days[] flat vs PLAN_DATA grouped verified."
+        "details": "Architecture correct but BLOCKER-D through BLOCKER-K make the spec unimplementable without crashes or incorrect behavior.",
+        "evidence": "8 hard blockers identified and verified via data inspection and Codex adversarial review."
       }
     ],
 
     "codex_consult": {
       "invoked": true,
       "status": "ok",
-      "feedback_summary": "Codex (Round 3) read ticket-20260517-211850.md, save.py, drag.js, and react_template.tpl. Confirmed: (1) BLOCKER-A (old BLOCKER-2): stale Technical Hints line 404 vs Finding 7b — hard blocker; dev following implementation section implements wrong algorithm. PROPOSED_FIX: delete line 404, replace with F7b; confirm data-slot-id on .slot-drop itself. (2) BLOCKER-B (old MAJOR-1): effectiveDay merge is a hard blocker for AC5 — no spec path connects editorSelections to KanbanView day prop. PROPOSED_FIX: effectiveDay = useMemo(merge...). (3) NEW BLOCKER-C: [activeDay] dependency undefined in react_template.tpl (selTrip/selDay exist, no activeDay); tripId not injected. PROPOSED_FIX: inject TRIP_ID, fix useEffect dep to [TRIP_ID]. (4) MINOR: initEditorDrag contract under-specified (delegated listeners, slotId from dataset, cleanup fn). (5) MINOR: origin_slot_id null vs meal grouping strategy undeclared. BLOCKER-1 (F5) and BLOCKER-3 (F1) confirmed PASS by Codex.",
-      "feedback_incorporated": "All 3 hard blockers from Codex incorporated as BLOCKER-A/B/C. 2 minor findings recorded as not-blocking. BLOCKER-1 and BLOCKER-3 verdicts confirmed PASS per Codex."
+      "feedback_summary": "Codex (Round 4 confirmation, session 019e3831, gpt-5.5, xhigh) confirmed FAIL verdict. Identified 3 additional hard blockers beyond QA's D/E/F/G/H: (I) AC1 tests document.body but fontFamily is on root <div> — AC1 untestable even on gold page; (J) effectiveDay merge would break KanbanView by replacing PLAN_DATA card objects with raw v2 options lacking image/time/notes; (K) useMemo not destructured from React in react_template.tpl line 4 — effectiveDay spec crashes at render. All 3 carry PROPOSED_FIX.",
+      "feedback_incorporated": "All 3 Codex findings (I/J/K) incorporated as hard blockers. Total new blockers: 8 (D-K). BLOCKER-A/B/C resolved per Round 4 patches."
     },
 
     "build_verification": {
@@ -178,7 +162,7 @@
       "health_check_url": null,
       "health_check_result": null,
       "status": "skipped_ba_mode",
-      "blocking_reason": "BA-mode QA: no implementation to verify."
+      "blocking_reason": "BA-mode QA: no implementation to verify. Spec quality gate only."
     },
 
     "e2e_script_results": [],
@@ -206,96 +190,64 @@
       "issues": []
     },
 
-    "all_findings": [
-      {
-        "severity": "critical",
-        "location": "ticket-20260517-211850.md lines 185-202 (Finding 5 / save payload pseudocode)",
-        "issue": "F5: save payload mismatches save.py contract — mutations[] missing (saves silently no-op), slot_id at top level instead of mutations[].slot, editor_session missing, day=0-indexed writes to day-00.json (file does not exist).",
-        "recommendation": "Spec must show: { trip_id: TRIP_ID, day: editorDay.day, editor_session: editorSessionRef.current, mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }] }",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "location": "ticket-20260517-211850.md lines 356-364 (Option A drop zone placement)",
-        "issue": "F6: Attraction-to-slot mapping 'map morning cards to morning_activity' is unimplementable — PLAN_DATA attraction cards have option_id=null/slot_id=null, KanbanView has no time-of-day sub-categories.",
-        "recommendation": "Define name-based matching: match each PLAN_DATA attraction to v2 activity slot by opt.name===attraction.name_base or opt.name_local===attraction.name_local across editorDay.slots[morning_activity|afternoon_activity|evening_activity].options[]. Use matched slot_id as drop zone data-slot-id.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "location": "ticket-20260517-211850.md line 209 (Finding 7 resolution) and line 345 (CandidatesSidebar data source hint)",
-        "issue": "NEW (introduced by F1 patch): selDay index misalignment — selDay resets to 0 per PLAN_DATA trip group, editorTripData.days[] is flat; editorTripData.days[selDay] gives wrong-day candidates for any trip after the first.",
-        "recommendation": "Replace array-index lookup with: const publishedDay = PLAN_DATA.trips[selTrip]?.days?.[selDay]; const editorDay = editorTripData?.days?.find(d => Number(d.day) === Number(publishedDay?.day));",
-        "blocks_release": true
-      },
-      {
-        "severity": "major",
-        "location": "ticket-20260517-211850.md — M5 (selection highlights slot), window.setEditorSelection bridge",
-        "issue": "NEW (Codex): editorSelections state not merged into KanbanView day prop — AC5 visual update cannot pass.",
-        "recommendation": "Define effectiveDay: merge editorDay.slots selected options (via adaptV2Option) into the PLAN_DATA day prop before passing to KanbanView in editor mode.",
-        "blocks_release": false
-      }
-    ],
-
     "summary": {
-      "round": 3,
-      "round_2_blockers_resolved": 2,
-      "round_2_blockers_still_failing": 1,
-      "new_blockers_found_in_round_3": 2,
-      "total_blockers_for_round_4": 3,
-      "critical_issues": 3,
+      "round": 4,
+      "round_4_patches_resolved": ["BLOCKER-A", "BLOCKER-B", "BLOCKER-C"],
+      "new_blockers_found_in_round_4": ["BLOCKER-D", "BLOCKER-E", "BLOCKER-F", "BLOCKER-G", "BLOCKER-H", "BLOCKER-I", "BLOCKER-J", "BLOCKER-K"],
+      "critical_issues": 8,
       "major_issues": 0,
-      "minor_issues": 2,
-      "total_findings": 5,
-      "release_recommendation": "reject",
-      "blocker_status_table": {
-        "BLOCKER-1_F5_save_payload": "RESOLVED — mutations[] contract now correct",
-        "BLOCKER-2_F6_attraction_mapping": "STILL FAILING as BLOCKER-A — stale Technical Hints line 404 contradicts F7b",
-        "BLOCKER-3_F1_day_index": "RESOLVED — absolute-day find() algorithm now correct",
-        "BLOCKER-B_effectiveDay_merge": "NEW BLOCKER (promoted from MAJOR-1) — no effectiveDay merge spec for AC5",
-        "BLOCKER-C_useEffect_tripId": "NEW BLOCKER — [activeDay] undefined, TRIP_ID not injected"
-      }
+      "minor_issues": 0,
+      "total_findings": 8,
+      "release_recommendation": "reject"
     },
 
     "spec_section_updates": {
-      "section_4": null,
-      "section_6": null,
-      "section_7": null
+      "section_4": "Round 4 verification (2026-05-18): BLOCKER-A confirmed resolved (no stale sentence, data-slot-id on .slot-drop at line 455). BLOCKER-B confirmed resolved (effectiveDay merge contract at lines 277-302). BLOCKER-C confirmed resolved (TRIP_ID injected both paths, useEffect dep [TRIP_ID] at lines 237-242). New blockers D-K identified: (D) contradictory drop-zone JSX snippets lines 446-450 vs 454-456 plus section-header instruction at 194-198; (E) visible 'Drop here' text violates pixel-identical R1; (F) AC5 Day 1 breakfast has 0 options in actual data (day-01.json confirmed); (G) F7b searches only attractions[] but evening_activity-3-1 'Lijiang Old Town Night Walk' comes from entertainment.json; (H) generate_editor_html() signature conflict line 373 (gen) vs line 435 (gen, trip_id); (I) AC1 tests document.body but fontFamily is on root <div> — wrong node; (J) effectiveDay merge replaces PLAN_DATA card objects with raw v2 options lacking image/time/notes fields; (K) useMemo not destructured from React at react_template.tpl:4 — spec crashes at render.",
+      "section_6": "Spec not ready: 8 hard blockers remain. (D) Contradictory drop-zone instructions — dev cannot determine canonical structure. (E) 'Drop here' visible text violates pixel-identical R1. (F) AC5 references Day 1 breakfast which has zero options in real data — untestable. (G) F7b restricted to attractions[] misses entertainment[]/cafe[] activity sources — silent failure. (H) generate_editor_html() called with 1 arg at line 373 but 2 args at line 435 — runtime crash. (I) AC1 queries wrong DOM node for fontFamily — will fail even on correct implementation. (J) effectiveDay merge contract overwrites enriched PLAN_DATA cards with raw v2 options — broken rendering. (K) useMemo not in React destructuring — ReferenceError crash.",
+      "section_7": "BA must patch exactly 8 items in Round 5: (D) Delete lines 445-451 first drop-zone snippet and lines 194-198 section-header instruction; keep only lines 453-457. (E) Replace 'Drop here' text with transparent absolute overlay. (F) Rewrite AC5 GIVEN/WHEN to use Day 3 breakfast (breakfast-3-1 in actual data). (G) Expand F7b to search attractions[], entertainment[], cafe[], unscheduled_optionals[]. (H) Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id). (I) Change AC1 WHEN to query '#root > div' or element with fontFamily style, not document.body. (J) Revise effectiveDay merge to keep PLAN_DATA card objects as baseline and only overlay selection state visually; adaptV2Option output is for CandidatesSidebar only. (K) Add useMemo to React destructuring: const { useState, useEffect, useCallback, useMemo } = React."
     },
 
     "self_verification": {
-      "claims_total": 9,
-      "claims_with_evidence": 9,
+      "claims_total": 12,
+      "claims_with_evidence": 12,
       "claims_superficial": 0,
       "superficial_details": [],
       "confidence": "high",
       "evidence_sources": [
-        "Direct read: save.py:200-203 (trip_id/day/editor_session/mutations contract) — BLOCKER-1 PASS confirmed",
-        "Direct read: save.py:36 (day_n:02d format), save.py:76 (mut.get('slot')) — all 4 prior F5 mismatches resolved",
-        "Direct read: ticket:213-228 (Finding 5 payload spec) — correct mutations[] format verified",
-        "Direct read: ticket:162-179 (Finding 1a absolute-day algorithm) — BLOCKER-3 PASS confirmed",
-        "Direct read: ticket:385 Technical Hints NOT data.days[activeDay] — cross-reference confirmed",
-        "Direct read: ticket:239-249 (F7b name-based algorithm) vs ticket:404 (stale Technical Hints) — contradiction confirmed, BLOCKER-A",
-        "Direct read: react_template.tpl:1645-1658 (selTrip/selDay state, no activeDay, static day prop) — BLOCKER-B and BLOCKER-C confirmed",
-        "Direct read: ticket:235 ([activeDay] dependency and tripId usage without injection) — BLOCKER-C confirmed",
-        "Codex exec (Round 3): independently confirmed BLOCKER-A/B/C with concrete PROPOSED_FIX; confirmed BLOCKER-1/3 as PASS"
+        "Grep: 'morning cards' not in ticket — BLOCKER-A PASS confirmed",
+        "Read ticket lines 444-457 — effectiveDay merge and TRIP_ID injection confirmed PASS",
+        "Read day-01.json — breakfast options: 0, dinner options: 2 — BLOCKER-F confirmed",
+        "Read day-03.json — breakfast-3-1 present, evening_activity-3-1 = 'Lijiang Old Town Night Walk' — BLOCKER-F fix target confirmed, BLOCKER-G verified",
+        "Read entertainment.json — name_base 'Lijiang Old Town Night Walk - Four Square Street' at line 83 — BLOCKER-G source confirmed",
+        "Read ticket lines 373 vs 435 — generate_editor_html() signature conflict — BLOCKER-H confirmed",
+        "Read react_template.tpl:4 — useMemo NOT in destructuring — BLOCKER-K confirmed",
+        "Read react_template.tpl:1704 — fontFamily on root div not body — BLOCKER-I confirmed",
+        "Codex exec (session 019e3831): confirmed FAIL, added BLOCKER-I/J/K with PROPOSED_FIX"
       ]
     },
 
     "out_of_scope_observations": [
       {
-        "ts": "2026-05-17T23:30:00Z",
-        "file": "adaptV2Option cost_display",
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
         "line": null,
-        "observation": "adaptV2Option hardcodes CNY in cost_display. For CandidatesSidebar-only use this is acceptable. If adapted options are ever shown in main KanbanView cards, cost must be converted to display currency (EUR per config). Non-blocking for current scope.",
+        "observation": "Codex finding: cross-slot drag behavior (dragging meal candidate onto activity slot) unspecified. OBSERVATION_ONLY — no PROPOSED_FIX. Acceptable default: drop-rejection or silent no-op.",
         "in_user_path": false,
         "security_relevant": false
       },
       {
-        "ts": "2026-05-17T23:30:00Z",
-        "file": "scripts/lib/server/save.py:52",
-        "line": "52",
-        "observation": "Missing editor_session in the spec's save payload means _is_session_conflict always returns False — the 409-soft concurrency safety net is bypassed. This is a correctness regression for multi-tab editing but non-blocking for single-tab local dev use.",
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
+        "line": null,
+        "observation": "Codex finding: drag.js import mechanism (classic script tag vs ES module) not specified. OBSERVATION_ONLY. Non-blocking given existing drag.js refactor description.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
+        "line": null,
+        "observation": "Codex finding: _invalidate_html_cache timing relative to save response unclear. OBSERVATION_ONLY. Does not affect client-observable behavior.",
         "in_user_path": false,
         "security_relevant": false
       }
@@ -303,25 +255,29 @@
   },
   "iteration_needed": true,
   "refined_context": {
-    "round": 3,
-    "resolved_blockers": [
-      "BLOCKER-1 (F5 save payload — mutations[] contract now correct in Finding 5)",
-      "BLOCKER-3 (F1 absolute day index — find() algorithm now correct in Finding 1a)"
+    "round": 4,
+    "resolved_blockers": ["BLOCKER-A", "BLOCKER-B", "BLOCKER-C"],
+    "remaining_blockers_for_round_5": [
+      "BLOCKER-D: Delete lines 445-451 first drop-zone snippet and lines 194-198 section-header instruction. Keep only lines 453-457 canonical snippet.",
+      "BLOCKER-E: Replace 'Drop here' literal text with transparent absolute-position overlay div (no visible content at idle, highlights on dragover only).",
+      "BLOCKER-F: Rewrite AC5 GIVEN/WHEN to use Day 3 breakfast slot (breakfast-3-1 confirmed in day-03.json).",
+      "BLOCKER-G: Expand F7b to search day.attractions[], day.entertainment[], day.cafe[], day.unscheduled_optionals[].",
+      "BLOCKER-H: Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id).",
+      "BLOCKER-I: Change AC1 WHEN to query '#root > div' or element with fontFamily inline style, not document.body.",
+      "BLOCKER-J: Revise effectiveDay merge contract to keep PLAN_DATA card objects as baseline; only mark selection state visually; adaptV2Option output is for CandidatesSidebar sidebar display only.",
+      "BLOCKER-K: Add useMemo to React destructuring at template line 4: const { useState, useEffect, useCallback, useMemo } = React."
     ],
-    "remaining_blockers_for_round_4": [
-      "BLOCKER-A (= old BLOCKER-2): Delete stale Technical Hints line 404 sentence 'For attractions, map morning cards to morning_activity...' and replace it with: 'Use the F7b name-based algorithm from Finding 7b. Confirm data-slot-id is on the .slot-drop element itself per AC5.'",
-      "BLOCKER-B (= MAJOR-1 promoted): Add effectiveDay merge contract: const effectiveDay = useMemo(() => mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections), [...]); pass EDITOR_MODE ? effectiveDay : publishedDay to KanbanView. Define merge behavior for meal and attraction slots.",
-      "BLOCKER-C (NEW from Codex): (1) Inject TRIP_ID alongside EDITOR_MODE using the same HTML_SCRIPT_EDITOR substitution pattern. (2) Fix useEffect: useEffect(() => { if (!EDITOR_MODE || !TRIP_ID) return; fetch(`/api/trip/${encodeURIComponent(TRIP_ID)}`).then(r=>r.json()).then(setEditorTripData); }, [TRIP_ID]);"
-    ],
-    "stable_elements_do_not_change": [
-      "F1a: publishedDay = PLAN_DATA.trips[selTrip]?.days?.[selDay]; editorDay = editorTripData?.days?.find(d => Number(d.day) === Number(publishedDay?.day))",
-      "F5: mutations[] payload shape — { trip_id, day: editorDay.day, editor_session, mutations: [{type:select, slot, option_id, origin_slot_id:null}] }",
-      "F7b: name-based attraction matching algorithm (correct — only delete the stale line 404 contradiction)",
-      "F8: adaptV2Option() adapter (correct)",
-      "F9: per-trip lock held through generate+write (correct)",
+    "stable_elements_do_not_touch": [
+      "F1a: absolute-day find() algorithm (RESOLVED Round 3)",
+      "F5: mutations[] payload shape (RESOLVED Round 3)",
+      "F7b: name-based attraction matching algorithm direction (correct; only expand the collection set per BLOCKER-G)",
+      "F8: adaptV2Option() adapter — keep for CandidatesSidebar display; do NOT use for KanbanView cards per BLOCKER-J",
+      "F9: per-trip cache lock (correct)",
       "M2: position:fixed sidebar (correct)",
-      "Architecture: serve-trip.py serving React template via generate_editor_html() (correct)"
+      "BLOCKER-A patch: drop-zone data-slot-id at lines 453-457 (correct — keep)",
+      "BLOCKER-B patch: effectiveDay useMemo shape (correct — revise merge body per BLOCKER-J only)",
+      "BLOCKER-C patch: TRIP_ID injection and [TRIP_ID] useEffect dep (correct)"
     ],
-    "recommended_approach": "BA must patch exactly 3 items for Round 4. No architectural changes needed. (A) Delete line 404 stale sentence and reference F7b; (B) add effectiveDay merge contract pseudocode; (C) inject TRIP_ID and fix useEffect dependency. These are small, targeted edits only."
+    "recommended_approach": "BA patches exactly 8 items above. No architectural changes. BLOCKER-A/B/C must not be regressed. Codex session 019e3831 output confirms D-K with concrete PROPOSED_FIX for each."
   }
 }
