@@ -718,6 +718,7 @@ function _populateMobileDaySelect() {
 
 function _wireGlobalControls() {
   _wireBannerCloses();
+  _wireMiddleTabs();
   document
     .getElementById("export-pdf")
     .addEventListener("click", () => _onExport("pdf"));
@@ -725,6 +726,26 @@ function _wireGlobalControls() {
     .getElementById("export-ical")
     .addEventListener("click", () => _onExport("ical"));
   setInterval(renderHeader, 15000);
+}
+
+function _wireMiddleTabs() {
+  document.querySelectorAll(".middle-tab").forEach(btn => {
+    btn.addEventListener("click", () => _activateMiddleTab(btn.dataset.tab));
+  });
+  // Default: Timeline tab active on load
+  _activateMiddleTab("timeline");
+}
+
+function _activateMiddleTab(tab) {
+  document.querySelectorAll(".middle-tab").forEach(b => {
+    b.classList.toggle("tab-btn--active", b.dataset.tab === tab);
+    b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false");
+  });
+  const dashEl = document.getElementById("tab-dashboard");
+  const timeEl = document.getElementById("tab-timeline");
+  if (dashEl) dashEl.hidden = (tab !== "dashboard");
+  if (timeEl) timeEl.hidden = (tab !== "timeline");
+  if (tab === "dashboard") renderBudget(state);
 }
 
 function _wireBannerCloses() {
