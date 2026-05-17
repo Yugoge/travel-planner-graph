@@ -113,7 +113,7 @@ export async function init() {
     _showFatal("Failed to load trip: " + err.message);
     return;
   }
-  _populateDayPicker();
+  _wireDayPicker();
   _wireGlobalControls();
   initDesktopDrag(commit, requestSelectMutation);
   initMobile(commit, requestSelectMutation);
@@ -127,6 +127,7 @@ export async function init() {
 
 export function renderAll() {
   renderHeader();
+  _renderDayPickerOptions();
   renderCandidates();
   renderTimeline();
   renderBudget(state);
@@ -177,12 +178,83 @@ function _renderConnStatus() {
   conn.textContent = state.ui.offline ? "offline" : "online";
 }
 
+function _buildMealsCandidateGroup(day) {
+  const MEAL_SLOT_KEYS = ["breakfast", "lunch", "dinner"];
+  const group = document.createElement("div");
+  group.className = "candidate-group";
+  const h = document.createElement("h3");
+  h.className = "candidate-group-title";
+  h.textContent = "Meals";
+  group.appendChild(h);
+
+  // Collect options from all meal slots, de-duped by option_id
+  const seen = new Set();
+  const mealOptions = [];
+  for (const slotId of MEAL_SLOT_KEYS) {
+    const slot = _getSlotByKey(day, slotId);
+    if (!slot || slot.skipped) continue;
+    for (const opt of (slot.options || [])) {
+      if (!seen.has(opt.option_id)) {
+        seen.add(opt.option_id);
+        mealOptions.push({ opt, originSlotId: slotId });
+      }
+    }
+  }
+
+  // Empty state: all meal slots are skipped or have no options
+  if (mealOptions.length === 0) {
+    const e = document.createElement("p");
+    e.className = "candidate-group-empty";
+    e.textContent = "(no meal candidates)";
+    group.appendChild(e);
+    return group;
+  }
+
+  // Check selection: option is selected if ANY meal slot has it as selected_option_id
+  const anyMealSelectedId = MEAL_SLOT_KEYS.map(k => _getSlotByKey(day, k))
+    .filter(Boolean).map(s => s.selected_option_id).find(Boolean) || null;
+
+  for (const { opt, originSlotId } of mealOptions) {
+    const tpl = document.getElementById("tpl-candidate-card");
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.optionId = opt.option_id;
+    node.dataset.slotId = "meals-any";
+    node.dataset.originSlotId = originSlotId;
+    node.dataset.sourceAgent = opt.source_agent || "";
+    node.setAttribute("draggable", isMobileViewport() ? "false" : "true");
+    _writeCardName(node, opt);
+    _writeCardCost(node, opt);
+    node.querySelector(".card-location").textContent = opt.location_summary || "";
+    node.querySelector(".card-why").textContent = opt.why_fits_user || "";
+    _writeCardSource(node, opt);
+    _writeCardRationale(node, opt);
+    // Selection: any meal slot selected this option
+    const isSelected = MEAL_SLOT_KEYS.some(k => {
+      const s = _getSlotByKey(day, k);
+      return s && s.selected_option_id === opt.option_id;
+    });
+    if (isSelected) {
+      node.classList.add("card-selected");
+      node.setAttribute("aria-pressed", "true");
+    }
+    if (isMobileViewport() && state.ui.selected_card_option_id === opt.option_id) {
+      node.classList.add("tap-selected");
+    }
+    group.appendChild(node);
+  }
+  return group;
+}
+
 function renderCandidates() {
   const container = document.getElementById("candidates-groups");
   container.innerHTML = "";
   const day = _getActiveDay();
   if (!day) return;
-  for (const slotId of ALL_SLOT_KEYS) {
+  // Unified Meals group replaces separate breakfast/lunch/dinner groups
+  container.appendChild(_buildMealsCandidateGroup(day));
+  // Non-meal slots use original per-slot group builder
+  const NON_MEAL_SLOTS = ALL_SLOT_KEYS.filter(k => !MEAL_SLOTS.has(k));
+  for (const slotId of NON_MEAL_SLOTS) {
     container.appendChild(_buildCandidateGroup(day, slotId));
   }
 }
@@ -287,11 +359,30 @@ function _markCardSelectionState(node, opt, slot) {
   }
 }
 
+function _formatTs(ts) {
+  return ts ? ts.slice(11, 16) : "";
+}
+
+function _buildTransportCallout(day) {
+  const parts = [];
+  if (day.departure_ts) parts.push("Departs " + _formatTs(day.departure_ts));
+  if (day.arrival_ts) parts.push("Arrives " + _formatTs(day.arrival_ts));
+  if (!parts.length) return null;
+  const div = document.createElement("div");
+  div.className = "transport-callout";
+  div.setAttribute("aria-label", "transportation");
+  const label = day.day_type ? (SKIPPED_REASON_LABEL[day.day_type] || day.day_type) : "";
+  div.textContent = parts.join(" · ") + (label ? " · " + label : "");
+  return div;
+}
+
 function renderTimeline() {
   const container = document.getElementById("timeline-slots");
   container.innerHTML = "";
   const day = _getActiveDay();
   if (!day) return;
+  const callout = _buildTransportCallout(day);
+  if (callout) container.appendChild(callout);
   for (const slotId of ALL_SLOT_KEYS) {
     const slot = _getSlotByKey(day, slotId);
     container.appendChild(_buildSlotNode(slotId, slot));
@@ -475,13 +566,35 @@ function _anyValidationError() {
 
 /* ---------- Mutation entry-point ---------- */
 
-export function requestSelectMutation({ slotId, optionId, dayN }) {
+const MEAL_SLOT_KEYS_ARR = ["breakfast", "lunch", "dinner"];
+
+export function requestSelectMutation({ slotId, optionId, originSlotId, dayN }) {
   const day = _getDay(dayN);
   if (!day) return;
   const slot = _getSlotByKey(day, slotId);
   if (!slot) return;
+  // Cross-meal client-side option copy: if target slot lacks the option, add it (idempotent)
+  if (optionId && MEAL_SLOTS.has(slotId)) {
+    const alreadyInTarget = (slot.options || []).some(o => o.option_id === optionId);
+    if (!alreadyInTarget) {
+      const srcOpt = MEAL_SLOT_KEYS_ARR
+        .map(k => _getSlotByKey(day, k))
+        .filter(Boolean)
+        .flatMap(s => s.options || [])
+        .find(o => o.option_id === optionId);
+      if (srcOpt) {
+        if (!slot.options) slot.options = [];
+        slot.options.push({ ...srcOpt });
+      }
+    }
+  }
   slot.selected_option_id = optionId;
-  commit({ type: "select", slot: slotId, option_id: optionId }, dayN);
+  commit({
+    type: "select",
+    slot: slotId,
+    option_id: optionId,
+    origin_slot_id: originSlotId || null,
+  }, dayN);
   _scheduleRouteOnSelectionChange(dayN, slotId);
 }
 
@@ -554,19 +667,32 @@ function _findSelectedOption(slot) {
 
 /* ---------- Day-picker + global UI wiring ---------- */
 
-function _populateDayPicker() {
+function _deriveCityName(day) {
+  const acc = day.accommodation;
+  if (acc && acc.selected_option_id) {
+    const opt = (acc.options || []).find(o => o.option_id === acc.selected_option_id);
+    if (opt?.city_context?.city_name) return opt.city_context.city_name;
+  }
+  return day.city_name || "";
+}
+
+function _wireDayPicker() {
+  const sel = document.getElementById("day-select");
+  sel.onchange = () => setActiveDay(parseInt(sel.value, 10));
+}
+
+function _renderDayPickerOptions() {
   const sel = document.getElementById("day-select");
   sel.innerHTML = "";
   for (const day of state.days) {
     const dayN = day.day || day.day_number;
+    const cityName = _deriveCityName(day);
     const opt = document.createElement("option");
     opt.value = String(dayN);
-    opt.textContent =
-      `Day ${dayN}` + (day.day_type ? ` (${day.day_type})` : "");
+    opt.textContent = cityName ? `Day ${dayN} · ${cityName}` : `Day ${dayN}`;
     sel.appendChild(opt);
   }
   sel.value = String(state.ui.active_day);
-  sel.addEventListener("change", () => setActiveDay(parseInt(sel.value, 10)));
 }
 
 function _wireGlobalControls() {

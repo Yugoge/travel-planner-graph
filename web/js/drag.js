@@ -46,6 +46,7 @@ function _onDragStart(ev) {
     JSON.stringify({
       option_id: card.dataset.optionId,
       slot_id: card.dataset.slotId,
+      origin_slot_id: card.dataset.originSlotId || null,
     }),
   );
   // Fallback for cross-browser dataTransfer empty payload behavior
@@ -114,12 +115,17 @@ function _onDrop(ev) {
   _committedRequest({
     slotId,
     optionId: payload.option_id,
+    originSlotId: payload.origin_slot_id || null,
     dayN: getActiveDayNumber(),
   });
 }
 
+const MEAL_SLOT_IDS = new Set(["breakfast", "lunch", "dinner"]);
+
 function _isCompatible(srcSlot, targetSlot) {
-  // Accommodation is its own category. Meals/activities slot-id must match exactly.
+  const srcIsMeal = srcSlot === "meals-any" || MEAL_SLOT_IDS.has(srcSlot);
+  const targetIsMeal = MEAL_SLOT_IDS.has(targetSlot);
+  if (srcIsMeal || targetIsMeal) return srcIsMeal && targetIsMeal;
   return srcSlot === targetSlot;
 }
 

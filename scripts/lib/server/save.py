@@ -51,6 +51,7 @@ def _is_session_conflict(meta: dict, editor_session: str) -> bool:
 
 
 _ACCOMMODATION_SLOT = "accommodation"
+_MEAL_SLOT_IDS = {"breakfast", "lunch", "dinner"}
 
 
 def _get_or_create_slot(day: dict, slot_id: str) -> dict:
@@ -64,12 +65,42 @@ def _get_or_create_slot(day: dict, slot_id: str) -> dict:
     return day.setdefault("slots", {}).setdefault(slot_id, {"slot_id": slot_id, "options": []})
 
 
+def _get_existing_slot(day: dict, slot_id: str):
+    """Non-mutating slot lookup. Returns None if absent. Never calls setdefault."""
+    if slot_id == _ACCOMMODATION_SLOT:
+        return day.get(_ACCOMMODATION_SLOT)
+    return day.get("slots", {}).get(slot_id)
+
+
 def _apply_select_mutation(day: dict, mut: dict) -> None:
     slot_id = mut.get("slot")
     option_id = mut.get("option_id")
     if not slot_id:
         return
     slot = _get_or_create_slot(day, slot_id)
+    origin_slot_id = mut.get("origin_slot_id")
+    # Cross-meal option copy: meal-only, idempotent
+    if (
+        option_id
+        and origin_slot_id
+        and slot_id in _MEAL_SLOT_IDS
+        and origin_slot_id in _MEAL_SLOT_IDS
+        and not any(o.get("option_id") == option_id for o in slot.get("options", []))
+    ):
+        origin_slot = _get_existing_slot(day, origin_slot_id)
+        if origin_slot:
+            src_opt = next(
+                (o for o in origin_slot.get("options", []) if o.get("option_id") == option_id),
+                None,
+            )
+            if src_opt:
+                slot.setdefault("options", []).append(dict(src_opt))
+            else:
+                # Source option not found in origin slot: do not write invisible selected_option_id
+                return
+        else:
+            # Origin slot missing: do not write invisible selected_option_id
+            return
     slot["selected_option_id"] = option_id
 
 

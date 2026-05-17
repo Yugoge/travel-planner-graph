@@ -17,6 +17,15 @@ let _mediaQuery = null;
 let _commit = null;
 let _requestSelectMutation = null;
 
+const MEAL_SLOT_IDS = new Set(["breakfast", "lunch", "dinner"]);
+
+function _isCompatible(srcSlot, targetSlot) {
+  const srcIsMeal = srcSlot === "meals-any" || MEAL_SLOT_IDS.has(srcSlot);
+  const targetIsMeal = MEAL_SLOT_IDS.has(targetSlot);
+  if (srcIsMeal || targetIsMeal) return srcIsMeal && targetIsMeal;
+  return srcSlot === targetSlot;
+}
+
 export function isMobileViewport() {
   if (!_mediaQuery) {
     _mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`);
@@ -68,6 +77,7 @@ function _onCardClick(ev) {
   } else {
     state.ui.selected_card_option_id = optionId;
     state.ui.selected_card_slot_hint = slotId;
+    state.ui.selected_card_origin_slot_id = card.dataset.originSlotId || null;
     _markTapTargets(slotId);
   }
   _refreshCardClasses();
@@ -91,6 +101,7 @@ function _onSlotClick(ev) {
   _requestSelectMutation({
     slotId,
     optionId: state.ui.selected_card_option_id,
+    originSlotId: state.ui.selected_card_origin_slot_id || null,
     dayN: getActiveDayNumber(),
   });
   _clearSelection();
@@ -99,6 +110,7 @@ function _onSlotClick(ev) {
 function _clearSelection() {
   state.ui.selected_card_option_id = null;
   state.ui.selected_card_slot_hint = null;
+  state.ui.selected_card_origin_slot_id = null;
   document.querySelectorAll(".slot-drop[data-tap-target='true']").forEach((el) =>
     delete el.dataset.tapTarget,
   );
@@ -109,7 +121,8 @@ function _markTapTargets(slotIdHint) {
     const drop = s.querySelector(".slot-drop");
     if (!drop) return;
     if (drop.dataset.droppable === "false") return;
-    drop.dataset.tapTarget = s.dataset.slotId === slotIdHint ? "true" : "false";
+    const isTarget = _isCompatible(slotIdHint, s.dataset.slotId);
+    drop.dataset.tapTarget = isTarget ? "true" : "false";
     if (drop.dataset.tapTarget === "false") delete drop.dataset.tapTarget;
   });
 }
