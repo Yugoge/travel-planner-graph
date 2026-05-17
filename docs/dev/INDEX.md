@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-17T12:33:59Z*
-**Total entries**: 375
+*Last updated: 2026-05-17T15:42:12Z*
+**Total entries**: 377
 **Convention**: kebab
 
 ## Tree
@@ -22,7 +22,8 @@ dev/
 │   ├── `blocker6-desktop-drag.png` - png file
 │   ├── `blocker6-desktop-export.png` - png file
 │   ├── `blocker6-desktop-load.png` - png file
-│   └── `blocker6-mobile.png` - png file
+│   ├── `blocker6-mobile.png` - png file
+│   └── `notion-diag-20260517.png` - png file
 ├── specs/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
@@ -381,7 +382,8 @@ dev/
 ├── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
 ├── `ticket-20260515-102340.md` - BA Specification: v2 Server Bug Fixes (4 bugs + 2 missing dependencies)
 ├── `ticket-20260517-071910.md` - BA Specification: Notion-style UI Redesign + 3 Bug Fixes
-└── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
+├── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
+└── `ticket-20260517-153318.md` - BA Specification: Notion-Style Visual Alignment — Web Editor (Except Candidates Sidebar)
 ```
 
 ---
