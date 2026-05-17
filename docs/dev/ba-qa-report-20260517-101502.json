@@ -1,0 +1,223 @@
+{
+  "task_id": "20260517-101502",
+  "request_id": "20260517-101502",
+  "timestamp": "2026-05-17T10:45:00+08:00",
+  "verdict": "FAIL",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "BA spec has 3 blocking issues: (1) AC5 directly contradicts AC6 on pane borders, (2) mobile compact day-selector is referenced but has zero DOM specification, (3) AC1 does not assert that the active-row highlight updates on day change. Two additional major gaps: AF-01 typography has no verifiable AC, and AC1 active-highlight re-render is asserted only as a prose hint not an AC. All BA evidence claims verified against source files — every line reference is accurate.",
+
+    "evidence_accuracy": {
+      "status": "pass",
+      "verified_claims": [
+        {"claim": "index.html:41-86 — pane-candidates (left), pane-timeline (center), pane-budget (right)", "actual_lines": "41-86", "verified": true},
+        {"claim": "state.js:116 — _wireDayPicker() call in init()", "actual_lines": "116", "verified": true},
+        {"claim": "state.js:146-150 — _renderTitle() uses trip_name||trip_id, skips meta.title", "actual_lines": "146-150", "verified": true},
+        {"claim": "state.js:512-523 — renderApproveButton() accesses btn.disabled with no null guard", "actual_lines": "512-522", "verified": true, "note": "BA says 512-523, actual block ends at 522 — minor off-by-one on end line, non-issue"},
+        {"claim": "state.js:679-696 — _wireDayPicker() and _renderDayPickerOptions()", "actual_lines": "679-696", "verified": true},
+        {"claim": "mobile.js:53-60 — _activateTab() iterates ['candidates','timeline','budget']", "actual_lines": "57-60", "verified": true},
+        {"claim": "mobile.js:151,156-159 — _applyMobileLayout() iterates same old list", "actual_lines": "156-159", "verified": true, "note": "Line 151 reference is to tabs.hidden toggle, not pane list — accurate enough"},
+        {"claim": "drag.js:20-32 — initDesktopDrag binds to #candidates-groups and #timeline-slots once at init", "actual_lines": "20-33", "verified": true},
+        {"claim": "css/main.css:88 — .app-title font-size:16px; font-weight:600", "actual_lines": "87-89", "verified": true},
+        {"claim": "css/main.css:372-376 — .btn-primary has no font-weight", "actual_lines": "372-376", "verified": true},
+        {"claim": "css/main.css:156-163 — .pane has border: 1px solid var(--border)", "actual_lines": "156-163", "verified": true}
+      ],
+      "inaccurate_claims": []
+    },
+
+    "blocking_issues": [
+      {
+        "id": "BLOCK-1",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "blocking",
+        "title": "AC5 contradicts AC6: pane-middle border-none vs border-top accent",
+        "description": "AC5 states: '.pane elements have no border property set (or border: none)'. AC6 states: 'the middle column pane has a visible 8px top accent in color #2383e2 (implemented as border-top: 8px solid var(--accent) or equivalent)'. M9 CSS spec also specifies '.pane-middle { border-top: 8px solid var(--accent) }'. A dev implementing AC5 literally would remove all borders from .pane-middle, breaking AC6. A dev implementing AC6 would leave border-top on .pane-middle, failing AC5. QA verification would produce contradictory results depending on which AC is tested first. The spec text is internally inconsistent at the AC level.",
+        "evidence": "AC5 text: 'Then .pane elements have no border property set (or border: none)'. AC6 text: 'Then the middle column pane has a visible 8px top accent... border-top: 8px solid var(--accent)'. M9 CSS snippet: '.pane { border: none; border-radius: 0; }' and '.pane-middle { background: var(--bg); border-top: 8px solid var(--accent); }' — these two rules together correctly implement intent but AC5 text does not reflect this nuance.",
+        "proposed_fix": "Replace AC5's first assertion with: '.pane-days and .pane-candidates have no border property; .pane-middle has no full-box border but retains border-top: 8px solid var(--accent)'. This aligns AC5 with AC6 and M9 without contradiction.",
+        "blocks_dev": true
+      },
+      {
+        "id": "BLOCK-2",
+        "dimension": "investigation_completeness",
+        "severity": "blocking",
+        "title": "Mobile compact day-selector has no DOM specification",
+        "description": "M7 states 'Days exposed as a compact sticky selector at top of the middle pane on mobile'. AC8 states 'day selection accessible as a compact sticky UI within the middle pane'. Technical Hints say 'add mobile day-select compact selector inside pane-middle header'. However the spec provides NO DOM structure for this element: no ID, no HTML snippet, no element type (select vs button list vs nav), no CSS class, no event wiring spec. The old #day-select is being removed (Edge Case 4 and AC11 mandate this). A dev implementing M7 has no spec to follow and will invent a structure inconsistent with what QA will verify for AC8. This is an unresolvable ambiguity — dev and QA will independently invent different solutions.",
+        "evidence": "M7 text: 'mobile.js pane registry in mobile.js updated...Days exposed as a compact sticky selector at top of the middle pane on mobile'. AC8 THEN clause: 'day selection accessible as a compact sticky UI within the middle pane'. No HTML snippet for the mobile day selector is provided anywhere in the spec. The HTML structure snippet in Technical Hints shows #pane-middle with a .middle-tab-bar but no mobile day-select element. The ID contract list (Technical Hints: 'ID preservation contract') does not list any mobile day-select ID.",
+        "proposed_fix": "Add explicit DOM to the HTML structure snippet: a <select id='mobile-day-select'> inside #pane-middle header (after .middle-tab-bar, before tab-content divs), visible only on mobile via CSS. Add to state.js wiring: populate it from state.days in renderDaysPanel() or a new renderMobileDaySelect(), wire onchange to setActiveDay(). Add to ID preservation contract. Extend AC8: 'AND the mobile day-select dropdown shows the currently active day, AND changing it re-renders Timeline and Candidates'. Add CSS: #mobile-day-select { display: none; } @media (max-width: 639px) { #mobile-day-select { display: block; } }",
+        "blocks_dev": true
+      },
+      {
+        "id": "BLOCK-3",
+        "dimension": "scope_alignment",
+        "severity": "blocking",
+        "title": "AC1 does not assert active-row highlight updates on day change",
+        "description": "AC1 THEN clause says 'clicking any row sets that day as active and re-renders Timeline and Candidates'. It does NOT assert that the Days panel itself re-renders so the active row highlight moves. The spec's Technical Hints say to add renderDaysPanel() to renderAll(), but this is prose guidance, not an AC assertion. A dev could: (a) call renderDaysPanel() from init() but NOT from renderAll(), causing the highlight to never update; (b) pass AC1 because Timeline and Candidates do re-render; and (c) pass AC11 because no null crash occurs. The user requirement R1 explicitly requires 'selected day highlighted with 3px left-border' — this is a core visual feature with no verifiable AC.",
+        "evidence": "AC1 THEN clause verbatim: 'clicking any row sets that day as active and re-renders Timeline and Candidates'. No mention of Days panel re-render. R1 acceptance_criterion in requirements_decomposition: 'active day has accent left-border'. The Technical Hints M5 section says 'Add renderDaysPanel() to renderAll()' but this is guidance, not an AC. The renderAll() function (state.js:128-136) currently calls _renderDayPickerOptions() which must be replaced — if dev forgets to add renderDaysPanel(), all existing ACs still pass.",
+        "proposed_fix": "Extend AC1 THEN clause: 'AND after clicking Day N row, the Day N row has the day-row--active class and 3px left-border accent, AND the previously active row no longer has the active class'. This makes the re-render of the Days panel itself a verifiable acceptance criterion.",
+        "blocks_dev": false,
+        "blocks_close": true,
+        "note": "Codex classifies this as MAJOR (not blocking dev) since spec prose already instructs renderDaysPanel() in renderAll(). It does block QA close because the AC is insufficient to verify R1. BA must add the AC extension before dev begins to avoid a QA iteration."
+      }
+    ],
+
+    "major_issues": [
+      {
+        "id": "MAJOR-1",
+        "dimension": "scope_alignment",
+        "severity": "major",
+        "title": "AF-01 typography hierarchy (M10) has no verifiable acceptance criterion",
+        "description": "M10 specifies h2=20px/600, h3=16px/600, body=14px/400, caption=12px. The spec explicitly states AF-01 is 'unresolved' and is addressed by this cycle. However none of AC1-AC11 verify any computed font-size or font-weight for content headings. The CSS M9/M10 spec lists the changes but no AC requires QA to verify h2/h3 computed sizes. Additionally, no specific CSS selector is given for the 20px h2 rule — a global h2 {} selector would override .pane-title (11px uppercase), which M10 itself says must remain at 11px. This means a dev could add an incorrect global h2 rule that breaks .pane-title while all ACs pass, OR skip the h2/h3 rules entirely while all ACs pass.",
+        "evidence": "M10 text: 'h2=20px/600 (pane section titles), h3=16px/600 (slot titles and card group titles), body=14px/400, caption=12px'. AC1-AC11 text: no AC references font-size or font-weight for content headings. .pane-title is h2.pane-title at css:173-180, 11px/600/uppercase.",
+        "proposed_fix": "Add AC12 with: THEN .slot-title computed font-size=12px (existing, correct), .candidate-group-title computed font-size=11px (existing, correct), AND the CSS rule for content h2 uses an explicit scoped selector (e.g. .tab-content h2, .pane-days h2) at 20px/600, NOT a global h2 rule. State explicitly: 'do NOT use bare h2 { } rule as it conflicts with .pane-title'. Alternatively accept that typography polish is observable-only and mark M10 as 'best-effort, not QA-gated' — but this must be explicit."
+      },
+      {
+        "id": "MAJOR-2",
+        "dimension": "affected_file_accuracy",
+        "severity": "minor",
+        "title": "state.js:512 pre_existing_guard code_snippet is wrong",
+        "description": "The context JSON pre_existing_guards entry for state.js:512 shows code_snippet: 'const btn = document.getElementById(\"approve-day-btn\"); if (!day) { btn.disabled = true; return; }'. This snippet implies the null check on btn is absent. The actual code at state.js:512-522 shows: 'const btn = document.getElementById(\"approve-day-btn\"); const day = _getActiveDay(); if (!day) { btn.disabled = true; return; }'. This is accurate — btn IS accessed before the null check on day, confirming the null-crash risk BA identified. The snippet is slightly paraphrased but the evidence is correct.",
+        "evidence": "state.js:512-522 actual code confirmed by Read tool.",
+        "proposed_fix": "No fix needed — BA's conclusion (null crash risk) is correct. Minor documentation inaccuracy only."
+      }
+    ],
+
+    "non_blocking_observations": [
+      {
+        "id": "OBS-1",
+        "title": "M6 init() ordering is correct — Codex-corrected",
+        "description": "My initial draft flagged that _wireGlobalControls() is called after renderAll() making _activateMiddleTab() call from it problematic. Codex correctly identified this as wrong: state.js:116-122 shows _wireGlobalControls() at line 117, renderAll() at line 122. So calling _activateMiddleTab('timeline') from _wireGlobalControls() fires BEFORE renderAll(), which is correct. This is NOT an issue.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "id": "OBS-2",
+        "title": "AC8 show/hide mechanism phrasing is behavior-correct but mechanism-ambiguous",
+        "description": "AC8 says 'clicking Candidates shows pane-candidates and hides pane-middle'. The actual mechanism uses data-mobile-hidden CSS attribute. The AC is testing user-visible behavior (correct) but QA verification needs to check data-mobile-hidden not display:none directly. This is a minor verification-recipe ambiguity, not a blocking issue.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "id": "OBS-3",
+        "title": ".pane-title h2 selector collision is addressed by spec prose but not by AC",
+        "description": "M10 explicitly states .pane-title at 11px is 'metadata labels, not content headings — correct Notion behavior'. The spec already calls this out. The risk is dev using a global h2 rule — this overlaps with MAJOR-1's proposed AC12 fix.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+
+    "success_criteria_results": [
+      {
+        "requirement_id": "R1",
+        "source_phrase": "左侧仍然是days",
+        "criterion": "Left column renders scrollable day list; each row 'Day N · CityName'; active day has accent left-border",
+        "verification_method": "Check AC1 text against R1 acceptance criterion",
+        "status": "fail",
+        "result": "fail",
+        "details": "AC1 asserts clicking re-renders Timeline and Candidates but does NOT assert the Days panel re-renders its active row highlight. BLOCK-3 applies.",
+        "evidence": "AC1 THEN clause missing Days panel re-render assertion"
+      },
+      {
+        "requirement_id": "R2",
+        "source_phrase": "中间是dashboard和timeline tab",
+        "criterion": "Middle column has tab bar; Dashboard shows budget; Timeline shows slot cards",
+        "verification_method": "Check AC2 coverage",
+        "status": "pass",
+        "result": "pass",
+        "details": "AC2 fully covers this requirement — Dashboard/Timeline tab switching, budget IDs visible, timeline-slots visible.",
+        "evidence": "AC2 THEN clauses match R2 criterion"
+      },
+      {
+        "requirement_id": "R3",
+        "source_phrase": "右边是可选内容",
+        "criterion": "Right column is Candidates panel; drag-drop survives tab switches",
+        "verification_method": "Check AC3 coverage",
+        "status": "pass",
+        "result": "pass",
+        "details": "AC3 covers stable container contract and drag-drop event listener survival.",
+        "evidence": "AC3 THEN clauses match R3 criterion"
+      },
+      {
+        "requirement_id": "R4",
+        "source_phrase": "直接拿UI的报告",
+        "criterion": "Remaining AF findings applied: title human-readable; card hover shadow; panel borders removed; middle accent strip; btn-primary weight 500",
+        "verification_method": "Check AC4-AC7 coverage for AF findings",
+        "status": "fail",
+        "result": "fail",
+        "details": "AC4 (title) OK. AC5 contradicts AC6 (BLOCK-1). AC7 (button weight) OK. AF-01 typography has no AC (MAJOR-1). AC5 border removal is correctly specified for days/candidates but incorrectly specified for middle pane.",
+        "evidence": "BLOCK-1 (AC5/AC6 contradiction), MAJOR-1 (no typography AC)"
+      },
+      {
+        "requirement_id": "R5",
+        "source_phrase": "仍然保持三列布局",
+        "criterion": "3-column CSS grid preserved",
+        "verification_method": "Implicit in new HTML structure",
+        "status": "pass",
+        "result": "pass",
+        "details": "Background requirement, marked N/A for AC in spec. CSS grid is preserved in new structure.",
+        "evidence": "New HTML scaffold in Technical Hints preserves app-grid 3-column layout"
+      }
+    ],
+
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed BLOCK-2 (mobile day-select underspecified). Codex found a new BLOCKER: AC5 contradicts AC6 on pane borders (added as BLOCK-1). Codex downgraded BLOCK-1 (renderDaysPanel in renderAll) to MAJOR/blocks-close with PROPOSED_FIX to extend AC1. Codex found MAJOR-1: AF-01 typography has no verifiable AC. Codex corrected my wrong non-blocking finding about init() ordering — _wireGlobalControls() fires before renderAll() so the sequence is fine. Codex marked AC8 show/hide ambiguity and .pane-title h2 concern as OBSERVATION_ONLY.",
+      "feedback_incorporated": "BLOCK-1 in draft renamed to BLOCK-3 (downgraded from blocker to blocks-close per Codex rationale). New BLOCK-1 added (AC5/AC6 contradiction found by Codex). MAJOR-1 (typography AC gap) added per Codex. Init() ordering non-blocking issue corrected to OBS-1 (non-issue). All other Codex observations logged as OBS-2/OBS-3."
+    },
+
+    "self_verification": {
+      "claims_total": 8,
+      "claims_with_evidence": 8,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    },
+
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 4,
+      "minor_issues": 1,
+      "total_findings": 5,
+      "blocking_issues_count": 3,
+      "release_recommendation": "reject — return to BA for spec iteration before dev begins"
+    }
+  },
+
+  "blocking_issues": [
+    {
+      "id": "BLOCK-1",
+      "title": "AC5 contradicts AC6: pane border-none vs pane-middle border-top accent",
+      "fix": "Narrow AC5 to exclude pane-middle's border-top: change 'pane elements have no border' to 'pane-days and pane-candidates have no border; pane-middle retains only the 8px top accent border-top'"
+    },
+    {
+      "id": "BLOCK-2",
+      "title": "Mobile compact day-selector has zero DOM specification",
+      "fix": "Add explicit HTML element (#mobile-day-select inside pane-middle), CSS visibility rules, state.js wiring to setActiveDay(), and extend AC8 to assert day-selector changes re-render Timeline/Candidates"
+    },
+    {
+      "id": "BLOCK-3",
+      "title": "AC1 missing assertion that Days panel active-row highlight updates on day change",
+      "fix": "Extend AC1 THEN: 'AND after clicking Day N, the Day N row has day-row--active class and 3px left-border accent, AND the previously active row no longer has it'"
+    },
+    {
+      "id": "MAJOR-1",
+      "title": "AF-01 typography hierarchy (M10) has no verifiable acceptance criterion",
+      "fix": "Add AC12 verifying content heading selectors at specified sizes, explicitly forbidding a global h2 rule that would override .pane-title"
+    }
+  ],
+
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": ["R1 (active-row highlight not in AC1)", "R4 (AC5/AC6 contradiction, AF-01 no AC)"],
+    "critical_issues": [],
+    "blocking_issues": [
+      "BLOCK-1: AC5 vs AC6 contradiction on pane borders — BA must disambiguate",
+      "BLOCK-2: Mobile compact day-selector — BA must add DOM spec, wiring spec, and AC8 extension",
+      "BLOCK-3: AC1 must assert Days panel active-row re-render, not just Timeline/Candidates"
+    ],
+    "major_issues": [
+      "MAJOR-1: Add AC12 for AF-01 typography hierarchy with explicit CSS selectors"
+    ],
+    "recommended_approach": "BA should revise the spec with the 4 fixes above before dispatching to dev. No code changes are needed — this is a pure spec iteration. All existing file evidence claims are accurate."
+  }
+}
