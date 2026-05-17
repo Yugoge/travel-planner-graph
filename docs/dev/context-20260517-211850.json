@@ -1,0 +1,402 @@
+{
+  "request_id": "20260517-211850",
+  "task_id": "20260517-211850",
+  "timestamp": "2026-05-17T21:18:50Z",
+  "complexity_tier": "COMPLEX",
+  "requirement": {
+    "original": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！可拖拽的页面只应该是原始页面的升级版而不是退化版！也不是完全不同的一版！就是在原有基础上升级。直接复制原始html生成机制然后将你的全部动态html机制加载上面。",
+    "clarified": "Replace the trip editor's rendering engine with the React template used by generate-html-interactive.py. Serve the React-generated HTML from serve-trip.py for GET /trip/<id>, inject EDITOR_MODE=true, and add CandidatesSidebar + drag-and-drop + selection state as React components on top. Visual parity with the published page is guaranteed by sharing the same React component tree.",
+    "what": "Architectural replacement: serve-trip.py generates React HTML (same template as published page) with editor-only components (CandidatesSidebar, slot drop zones, selection state bridge) added via editorMode flag in react_template.tpl",
+    "why": "Four previous CSS-patching attempts failed because the editor and published page have structurally different component trees. Visual parity can only be achieved by sharing the same rendering engine.",
+    "where": [
+      "scripts/serve-trip.py",
+      "scripts/lib/render_html_builders.py",
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
+    ],
+    "scope": {
+      "included": [
+        "serve-trip.py _serve_index() replacement with React HTML generation",
+        "In-memory HTML cache with save-triggered invalidation",
+        "render_html_builders.py: EDITOR_MODE injection, generate_editor_html()",
+        "react_template.tpl: editorMode flag, CandidatesSidebar component, window.setEditorSelection bridge, slot-drop zones",
+        "drag.js: framework-neutral refactor removing state.js/mobile.js imports"
+      ],
+      "excluded": [
+        "web/css/main.css modifications",
+        "web/index.html modifications",
+        "Trip data schema changes",
+        "Published page output changes (EDITOR_MODE=false path unchanged)",
+        "Real-time exchange rate accuracy in editor"
+      ]
+    },
+    "success_criteria": [
+      "Editor font is ui-sans-serif (not Inter) — measured via getComputedStyle",
+      "Cover is 200px background-div (not img tag) — measured via getBoundingClientRect",
+      "Kanban cards are 280×320px desktop — measured via getBoundingClientRect",
+      "CandidatesSidebar is present and populated",
+      "Drag-and-drop triggers React re-render and /api/save",
+      "Day selector updates both KanbanView and CandidatesSidebar",
+      "Published page (EDITOR_MODE=false) is visually unchanged",
+      "Second request TTFB < 2s (cache hit)"
+    ],
+    "constraints": [
+      "exchange rate subprocess must NOT block HTTP response — cache the generated HTML",
+      "generate-html-interactive.py is not directly importable (hyphenated) — use importlib or extract class",
+      "state.js auto-init must NOT run in the React page — drag.js must be refactored",
+      "React re-render must survive drag.js event delegation — bind to stable container IDs only",
+      "editorMode=false must produce output identical to current published page"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/serve-trip.py",
+      "scripts/lib/render_html_builders.py",
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/generate-html-interactive.py",
+      "scripts/lib/render_day_data.py",
+      "scripts/lib/html_generator.py",
+      "scripts/lib/server/__init__.py",
+      "scripts/lib/server/common.py",
+      "scripts/lib/server/trip.py"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "web/css/main.css",
+      "web/index.html",
+      "web/js/state.js",
+      "web/js/mobile.js",
+      "web/js/save.js",
+      "web/js/routing.js",
+      "web/js/budget.js",
+      "web/js/offline.js"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-17T21:18:50Z",
+      "task_id": "20260517-211850",
+      "file": "web/js/state.js",
+      "line": "127",
+      "observation": "state.js auto-init calls document.getElementById on IDs that exist only in web/index.html (trip-title, approve-day-btn, tab-timeline, candidates-groups). If injected into the React page, these fail silently. state.js is NOT in scope for this change — it is reference logic only.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-17T21:18:50Z",
+      "task_id": "20260517-211850",
+      "file": "scripts/generate-html-interactive.py",
+      "line": "56",
+      "observation": "generate-html-interactive.py has a hyphenated filename making it non-importable via standard Python import. Must use importlib.util.spec_from_file_location() or move InteractiveHTMLGenerator into scripts/lib/html_generator.py. Check html_generator.py before deciding.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "The trip editor at /trip/<id> looks completely different from the published static page: wrong font (Inter vs ui-sans-serif), wrong cover mechanism (img vs background-div), wrong card dimensions, wrong layout (3-panel vanilla HTML vs React flex).",
+    "root_cause": "The editor (web/index.html + web/js/state.js) and the published page (react_template.tpl) are two entirely separate applications. The editor was built from scratch using vanilla JS and CSS instead of extending the existing React template. No CSS adjustment can bridge structurally different component trees.",
+    "root_cause_commit": "N/A — accumulated architectural divergence across multiple cycles",
+    "why_introduced": "The editor was built as a new application focused on drag-and-drop interactivity, without reusing the existing React template as a base.",
+    "why_problematic": "All CSS-patching attempts (4 prior cycles) are symptoms-only fixes that cannot achieve visual parity because the HTML structure is fundamentally different.",
+    "timeline": "Architectural divergence introduced during M4a spec (spec-20260508-221237). Patching attempts over 4+ subsequent cycles.",
+    "affected_files": [
+      "scripts/serve-trip.py",
+      "scripts/lib/render_html_builders.py",
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "web/css/main.css:6 imports Inter font — inferred from file read",
+      "web/index.html:73 uses <img id=trip-cover> — inferred from file read",
+      "react_template.tpl:1704 uses ui-sans-serif font stack — inferred from file read",
+      "react_template.tpl:727-728 uses background-div height:200px — inferred from file read",
+      "react_template.tpl:784-785 cardW=280, cardH=320, imgH=140 — inferred from file read"
+    ],
+    "diagnosis_completeness": "incomplete — browser rendering not measured (local server not running in this session)",
+    "complaint_location_keywords": ["notion风格", "travel plan", "固定页面", "一模一样", "sidebar", "拖拽"],
+    "localization_evidence": "Code archaeology confirms structural divergence. Browser measurement blocked — local server not running during BA session.",
+    "located_source": "scripts/serve-trip.py:181-186 (_serve_index serves web/index.html); web/index.html:6 (Inter font via CSS); react_template.tpl:1704 (ui-sans-serif font)",
+    "localization_blocked": {
+      "reason": "Local HTTP server not running during BA session; cannot take live browser measurements",
+      "what_would_unblock": "Start server with `python3 scripts/serve-trip.py --trip beijing-lijiang-dali-20260418-100846`, then measure via Playwright getComputedStyle"
+    },
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "Not applicable — this is architectural divergence accumulated over multiple cycles, not a regression from a single commit",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+      "acceptance_criterion": "Editor main content area (KanbanView + cover + header) renders pixel-identically to the published page: same font stack, same card dimensions, same cover mechanism"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "可拖拽的页面只应该是原始页面的升级版而不是退化版",
+      "acceptance_criterion": "Editor retains all published-page features (language toggle, map provider toggle, timeline view, budget, item detail sidebar) PLUS adds candidates sidebar and drag-and-drop"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "直接复制原始html生成机制然后将你的全部动态html机制加载上面",
+      "acceptance_criterion": "serve-trip.py uses InteractiveHTMLGenerator (same class as generate-html-interactive.py uses) to produce the HTML, with EDITOR_MODE=true injected, served at GET /trip/<id>"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/serve-trip.py",
+      "line_range": "149-186",
+      "role": "HTTP handler — GET /trip/<id> currently serves web/index.html; will serve generated React HTML",
+      "imports_from": ["scripts/lib/server/__init__.py"],
+      "evidence": "Read serve-trip.py lines 149-186; _dispatch_get calls _serve_index for /trip/ paths",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "22-663",
+      "role": "InteractiveHTMLGenerator class — loads trip data, calls generate_html() which uses react_template.tpl",
+      "imports_from": ["scripts/lib/render_day_data.py", "scripts/lib/render_html_builders.py"],
+      "evidence": "Read generate-html-interactive.py; generate_html() at line 598 delegates to render_html_builders.generate_html()",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/render_html_builders.py",
+      "line_range": "323-368",
+      "role": "Produces HTML_HEAD + HTML_SCRIPT strings; embed PLAN_DATA JSON and react_template.tpl content",
+      "imports_from": ["scripts/lib/react_template.tpl (read as string, not imported)"],
+      "evidence": "Read render_html_builders.py lines 323-368; HTML_SCRIPT embeds __PLAN_DATA__ and __REACT_TEMPLATE__",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1-1847",
+      "role": "React 18 JSX components — KanbanView, TimelineView, Sidebar, NotionTravelApp root. Needs editorMode additions.",
+      "imports_from": ["leaf (self-contained JSX, no imports)"],
+      "evidence": "Read react_template.tpl — confirmed NotionTravelApp at line 1644, KanbanView at 718, fontFamily at 1704",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/drag.js",
+      "line_range": "1-136",
+      "role": "Desktop HTML5 drag-drop; needs refactor to remove state.js/mobile.js imports and accept callbacks as parameters",
+      "imports_from": ["web/js/state.js (MUST be removed)", "web/js/mobile.js (MUST be removed)"],
+      "evidence": "Read drag.js lines 9-10; imports getActiveDayNumber from state.js and isMobileViewport from mobile.js",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/serve-trip.py",
+      "line": 78,
+      "type": "if",
+      "code_snippet": "if not trip_id or '/' in trip_id or trip_id.startswith('.'): raise ValueError",
+      "purpose": "Prevents path traversal via trip_id — in TripStore.trip_dir()",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/serve-trip.py",
+      "line": 189,
+      "type": "if",
+      "code_snippet": "if '..' in asset_rel.split('/'): _send_404(self, 'invalid asset path')",
+      "purpose": "Prevents path traversal via asset path",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop (primary); 390x844 mobile (secondary)",
+    "theme": "light",
+    "locale": "zh (primary), en (base labels)",
+    "auth_state": "local-only (no auth per Q3e)",
+    "data_state": "trip beijing-lijiang-dali-20260418-100846 loaded",
+    "browser": "Chrome desktop",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！",
+    "measured": {
+      "value": "Editor serves web/index.html with Inter font (web/css/main.css:6), <img> cover (web/index.html:73), vanilla HTML card templates",
+      "location": "web/index.html:1-132, web/css/main.css:1-46"
+    },
+    "expected": {
+      "value": "react_template.tpl: ui-sans-serif font (line 1704), 200px background-div cover (line 727-728), 280×320px React cards (line 784-785)",
+      "source": "scripts/lib/react_template.tpl — read in this session, tier_2_verified"
+    },
+    "gap": "Font: Inter vs ui-sans-serif. Cover: <img> vs 200px background-div. Cards: vanilla HTML template vs 280×320px React JSX. Layout: 3-panel HTML vs React flex. These are structural differences, not CSS token differences."
+  },
+  "scope_expansion": {
+    "search_pattern": "_serve_index|react_template|generate_html|InteractiveHTMLGenerator",
+    "search_scope": "scripts/**",
+    "user_reported": ["scripts/serve-trip.py", "scripts/lib/react_template.tpl"],
+    "additional_found": ["scripts/lib/render_html_builders.py", "scripts/generate-html-interactive.py", "web/js/drag.js"],
+    "all_occurrences": [
+      "scripts/serve-trip.py:149-186",
+      "scripts/lib/render_html_builders.py:323-368",
+      "scripts/generate-html-interactive.py:598-634",
+      "scripts/lib/react_template.tpl:1-1847",
+      "web/js/drag.js:1-136"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "react_template.tpl read in this session — confirmed font, card dimensions, cover height, component structure",
+    "url_or_location": "scripts/lib/react_template.tpl lines 718-809, 1644-1847, 1704",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "N/A — CSS patching attempts over 4+ cycles",
+        "proposed_solution": "Adjust CSS tokens, font imports, cover height in web/css/main.css and web/index.html",
+        "actual_change": "--font-sans value, .trip-cover height, color variables",
+        "outcome": "Visual differences persisted — structural divergence cannot be fixed with CSS",
+        "failure_category": "wrong_scope",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "All prior attempts targeted L1 (CSS tokens). This attempt replaces the rendering engine (L4 architecture) — sharing the same React component tree as the published page guarantees visual parity by construction."
+    }
+  },
+  "context": {
+    "codebase_state": "serve-trip.py serves static web/index.html; generate-html-interactive.py produces correct React HTML but is only used for static export",
+    "recent_commits": "8b7d4e0c fix(web): 3 close-gate blockers — AC1 separator, AC5 no border, AC8 sticky (CSS patching attempt 4)",
+    "file_contents": {},
+    "dependencies": {
+      "react": "18 (CDN unpkg)",
+      "babel_standalone": "7 (CDN unpkg)",
+      "python": "3.12"
+    },
+    "environment": {
+      "server": "ThreadingHTTPServer on 127.0.0.1:8765",
+      "data_root": "data/",
+      "generation_blocking_risk": "exchange rate subprocess up to 10s — mitigated by in-memory cache"
+    }
+  },
+  "development_approach": {
+    "strategy": "Replace serve-trip.py _serve_index() to use InteractiveHTMLGenerator (via importlib if needed) with in-memory HTML cache and save-triggered invalidation. Add EDITOR_MODE injection to render_html_builders.py. Add CandidatesSidebar React component and editorMode flag to react_template.tpl. Refactor drag.js to remove state.js/mobile.js imports.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/serve-trip.py",
+      "scripts/lib/render_html_builders.py",
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
+    ],
+    "validation_approach": "Playwright: navigate to /trip/<id>, measure fontFamily via getComputedStyle, measure cover div dimensions, measure card dimensions, verify CandidatesSidebar DOM presence, perform drag-drop and verify /api/save POST fires"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex confirmed: (1) vanilla JS injection into React DOM is unsound — React-side changes required; (2) exchange rate subprocess is a per-request blocker — cache required; (3) state.js cannot be injected wholesale; (4) candidates sidebar must be a React component inside the root flex layout; (5) interaction model must be named-slot (drag sets selected_option_id for a specific slot); (6) drag.js must be refactored to be framework-neutral; (7) window bridge (window.setEditorSelection) required for React re-render; (8) editorMode flag is the correct minimal change pattern; (9) hyphenated filename requires importlib; (10) live browser verification ACs required.",
+    "findings": [
+      {
+        "issue": "Approach A (inject vanilla JS on top) is not sound — React owns the DOM under #root",
+        "proposed_fix": "Reuse generated React template as editor shell; render candidates, drop zones, and selection state through React; vanilla drag code may only dispatch events into React",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Architecture revised: CandidatesSidebar is a React component inside NotionTravelApp, not an external panel"
+      },
+      {
+        "issue": "Per-request InteractiveHTMLGenerator blocks HTTP up to 10s via exchange rate subprocess",
+        "proposed_fix": "Keep GET /trip/<id> on fast path via in-memory HTML cache; never run exchange rate subprocess during editor page load",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Cache strategy added to serve-trip.py requirements and Technical Hints"
+      },
+      {
+        "issue": "Cache invalidation must be tied to persisted saves, not just request-time memory",
+        "proposed_fix": "On successful save, invalidate HTML cache for that trip_id",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Invalidation on save success added to cache design"
+      },
+      {
+        "issue": "state.js cannot be injected into React page — auto-init fails on missing DOM IDs",
+        "proposed_fix": "Treat state.js as reference logic only; implement equivalent mutation flow in React",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "state.js explicitly excluded from scope; window.setEditorSelection bridge specified instead"
+      },
+      {
+        "issue": "Candidates sidebar must be a React component inside NotionTravelApp, not an injected vanilla panel",
+        "proposed_fix": "Add <CandidatesSidebar /> inside root flex layout with correct data attributes",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "CandidatesSidebar specified as React component in react_template.tpl"
+      },
+      {
+        "issue": "Interaction model unspecified — must clarify named-slot semantics",
+        "proposed_fix": "Users drag candidate into named active-day slot; drop sets selected_option_id for that slot",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Named slot interaction model specified in requirements and AC5"
+      },
+      {
+        "issue": "KanbanView has no drop zones — underspecified where drops land",
+        "proposed_fix": "Either keep KanbanView read-only with drop zones in TimelineView, or add explicit slot-drop zones per category section header in KanbanView",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Option A (drop zones in category headers) recommended; dev may choose Option B"
+      },
+      {
+        "issue": "editorMode flag is the minimal safe change pattern",
+        "proposed_fix": "Add EDITOR_MODE defaulting false; when true render CandidatesSidebar and slot-drop zones; existing KanbanView styles unchanged",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "editorMode/EDITOR_MODE flag specified in render_html_builders.py and react_template.tpl requirements"
+      },
+      {
+        "issue": "window global does not trigger React re-render",
+        "proposed_fix": "Expose window.setEditorSelection(dayN, slotId, optionId) inside useEffect that calls setState",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "window.setEditorSelection bridge specified in requirements and Technical Hints"
+      },
+      {
+        "issue": "drag.js imports state.js/mobile.js — pulls in vanilla auto-init path",
+        "proposed_fix": "Refactor drag.js to accept callbacks as parameters; no imports from state.js or mobile.js",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "drag.js refactor specified as Must Have S2"
+      },
+      {
+        "issue": "generate-html-interactive.py not importable due to hyphenated filename",
+        "proposed_fix": "Use importlib.util.spec_from_file_location() or move class to scripts/lib/html_generator.py",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "importlib pattern included in Technical Hints; note to check html_generator.py first"
+      },
+      {
+        "issue": "Verification must include live browser rendering checks",
+        "proposed_fix": "ACs must require desktop and mobile browser checks with specific pixel measurements",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "All 8 ACs specify measurable browser-observable outcomes"
+      }
+    ],
+    "feedback_incorporated": "All 12 Codex findings classified and applied. Architecture revised from vanilla-JS-injection to React-native approach. Exchange rate caching strategy added. drag.js refactor scoped. window bridge specified. All ACs include live browser verification requirements."
+  }
+}
