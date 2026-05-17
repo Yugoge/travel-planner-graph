@@ -677,13 +677,32 @@ function _deriveCityName(day) {
   return day.city_name || "";
 }
 
-function _wireDayPicker() {
-  const sel = document.getElementById("day-select");
-  sel.onchange = () => setActiveDay(parseInt(sel.value, 10));
+function renderDaysPanel() {
+  const list = document.getElementById("days-list");
+  if (!list) return;
+  list.innerHTML = "";
+  for (const day of state.days) {
+    const dayN = day.day || day.day_number;
+    const cityName = _deriveCityName(day);
+    const row = document.createElement("button");
+    row.className = "day-row" + (dayN === state.ui.active_day ? " day-row--active" : "");
+    row.dataset.dayN = String(dayN);
+    const label = document.createElement("span");
+    label.className = "day-row-label";
+    label.textContent = `Day ${dayN}`;
+    const city = document.createElement("span");
+    city.className = "day-row-city";
+    city.textContent = cityName;
+    row.appendChild(label);
+    row.appendChild(city);
+    row.addEventListener("click", () => setActiveDay(dayN));
+    list.appendChild(row);
+  }
 }
 
-function _renderDayPickerOptions() {
-  const sel = document.getElementById("day-select");
+function _populateMobileDaySelect() {
+  const sel = document.getElementById("mobile-day-select");
+  if (!sel) return;
   sel.innerHTML = "";
   for (const day of state.days) {
     const dayN = day.day || day.day_number;
@@ -691,9 +710,10 @@ function _renderDayPickerOptions() {
     const opt = document.createElement("option");
     opt.value = String(dayN);
     opt.textContent = cityName ? `Day ${dayN} · ${cityName}` : `Day ${dayN}`;
+    opt.selected = dayN === state.ui.active_day;
     sel.appendChild(opt);
   }
-  sel.value = String(state.ui.active_day);
+  sel.onchange = () => { setActiveDay(parseInt(sel.value, 10)); };
 }
 
 function _wireGlobalControls() {
