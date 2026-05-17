@@ -1,0 +1,288 @@
+{
+  "request_id": "20260517-211603",
+  "task_id": "20260517-211603",
+  "timestamp": "2026-05-18T00:30:00Z",
+  "qa": {
+    "status": "fail",
+    "verdict": "Round 4: BLOCKER-A/B/C all confirmed resolved. Codex adversarial review (Round 4 session 019e3831) found 8 new hard blockers (D-K). Spec is NOT ready for dev implementation.",
+    "user_verbatim_complaint": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！可拖拽的页面只应该是原始页面的升级版而不是退化版！也不是完全不同的一版！就是在原有基础上升级",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "round": 4,
+    "round_4_patches_verified": {
+      "BLOCKER-A": {
+        "verdict": "PASS",
+        "evidence": "Grep confirmed 'morning cards' not present anywhere in ticket-20260517-211850.md. Lines 444-457 say 'Use the F7b name-based algorithm from Finding 7b for attraction drop zones.' Line 455 shows data-slot-id on .slot-drop element: <div className=\"slot-drop\" data-slot-id={slotId} data-droppable=\"true\">."
+      },
+      "BLOCKER-B": {
+        "verdict": "PASS",
+        "evidence": "Lines 277-302 specify effectiveDay = useMemo(() => mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections), [publishedDay, editorDay, editorSelections]). KanbanView receives EDITOR_MODE ? effectiveDay : publishedDay. Merge logic defined: localId??persistedId priority, adaptV2Option for meals, F7b name-based for activities."
+      },
+      "BLOCKER-C": {
+        "verdict": "PASS",
+        "evidence": "Lines 422-442: published path .replace('__TRIP_ID__', 'null'), editor path .replace('__TRIP_ID__', json.dumps(trip_id)). Lines 237-242: useEffect dependency is [TRIP_ID] not [activeDay]. Both __EDITOR_MODE__ and __TRIP_ID__ present in HTML_SCRIPT."
+      }
+    },
+    "overall_assessment": "Round 4: BLOCKER-A/B/C all confirmed resolved. Codex adversarial review (session 019e3831, gpt-5.5, xhigh) found 8 new hard blockers (D-K). The spec still cannot be implemented correctly. Requires Round 5 BA patch.",
+    "all_findings": [
+      {
+        "severity": "critical",
+        "id": "BLOCKER-D",
+        "location": "ticket-20260517-211850.md lines 446-450 vs lines 454-456; lines 194-198",
+        "issue": "Two contradictory drop-zone JSX snippets. Lines 446-450 (Option A) show inner .slot-drop WITHOUT data-slot-id. Lines 454-456 (corrected) show .slot-drop WITH data-slot-id. Also lines 194-198 say 'Users drop onto the section header' contradicting per-card instruction at line 452. Dev cannot determine canonical structure.",
+        "recommendation": "Delete lines 445-451 first snippet and lines 194-198 section-header instruction entirely. Keep ONLY lines 453-457 canonical snippet with data-slot-id on inner .slot-drop.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-E",
+        "location": "ticket-20260517-211850.md lines 446-450, lines 454-456",
+        "issue": "Both drop-zone snippets render visible 'Drop here' text as literal content inside the main page body. User requirement states pixel-identical to published page (R1). Visible 'Drop here' text violates R1.",
+        "recommendation": "Replace 'Drop here' text with a transparent absolute-position overlay div: no visible text, no border at idle, highlights on dragover only. Example: <div className=\"slot-drop\" data-slot-id={slotId} data-droppable=\"true\" style={{position:'absolute',inset:0,opacity:0}} />",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-F",
+        "location": "ticket-20260517-211850.md AC5 GIVEN/WHEN; data/beijing-lijiang-dali-20260418-100846/days/day-01.json verified",
+        "issue": "AC5 GIVEN references 'Day 1 breakfast slot'. Verified day-01.json: breakfast slot has 0 options (options: []). The acceptance criterion is untestable against actual trip data. Only dinner has 2 options on Day 1.",
+        "recommendation": "Rewrite AC5 GIVEN to use 'Day 3, breakfast slot' (breakfast-3-1 confirmed present in day-03.json). Update WHEN/THEN to reference Day 3 breakfast.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-G",
+        "location": "ticket-20260517-211850.md lines 247-257 (F7b algorithm)",
+        "issue": "F7b name-based matching algorithm searches only day.attractions[]. Verified from actual data: day-03.json evening_activity slot option 'evening_activity-3-1' has name 'Lijiang Old Town Night Walk - Four Square Street' which comes from entertainment.json (name_base confirmed at line 83), NOT from attractions[]. F7b will silently fail to match any entertainment-sourced activity option.",
+        "recommendation": "Expand F7b to search day.attractions[], day.entertainment[], day.cafe[], and day.unscheduled_optionals[] when resolving card-to-slot mapping. Return first name_base/name_local match across all four collections.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-H",
+        "location": "ticket-20260517-211850.md line 373 vs line 435",
+        "issue": "Signature conflict for generate_editor_html(). Line 373 calls generate_editor_html(gen) with one argument. Line 435 defines/uses generate_editor_html(gen, trip_id) with two arguments. One call site will crash at runtime.",
+        "recommendation": "Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id) to match the two-argument signature at line 435.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-I",
+        "location": "ticket-20260517-211850.md AC1; react_template.tpl:1701-1705",
+        "issue": "AC1 tests 'getComputedStyle(document.body).fontFamily'. The react_template.tpl applies fontFamily on the root app <div> (line 1704), NOT on document.body. getComputedStyle(document.body) will not reflect the app's fontFamily even in the gold published page. AC1 will fail even for a correctly implemented feature.",
+        "recommendation": "Change AC1 WHEN to: document.querySelector('#root > div').style.fontFamily or getComputedStyle(document.querySelector('[style*=\"ui-sans-serif\"]')).fontFamily.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-J",
+        "location": "ticket-20260517-211850.md Finding 10 (lines 277-302) — effectiveDay merge contract",
+        "issue": "effectiveDay merge replaces publishedDay card objects with raw v2 slot option objects. v2 options lack image, time, notes_base, location_base fields that React cards render. Merged cards will render broken (no image, no time, no notes). The merge must use full PLAN_DATA card objects as baseline, only overlaying selection state, not replacing entire card objects.",
+        "recommendation": "Revise merge contract: keep publishedDay as read-only baseline. For meal slots, find the PLAN_DATA meal entry matching the selected option by name (not by replacing it with the raw v2 option). Mark it as selected visually. Do not call adaptV2Option on merged objects that will render in KanbanView — adaptV2Option output is for CandidatesSidebar display only.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "id": "BLOCKER-K",
+        "location": "react_template.tpl:4; ticket-20260517-211850.md Finding 10 effectiveDay spec",
+        "issue": "react_template.tpl line 4: const { useState, useEffect, useCallback } = React; — useMemo is NOT destructured. The spec's effectiveDay = useMemo(...) will throw ReferenceError: useMemo is not defined at render time, crashing the entire app.",
+        "recommendation": "Add useMemo to the spec's instruction for the template modification: change line 4 to const { useState, useEffect, useCallback, useMemo } = React; OR use React.useMemo(...) in the effectiveDay pseudocode.",
+        "blocks_release": true
+      }
+    ],
+    "success_criteria_results": [
+      {
+        "requirement_id": "R1",
+        "source_phrase": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+        "criterion": "Editor main content area renders identical to published page (card dimensions, font, cover)",
+        "verification_method": "Spec analysis — shared react_template.tpl guarantees structural parity, but BLOCKER-E (visible Drop here text) and BLOCKER-J (effectiveDay merge replaces card objects) would break visual parity at runtime.",
+        "status": "fail",
+        "result": "fail",
+        "details": "Architecture correct but BLOCKER-E and BLOCKER-J would produce non-identical rendering.",
+        "evidence": "BLOCKER-E: drop-zone snippets add visible text. BLOCKER-J: merge replaces PLAN_DATA card objects with raw v2 options lacking image/time/notes."
+      },
+      {
+        "requirement_id": "R2",
+        "source_phrase": "可拖拽的页面只应该是原始页面的升级版而不是退化版",
+        "criterion": "Editor has all published-page features PLUS candidates sidebar",
+        "verification_method": "React template features preserved by construction",
+        "status": "pass",
+        "result": "pass",
+        "details": "All published features preserved by sharing React template.",
+        "evidence": "react_template.tpl:1647-1654 — all useState flags present."
+      },
+      {
+        "requirement_id": "R3",
+        "source_phrase": "直接复制原始html生成机制然后将你的全部动态html机制加载上面",
+        "criterion": "serve-trip.py uses React template as editor shell with editor components injected",
+        "verification_method": "Spec analysis — 8 blocking gaps prevent functioning implementation",
+        "status": "fail",
+        "result": "fail",
+        "details": "Architecture correct but BLOCKER-D through BLOCKER-K make the spec unimplementable without crashes or incorrect behavior.",
+        "evidence": "8 hard blockers identified and verified via data inspection and Codex adversarial review."
+      }
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex (Round 4 confirmation, session 019e3831, gpt-5.5, xhigh) confirmed FAIL verdict. Identified 3 additional hard blockers beyond QA's D/E/F/G/H: (I) AC1 tests document.body but fontFamily is on root <div> — AC1 untestable even on gold page; (J) effectiveDay merge would break KanbanView by replacing PLAN_DATA card objects with raw v2 options lacking image/time/notes; (K) useMemo not destructured from React in react_template.tpl line 4 — effectiveDay spec crashes at render. All 3 carry PROPOSED_FIX.",
+      "feedback_incorporated": "All 3 Codex findings (I/J/K) incorporated as hard blockers. Total new blockers: 8 (D-K). BLOCKER-A/B/C resolved per Round 4 patches."
+    },
+    "build_verification": {
+      "status": "skipped",
+      "build_command": null,
+      "deploy_command": null,
+      "build_output_summary": null,
+      "service_healthy": null,
+      "changes_verified_live": false,
+      "skip_reason": "BA-mode QA re-validation: no dev implementation exists. Spec quality gate only."
+    },
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true
+    },
+    "e2e_enforcement": {
+      "required": false,
+      "attempted": false,
+      "script_discovered": false,
+      "script_path": null,
+      "health_check_url": null,
+      "health_check_result": null,
+      "status": "legitimately_skipped",
+      "blocking_reason": "BA-mode QA re-validation: no dev implementation exists to verify. Spec quality gate only. E2E skipped legitimately per BA-validation mode."
+    },
+    "e2e_script_results": [],
+    "ui_test_results": [],
+    "generated_tests": [],
+    "hardcode_scan_results": {
+      "files_scanned": 0,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      },
+      "note": "BA-mode QA: no new files created by dev."
+    },
+    "standards_compliance": {
+      "checked": false,
+      "role_table_source": null,
+      "violations": [],
+      "note": "BA-mode QA: no CLAUDE.md role table found for travel-planner."
+    },
+    "permissions_verification": {
+      "status": "skipped",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "summary": {
+      "round": 4,
+      "round_4_patches_resolved": [
+        "BLOCKER-A",
+        "BLOCKER-B",
+        "BLOCKER-C"
+      ],
+      "new_blockers_found_in_round_4": [
+        "BLOCKER-D",
+        "BLOCKER-E",
+        "BLOCKER-F",
+        "BLOCKER-G",
+        "BLOCKER-H",
+        "BLOCKER-I",
+        "BLOCKER-J",
+        "BLOCKER-K"
+      ],
+      "critical_issues": 8,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 8,
+      "release_recommendation": "reject"
+    },
+    "spec_section_updates": {
+      "section_4": "Round 4 verification (2026-05-18): BLOCKER-A confirmed resolved (no stale sentence, data-slot-id on .slot-drop at line 455). BLOCKER-B confirmed resolved (effectiveDay merge contract at lines 277-302). BLOCKER-C confirmed resolved (TRIP_ID injected both paths, useEffect dep [TRIP_ID] at lines 237-242). New blockers D-K identified: (D) contradictory drop-zone JSX snippets lines 446-450 vs 454-456 plus section-header instruction at 194-198; (E) visible 'Drop here' text violates pixel-identical R1; (F) AC5 Day 1 breakfast has 0 options in actual data (day-01.json confirmed); (G) F7b searches only attractions[] but evening_activity-3-1 'Lijiang Old Town Night Walk' comes from entertainment.json; (H) generate_editor_html() signature conflict line 373 (gen) vs line 435 (gen, trip_id); (I) AC1 tests document.body but fontFamily is on root <div> — wrong node; (J) effectiveDay merge replaces PLAN_DATA card objects with raw v2 options lacking image/time/notes fields; (K) useMemo not destructured from React at react_template.tpl:4 — spec crashes at render.",
+      "section_6": "Spec not ready: 8 hard blockers remain. (D) Contradictory drop-zone instructions — dev cannot determine canonical structure. (E) 'Drop here' visible text violates pixel-identical R1. (F) AC5 references Day 1 breakfast which has zero options in real data — untestable. (G) F7b restricted to attractions[] misses entertainment[]/cafe[] activity sources — silent failure. (H) generate_editor_html() called with 1 arg at line 373 but 2 args at line 435 — runtime crash. (I) AC1 queries wrong DOM node for fontFamily — will fail even on correct implementation. (J) effectiveDay merge contract overwrites enriched PLAN_DATA cards with raw v2 options — broken rendering. (K) useMemo not in React destructuring — ReferenceError crash.",
+      "section_7": "BA must patch exactly 8 items in Round 5: (D) Delete lines 445-451 first drop-zone snippet and lines 194-198 section-header instruction; keep only lines 453-457. (E) Replace 'Drop here' text with transparent absolute overlay. (F) Rewrite AC5 GIVEN/WHEN to use Day 3 breakfast (breakfast-3-1 in actual data). (G) Expand F7b to search attractions[], entertainment[], cafe[], unscheduled_optionals[]. (H) Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id). (I) Change AC1 WHEN to query '#root > div' or element with fontFamily style, not document.body. (J) Revise effectiveDay merge to keep PLAN_DATA card objects as baseline and only overlay selection state visually; adaptV2Option output is for CandidatesSidebar only. (K) Add useMemo to React destructuring: const { useState, useEffect, useCallback, useMemo } = React."
+    },
+    "self_verification": {
+      "claims_total": 12,
+      "claims_with_evidence": 12,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high",
+      "evidence_sources": [
+        "Grep: 'morning cards' not in ticket — BLOCKER-A PASS confirmed",
+        "Read ticket lines 444-457 — effectiveDay merge and TRIP_ID injection confirmed PASS",
+        "Read day-01.json — breakfast options: 0, dinner options: 2 — BLOCKER-F confirmed",
+        "Read day-03.json — breakfast-3-1 present, evening_activity-3-1 = 'Lijiang Old Town Night Walk' — BLOCKER-F fix target confirmed, BLOCKER-G verified",
+        "Read entertainment.json — name_base 'Lijiang Old Town Night Walk - Four Square Street' at line 83 — BLOCKER-G source confirmed",
+        "Read ticket lines 373 vs 435 — generate_editor_html() signature conflict — BLOCKER-H confirmed",
+        "Read react_template.tpl:4 — useMemo NOT in destructuring — BLOCKER-K confirmed",
+        "Read react_template.tpl:1704 — fontFamily on root div not body — BLOCKER-I confirmed",
+        "Codex exec (session 019e3831): confirmed FAIL, added BLOCKER-I/J/K with PROPOSED_FIX"
+      ]
+    },
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
+        "line": null,
+        "observation": "Codex finding: cross-slot drag behavior (dragging meal candidate onto activity slot) unspecified. OBSERVATION_ONLY — no PROPOSED_FIX. Acceptable default: drop-rejection or silent no-op.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
+        "line": null,
+        "observation": "Codex finding: drag.js import mechanism (classic script tag vs ES module) not specified. OBSERVATION_ONLY. Non-blocking given existing drag.js refactor description.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-18T00:25:00Z",
+        "file": "ticket-20260517-211850.md",
+        "line": null,
+        "observation": "Codex finding: _invalidate_html_cache timing relative to save response unclear. OBSERVATION_ONLY. Does not affect client-observable behavior.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ]
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "round": 4,
+    "resolved_blockers": [
+      "BLOCKER-A",
+      "BLOCKER-B",
+      "BLOCKER-C"
+    ],
+    "remaining_blockers_for_round_5": [
+      "BLOCKER-D: Delete lines 445-451 first drop-zone snippet and lines 194-198 section-header instruction. Keep only lines 453-457 canonical snippet.",
+      "BLOCKER-E: Replace 'Drop here' literal text with transparent absolute-position overlay div (no visible content at idle, highlights on dragover only).",
+      "BLOCKER-F: Rewrite AC5 GIVEN/WHEN to use Day 3 breakfast slot (breakfast-3-1 confirmed in day-03.json).",
+      "BLOCKER-G: Expand F7b to search day.attractions[], day.entertainment[], day.cafe[], day.unscheduled_optionals[].",
+      "BLOCKER-H: Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id).",
+      "BLOCKER-I: Change AC1 WHEN to query '#root > div' or element with fontFamily inline style, not document.body.",
+      "BLOCKER-J: Revise effectiveDay merge contract to keep PLAN_DATA card objects as baseline; only mark selection state visually; adaptV2Option output is for CandidatesSidebar sidebar display only.",
+      "BLOCKER-K: Add useMemo to React destructuring at template line 4: const { useState, useEffect, useCallback, useMemo } = React."
+    ],
+    "stable_elements_do_not_touch": [
+      "F1a: absolute-day find() algorithm (RESOLVED Round 3)",
+      "F5: mutations[] payload shape (RESOLVED Round 3)",
+      "F7b: name-based attraction matching algorithm direction (correct; only expand the collection set per BLOCKER-G)",
+      "F8: adaptV2Option() adapter — keep for CandidatesSidebar display; do NOT use for KanbanView cards per BLOCKER-J",
+      "F9: per-trip cache lock (correct)",
+      "M2: position:fixed sidebar (correct)",
+      "BLOCKER-A patch: drop-zone data-slot-id at lines 453-457 (correct — keep)",
+      "BLOCKER-B patch: effectiveDay useMemo shape (correct — revise merge body per BLOCKER-J only)",
+      "BLOCKER-C patch: TRIP_ID injection and [TRIP_ID] useEffect dep (correct)"
+    ],
+    "recommended_approach": "BA patches exactly 8 items above. No architectural changes. BLOCKER-A/B/C must not be regressed. Codex session 019e3831 output confirms D-K with concrete PROPOSED_FIX for each."
+  }
+}
