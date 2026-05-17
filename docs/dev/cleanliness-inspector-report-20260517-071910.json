@@ -1,0 +1,91 @@
+{
+  "task_id": "20260517-071910",
+  "timestamp": "2026-05-17T07:19:10Z",
+  "inspector": "cleanliness-inspector",
+  "mode": "changed-files",
+  "changed_files": [
+    "web/css/main.css",
+    "web/index.html",
+    "web/js/state.js",
+    "web/js/drag.js",
+    "web/js/mobile.js",
+    "scripts/lib/server/save.py"
+  ],
+  "findings": [
+    {
+      "file": "web/js/drag.js",
+      "description": "Duplicate _isCompatible function and MEAL_SLOT_IDS constant. Both are now defined identically in drag.js (lines 123-130) and mobile.js (lines 20-27). The logic is byte-for-byte identical. This was introduced in this diff: drag.js previously had a simpler _isCompatible that only did srcSlot === targetSlot with no meal set; mobile.js gained a new copy of the upgraded logic rather than sharing it from a common module.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Extract MEAL_SLOT_IDS and _isCompatible into a shared web/js/slots.js utility and import from both drag.js and mobile.js."
+    },
+    {
+      "file": "web/js/mobile.js",
+      "description": "Duplicate _isCompatible function and MEAL_SLOT_IDS constant — same as drag.js finding above. mobile.js lines 20-27 are an exact copy of the logic added to drag.js in this diff.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Same as drag.js: extract to a shared utility module."
+    },
+    {
+      "file": "web/js/state.js",
+      "description": "Unused variable anyMealSelectedId at line 214. It is computed (MEAL_SLOT_KEYS.map(...).find(Boolean)) but never read anywhere in the function _buildMealsCandidateGroup or elsewhere. This dead assignment was introduced in this diff as part of the unified meals candidate group feature.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Remove the anyMealSelectedId assignment. The per-option isSelected check at line 232 already handles selection state correctly without it."
+    },
+    {
+      "file": "web/js/state.js",
+      "description": "Three separate hardcoded definitions of the meal slot array [breakfast, lunch, dinner] exist within the same file after this diff: (1) MEAL_SLOTS = new Set(...) at line 39 (pre-existing), (2) const MEAL_SLOT_KEYS = [...] at line 182 (new, local to _buildMealsCandidateGroup), (3) const MEAL_SLOT_KEYS_ARR = [...] at line 569 (new, module-level for requestSelectMutation). All three represent the same domain concept. MEAL_SLOT_KEYS (line 182) could simply use Array.from(MEAL_SLOTS).",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Remove MEAL_SLOT_KEYS local and MEAL_SLOT_KEYS_ARR module constant. Replace usages with Array.from(MEAL_SLOTS) or the existing MEAL_SLOTS set directly."
+    },
+    {
+      "file": "web/css/main.css",
+      "description": "Task-tracking comment in production CSS file header: '* Task: 20260517-071910' at line 2. Production stylesheets should not embed development task identifiers in file-level comments. This was introduced in this diff as part of the header rewrite.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Remove the 'Task: 20260517-071910' line from the CSS header comment. The spec annotation '* Spec: ...' pattern used in JS files is acceptable but task IDs are transient and pollute the stylesheet."
+    },
+    {
+      "file": "web/css/main.css",
+      "description": "Hardcoded hex color #1a72cf for btn-primary hover at line 377, and #c0c0c0 for card hover border at line 224. Both are outside the token system defined in :root. The rest of the stylesheet uses CSS custom properties consistently. These two raw hex values bypass the token system and are untraceable if the accent color changes.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Define --accent-hover: #1a72cf and --border-hover: #c0c0c0 as derived tokens in :root, then reference them at the use sites."
+    },
+    {
+      "file": "web/index.html",
+      "description": "The <nav class=\"breadcrumb\"> wrapper element (line 11) introduced in this diff has no corresponding .breadcrumb CSS rule in main.css. The nav element itself is purely structural and the .nav-back anchor is styled, but the .breadcrumb class is unused in CSS — it serves no styling purpose and could mislead future maintainers.",
+      "severity": "minor",
+      "introduced_in_diff": true,
+      "recommendation": "Either remove the class=\"breadcrumb\" attribute from the <nav> element (keeping only aria-label), or add a minimal .breadcrumb rule to main.css documenting its intent (e.g., display: contents or a comment)."
+    }
+  ],
+  "non_findings_noted": [
+    {
+      "file": "scripts/lib/server/save.py",
+      "note": "No cleanliness issues. _MEAL_SLOT_IDS, _get_existing_slot, and the cross-meal option copy logic are all new-in-diff, well-structured, and appropriately scoped. No dead code, no stray comments, no naming violations."
+    },
+    {
+      "file": "web/js/drag.js",
+      "note": "_isMobile() thin wrapper at lines 35-37 is pre-existing (present in HEAD~1) and is called at line 40, so it is not dead code. Not a new-in-diff issue."
+    }
+  ],
+  "summary": {
+    "total_issues": 7,
+    "critical": 0,
+    "major": 0,
+    "minor": 7,
+    "introduced_in_diff_count": 7,
+    "pre_existing_count": 0,
+    "overall_assessment": "All 7 findings are new in this diff and minor severity. The most impactful are the duplicate _isCompatible/_MEAL_SLOT_IDS split across drag.js and mobile.js (maintenance hazard if the compatible-slot logic ever diverges), and the three parallel definitions of the meal slot list in state.js. The CSS issues (task-ID comment, two unhardened hex values, unused .breadcrumb class) are cosmetic. No blocking issues."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
