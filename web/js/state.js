@@ -511,6 +511,7 @@ function _routeStateForSlotGap(slotId) {
 
 function renderApproveButton() {
   const btn = document.getElementById("approve-day-btn");
+  if (!btn) return;
   const day = _getActiveDay();
   if (!day) {
     btn.disabled = true;
