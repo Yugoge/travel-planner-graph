@@ -511,6 +511,7 @@ function _writeSlotSelected(node, sel) {
     img.src = url;
   } else {
     img.hidden = true;
+    img.removeAttribute("src");
   }
   selEl.appendChild(img);
   const nameDiv = document.createElement("div");
