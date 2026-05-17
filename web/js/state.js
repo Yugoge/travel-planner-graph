@@ -70,6 +70,7 @@ export const state = {
   days: [],
   transportation: { segments: [] },
   route_cache: {},
+  images: {},
   ui: {
     active_day: 1,
     editor_session: _generateSessionId(),
