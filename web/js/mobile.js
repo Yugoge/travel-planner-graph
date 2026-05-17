@@ -58,6 +58,11 @@ function _activateTab(pane) {
     const el = document.getElementById(`pane-${p}`);
     if (el) el.dataset.mobileHidden = p === pane ? "false" : "true";
   }
+  // When switching to middle pane, reset inner tab to Timeline to avoid showing stale Dashboard
+  if (pane === "middle") {
+    const timelineBtn = document.querySelector(".middle-tab[data-tab='timeline']");
+    if (timelineBtn) timelineBtn.click();
+  }
 }
 
 function _wireCardTap() {
