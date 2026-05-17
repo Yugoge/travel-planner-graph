@@ -36,6 +36,19 @@ const SLOT_LABELS = {
   evening_activity: "Evening",
   accommodation: "Accommodation",
 };
+const SLOT_TITLE_EMOJI = {
+  breakfast: "🍽️",
+  morning_activity: "🌅",
+  lunch: "🍱",
+  afternoon_activity: "☀️",
+  dinner: "🍽️",
+  evening_activity: "🌙",
+  accommodation: "🏨",
+};
+function _timelineSlotLabel(slotId) {
+  const emoji = SLOT_TITLE_EMOJI[slotId] || "";
+  return emoji ? `${emoji} ${SLOT_LABELS[slotId] || slotId}` : (SLOT_LABELS[slotId] || slotId);
+}
 const MEAL_SLOTS = new Set(["breakfast", "lunch", "dinner"]);
 const ALL_SLOT_KEYS = NAMED_SLOTS.concat(["accommodation"]);
 
