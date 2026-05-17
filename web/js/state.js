@@ -689,7 +689,7 @@ function renderDaysPanel() {
     row.dataset.dayN = String(dayN);
     row.setAttribute("aria-label", cityName ? `Day ${dayN} · ${cityName}` : `Day ${dayN}`);
     const label = document.createElement("span");
-    label.className = "day-row-label";
+    label.className = "day-row-label day-title";
     label.textContent = `Day ${dayN}`;
     const city = document.createElement("span");
     city.className = "day-row-city";
