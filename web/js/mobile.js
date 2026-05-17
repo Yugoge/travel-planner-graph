@@ -54,7 +54,7 @@ function _activateTab(pane) {
   document.querySelectorAll("#mobile-tabs .tab").forEach((t) => {
     t.setAttribute("aria-pressed", t.dataset.pane === pane ? "true" : "false");
   });
-  for (const p of ["candidates", "timeline", "budget"]) {
+  for (const p of ["middle", "candidates"]) {
     const el = document.getElementById(`pane-${p}`);
     if (el) el.dataset.mobileHidden = p === pane ? "false" : "true";
   }
