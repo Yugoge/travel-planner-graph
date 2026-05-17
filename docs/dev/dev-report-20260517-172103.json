@@ -1,0 +1,139 @@
+{
+  "request_id": "20260517-172103",
+  "task_id": "20260517-172103",
+  "timestamp": "2026-05-17T17:52:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260517-172103.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/lib/server/trip.py",
+      "web/js/state.js",
+      "web/index.html",
+      "web/css/main.css"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Add images.json read to hydrate_trip() with FileNotFoundError fallback",
+        "type": "server",
+        "files_modified": ["scripts/lib/server/trip.py"],
+        "changes": "Added json import; added images_path read with try/except FileNotFoundError; normalized to {pois, city_covers} only stripping destination/fallback_unsplash; added 'images' key to return dict",
+        "rationale": "API was returning {meta, days, transportation, route_cache} only — images.json was never read. Feature needs the data exposed at GET /api/trip/<id>."
+      },
+      {
+        "id": 2,
+        "description": "Add state.images to state object and wire _fetchTrip() assignment",
+        "type": "frontend",
+        "files_modified": ["web/js/state.js"],
+        "changes": "Added images: {} to state export; added state.images = { pois: data.images?.pois || {}, city_covers: data.images?.city_covers || {} } after route_cache assignment in _fetchTrip()",
+        "rationale": "Frontend had no storage for image lookup data; assignment uses optional chaining with empty fallbacks to handle API transition period."
+      },
+      {
+        "id": 3,
+        "description": "Add img element to #tpl-candidate-card template",
+        "type": "html",
+        "files_modified": ["web/index.html"],
+        "changes": "Added <img class='card-photo' draggable='false'> as first child of article in #tpl-candidate-card, before .card-head",
+        "rationale": "Template had no img element; clones from _buildCard() and _buildMealsCandidateGroup() therefore had no photo slot."
+      },
+      {
+        "id": 4,
+        "description": "Add #trip-cover img as first child of #tab-timeline",
+        "type": "html",
+        "files_modified": ["web/index.html"],
+        "changes": "Added <img id='trip-cover' class='trip-cover' draggable='false'> as first child of #tab-timeline div, before .timeline-header",
+        "rationale": "No cover image element existed in the document. Placed inside #tab-timeline (not header) to avoid grid disruption."
+      },
+      {
+        "id": 5,
+        "description": "Add _writeCardPhoto() helper and wire into _buildCard() and _buildMealsCandidateGroup()",
+        "type": "frontend",
+        "files_modified": ["web/js/state.js"],
+        "changes": "Added _writeCardPhoto(node, opt) function with name_local guard, gaode_ prefix lookup, onerror handler, and removeAttribute('src') for no-match case. Called from _buildCard() and _buildMealsCandidateGroup() after cloning the template.",
+        "rationale": "Both card-building code paths needed the same image lookup logic. Extracted into a shared helper."
+      },
+      {
+        "id": 6,
+        "description": "Add img.card-photo to _writeSlotSelected() for timeline selected cards",
+        "type": "frontend",
+        "files_modified": ["web/js/state.js"],
+        "changes": "Added img element creation with className='card-photo', draggable=false, onerror handler, gaode_ lookup, and hidden fallback. Img appended before nameDiv using appendChild (img first, then nameDiv).",
+        "rationale": "Timeline selected cards had no photo element. Fixed a bug during implementation: initially used insertBefore before nameDiv was appended — corrected to appendChild sequence."
+      },
+      {
+        "id": 7,
+        "description": "Add renderCover() and wire into renderAll()",
+        "type": "frontend",
+        "files_modified": ["web/js/state.js"],
+        "changes": "Added renderCover() function with null-day guard, _deriveCityName() call, city_covers lookup, onerror handler, and img.hidden/removeAttribute('src') for no-match. Called from renderAll() after renderTimeline().",
+        "rationale": "Cover image must update on day switch; wiring to renderAll() ensures it re-runs whenever the active day changes."
+      },
+      {
+        "id": 8,
+        "description": "Add .card-photo and #trip-cover CSS rules only",
+        "type": "css",
+        "files_modified": ["web/css/main.css"],
+        "changes": "Added .card-photo (width 100%, aspect-ratio 16/9, object-fit cover, border-radius 4px, display block), #trip-cover (width 100%, aspect-ratio 21/9, object-fit cover, display block, margin-bottom 24px), and .card-photo[hidden] / #trip-cover[hidden] { display: none } rules. No token changes, no grid changes.",
+        "rationale": "Photo elements need sizing and object-fit rules. Hidden selector is component-scoped (not bare img[hidden]) as required."
+      }
+    ],
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/server/trip.py",
+        "imported_by": ["scripts/serve-trip.py (hydrate_trip called at line 172)"],
+        "impact": "low — only adds a new key to the return dict; existing keys unchanged; serve-trip.py serializes the full dict to JSON"
+      },
+      {
+        "modified": "web/js/state.js",
+        "imported_by": ["web/js/mobile.js (state, getActiveDayNumber)", "web/js/routing.js (renderAll)", "web/js/drag.js (getActiveDayNumber)"],
+        "impact": "low — only added new internal functions and state.images property; no changes to exported function signatures"
+      },
+      {
+        "modified": "web/index.html",
+        "imported_by": [],
+        "impact": "low — added img elements to template and tab-timeline; no structural changes to existing elements"
+      },
+      {
+        "modified": "web/css/main.css",
+        "imported_by": [],
+        "impact": "low — additive rules only; no existing selectors modified"
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — missing feature, not regression. Editor built in commits 7b416587/8b7d4e0c/dbb35f72 without photo rendering.",
+      "why_issue_occurred": "Photos were implemented in the static HTML generator (render_html_builders.py) but never ported to the interactive editor (state.js + trip.py) when Cycle 3 built the 3-column Notion layout.",
+      "how_fix_addresses_root": "Exposes images.json data via the API (trip.py), stores it in client state (_fetchTrip), adds img elements to templates (index.html), and wires lookup logic into all three card-building code paths (_buildCard, _buildMealsCandidateGroup, _writeSlotSelected) plus a new renderCover() function."
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": 86,
+      "lines_removed": 0,
+      "new_symbols_introduced": ["_writeCardPhoto", "renderCover"],
+      "minimum_possible_lines_estimate": 70,
+      "justification_for_overage": "86 lines for 4 files covering server + state + template + CSS; the 16-line overage above minimum is the onerror handlers (2x), null guards (2x), and CSS hidden selectors — all required by the spec's S1 and M11 requirements."
+    },
+    "fix_layer": "L3",
+    "scope_review_requested": false,
+    "implementation_notes": [
+      "SERVER RESTART REQUIRED: The running server at port 8765 (PID 528462) uses /usr/bin/python3 without auto-reload. It must be restarted to pick up the trip.py change. Per CLAUDE.md Long-Running Process Verification rule, the dev subagent cannot restart it. REQUEST: user must restart the server: kill 528462 then start from /root/travel-planner/.",
+      "Static verification confirms trip.py change works correctly: hydrate_trip() now returns images key with 63 POIs and 4 city covers (Dali/Lijiang/Kunming/Beijing), no extra keys.",
+      "Browser DOM verification confirms: #trip-cover exists (hidden=true pending server restart), 5 img.card-photo in candidate cards (all hidden pending server restart), 5 img.card-photo in .slot-selected elements for Day 3.",
+      "Bug caught and fixed during implementation: _writeSlotSelected() initially used insertBefore(img, nameDiv) before nameDiv was appended to selEl — DOM throws NotFoundError. Fixed by using appendChild sequence: img first, then nameDiv."
+    ],
+    "qa_ready": true,
+    "qa_notes": "Server must be restarted before QA can verify AC1-AC5 with live image data. After restart: navigate to /trip/beijing-lijiang-dali-20260418-100846, switch to Day 3 or 4 (Lijiang) to verify cover image, check candidate cards show photos. AC6 (layout regression) can be checked immediately without restart.",
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "partial",
+    "notes": "JS/HTML/CSS changes verified via Playwright: DOM structure correct, img elements present, no console errors after insertBefore fix. Server change verified statically via direct Python import test (hydrate_trip returns correct images structure with 63 pois, 4 city_covers, no extra keys). Live API verification blocked by server not auto-reloading — requires user to restart PID 528462. All AC acceptance criteria will pass after server restart."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
