@@ -1,0 +1,339 @@
+{
+  "request_id": "20260517-153318",
+  "task_id": "20260517-153318",
+  "timestamp": "2026-05-17T15:33:18Z",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "除了供拖拽的sidebar，其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+    "clarified": "All areas of the web editor except #pane-candidates (the draggable candidates sidebar) must be visually identical to the published Notion-style travel plan page (published-page-desktop.png). Changes are driven by an authoritative UI-specialist component-level gap analysis supplied by the user.",
+    "what": "CSS token corrections, structural CSS changes (remove blue border-top on middle pane), days panel redesign, tab bar redesign, day H2 heading injection in JS renderTimeline(), slot emoji labels via new helper, slot gap/padding/card shell updates.",
+    "why": "The published static plan page is the design reference. The web editor must match it for visual coherence. The draggable candidates sidebar is exempted because it serves a different interaction purpose.",
+    "where": ["web/css/main.css", "web/js/state.js"],
+    "scope": {
+      "included": [
+        "CSS :root token values",
+        ".app-header backdrop-filter and background",
+        ".pane-days appearance",
+        ".day-row states (default/hover/active)",
+        ".pane-middle border-top removal",
+        ".tab-btn and .tab-btn--active",
+        ".tab-content padding",
+        "Day H2 heading in timeline (new JS rendering)",
+        "Slot title emoji prefix (new JS constant + helper)",
+        "Slot section gap (margin-based instead of gap)",
+        "Slot padding",
+        "Slot header separator",
+        ".slot-selected card shell",
+        ".selected-meta font-size",
+        "Pane-candidates token isolation override (required side effect of global token change)"
+      ],
+      "excluded": [
+        "#pane-candidates and all children",
+        "drag.js / drag-and-drop logic",
+        "save.js / save.py interactions",
+        "budget.js / routing.js / offline.js",
+        "Export functionality",
+        "Mobile layout (except two specific fixes: stale border-top override and tab-content mobile padding)",
+        "Dashboard tab content",
+        "web/index.html structural changes"
+      ]
+    },
+    "success_criteria": [
+      "All 16 ACs pass via DevTools computed style inspection at desktop 1440x900",
+      "#pane-candidates appearance unchanged (AC2, AC13)",
+      "Day H2 heading renders with correct format and updates on day change (AC10, AC11)",
+      "Emoji prefix appears in timeline slot titles but not in candidates sidebar group titles (AC12, AC13)"
+    ],
+    "constraints": [
+      "Do not modify SLOT_LABELS (shared with candidates sidebar)",
+      "Do not modify _buildCandidateGroup() or renderCandidates()",
+      "Date parsing must be UTC-safe (no naive new Date(isoString))",
+      "Gap between slots must use margin-top not container gap (to avoid compounding with day-heading margin)",
+      "Hover rule on day-row must exclude active state via :not(.day-row--active)"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "web/css/main.css",
+      "web/js/state.js"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": [
+      "web/index.html (no structural change needed)"
+    ]
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "Web editor visual appearance diverges from published Notion-style plan page in multiple dimensions: token values, structural decorations, typography, spacing.",
+    "root_cause": "Task 20260517-071910 redesigned to Notion light style but used close-but-not-exact token values and kept legacy structural elements (blue border-top bar, blue active states). No day-level heading was added. Slot spacing was not fully aligned.",
+    "root_cause_commit": "8b7d4e0c (most recent — introduces current state; no earlier bisect needed as this is an enhancement not a regression)",
+    "why_introduced": "Redesign task targeted Notion aesthetics but lacked the authoritative gap analysis against the published page.",
+    "why_problematic": "The delta produces a visually inconsistent experience where the editor looks Notion-inspired but not Notion-matched.",
+    "timeline": "Task 20260517-071910 set current baseline",
+    "affected_files": ["web/css/main.css", "web/js/state.js"],
+    "evidence_type": "inferred",
+    "observations": [
+      "web/css/main.css:11 --bg-page: #f7f6f3 (inferred: should be #fbfbfa per gap analysis)",
+      "web/css/main.css:17 --border: #e0e0e0 (inferred: should be #f0efed)",
+      "web/css/main.css:171 border-top: 8px solid var(--accent) on .pane-middle (inferred: should be removed)",
+      "web/css/main.css:199 .day-row--active uses blue rgba(35,131,226,0.08) (inferred: should be charcoal)",
+      "web/css/main.css:226 .tab-btn--active uses var(--accent) blue (inferred: should be #37352f)",
+      "web/js/state.js:379-390 renderTimeline() has no day H2 heading (inferred: must be added)",
+      "web/js/state.js:30-38 SLOT_LABELS has no emoji (inferred: emoji must NOT be added here — use separate helper)",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-01.json:4 day.date: '2026-06-20' (observed: file read directly)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — browser render not verified; Playwright evidence not gathered for this styling cycle)",
+    "complaint_location_keywords": ["notion风格", "fixed page", "published page", "sidebar", "pane-candidates"],
+    "localization_evidence": "Gap analysis is authoritative — produced by UI specialist against the running published page. File reads confirm current CSS token values and JS code structure.",
+    "located_source": "web/css/main.css (primary), web/js/state.js (secondary)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression — this is a forward enhancement",
+      "reproducibility_verified": null
+    }
+  },
+  "diagnosis_layer": "L1",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+      "acceptance_criterion": "All 16 ACs verified via DevTools computed style at 1440x900; candidates sidebar visually unchanged"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "web/css/main.css",
+      "line_range": "1-515",
+      "role": "Stylesheet — defines all visual tokens and component rules",
+      "imports_from": ["leaf"],
+      "evidence": "Read directly (main.css full contents)",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "379-390",
+      "role": "renderTimeline() builds #timeline-slots DOM; must add day H2 heading",
+      "imports_from": ["leaf"],
+      "evidence": "Read directly (state.js full contents); _deriveCityName() at line 671 verified",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/index.html",
+      "line_range": "1-130",
+      "role": "HTML shell — no structural changes required; templates confirmed sufficient",
+      "imports_from": ["leaf"],
+      "evidence": "Read directly; #timeline-slots div at line 77 confirmed",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "web/css/main.css",
+      "line": 494,
+      "type": "css-selector-negation",
+      "code_snippet": ".pane-middle { border-top-width: 4px; }",
+      "purpose": "Mobile override for the base .pane-middle border-top. Must be REMOVED (not preserved) when the base rule is removed per R5.",
+      "removal_authorized": true
+    },
+    {
+      "file": "web/js/state.js",
+      "line": 268,
+      "type": "if",
+      "code_snippet": "h.textContent = SLOT_LABELS[slotId];",
+      "purpose": "Candidates sidebar uses SLOT_LABELS directly — must not be modified with emoji. Guard: use separate SLOT_TITLE_EMOJI + _timelineSlotLabel() in _buildSlotNode() only.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh-CN / en",
+    "auth_state": "N/A (local server)",
+    "data_state": "with-data (beijing-lijiang-dali-20260418-100846)",
+    "browser": "Chrome desktop",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "除了供拖拽的sidebar，其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+    "measured": {
+      "value": "--bg-page: #f7f6f3; --border: #e0e0e0; .pane-middle has border-top: 8px solid var(--accent); .day-row--active uses blue rgba(35,131,226,0.08); no day H2 heading in timeline",
+      "location": "web/css/main.css:11,17,171,200 + web/js/state.js:379-390"
+    },
+    "expected": {
+      "value": "--bg-page: #fbfbfa; --border: #f0efed; no blue border-top on .pane-middle; charcoal active states; 28px day H2 heading; 32px slot gap",
+      "source": "Authoritative UI-specialist gap analysis in user requirement + published-page-desktop.png (read directly)"
+    },
+    "gap": "6 token values wrong; 1 structural element (blue border-top) to remove; 1 JS rendering addition; multiple typography/spacing/card-shell adjustments"
+  },
+  "scope_expansion": {
+    "search_pattern": ".pane-middle|.day-row|.tab-btn|renderTimeline|SLOT_LABELS",
+    "search_scope": "web/css/main.css, web/js/state.js",
+    "user_reported": ["web/css/main.css", "web/js/state.js", "web/index.html"],
+    "additional_found": ["web/css/main.css:494 stale mobile border-top-width override (must be removed with R5)"],
+    "all_occurrences": [
+      "web/css/main.css:8-43 (:root tokens)",
+      "web/css/main.css:60-70 (.app-header)",
+      "web/css/main.css:165-178 (.pane-days, .pane-middle, .pane-candidates)",
+      "web/css/main.css:183-203 (.day-row variants)",
+      "web/css/main.css:215-226 (.tab-btn variants)",
+      "web/css/main.css:231 (.tab-content)",
+      "web/css/main.css:236-237 (.day-title, .slot-title typography)",
+      "web/css/main.css:324 (.timeline-slots gap)",
+      "web/css/main.css:338-355 (.slot, .slot-header, .slot-title layout)",
+      "web/css/main.css:390-392 (.slot-selected, .selected-meta)",
+      "web/css/main.css:494 (mobile .pane-middle override — must remove)",
+      "web/js/state.js:30-38 (SLOT_LABELS — do NOT modify)",
+      "web/js/state.js:379-390 (renderTimeline — add heading)",
+      "web/js/state.js:396 (_buildSlotNode — use _timelineSlotLabel)",
+      "web/js/state.js:671-678 (_deriveCityName — reuse for heading)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Authoritative UI-specialist component-level gap analysis produced by specialist tool against the published plan page, cross-referenced with published-page-desktop.png read directly",
+    "url_or_location": "published-page-desktop.png at /root/travel-planner/published-page-desktop.png (read), user requirement document",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L1",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on this specific enhancement cycle"
+    }
+  },
+  "context": {
+    "codebase_state": "main.css v20260517-071910 redesign baseline; state.js with renderTimeline() at lines 379-390",
+    "recent_commits": "8b7d4e0c fix(web): 3 close-gate blockers — AC1 separator, AC5 no border, AC8 sticky",
+    "file_contents": {},
+    "dependencies": {
+      "day.date": "Present in v2 day JSON (confirmed in data/beijing-lijiang-dali-20260418-100846/days/day-01.json through day-09.json)",
+      "day.city_name": "Present in v2 day JSON as fallback; _deriveCityName() also checks accommodation.selected_option_id",
+      "Intl.DateTimeFormat": "Standard browser API, no polyfill needed for Chrome desktop target"
+    },
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Pure CSS token/rule updates plus minimal JS additions. No architectural changes. No HTML changes. Two-pass approach: (1) CSS changes in main.css top-to-bottom; (2) JS additions in state.js (new constant, new helper, heading injection).",
+    "files_to_create": [],
+    "files_to_modify": ["web/css/main.css", "web/js/state.js"],
+    "validation_approach": "QA verifies 16 ACs via DevTools computed style at 1440x900. Key checks: AC2 (candidates sidebar isolation), AC6 (hover not overriding active), AC7 (no blue border-top), AC10/AC11 (day heading content and update), AC12/AC13 (emoji in timeline but not candidates)."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex identified 13 findings. 4 are implementation blockers incorporated into the spec (CSS token bleed into candidates, hover/active specificity conflict, mobile tab-content padding missing, UTC date parsing bug). 3 are structural improvements adopted (stale mobile border-top override, gap compounding with day-heading, slot-header vs slot-title separator placement, SLOT_LABELS mutation risk). Remaining findings are observations or low-risk notes.",
+    "findings": [
+      {
+        "issue": "Global :root token changes bleed into #pane-candidates",
+        "proposed_fix": "Add .pane-candidates override block restoring old token values",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 1 — added as R2 and AC2; candidates isolation is a hard requirement"
+      },
+      {
+        "issue": ".day-row:hover specificity overrides .day-row--active background on hover",
+        "proposed_fix": "Use .day-row:hover:not(.day-row--active) selector",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 2 — added as edge case 2 and wired into R6 Technical Hints item 6"
+      },
+      {
+        "issue": ".day-title class shared by day-row span and typography rule — changing font-size affects both",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex finding 3 — safe as-is since only one usage exists (state.js:692); change is intentional (both should be 13px)"
+      },
+      {
+        "issue": "Changing base .tab-content padding to 0 48px 48px without mobile override reverts mobile layout",
+        "proposed_fix": "Add @media (max-width: 639px) { .tab-content { padding: var(--sp-4); } }",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 4 — added as R7 and AC8 with mobile override requirement"
+      },
+      {
+        "issue": "Removing .pane-middle border-top leaves stale mobile border-top-width: 4px override at main.css:494",
+        "proposed_fix": "Delete the mobile override too",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 5 — added as R5 and Technical Hints item 10; pre_existing_guards entry added with removal_authorized: true"
+      },
+      {
+        "issue": "new Date('2026-06-20') parses as UTC midnight, renders as prior day in non-UTC timezones",
+        "proposed_fix": "Use regex + Date.UTC() + Intl.DateTimeFormat with timeZone: 'UTC'",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 6 — _formatDayHeadingDate() helper specified in Technical Hints JS changes item 3"
+      },
+      {
+        "issue": "day.date field reliability in /api/trip/<id> response",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex finding 7 — confirmed present in all v2 day JSON files; noted in context dependencies"
+      },
+      {
+        "issue": "Render order: H2 before transport callout matches intended visual order",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex finding 8 — no conflict; heading appended before callout as specified"
+      },
+      {
+        "issue": ".day-heading inside .timeline-slots means container gap applies above heading too, compounding with heading margin",
+        "proposed_fix": "Set gap: 0 on .timeline-slots; use margin-top: 32px on .slot + .slot; keep .day-heading margin: 0 0 24px 0",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 9 — R10 updated to margin-based gap; AC14 tests margin-top on .slot + .slot"
+      },
+      {
+        "issue": "Modifying SLOT_LABELS contaminates candidates sidebar group titles with emoji",
+        "proposed_fix": "Use separate SLOT_TITLE_EMOJI constant + _timelineSlotLabel() helper, used only in _buildSlotNode()",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex finding 10 — R9 redesigned to use separate constant; AC13 verifies no emoji in candidates"
+      },
+      {
+        "issue": ".slot-title declared twice; border-bottom on .slot-title draws only under text, not full header width",
+        "proposed_fix": "Put border-bottom on .slot-header instead of .slot-title",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Codex finding 11 — Technical Hints items 16 and 17 updated accordingly"
+      },
+      {
+        "issue": "Tab font-size 13px to 14px — low layout risk with two tabs",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex finding 12 — confirmed safe, no action needed"
+      },
+      {
+        "issue": ".slot padding 14px hardcoded vs token",
+        "proposed_fix": "Use padding: 14px or --slot-padding: 14px for single component use",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex finding 13 — R14 (Should Have) covers optional token addition"
+      }
+    ],
+    "feedback_incorporated": "5 blockers resolved (candidates token isolation, hover/active specificity, mobile tab-content padding, UTC date parsing, slot gap compounding + SLOT_LABELS contamination). 2 structural improvements adopted (stale mobile border-top removal, slot-header separator placement). All OBSERVATION_ONLY findings logged without action."
+  }
+}
