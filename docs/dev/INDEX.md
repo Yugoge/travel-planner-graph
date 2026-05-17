@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-17T16:22:46Z*
-**Total entries**: 384
+*Last updated: 2026-05-17T17:22:36Z*
+**Total entries**: 390
 **Convention**: kebab
 
 ## Tree
@@ -23,9 +23,14 @@ dev/
 │   ├── `blocker6-desktop-export.png` - png file
 │   ├── `blocker6-desktop-load.png` - png file
 │   ├── `blocker6-mobile.png` - png file
+│   ├── `editor-day3-comparison.png` - png file
+│   ├── `editor-day3-timeline-bottom.png` - png file
+│   ├── `editor-day3-timeline-scrolled.png` - png file
 │   ├── `notion-after-20260517.png` - png file
 │   ├── `notion-after-day3-20260517.png` - png file
-│   └── `notion-diag-20260517.png` - png file
+│   ├── `notion-diag-20260517.png` - png file
+│   ├── `review-20260517.png` - png file
+│   └── `review-day3-20260517.png` - png file
 ├── specs/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
@@ -390,7 +395,8 @@ dev/
 ├── `ticket-20260515-102340.md` - BA Specification: v2 Server Bug Fixes (4 bugs + 2 missing dependencies)
 ├── `ticket-20260517-071910.md` - BA Specification: Notion-style UI Redesign + 3 Bug Fixes
 ├── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
-└── `ticket-20260517-153318.md` - BA Specification: Notion-Style Visual Alignment — Web Editor (Except Candidates Sidebar)
+├── `ticket-20260517-153318.md` - BA Specification: Notion-Style Visual Alignment — Web Editor (Except Candidates Sidebar)
+└── `ticket-20260517-172103.md` - BA Specification: Add Photo Rendering to Trip Editor Cards and Cover
 ```
 
 ---
