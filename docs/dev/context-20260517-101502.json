@@ -1,0 +1,377 @@
+{
+  "request_id": "20260517-101502",
+  "task_id": "20260517-101502",
+  "timestamp": "2026-05-17T10:15:02+08:00",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "直接拿UI的报告，但是我要求仍然保持三列布局，但是左侧仍然是days，中间是dashboard和timeline tab，右边是可选内容",
+    "clarified": "Keep 3-column layout. Left=Days panel (scrollable day-list with city names). Middle=Dashboard+Timeline tabbed (Dashboard: budget summary; Timeline: slot cards). Right=Candidates panel (selectable content pool). Apply remaining Notion-aesthetic fixes from UI specialist report (AF-01 heading hierarchy, AF-02 title slug, AF-04 cover strip, AF-05/06 card depth and panel borders, AF-08 button weight). AF-07 and AF-09 are non-issues in current code. AF-10 deferred (no runtime measurement).",
+    "what": "Structural HTML/CSS/JS layout reorganization + remaining Notion visual polish",
+    "why": "UI specialist report scores current layout 3.8/10. Layout paradigm is wrong (Bootstrap-era); title shows slug; no visual depth; no column hierarchy.",
+    "where": ["web/index.html", "web/css/main.css", "web/js/state.js", "web/js/mobile.js"],
+    "scope": {
+      "included": [
+        "web/index.html — restructure panes",
+        "web/css/main.css — panel borders, card shadow, accent strip, button weight",
+        "web/js/state.js — renderDaysPanel, middle tab wiring, _renderTitle fix",
+        "web/js/mobile.js — pane registry update"
+      ],
+      "excluded": [
+        "web/js/drag.js — stable containers, no change needed",
+        "web/js/budget.js — IDs preserved, no change needed",
+        "scripts/lib/server/save.py — already correct from prior cycle",
+        "Any backend, schema, or trip data files",
+        "overflow-x: hidden (AF-10 deferred)"
+      ]
+    },
+    "success_criteria": [
+      "Days panel left column renders day rows with city names; selected day highlighted",
+      "Middle column shows Dashboard+Timeline tab bar; Dashboard shows budget; Timeline shows slots",
+      "Right column shows Candidates panel; drag-drop survives tab switches",
+      "Trip title shows 'Beijing · Lijiang · Dali', not the slug",
+      "No pane box-borders; card hover adds shadow; middle has accent top strip; btn-primary weight 500",
+      "M2-M4 regression tests pass (Meals pool, city label, transport callout)"
+    ],
+    "constraints": [
+      "budget.js must NOT be modified — IDs preserved in HTML",
+      "drag.js must NOT be modified — containers stable in DOM",
+      "No emoji in code",
+      "No gaode-maps calls",
+      "Do NOT add overflow-x: hidden to body"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "web/index.html",
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/mobile.js"
+    ],
+    "path_dependent_shared_infra": [
+      "web/js/budget.js (read to verify ID contract — not modified)",
+      "web/js/drag.js (read to verify stable container contract — not modified)"
+    ],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "UI beauty score 3.8/10. Layout is old Bootstrap-era paradigm (Candidates/Timeline/Budget). Trip title shows slug. No visual column hierarchy. No card depth. No heading hierarchy.",
+    "root_cause": "web/index.html was not restructured in the prior cycle (ticket-20260517-071910), which focused on CSS tokens and behavioral bugs only. Layout, title resolution, and visual polish were deferred.",
+    "root_cause_commit": "dbb35f72 — feat(web): Notion UI redesign + meal pool unification + 3 bug fixes — did not address layout paradigm or AF-02/04/05/06/08",
+    "why_introduced": "Prior cycle intentionally scoped to token system + behavioral bugs; layout restructure was deferred",
+    "why_problematic": "User experience score remains low; user has now explicitly mandated the corrected layout paradigm",
+    "timeline": "2026-05-17 prior cycle shipped CSS but layout unchanged",
+    "affected_files": ["web/index.html", "web/css/main.css", "web/js/state.js", "web/js/mobile.js"],
+    "evidence_type": "inferred",
+    "observations": [
+      "web/index.html:41-86 shows pane-candidates(left)/pane-timeline(center)/pane-budget(right) — inferred from file read",
+      "_renderTitle() at state.js:146-150 uses trip_name||trip_id, skipping meta.title — inferred from file read",
+      "meta.json title='Beijing · Lijiang · Dali' confirmed via bash read",
+      "budget.js:121 getElementById('budget-breakdown') — hardcoded ID confirmed from file read",
+      "state.js:512-513 btn=getElementById('approve-day-btn'); btn.disabled — no null guard — inferred from file read",
+      "mobile.js:53-60 iterates ['candidates','timeline','budget'] — inferred from file read"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no live browser session)",
+    "complaint_location_keywords": ["days", "dashboard", "timeline", "tab", "candidates", "layout"],
+    "localization_evidence": "User requirement is a structural layout mandate, not a reproduction of a crash. Localization is at the HTML/JS structural level — confirmed by direct file reads of index.html and state.js.",
+    "located_source": "web/index.html:41-86 (pane structure) and web/js/state.js:116,679-696 (day-picker wiring)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression — user is mandating a new layout paradigm, not reporting a break",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L2",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "左侧仍然是days",
+      "classification": "user-need",
+      "acceptance_criterion": "Left column pane-days renders scrollable list; each row 'Day N · CityName'; active day has accent left-border"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "中间是dashboard和timeline tab",
+      "classification": "user-need",
+      "acceptance_criterion": "Middle column has tab bar; Dashboard tab shows budget totals and breakdown; Timeline tab shows slot cards and approve button"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "右边是可选内容",
+      "classification": "user-need",
+      "acceptance_criterion": "Right column is Candidates panel with #candidates-groups; drag-drop works; tab switches do not break event listeners"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "直接拿UI的报告",
+      "classification": "user-need",
+      "acceptance_criterion": "Remaining unresolved AF findings applied: title shows human-readable name; card hover has shadow; panel borders removed; middle has accent strip; btn-primary weight 500"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "仍然保持三列布局",
+      "classification": "background",
+      "acceptance_criterion": "N/A — preserved implicitly by 3-column CSS grid"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "web/index.html",
+      "line_range": "41-87",
+      "role": "HTML scaffold defining the 3-pane structure",
+      "imports_from": ["web/css/main.css", "web/js/state.js"],
+      "evidence": "Direct Read of web/index.html:41-87",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "103-136",
+      "role": "init() and renderAll() — top-level wiring and render coordinator",
+      "imports_from": ["web/js/budget.js", "web/js/drag.js", "web/js/mobile.js"],
+      "evidence": "Direct Read of web/js/state.js:103-136",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "679-696",
+      "role": "_wireDayPicker + _renderDayPickerOptions — to be replaced by renderDaysPanel",
+      "imports_from": ["leaf"],
+      "evidence": "Direct Read of web/js/state.js:668-696",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/mobile.js",
+      "line_range": "53-61",
+      "role": "_activateTab — iterates old pane IDs, must be updated",
+      "imports_from": ["leaf"],
+      "evidence": "Direct Read of web/js/mobile.js:53-61",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/budget.js",
+      "line_range": "96-121",
+      "role": "renderBudget — hardcodes budget-trip-total, budget-day-total, budget-breakdown IDs",
+      "imports_from": ["leaf"],
+      "evidence": "Codex read of budget.js:96-121 confirmed in codex output lines 3451-3463",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/drag.js",
+      "line_range": "20-32",
+      "role": "initDesktopDrag — binds once to #candidates-groups and #timeline-slots",
+      "imports_from": ["leaf"],
+      "evidence": "Direct Read of web/js/drag.js:20-32",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "web/js/state.js",
+      "line": 512,
+      "type": "if",
+      "code_snippet": "const btn = document.getElementById('approve-day-btn'); if (!day) { btn.disabled = true; return; }",
+      "purpose": "Guards against null day but NOT against null btn",
+      "removal_authorized": false
+    },
+    {
+      "file": "web/js/mobile.js",
+      "line": 70,
+      "type": "if",
+      "code_snippet": "if (!isMobileViewport()) return;",
+      "purpose": "Prevents card tap from firing on desktop",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop (primary); 390x844 mobile (secondary)",
+    "theme": "light",
+    "locale": "zh-CN trip data / English UI labels",
+    "auth_state": "N/A — no auth",
+    "data_state": "with-data — beijing-lijiang-dali-20260418-100846",
+    "browser": "Chrome desktop + Safari iOS",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "直接拿UI的报告，但是我要求仍然保持三列布局，但是左侧仍然是days，中间是dashboard和timeline tab，右边是可选内容",
+    "measured": {
+      "value": "web/index.html panes: LEFT=pane-candidates, CENTER=pane-timeline, RIGHT=pane-budget. _renderTitle: trip_name||trip_id (skips title). mobile.js pane array: ['candidates','timeline','budget']. budget.js IDs: budget-trip-total, budget-day-total, budget-breakdown hardcoded. state.js:512 btn.disabled no null guard.",
+      "location": "web/index.html:41-86, web/js/state.js:146-150, web/js/state.js:512-523, web/js/mobile.js:53-60, web/js/budget.js:96-121, web/js/drag.js:20-32"
+    },
+    "expected": {
+      "value": "LEFT=pane-days (day-list), CENTER=pane-middle (Dashboard|Timeline tabs), RIGHT=pane-candidates. Title='Beijing · Lijiang · Dali'. Mobile panes: ['middle','candidates']. Budget IDs preserved in Dashboard tab.",
+      "source": "User requirement verbatim + UI specialist report AF-02 + Codex CLI analysis"
+    },
+    "gap": "All 3 pane positions wrong; title resolution misses meta.title; mobile pane list stale; no Days panel; no middle tab bar"
+  },
+  "scope_expansion": {
+    "search_pattern": "pane-candidates|pane-timeline|pane-budget|day-select|approve-day-btn|_wireDayPicker|_renderDayPickerOptions|renderBudget|_activateTab",
+    "search_scope": "web/**",
+    "user_reported": ["web/index.html", "web/css/main.css", "web/js/state.js", "web/js/drag.js", "web/js/mobile.js"],
+    "additional_found": ["web/js/budget.js (ID contract verification — not modified)"],
+    "all_occurrences": [
+      "web/index.html:41-86 (pane structure)",
+      "web/js/state.js:116 (_wireDayPicker call in init)",
+      "web/js/state.js:146-150 (_renderTitle)",
+      "web/js/state.js:512-523 (renderApproveButton — no null guard)",
+      "web/js/state.js:679-696 (_wireDayPicker + _renderDayPickerOptions)",
+      "web/js/mobile.js:53-60 (_activateTab pane list)",
+      "web/js/mobile.js:151,156-159 (_applyMobileLayout pane list)",
+      "web/js/budget.js:96-121 (hardcoded budget IDs)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Current file reads in this session + UI specialist report verbatim + Codex CLI analysis of 10 implementation blockers",
+    "url_or_location": "web/js/state.js, web/js/mobile.js, web/js/budget.js, web/js/drag.js, web/index.html, web/css/main.css (all read this session)",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "No CLAUDE.md role table — project uses internal --bg/--text/--accent CSS vars",
+      "accent": "#2383e2",
+      "bg": "#ffffff",
+      "bg_page": "#f7f6f3",
+      "text": "#37352f"
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260517-071910.md",
+        "proposed_solution": "Notion CSS token system rewrite + M2 unified Meals pool + M3 city label + M4 transport callout + M6 save.py cross-meal persistence",
+        "actual_change": "web/css/main.css full rewrite, web/js/state.js M2-M4 logic, web/js/drag.js M2 compat, web/js/mobile.js M2 compat, scripts/lib/server/save.py M6",
+        "outcome": "M2-M6 correct. UI beauty score still 3.8/10 — layout paradigm (AF-03) and visual polish (AF-01 partial, AF-02, AF-04, AF-05, AF-06, AF-08) not addressed by that spec.",
+        "failure_category": "wrong_scope (intentional deferral, not a failure)",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L2",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempt targeted L1 (CSS tokens) and L3 (data logic). This attempt targets L2 (structural HTML DOM reorganization: new pane-days, pane-middle with tab bar, candidates moved to right) plus remaining L1 visual polish not addressed by prior cycle."
+    }
+  },
+  "context": {
+    "codebase_state": "master branch, commit dbb35f72 (Notion UI redesign + meal pool unification)",
+    "recent_commits": "dbb35f72 feat(web): Notion UI redesign + meal pool unification + 3 bug fixes",
+    "file_contents": {
+      "meta_json_title": "Beijing · Lijiang · Dali",
+      "meta_json_trip_name": null,
+      "meta_json_trip_id": "beijing-lijiang-dali-20260418-100846"
+    },
+    "dependencies": {
+      "budget_js_ids": ["budget-trip-total", "budget-day-total", "budget-breakdown"],
+      "drag_js_containers": ["candidates-groups", "timeline-slots"],
+      "mobile_js_pane_array": ["candidates", "timeline", "budget"]
+    },
+    "environment": {
+      "server": "python3 serve-trip.py",
+      "port": "see .env"
+    }
+  },
+  "development_approach": {
+    "strategy": "Restructure index.html first (stable container positions), then update state.js JS wiring, then mobile.js pane registry, then CSS polish. Budget.js and drag.js require no changes.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "web/index.html",
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/mobile.js"
+    ],
+    "validation_approach": "QA: serve via python3 serve-trip.py, open /trip/beijing-lijiang-dali-20260418-100846, verify: (1) title shows 'Beijing · Lijiang · Dali', (2) left pane shows day rows with city names, (3) middle tab bar switches between Dashboard (budget visible) and Timeline (slots visible), (4) right pane Candidates drag-drop works, (5) approve-day-btn works on Timeline tab, (6) mobile 390px shows Timeline+Candidates mobile tabs"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex identified 10 implementation blockers: (1) day-select removal will crash state.js, (2) mobile.js pane IDs stale after restructure, (3) sticky day selector pattern correct but Dashboard must stay reachable on mobile, (4) budget.js hardcodes IDs — must stay mounted once, (5) approve-day-btn crash if unmounted during tab switch, (6) drag/tap binding requires stable containers — no DOM replacement, (7) title fix missing meta.title in fallback chain, (8) renderDaysPanel must reuse _deriveCityName for M3 preservation, (9) collapsible groups must preserve data-slot-id/data-origin-slot-id attributes, (10) overflow-x hidden is out of scope without measured evidence.",
+    "findings": [
+      {
+        "issue": "Removing #day-select without updating state.js:116 and state.js:684-695 will crash _wireDayPicker and _renderDayPickerOptions",
+        "proposed_fix": "Replace _wireDayPicker() / _renderDayPickerOptions() entirely with renderDaysPanel() + delegated click. Remove #day-select from HTML and all state.js references.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated as M5 with explicit implementation notes"
+      },
+      {
+        "issue": "mobile.js _activateTab and _applyMobileLayout iterate ['candidates','timeline','budget'] which will be wrong after restructure",
+        "proposed_fix": "Update to ['middle','candidates'] in both _activateTab and _applyMobileLayout",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated as M7"
+      },
+      {
+        "issue": "Dashboard must remain reachable on mobile — sticky day selector + 2 mobile tabs (Timeline/Candidates maps to middle/candidates) is correct pattern",
+        "proposed_fix": "Mobile tabs: ['middle','candidates']; middle pane contains both Dashboard and Timeline tabs; mobile user navigates within middle pane",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated into M7 and AC8"
+      },
+      {
+        "issue": "budget.js hardcodes budget-trip-total, budget-day-total, budget-breakdown IDs; lazy-render would break",
+        "proposed_fix": "Budget DOM statically in Dashboard tab-content HTML; same IDs preserved; renderBudget called from renderAll which fires after init",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated into M2 and HTML structure spec"
+      },
+      {
+        "issue": "state.js:512-523 renderApproveButton accesses btn.disabled with no null guard — crashes if #approve-day-btn unmounted",
+        "proposed_fix": "Keep #approve-day-btn always mounted inside tab-timeline; add if (!btn) return; guard",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated into M3, Edge Case 2, and AC10"
+      },
+      {
+        "issue": "drag.js and mobile.js bind once to #candidates-groups and #timeline-slots; destroying these DOM nodes breaks all drag/tap",
+        "proposed_fix": "Keep both containers stable mounted; only parent tab-content divs use hidden toggle",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated into stable container contract (M3, M4, Edge Case 1)"
+      },
+      {
+        "issue": "_renderTitle misses state.meta.title in fallback chain",
+        "proposed_fix": "state.meta.trip_name || state.meta.title || state.meta.trip_id || state.trip_id",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Incorporated as M8 and AC4"
+      },
+      {
+        "issue": "renderDaysPanel must reuse _deriveCityName to not regress M3",
+        "proposed_fix": "Call _deriveCityName(day) inside renderDaysPanel for each day row",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Incorporated into M5 implementation note"
+      },
+      {
+        "issue": "Collapsible groups must preserve data-slot-id and data-origin-slot-id on cards",
+        "proposed_fix": "Collapsible UI must not strip dataset attributes from .card-candidate elements",
+        "classification": "major",
+        "disposition": "applied — but note: collapsible groups are NOT in this spec (user requirement says grouping, not collapsing). Finding is logged.",
+        "rationale": "Out of scope for this cycle — user did not request collapsing. Finding logged for future reference."
+      },
+      {
+        "issue": "overflow-x: hidden is out of scope without measured overflow evidence — masks bugs",
+        "proposed_fix": "Do not add defensive overflow-x: hidden",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AF-10 deferred; explicitly excluded from Won't Have"
+      }
+    ],
+    "feedback_incorporated": "All 8 blocker/major findings with PROPOSED_FIX applied. 1 major finding (collapsible groups data attributes) logged but marked out-of-scope as collapsing was not requested. 1 major finding (overflow-x) applied as explicit exclusion."
+  }
+}
