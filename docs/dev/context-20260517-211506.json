@@ -1,0 +1,244 @@
+{
+  "request_id": "20260517-211506",
+  "task_id": "20260517-211506",
+  "timestamp": "2026-05-17T21:15:06Z",
+  "complexity_tier": "SMALL",
+
+  "requirement": {
+    "original": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！可拖拽的页面只应该是原始页面的升级版而不是退化版！也不是完全不同的一版！就是在原有基础上升级，如果subagent乱理解请你立刻马上彻底指出来并且强制杀死subagent的乱理解和不作为和偷懒",
+    "clarified": "Fix the CSS regression introduced in task 20260517-172103: (1) .slot-selected timeline cards must use a horizontal flex layout (photo 120x80 left, text right) instead of full-width block photo stacking; (2) #trip-cover must be removed or constrained to max-height 200px with object-position: top. CSS-only fix. No JS changes.",
+    "what": "Scoped CSS override for .slot-selected photo layout + fix #trip-cover aspect-ratio/visibility",
+    "why": "Prior photo cycle introduced global .card-photo rule that renders 712x401px hero images in the timeline, making each slot card ~586px tall — a regression from the prior design that matches neither the published fixed page nor any upgrade of it",
+    "where": ["web/css/main.css", "web/index.html (minor: add hidden attribute to #trip-cover)"],
+    "scope": {
+      "included": [
+        ".slot-selected layout: display flex, flex-direction row",
+        ".slot-selected .card-photo scoped override: width 120px, height 80px, aspect-ratio auto, flex-shrink 0",
+        ".slot-selected .selected-name and .selected-meta: flex 1, min-width 0",
+        "#trip-cover: add hidden attribute to HTML element; update CSS to 16/9 + max-height 200px + object-position top"
+      ],
+      "excluded": [
+        "_buildCard(), _writeCardPhoto(), renderCover() — no JS changes",
+        "Global .card-photo rule — must not change (sidebar depends on it)",
+        "Any token, color, font, grid layout change",
+        "Drag functionality",
+        "Mobile layout"
+      ]
+    },
+    "success_criteria": [
+      "div.slot-selected renders as flex row: photo left, text right",
+      "img.card-photo inside .slot-selected has offsetWidth <= 140px, offsetHeight <= 100px",
+      "Total height of .slot-selected with photo is <= 150px",
+      "Candidate sidebar card photos are unaffected (offsetWidth >= 200px)",
+      "#trip-cover is either hidden or renders at offsetHeight <= 200px with object-position top"
+    ],
+    "constraints": [
+      "CSS-only fix — no JS modifications",
+      "Must not break candidate sidebar card photo sizing",
+      "Must not change any global rule that other components depend on"
+    ]
+  },
+
+  "scope_boundary": {
+    "in_user_path": [
+      "web/css/main.css",
+      "web/index.html"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": []
+  },
+
+  "out_of_scope_observations": [],
+
+  "root_cause_analysis": {
+    "symptom": "Timeline slot selected cards render photos as full-width 16:9 hero images (~712x401px at 1440px layout) making each slot card ~586px tall",
+    "root_cause": "The global CSS rule `.card-photo { width: 100%; aspect-ratio: 16/9; }` was added without a scoped override for the `.slot-selected` context. Inside `.slot-selected { display: block; }`, the img inherits `width: 100%` relative to the ~712px middle pane, rendering at 712x401px. The candidate sidebar cards (300px wide) correctly show ~235px photos because the sidebar pane is narrower — but the middle pane is ~712px, so the same rule produces a drastically larger image.",
+    "root_cause_commit": "7b416587 — feat(web): 3-column Notion layout — Days | Timeline+Dashboard | Candidates (includes photo CSS from 20260517-172103)",
+    "why_introduced": "BA spec 20260517-172103 correctly specified `.card-photo` as a shared rule to cover both sidebar and timeline contexts, but did not specify that the two contexts need different sizing because the middle pane is ~2.4x wider than the sidebar",
+    "why_problematic": "No scoped override constrains `.card-photo` when it appears inside `.slot-selected`. The block layout stacks the 712x401 image above the text, making each card ~586px tall and the full timeline ~4000px+ of hero images",
+    "timeline": "Introduced in commit 7b416587 (2026-05-17)",
+    "affected_files": ["web/css/main.css"],
+    "evidence_type": "inferred",
+    "observations": [
+      "main.css:407-414: .slot-selected { display: block; } (inferred from Read)",
+      "main.css:419-425: .card-photo { width: 100%; aspect-ratio: 16/9; } (inferred from Read)",
+      "main.css:428-434: #trip-cover { aspect-ratio: 21/9; } (inferred from Read)",
+      "state.js:500-525: _writeSlotSelected() appends img, nameDiv, metaDiv as sequential children of selEl (inferred from Read)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no live browser measurement taken; runtime observation would confirm pixel dimensions but the CSS arithmetic is deterministic: 100% of ~712px middle pane = ~712px)",
+    "complaint_location_keywords": ["slot-selected", "card-photo", "trip-cover", "timeline"],
+    "localization_evidence": "Read of main.css:407-434 and state.js:500-525 shows the selector structure. The defect is deterministic from CSS arithmetic: .card-photo width:100% inside a ~712px container = 712px image. No ambiguity requiring runtime measurement.",
+    "located_source": "web/css/main.css:407-434 (slot-selected, card-photo, trip-cover rules)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "7b416587",
+      "commit_message": "feat(web): 3-column Notion layout — Days | Timeline+Dashboard | Candidates",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": false
+    }
+  },
+
+  "diagnosis_layer": "L1",
+
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "可拖拽的页面只应该是原始页面的升级版而不是退化版",
+      "acceptance_criterion": "div.slot-selected renders as horizontal flex row (photo left, text right); total height <= 150px; not a regression (no full-width hero images)"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+      "acceptance_criterion": "Candidate sidebar cards are visually unchanged; img.card-photo inside .pane-candidates renders at full sidebar card width (>= 200px), not affected by this fix"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "(secondary issue: cover image is ugly — portrait Gaode thumbnails in 21:9 crop)",
+      "acceptance_criterion": "#trip-cover either not displayed (hidden) OR renders at offsetHeight <= 200px with object-position: top applied"
+    }
+  ],
+
+  "component_chain": [
+    {
+      "file": "web/css/main.css",
+      "line_range": "407-434",
+      "role": "defines .slot-selected layout (display: block), global .card-photo sizing, and #trip-cover sizing",
+      "imports_from": ["leaf"],
+      "evidence": "Read of /root/travel-planner/web/css/main.css lines 407-434",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "500-525",
+      "role": "_writeSlotSelected() inserts img.card-photo, div.selected-name, div.selected-meta as siblings inside div.slot-selected — layout determined entirely by CSS",
+      "imports_from": ["leaf"],
+      "evidence": "Read of /root/travel-planner/web/js/state.js lines 500-525",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/index.html",
+      "line_range": "72",
+      "role": "img#trip-cover element — currently no hidden attribute, so JS can show it",
+      "imports_from": ["leaf"],
+      "evidence": "Read of /root/travel-planner/web/index.html line 72",
+      "verified_via": "Read"
+    }
+  ],
+
+  "pre_existing_guards": [
+    {
+      "file": "web/css/main.css",
+      "line": 436,
+      "type": "css-selector-negation",
+      "code_snippet": ".card-photo[hidden], #trip-cover[hidden] { display: none; }",
+      "purpose": "Hides photo elements when the hidden attribute is set (JS-controlled visibility)",
+      "removal_authorized": false
+    }
+  ],
+
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh-CN / en",
+    "auth_state": "not applicable (local-only server)",
+    "data_state": "trip beijing-lijiang-dali-20260418-100846 loaded with images",
+    "browser": "Chrome desktop",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+
+  "evidence": {
+    "observed": "Timeline slot selected cards show photos as full-width 16:9 hero images (~712x401px) instead of compact thumbnails. Each slot card is ~586px tall. Timeline becomes a 4000px+ scrollable wall of giant photos.",
+    "measured": {
+      "value": ".slot-selected { display: block } + .card-photo { width: 100%; aspect-ratio: 16/9 } = image renders at ~712x401px in 712px middle pane",
+      "location": "web/css/main.css:407-414 (.slot-selected), 419-425 (.card-photo)"
+    },
+    "expected": {
+      "value": "Photo: 120x80px thumbnail; layout: flex row (photo left, text right); card height <= 150px",
+      "source": "User requirement: identical to published Notion-style page; published page shows compact horizontal card layout"
+    },
+    "gap": "Measured image: 712x401px; expected: 120x80px. Measured card height: ~586px; expected: <=150px. Measured layout: vertical block stack; expected: horizontal flex row."
+  },
+
+  "scope_expansion": {
+    "search_pattern": ".slot-selected|.card-photo|#trip-cover",
+    "search_scope": "web/css/main.css",
+    "user_reported": ["web/css/main.css:.slot-selected", "web/css/main.css:.card-photo", "web/css/main.css:#trip-cover"],
+    "additional_found": [],
+    "all_occurrences": [
+      "web/css/main.css:407-414 (.slot-selected)",
+      "web/css/main.css:415-417 (.slot-selected .selected-name, .slot-selected .selected-meta)",
+      "web/css/main.css:419-425 (.card-photo global)",
+      "web/css/main.css:428-434 (#trip-cover)",
+      "web/css/main.css:436-439 (.card-photo[hidden], #trip-cover[hidden])"
+    ]
+  },
+
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "web/css/main.css read in full — all selectors and values at exact line numbers confirmed in this session",
+    "url_or_location": "/root/travel-planner/web/css/main.css",
+    "copy_allowed": true
+  },
+
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "git_log",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260517-172103.md",
+        "proposed_solution": "Add global .card-photo { width: 100%; aspect-ratio: 16/9; } and #trip-cover { width: 100%; aspect-ratio: 21/9; } CSS rules; add img.card-photo to .slot-selected via JS",
+        "actual_change": "web/css/main.css:419-434, web/js/state.js:500-525 (img insertion in _writeSlotSelected), web/index.html:93 (img added to tpl-candidate-card)",
+        "outcome": "Candidate sidebar correctly shows ~235px photos. Timeline .slot-selected shows 712x401px hero images (regression). #trip-cover shows portrait Gaode thumbnails in ugly 21:9 crop.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L1",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempt applied a global rule uniformly. This attempt adds a SCOPED .slot-selected .card-photo override with higher specificity (0-2-0 vs 0-1-0) that constrains only the timeline context. The mechanism (CSS scope) is different from the prior attempt's mechanism (single global rule). Same CSS layer but a different and correct approach: context differentiation via CSS specificity."
+    }
+  },
+
+  "context": {
+    "codebase_state": "main.css contains defective global .card-photo rule and block-layout .slot-selected; JS rendering is correct and must not be touched",
+    "recent_commits": "7b416587 feat(web): 3-column Notion layout — Days | Timeline+Dashboard | Candidates",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+
+  "development_approach": {
+    "strategy": "CSS-only scoped override. Add .slot-selected { display: flex; flex-direction: row; gap: 12px; align-items: flex-start } to existing rule. Add .slot-selected .card-photo { width: 120px; height: 80px; aspect-ratio: auto; flex-shrink: 0 } as new scoped override after the global .card-photo rule. Add flex: 1; min-width: 0 to .slot-selected .selected-name and .selected-meta. Fix #trip-cover by adding hidden attribute to HTML element and updating CSS to 16/9 + max-height: 200px + object-position: top.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "web/css/main.css",
+      "web/index.html (add hidden attribute to #trip-cover img element only)"
+    ],
+    "validation_approach": "Playwright at 1440x900: measure offsetWidth/offsetHeight of img.card-photo inside .slot-selected (must be <= 140x100); measure offsetHeight of .slot-selected (must be <= 150px); measure offsetWidth of img.card-photo inside .card-candidate (must be >= 200px); check #trip-cover hidden state or height; capture screenshot showing compact horizontal cards"
+  },
+
+  "standards_to_enforce": {
+    "no_hardcoded_values": false,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+
+  "codex_consult": {
+    "invoked": true,
+    "status": "pending",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
