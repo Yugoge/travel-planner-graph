@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-17T08:38:44Z*
-**Total entries**: 365
+*Last updated: 2026-05-17T10:17:42Z*
+**Total entries**: 366
 **Convention**: kebab
 
 ## Tree
@@ -371,7 +371,8 @@ dev/
 ├── `ticket-20260514-200000.md` - BA Specification: spec-20260508-221237-redev1 Close Blockers (6 fixes)
 ├── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
 ├── `ticket-20260515-102340.md` - BA Specification: v2 Server Bug Fixes (4 bugs + 2 missing dependencies)
-└── `ticket-20260517-071910.md` - BA Specification: Notion-style UI Redesign + 3 Bug Fixes
+├── `ticket-20260517-071910.md` - BA Specification: Notion-style UI Redesign + 3 Bug Fixes
+└── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
 ```
 
 ---
