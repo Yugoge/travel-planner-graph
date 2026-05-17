@@ -1,0 +1,106 @@
+{
+  "request_id": "20260517-101502",
+  "task_id": "20260517-101502",
+  "timestamp": "2026-05-17T10:15:02+08:00",
+  "dev_report_path": "docs/dev/dev-report-20260517-101502.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "web/index.html",
+      "web/css/main.css",
+      "web/js/state.js",
+      "web/js/mobile.js"
+    ],
+    "files_created": [],
+    "ac_deviation_with_user_need_satisfied": false,
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Restructure web/index.html: Left=pane-days, Center=pane-middle (tab bar + Dashboard/Timeline), Right=pane-candidates",
+        "type": "html",
+        "files_modified": ["web/index.html"],
+        "changes": "Removed pane-budget and pane-timeline. Added pane-days with days-list. Added pane-middle with tab bar (Dashboard|Timeline) and tab-content divs. Moved budget DOM (same IDs) to Dashboard tab. Kept timeline-slots and candidates-groups as always-mounted stable containers. Updated mobile-tabs from 3 panes to 2 (middle/candidates).",
+        "rationale": "Root cause: web/index.html was Bootstrap-era LEFT=Candidates/CENTER=Timeline/RIGHT=Budget. User mandate requires LEFT=Days/CENTER=Dashboard+Timeline tabs/RIGHT=Candidates."
+      },
+      {
+        "id": 2,
+        "description": "Update web/css/main.css: grid layout, panel styles, day-row, tab-bar, typography, card hover, button weight, mobile",
+        "type": "css",
+        "files_modified": ["web/css/main.css"],
+        "changes": "Grid: 220px 1fr 300px, height:100vh, overflow:hidden. Pane borders removed (background difference + single-side borders as separators). pane-middle: border-top 8px accent + flex column. Day-row styles, tab-bar styles. Typography class selectors (AF-01). Card hover shadow (AF-05). btn-primary font-weight:500 (AF-08). Mobile: pane-days hidden, mobile-day-select visible. Fixed banner[hidden] override to prevent hidden banners from taking layout space. Removed duplicate .card-name and .card-cost rules that overrode the new AF-01 values.",
+        "rationale": "Prior cycle CSS did not address AF-03/04/05/06/08. Duplicate old rules were overriding new typography values — removed conflicts."
+      },
+      {
+        "id": 3,
+        "description": "Update web/js/state.js: renderDaysPanel, _populateMobileDaySelect, tab wiring, _renderTitle fix, null guard",
+        "type": "js",
+        "files_modified": ["web/js/state.js"],
+        "changes": "_renderTitle: adds state.meta.title check (AF-02). renderAll: calls renderDaysPanel + _populateMobileDaySelect. Removed _wireDayPicker call from init(). Added if(!btn) return to renderApproveButton. Replaced _wireDayPicker/_renderDayPickerOptions with renderDaysPanel/_populateMobileDaySelect. Added _wireMiddleTabs/_activateMiddleTab for tab switching. Added aria-label to day-row buttons for AC1 text compliance.",
+        "rationale": "Root cause from dbb35f72: layout restructure not attempted, _wireDayPicker relied on now-removed #day-select, mobile day selector was a new requirement."
+      },
+      {
+        "id": 4,
+        "description": "Update web/js/mobile.js: pane registry from [candidates,timeline,budget] to [middle,candidates], reset inner tab on mobile switch",
+        "type": "js",
+        "files_modified": ["web/js/mobile.js"],
+        "changes": "_activateTab and _applyMobileLayout updated to use ['middle','candidates']. Default mobile activation changed from 'candidates' to 'middle'. Added inner Timeline tab reset when outer mobile tab switches to 'middle' (prevents stale Dashboard state).",
+        "rationale": "Old pane IDs would reference non-existent DOM elements after restructure. Mobile tab state mismatch fixed per codex finding #5."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "web/index.html",
+        "imported_by": []
+      },
+      {
+        "modified": "web/css/main.css",
+        "imported_by": ["web/index.html"]
+      },
+      {
+        "modified": "web/js/state.js",
+        "imported_by": ["web/js/drag.js (imports getActiveDayNumber)", "web/js/mobile.js (imports state, getActiveDayNumber)", "web/js/save.js (imports state)", "web/js/routing.js (imports state)", "web/js/budget.js (imports state)"]
+      },
+      {
+        "modified": "web/js/mobile.js",
+        "imported_by": ["web/js/state.js (imports initMobile, isMobileViewport)", "web/js/drag.js (imports isMobileViewport)"]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "dbb35f72 — feat(web): Notion UI redesign + meal pool unification + 3 bug fixes",
+      "why_issue_occurred": "Prior cycle intentionally scoped to CSS token system and behavioral bugs (M2-M6). Layout restructure (AF-03) and remaining visual polish (AF-01/02/04/05/06/08) were deferred. This cycle addresses the structural L2 DOM reorganization.",
+      "how_fix_addresses_root": "Replaces Bootstrap-era 3-pane layout with user-mandated Days|Dashboard+Timeline|Candidates paradigm. Preserves all stable container IDs for drag.js and budget.js compatibility."
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": 200,
+      "lines_removed": 82,
+      "new_symbols_introduced": ["renderDaysPanel", "_populateMobileDaySelect", "_wireMiddleTabs", "_activateMiddleTab"],
+      "minimum_possible_lines_estimate": 150,
+      "justification_for_overage": "L2 structural layout reorganization requires: new HTML pane structure (~50 lines), new CSS for day-rows/tab-bar/typography/responsive (~80 lines), new JS functions renderDaysPanel/_populateMobileDaySelect/_wireMiddleTabs/_activateMiddleTab (~60 lines), plus removal of old _wireDayPicker/_renderDayPickerOptions and stale pane references. Cannot be smaller for a complete 3-pane restructure."
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "QA steps: (1) open /trip/beijing-lijiang-dali-20260418-100846, verify title shows 'Beijing · Lijiang · Dali' not slug; (2) left pane shows Day 1-N with city names, active day highlighted; (3) click different days, Timeline/Candidates re-render; (4) click Dashboard tab, verify budget totals visible; (5) click Timeline tab, verify timeline-slots visible; (6) drag card from Candidates to Timeline slot; (7) at 390px viewport, verify Days panel hidden, mobile-day-select visible, mobile tabs Timeline/Candidates work; (8) M4 transport callout visible on day-03; (9) M2 single Meals group in Candidates. Known gap: codex finding #4 (mobile-day-select not CSS position:sticky) is out of scope — BA spec does not mandate sticky positioning in AC8.",
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex ran live browser tests and found 6 issues: (1) day-row text missing separator between 'Day N' and 'CityName' spans — accessibility text reads 'Day 1Kunming'; (2) banner CSS display:flex overriding [hidden] attribute, causing hidden banners to push grid down 91px; (3) old duplicate .card-name/.slot-title rules overriding the new AF-01 typography values; (4) mobile day selector not position:sticky; (5) mobile outer 'Timeline' tab can show Dashboard content if inner tab was switched before; (6) panel border-right/left on pane-days/pane-candidates not matching 'border:none' wording in AC5 (but BA spec explicitly mandates these as separators). OBSERVATION_ONLY: mobile.js comment still says candidates|timeline|budget.",
+      "feedback_incorporated": "Issues 1 (aria-label added to day-row buttons), 2 (banner[hidden]{display:none} added to CSS), 3 (removed duplicate .card-name/.slot-title CSS rules that overrode new values), 5 (inner Timeline tab reset when outer mobile tab switches to middle). Issue 4 (sticky) is out of scope — BA spec does not mandate position:sticky in any AC. Issue 6 (border-right/left) is out of scope — BA spec CSS section explicitly mandates 'pane-days: border-right: 1px solid var(--border)' and 'pane-candidates: border-left: 1px solid var(--border)' as separators; AC5 'border:none' refers to the old full box-border, not these single-side separators."
+    },
+    "permissions_to_add": [],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Codex performed live Playwright browser test confirming page loads at http://127.0.0.1:8876/trip/beijing-lijiang-dali-20260418-100846. Grid renders at expected height. #timeline-slots and #candidates-groups present as stable mounted containers. All critical IDs verified present in new HTML. No bare h2/h3 CSS rules confirmed by grep. Post-codex fixes applied: banner[hidden] display:none, duplicate CSS rules removed, aria-label added to day-rows, mobile inner tab reset."
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA should verify at 1440x900 that grid fills viewport without vertical scrollbar on body",
+    "QA should test mobile at 390px: switch to Candidates, back to Timeline, verify inner tab shows Timeline not Dashboard",
+    "QA should verify budget totals populate on Dashboard tab (renderBudget called on tab switch)",
+    "M4 transport callout regression: verify day-03 shows transport block at top of Timeline tab"
+  ]
+}
