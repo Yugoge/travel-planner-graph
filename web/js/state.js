@@ -484,9 +484,20 @@ function _writeSlotSelected(node, sel) {
   const selEl = node.querySelector(".slot-selected");
   selEl.hidden = false;
   selEl.innerHTML = "";
+  const img = document.createElement("img");
+  img.className = "card-photo";
+  img.draggable = false;
+  img.onerror = () => { img.hidden = true; img.removeAttribute("src"); };
+  const url = sel.name_local ? state.images.pois["gaode_" + sel.name_local] : null;
+  if (url) {
+    img.src = url;
+  } else {
+    img.hidden = true;
+  }
   const nameDiv = document.createElement("div");
   nameDiv.className = "selected-name";
   nameDiv.textContent = sel.name || "(unnamed)";
+  selEl.insertBefore(img, nameDiv);
   selEl.appendChild(nameDiv);
   const metaDiv = document.createElement("div");
   metaDiv.className = "selected-meta";
