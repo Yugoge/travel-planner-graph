@@ -127,7 +127,8 @@ export async function init() {
 
 export function renderAll() {
   renderHeader();
-  _renderDayPickerOptions();
+  renderDaysPanel();
+  _populateMobileDaySelect();
   renderCandidates();
   renderTimeline();
   renderBudget(state);
