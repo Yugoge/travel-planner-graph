@@ -307,6 +307,20 @@ function _buildEmptyGroupMessage(slot) {
   return e;
 }
 
+function _writeCardPhoto(node, opt) {
+  const img = node.querySelector("img.card-photo");
+  if (!img) return;
+  img.onerror = () => { img.hidden = true; img.removeAttribute("src"); };
+  if (!opt.name_local) { img.hidden = true; img.removeAttribute("src"); return; }
+  const url = state.images.pois["gaode_" + opt.name_local];
+  if (url) {
+    img.src = url;
+  } else {
+    img.hidden = true;
+    img.removeAttribute("src");
+  }
+}
+
 function _buildCard(opt, slotId, slot) {
   const tpl = document.getElementById("tpl-candidate-card");
   const node = tpl.content.firstElementChild.cloneNode(true);
@@ -314,6 +328,7 @@ function _buildCard(opt, slotId, slot) {
   node.dataset.slotId = slotId;
   node.dataset.sourceAgent = opt.source_agent || "";
   node.setAttribute("draggable", isMobileViewport() ? "false" : "true");
+  _writeCardPhoto(node, opt);
   _writeCardName(node, opt);
   _writeCardCost(node, opt);
   node.querySelector(".card-location").textContent = opt.location_summary || "";
