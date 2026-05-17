@@ -1,0 +1,94 @@
+{
+  "task_id": "20260517-071910",
+  "timestamp": "2026-05-17T07:19:10Z",
+  "inspector": "style-inspector",
+  "scope": "changed-files",
+  "changed_files": [
+    "web/css/main.css",
+    "web/index.html",
+    "web/js/state.js",
+    "web/js/drag.js",
+    "web/js/mobile.js",
+    "scripts/lib/server/save.py"
+  ],
+  "findings": [
+    {
+      "file": "web/css/main.css",
+      "line": 224,
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "description": "Hardcoded hex color #c0c0c0 used for .card:hover border-color. This color is not derived from any CSS custom property defined in the :root token block.",
+      "recommendation": "Add a token such as --border-hover: #c0c0c0 to the :root block and reference var(--border-hover) here. Alternatively, if this is a darkened variant of --border (#e0e0e0), derive it via color-mix() or define an explicit hover-border token.",
+      "introduced_in_diff": true
+    },
+    {
+      "file": "web/css/main.css",
+      "line": 235,
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "description": "Hardcoded hex color #f0faf8 used for .card.card-selected background. This is not derived from any defined token; it appears to be an untokenised success-tinted background.",
+      "recommendation": "Define a token such as --success-bg: #f0faf8 in the :root block (alongside the existing --success token) and reference var(--success-bg) here.",
+      "introduced_in_diff": true
+    },
+    {
+      "file": "web/css/main.css",
+      "line": 377,
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "description": "Hardcoded hex color #1a72cf used for .btn-primary:hover background. This is a hardcoded hover-state darkening of --accent (#2383e2) that bypasses the token system. The pre-diff file used a named token --primary-hover for this purpose; the redesign dropped the equivalent hover token.",
+      "recommendation": "Add --accent-hover: #1a72cf to the :root token block and reference var(--accent-hover) here.",
+      "introduced_in_diff": true
+    },
+    {
+      "file": "web/js/drag.js",
+      "line": 123,
+      "standard": "merge-similar-scripts",
+      "severity": "critical",
+      "description": "MEAL_SLOT_IDS Set and _isCompatible() function are defined identically in both drag.js (lines 123-129) and mobile.js (lines 20-27). This duplication was introduced in this diff: drag.js added MEAL_SLOT_IDS as a new constant while mobile.js added both MEAL_SLOT_IDS and _isCompatible() as new additions. The two implementations are byte-for-byte identical and must be kept in sync manually.",
+      "recommendation": "Extract MEAL_SLOT_IDS and _isCompatible() into a shared module (e.g., web/js/slot-compat.js) and import from both drag.js and mobile.js. This is a pure refactor with no behavioral change.",
+      "introduced_in_diff": true
+    },
+    {
+      "file": "web/js/state.js",
+      "line": 182,
+      "standard": "merge-similar-scripts",
+      "severity": "critical",
+      "description": "A third copy of the meal-slot key array is introduced: MEAL_SLOT_KEYS (local const inside _buildMealsCandidateGroup, line 182) and MEAL_SLOT_KEYS_ARR (module-level const, line 569) both equal [\"breakfast\", \"lunch\", \"dinner\"]. The module-level MEAL_SLOTS Set (line 39) already encodes this same set. Three representations of the same constant now coexist in state.js, all introduced in this diff.",
+      "recommendation": "Remove MEAL_SLOT_KEYS (local) and MEAL_SLOT_KEYS_ARR and derive the ordered array from the existing NAMED_SLOTS / MEAL_SLOTS constants: const MEAL_SLOT_KEYS_ARR = NAMED_SLOTS.filter(k => MEAL_SLOTS.has(k)). This eliminates two of the three duplicates.",
+      "introduced_in_diff": true
+    }
+  ],
+  "standards_passed": [
+    "no-inline-code (web files are HTML/CSS/JS — not command/agent .md files; N/A for this scope)",
+    "use-source-venv (no python3 direct calls found in any of the 6 files)",
+    "integer-step-numbering (no step numbering patterns found)",
+    "meaningful-naming (all file and identifier names are descriptive)",
+    "english-only (no non-English characters found)",
+    "dangling-references (all imports in state.js resolve to existing files; all Python imports in save.py resolve to existing modules)",
+    "merge-conflicts (no conflict markers found in any of the 6 files)",
+    "concise-documentation (CSS/HTML/JS files contain no verbose descriptive prose; save.py module docstring is appropriately concise)",
+    "parameterized-scripts (save.py accepts all variable values via the req dict parameter; no hardcoded trip IDs, paths, or thresholds beyond the schema-version constant)",
+    "no-inline-code (no bash/python inline logic found in .md-type files)"
+  ],
+  "notes": {
+    "schema_version_assessment": "SCHEMA_VERSION = 'v2.0' in save.py is a module-level schema constant, not a parameterization candidate. It tracks the data schema version the code was written against and is intentionally hardcoded. Not flagged.",
+    "lang_zh_CN_assessment": "web/index.html lang='zh-CN' was pre-existing (not introduced in this diff per git diff output). Not flagged as new.",
+    "pre_diff_baseline_method": "git diff HEAD~1 used to establish changed-line ranges. A finding is marked introduced_in_diff=true only when (i) its line falls within a diff hunk AND (ii) the value/pattern is absent from the HEAD~1 baseline."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  },
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 5,
+    "critical": 5,
+    "files_audited": 6,
+    "files_total": 6,
+    "rounds_completed": 1,
+    "assessment": "5 critical violations, all provably introduced in this diff. Three are untokenised hardcoded hex colors in main.css (the Notion redesign removed the --primary-hover token but introduced raw hex equivalents). Two are code-duplication violations: an identical _isCompatible() + MEAL_SLOT_IDS pair duplicated between drag.js and mobile.js, and three separate representations of the meal slot key array in state.js. No dangling references, no merge conflicts, no Chinese text, no python3 misuse."
+  }
+}
