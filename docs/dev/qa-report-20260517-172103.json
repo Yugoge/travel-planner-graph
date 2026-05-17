@@ -3,7 +3,72 @@
   "task_id": "20260517-172103",
   "timestamp": "2026-05-17T18:15:00Z",
   "qa_recheck_timestamp": "2026-05-17T18:45:00Z",
-  "qa": {
+  "qa_implementation_verification_timestamp": "2026-05-17T19:30:00Z",
+  "qa_implementation": {
+    "status": "pass",
+    "verdict": "All 6 acceptance criteria pass. Live Playwright browser verification at 1440x900 confirms: candidate cards render CDN photos (3/3 on Day 1, 8/8 on Day 2), timeline selected cards render CDN photos (5/5 on Day 3), city cover image renders and updates on day switch (Kunming->Lijiang confirmed), API exposes images.pois (63 entries) and images.city_covers (4 entries) with no extra keys, 3-column grid (220px 905px 300px) unchanged, all anti-regression checks pass. One minor spec-consistency deviation in _writeSlotSelected (missing removeAttribute on freshly-created element, functionally harmless per Codex adversarial review).",
+    "user_verbatim_complaint": "The published page shows restaurant/activity cards WITH ACTUAL PHOTOS. The editor currently shows text-only cards.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "ac_results": {
+      "AC1": {
+        "status": "pass",
+        "evidence": "3/3 candidate cards Day 1, 8/8 Day 2 — all visible Amap CDN photos. Screenshot: qa-ac1-ac2-ac3-day1.png"
+      },
+      "AC2": {
+        "status": "pass",
+        "evidence": "2/2 slot-selected Day 1, 5/5 Day 3 — all with visible CDN src img.card-photo. Screenshot: qa-day3-lijiang-cover.png"
+      },
+      "AC3": {
+        "status": "pass",
+        "evidence": "#trip-cover not hidden, CDN src present, firstElementChild of #tab-timeline. Switches Kunming->Lijiang on day 3 click. Screenshot: qa-day3-lijiang-cover.png"
+      },
+      "AC4": {
+        "status": "pass",
+        "evidence": "No img with src='' found (brokenEmptySrcCount=0). _writeCardPhoto else-branch: hidden=true + removeAttribute('src') correct (state.js:338-339). _writeSlotSelected else-branch: hidden=true, omits removeAttribute — harmless on freshly-created element (Codex confirmed, no PROPOSED_FIX)."
+      },
+      "AC5": {
+        "status": "pass",
+        "evidence": "curl: images.pois=63, images.city_covers=4 (Dali/Lijiang/Kunming/Beijing), no destination, no fallback_unsplash. image keys=['pois','city_covers'] only."
+      },
+      "AC6": {
+        "status": "pass",
+        "evidence": "Grid 220px 905px 300px. Active day charcoal rgba(55,53,47,0.06). No blue stripe. Active tab rgb(55,53,47). Sidebar rgb(247,246,243). Day heading 'Jun 20 (Sat) – Kunming' present. CSS scoped .card-photo[hidden]/#trip-cover[hidden] only."
+      }
+    },
+    "anti_regression": {
+      "day_heading": "pass — 'Jun 20 (Sat) – Kunming' found",
+      "active_day_charcoal": "pass — rgba(55,53,47,0.06)",
+      "no_blue_stripe": "pass — borderLeftWidth=0px, borderLeftStyle=none",
+      "active_tab_charcoal": "pass — rgb(55,53,47)",
+      "candidate_sidebar_bg": "pass — rgb(247,246,243)"
+    },
+    "findings": [],
+    "minor_observations": [
+      {
+        "location": "web/js/state.js:513",
+        "observation": "_writeSlotSelected else-branch sets img.hidden=true but omits img.removeAttribute('src'). Spec M7 requires both. Functionally harmless for freshly-created elements (Codex confirmed). Not blocking.",
+        "recommendation": "Add img.removeAttribute('src') at line 513 for spec completeness."
+      }
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed: missing removeAttribute in _writeSlotSelected is harmless for freshly-created elements — no src attribute exists on createElement output. No blocking issue. No PROPOSED_FIX issued.",
+      "feedback_incorporated": "AC4 PASS. Missing removeAttribute classified as minor observation. Codex note on getAttribute vs .src property for assertions documented."
+    },
+    "console_errors": "0 errors in current session (NotFoundError in Playwright MCP log was from pre-restart prior run, documented as caught-and-fixed by dev).",
+    "screenshots": ["qa-ac1-ac2-ac3-day1.png", "qa-day3-lijiang-cover.png"],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 1,
+      "total_findings": 1,
+      "release_recommendation": "approve"
+    }
+  },
+  "qa_spec_phase": {
     "status": "pass",
     "verdict": "All 3 previously-blocking issues (F1 null-day guard, F2 CSS scope, F3 onerror coverage) are resolved in the patched spec. No new issues introduced. Spec is ready for dev.",
     "overall_assessment": "The spec is directionally correct and technically grounded. All 11 file-location claims were independently verified accurate. The scope is tightly bounded to photo rendering only — no CSS token drift, no layout changes. However, 3 issues require fixes before handing to dev: (1) M10 renderCover() lacks a null-day guard that will crash when no days are loaded, (2) M11 CSS rule permits global img[hidden]/img:not([src]) selectors that contradict the stated 'component-local rules only' constraint, (3) S1 onerror handler is not explicitly extended to #trip-cover in M10. Two additional Codex findings (is_home guard, Google API key leakage) are out-of-scope for this cycle and not blocking.",
