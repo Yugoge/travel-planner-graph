@@ -113,7 +113,6 @@ export async function init() {
     _showFatal("Failed to load trip: " + err.message);
     return;
   }
-  _wireDayPicker();
   _wireGlobalControls();
   initDesktopDrag(commit, requestSelectMutation);
   initMobile(commit, requestSelectMutation);
