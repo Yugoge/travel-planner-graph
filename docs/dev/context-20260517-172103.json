@@ -1,0 +1,395 @@
+{
+  "request_id": "20260517-172103",
+  "task_id": "20260517-172103",
+  "timestamp": "2026-05-17T17:21:03Z",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "The interactive trip editor must be a visual upgrade of the published Notion-style travel plan page — same look, with drag-and-drop added. It must NOT be a downgrade or a different design. The published page shows restaurant/activity cards WITH ACTUAL PHOTOS. The editor currently shows text-only cards. This is the gap.",
+    "clarified": "Add photo rendering to candidate cards, timeline selected cards, and a city cover image at top of page in the trip editor. Expose images.json via the trip API so the frontend can look up image URLs.",
+    "what": "Render venue photos in candidate and timeline cards; render city cover image at top of middle pane; expose images.json data via GET /api/trip/<id>",
+    "why": "Editor is a visual downgrade from the published page — published page shows photos, editor shows text only",
+    "where": [
+      "web/js/state.js",
+      "web/index.html",
+      "web/css/main.css",
+      "scripts/lib/server/trip.py"
+    ],
+    "scope": {
+      "included": [
+        "Candidate cards photo rendering (right sidebar)",
+        "Timeline selected cards photo rendering",
+        "City cover image at top of #tab-timeline",
+        "Expose images.json (pois + city_covers) via GET /api/trip/<id>"
+      ],
+      "excluded": [
+        "CSS token value changes",
+        "Layout column structure changes",
+        "Mobile layout",
+        "drag.js changes",
+        "Network image fetching",
+        "TripResponse api_contract.py schema update",
+        "Anything not directly about photo rendering"
+      ]
+    },
+    "success_criteria": [
+      "Candidate cards show photo thumbnails for venues with image matches",
+      "Timeline selected cards show photo thumbnails for selected options with image matches",
+      "City cover image visible at top of timeline pane",
+      "Cards with no image match show no broken icon (img hidden, src removed)",
+      "GET /api/trip/<id> returns images.pois and images.city_covers in response body"
+    ],
+    "constraints": [
+      "img elements must have draggable=false to avoid drag interference",
+      "No-match img: must use removeAttribute('src') not src=''",
+      "Server must normalize images.json to {pois, city_covers} only — strip extra keys",
+      "images.json absent must return empty dict, not 500",
+      "Cover img must be inside #tab-timeline, not in <header> or outside <main>"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/server/trip.py",
+      "web/js/state.js",
+      "web/index.html",
+      "web/css/main.css"
+    ],
+    "path_dependent_shared_infra": [
+      "data/beijing-lijiang-dali-20260418-100846/images.json"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/trip_contract/api_contract.py"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-17T17:21:03Z",
+      "task_id": "20260517-172103",
+      "file": "scripts/lib/trip_contract/api_contract.py",
+      "line": "77-83",
+      "observation": "TripResponse TypedDict does not declare an 'images' field. Adding images to the API response without updating this contract creates a schema drift. Updating the contract and adding typed test coverage is a separate cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Trip editor shows text-only candidate and timeline cards; no cover image; visual regression vs published page",
+    "root_cause": "images.json data is never surfaced: hydrate_trip() does not read images.json; _buildCard() and _buildMealsCandidateGroup() have no image lookup call; _writeSlotSelected() creates no img element; #tpl-candidate-card has no img element; index.html has no cover img element",
+    "root_cause_commit": "N/A — this is a missing feature, not a regression",
+    "why_introduced": "Photos were a feature of the published HTML page generator (render_html_builders.py) but were never ported to the interactive editor (state.js + serve-trip.py) when it was built",
+    "why_problematic": "Editor is visually inferior to the published page despite being the primary editing surface",
+    "timeline": "Editor built in Cycle 3 (commits 7b416587, 8b7d4e0c, dbb35f72) — photos never implemented",
+    "affected_files": [
+      "scripts/lib/server/trip.py",
+      "web/js/state.js",
+      "web/index.html",
+      "web/css/main.css"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "hydrate_trip() return dict at scripts/lib/server/trip.py:25-30 confirmed by Read: no images key",
+      "_buildCard() at web/js/state.js:308-323 confirmed by Read: no img element creation",
+      "_buildMealsCandidateGroup() at web/js/state.js:194-258 confirmed by Read: no image call",
+      "_writeSlotSelected() at web/js/state.js:464-477 confirmed by Read: no img element",
+      "#tpl-candidate-card at web/index.html:90-106 confirmed by Read: no img child",
+      "images.json at data/beijing-lijiang-dali-20260418-100846/images.json:1-60 confirmed by Read: pois and city_covers dicts populated with CDN URLs",
+      "Lookup key pattern confirmed: pois keys are of form 'gaode_' + venue Chinese name"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — browser not launched to verify rendered output; root cause is code absence which is deterministic from Read)",
+    "complaint_location_keywords": [
+      "candidate cards",
+      "text only",
+      "no photo",
+      "timeline selected cards",
+      "cover image"
+    ],
+    "localization_evidence": "Direct Read of state.js, index.html, trip.py, and images.json confirms: (1) API does not return images, (2) frontend has no img creation code, (3) template has no img element, (4) images.json has the data ready to use",
+    "located_source": "web/js/state.js:308 (_buildCard), web/js/state.js:464 (_writeSlotSelected), web/index.html:90 (#tpl-candidate-card), scripts/lib/server/trip.py:25 (hydrate_trip return)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression — feature was never implemented",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "Candidate cards (right sidebar): text only, no photo",
+      "acceptance_criterion": "At least one article.card-candidate contains img.card-photo with non-empty src for a venue with a known image match"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "Timeline selected cards: text only, no photo",
+      "acceptance_criterion": ".slot-selected for a slot with selected option contains img.card-photo with non-empty src"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "No cover image at top of page",
+      "acceptance_criterion": "img#trip-cover exists inside #tab-timeline as first child, has non-empty src matching active city cover URL"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "Load images.json from the server and expose it for the frontend",
+      "acceptance_criterion": "GET /api/trip/<id> response JSON contains images.pois (object) and images.city_covers (object)"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "cards with no matching photo in images.json gracefully hide the img element (no broken image icon)",
+      "acceptance_criterion": "Candidate card for venue with no image match: img.card-photo has hidden attribute set and no src attribute"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "data/beijing-lijiang-dali-20260418-100846/images.json",
+      "line_range": "1-60",
+      "role": "Source of truth for venue photo URLs and city cover URLs",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool: pois dict keyed by 'gaode_' + name_local; city_covers dict keyed by city name",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/trip.py",
+      "line_range": "15-30",
+      "role": "hydrate_trip() builds GET /api/trip/<id> response; must add images key",
+      "imports_from": ["scripts/lib/trip_contract/__init__.py"],
+      "evidence": "Read tool line 25-30: return dict lacks images key",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "103-114",
+      "role": "_fetchTrip() receives API response and populates state; must assign state.images",
+      "imports_from": ["leaf (fetch)"],
+      "evidence": "Read tool line 108-113: assigns state.meta, state.days, state.transportation, state.route_cache; no state.images",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/index.html",
+      "line_range": "90-106",
+      "role": "#tpl-candidate-card template cloned by _buildCard() and _buildMealsCandidateGroup(); must gain img.card-photo element",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool line 90-106: template article children: .card-head, .card-meta, .card-why, .card-source, .card-rationale, .card-actions — no img",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "308-323",
+      "role": "_buildCard() builds non-meal candidate cards; must call _writeCardPhoto(node, opt)",
+      "imports_from": ["web/index.html (#tpl-candidate-card)"],
+      "evidence": "Read tool line 308-323: calls _writeCardName, _writeCardCost, querySelector .card-location/.card-why, _writeCardSource, _writeCardRationale, _markCardSelectionState; no image call",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "194-258",
+      "role": "_buildMealsCandidateGroup() builds meal candidate cards (separate code path); must also call _writeCardPhoto(node, opt)",
+      "imports_from": ["web/index.html (#tpl-candidate-card)"],
+      "evidence": "Read tool line 231-256: clones tpl-candidate-card; calls _writeCardName, _writeCardCost, querySelector .card-location/.card-why, _writeCardSource, _writeCardRationale; no image call",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/js/state.js",
+      "line_range": "464-477",
+      "role": "_writeSlotSelected() populates .slot-selected with selected option name+meta; must add img element",
+      "imports_from": ["web/index.html (#tpl-slot .slot-selected)"],
+      "evidence": "Read tool line 464-477: creates nameDiv (selected-name) and metaDiv (selected-meta) only; no img",
+      "verified_via": "Read"
+    },
+    {
+      "file": "web/css/main.css",
+      "line_range": "407-416",
+      "role": "Existing .slot-selected styles; must add .card-photo and #trip-cover rules",
+      "imports_from": ["leaf"],
+      "evidence": "Grep result: web/css/main.css:407 .slot-selected, :415 .selected-name, :416 .selected-meta — no card-photo or cover rules",
+      "verified_via": "grep"
+    }
+  ],
+  "pre_existing_guards": [],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "reason": null,
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh-CN/en",
+    "auth_state": "not applicable (local-only, no auth)",
+    "data_state": "beijing-lijiang-dali-20260418-100846 with populated images.json",
+    "browser": "Chrome desktop",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "The published page shows restaurant/activity cards WITH ACTUAL PHOTOS. The editor currently shows text-only cards.",
+    "measured": {
+      "value": "hydrate_trip() returns {meta, days, transportation, route_cache}; _buildCard() creates no img; #tpl-candidate-card has no img child; _writeSlotSelected() creates no img; index.html has no cover img",
+      "location": "scripts/lib/server/trip.py:25-30; web/js/state.js:308-323,464-477; web/index.html:90-106"
+    },
+    "expected": {
+      "value": "Candidate cards and timeline cards show img.card-photo with CDN URL; cover img#trip-cover visible at top of #tab-timeline; API response contains images.pois and images.city_covers",
+      "source": "published-page-desktop.png (orchestrator pre-analysis) + images.json data structure confirmed by Read"
+    },
+    "gap": "Zero img elements for venue photos; no cover img element; API omits images entirely"
+  },
+  "scope_expansion": {
+    "search_pattern": "_buildCard|_writeSlotSelected|_buildMealsCandidateGroup|hydrate_trip|tpl-candidate-card",
+    "search_scope": "web/js/state.js, web/index.html, scripts/lib/server/trip.py",
+    "user_reported": [
+      "web/js/state.js (_buildCard)",
+      "web/index.html (card template)",
+      "web/css/main.css",
+      "scripts/serve-trip.py"
+    ],
+    "additional_found": [
+      "web/js/state.js:194 (_buildMealsCandidateGroup — separate code path, same template, also missing image call)"
+    ],
+    "all_occurrences": [
+      "web/js/state.js:194",
+      "web/js/state.js:231",
+      "web/js/state.js:308",
+      "web/js/state.js:309",
+      "web/js/state.js:464",
+      "web/index.html:90",
+      "web/index.html:117",
+      "scripts/lib/server/trip.py:15-30"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "data/beijing-lijiang-dali-20260418-100846/images.json — read in this session, structure confirmed",
+    "url_or_location": "/root/travel-planner/data/beijing-lijiang-dali-20260418-100846/images.json",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "First attempt at photo rendering feature; no prior attempts"
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; recent commits: 7b416587 (3-col Notion layout), 8b7d4e0c (close-gate fixes), dbb35f72 (Notion redesign)",
+    "recent_commits": "7b416587 feat(web): 3-column Notion layout, 8b7d4e0c fix(web): 3 close-gate blockers, dbb35f72 feat(web): Notion UI redesign",
+    "file_contents": {
+      "images_json_structure": {
+        "top_level_keys": ["destination", "city_covers", "pois"],
+        "pois_key_pattern": "\"gaode_\" + name_local (Chinese venue name)",
+        "city_covers_key_pattern": "city name in English (e.g., 'Lijiang', 'Dali', 'Kunming', 'Beijing')",
+        "value_type": "CDN image URL string"
+      }
+    },
+    "dependencies": {},
+    "environment": {
+      "server": "scripts/serve-trip.py on 127.0.0.1:8765",
+      "data_root": "data/"
+    }
+  },
+  "development_approach": {
+    "strategy": "Four-file change: (1) server exposes images data; (2) state.js stores and uses it for rendering; (3) HTML template gains img element; (4) CSS adds photo sizing rules",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/server/trip.py",
+      "web/js/state.js",
+      "web/index.html",
+      "web/css/main.css"
+    ],
+    "validation_approach": "Playwright at 1440x900: navigate to /trip/beijing-lijiang-dali-20260418-100846; assert img.card-photo[src] exists in candidate cards and .slot-selected; assert #trip-cover[src] exists in #tab-timeline; assert hidden img has no src; assert GET /api/trip/<id> JSON has images key"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward missing-feature implementation with clear data structure confirmed by direct file read; no architectural ambiguity requiring external research"
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex identified 10 issues with the draft spec; 8 were in-scope real bugs or in-scope minor issues, 1 was out of scope, 1 was already covered. All in-scope findings were applied to this spec.",
+    "findings": [
+      {
+        "issue": "hydrate_trip() does not specify graceful handling when images.json is absent",
+        "proposed_fix": "Load with default {pois:{}, city_covers:{}}; missing file must not fail hydration",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M2 in requirements explicitly requires graceful FileNotFoundError fallback; Technical Hints specifies the try/except pattern"
+      },
+      {
+        "issue": "Returning full images.json may include extra fields (destination, fallback_unsplash)",
+        "proposed_fix": "API response images should include only normalized pois and city_covers",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M1 and Technical Hints now specify normalization to {pois, city_covers} only, stripping other keys"
+      },
+      {
+        "issue": "Image lookup key not precisely specified; risk of wrong prefix",
+        "proposed_fix": "Define exact helper using 'gaode_' + opt.name_local; no network fetch, no new fallbacks",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Technical Hints explicitly specifies the lookup key pattern confirmed from images.json read; fallback prefixes forbidden"
+      },
+      {
+        "issue": "state.images hydration assignment not explicit in draft",
+        "proposed_fix": "In _fetchTrip(), set state.images = {pois: data.images?.pois || {}, city_covers: data.images?.city_covers || {}}",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M3 now explicitly requires this assignment pattern verbatim"
+      },
+      {
+        "issue": "renderCover() not wired into render lifecycle; stale cover on day switch",
+        "proposed_fix": "Call renderCover() from renderAll() and derive city via _deriveCityName(_getActiveDay())",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M10 explicitly requires renderCover() called from renderAll(); Edge Case 5 documents the stale-cover risk"
+      },
+      {
+        "issue": "Cover img placement 'below header' risks grid layout change",
+        "proposed_fix": "Place inside existing #tab-timeline at top, not in global header",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M9 now specifies img#trip-cover placed inside #tab-timeline as first child, NOT in header; AC6 verifies no layout regression"
+      },
+      {
+        "issue": "img elements are draggable by default; interferes with card drag",
+        "proposed_fix": "Add draggable=false to all photo img elements",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "All img elements in spec now include draggable=false attribute; also in Technical Hints"
+      },
+      {
+        "issue": "Hidden/no-image: setting src='' triggers browser network request and may show broken icon",
+        "proposed_fix": "If no URL: img.hidden = true; img.removeAttribute('src')",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "M7 and M8 explicitly require removeAttribute('src') pattern; Edge Case 3 documents this pitfall; AC4 verifies no src attribute is present"
+      },
+      {
+        "issue": "CSS step described too broadly; risks inadvertent token or global changes",
+        "proposed_fix": "Limit CSS to component-local .card-photo / #trip-cover sizing, object-fit, border radius, and hidden behavior",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "M11 now explicitly limits CSS to .card-photo and #trip-cover only; explicitly forbids token, grid, and mobile changes"
+      },
+      {
+        "issue": "API contract (TripResponse TypedDict) and deterministic tests not updated",
+        "proposed_fix": "Update TripResponse contract in api_contract.py:77-83 and add tests for images present/missing",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Out of scope per orchestrator's locked scope; logged in out_of_scope_observations for a future cycle"
+      }
+    ],
+    "feedback_incorporated": "Findings 1-9 (all in-scope) applied: graceful fallback (M2), normalization (M1+Hints), exact lookup key (Hints), explicit state.images assignment (M3), renderCover wired to renderAll (M10), cover placement inside #tab-timeline (M9), draggable=false on all imgs (M4/M5/M8/M9), removeAttribute('src') pattern (M7/M8/AC4), CSS limited to component-local (M11). Finding 10 (api_contract schema) logged in out_of_scope_observations."
+  }
+}
