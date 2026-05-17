@@ -1,0 +1,391 @@
+{
+  "request_id": "20260517-211850",
+  "task_id": "20260517-211850",
+  "timestamp": "2026-05-17T22:15:00Z",
+  "qa": {
+    "status": "fail",
+    "verdict": "BA spec has 3 blocking correctness gaps that will cause dev to build a non-functional editor. The architectural direction (React template replacement) is correct and well-reasoned. The root cause diagnosis is accurate. The AC measurability is adequate. However, the candidates sidebar data source is mis-identified (spec says PLAN_DATA.trips[...].days[...].slots but that path does not exist — the correct source is v2 day-NN.json files loaded via GET /api/trip/<id>), the v2 option fields are incompatible with React card rendering (no name_base/location_base), and the cache locking pattern has a stale-write race. These gaps will cause AC4, AC5, and AC6 to be unimplementable as written. BA must revise before dev proceeds.",
+    "user_verbatim_complaint": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！可拖拽的页面只应该是原始页面的升级版而不是退化版！也不是完全不同的一版！就是在原有基础上升级",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "verified_location_keywords": ["trip", "editor", "serve-trip", "react-template", "kanban", "candidates-sidebar"],
+    "location_overlap": ["trip", "editor", "kanban"],
+    "complaint_element_pointer": {
+      "selector": null,
+      "how_located": "BA-mode validation — no browser verification performed; this is spec quality gate",
+      "found_in_dom": null,
+      "page_url": "/trip/beijing-lijiang-dali-20260418-100846"
+    },
+    "overall_assessment": "The BA spec's architectural diagnosis is correct and well-supported by evidence. 4 prior CSS-patching cycles failed because the editor and published page are structurally different applications. Replacing the editor rendering engine with the React template is the only correct approach. All 6 technical findings are genuine. However, 3 blocking implementation gaps will cause dev to build a sidebar with no candidates to show, cards with blank fields, and a cache that can be poisoned with stale HTML. These must be fixed in the spec before dev begins.",
+
+    "ba_validation_dimensions": {
+      "evidence_quality": {
+        "verdict": "pass",
+        "rationale": "BA verified file locations, line numbers, and code contents from actual file reads. Font (web/css/main.css:6), cover (<img> tag at web/index.html:72), card template (web/index.html:92-108), React font (react_template.tpl:1704), React cover (react_template.tpl:727-728), React card dimensions (react_template.tpl:784-785) — all confirmed by QA source read. BA correctly identified drag.js imports at lines 9-10. All claims are tied to specific file locations.",
+        "gaps": "diagnosis_completeness is self-declared as 'incomplete — browser rendering not measured'. Acceptable for BA-mode. QA confirms source evidence is sufficient to establish structural divergence."
+      },
+      "scope_alignment": {
+        "verdict": "pass",
+        "rationale": "User says 'one-to-one identical to fixed Notion-style page' + 'upgrade not degradation' + 'copy original HTML mechanism'. BA's Must Have M1 (pixel-identical main content), M2 (CandidatesSidebar), M3 (drag-and-drop), M4 (day selector), M6 (header) map cleanly to these verbatim demands. R2 acceptance criterion (editor retains all published-page features PLUS adds candidates) directly encodes the 'upgrade not degradation' clause. Nothing from the user requirement was wrongly scoped out.",
+        "gaps": "None — Won't Have list (CSS patching, schema changes) is correctly scoped."
+      },
+      "investigation_completeness": {
+        "verdict": "pass",
+        "rationale": "BA traced the full component chain: serve-trip.py (served index.html), generate-html-interactive.py (InteractiveHTMLGenerator), render_html_builders.py (HTML_HEAD/HTML_SCRIPT), react_template.tpl (NotionTravelApp), drag.js (imports). All confirmed by QA. Hyphenated filename issue (Finding 2) and state.js auto-init issue (Finding 3) are real and confirmed.",
+        "gaps": "None critical. Codex session references in Codex findings section confirm additional depth."
+      },
+      "affected_file_accuracy": {
+        "verdict": "pass",
+        "rationale": "QA verified all 4 affected files exist at claimed paths: scripts/serve-trip.py (298 lines), scripts/lib/render_html_builders.py (368 lines), scripts/lib/react_template.tpl (1847 lines), web/js/drag.js (135 lines). Line numbers match: _serve_index at line 181-186, HTML_SCRIPT at line 344-354, NotionTravelApp at line 1644, fontFamily at line 1704, KanbanView at line 718-809, drag.js imports at lines 9-10.",
+        "gaps": "None."
+      },
+      "spec_text_vs_execution_drift": {
+        "verdict": "fail",
+        "dimension": "spec_text_vs_execution_drift",
+        "details": "AC4 states 'CandidatesSidebar reads from PLAN_DATA.trips[activeTrip].days[activeDay].slots' as the data source, but PLAN_DATA produced by generate_plan_data() has no 'slots' field. The actual v2 slot/options data is in data/<trip>/days/day-NN.json files, accessible via GET /api/trip/<id> (hydrate_trip returns days[] which are raw day-NN.json content including slots). The BA Tech Hints also reference 'PLAN_DATA.trips[activeTrip].days[activeDay].slots (or equivalent path in the v2 schema)' with a qualifier 'Dev must verify the exact JSON path'. This qualifier signals the BA was uncertain. The path is wrong — dev following this will produce a sidebar with no candidates.",
+        "proposed_fix": "Revise CandidatesSidebar data source in spec and Tech Hints: 'CandidatesSidebar reads from EDITOR_DATA.days[activeDay].slots, where EDITOR_DATA is loaded via fetch(\"/api/trip/<trip_id>\") in a useEffect. The /api/trip/<id> response includes days[] from v2 day-NN.json files with slots[slotId].options[]. Match activeDay to EDITOR_DATA.days by day.day field (integer 1-indexed), not by array index, because selDay in React is grouped-trip-relative while day.day is absolute.'"
+      }
+    },
+
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "critical",
+        "category": "data_source_wrong",
+        "dimension": "spec_text_vs_execution_drift",
+        "title": "CandidatesSidebar data source path does not exist in PLAN_DATA",
+        "location": "ticket-20260517-211850.md — AC4, Technical Hints (CandidatesSidebar data source paragraph)",
+        "evidence": "QA verified: generate_plan_data() produces day.meals.breakfast, day.meals.lunch, day.meals.dinner, day.meal_alternatives, day.attractions etc. — no 'slots' key. Confirmed via Python: python3 -c 'import json,pathlib; p=pathlib.Path(\"data/beijing-lijiang-dali-20260418-100846/days/day-02.json\"); d=json.loads(p.read_text()); print(list(d.keys()))' → ['schema_version', 'day', 'date', 'city_id', 'city_name', 'leg_index', 'day_type', 'stage', 'arrival_ts', 'departure_ts', 'slots', 'accommodation', 'intra_city_routes', 'warnings']. The 'slots' key exists in v2 day-NN.json, NOT in PLAN_DATA.",
+        "impact": "Dev will attempt to read PLAN_DATA.trips[x].days[y].slots and get undefined. CandidatesSidebar will have no candidates. AC4 will fail — 'candidates-groups contains at least one .card-candidate element' will be false. AC5 (drag-and-drop) and AC6 (day selector updates sidebar) are also untestable.",
+        "blocks_release": true,
+        "proposed_fix": "CandidatesSidebar must fetch editor data separately: useEffect calls fetch('/api/trip/<trip_id>') and stores EDITOR_DATA.days[] in React state. The candidates for the active day are EDITOR_DATA.days.find(d => d.day === activePublishedDay.day).slots[slotId].options[]. The trip_id must be embedded in the generated HTML (e.g., const TRIP_ID = '__TRIP_ID__'; injected by render_html_builders.py alongside PLAN_DATA)."
+      },
+      {
+        "id": "F2",
+        "severity": "critical",
+        "category": "field_incompatibility",
+        "title": "v2 option fields are incompatible with React card rendering — adapter required",
+        "location": "ticket-20260517-211850.md — M2, M3, M5; Technical Hints (CandidatesSidebar data source)",
+        "evidence": "QA verified v2 option fields (from day-05.json evening_activity options[0]): {option_id, name, name_local, location_summary, cost (local currency float), currency_local, fit_score, why_fits_user, source_agent, ...}. React KanbanView card expects: name_base, location_base, display-currency cost, notes_base, links (for LinkChip), stars, etc. There is NO name_base, NO location_base in v2 options. Cost is in local CNY, not display EUR. The spec says 'each .card-candidate has data-option-id and data-slot-id' but says nothing about field mapping.",
+        "impact": "CandidatesSidebar cards will render with blank names and incorrect cost display if dev naively maps v2 option fields to React card props. AC4 and AC5 depend on well-formed candidate cards with correct data.",
+        "blocks_release": true,
+        "proposed_fix": "Spec must define an adapter: toDisplayCard(option, slotId) => { name_base: option.name, name_local: option.name_local, location_base: option.location_summary, cost: toDisplayCurrency(option.cost, option.currency_local, exchangeRates), option_id: option.option_id, slot_id: slotId }. The exchange rate for the adapter should come from a constant in the generated HTML (CURRENCY_SYMBOL is already injected by render_html_builders.py; extend to include exchange rates as EDITOR_EXCHANGE_RATES)."
+      },
+      {
+        "id": "F3",
+        "severity": "critical",
+        "category": "cache_correctness",
+        "title": "Cache stale-write race: invalidation during generation allows stale HTML to overwrite fresh cache",
+        "location": "ticket-20260517-211850.md — Finding 1 resolution, Technical Hints (Cache structure)",
+        "evidence": "The proposed cache pattern is: check lock → miss → generate OUTSIDE lock → write with lock. Two bugs: (1) Two concurrent cold requests both generate and both write — the second write wastes work but is harmless. (2) A /api/save call can invalidate the cache WHILE a generation is running outside the lock. When generation finishes and writes to cache (inside lock), the stale pre-save HTML overwrites the now-empty cache, and subsequent requests see outdated data until the next invalidation. This is a real correctness bug for an editor — user saves a change and then sees stale content on next load.",
+        "impact": "After /api/save, a concurrent in-flight generation can re-populate cache with pre-save HTML. The user sees their save 'undone' on page reload until the next change triggers another invalidation. AC5 (save triggers correct display) can falsely pass if tested immediately but fail on next page load.",
+        "blocks_release": true,
+        "proposed_fix": "Use per-trip generation locks: _html_locks: dict[str, threading.Lock] = {}. Take the per-trip lock before generation, hold it through cache write. On invalidation also take the per-trip lock. This prevents the race without blocking ALL trips behind one lock. Alternatively, use a version counter: increment _html_version[trip_id] on save, stamp it during generation, only write to cache if the current version matches the stamped version when writing."
+      },
+      {
+        "id": "F4",
+        "severity": "major",
+        "category": "layout_regression_risk",
+        "title": "CandidatesSidebar in normal flex layout will compress main content area below 960px",
+        "location": "ticket-20260517-211850.md — M2 (rightmost column, fixed width ~280px)",
+        "evidence": "react_template.tpl:1714 wraps main content in: <div style={{ flex: 1, minWidth: 0 }}>. KanbanView caps at max-width: 960px (react_template.tpl:723). At 1440px viewport, Sidebar (left, ~220px) + main (flex:1) = ~1220px for main. Adding CandidatesSidebar (280px fixed) compresses main to ~940px, which is under the 960px max-width cap — the max-width cap would become binding and shrink the main content area below 960px. This changes card layout reflow at exactly the viewport width (1440px) the user uses for comparison.",
+        "impact": "AC3 (kanban cards are 280px wide) and AC1 visual parity tests at 1440x900 may fail if the main content area is narrower than expected. The user's complaint is 'one-to-one identical' — any layout compression is a failure.",
+        "blocks_release": false,
+        "proposed_fix": "CandidatesSidebar should be rendered as a fixed-position overlay panel (right: 0, position: fixed, width: 280px) rather than inside the flex layout. Main content reflow is then unaffected. Alternatively, clarify in the spec that parity screenshots are taken with the sidebar hidden/collapsed and that the sidebar is additive outside the main content bounds."
+      },
+      {
+        "id": "F5",
+        "severity": "major",
+        "category": "missing_spec_detail",
+        "title": "window.setEditorSelection bridge pseudocode omits required /api/save payload format",
+        "location": "ticket-20260517-211850.md — Finding 5, Technical Hints",
+        "evidence": "The spec shows: fetch('/api/save', { method: 'POST', body: JSON.stringify({...}) }). The '...' is undefined. The actual /api/save endpoint (web/js/save.js or server handler) expects a specific mutation format. React's selDay is zero-based within a grouped trip (PLAN_DATA.trips[selTrip].days[selDay]) but the API day field is absolute (day.day integer from day-NN.json). Mapping selDay to the absolute day.day requires: PLAN_DATA.trips[selTrip].days[selDay].day.",
+        "impact": "Dev will likely pass the wrong day index to /api/save, causing mutations to land on the wrong day. AC5 depends on /api/save firing correctly.",
+        "blocks_release": false,
+        "proposed_fix": "Spec must show the complete save payload: { trip_id: TRIP_ID, day: activeDay.day, editor_session: Date.now().toString(), mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId || null }] }. Verify against the actual /api/save handler in serve-trip.py or the existing web/js/save.js reference implementation."
+      },
+      {
+        "id": "F6",
+        "severity": "minor",
+        "category": "option_a_mapping_underspecified",
+        "title": "Option A category-to-slot mapping is undefined and likely wrong",
+        "location": "ticket-20260517-211850.md — Finding 4 (drop zones), Technical Hints (Option A drop zone placement)",
+        "evidence": "Spec: 'meals section → breakfast (primary meal slot), attractions → morning_activity, etc.' But v2 slots are: breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity. The meals KanbanView section header contains all three meal cards (breakfast/lunch/dinner) — mapping the entire meals section to just 'breakfast' loses lunch and dinner drop targets. The attractions section similarly may map to morning_activity or afternoon_activity depending on timeline. The 'etc.' is unspecified.",
+        "impact": "Dev will produce drop zones that only cover breakfast and morning_activity, missing lunch, dinner, and afternoon/evening slots. Users cannot drag candidates for non-breakfast meals.",
+        "blocks_release": false,
+        "proposed_fix": "Either: (a) Specify the full slot-to-category header mapping in the spec (e.g., add drop zones per-card in KanbanView, one per displayed meal card, using the card's actual slot key), or (b) Recommend switching to slot-granular drop zones rather than category-header drop zones (one .slot-drop per card, with data-slot-id matching the card's slot key)."
+      }
+    ],
+
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "QA confirmed from source: web/css/main.css:6 imports Inter via Google Fonts (@import url(...Inter...)). web/index.html:72 has <img id='trip-cover' class='trip-cover'>. web/index.html:39 has 3-panel layout (#pane-days | #pane-middle | #pane-candidates). react_template.tpl:1704 has fontFamily: 'ui-sans-serif, -apple-system, ...' react_template.tpl:726-729 has 200px background-div cover. react_template.tpl:784-785 has cardW=280, cardH=320. These are genuinely different component trees — no CSS patch can bridge them. The architectural diagnosis is correct."
+    },
+
+    "technical_findings_assessment": {
+      "finding_1_exchange_rate": {
+        "verdict": "correct_but_incomplete",
+        "details": "The subprocess does run during InteractiveHTMLGenerator.__init__() (lines 48, 52-75 of generate-html-interactive.py) with timeout=10. The cache approach is correct. But the cache write pattern has a race condition (see F3 above). Additionally, the spec says AC8 is 'second request < 2s' but does not address that the FIRST request can still block 10s for every trip on cold start. This is declared acceptable for a local dev tool which is reasonable."
+      },
+      "finding_2_importlib": {
+        "verdict": "correct",
+        "details": "QA confirmed: generate-html-interactive.py exists at scripts/generate-html-interactive.py (Python cannot import hyphenated names). scripts/lib/html_generator.py exists and contains TravelPlanHTMLGenerator (different class — NOT InteractiveHTMLGenerator). So dev must use importlib pattern. The importlib code in Technical Hints is syntactically correct."
+      },
+      "finding_3_statejs_autoinit": {
+        "verdict": "correct",
+        "details": "QA confirmed: web/js/state.js line 879-881 calls init() on DOMContentLoaded or immediately if DOM is ready. init() (line 118) calls document.getElementById on trip-title (line 180), approve-day-btn (line 591), tab-timeline (line 831), candidates-groups (line 283) — none of which exist in the React-rendered DOM. state.js must not be injected. Confirmed."
+      },
+      "finding_4_drop_zones": {
+        "verdict": "partially_correct",
+        "details": "Correct that KanbanView has no .slot-drop elements. Option A vs Option B assessment is reasonable. However the category-to-slot mapping in Option A is underspecified and likely wrong (see F6). Option B (TimelineView) is less suitable because it departs from the Notion Kanban visual parity the user demands."
+      },
+      "finding_5_react_bridge": {
+        "verdict": "correct_but_incomplete",
+        "details": "window.setEditorSelection inside useEffect is the correct pattern for bridging vanilla JS events into React state. But save payload format is missing (see F5). Also: the bridge must clean up on component unmount (return a cleanup function from useEffect that sets window.setEditorSelection = null or a no-op)."
+      },
+      "finding_6_editor_mode": {
+        "verdict": "correct",
+        "details": "HTML_SCRIPT is a constant string at render_html_builders.py:344-354. String replacement to inject EDITOR_MODE is straightforward. However: the published generate_html() function must also emit EDITOR_MODE=false (not omit it), otherwise published pages that add an EDITOR_MODE check to the JSX will crash with ReferenceError. This is confirmed by Codex finding #12."
+      }
+    },
+
+    "ac_measurability_assessment": {
+      "ac1_font": "PASS — getComputedStyle(document.body).fontFamily check is concrete and browser-verifiable",
+      "ac2_cover": "PASS — getBoundingClientRect on cover div + check for background-image CSS is concrete",
+      "ac3_card_dimensions": "PASS — getBoundingClientRect on meal card is concrete",
+      "ac4_candidates_sidebar": "FAIL — 'at least one .card-candidate element for the active day meal slot' is unverifiable if data source is wrong; also 'data-option-id and data-slot-id attributes set' will fail if v2 option adapter is missing",
+      "ac5_drag_drop": "FAIL — depends on AC4 being correct first; save payload format unspecified",
+      "ac6_day_selector": "PARTIAL — KanbanView update is testable; CandidatesSidebar update depends on correct data binding",
+      "ac7_published_page": "PASS — 'EDITOR_MODE=false path unchanged' is concrete and testable via generate-html-interactive.py",
+      "ac8_ttfb": "PASS — second request TTFB measurement is concrete"
+    },
+
+    "option_a_vs_option_b_assessment": {
+      "recommendation": "Option A (KanbanView drop zones) is architecturally more sound for the stated requirement because it preserves the Notion Kanban visual context during editing. However, Option A's recommended per-category-header placement is wrong — it should be per-slot-card overlays, not per-section-header overlays. The spec should clarify: one invisible .slot-drop overlay per card, using the card's actual slot_id (breakfast/lunch/dinner/morning_activity etc.), rendered as position:absolute overlays (not adding height) only when EDITOR_MODE=true and during drag-active state. This preserves visual parity while providing slot-precise drop targets."
+    },
+
+    "r2_feature_completeness_check": {
+      "finding": "R2 acceptance criterion states: 'Editor retains all published-page features (language toggle, map provider toggle, timeline view, budget, item detail sidebar) PLUS adds candidates sidebar and drag-and-drop'. The spec correctly marks web/js/mobile.js, web/js/save.js, web/js/routing.js, web/js/budget.js, web/js/offline.js as out-of-path. However, the spec does not explicitly state how their equivalent functionality is preserved in the React editor. The React template already has language toggle (setLang), map provider toggle (setMapProvider), timeline view (setView), budget (Donut component), and item detail sidebar (selectedItem state). These are preserved by construction through sharing the React template. The spec should explicitly call this out to prevent dev from accidentally removing these features.",
+      "verdict": "acceptable — preserved by construction; minor documentation gap only"
+    },
+
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed all 3 critical findings independently. Key Codex findings: (1) React template approach is architecturally correct (PROPOSED_FIX: share react_template.tpl as single rendering template). (2) BA's PLAN_DATA.trips[...].days[...].slots path is wrong — correct source is GET /api/trip/<id> v2 days[n].slots. (3) Static PLAN_DATA and editor save state are different data models — PLAN_DATA is from legacy meals.json/attractions.json, save writes to v2 day-NN.json. (4) v2 options are not directly render-compatible with React cards — need adapter. (5) CandidatesSidebar in flex layout can compress main content area below 960px. (6) Option A category mapping is flawed (meals section maps to breakfast only, missing lunch/dinner). (7) Visible .slot-drop headers threaten visual parity — should be invisible overlays. (8) Cache double-checked locking has stale-write race. (9) First request still blocks 10s (cache only helps second). (10) drag.js module-boundary risk — mobile.js also imports state.js. (11) window.setEditorSelection pseudocode omits save payload format. (12) EDITOR_MODE must be emitted as false in published HTML too. (13) OBSERVATION_ONLY: candidate scarcity in PLAN_DATA is a data issue not architecture issue.",
+      "feedback_incorporated": "Codex findings 2, 3, 4 confirmed F1 and F2 in this report. Codex finding 8 confirmed F3. Codex findings 5, 6, 7 supported F4. Codex finding 11 confirmed F5. Codex finding 6 confirmed F6. Codex finding 12 added to Technical Findings assessment (Finding 6). Codex findings 9, 10 added as additional context in respective assessments. Codex finding 13 (OBSERVATION_ONLY) noted: acknowledged but classified as non-blocking since v2 day-NN.json does have multi-option slots (day-05 evening_activity has 4 options), confirming v2 is viable once the correct path is specified."
+    },
+
+    "success_criteria_results": [
+      {
+        "requirement_id": "R1",
+        "source_phrase": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样",
+        "criterion": "Editor main content area (KanbanView + cover + header) renders pixel-identically to the published page: same font stack, same card dimensions, same cover mechanism",
+        "verification_method": "Source code verification: BA confirmed react_template.tpl values, QA confirmed match via file reads",
+        "status": "pass",
+        "result": "pass",
+        "details": "The architectural approach (sharing react_template.tpl) guarantees visual parity by construction. No CSS patch needed. Font, cover, and card dimensions will be identical because they come from the same JSX source.",
+        "evidence": "react_template.tpl:1704 ui-sans-serif confirmed. react_template.tpl:726-729 200px background-div confirmed. react_template.tpl:784-785 cardW=280, cardH=320 confirmed. QA read all three lines."
+      },
+      {
+        "requirement_id": "R2",
+        "source_phrase": "可拖拽的页面只应该是原始页面的升级版而不是退化版",
+        "criterion": "Editor retains all published-page features (language toggle, map provider toggle, timeline view, budget, item detail sidebar) PLUS adds candidates sidebar and drag-and-drop",
+        "verification_method": "Verified React template already has all listed features; editor mode adds on top",
+        "status": "pass",
+        "result": "pass",
+        "details": "Language toggle (setLang state), map provider toggle (setMapProvider state), timeline view (setView + TimelineView component), budget (Donut component), item detail sidebar (selectedItem state) all exist in react_template.tpl. Preserved by construction.",
+        "evidence": "react_template.tpl:1647-1654 shows useState for selTrip, selDay, view, sbOpen, selectedItem, selectedBudgetCat, lang, mapProvider. All published features are present."
+      },
+      {
+        "requirement_id": "R3",
+        "source_phrase": "直接复制原始html生成机制然后将你的全部动态html机制加载上面",
+        "criterion": "serve-trip.py uses InteractiveHTMLGenerator (same class as generate-html-interactive.py uses) to produce the HTML, with EDITOR_MODE=true injected, served at GET /trip/<id>",
+        "verification_method": "Spec describes correct mechanism; implementation will depend on importlib pattern",
+        "status": "fail",
+        "result": "fail",
+        "details": "The architectural approach is correct. However the spec has blocking gaps (F1, F2, F3) that will prevent the implementation from working correctly: wrong data source for CandidatesSidebar, missing field adapter for v2 options, cache race condition.",
+        "evidence": "Verified generate-html-interactive.py has InteractiveHTMLGenerator class (line 21). Verified serve-trip.py:181-186 currently serves web/index.html. The replacement approach is correct; the gaps are in the editor component specifications."
+      }
+    ],
+
+    "build_verification": {
+      "status": "skipped",
+      "build_command": null,
+      "deploy_command": null,
+      "build_output_summary": null,
+      "service_healthy": null,
+      "changes_verified_live": false,
+      "skip_reason": "BA-mode QA: no dev implementation exists yet. This is spec quality gate, not post-implementation verification. No files were modified by dev."
+    },
+
+    "app_understanding_flow": {
+      "executed": false,
+      "core_flow_completed": false,
+      "steps_completed": 0,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": true
+    },
+
+    "e2e_enforcement": {
+      "required": false,
+      "attempted": false,
+      "script_discovered": false,
+      "script_path": null,
+      "health_check_url": null,
+      "health_check_result": null,
+      "status": "skipped_ba_mode",
+      "blocking_reason": "BA-mode QA: no implementation to verify. E2E applies post-dev."
+    },
+
+    "e2e_script_results": [],
+    "ui_test_results": [],
+    "generated_tests": [],
+
+    "hardcode_scan_results": {
+      "files_scanned": 0,
+      "violations": [],
+      "summary": { "critical": 0, "major": 0, "minor": 0 },
+      "note": "BA-mode QA: no new files created by dev. Spec documents do not contain deployed code."
+    },
+
+    "standards_compliance": {
+      "checked": false,
+      "role_table_source": null,
+      "violations": [],
+      "note": "BA-mode QA: no CLAUDE.md role table found for travel-planner project. No token audit applicable."
+    },
+
+    "permissions_verification": {
+      "status": "skipped",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "ticket-20260517-211850.md — AC4, Technical Hints (CandidatesSidebar data source)",
+        "issue": "CandidatesSidebar data source PLAN_DATA.trips[...].days[...].slots does not exist. PLAN_DATA has no slots field. Correct source is v2 day-NN.json via GET /api/trip/<id>.",
+        "recommendation": "Revise spec to: CandidatesSidebar fetches EDITOR_DATA from GET /api/trip/<trip_id> in useEffect. Embed TRIP_ID constant in generated HTML. Match active day via EDITOR_DATA.days.find(d => d.day === activePublishedDay.day).slots.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "ticket-20260517-211850.md — M2, M3 (CandidatesSidebar, drag-and-drop)",
+        "issue": "v2 option fields (name, location_summary, cost in CNY) are incompatible with React card props (name_base, location_base, display-currency cost). No adapter specified.",
+        "recommendation": "Add toDisplayCard(option, slotId) adapter to spec. Map name→name_base, name_local→name_local, location_summary→location_base, cost with currency conversion using injected exchange rates.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "ticket-20260517-211850.md — Technical Hints (Cache structure)",
+        "issue": "Cache write pattern has stale-write race: /api/save invalidates cache while generation is in-flight outside the lock; stale HTML is then written after invalidation, poisoning the cache.",
+        "recommendation": "Use per-trip threading.Lock held through both generation and write. Or use version tokens: stamp version before generation, only write if version unchanged after generation.",
+        "blocks_release": true
+      },
+      {
+        "severity": "major",
+        "location": "ticket-20260517-211850.md — M2 (rightmost column, fixed width ~280px)",
+        "issue": "CandidatesSidebar in flex layout compresses main content area below 960px at 1440px viewport, breaking pixel parity for kanban card layout.",
+        "recommendation": "Render CandidatesSidebar as position:fixed overlay panel (right:0) outside flex layout, or clarify parity scope excludes sidebar-visible state.",
+        "blocks_release": false
+      },
+      {
+        "severity": "major",
+        "location": "ticket-20260517-211850.md — Finding 5, Technical Hints (window bridge pseudocode)",
+        "issue": "window.setEditorSelection pseudocode shows fetch('/api/save', { body: JSON.stringify({...}) }) with undefined payload. /api/save expects specific mutation format; React selDay is trip-relative not absolute.",
+        "recommendation": "Specify complete save payload: { trip_id: TRIP_ID, day: activeDay.day, editor_session, mutations: [{type:'select', slot, option_id, origin_slot_id}] }.",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "ticket-20260517-211850.md — Finding 4, Technical Hints (Option A drop zone placement)",
+        "issue": "Option A maps meals section → breakfast only (misses lunch/dinner). attractions → morning_activity (misses afternoon). 'etc.' is undefined.",
+        "recommendation": "Specify per-card slot-drop overlays (one per KanbanView card) using each card's actual slot key, rather than per-section-header drop zones.",
+        "blocks_release": false
+      }
+    ],
+
+    "summary": {
+      "critical_issues": 3,
+      "major_issues": 2,
+      "minor_issues": 1,
+      "total_findings": 6,
+      "release_recommendation": "reject",
+      "pass_through_items": "Architectural direction (React template), root cause diagnosis, scope alignment, affected file accuracy, findings 1-6 technical correctness (with noted gaps), AC measurability for AC1/AC2/AC3/AC7/AC8"
+    },
+
+    "spec_section_updates": {
+      "section_4": null,
+      "section_6": null,
+      "section_7": null
+    },
+
+    "self_verification": {
+      "claims_total": 12,
+      "claims_with_evidence": 12,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high",
+      "evidence_sources": [
+        "Direct file read: web/css/main.css:6 (Inter font import confirmed)",
+        "Direct file read: web/index.html:72 (<img id=trip-cover confirmed)",
+        "Direct file read: react_template.tpl:1704 (ui-sans-serif confirmed)",
+        "Direct file read: react_template.tpl:726-729 (200px background-div confirmed)",
+        "Direct file read: react_template.tpl:784-785 (cardW=280, cardH=320 confirmed)",
+        "Direct file read: drag.js:9-10 (state.js import confirmed)",
+        "Direct file read: state.js:879-881 (auto-init on DOMContentLoaded confirmed)",
+        "Python execution: day-02.json top keys (slots field confirmed in v2)",
+        "Python execution: day-05.json slots (evening_activity 4 options confirmed)",
+        "Python execution: meals.json structure (no alternatives confirmed)",
+        "Python execution: v2 option fields (name not name_base confirmed)",
+        "Codex consultation: all 3 blockers independently confirmed"
+      ]
+    },
+
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-17T22:15:00Z",
+        "file": "web/js/mobile.js",
+        "line": null,
+        "observation": "Codex noted that mobile.js also imports state.js. If drag.js refactor removes state.js import but mobile.js is still loaded anywhere, the mobile auto-init could still fire. However mobile.js is in the out-of-path list and will not be loaded in the React page (state.js is the only script tag in web/index.html and that file is superseded). Non-blocking.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-17T22:15:00Z",
+        "file": "scripts/generate-html-interactive.py",
+        "line": null,
+        "observation": "On server restart, first request per trip will block for up to 10s (exchange rate subprocess). Subsequent requests hit cache. Acceptable for local dev tool per BA. Could be mitigated by pre-warming cache on server start, but not required.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-17T22:15:00Z",
+        "file": "scripts/lib/render_html_builders.py",
+        "line": "354",
+        "observation": "EDITOR_MODE must be emitted as 'const EDITOR_MODE = false;' in the published generate_html() path too, not only in the editor path. Otherwise any JSX that references EDITOR_MODE in the published page will throw ReferenceError. This should be added to the spec's Technical Hints for Finding 6.",
+        "in_user_path": true,
+        "security_relevant": false
+      }
+    ]
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "R3 blocked by 3 implementation gaps: wrong candidates data source, missing v2→React field adapter, cache race condition"
+    ],
+    "critical_issues": [
+      "CandidatesSidebar data source: change from PLAN_DATA.trips[x].days[y].slots to EDITOR_DATA fetched via GET /api/trip/<id>; EDITOR_DATA.days[...].slots[slotId].options[]",
+      "v2 option field adapter: add toDisplayCard(option, slotId) that maps name→name_base, location_summary→location_base, cost with exchange rate conversion",
+      "Cache race: replace double-checked locking with per-trip threading.Lock held through generation+write, or version-stamped conditional write"
+    ],
+    "recommended_approach": "BA must revise ticket-20260517-211850.md Technical Hints and AC4/AC5 to: (1) specify EDITOR_DATA as a second data payload fetched via GET /api/trip/<trip_id> and embedded or fetched in useEffect, (2) add toDisplayCard adapter specification, (3) replace cache pseudocode with per-trip locked pattern, (4) specify complete /api/save payload format in window.setEditorSelection bridge. The architectural direction is correct and should not change.",
+    "additional_context": "v2 day-05.json confirmed: slots.evening_activity.options has 4 entries, slots.breakfast.options has 1 entry. The v2 data IS rich enough for a meaningful candidates sidebar — the data source just needs to be correctly identified as /api/trip/<id> response, not PLAN_DATA."
+  }
+}
