@@ -146,14 +146,14 @@ function _applyMobileLayout() {
   if (mobile) {
     // ALWAYS collapse other panes on first mobile activation. The HTML scaffold
     // ships with a tab pre-marked aria-pressed=true but no data-mobile-hidden
-    // on the panes, so without this call all three panes stack visibly.
+    // on the panes, so without this call both panes stack visibly.
     if (!_mobileLayoutApplied) {
-      _activateTab("candidates");
+      _activateTab("middle");
       _mobileLayoutApplied = true;
     }
   } else {
     _mobileLayoutApplied = false;
-    for (const p of ["candidates", "timeline", "budget"]) {
+    for (const p of ["middle", "candidates"]) {
       const el = document.getElementById(`pane-${p}`);
       if (el) delete el.dataset.mobileHidden;
     }
