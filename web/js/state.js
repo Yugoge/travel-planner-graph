@@ -145,9 +145,27 @@ export function renderAll() {
   _populateMobileDaySelect();
   renderCandidates();
   renderTimeline();
+  renderCover();
   renderBudget(state);
   renderApproveButton();
   renderExportButtons();
+}
+
+function renderCover() {
+  const img = document.getElementById("trip-cover");
+  if (!img) return;
+  const day = _getActiveDay();
+  if (!day) { img.hidden = true; img.removeAttribute("src"); return; }
+  const cityName = _deriveCityName(day);
+  img.onerror = () => { img.hidden = true; img.removeAttribute("src"); };
+  const url = cityName ? state.images.city_covers[cityName] : null;
+  if (url) {
+    img.hidden = false;
+    img.src = url;
+  } else {
+    img.hidden = true;
+    img.removeAttribute("src");
+  }
 }
 
 function renderHeader() {
