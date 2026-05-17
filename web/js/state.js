@@ -147,7 +147,7 @@ function _renderTitle() {
   const title = document.getElementById("trip-title");
   if (!state.meta) return;
   title.textContent =
-    state.meta.trip_name || state.meta.trip_id || state.trip_id;
+    state.meta.trip_name || state.meta.title || state.meta.trip_id || state.trip_id;
 }
 
 function _renderSaveStatus() {
