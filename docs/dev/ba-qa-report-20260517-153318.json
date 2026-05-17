@@ -1,0 +1,150 @@
+{
+  "request_id": "20260517-153318",
+  "task_id": "20260517-153318",
+  "timestamp": "2026-05-17T15:45:00Z",
+  "qa": {
+    "status": "fail",
+    "verdict": "FAIL — 7 blocking spec defects found. Each allows dev to pass all stated ACs while shipping a broken or unverifiable implementation. BA must fix before dev begins.",
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed FAIL and expanded the blocker set from 2 to 8 candidates. Codex: (1) confirmed AC14 querySelector scope defect but identified a larger gap — AC14 does not test gap:0 on .timeline-slots, allowing compounded gap to ship; (2) found AC8 targets the first .tab-content which is the hidden Dashboard panel, not the visible Timeline; (3) confirmed mobile padding blocker and tightened the proposed fix to exact 16px values; (4) found R5 mobile border-top removal has no mobile AC; (5) found AC2 uses computed background/color which cannot verify CSS custom-property values on #pane-candidates — must use getPropertyValue; (6) found AC15 may match a hidden .slot-selected on a skipped slot; (7) found UTC date parsing not verifiable by AC10/AC11 when tests run in UTC timezone.",
+      "feedback_incorporated": "All 7 codex blockers with PROPOSED_FIX applied. Codex finding 7 (UTC timezone AC) classified as in_scope_minor and downgraded to observation: the UTC parsing correctness is already addressed by the _formatDayHeadingDate() helper in Technical Hints; requiring a timezone-controlled DevTools AC is disproportionate overhead for a pre-dev spec check — the correct implementation is already prescriptively specified."
+    },
+    "check_results": {
+      "check_1_all_acs_measurably_verifiable": {
+        "status": "fail",
+        "findings": [
+          {
+            "id": "BF1",
+            "severity": "blocking",
+            "ac": "AC14",
+            "issue": "querySelector('.slot + .slot') is unscoped — selects first match in entire document, not necessarily inside #timeline-slots. CSS rule is scoped to .timeline-slots > .slot + .slot. Additionally AC14 does not verify gap:0 on .timeline-slots; dev could leave gap:32px and also set margin-top:32px, causing compounded 64px gap between slots while AC14 passes.",
+            "proposed_fix": "Replace AC14 assertion with: (1) getComputedStyle(document.querySelector('#timeline-slots')).rowGap === '0px', AND (2) getComputedStyle(document.querySelector('#timeline-slots > .slot + .slot')).marginTop === '32px'. Both conditions must pass."
+          },
+          {
+            "id": "BF2",
+            "severity": "blocking",
+            "ac": "AC8",
+            "issue": "document.querySelector('.tab-content') selects the FIRST .tab-content in DOM order, which is #tab-dashboard (the hidden Dashboard panel at web/index.html:57), not #tab-timeline (the visible Timeline at line 71). A dev who sets padding correctly on the Timeline container but leaves Dashboard at var(--sp-4) would still fail; worse, a dev who patches only Dashboard padding would pass AC8 while Timeline padding remains wrong.",
+            "proposed_fix": "Change AC8 querySelector to: document.querySelector('#tab-timeline.tab-content:not([hidden])') or document.querySelector('#tab-timeline'). Assert padding-top:0px, padding-right:48px, padding-bottom:48px, padding-left:48px on that element."
+          },
+          {
+            "id": "BF3",
+            "severity": "blocking",
+            "ac": "AC2",
+            "issue": "AC2 asserts 'computed values EQUAL the old token values: bg-page #f7f6f3, border #e0e0e0, text-muted #787774, text-subtle #9b9a97' by reading getComputedStyle(#pane-candidates) for 'background-color, border-related colors, and text colors'. This is unverifiable as written: getComputedStyle does not expose CSS custom properties (--bg-page, --border, --text-muted, --text-subtle); it returns resolved values for layout properties. #pane-candidates has no explicit border-color rule, so border-related colors cannot be read from it. The AC needs to use getComputedStyle(...).getPropertyValue('--token-name') to actually read custom property values.",
+            "proposed_fix": "Rewrite AC2 to: const cs = getComputedStyle(document.querySelector('#pane-candidates')); assert cs.getPropertyValue('--bg-page').trim() === '#f7f6f3' AND cs.getPropertyValue('--border').trim() === '#e0e0e0' AND cs.getPropertyValue('--text-muted').trim() === '#787774' AND cs.getPropertyValue('--text-subtle').trim() === '#9b9a97'. Optionally also spot-check a child's resolved color: getComputedStyle(document.querySelector('#candidates-groups .candidate-group-title')).color."
+          },
+          {
+            "id": "BF4",
+            "severity": "blocking",
+            "ac": "AC15",
+            "issue": "document.querySelector('.slot-selected') will match the FIRST .slot-selected in the DOM. Examining day-01.json: 5 of 7 slots are skipped (breakfast, morning_activity, lunch, afternoon_activity, evening_activity). Each slot template (tpl-slot) contains a .slot-selected element with hidden attribute. document.querySelector('.slot-selected') will match the first one it finds, which is likely the hidden empty element inside a skipped slot, not the visible selected card shell. The background/border/box-shadow checks would then reflect the hidden element's style, not the live selected-item card.",
+            "proposed_fix": "Change AC15 querySelector to: document.querySelector('#timeline-slots .slot-selected:not([hidden])') — this targets only the visible (non-hidden) selected card element inside the timeline."
+          }
+        ]
+      },
+      "check_2_candidates_sidebar_isolation_ac2": {
+        "status": "fail",
+        "detail": "AC2 old token values are correctly listed (bg-page:#f7f6f3, border:#e0e0e0, text-muted:#787774, text-subtle:#9b9a97 are the confirmed pre-change values from current main.css:11,17 and matching the Evidence section). However the verification method is broken — see BF3 above. The values themselves are correct; the mechanism to verify them is not."
+      },
+      "check_3_day_h2_dom_position_and_text_format": {
+        "status": "pass",
+        "detail": "AC10 correctly asserts '#timeline-slots > h2.day-heading' as FIRST CHILD. AC10 textContent 'Jun 20 (Sat) – Kunming' is consistent with the _formatDayHeadingDate() helper specified in Technical Hints JS item 3 (Intl.DateTimeFormat with timeZone:UTC, month:short, day:numeric, weekday:short) applied to '2026-06-20': month='Jun', day='20', weekday='Sat'. day-01.json confirms city_name='Kunming'. AC11 uses day 2 date '2026-06-21' and city 'Kunming'; Jun 21 2026 is a Sunday — textContent 'Jun 21 (Sun) – Kunming' is correct. DOM position assertion is well-formed. No defect on format or position."
+      },
+      "check_4_emoji_scope_consistency": {
+        "status": "pass",
+        "detail": "AC12 verifies emoji prefix appears in #timeline-slots slot titles. AC13 verifies #candidates-groups .candidate-group-title has NO emoji. Technical Hints R9/JS changes item 1-2 specify: separate SLOT_TITLE_EMOJI constant used only in _buildSlotNode() (timeline path), SLOT_LABELS not modified, _buildCandidateGroup() and _buildMealsCandidateGroup() use SLOT_LABELS and hardcoded 'Meals' strings respectively. Confirmed via state.js:268 (h.textContent = SLOT_LABELS[slotId]) and state.js:187 (h.textContent = 'Meals'). Emoji scope is internally consistent between ACs and Technical Hints."
+      },
+      "check_5_ac14_slot_plus_slot_vs_h2": {
+        "status": "fail",
+        "detail": "The h2 + .slot adjacency does NOT trigger .slot + .slot (correct CSS semantics confirmed — h2 does not have class .slot). The heading-to-first-slot gap is governed by .day-heading { margin: 0 0 24px 0 } and that is correct and intentional per Codex finding 9. HOWEVER: the querySelector in AC14 is unscoped (BF1 above), and AC14 also does not verify gap:0 on .timeline-slots (BF1 above). The .slot + .slot selector itself is CSS-correct; the AC verification recipe is defective."
+      },
+      "check_6_mobile_tab_content_padding": {
+        "status": "fail",
+        "findings": [
+          {
+            "id": "BF5",
+            "severity": "blocking",
+            "requirement": "R7",
+            "issue": "R7 explicitly requires mobile media query override '.tab-content { padding: var(--sp-4); }' inside @media (max-width: 639px). Technical Hints item 13 specifies this explicitly. No AC tests mobile viewport. Dev can omit the @media override entirely and all 16 ACs pass. This regression was flagged as a Codex blocker (finding 4) and marked 'applied' in the codex_consult log, but no AC was added to enforce it.",
+            "proposed_fix": "Add AC17: GIVEN viewport width <= 639px (e.g. 390x852) WHEN DevTools reads getComputedStyle(document.querySelector('#tab-timeline')) THEN padding-top equals '16px' AND padding-right equals '16px' AND padding-bottom equals '16px' AND padding-left equals '16px' (16px = var(--sp-4) per :root token). Note: use '#tab-timeline' not '.tab-content' for the same hidden-element reason as BF2."
+          },
+          {
+            "id": "BF6",
+            "severity": "blocking",
+            "requirement": "R5",
+            "issue": "R5 requires removing the mobile override '.pane-middle { border-top-width: 4px }' at main.css:494. AC7 only verifies desktop 1440x900 ('border-top-width equals 0px OR border-top-style equals none'). Dev can pass AC7 by removing the base .pane-middle border-top while leaving the mobile override at line 494 intact — on mobile the dangling override would fire against no base property and might cause a 4px border to reappear (it overrides border-top-width specifically, and if the base border-top is removed but shorthand is not used, the behavior depends on browser defaults). No AC verifies the mobile viewport result.",
+            "proposed_fix": "Add AC18: GIVEN viewport width <= 639px WHEN DevTools reads getComputedStyle(document.querySelector('.pane-middle')) THEN border-top-width equals '0px' OR border-top-style equals 'none'. Alternatively: require static grep assertion that 'border-top-width: 4px' no longer appears inside the @media (max-width: 639px) block."
+          }
+        ]
+      }
+    },
+    "blocking_findings": [
+      {
+        "id": "BF1",
+        "ac": "AC14",
+        "summary": "querySelector('.slot + .slot') unscoped; AC14 does not verify gap:0 on .timeline-slots; compounded gap can ship while AC passes",
+        "fix": "Use '#timeline-slots > .slot + .slot'; add explicit rowGap === '0px' check on #timeline-slots"
+      },
+      {
+        "id": "BF2",
+        "ac": "AC8",
+        "summary": "querySelector('.tab-content') selects hidden Dashboard panel first; Timeline padding unverifiable",
+        "fix": "Use '#tab-timeline.tab-content:not([hidden])' or '#tab-timeline' in AC8"
+      },
+      {
+        "id": "BF3",
+        "ac": "AC2",
+        "summary": "getComputedStyle cannot expose CSS custom properties; AC2 verification mechanism is broken",
+        "fix": "Use cs.getPropertyValue('--token-name').trim() to verify custom property isolation"
+      },
+      {
+        "id": "BF4",
+        "ac": "AC15",
+        "summary": "querySelector('.slot-selected') matches hidden elements inside skipped slots on Day 1; wrong element verified",
+        "fix": "Use '#timeline-slots .slot-selected:not([hidden])'"
+      },
+      {
+        "id": "BF5",
+        "requirement": "R7",
+        "ac": "missing",
+        "summary": "Mobile tab-content padding override (R7 blocker) has no AC; dev can omit @media rule and pass all 16 ACs",
+        "fix": "Add AC17 testing mobile viewport 390px: padding 16px all sides on #tab-timeline"
+      },
+      {
+        "id": "BF6",
+        "requirement": "R5",
+        "ac": "missing",
+        "summary": "Mobile .pane-middle border-top-width:4px removal (R5) has no mobile AC; can pass AC7 while mobile regression persists",
+        "fix": "Add AC18 testing mobile viewport: border-top-width:0px on .pane-middle"
+      },
+      {
+        "id": "BF7",
+        "ac": "AC14 (enhancement of BF1)",
+        "summary": "AC14 must also verify .timeline-slots gap is 0 to prevent compounding",
+        "fix": "Add: getComputedStyle(document.querySelector('#timeline-slots')).rowGap === '0px' as a second assertion in AC14 (captured as part of BF1 fix above)"
+      }
+    ],
+    "observations": [
+      {
+        "id": "OBS1",
+        "severity": "minor",
+        "category": "spec_text_vs_execution_drift",
+        "detail": "Codex suggested adding a timezone-controlled AC to verify UTC date parsing (run DevTools in America/Los_Angeles timezone to confirm 'Jun 20' not 'Jun 19'). This is classified as observation_only: the _formatDayHeadingDate() helper is already fully specified in Technical Hints JS item 3 with Date.UTC + Intl.DateTimeFormat(timeZone:'UTC'). A timezone-controlled AC would require Playwright with timezone emulation, which is disproportionate for a pre-dev spec check. The risk is low given the explicit implementation recipe."
+      },
+      {
+        "id": "OBS2",
+        "severity": "minor",
+        "detail": "R8 says heading rendered BEFORE transport callout, but the JS pseudocode in Technical Hints item 4 appends the heading first, then the callout. AC10 only verifies heading is FIRST CHILD of #timeline-slots, not explicitly that it precedes the transport callout. In practice first-child implies before callout. No defect, but AC10 could explicitly assert document.querySelector('#timeline-slots').children[0].tagName === 'H2' as an alternative to the CSS selector assertion."
+      },
+      {
+        "id": "OBS3",
+        "severity": "minor",
+        "detail": "The requirements_decomposition table has a single row collapsing R1-R13 into one entry with AC listed as 'See ACs below'. This is a documentation gap (BA agent contract expects one row per requirement), but does not block dev since the individual ACs exist in full detail."
+      }
+    ],
+    "overall_assessment": "The spec has 6 unique blocking defects across 7 blocking findings (BF1 and BF7 are combined into one AC14 fix). Four defects are broken verification mechanics in existing ACs (BF1/BF7 AC14, BF2 AC8, BF3 AC2, BF4 AC15) — each would allow dev to verify the wrong element or use a non-working API. Two defects are missing ACs for R5 and R7 mobile requirements (BF5, BF6) — both were identified as Codex blockers at BA time but no AC was added to enforce them. The spec cannot be handed to dev until all 6 defects are fixed."
+  }
+}
