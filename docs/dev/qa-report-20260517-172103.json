@@ -1,0 +1,178 @@
+{
+  "request_id": "20260517-172103",
+  "task_id": "20260517-172103",
+  "timestamp": "2026-05-17T18:15:00Z",
+  "qa": {
+    "status": "fail",
+    "verdict": "BA spec is insufficient for implementation — 3 actionable defects found that will cause a dev agent to produce incorrect or risky output",
+    "overall_assessment": "The spec is directionally correct and technically grounded. All 11 file-location claims were independently verified accurate. The scope is tightly bounded to photo rendering only — no CSS token drift, no layout changes. However, 3 issues require fixes before handing to dev: (1) M10 renderCover() lacks a null-day guard that will crash when no days are loaded, (2) M11 CSS rule permits global img[hidden]/img:not([src]) selectors that contradict the stated 'component-local rules only' constraint, (3) S1 onerror handler is not explicitly extended to #trip-cover in M10. Two additional Codex findings (is_home guard, Google API key leakage) are out-of-scope for this cycle and not blocking.",
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "major",
+        "category": "implementation_correctness",
+        "location": "ticket-20260517-172103.md — M10 (renderCover definition)",
+        "issue": "M10 describes renderCover() calling _deriveCityName(_getActiveDay()) but does not guard for _getActiveDay() returning null. _getActiveDay() returns null when state.days is empty or state.ui.active_day has no match (state.js:675 confirmed). Passing null to _deriveCityName() will throw a TypeError at 'acc = day.accommodation' (state.js:703). This crash path fires when the API response contains no days or the page is in an error state.",
+        "evidence": "state.js:675 _getActiveDay() exists and can return null. state.js:701-708 _deriveCityName(day) accesses day.accommodation unconditionally. M10 has no null-day conditional.",
+        "blocks_implementation": true,
+        "required_fix": "Replace M10's renderCover() definition with an explicit null guard: 'const day = _getActiveDay(); if (!day) { img.hidden = true; img.removeAttribute(\"src\"); return; } const cityName = _deriveCityName(day); const url = (cityName && state.images.city_covers) ? state.images.city_covers[cityName] : null; if (!url) { img.hidden = true; img.removeAttribute(\"src\"); } else { img.src = url; img.hidden = false; }'. Add this to Edge Cases as item 9: 'No active day — renderCover() must guard _getActiveDay() returning null; hide and remove src if null.'",
+        "codex_corroborated": true
+      },
+      {
+        "id": "F2",
+        "severity": "major",
+        "category": "scope_contradiction",
+        "location": "ticket-20260517-172103.md — M11 (CSS additions scope)",
+        "issue": "M11 states 'CSS additions are limited to .card-photo and #trip-cover component-local rules only' but the same sentence includes 'img[hidden] / img:not([src]) visibility rule' — which are global attribute selectors that match ALL img elements on the page, not just .card-photo and #trip-cover. This contradicts 'component-local rules only' and would affect any other img elements that might be added in future or that exist today (e.g., any img in #header or static elements added by other cycles).",
+        "evidence": "M11 verbatim: 'sizing (e.g., width/height or aspect-ratio), object-fit: cover, optional border-radius, and img[hidden] / img:not([src]) visibility rule'. The selector img[hidden] is global scope.",
+        "blocks_implementation": true,
+        "required_fix": "Replace the global selector reference in M11 with scoped selectors: '.card-photo[hidden], #trip-cover[hidden] { display: none; }' and '.card-photo:not([src]), #trip-cover:not([src]) { display: none; }'. Dev must NOT write bare img[hidden] or img:not([src]) CSS rules. Update M11 to read: 'CSS additions are limited to .card-photo and #trip-cover component-local rules only: sizing, object-fit: cover, optional border-radius, and scoped visibility rules (.card-photo[hidden], #trip-cover[hidden] { display: none; }).'",
+        "codex_corroborated": true
+      },
+      {
+        "id": "F3",
+        "severity": "minor",
+        "category": "completeness",
+        "location": "ticket-20260517-172103.md — M10 and S1 (onerror scope)",
+        "issue": "S1 defines 'img.onerror handler on photo elements: on load error, hide the img and remove src attribute'. M10 defines renderCover() which creates/manages the #trip-cover img but does not explicitly state the onerror handler applies to #trip-cover. A dev agent reading S1 literally ('photo elements' = candidate card and slot-selected imgs) may not apply onerror to the cover image, leaving a broken-icon risk on CDN timeout for the cover.",
+        "evidence": "S1 says 'on photo elements' — ambiguous whether this covers #trip-cover (which is a cover, not a 'card photo'). M10 mentions no onerror. Edge Case 7 mentions onerror for CDN timeout but does not specify which elements.",
+        "blocks_implementation": false,
+        "required_fix": "Add to M10: 'Apply the same onerror handler to #trip-cover: on load error, set img.hidden = true and img.removeAttribute(\"src\").' Update S1 to read: 'img.onerror handler on ALL photo img elements including .card-photo and #trip-cover.'",
+        "codex_corroborated": true
+      }
+    ],
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-17T18:15:00Z",
+        "file": "ticket-20260517-172103.md",
+        "observation": "Codex flagged: '_writeCardPhoto(node, opt) vs _writeSlotSelected() helper contract could be clarified by splitting into _getPhotoUrl(opt) + _configurePhotoImg(img, opt)'. This is a refactoring preference, not a blocker — the spec's existing 'applies same lookup logic' wording is sufficient for implementation. Routing to observations ledger, not blocking.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-17T18:15:00Z",
+        "file": "ticket-20260517-172103.md",
+        "observation": "Codex flagged: 'is_home flag not guarded — private homes could render a photo via images.pois lookup'. The target data (beijing-lijiang-dali) does not appear to use is_home in its option schema; no evidence this field exists in the v2 trip contract option objects. Out of scope for this cycle.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-17T18:15:00Z",
+        "file": "ticket-20260517-172103.md",
+        "observation": "Codex flagged: 'Exposing normalized images.json may leak Google Places API-key URLs for non-target trips (e.g. gerardmer trip uses google_ keyed pois with API key in URL).' This is a legitimate long-term concern for multi-trip deployments but out of scope for this single-trip editor cycle. The spec already restricts normalization to {pois, city_covers} only. Recommend a future cycle to add an image proxy or filter google_ keyed entries.",
+        "in_user_path": false,
+        "security_relevant": true
+      }
+    ],
+    "verified_spec_claims": [
+      {
+        "claim": "hydrate_trip() returns only {meta, days, transportation, route_cache} — no images key",
+        "verified": true,
+        "evidence": "scripts/lib/server/trip.py:25-30 confirmed — return dict has exactly 4 keys"
+      },
+      {
+        "claim": "_buildCard() at state.js:308 calls no image writer",
+        "verified": true,
+        "evidence": "state.js:308-323 confirms _writeCardName, _writeCardCost, _writeCardSource, _writeCardRationale, _markCardSelectionState — no img or photo function"
+      },
+      {
+        "claim": "_buildMealsCandidateGroup() at state.js:194 is a separate code path that also clones #tpl-candidate-card",
+        "verified": true,
+        "evidence": "state.js:231 confirms 'const tpl = document.getElementById(\"tpl-candidate-card\")' inside _buildMealsCandidateGroup loop; separate from _buildCard"
+      },
+      {
+        "claim": "_writeSlotSelected() at state.js:464 creates only nameDiv + metaDiv",
+        "verified": true,
+        "evidence": "state.js:464-477 confirmed; selEl.innerHTML = ''; creates nameDiv and metaDiv only"
+      },
+      {
+        "claim": "#tpl-candidate-card in index.html:90-106 has no img element",
+        "verified": true,
+        "evidence": "index.html:90-106 confirmed — article contains .card-head, .card-meta, .card-why, .card-source, .card-rationale, .card-actions; no img"
+      },
+      {
+        "claim": "#tab-timeline at index.html:71 has .timeline-header as first child",
+        "verified": true,
+        "evidence": "index.html:71-78 confirmed: #tab-timeline > .timeline-header > button#approve-day-btn; then #timeline-slots"
+      },
+      {
+        "claim": "renderAll() at state.js:140 does not call renderCover",
+        "verified": true,
+        "evidence": "state.js:140-148 confirmed: renderHeader, renderDaysPanel, _populateMobileDaySelect, renderCandidates, renderTimeline, renderBudget, renderApproveButton, renderExportButtons — no renderCover"
+      },
+      {
+        "claim": "_deriveCityName() at state.js:701 exists",
+        "verified": true,
+        "evidence": "state.js:701-708 confirmed; returns city from accommodation selected option or day.city_name"
+      },
+      {
+        "claim": "_getActiveDay() at state.js:675 exists",
+        "verified": true,
+        "evidence": "state.js:675 confirmed (grep result)"
+      },
+      {
+        "claim": "images.json structure: {destination, city_covers: {...}, pois: {'gaode_<name>': url}, fallback_unsplash: {}}",
+        "verified": true,
+        "evidence": "data/beijing-lijiang-dali-20260418-100846/images.json:1-75 confirmed — all 4 top-level keys present, city_covers has 4 English city names, pois uses gaode_ prefix"
+      },
+      {
+        "claim": "_findSelectedOption() returns full option object from slot.options (sel.name_local available)",
+        "verified": true,
+        "evidence": "state.js:691-697 confirmed; returns (slot.options || []).find(o => o.option_id === slot.selected_option_id)"
+      }
+    ],
+    "scope_check": {
+      "result": "pass",
+      "notes": "Spec correctly targets only photo rendering. No CSS token changes specified (Won't Have explicitly). No layout column changes. No drag.js modifications. Scope is well-bounded to the 4 files listed. The spec does NOT expand to solve unrelated problems from prior cycles."
+    },
+    "anti_drift_guards_check": {
+      "result": "pass",
+      "notes": "Won't Have section explicitly prohibits CSS token changes, layout changes, mobile changes, drag.js changes, network fetching, and fallback image search. Dev constraint in Contract C explicitly says 'do NOT invent fallback lookup keys'. M11 explicitly says 'no token changes, no grid changes, no mobile rules'. These guards are sufficient to prevent the CSS-only drift seen in Cycles 1-3."
+    },
+    "ac_coverage_check": {
+      "result": "pass",
+      "notes": "5 requirements decomposition entries map to 6 acceptance criteria (AC1-AC6). R1->AC1 (candidate card photo), R2->AC2 (timeline selected card photo), R3->AC3 (city cover), R4->AC5 (API response), R5->AC4 (graceful hide). AC6 (no layout regression) is an additional regression guard. All R entries have measurable ACs with GIVEN/WHEN/THEN structure and screenshot requirements."
+    },
+    "technical_correctness_check": {
+      "result": "pass_with_minor_issues",
+      "notes": "Lookup key pattern 'gaode_' + name_local verified against actual images.json structure. _deriveCityName() call signature is correct. renderAll() extension via renderCover() is implementable. M8 'append before nameDiv' wording is implementable given selEl.innerHTML='' clears the element first — dev creates img before nameDiv. M7 null-guard for name_local is explicit. The two issues (F1 null-day guard, F2 CSS selector scope) are actionable fixes, not fundamental design errors."
+    },
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex independently flagged 6 issues. 3 are real blockers incorporated into this report: renderCover() null-day guard (F1), CSS global selector contradiction (F2), onerror not extended to cover (F3). 3 are out-of-scope or observation-only: helper refactoring recommendation (OBSERVATION_ONLY), is_home guard (out-of-scope), Google API key leakage (security observation for future cycle). Codex confirmed that M8 'append before nameDiv' wording is implementable (OBSERVATION_ONLY) and AC3 'first visible element' ambiguity is acceptable given the conditional AC precondition (OBSERVATION_ONLY).",
+      "feedback_incorporated": "F1 (null-day guard in M10) and F2 (CSS scope contradiction in M11) directly incorporated as required_fix items. F3 (onerror scope) incorporated as minor finding. Codex's refactoring suggestion (_getPhotoUrl + _configurePhotoImg split) rejected as out-of-scope enhancement. is_home and API key findings routed to out_of_scope_observations."
+    },
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 2,
+      "minor_issues": 1,
+      "total_findings": 3,
+      "release_recommendation": "reject",
+      "rejection_reason": "2 major issues in M10 and M11 must be fixed before handing spec to dev. Fixes are surgical: add null-day guard to M10, scope CSS selectors to component-local in M11, clarify onerror applies to cover in M10/S1. No structural redesign needed."
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "M10 lacks null-day guard — renderCover() will throw TypeError when _getActiveDay() returns null",
+      "M11 permits global img[hidden] / img:not([src]) selectors contradicting 'component-local rules only' constraint"
+    ],
+    "required_ba_changes": [
+      {
+        "location": "M10 (renderCover definition)",
+        "change": "Add explicit null-day guard: 'const day = _getActiveDay(); if (!day) { img.hidden = true; img.removeAttribute(\"src\"); return; }' before any cityName lookup. Add as Edge Case 9."
+      },
+      {
+        "location": "M11 (CSS scope)",
+        "change": "Replace 'img[hidden] / img:not([src]) visibility rule' with scoped versions: '.card-photo[hidden], #trip-cover[hidden] { display: none; }'. Remove the global selector language."
+      },
+      {
+        "location": "M10 + S1 (onerror coverage)",
+        "change": "Explicitly state onerror handler applies to #trip-cover in M10. Update S1 to read 'ALL photo img elements including .card-photo and #trip-cover'."
+      }
+    ],
+    "recommended_approach": "BA should make the 3 targeted edits to the spec (M10 null guard, M11 scoped CSS, M10+S1 onerror) and resubmit for QA. All other spec content is verified correct and ready for dev.",
+    "additional_context": "Codex independently confirmed all 11 file-location claims as accurate. The data pipeline is sound. The spec's anti-drift guards are strong. Only these 3 surgical text fixes are needed before dev can implement safely."
+  }
+}
