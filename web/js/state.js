@@ -389,11 +389,28 @@ function _buildTransportCallout(day) {
   return div;
 }
 
+function _formatDayHeadingDate(isoDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || "");
+  if (!m) return "";
+  const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC", month: "short", day: "numeric", weekday: "short",
+  }).formatToParts(dt);
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+  return `${get("month")} ${get("day")} (${get("weekday")})`;
+}
+
 function renderTimeline() {
   const container = document.getElementById("timeline-slots");
   container.innerHTML = "";
   const day = _getActiveDay();
   if (!day) return;
+  const heading = document.createElement("h2");
+  heading.className = "day-heading";
+  const city = _deriveCityName(day);
+  const dateStr = _formatDayHeadingDate(day.date);
+  heading.textContent = city ? `${dateStr} – ${city}` : dateStr;
+  container.appendChild(heading);
   const callout = _buildTransportCallout(day);
   if (callout) container.appendChild(callout);
   for (const slotId of ALL_SLOT_KEYS) {
