@@ -377,5 +377,74 @@
       }
     ],
     "feedback_incorporated": "5 blockers/majors applied to spec; 1 observation logged to out_of_scope_observations; 1 major applied as AC9 constraint."
+  },
+
+  "codex_consult_iteration2": {
+    "invoked": true,
+    "status": "ok",
+    "model": "gpt-5.5",
+    "reasoning_effort": "xhigh",
+    "session_id": "019e34dd-e2d0-7e71-b389-af73d78abd15",
+    "iteration": "BA-QA iteration — resolving BLK-1 and BLK-2",
+    "feedback_summary": "Codex confirmed BLK-1 and BLK-2 fixes are structurally correct, with 8 findings. 7 applied: (1) source-missing guard — if option not found in origin slot, leave existing selection unchanged rather than writing invisible selected_option_id; (2) _get_existing_slot non-mutating helper required for origin lookup to avoid _get_or_create_slot creating empty source slots; (3) M6 gate is meal-only — both slot and origin_slot_id must be in {breakfast,lunch,dinner}; (4) mobile tap must also capture and forward originSlotId; (6) both client and server copies must be idempotent (check before append); (7) correct v2 slot IDs are morning_activity/afternoon_activity/evening_activity; (8) MEAL_SLOT_IDS defined locally in each file, no shared constants module. 1 out-of-scope: (5) dataTransfer fallback losing origin_slot_id — pre-existing issue per ADV-2, separate cycle. Slot ID predicate verified correct for all 7 v2 slot categories.",
+    "findings": [
+      {
+        "issue": "Source-missing failure mode unspecified: if origin option not found, spec was silent",
+        "proposed_fix": "If option_id absent/null in origin slot, leave prior selected_option_id unchanged rather than writing invisible reference",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to M6 spec in save.py Technical Hints and Edge Case 8"
+      },
+      {
+        "issue": "_get_or_create_slot would create empty source slot if origin_slot_id is bad",
+        "proposed_fix": "Add _get_existing_slot non-mutating helper returning day.get('slots',{}).get(slot_id) for named slots",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to M6 save.py pseudocode in Technical Hints and Edge Case 7"
+      },
+      {
+        "issue": "M6 option copy should be meal-only; non-meal selections with origin_slot_id could accidentally copy options",
+        "proposed_fix": "Gate M6 copy: both slot and origin_slot_id must be in {breakfast, lunch, dinner}",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to M6 spec text and save.py pseudocode"
+      },
+      {
+        "issue": "Mobile tap flow was not specified to carry originSlotId — mobile persistence would fail M6",
+        "proposed_fix": "Store card.dataset.originSlotId when card is tap-selected; pass as originSlotId to requestSelectMutation on slot tap",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to Edge Case 9 and Technical Hints mobile flow clarification"
+      },
+      {
+        "issue": "dataTransfer fallback in drag.js also loses origin_slot_id (pre-existing ADV-2 scope)",
+        "proposed_fix": "Store module-level _activeDragPayload on dragstart; _parsePayload falls back to it",
+        "classification": "out_of_scope",
+        "disposition": "logged",
+        "rationale": "Pre-existing issue per ADV-2. Separate cycle. Not introduced by this change."
+      },
+      {
+        "issue": "Both client and server copies must be idempotent to prevent duplicate options on repeated saves",
+        "proposed_fix": "Both copies must check target.options.some(o => o.option_id === optionId) before appending",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to client M2 Technical Hints (changed .find to .some check) and server M6 pseudocode (.any check before append). AC11 tests idempotency."
+      },
+      {
+        "issue": "Spec used wrong v2 slot IDs: activity_morning/activity_afternoon/activity_evening",
+        "proposed_fix": "Use actual v2 IDs: morning_activity, afternoon_activity, evening_activity (verified: schemas/v2/day.schema.json:58-62 and day JSON files)",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Corrected in _isCompatible verification table and Edge Case 10"
+      },
+      {
+        "issue": "MEAL_SLOT_IDS sharing via state.js export risks circular imports",
+        "proposed_fix": "Define MEAL_SLOT_IDS locally in drag.js and mobile.js; keep MEAL_SLOT_KEYS local in state.js",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Applied to _isCompatible Technical Hints with explicit local-definition note"
+      }
+    ],
+    "feedback_incorporated": "7 of 8 findings applied. 1 (dataTransfer fallback, pre-existing) logged as out-of-scope. All 6 Technical Hints sections updated. Edge Cases 7-10 added. AC3 updated for explicit post-reload persistence. AC11 added for idempotency + mobile parity."
   }
 }
