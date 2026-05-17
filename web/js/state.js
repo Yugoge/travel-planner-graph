@@ -691,11 +691,18 @@ function renderDaysPanel() {
     const label = document.createElement("span");
     label.className = "day-row-label day-title";
     label.textContent = `Day ${dayN}`;
-    const city = document.createElement("span");
-    city.className = "day-row-city";
-    city.textContent = cityName;
     row.appendChild(label);
-    row.appendChild(city);
+    if (cityName) {
+      const sep = document.createElement("span");
+      sep.className = "day-row-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = " · ";
+      const city = document.createElement("span");
+      city.className = "day-row-city";
+      city.textContent = cityName;
+      row.appendChild(sep);
+      row.appendChild(city);
+    }
     row.addEventListener("click", () => setActiveDay(dayN));
     list.appendChild(row);
   }
