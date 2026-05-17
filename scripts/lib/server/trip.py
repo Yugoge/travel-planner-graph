@@ -6,6 +6,7 @@ route_cache into a single response payload (M2-contract.md §9 TripResponse).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +23,22 @@ def hydrate_trip(store: TripStore, trip_id: str) -> dict[str, Any]:
 
     trip_dir = store.trip_dir(trip_id)
     bundle = tc.load_trip(trip_dir)
+
+    # Read images.json (graceful: return empty dicts if absent)
+    images_path = trip_dir / "images.json"
+    try:
+        raw_images = json.loads(images_path.read_text())
+        images = {
+            "pois": raw_images.get("pois", {}),
+            "city_covers": raw_images.get("city_covers", {}),
+        }
+    except FileNotFoundError:
+        images = {"pois": {}, "city_covers": {}}
+
     return {
         "meta": bundle.meta,
         "days": bundle.days,
         "transportation": bundle.transportation,
         "route_cache": bundle.route_cache,
+        "images": images,
     }
