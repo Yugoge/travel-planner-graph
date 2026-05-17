@@ -512,10 +512,10 @@ function _writeSlotSelected(node, sel) {
   } else {
     img.hidden = true;
   }
+  selEl.appendChild(img);
   const nameDiv = document.createElement("div");
   nameDiv.className = "selected-name";
   nameDiv.textContent = sel.name || "(unnamed)";
-  selEl.insertBefore(img, nameDiv);
   selEl.appendChild(nameDiv);
   const metaDiv = document.createElement("div");
   metaDiv.className = "selected-meta";
