@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-17T16:09:23Z*
-**Total entries**: 380
+*Last updated: 2026-05-17T16:21:10Z*
+**Total entries**: 383
 **Convention**: kebab
 
 ## Tree
@@ -23,6 +23,8 @@ dev/
 │   ├── `blocker6-desktop-export.png` - png file
 │   ├── `blocker6-desktop-load.png` - png file
 │   ├── `blocker6-mobile.png` - png file
+│   ├── `notion-after-20260517.png` - png file
+│   ├── `notion-after-day3-20260517.png` - png file
 │   └── `notion-diag-20260517.png` - png file
 ├── specs/
 │   ├── spec-20260505-221501/
@@ -351,6 +353,7 @@ dev/
 ├── `qa-report-20260515-102340.json` - json config
 ├── `qa-report-20260517-071910.json` - json config
 ├── `qa-report-20260517-101502.json` - json config
+├── `qa-report-20260517-153318.json` - json config
 ├── `qa-validation-20260321.json` - json config
 ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 ├── `style-inspector-report-20260505-061047.json` - json config
