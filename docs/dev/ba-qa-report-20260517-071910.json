@@ -1,0 +1,154 @@
+{
+  "task_id": "20260517-071910",
+  "verdict": "FAIL",
+  "blocking_objections": [
+    {
+      "id": "BLK-1",
+      "milestone": "M2",
+      "dimension": "investigation_completeness",
+      "title": "Cross-meal persistence requires save.py change — spec incorrectly excludes backend",
+      "severity": "blocker",
+      "description": "The spec specifies client-side option copy into the target slot's options[] before setting selected_option_id. This correctly handles the in-session render. However scripts/lib/server/save.py:_apply_select_mutation (lines 67-73) only writes slot['selected_option_id'] = option_id and ignores any option object. After a page reload, the server returns day JSON with breakfast.selected_option_id='dinner-option-123' but breakfast.options[] contains only the original breakfast options. _findSelectedOption(breakfast_slot) at state.js:547-552 returns null because it searches exclusively within slot.options[]. The selected restaurant disappears from the timeline, budget, and exporters on reload. This also affects scripts/lib/server/budget.py which resolves selected options from slot.options[] only. The spec constraint 'No backend changes — save.py is out of scope' makes AC3 ('selection persists after page reload') impossible to satisfy as written. Codex independently confirmed this is a real blocker: 'Without changing scripts/lib/server/save.py, extra payload fields are ignored.' Note: extending the client mutation payload to carry the full option object would require save.py to read and apply it — also a backend change.",
+      "what_ba_must_fix": "Remove save.py from the excluded-backend list and add it to files_to_modify. Specify that _apply_select_mutation must: (1) receive origin_slot_id as a hint in the mutation payload alongside option_id; (2) look up the source option from origin_slot_id's options[]; (3) copy it into the target slot's options[] if not already present. Add an explicit AC that verifies the day JSON on disk contains the copied option after a cross-meal selection, not just that the UI renders it. Also extend AC3 to state that the server's day-N.json file must contain the option in the target slot's options[] array after save.",
+      "evidence": "scripts/lib/server/save.py:67-73 reads by direct inspection; state.js:547-552 _findSelectedOption searches slot.options only; day-01.json and day-03.json show options[] are slot-specific arrays; Codex gpt-5.5 xhigh confirmed independently.",
+      "codex_classification": "in_scope_real_bug"
+    },
+    {
+      "id": "BLK-2",
+      "milestone": "M2",
+      "dimension": "investigation_completeness",
+      "title": "_isCompatible new logic is underspecified — risks meals-any drop on non-meal slots being accepted",
+      "severity": "blocker",
+      "description": "The spec says '_isCompatible updated for meals-any' in Technical Hints but provides no pseudocode or exact logic. The current implementation returns srcSlot === targetSlot. If dev writes the naive fix 'return srcSlot === \"meals-any\" || srcSlot === targetSlot', a meals-any card dragged to accommodation would be accepted (srcSlot is 'meals-any', evaluates first branch as true, bypasses category check entirely). This directly breaks AC9 ('non-meal card dragged to incompatible slot is rejected'). Codex confirmed: 'This is advisory only if dev is given exact logic; otherwise it can become a blocker.' Codex provided the correct logic: srcIsMeal = (srcSlot === \"meals-any\" || MEAL_SLOT_IDS.has(srcSlot)); targetIsMeal = MEAL_SLOT_IDS.has(targetSlot); if srcIsMeal || targetIsMeal: return srcIsMeal && targetIsMeal; return srcSlot === targetSlot. This also applies to the analogous _markTapTargets logic in mobile.js.",
+      "what_ba_must_fix": "Add the exact _isCompatible logic as a code snippet to the Technical Hints section, mirroring the quality of the M2/M3/M4 pseudocode already present. Provide the same level of specificity for mobile.js _markTapTargets meal compatibility check. The spec must not leave the predicate logic to dev inference for a function that controls security-of-drops.",
+      "evidence": "drag.js:121-124 current code; mobile.js:107-113 current code; spec Technical Hints section contains no _isCompatible pseudocode.",
+      "codex_classification": "in_scope_real_bug"
+    }
+  ],
+  "advisory_notes": [
+    {
+      "id": "ADV-1",
+      "milestone": "M3",
+      "dimension": "scope_alignment",
+      "title": "Spec says 'day header' shows city but ACs only cover day picker",
+      "severity": "major",
+      "description": "The Requirements Decomposition R1 says 'day picker option text shows city from accommodation city_context' and AC5 tests only the day picker. But the BA spec Goal section and Bug 1 Evidence both state 'City name derived from...city_context' for the day picker and day header. The current index.html has no active-day city header element — pane title is static 'Day timeline'. If the intent is that the pane header also shows city+day, no AC covers it and no HTML element exists for it. Codex flagged: 'spec says day picker and day header should show accommodation-derived city, but AC5 only covers the picker.' This is advisory because the Requirements Decomposition (R1 AC) is internally self-consistent (picker only); the ambiguity is between R1 AC and the prose Evidence section.",
+      "recommendation": "BA should clarify: is the day header/pane title also required to show the derived city? If yes, add an AC and a corresponding HTML element ID to AC10. If no, remove 'day header' references from the Evidence and Goal prose to prevent dev confusion.",
+      "codex_classification": "in_scope_minor"
+    },
+    {
+      "id": "ADV-2",
+      "milestone": "M2",
+      "dimension": "investigation_completeness",
+      "title": "drag.js MIME fallback path allows incompatible drops when custom MIME data is unavailable",
+      "severity": "major",
+      "description": "drag.js:_parsePayload returns {option_id, slot_id: null} when the custom MIME type is unavailable (line 92-93, the text/plain fallback). The drop guard at lines 106-110 only runs _isCompatible when payload.slot_id is truthy. If slot_id is null (fallback path), the compatibility check is skipped entirely and any drop is accepted regardless of category. This pre-existed before this spec but the new meals-any feature does not address it. Codex: 'If custom MIME data is unavailable, incompatible drops can be accepted. PROPOSED_FIX: Store JSON in both custom MIME and text/plain; reject drops when source slot cannot be recovered.'",
+      "recommendation": "This is a pre-existing edge case not introduced by this cycle. BA may choose to add it as a Could Have item or log it as an out-of-scope observation. Do not block this cycle on it.",
+      "codex_classification": "out_of_scope"
+    },
+    {
+      "id": "ADV-3",
+      "milestone": "M4",
+      "dimension": "spec_text_vs_execution_drift",
+      "title": "Transport timestamp formatting must extract HH:MM from ISO string, not use Date toLocaleTimeString",
+      "severity": "minor",
+      "description": "The spec _formatTs hint says 'extract HH:MM from ISO timestamp string safely' but does not give the implementation. If dev uses new Date(ts).toLocaleTimeString(), the timezone offset in '2026-06-22T09:14:00+08:00' will be shifted to the browser's local timezone — a user running the editor in UTC would see '01:14' instead of '09:14'. The correct implementation is a substring or regex extraction: ts.slice(11,16) or /T(\d{2}:\d{2})/.exec(ts)?.[1]. The spec hints are correct in intent but the phrase 'safely' needs to become explicit extraction code to prevent this common mistake.",
+      "recommendation": "Add one line to the M4 Technical Hints: '_formatTs: return ts ? ts.slice(11, 16) : \"\";' to eliminate ambiguity.",
+      "codex_classification": "in_scope_minor"
+    },
+    {
+      "id": "ADV-4",
+      "milestone": "M4",
+      "dimension": "evidence_quality",
+      "title": "day_type label in transport callout uses raw string — SKIPPED_REASON_LABEL not referenced",
+      "severity": "minor",
+      "description": "The spec's _buildTransportCallout appends day.day_type raw (e.g. 'city-change'). The existing SKIPPED_REASON_LABEL map at state.js:42-50 already maps 'city-change' -> 'city change'. The callout will show 'city-change' while the slot skipped labels show 'city change'. Minor UX inconsistency. Not a blocker — the user can read both forms — but it is an easy fix to add: '(SKIPPED_REASON_LABEL[day.day_type] || day.day_type)'.",
+      "recommendation": "Advisory: suggest dev reference SKIPPED_REASON_LABEL in _buildTransportCallout for consistency with existing slot labels.",
+      "codex_classification": "in_scope_minor"
+    },
+    {
+      "id": "ADV-5",
+      "milestone": "M2",
+      "dimension": "spec_text_vs_execution_drift",
+      "title": "slotId flow clarification: drop target provides actual slot, not meals-any",
+      "severity": "minor",
+      "description": "The spec does not explicitly state that requestSelectMutation receives slotId from the DROP TARGET element (e.g. 'breakfast'), not from the card's data-slot-id ('meals-any'). The flow is correct as implied by drag.js:103 and the cross-meal option-copy code works, but the absence of explicit documentation risks a dev misreading the data flow and passing 'meals-any' as slotId to requestSelectMutation, which would cause _getSlotByKey to return null and silently no-op. Codex: OBSERVATION_ONLY — 'the existing code implies target-slot slotId; adding one sentence would reduce implementation risk.'",
+      "recommendation": "Add to M2 Technical Hints: 'Note: the slotId argument to requestSelectMutation always comes from the drop-target slot element (dataset.slotId = \"breakfast\"/\"lunch\"/\"dinner\"), never from the card's data-slot-id (\"meals-any\"). meals-any is only a compatibility hint for _isCompatible and _markTapTargets.'",
+      "codex_classification": "in_scope_minor"
+    },
+    {
+      "id": "ADV-6",
+      "milestone": "M2",
+      "dimension": "evidence_quality",
+      "title": "AC3 'budget updates' clause is optimistic — queueSave debounces persist, recomputeBudget is client-side only",
+      "severity": "minor",
+      "description": "AC3 states 'Breakfast slot shows the selected restaurant, budget updates'. recomputeBudget() is called synchronously in commit() using client state (state.js:492), so the budget panel does update immediately and optimistically. The AC claim is met for the in-session case. However if dev interprets 'budget updates' as 'server-side budget is recalculated and reflects the selection', that requires the backend option copy (BLK-1) to be resolved first since budget.py reads from disk. This is a downstream consequence of BLK-1 rather than an independent blocker. Codex flagged as MAJOR but it is subsumed by BLK-1.",
+      "recommendation": "Resolve BLK-1 first; the budget concern follows automatically. AC3 wording is adequate if read as client-side budget update (which recomputeBudget covers). If BA intends server-side budget verification, that must be stated explicitly.",
+      "codex_classification": "in_scope_minor"
+    }
+  ],
+  "evidence_quality_checks": {
+    "ba_line_references_verified": [
+      {"claim": "state.js:564-565 renders Day N (day_type) — no city", "verified": true, "actual": "state.js:564-565 opt.textContent = 'Day ${dayN}' + (day.day_type ? ' (${day.day_type})' : '')"},
+      {"claim": "state.js:290-299 renderTimeline loops ALL_SLOT_KEYS only", "verified": true, "actual": "renderTimeline iterates ALL_SLOT_KEYS with no departure_ts/arrival_ts check"},
+      {"claim": "drag.js:121-124 _isCompatible returns srcSlot===targetSlot", "verified": true, "actual": "return srcSlot === targetSlot; — exact match"},
+      {"claim": "mobile.js:107-113 _markTapTargets uses strict slotId equality", "verified": true, "actual": "drop.dataset.tapTarget = s.dataset.slotId === slotIdHint ? 'true' : 'false'"},
+      {"claim": "day-01.json:134 city_context.city_name='Kunming'", "verified": true, "actual": "city_context: {city_id: 'kunming', city_name: 'Kunming', leg_index: 0, role: 'destination'}; accommodation-1-1 is selected"},
+      {"claim": "day-03.json departure_ts and arrival_ts non-null", "verified": true, "actual": "arrival_ts: '2026-06-22T12:22:00+08:00', departure_ts: '2026-06-22T09:14:00+08:00', day_type: 'city-change'"},
+      {"claim": "day-09 has departure_ts only (departure day)", "verified": true, "actual": "departure_ts: '2026-06-28T13:30:00+08:00', arrival_ts: null, accommodation.selected_option_id: null"},
+      {"claim": "CSS main.css --text:#1a1a1f not Notion #37352f", "verified": true, "actual": "main.css:12 --text: #1a1a1f; nav-back at lines 79-91 uses hardcoded #58a6ff and #21262d"},
+      {"claim": "state.js:569 addEventListener inside _populateDayPicker", "verified": true, "actual": "sel.addEventListener('change', () => setActiveDay(...)) — inside function called from init() only, not renderAll()"},
+      {"claim": "save.py only writes selected_option_id, does not copy option", "verified": true, "actual": "scripts/lib/server/save.py:73 slot['selected_option_id'] = option_id — no options[] mutation"}
+    ],
+    "data_verified_via": "Direct file reads of state.js, drag.js, mobile.js, index.html, main.css (first 100 lines), save.py, day-01.json, day-03.json, day-09.json"
+  },
+  "m1_css_completeness": {
+    "verdict": "adequate",
+    "notes": "Token map is complete and exact. All 13 functional selectors from Edge Case 6 are enumerated. Card style spec (background, border, border-radius, padding) is explicit. Font stack including Inter is specified. No ambiguity in CSS rewrite requirements. AC1 is testable. The nav-back dark GitHub colors are correctly identified and explicitly targeted."
+  },
+  "m2_unified_meals": {
+    "verdict": "fail — see BLK-1 and BLK-2",
+    "notes": "The candidate group building logic, de-dup, data-origin-slot-id, multi-slot selection check, and empty state are all well specified. The cross-meal option copy in requestSelectMutation client-side is correct. The gap is backend persistence (BLK-1) and underspecified _isCompatible predicate (BLK-2)."
+  },
+  "m3_city_from_accommodation": {
+    "verdict": "adequate with advisory",
+    "notes": "_deriveCityName helper is correct, optional-chaining guard is present, split _wireDayPicker/_renderDayPickerOptions is clearly specified. ADV-1 (day header vs picker scope) is the only open question. AC5 and AC6 are testable and cover the key cases including null selected_option_id."
+  },
+  "m4_transport_block": {
+    "verdict": "adequate with advisory",
+    "notes": "All 4 day_type cases are addressed: city-change (AC7, both timestamps), arrival-only (AC8, day-01), departure-only (day-09, implied by AC8 logic), normal days with null timestamps (returns null, no callout). ADV-3 (timezone-safe formatting) and ADV-4 (day_type label) are minor. The read-only / no-drop-zone requirement is explicit."
+  },
+  "m5_index_html": {
+    "verdict": "adequate",
+    "notes": "AC10 enumerates all 15 IDs (trip-title, save-status, conn-status, export-pdf, export-ical, banner-conflict, banner-offline, mobile-tabs, candidates-groups, timeline-slots, budget-breakdown, day-select, approve-day-btn, tpl-candidate-card, tpl-slot). All verified present in current index.html. No JS module loading conflicts: index.html loads only state.js as a module (line 125); state.js imports drag.js and mobile.js. Header structure update is scoped to breadcrumb/white-bg/no-dark-gradients."
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "model": "gpt-5.5",
+    "reasoning_effort": "xhigh",
+    "session_id": "019e34d5-31b9-72d0-b719-8f57a5078ea9",
+    "tokens_used": 192777,
+    "feedback_summary": "Codex confirmed BLK-1 (Finding 1) as a real blocker: save.py:67-73 ignores option object and only writes selected_option_id; budget.py, exporters, and validators all resolve options from slot.options[]; reload breaks persistence. Codex also confirmed BLK-2 (Finding 5) as a real ambiguity that must have exact logic provided, with the correct MEAL_SLOT_IDS predicate given explicitly. Finding 6 was classified OBSERVATION_ONLY by Codex — adequately implied by existing drag.js code flow. Codex raised 4 additional findings: (1) backend consumers beyond reload also break (budget.py, exporters) — subsumed under BLK-1; (2) drag.js MIME fallback bypasses compatibility check — pre-existing, out-of-scope; (3) spec says day header but AC5 covers only picker — mapped to ADV-1; (4) budget update AC3 threatened by save debounce — advisory, subsumed by BLK-1. Codex Finding 8 (timezone shift in _formatTs) mapped to ADV-3. All Codex findings processed and classified.",
+    "feedback_incorporated": "BLK-1 hardened with Codex evidence (budget.py:67-83, state.js:547-552 call chain). BLK-2 supplemented with Codex's exact correct _isCompatible logic. ADV-1 sourced from Codex Finding 6 (day header vs picker AC gap). ADV-3 sourced from Codex Finding 8. ADV-6 sourced from Codex Finding 7. ADV-2 from Codex Finding 5 classified out-of-scope.",
+    "codex_observation_only": [
+      "Finding 6 (slotId from drop target not card): OBSERVATION_ONLY per Codex — adequately implied by drag.js code, mapped to ADV-5 for BA awareness."
+    ]
+  },
+  "summary": {
+    "blocking_count": 2,
+    "advisory_count": 6,
+    "verdict": "FAIL",
+    "what_must_change": [
+      "BLK-1: Remove save.py from excluded-backend list; specify _apply_select_mutation must copy source option into target slot options[] using origin_slot_id hint from mutation payload",
+      "BLK-2: Add exact _isCompatible pseudocode to Technical Hints for both drag.js and mobile.js"
+    ],
+    "what_may_change": [
+      "ADV-1: Clarify whether day header (pane title) also requires city label or only the day picker",
+      "ADV-3: Add '_formatTs: return ts ? ts.slice(11,16) : \"\";' to M4 Technical Hints",
+      "ADV-4: Reference SKIPPED_REASON_LABEL for day_type display in transport callout",
+      "ADV-5: Add one-sentence clarification that requestSelectMutation slotId comes from drop target, not card",
+      "ADV-6: Clarify AC3 'budget updates' means client-side recomputeBudget, not server-side"
+    ]
+  }
+}
