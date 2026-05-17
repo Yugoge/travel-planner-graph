@@ -237,6 +237,7 @@ function _buildMealsCandidateGroup(day) {
     node.dataset.originSlotId = originSlotId;
     node.dataset.sourceAgent = opt.source_agent || "";
     node.setAttribute("draggable", isMobileViewport() ? "false" : "true");
+    _writeCardPhoto(node, opt);
     _writeCardName(node, opt);
     _writeCardCost(node, opt);
     node.querySelector(".card-location").textContent = opt.location_summary || "";
