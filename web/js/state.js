@@ -112,6 +112,7 @@ async function _fetchTrip(trip_id) {
   // route_cache may arrive as {schema_version, entries} (loaders.py) OR flat dict.
   const rc = data.route_cache || {};
   state.route_cache = rc && rc.entries ? rc.entries : rc;
+  state.images = { pois: data.images?.pois || {}, city_covers: data.images?.city_covers || {} };
 }
 
 export async function init() {
