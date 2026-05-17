@@ -57,65 +57,10 @@
       {
         "severity": "critical",
         "id": "BLOCKER-D",
-        "location": "ticket-20260517-211850.md lines 446-450 vs lines 454-456; lines 194-198",
-        "issue": "Two contradictory drop-zone JSX snippets. Lines 446-450 (Option A) show inner .slot-drop WITHOUT data-slot-id. Lines 454-456 (corrected) show .slot-drop WITH data-slot-id. Also lines 194-198 say 'Users drop onto the section header' contradicting per-card instruction at line 452. Dev cannot determine canonical structure.",
-        "recommendation": "Delete lines 445-451 first snippet and lines 194-198 section-header instruction entirely. Keep ONLY lines 453-457 canonical snippet with data-slot-id on inner .slot-drop.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-E",
-        "location": "ticket-20260517-211850.md lines 446-450, lines 454-456",
-        "issue": "Both drop-zone snippets render visible 'Drop here' text as literal content inside the main page body. User requirement states pixel-identical to published page (R1). Visible 'Drop here' text violates R1.",
-        "recommendation": "Replace 'Drop here' text with a transparent absolute-position overlay div: no visible text, no border at idle, highlights on dragover only. Example: <div className=\"slot-drop\" data-slot-id={slotId} data-droppable=\"true\" style={{position:'absolute',inset:0,opacity:0}} />",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-F",
-        "location": "ticket-20260517-211850.md AC5 GIVEN/WHEN; data/beijing-lijiang-dali-20260418-100846/days/day-01.json verified",
-        "issue": "AC5 GIVEN references 'Day 1 breakfast slot'. Verified day-01.json: breakfast slot has 0 options (options: []). The acceptance criterion is untestable against actual trip data. Only dinner has 2 options on Day 1.",
-        "recommendation": "Rewrite AC5 GIVEN to use 'Day 3, breakfast slot' (breakfast-3-1 confirmed present in day-03.json). Update WHEN/THEN to reference Day 3 breakfast.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-G",
-        "location": "ticket-20260517-211850.md lines 247-257 (F7b algorithm)",
-        "issue": "F7b name-based matching algorithm searches only day.attractions[]. Verified from actual data: day-03.json evening_activity slot option 'evening_activity-3-1' has name 'Lijiang Old Town Night Walk - Four Square Street' which comes from entertainment.json (name_base confirmed at line 83), NOT from attractions[]. F7b will silently fail to match any entertainment-sourced activity option.",
-        "recommendation": "Expand F7b to search day.attractions[], day.entertainment[], day.cafe[], and day.unscheduled_optionals[] when resolving card-to-slot mapping. Return first name_base/name_local match across all four collections.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-H",
-        "location": "ticket-20260517-211850.md line 373 vs line 435",
-        "issue": "Signature conflict for generate_editor_html(). Line 373 calls generate_editor_html(gen) with one argument. Line 435 defines/uses generate_editor_html(gen, trip_id) with two arguments. One call site will crash at runtime.",
-        "recommendation": "Change line 373 from generate_editor_html(gen) to generate_editor_html(gen, trip_id) to match the two-argument signature at line 435.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-I",
-        "location": "ticket-20260517-211850.md AC1; react_template.tpl:1701-1705",
-        "issue": "AC1 tests 'getComputedStyle(document.body).fontFamily'. The react_template.tpl applies fontFamily on the root app <div> (line 1704), NOT on document.body. getComputedStyle(document.body) will not reflect the app's fontFamily even in the gold published page. AC1 will fail even for a correctly implemented feature.",
-        "recommendation": "Change AC1 WHEN to: document.querySelector('#root > div').style.fontFamily or getComputedStyle(document.querySelector('[style*=\"ui-sans-serif\"]')).fontFamily.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-J",
-        "location": "ticket-20260517-211850.md Finding 10 (lines 277-302) — effectiveDay merge contract",
-        "issue": "effectiveDay merge replaces publishedDay card objects with raw v2 slot option objects. v2 options lack image, time, notes_base, location_base fields that React cards render. Merged cards will render broken (no image, no time, no notes). The merge must use full PLAN_DATA card objects as baseline, only overlaying selection state, not replacing entire card objects.",
-        "recommendation": "Revise merge contract: keep publishedDay as read-only baseline. For meal slots, find the PLAN_DATA meal entry matching the selected option by name (not by replacing it with the raw v2 option). Mark it as selected visually. Do not call adaptV2Option on merged objects that will render in KanbanView — adaptV2Option output is for CandidatesSidebar display only.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "id": "BLOCKER-K",
-        "location": "react_template.tpl:4; ticket-20260517-211850.md Finding 10 effectiveDay spec",
-        "issue": "react_template.tpl line 4: const { useState, useEffect, useCallback } = React; — useMemo is NOT destructured. The spec's effectiveDay = useMemo(...) will throw ReferenceError: useMemo is not defined at render time, crashing the entire app.",
-        "recommendation": "Add useMemo to the spec's instruction for the template modification: change line 4 to const { useState, useEffect, useCallback, useMemo } = React; OR use React.useMemo(...) in the effectiveDay pseudocode.",
+        "location": "ticket-20260517-211850.md lines 194-198 vs line 458",
+        "issue": "Contradictory drop-zone placement instructions persist. Lines 194-198: 'Option A: Add overlay zones within each KanbanView category section header... Users drop onto the section, not onto a specific card position' and 'spec recommends Option A (drop zones in KanbanView category headers).' Line 458: 'add one .slot-drop[data-slot-id] overlay per individual displayed card (not per section).' These are mutually exclusive implementation contracts. The patch claim (contradictory snippet deleted) is false — the section-header instruction was not removed.",
+        "recommendation": "Replace Finding 4 Resolution (lines 194-198) with: 'Resolution (canonical; no alternatives): In editor mode, KanbanView MUST render one transparent .slot-drop[data-slot-id] overlay per individual displayed card. Do NOT add section-header drop zones. Do NOT use TimelineView or a dedicated editor overlay for this ticket. The data-slot-id value is the card's actual named slot (breakfast, lunch, dinner, morning_activity, afternoon_activity, evening_activity). For activity cards, derive the slot using Finding 7b.' Also remove 'either in KanbanView or a dedicated editor overlay' from M3 (line 124).",
+        "codex_proposed_fix": "Confirmed by Codex session 019e384b. PROPOSED_FIX: replace lines 194-198 with canonical no-alternatives instruction. Also revise line 124 M3 to remove the dedicated-editor-overlay alternative.",
         "blocks_release": true
       }
     ],
