@@ -305,13 +305,25 @@
   },
   "iteration_needed": true,
   "refined_context": {
-    "failed_patches": ["F1 (new index misalignment)", "F5 (save payload contract mismatch)", "F6 (attraction mapping unimplementable)"],
-    "new_issues": ["selDay vs editorTripData.days[] index misalignment for multi-trip scenario", "effectiveDay merge for KanbanView display after drop (MAJOR-1)"],
-    "critical_fixes_required": [
-      "F5: Replace flat save payload with mutations[] format: { trip_id: TRIP_ID, day: editorDay.day, editor_session: editorSessionRef.current, mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }] }",
-      "F6: Define name-based attraction-to-slot matching: iterate editorDay.slots[morning_activity|afternoon_activity|evening_activity].options[], match by opt.name===attraction.name_base, use matched slot_id as drop zone data-slot-id",
-      "F1-fix: Replace editorTripData.days[activeDay] with: const publishedDay = PLAN_DATA.trips[selTrip]?.days?.[selDay]; const editorDay = editorTripData?.days?.find(d => Number(d.day) === Number(publishedDay?.day));"
+    "round": 3,
+    "resolved_blockers": [
+      "BLOCKER-1 (F5 save payload — mutations[] contract now correct in Finding 5)",
+      "BLOCKER-3 (F1 absolute day index — find() algorithm now correct in Finding 1a)"
     ],
-    "recommended_approach": "BA must patch exactly 3 items. The architectural direction (React template, fixed sidebar, importlib, cache with per-trip lock) is correct and stable — do not change it. Only data-flow specs need correction: (1) F5 save payload must match save.py mutations[] contract; (2) F6 must define name-based attraction matching since PLAN_DATA has no slot_id on attraction cards; (3) F1 must be fixed to use day-number find() not array index for editorTripData.days[] lookup. Optionally specify effectiveDay merge for KanbanView visual feedback to make AC5 implementable."
+    "remaining_blockers_for_round_4": [
+      "BLOCKER-A (= old BLOCKER-2): Delete stale Technical Hints line 404 sentence 'For attractions, map morning cards to morning_activity...' and replace it with: 'Use the F7b name-based algorithm from Finding 7b. Confirm data-slot-id is on the .slot-drop element itself per AC5.'",
+      "BLOCKER-B (= MAJOR-1 promoted): Add effectiveDay merge contract: const effectiveDay = useMemo(() => mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections), [...]); pass EDITOR_MODE ? effectiveDay : publishedDay to KanbanView. Define merge behavior for meal and attraction slots.",
+      "BLOCKER-C (NEW from Codex): (1) Inject TRIP_ID alongside EDITOR_MODE using the same HTML_SCRIPT_EDITOR substitution pattern. (2) Fix useEffect: useEffect(() => { if (!EDITOR_MODE || !TRIP_ID) return; fetch(`/api/trip/${encodeURIComponent(TRIP_ID)}`).then(r=>r.json()).then(setEditorTripData); }, [TRIP_ID]);"
+    ],
+    "stable_elements_do_not_change": [
+      "F1a: publishedDay = PLAN_DATA.trips[selTrip]?.days?.[selDay]; editorDay = editorTripData?.days?.find(d => Number(d.day) === Number(publishedDay?.day))",
+      "F5: mutations[] payload shape — { trip_id, day: editorDay.day, editor_session, mutations: [{type:select, slot, option_id, origin_slot_id:null}] }",
+      "F7b: name-based attraction matching algorithm (correct — only delete the stale line 404 contradiction)",
+      "F8: adaptV2Option() adapter (correct)",
+      "F9: per-trip lock held through generate+write (correct)",
+      "M2: position:fixed sidebar (correct)",
+      "Architecture: serve-trip.py serving React template via generate_editor_html() (correct)"
+    ],
+    "recommended_approach": "BA must patch exactly 3 items for Round 4. No architectural changes needed. (A) Delete line 404 stale sentence and reference F7b; (B) add effectiveDay merge contract pseudocode; (C) inject TRIP_ID and fix useEffect dependency. These are small, targeted edits only."
   }
 }
