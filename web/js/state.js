@@ -687,6 +687,7 @@ function renderDaysPanel() {
     const row = document.createElement("button");
     row.className = "day-row" + (dayN === state.ui.active_day ? " day-row--active" : "");
     row.dataset.dayN = String(dayN);
+    row.setAttribute("aria-label", cityName ? `Day ${dayN} · ${cityName}` : `Day ${dayN}`);
     const label = document.createElement("span");
     label.className = "day-row-label";
     label.textContent = `Day ${dayN}`;
