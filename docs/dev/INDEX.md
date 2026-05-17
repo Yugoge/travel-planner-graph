@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-17T21:13:36Z*
-**Total entries**: 396
+*Last updated: 2026-05-17T21:20:34Z*
+**Total entries**: 397
 **Convention**: kebab
 
 ## Tree
@@ -402,7 +402,8 @@ dev/
 ├── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
 ├── `ticket-20260517-153318.md` - BA Specification: Notion-Style Visual Alignment — Web Editor (Except Candidates Sidebar)
 ├── `ticket-20260517-172103.md` - BA Specification: Add Photo Rendering to Trip Editor Cards and Cover
-└── `ticket-20260517-195000.md` - BA Specification: Photo Card Layout Fixes — Timeline Thumbnail + Cover Resolution
+├── `ticket-20260517-195000.md` - BA Specification: Photo Card Layout Fixes — Timeline Thumbnail + Cover Resolution
+└── `ticket-20260517-211506.md` - BA Specification: Fix .slot-selected Photo Layout + #trip-cover Visual Defect
 ```
 
 ---
