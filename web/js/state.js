@@ -406,7 +406,7 @@ function _buildSlotNode(slotId, slot) {
   const tpl = document.getElementById("tpl-slot");
   const node = tpl.content.firstElementChild.cloneNode(true);
   node.dataset.slotId = slotId;
-  node.querySelector(".slot-title").textContent = SLOT_LABELS[slotId];
+  node.querySelector(".slot-title").textContent = _timelineSlotLabel(slotId);
   if (!slot) return _markSlotMissing(node);
   if (slot.skipped) return _markSlotSkipped(node, slot);
   if (slot.late_arrival_placeholder) {
