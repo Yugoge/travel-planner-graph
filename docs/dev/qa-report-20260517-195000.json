@@ -1,0 +1,166 @@
+{
+  "request_id": "20260517-195000",
+  "task_id": "20260517-195000",
+  "timestamp": "2026-05-17T20:15:00Z",
+  "qa": {
+    "status": "pass",
+    "verdict": "BA spec is accurate, internally consistent, and safe to hand to dev. All five validation checks pass. No blocking issues found.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "out_of_scope_observations": [],
+    "findings": [],
+    "validation_checks": [
+      {
+        "id": "V1",
+        "title": "Scope accuracy",
+        "result": "pass",
+        "detail": "Spec Constraints section explicitly limits CSS changes to three selectors only: `.slot-selected`, `.slot-selected .card-photo`, `.slot-selected > :not(.card-photo)`. JS changes limited to `renderCover()` body. The Technical Hints code block does not touch any other CSS rule or JS function. The listed files_to_modify are `web/css/main.css` and `web/js/state.js` only. Scope is correctly bounded."
+      },
+      {
+        "id": "V2",
+        "title": "CSS cascade ordering — scoped override placement",
+        "result": "pass",
+        "detail": "The base `.card-photo` rule is at `main.css:419-425`. The spec instructs adding `.slot-selected .card-photo` AFTER line 425 (the end of the base block). This is correct: a same-specificity scoped rule placed later in the file wins via source order. The Edge Cases section (item 1) explicitly warns dev to verify ordering and notes the failure mode if reversed. Instruction is unambiguous. No ordering risk in the spec as written.",
+        "evidence": "main.css:419-425 — .card-photo base rule. Spec Technical Hints: 'ADD after line 425 (after the .card-photo block)'."
+      },
+      {
+        "id": "V3",
+        "title": "Duplicate rule risk for .selected-name and .selected-meta",
+        "result": "pass",
+        "detail": "Grep of `main.css` shows `.slot-selected .selected-name` and `.slot-selected .selected-meta` appear ONLY at lines 415-416. These are already part of the current `.slot-selected` block. The spec's replacement block at lines 407-416 REPLACES those existing lines (it does not add new ones). No duplicate will be created. The Technical Hints block writes these rules as part of the replacement `.slot-selected` rule, not as additions.",
+        "evidence": "grep result: only two occurrences at lines 415-416. Spec says REPLACE lines 407-416."
+      },
+      {
+        "id": "V4",
+        "title": "JS pattern correctness — cached-image onload and onerror interaction",
+        "result": "pass",
+        "detail": "Spec assigns `img.onload` as a property before `img.src`, then sets `img.hidden = true`, then `img.src = url`. This order is correct. Codex confirmed: the HTML image algorithm queues a load event even for cached images when onload is set before src; the pattern is safe in Chrome, Firefox, and Safari. On onerror interaction: `onerror` is set at line 160 as a property, `onload` is assigned inside the if(url) block. A single image request reaches either load or error, not both — no race. Spec Edge Case 2 documents this correctly. Spec Edge Case 4 documents the handler-replacement-on-each-call property correctly.",
+        "evidence": "state.js:160 — img.onerror set. Spec Technical Hints JS block — onload set before src. Codex CODEX_FEEDBACK: all OBSERVATION_ONLY, pattern confirmed safe."
+      },
+      {
+        "id": "V5",
+        "title": "Edge case — [hidden] display:none rule covers .card-photo[hidden]",
+        "result": "pass",
+        "detail": "Verified `main.css:436-439` contains `.card-photo[hidden], #trip-cover[hidden] { display: none }`. This rule was added by task 20260517-172103. The `flex: 0 0 80px` on a hidden `.card-photo` will correctly collapse because `[hidden]` maps to `display: none` via this rule. Spec Edge Case 3 references this rule and its location correctly.",
+        "evidence": "main.css:436-439 — .card-photo[hidden], #trip-cover[hidden] { display: none }"
+      },
+      {
+        "id": "V6",
+        "title": "AC coverage of P0/P1/P2 issues",
+        "result": "pass",
+        "detail": "P0 (hero image) covered by AC1 (height <= 100px) and AC2 (flex layout). P1 (vertical stack) covered by AC2 (display:flex, image left of text). P2 (cover blur) covered by AC4 (hidden when naturalWidth<800) and AC5 (visible when >=800). AC3 covers regression risk for candidate sidebar. All three P0/P1/P2 issues have at least one binding AC. AC coverage is complete."
+      }
+    ],
+    "codex_feedback": {
+      "invoked": true,
+      "status": "ok",
+      "model": "gpt-5.5",
+      "reasoning": "xhigh",
+      "raw_findings": [
+        {
+          "finding": "With img.onload assigned before img.src, cached-image load fires in Chrome/Firefox/Safari. HTML image algorithm handles the available-images cache path by queuing a load event. Setting handler before src is the safe order.",
+          "classification": "OBSERVATION_ONLY",
+          "verdict_impact": "confirms spec pattern is correct"
+        },
+        {
+          "finding": "No Chrome/Firefox/Safari browser where onload-before-src fails for cached images. Chromium spot-checked: cached image, same-URL reassignment, fast successive assignments all fired correctly.",
+          "classification": "OBSERVATION_ONLY",
+          "verdict_impact": "confirms spec pattern is correct"
+        },
+        {
+          "finding": "No same-request onerror/onload race. Single image request reaches either load path or error path, not both. onerror and onload set as independent properties, no conflict.",
+          "classification": "OBSERVATION_ONLY",
+          "verdict_impact": "confirms spec edge case 5 analysis is correct"
+        },
+        {
+          "finding": "naturalWidth is valid inside onload for successfully decoded images including cross-origin. Note: naturalWidth is density-corrected CSS pixels, not raw file pixels. Matches the >= 800 requirement as stated.",
+          "classification": "OBSERVATION_ONLY",
+          "verdict_impact": "minor clarification, does not block; density-corrected pixels still correctly distinguish 500px vs 800px source images"
+        },
+        {
+          "finding": "Current state.js:162-164 still shows cover unconditionally (no onload/naturalWidth guard). The spec's proposed replacement has not yet been applied — this is correct pre-dev state.",
+          "classification": "PROPOSED_FIX (for dev, not QA blocker)",
+          "verdict_impact": "confirms this is a pre-implementation BA spec review; fix is what dev will implement"
+        }
+      ],
+      "feedback_incorporated": "All Codex findings are OBSERVATION_ONLY or confirmations. No Codex finding contradicts the spec. The naturalWidth density-correction note is immaterial for distinguishing 500px vs 800px natural sizes. No spec changes required based on Codex output."
+    },
+    "spec_section_updates": {
+      "section_4": "BA spec validation (pre-dev): main.css:407-416 — .slot-selected { display: block }, no flex. main.css:415-416 — .selected-name/.selected-meta rules present (single occurrence, no duplicate risk). main.css:419-425 — .card-photo base rule. main.css:436-439 — .card-photo[hidden], #trip-cover[hidden] { display: none } confirmed present. state.js:160 — img.onerror set as property. state.js:162-164 — img.hidden = false; img.src = url (no naturalWidth guard, pre-fix). Codex confirmed onload-before-src pattern safe for cached images in all major browsers.",
+      "section_6": null,
+      "section_7": null
+    },
+    "success_criteria_results": [
+      {
+        "requirement_id": "V1",
+        "criterion": "Spec only touches .slot-selected, .slot-selected .card-photo, .slot-selected > :not(.card-photo) in CSS and renderCover() in JS",
+        "verification_method": "Read spec Constraints section and Technical Hints code block; cross-checked against CSS file structure",
+        "status": "pass",
+        "result": "pass",
+        "details": "Scope correctly bounded in spec",
+        "evidence": "Spec Constraints section explicitly lists the three CSS selectors and one JS function as the only touch points"
+      },
+      {
+        "requirement_id": "V2",
+        "criterion": "Scoped override placement instruction is unambiguous and correct",
+        "verification_method": "Read main.css:390-470 to locate base .card-photo rule; verify spec instruction places scoped override after it",
+        "status": "pass",
+        "result": "pass",
+        "details": "Base rule at lines 419-425; spec says ADD after line 425; cascade order is correct",
+        "evidence": "main.css:419-425, spec Technical Hints: ADD after line 425"
+      },
+      {
+        "requirement_id": "V3",
+        "criterion": "No duplicate .selected-name or .selected-meta rules from spec's replacement block",
+        "verification_method": "grep main.css for selected-name and selected-meta",
+        "status": "pass",
+        "result": "pass",
+        "details": "Rules appear only at lines 415-416 which the spec explicitly replaces; no duplicate will be created",
+        "evidence": "grep: only lines 415-416 in main.css"
+      },
+      {
+        "requirement_id": "V4",
+        "criterion": "JS onload-before-src pattern handles cached images correctly; no onerror race",
+        "verification_method": "Codex consultation + code read of state.js renderCover()",
+        "status": "pass",
+        "result": "pass",
+        "details": "Pattern confirmed safe by Codex. onerror and onload are independent properties on separate event paths.",
+        "evidence": "Codex CODEX_FEEDBACK: OBSERVATION_ONLY confirmations for all three sub-questions"
+      },
+      {
+        "requirement_id": "V5",
+        "criterion": ".card-photo[hidden] { display: none } rule exists in main.css",
+        "verification_method": "Read main.css:436-439",
+        "status": "pass",
+        "result": "pass",
+        "details": "Rule confirmed at lines 436-439 covering both .card-photo[hidden] and #trip-cover[hidden]",
+        "evidence": "main.css:436-439"
+      },
+      {
+        "requirement_id": "V6",
+        "criterion": "5 ACs cover all 3 P0/P1/P2 issues completely",
+        "verification_method": "Map each P-issue to its AC(s)",
+        "status": "pass",
+        "result": "pass",
+        "details": "P0->AC1+AC2, P1->AC2, P2->AC4+AC5, regression->AC3. Complete coverage.",
+        "evidence": "Spec AC section: AC1-AC5 all present with GIVEN/WHEN/THEN"
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "All five Codex findings are OBSERVATION_ONLY or confirmations. Pattern img.onload=fn; img.hidden=true; img.src=url is safe in Chrome/Firefox/Safari for cached images. No onerror/onload race. naturalWidth is valid in onload. No finding blocks or modifies the spec.",
+    "feedback_incorporated": "No spec changes required. Codex confirmed all four aspects of the JS pattern. The naturalWidth density-correction note does not affect correctness for 500px vs 800px comparisons."
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
