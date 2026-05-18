@@ -1,12 +1,23 @@
 # lib
 
-*Last updated: 2026-05-14T14:17:23Z*
-**Total entries**: 21
+*Last updated: 2026-05-18T00:06:40Z*
+**Total entries**: 32
 **Convention**: kebab
 
 ## Tree
 ```
 lib/
+├── exporters/
+│   ├── `common.py` - Trip-loading wraps `trip_contract.load_trip`. Slot iteration unifies the 6
+│   ├── `ical_renderer.py` - Produces a VCALENDAR with one VEVENT per selected slot + per inter-city
+│   └── `pdf_renderer.py` - A4 portrait, one day per page, CJK font embedded (WenQuanYi Zen Hei primary,
+├── server/
+│   ├── `budget.py` - Aggregates costs from day.json, transportation.json, route_cache.json. No
+│   ├── `common.py` - Provides:
+│   ├── `export.py` - Invokes scripts/export-pdf.py or scripts/export-ical.py (M6 worker output)
+│   ├── `route.py` - Spec: spec-20260508-221237 §5.9 + §5.13 D #7
+│   ├── `save.py` - Receives a batch of mutations for a single day. Applies them to day-NN.json
+│   └── `trip.py` - Calls trip_contract.load_trip to assemble meta + days + transportation +
 ├── trip_contract/
 │   ├── `api_contract.py` - Consumed by:
 │   ├── `constants.py` - Canonical constants for the M2 v2 trip contract.
