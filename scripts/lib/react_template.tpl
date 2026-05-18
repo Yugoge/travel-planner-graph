@@ -865,7 +865,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                               {lang === 'local' && opt.notes_local ? opt.notes_local : opt.notes_base}
                             </div>
                           </div>
-                          {EDITOR_MODE && <div className="slot-drop" data-slot-id={opt._type} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }} />}
+                          {EDITOR_MODE && <div className="slot-drop" data-slot-id={opt._type} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
+                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                            onDragEnter={(e) => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; }}
+                            onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; }}
+                            onDrop={(e) => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0)'; try { const { optionId, slotId: fromSlot } = JSON.parse(e.dataTransfer.getData('text/plain')); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (window.setEditorSelection) window.setEditorSelection(toSlotId, optionId); } catch (_) {} }}
+                          />}
                         </div>
                       );
                     })}
