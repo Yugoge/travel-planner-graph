@@ -193,6 +193,29 @@
     ],
     "post_fix_qa_result": "fail — QA round 2 identified remaining issues: slot adjacency order wrong (AC12), TimelineView missing editor props (AC14/17/18), CandidatesSidebar missing accommodation section (AC15), AC22 visual states incomplete (missing badge, late-arrival, droppable gate, editorSelections destructuring)"
   },
+  "fix_pass_3": {
+    "status": "applied",
+    "triggered_by": "dev cycle 3 — QA round 3 identified 5 micro-fix blockers: FIX A (missing mode field in fetchRoute), FIX B (wrong response field path), FIX C (option_id not stamped on board cards), FIX D (late_arrival_placeholder string heuristic), FIX E (skipped_reason literal string)",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "fixes_applied": [
+      "FIX A (line 2411): Added mode: 'driving' to fetchRoute POST body JSON. route.py _try_cache_hit does req['mode'] with no default — missing field would KeyError 500. 'driving' maps to 'driving' in _MODE_TO_COMMAND.",
+      "FIX B (line 775): Changed data.duration_minutes to (data.segment && data.segment.duration_min). route.py _ok_response returns {status, segment, source} — duration is in segment.duration_min, never at top-level duration_minutes.",
+      "FIX C (lines 1919, 1950, 1964): After card.selected = true, also stamps card.option_id = selAccOpt.option_id (accommodation), card.option_id = selOpt.option_id (meal and activity arrays) in mergeEditorSelectionsIntoPublishedDay. KanbanView board drag payload reads opt.option_id — previously undefined for PLAN_DATA cards.",
+      "FIX D (line 1284): Replaced string heuristic (parseInt check_in hour >= 14) with if (edAcc && edAcc.late_arrival_placeholder) for late arrival badge. Uses actual backend boolean field instead of fragile string comparison.",
+      "FIX E (lines 898, 980, 1062, 1144, 1283): Changed static 'skipped' text to {edSlot.skipped_reason || 'skipped'} for activity/meal slots and {edAcc.skipped_reason || 'skipped'} for accommodation. Displays backend-provided reason string when present."
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex verified all 5 fixes against schema files and test fixtures: schemas/v2/route_cache.schema.json confirms duration_min field name; tests/server/conftest.py:165 fixture uses 'duration_min': 12; tests/server/test_route_endpoint.py:78 asserts resp['segment']['duration_min'] == 12; migrate_yunnan_v1_to_v2.py and save.py confirm skipped_reason field; validators.py:644 confirms late_arrival_placeholder field. No CODEX_FEEDBACK blockers raised.",
+      "feedback_incorporated": "No changes needed — all 5 fixes verified correct. No PROPOSED_FIX items issued."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 5,
+      "lines_removed": 5
+    }
+  },
   "fix_pass_2": {
     "status": "applied",
     "triggered_by": "dev cycle 2 — QA round 2 identified 6 AC blockers + Codex adversarial review found 6 additional in-scope bugs in the fix_pass_1 implementation",
