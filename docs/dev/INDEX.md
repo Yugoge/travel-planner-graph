@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-18T22:01:26Z*
-**Total entries**: 413
+*Last updated: 2026-05-18T22:28:31Z*
+**Total entries**: 398
 **Convention**: kebab
 
 ## Tree
@@ -12,25 +12,11 @@ dev/
 ├── playwright-judge5-output/
 │   └── screenshots/
 ├── playwright-screenshots/
-│   └── `01-initial-load.png` - png file
 ├── scratch-20260509-114002/
 │   ├── `architect-redev-findings.md` - Architect findings — /redev cycle for spec-20260508-221237 M1
 │   └── `specialist-findings.md` - Specialist Consultation Findings — spec-20260508-221237
 ├── screenshots/
-│   ├── dev-20260505-123425/
-│   ├── `blocker6-desktop-card-select.png` - png file
-│   ├── `blocker6-desktop-drag.png` - png file
-│   ├── `blocker6-desktop-export.png` - png file
-│   ├── `blocker6-desktop-load.png` - png file
-│   ├── `blocker6-mobile.png` - png file
-│   ├── `editor-day3-comparison.png` - png file
-│   ├── `editor-day3-timeline-bottom.png` - png file
-│   ├── `editor-day3-timeline-scrolled.png` - png file
-│   ├── `notion-after-20260517.png` - png file
-│   ├── `notion-after-day3-20260517.png` - png file
-│   ├── `notion-diag-20260517.png` - png file
-│   ├── `review-20260517.png` - png file
-│   └── `review-day3-20260517.png` - png file
+│   └── dev-20260505-123425/
 ├── specs/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
@@ -269,7 +255,6 @@ dev/
 ├── `dev-report-20260506-141814.json` - json config
 ├── `dev-report-20260509-114002-cycle4.json` - json config
 ├── `dev-report-20260509-114002.json` - json config
-├── `dev-report-20260509-114002.json.cycle1+3.bak` - bak file
 ├── `dev-report-20260513-090000-W-refactor.json` - json config
 ├── `dev-report-20260513-090000-W1-patch.json` - json config
 ├── `dev-report-20260513-090000-W1.json` - json config
