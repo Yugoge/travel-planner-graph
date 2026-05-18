@@ -183,11 +183,11 @@
         "requirement_id": "AC12",
         "source_phrase": "M11/route gap fetching",
         "criterion": "POST /api/route with monotonic request_seq per pair; show duration_minutes on ok; show route unknown + retry button on unknown/failed",
-        "verification_method": "grep /api/route react_template.tpl; inspect adjacency order",
+        "verification_method": "Inspect fetchRoute at line 2402; cross-check against route.py handle_route at line 52 and _ok_response at line 227; inspect display at line 775",
         "status": "fail",
         "result": "fail",
-        "details": "fetchRoute function at line 2224 posts /api/route. routeCache state at line 2120. Retry button present in KanbanView. CRITICAL BUG: slot adjacency order at line 2337 uses [breakfast, lunch, dinner, morning_activity, afternoon_activity, evening_activity] — meals-first order — instead of chronological [morning_activity, breakfast, afternoon_activity, lunch, evening_activity, dinner]. Consecutive slots in wrong order produces incorrect route pairs.",
-        "evidence": "Line 2337: filter array in wrong order confirmed by grep"
+        "details": "CRITICAL BUG 1: fetchRoute at line 2409 posts body { trip_id, from_option_id, to_option_id, request_seq } — 'mode' field absent. route.py handle_route at line 52 executes req['mode'] as direct dict access with no default → KeyError → HTTP 500. All /api/route calls fail with HTTP 500. Zero route data is ever returned. CRITICAL BUG 2: Even if mode were added, frontend at line 775 reads data.duration_minutes (top-level), but route.py _ok_response returns { status, segment: {...}, source } where travel time is in segment.duration_min — a response shape mismatch. Note: Slot adjacency order fix from fix_pass_1 is confirmed correct — line 2514 now uses ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'] matching NAMED_SLOTS order from web/js/state.js. The adjacency B1 bug is resolved; the HTTP 500 and response parsing bugs are new critical blockers in fix_pass_2.",
+        "evidence": "react_template.tpl:2409 (no mode field); scripts/lib/server/route.py:52 (req['mode'] direct access, KeyError); route.py:227-233 (_ok_response returns segment.duration_min not duration_minutes); react_template.tpl:775 (data.duration_minutes display)"
       },
       {
         "requirement_id": "AC13",
