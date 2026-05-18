@@ -1242,7 +1242,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       {(day.accommodation ? [day.accommodation] : []).map((acc, i) => {
                         const catColor = categoryColors.accommodation;
                         return (
-                          <div key={i} style={cardStyle(catColor, false)}
+                          <div key={i} style={{...cardStyle(catColor, false), position: 'relative'}}
                             onClick={() => onItemClick && onItemClick(acc, 'accommodation')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false)}
