@@ -27,54 +27,160 @@
         "id": "NB1",
         "ac": "M11 / M23 / AC12 / AC23",
         "severity": "blocker",
-        "title": "Required-slot definition contradiction: AC24 specifies 4 slots; Hint 19 references a 7-slot function",
-        "description": "AC24 (ticket line 420-430) defines required slots as 'accommodation + breakfast + lunch + dinner' (4 slots). Technical Hint 19 says 'mirror _allRequiredSlotsFilled from web/js/state.js — iterate ALL_SLOT_KEYS'. But ALL_SLOT_KEYS = NAMED_SLOTS.concat(['accommodation']) = [breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity, accommodation] — 7 slots. The function _allRequiredSlotsFilled (state.js:604-610) does NOT call _isRequiredSlot (state.js:562-565); _isRequiredSlot is a separate, unused helper within that function. If dev mirrors _allRequiredSlotsFilled literally, the Approve button will be disabled whenever any ACTIVITY slot (morning_activity, afternoon_activity, evening_activity) is unfilled or absent, directly violating AC24's intent.",
+        "title": "M11 MoSCoW text still says 'ignore stale/unknown/error responses' — directly contradicts M23/AC23 which require 'route unknown' + retry UI for unknown/error",
+        "description": "M11 (ticket line 113) says: 'call /api/route with monotonic request_seq; display segment duration when status===ok; ignore stale/unknown/error responses'. M23 explicitly amends the AC layer: 'this AMENDS AC12 (which previously said ignore unknown/error responses — replace that clause with show unknown+retry)'. AC12 was correctly updated. But M11 in the MoSCoW Must-Have section was NOT updated — it still says 'ignore stale/unknown/error responses'. A dev reading the MoSCoW requirements list would implement the old behavior (ignore) for the M11 requirement, then encounter M23 amending AC12 but not M11, producing ambiguity about which governs.",
         "evidence": {
-          "ac24_required_slots": "accommodation, breakfast, lunch, dinner (ticket-20260518-101127.md:424)",
-          "hint19_text": "mirror _allRequiredSlotsFilled from web/js/state.js — iterate ALL_SLOT_KEYS (ticket line ~532)",
-          "state_js_all_slot_keys": "web/js/state.js:53 — const ALL_SLOT_KEYS = NAMED_SLOTS.concat(['accommodation'])",
-          "state_js_named_slots": "web/js/state.js:22-29 — NAMED_SLOTS = [breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity]",
-          "state_js_allrequiredslotsfilled": "web/js/state.js:604-611 — iterates ALL_SLOT_KEYS; _isRequiredSlot not called",
-          "state_js_isrequiredslot": "web/js/state.js:562-565 — separate helper, checks accommodation or MEAL_SLOTS"
+          "m11_text": "ignore stale/unknown/error responses (ticket line 113)",
+          "m23_text": "this AMENDS AC12 (which previously said ignore unknown/error responses — replace that clause with show unknown+retry) (ticket line 125)",
+          "ac12_amended": "correctly updated to include unknown+retry cross-reference to AC23 (ticket lines 312-314)",
+          "conflict": "M11 says ignore; M23/AC12/AC23 say render + retry. M11 was not updated when M23 was added."
         },
-        "proposed_fix": "Replace Technical Hint 19 with explicit required-only logic: 'const REQUIRED_SLOT_KEYS = [\"accommodation\", \"breakfast\", \"lunch\", \"dinner\"]; implement allRequiredSlotsFilled iterating only REQUIRED_SLOT_KEYS — NOT ALL_SLOT_KEYS'. Add an AC24 positive edge case: 'GIVEN accommodation/breakfast/lunch/dinner are filled AND morning_activity is absent or unfilled, WHEN Approve renders, THEN Approve is enabled (if stage is draft-options or user-review)'. Apply same required-only gating to AC26 export button validation."
+        "proposed_fix": "Update M11 to: 'display segment duration when status===ok; when status===unknown OR request fails, show unknown+retry per M23; discard responses with stale request_seq only'. Remove 'ignore unknown/error responses' from M11."
       },
       {
-        "id": "B2",
-        "ac": "AC20 / M20",
+        "id": "NB2",
+        "ac": "Technical Hint 12 / AC17",
         "severity": "blocker",
-        "title": "AC20 'client-side only, no backend call' conflicts with save.py origin_slot_id persistence path",
-        "description": "AC20 says cross-meal copy is 'client-side-only idempotent copy; no backend change'. However, scripts/lib/server/save.py:_apply_select_mutation (lines 75-104) already implements server-side cross-meal option copy when origin_slot_id is provided in the mutation. The current window.setEditorSelection bridge (react_template.tpl:1924) sends origin_slot_id: null, disabling the server copy. The new React model must decide: (a) purely client-side in editorSelections state only — but then after a page reload the server-side persisted day data will NOT have the option in dinner.options[], causing a broken state; OR (b) pass origin_slot_id in the /api/save mutation — but AC20 says 'no backend call'. The two approaches are mutually exclusive and the spec does not resolve which. Without the origin_slot_id in the save payload, a user drops a breakfast option onto dinner, it appears selected in the session, but on reload dinner.options is missing the option and the selection disappears.",
+        "title": "Technical Hint 12 says source key 'deleted' in slot-to-slot move — contradicts AC17's 'set to null' and would resurrect persisted selection under AC10 hasOwnProperty semantics",
+        "description": "AC17 (ticket line 357) correctly specifies: 'slot A and slot B are updated in a single editorSelections state update: slot A key set to null'. Under AC10's hasOwnProperty semantics, key-absent triggers fallback to slot.selected_option_id (the persisted published value). Technical Hint 12 (ticket line 532) says: 'returns a new object with the source key deleted and the destination key set in one call'. If dev follows Hint 12 and DELETES the source key, the source slot will have no key in editorSelections, causing the hasOwnProperty resolver to fall back to the published selected_option_id (still set on the server), and the source slot will re-render as still selected. This is exactly the deselect semantics bug that B3 was meant to fix — Hint 12 reintroduces it.",
         "evidence": {
-          "ac20_text": "client-side-only idempotent copy; no backend API call is made for the copy (ticket line 375-382)",
-          "save_py_cross_meal_copy": "scripts/lib/server/save.py:81-103 — _apply_select_mutation performs copy when origin_slot_id is set and both slots are meal slots",
-          "react_bridge_origin_null": "scripts/lib/react_template.tpl:1924 — origin_slot_id: null (hardcoded null in current bridge)",
-          "drag_js_origin": "web/js/drag.js:73 — origin_slot_id: card.dataset.originSlotId || null"
+          "ac17_text": "slot A's key set to null (key present, value null = explicitly cleared) (ticket line 357)",
+          "hint12_text": "returns a new object with the source key deleted and the destination key set in one call (ticket line 532)",
+          "ac10_resolver": "Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id — absent key falls through to published value",
+          "conflict": "Hint 12 'deleted' vs AC17 'null'. Deleted key = absent key = fallback to persisted value = source slot still shows as selected after slot-to-slot move."
         },
-        "proposed_fix": "Clarify AC20 to: 'The frontend copies the option object into the target slot's editorSelections or editorTripData state (client-side only for the in-session view). The /api/save mutation for this selection MUST include origin_slot_id so the existing server-side save.py persistence logic can durably copy the option into the target slot's options[] for persistence across reloads. This is NOT a new backend change — save.py already handles origin_slot_id.' Also add a reload durability test: 'GIVEN option X selected from breakfast dropped onto dinner, WHEN page is reloaded, THEN dinner still shows X as selected and dinner.options[] contains X.'"
+        "proposed_fix": "Update Technical Hint 12 to: 'returns a new object with the source key present and set to null (NOT deleted — absent key falls back to persisted value under AC10 hasOwnProperty semantics) and the destination key set to the option_id, in one functional update call'."
       },
       {
-        "id": "B3",
-        "ac": "AC10 / M9 / AC17 / M17",
+        "id": "NB3",
+        "ac": "AC19 / M19 / AC10",
         "severity": "blocker",
-        "title": "deselect semantics conflict: AC17 clearing with AC10's ?? fallback operator makes null set insufficient",
-        "description": "AC17 says plan→candidates drag 'clears that slot's selected_option_id'. AC10/M9 specifies that the selected candidate is identified by 'editorSelections[dayKey + \":\" + slotId] ?? slot.selected_option_id'. If dev sets editorSelections[key] = null to deselect, the ?? operator will fall through to slot.selected_option_id (the published/persisted value), which may be non-null — so the slot will STILL appear selected. Setting to null is not sufficient; deleting the key causes the same problem (key absent -> ?? -> falls back to published value). AC10 and AC17 create an unresolvable conflict: the ?? operator needed for AC10's fallback behavior makes AC17's deselection impossible without changing the lookup semantics.",
+        "title": "AC19 Meals selected state checks raw slot.selected_option_id — not the shared AC10 resolver — making explicit deselect/null invisible to the Meals sidebar",
+        "description": "AC10 establishes that selected state is determined via the hasOwnProperty resolver: key present + null = explicitly cleared (slot renders unselected). AC19 (ticket line 378) says: 'a card is shown as selected (visual indicator) if ANY of breakfast/lunch/dinner has selected_option_id === card.option_id'. The term selected_option_id here refers to the raw slot data field, not the resolved value. If a user deselects a meal card (editorSelections[dayKey+':'+breakfast] = null), the raw slot.selected_option_id on the published day data may still be non-null. AC19's raw-field check would still show the card as selected, directly contradicting the AC10 deselect semantics and AC17 plan->candidates drag-to-deselect behavior. AC10 explicitly states 'this same resolver is used for effectiveDay merging, cover image, route, and budget inputs' — AC19 must use it too.",
         "evidence": {
-          "ac10_lookup": "editorSelections[dayKey + ':' + slotId] ?? slot.selected_option_id (ticket line 289)",
-          "ac17_clear": "that slot's selected_option_id is cleared (ticket line 350)",
-          "null_coalescence": "JavaScript: null ?? 'persistedId' === 'persistedId' — null does NOT prevent fallback with ?? operator"
+          "ac19_text": "a card is shown as selected if ANY of breakfast/lunch/dinner has selected_option_id === card.option_id (ticket line 378)",
+          "ac10_shared_resolver": "this same resolver is used for effectiveDay merging, cover image update, route gap inputs, and budget recompute inputs — it is a shared utility function (ticket line 295)",
+          "conflict": "AC19 checks raw slot.selected_option_id; AC10 resolver checks editorSelections with hasOwnProperty. After deselect (editorSelections[key]=null), raw field still non-null, AC19 shows card as still selected."
         },
-        "proposed_fix": "Change AC10 lookup to use key-presence semantics instead of ??: 'const key = dayKey + \":\" + slotId; const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id'. Then AC17 deselect = set editorSelections[key] = null (explicit null, key present). AC10's fallback to published value only fires when key is ABSENT (never explicitly set). Update M9/AC10 text to reflect hasOwnProperty semantics rather than ?? operator."
+        "proposed_fix": "Update AC19 to: 'a card is shown as selected if ANY of breakfast/lunch/dinner has a resolved selected id (via the shared AC10 hasOwnProperty resolver applied to editorSelections) that equals card.option_id; null resolution means unselected'. The check MUST use the shared resolver, not the raw slot.selected_option_id field."
       },
       {
-        "id": "B4",
-        "ac": "AC2 / M2",
+        "id": "NB4",
+        "ac": "AC7 / M7",
         "severity": "blocker",
-        "title": "AC2 requires two positional args for generate_html but does not mandate trip_id=None default, leaving generate-html-interactive.py:598 as a guaranteed runtime crash",
-        "description": "AC2 (ticket line 220-226) specifies 'generate_html signature is generate_html(gen, trip_id) (two positional args)'. The existing caller at scripts/generate-html-interactive.py:598 calls _bld.generate_html(self) with ONE positional arg. If dev implements two required positional args, this call site will raise a TypeError at runtime. Technical Hint 1 (ticket line 496) mentions this risk: 'generate_html should accept trip_id=None as default OR that call site must also be updated'. However, AC2 does not REQUIRE either the default OR updating the call site — it only specifies the signature. An AC that does not mandate safe behavior is unenforceable: dev can pass AC2 with two required positional args and break the existing call site without violating any AC.",
+        "title": "AC7 weakens HTTP 409 response requirement to '(or save error state is shown)' — allows dev to omit ConflictBanner for HTTP 409",
+        "description": "M7 requires: 'ConflictBanner appears when response.status === 409 OR response JSON contains conflict === 409-soft'. This is unambiguous — ConflictBanner for both cases. AC7 (ticket line 270) reads: 'THEN ConflictBanner also appears (or save error state is shown)'. The parenthetical '(or save error state is shown)' is a disjunction — dev can implement HTTP 409 as save-error state only (no ConflictBanner) and satisfy AC7 literally while violating M7. The 409-soft case (HTTP 200) correctly requires ConflictBanner, but the HTTP 409 case is weakened. A dev could implement: 409-soft -> ConflictBanner, HTTP 409 -> generic error state — wrong user experience, violates M7.",
         "evidence": {
-          "ac2_signature": "generate_html signature is generate_html(gen, trip_id) (two positional args) (ticket line 224)",
-          "existing_caller": "scripts/generate-html-interactive.py:598 calls _bld.generate_html(self) with one arg (context JSON component_chain)",
+          "m7_text": "ConflictBanner appears when response.status === 409 OR response JSON contains conflict === 409-soft (ticket line 109)",
+          "ac7_409soft": "THEN ConflictBanner appears offering a reload option (ticket line 268) — unambiguous",
+          "ac7_http409": "THEN ConflictBanner also appears (or save error state is shown) (ticket line 270) — disjunction weakens requirement",
+          "conflict": "M7 mandates ConflictBanner for HTTP 409. AC7's '(or save error state)' clause makes ConflictBanner optional for HTTP 409."
+        },
+        "proposed_fix": "Remove '(or save error state is shown)' from AC7 line 270. Update to: 'THEN ConflictBanner appears' — same unconditional requirement as the 409-soft case. ConflictBanner is mandatory for both HTTP 409 and 409-soft."
+      },
+      {
+        "id": "NB5",
+        "ac": "AC24 / Technical Hint 19 / AC26",
+        "severity": "blocker",
+        "title": "Missing required slot (absent key from effectiveDay) not explicitly defined as gating Approve/Export — Hint 19's 'if the slot exists' allows dev to skip absent required slots",
+        "description": "AC24 gates on 'non-skipped slots in REQUIRED_SLOT_KEYS that have no selected_option_id'. AC22 defines a distinct 'missing' state for slots absent from effectiveDay entirely. Technical Hint 19 (ticket line 546) says: 'for each key in REQUIRED_SLOT_KEYS, get the slot from effectiveDay; if the slot exists and is not skipped and has no selected_option_id → not all filled'. The 'if the slot exists' clause means that if a required slot key is ABSENT from effectiveDay (missing state per AC22), the Hint 19 code would NOT flag it as unfilled — it would silently skip the absent slot and potentially enable Approve. A missing required accommodation or meal slot should clearly disable Approve and Export, but the spec does not state this.",
+        "evidence": {
+          "hint19_code": "for each key in REQUIRED_SLOT_KEYS, get the slot from effectiveDay; if the slot exists and is not skipped and has no selected_option_id → not all filled (ticket line 546)",
+          "ac22_missing_state": "slot key absent from effectiveDay entirely → show missing status, data-droppable=false (ticket lines 400-404)",
+          "conflict": "Hint 19's 'if slot exists' guard means absent required slot is not counted as unfilled, potentially allowing Approve with a missing accommodation or meal."
+        },
+        "proposed_fix": "Update Hint 19 and AC24 to explicitly state: 'a required slot that is ABSENT from effectiveDay (missing state per AC22) counts as unfilled and disables Approve/Export, in addition to slots that exist but have no selected_option_id'. Change Hint 19's condition to: 'if the slot is absent OR (slot exists AND not skipped AND no selected_option_id) → not all filled'."
+      },
+      {
+        "id": "NB6",
+        "ac": "AC11 / M10",
+        "severity": "blocker",
+        "title": "AC11 budget recompute trigger 'drops a candidate' covers only candidates->plan direction — plan->candidates and slot->slot moves that change totals are excluded",
+        "description": "M10 says: 'After each successful drop+save, POST /api/budget/recompute'. The word 'drop' could be read broadly, but AC11 (ticket line 299) says: 'WHEN a user successfully drops a candidate (POST /api/save returns 200)' — the phrase 'drops a candidate' implies candidates->plan direction only. Plan->candidates deselection and slot->slot moves both change the day's selected options and therefore the day total, and both involve a successful /api/save. Without recompute after these operations, the displayed budget total will be stale after any deselection or slot swap. A dev implementing AC11 literally would only recompute after candidates->plan drops.",
+        "evidence": {
+          "m10_text": "After each successful drop+save, POST /api/budget/recompute (ticket line 112) — ambiguous direction",
+          "ac11_text": "WHEN a user successfully drops a candidate (POST /api/save returns 200) (ticket line 299) — implies candidates->plan only",
+          "missing_cases": "plan->candidates deselect changes total (clears selection); slot->slot swap changes total (swaps selections); neither covered by 'drops a candidate'"
+        },
+        "proposed_fix": "Update AC11 WHEN clause to: 'WHEN any selection-changing save completes successfully — candidates->plan drop, plan->candidates deselect, slot->slot move, or tap-to-select — and POST /api/save returns 200'."
+      }
+    ],
+    "warnings": [
+      {
+        "id": "W2",
+        "ac": "AC13 / M12",
+        "severity": "warning",
+        "title": "Mobile breakpoint boundary ambiguity at exactly 768px — AC13 does not specify boundary-inclusive behavior",
+        "description": "M12 says isMobileLayout = window.innerWidth < 768. AC13 tests at 390px (mobile) and 1440px (desktop) but does not specify what happens at exactly 768px. There is no test at the boundary (767px, 768px). A dev implementing with <= instead of < would pass all specified test widths but produce different behavior at the boundary.",
+        "evidence": {
+          "m12_condition": "isMobileLayout = window.innerWidth < 768 (ticket line 114)",
+          "ac13_test_widths": "390px mobile, 1440px desktop (ticket lines 313-320)"
+        },
+        "proposed_fix": "Add AC13 boundary test: 'GIVEN viewport width = 767px, THEN mobile layout active. GIVEN viewport width = 768px, THEN desktop layout active.'"
+      },
+      {
+        "id": "W3",
+        "ac": "AC11 / AC25 / M10 / M25",
+        "severity": "warning",
+        "title": "Budget recompute stale-response guard scope (per-day vs global) unspecified",
+        "description": "M10/M25 specify 'same stale-response guard (request_seq)' without clarifying whether request_seq is global or per-day. Both implementations are functionally acceptable; this is an implementation detail, not a spec contradiction.",
+        "proposed_fix": "Clarify AC25: 'The stale-response guard is per-day (each day maintains its own monotonic request_seq for budget recompute)' or state 'global'. Either is acceptable."
+      },
+      {
+        "id": "W4",
+        "ac": "AC1",
+        "severity": "warning",
+        "title": "AC1 verification command does not actually generate trip HTML bytes",
+        "description": "AC1's WHEN clause runs serve-trip.py --help and imports generate_html — it does not generate and grep the actual HTML output. QA will need to use a real curl or browser check against /trip/<id> to verify EDITOR_MODE is absent from generated HTML.",
+        "proposed_fix": "Replace AC1 verification command with a real HTML generation check: generate HTML and grep the output bytes.",
+        "codex_classification": "observation_only_elevated_to_warning"
+      }
+    ],
+    "per_ac_verification": {
+      "AC1": { "status": "pass", "notes": "EDITOR_MODE removal verifiable. W4 notes verification command weakness." },
+      "AC2": { "status": "pass", "notes": "generate_html(gen, trip_id=None) signature with None default now explicitly required. Backward-compat test case added." },
+      "AC3": { "status": "pass", "notes": "DOM presence check testable." },
+      "AC4": { "status": "pass", "notes": "Screenshot comparison testable." },
+      "AC5": { "status": "pass", "notes": "Save status states testable via fetch mock." },
+      "AC6": { "status": "pass", "notes": "dispatchEvent offline/online testable." },
+      "AC7": { "status": "fail", "blocker": "NB4", "notes": "HTTP 409 case allows 'or save error state is shown' — weakens M7's unconditional ConflictBanner requirement." },
+      "AC8": { "status": "pass", "notes": "Stage mutation shape verified from save.py; user-selected stage name correct." },
+      "AC9": { "status": "pass", "notes": "Grep-based AC; unconditional effectiveDay testable." },
+      "AC10": { "status": "pass", "notes": "hasOwnProperty resolver now correctly specified. B3 resolved." },
+      "AC11": { "status": "fail", "blocker": "NB6", "notes": "'drops a candidate' covers only candidates->plan; plan->candidates and slot->slot missing from trigger scope." },
+      "AC12": { "status": "pass", "notes": "Correctly amended to cross-reference AC23 for unknown+retry." },
+      "AC13": { "status": "warning", "warning": "W2", "notes": "Testable but boundary at exactly 768px is ambiguous." },
+      "AC14": { "status": "pass", "notes": "Two-step tap-to-select testable via touch simulation." },
+      "AC15": { "status": "pass", "notes": "Cover image update on accommodation change testable." },
+      "AC16": { "status": "pass", "notes": "No direct DOM mutation + PLAN_DATA preservation testable." },
+      "AC17": { "status": "fail", "blocker": "NB2", "notes": "AC17 correctly says 'key set to null' but Hint 12 says 'key deleted' — would resurrect persisted selection under hasOwnProperty semantics." },
+      "AC18": { "status": "pass", "notes": "_isCompatible logic matches spec." },
+      "AC19": { "status": "fail", "blocker": "NB3", "notes": "Selected state checks raw selected_option_id not shared AC10 resolver — explicit deselect invisible to Meals sidebar." },
+      "AC20": { "status": "pass", "notes": "origin_slot_id in save mutation now required; reload durability test added. B2 resolved." },
+      "AC21": { "status": "pass", "notes": "400ms reject flash + data-drop-active/reject testable." },
+      "AC22": { "status": "pass", "notes": "Distinct slot states testable via DOM." },
+      "AC23": { "status": "pass", "notes": "Unknown+retry UI testable; amends AC12 correctly." },
+      "AC24": { "status": "fail", "blocker": "NB5", "notes": "Missing-slot (absent key) not explicitly defined as gating Approve; Hint 19's 'if slot exists' creates gap." },
+      "AC25": { "status": "warning", "warning": "W3", "notes": "Recompute on load+switch testable; request_seq scope underspecified." },
+      "AC26": { "status": "fail", "blocker": "NB5", "notes": "Inherits missing-slot gap from AC24/Hint-19." },
+      "AC27": { "status": "pass", "notes": "15s setInterval testable." },
+      "AC28": { "status": "pass", "notes": "conn-status element + data-state toggle testable." },
+      "AC29": { "status": "pass", "notes": "Dismiss button additive to AC7 reload; correctly specified." },
+      "M11": { "status": "fail", "blocker": "NB1", "notes": "MoSCoW text still says 'ignore stale/unknown/error' — not updated when M23 was added." }
+    },
+    "save_py_multi_mutation_verification": "VERIFIED — save.py:_apply_mutations (lines 175-178) iterates mutations list and calls _apply_one_mutation for each. Multi-mutation batch fully supported. Slot->slot two-mutation batch [clear A, set B] confirmed safe: first mutation sets selected_option_id=None (options[] unchanged, source option still findable for second mutation's cross-meal copy logic).",
+    "validators_py_stage_gate_verification": "VERIFIED — validators.py:_check_stage_gate (lines 347-365) still iterates NAMED_SLOTS + [ACCOMMODATION_SLOT] (all 7 slots). B6 correctly resolved at spec level: AC24 mandates dev update this to REQUIRED_SLOT_KEYS only. validators.py added to affected_files. Current source state matches expected pre-dev state.",
+    "summary": {
+      "original_blockers_resolved": 6,
+      "w1_resolved": true,
+      "new_blockers_found": 6,
+      "new_blocker_ids": ["NB1", "NB2", "NB3", "NB4", "NB5", "NB6"],
+      "warnings_remaining": 3,
+      "release_recommendation": "reject — BA must fix NB1-NB6 before dev start"
+    }
+  }
+}
+
           "hint1_risk": "Technical Hint 1 mentions trip_id=None or updating call site — but AC2 does not require either (ticket line 496)"
         },
         "proposed_fix": "Update AC2 to explicitly require: 'generate_html signature is generate_html(gen, trip_id=None) with trip_id defaulting to None; OR all call sites are updated to pass trip_id; AND scripts/generate-html-interactive.py must still execute successfully after the change.' Preferred: add trip_id=None default."
