@@ -78,9 +78,9 @@ def _get_trip_lock(trip_id: str) -> threading.Lock:
 
 
 def _generate_html_for_trip(trip_id: str) -> str:
-    """Instantiate generator and render editor HTML for trip_id."""
+    """Instantiate generator and render unified HTML for trip_id."""
     gen = InteractiveHTMLGenerator(trip_id)
-    return generate_editor_html(gen, trip_id)
+    return generate_html(gen, trip_id)
 
 
 def _get_or_generate_html(trip_id: str) -> str:
