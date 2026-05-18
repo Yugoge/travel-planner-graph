@@ -2443,6 +2443,7 @@ function NotionTravelApp() {
       if (resp.status === 409) {
         setConflictDetected(true);
         setSaveState('error');
+        setSaveStatusText('conflict');
         return;
       }
       const data = await resp.json();
@@ -2450,6 +2451,7 @@ function NotionTravelApp() {
       if (data.conflict === '409-soft') {
         setConflictDetected(true);
         setSaveState('error');
+        setSaveStatusText('conflict');
         return;
       }
       if (!resp.ok) {
