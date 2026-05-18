@@ -2118,7 +2118,7 @@ function NotionTravelApp() {
         lang={lang}
       />
 
-      <div style={{ flex: 1, minWidth: 0, marginRight: EDITOR_MODE ? '300px' : 0 }}>
+      <div style={{ flex: 1, minWidth: 0, marginRight: isMobileLayout ? 0 : '300px' }}>
         <div style={{
           borderBottom: '1px solid #f0efed',
           padding: `0 ${sm ? '12px' : '20px'}`,
