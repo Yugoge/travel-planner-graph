@@ -1033,6 +1033,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && ent.notes_local ? ent.notes_local : (lang === 'local' && ent.note_local ? ent.note_local : ent.note_base)}
                               </div>
                             </div>
+                            {EDITOR_MODE && entSlotId && <div className="slot-drop" data-slot-id={entSlotId} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }} />}
                           </div>
                         );
                       })}
@@ -1040,7 +1041,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <div style={fadeStyle} />
                   </div>
                 </Section>
-              )}
+                );
+              })()}
 
               {/* Shopping */}
               {day.shopping && day.shopping.length > 0 && (
