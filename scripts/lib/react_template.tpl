@@ -1406,7 +1406,7 @@ const computeColumnLayout = (entries) => {
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
+const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, editorSelections, pendingSelection, setPendingSelection, saveMutations, setEditorSelections, routeCache, fetchRoute }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
   const [topItemIndex, setTopItemIndex] = useState(null);
   const sm = bp === 'sm';
