@@ -885,17 +885,24 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                               {lang === 'local' && opt.notes_local ? opt.notes_local : opt.notes_base}
                             </div>
                           </div>
-                          {/* AC22: slot visual state badge for meal slots */}
-                          {editorDay && editorDay.slots && editorDay.slots[opt._type] && (() => {
-                            const edSlot = editorDay.slots[opt._type];
+                          {/* AC22: slot visual state badge for meal slots (missing/skipped/late-arrival/required-empty) */}
+                          {editorDay && opt._isPrimary && (() => {
                             const slotKey = day.day + ':' + opt._type;
-                            const resolvedId = Object.prototype.hasOwnProperty.call(editorSelections || {}, slotKey) ? (editorSelections || {})[slotKey] : edSlot.selected_option_id;
+                            const edSlot = editorDay.slots && editorDay.slots[opt._type];
                             const isRequired = ['breakfast','lunch','dinner'].includes(opt._type);
+                            // Missing: slot key absent from editorDay.slots entirely
+                            if (!edSlot && isRequired) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff0e6', border: '1px solid #f0b870', borderRadius: '4px', fontSize: '10px', color: '#c07000', padding: '1px 5px' }}>missing</div>;
+                            if (!edSlot) return null;
+                            const resolvedId = Object.prototype.hasOwnProperty.call(editorSelections || {}, slotKey) ? (editorSelections || {})[slotKey] : edSlot.selected_option_id;
                             if (edSlot.skipped) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>skipped</div>;
-                            if (isRequired && !resolvedId && opt._isPrimary) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff4f4', border: '1px solid #f0b3b3', borderRadius: '4px', fontSize: '10px', color: '#e07c5a', padding: '1px 5px' }}>required</div>;
+                            if (edSlot.late_arrival_placeholder) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#e8f4fd', border: '1px solid #a8d4f0', borderRadius: '4px', fontSize: '10px', color: '#2b63b5', padding: '1px 5px' }}>late arrival</div>;
+                            if (isRequired && !resolvedId) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff4f4', border: '1px solid #f0b3b3', borderRadius: '4px', fontSize: '10px', color: '#e07c5a', padding: '1px 5px' }}>required</div>;
                             return null;
                           })()}
-                          <div className="slot-drop" data-slot-id={opt._type} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
+                          {(() => {
+                            const edSlot = editorDay && editorDay.slots && editorDay.slots[opt._type];
+                            const isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder);
+                            return <div className="slot-drop" data-slot-id={opt._type} data-droppable={isGated ? 'false' : 'true'} aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
                             onDragOver={(e) => { e.preventDefault(); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (currentDragSlotId && !_isCompatible(currentDragSlotId, toSlotId)) { e.dataTransfer.dropEffect = 'none'; return; } e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
                             onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
                             onDrop={(e) => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); try { const payload = JSON.parse(e.dataTransfer.getData('text/plain')); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); const fromSlotId = payload.slotId || payload.originSlotId; if (fromSlotId && !_isCompatible(fromSlotId, toSlotId)) { const el = e.currentTarget; el.setAttribute('data-drop-reject', ''); setTimeout(() => el.removeAttribute('data-drop-reject'), 400); return; } if (payload.direction === 'board' && payload.sourceSlotId && saveMutations) { const dayNum = day && day.day; setEditorSelections && setEditorSelections(prev => ({ ...prev, [dayNum + ':' + payload.sourceSlotId]: null, [dayNum + ':' + toSlotId]: payload.optionId })); saveMutations(dayNum, [{ type: 'select', slot: payload.sourceSlotId, option_id: null }, { type: 'select', slot: toSlotId, option_id: payload.optionId, origin_slot_id: payload.sourceSlotId }]); } else if (window.setEditorSelection) window.setEditorSelection(toSlotId, payload.optionId, payload.originSlotId || null); } catch (_) {} }}
