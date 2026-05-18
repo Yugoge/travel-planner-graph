@@ -123,9 +123,16 @@ function _onDrop(ev) {
   if (!drop) return;
   ev.preventDefault();
   delete drop.dataset.dropActive;
-  const targetSlot = drop.closest(".slot");
-  if (!targetSlot) return;
-  const slotId = targetSlot.dataset.slotId;
+
+  // Resolve slotId: prefer data-slot-id on the .slot-drop element itself (React path),
+  // fall back to closest .slot parent (legacy path).
+  let slotId = drop.dataset.slotId;
+  if (!slotId) {
+    const targetSlot = drop.closest(".slot");
+    if (!targetSlot) return;
+    slotId = targetSlot.dataset.slotId;
+  }
+
   const payload = _parsePayload(ev);
   if (!payload || !payload.option_id) return;
   if (
@@ -136,12 +143,19 @@ function _onDrop(ev) {
     _showRejectFeedback(drop);
     return;
   }
-  _committedRequest({
-    slotId,
-    optionId: payload.option_id,
-    originSlotId: payload.origin_slot_id || null,
-    dayN: getActiveDayNumber(),
-  });
+  const dayN = _getActiveDayNumber ? _getActiveDayNumber() : null;
+
+  // React-path bridge: call window.setEditorSelection if available
+  if (typeof window.setEditorSelection === 'function') {
+    window.setEditorSelection(slotId, payload.option_id);
+  } else if (_committedRequest) {
+    _committedRequest({
+      slotId,
+      optionId: payload.option_id,
+      originSlotId: payload.origin_slot_id || null,
+      dayN,
+    });
+  }
 }
 
 const MEAL_SLOT_IDS = new Set(["breakfast", "lunch", "dinner"]);
