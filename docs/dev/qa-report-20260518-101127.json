@@ -233,11 +233,11 @@
         "requirement_id": "AC17",
         "source_phrase": "M17/bidirectional drag",
         "criterion": "Placed cards draggable from KanbanView AND TimelineView; slot-to-slot 2-mutation batch",
-        "verification_method": "grep draggable react_template.tpl; inspect onDragStart; inspect TimelineView",
+        "verification_method": "Inspect KanbanView board-drag at line 860; inspect TimelineView onDragStart at lines 1747-1749; inspect opt.option_id availability for PLAN_DATA cards via mergeEditorSelectionsIntoPublishedDay",
         "status": "fail",
         "result": "fail",
-        "details": "KanbanView meal/activity/entertainment placed cards have draggable={isSelected} and onDragStart with direction:board at lines 859,936,1009,1079. handleSidebarDrop handles direction=board deselect. Slot-to-slot 2-mutation batch logic present in slot-drop onDrop. FAIL: TimelineView (line 1409) receives no editor props, has no draggable placed cards, no onDragStart. AC17 requires BOTH KanbanView AND TimelineView.",
-        "evidence": "Line 1409 (TimelineView — no editor props), confirmed by TimelineView call site at lines 2659-2665"
+        "details": "KanbanView board-drag at line 860 structurally present: draggable={isSelected}, onDragStart with direction:board payload. TimelineView board-drag at lines 1747-1749 structurally present: draggable={!!(timelineSlotId && timelineIsSelected)}, onDragStart with direction:board payload using timelineSelectedId. Slot-to-slot 2-mutation batch in all slot-drop onDrop handlers. CRITICAL BUG: PLAN_DATA placed cards (from effectiveDay/publishedDay) do not carry option_id field. mergeEditorSelectionsIntoPublishedDay at lines 1906-1927 stamps card.selected = true but does not stamp card.option_id. KanbanView onDragStart at line 860 sends opt.option_id which is undefined for PLAN_DATA cards. JSON.stringify silently drops undefined keys → payload arrives without optionId. Slot-to-slot 2-mutation batch receives option_id: null → destination slot is cleared (set to null) instead of receiving the moved card. Both KanbanView and TimelineView draggable code exists, but the runtime option_id data is absent for PLAN_DATA-sourced placed cards.",
+        "evidence": "react_template.tpl:860 (opt.option_id on PLAN_DATA card is undefined); :1906-1927 (mergeEditorSelectionsIntoPublishedDay — no option_id stamp); slot-to-slot onDrop handlers (2-mutation batch present structurally)"
       },
       {
         "requirement_id": "AC18",
