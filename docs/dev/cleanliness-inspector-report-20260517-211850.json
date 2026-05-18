@@ -1,0 +1,161 @@
+{
+  "request_id": "cleanliness-20260517-211850",
+  "timestamp": "2026-05-18T00:00:00Z",
+  "inspector": "cleanliness-inspector",
+  "mode": "changed-files",
+  "changed_files": [
+    "scripts/lib/render_html_builders.py",
+    "scripts/serve-trip.py",
+    "scripts/lib/react_template.tpl",
+    "web/js/drag.js"
+  ],
+  "findings": {
+    "misplaced_docs": [],
+    "naming_violations": [],
+    "archive_candidates": [],
+    "dev_context_files": [],
+    "temp_files": [],
+    "duplicate_scripts": [],
+    "duplicate_tests": [],
+    "non_functional_files": [],
+    "non_functional_folders": [],
+    "orphaned_subagents": [],
+    "unreferenced_scripts": [],
+    "orphaned_tests": [],
+    "historical_docs": [],
+    "docs_categorization": [],
+    "obsolete_functionality": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "location": "line 561",
+        "reason": "Function `dayLabelShort` is marked deprecated in its own comment ('deprecated in favor of dayLabelSidebar') and has zero call sites in the file. It is dead code that can be removed.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": false,
+        "recommendation": "Remove the function after confirming no external consumers. dayLabelSidebar covers the same behavior."
+      },
+      {
+        "file": "web/js/drag.js",
+        "location": "lines 23-35",
+        "reason": "Function `initEditorDrag` is exported (new in this diff, S2 refactor) but is never imported or called anywhere in the codebase. The React editor path uses the `window.setEditorSelection` bridge exclusively; `initEditorDrag` was introduced as a framework-neutral API but never wired up.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": true,
+        "recommendation": "Either wire `initEditorDrag` into the React useEffect in react_template.tpl, or remove it until the wiring is implemented. Exporting an unused function creates a dead API surface."
+      },
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "location": "lines 1720, 1731, 1890, 1898, 1904, 1912",
+        "reason": "Six 'Finding N' comments (Finding 1a, 5, 7, 8, 10) reference temporary QA issue-tracker numbers from the dev cycle. These are transient dev artifacts that become meaningless once the cycle closes. All six are NEW in this diff.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": true,
+        "recommendation": "Replace 'Finding N:' prefixes with durable intent descriptions (e.g., 'resolve editorDay by absolute day number' instead of 'Finding 1a: resolve editorDay...'). The intent is clear; the issue number is not."
+      },
+      {
+        "file": "scripts/serve-trip.py",
+        "location": "line 91",
+        "reason": "Comment '(Finding 9).' in the docstring of `_get_or_generate_html` references a temporary dev-cycle QA finding number. This comment is NEW in this diff.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": true,
+        "recommendation": "Replace '(Finding 9)' with a durable description, e.g., 'prevents stale-write race when save and generate overlap'."
+      }
+    ],
+    "orphan_commands": [],
+    "dead_functions": [],
+    "duplicate_content": []
+  },
+  "false_positives_discarded": [
+    {
+      "candidate": "react_template.tpl:getDisplayLocation (line 462)",
+      "reason": "Initial analysis suggested this function was uncalled. Codex review and direct code inspection confirmed it IS called by the MapLink component at line 621: `const loc = getDisplayLocation(item, lang);`. Finding discarded."
+    },
+    {
+      "candidate": "web/js/drag.js:initDesktopDrag (lines 37-42)",
+      "reason": "Comment says 'not used in React path' but the function IS actively imported and called by web/js/state.js (line 17 import, line 132 call) via the vanilla DOM editor path. Not dead code."
+    },
+    {
+      "candidate": "serve-trip.py:_send_file missing Cache-Control header",
+      "reason": "Real behavioral gap but a correctness/security issue, not a file organization or code cleanliness issue. Out of scope for cleanliness inspector."
+    }
+  ],
+  "advisory_observations": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "location": "lines 444, 1877",
+      "reason": "Two comments reference 'Root cause fix (commit 8f2bddd)'. Inline commit hash references can become misleading after rebases or cherry-picks. Pre-existing, not introduced in this diff.",
+      "severity": "advisory",
+      "introduced_in_diff": false,
+      "recommendation": "Replace commit-hash references with a stable issue/spec reference or a plain intent description."
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "location": "lines 872, 938, 1005, 1072",
+      "reason": "Four inline React onDrop handlers repeat identical drag payload parsing and selection logic. This duplication is architecturally intentional (drag.js is framework-neutral and cannot be imported inside the embedded React template), but the four handlers are identical and a local template helper would reduce maintenance risk.",
+      "severity": "advisory",
+      "introduced_in_diff": true,
+      "recommendation": "Extract the repeated handler body into a local template function (e.g., `handleSlotDrop(e, toSlotId)`) called from each onDrop. Do not import from drag.js — the separation is intentional."
+    }
+  ],
+  "summary": {
+    "total_issues": 4,
+    "critical": 0,
+    "major": 0,
+    "minor": 4,
+    "advisory": 2,
+    "new_in_diff": 3,
+    "pre_existing": 1,
+    "estimated_space_saved": "0 MB"
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex reviewed the draft findings and surfaced two corrections and two refinements: (1) Finding C (getDisplayLocation as dead code) was a false positive — the function IS called by MapLink at line 621. (2) The actually-unused export is initEditorDrag, not initDesktopDrag. (3) Finding D (inline onDrop duplication) should be reworded as an advisory rather than a cleanliness violation. (4) Finding F should be broadened to cover both commit-hash comments and the newly-introduced Finding N dev-artifact comments.",
+    "findings": [
+      {
+        "issue": "Finding C (getDisplayLocation as dead code) is a false positive — MapLink calls it at line 621",
+        "proposed_fix": "Remove Finding C. getDisplayLocation is actively used by MapLink; do not delete.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Verified by direct code inspection: react_template.tpl line 621 contains 'const loc = getDisplayLocation(item, lang);'. Finding C retracted."
+      },
+      {
+        "issue": "initEditorDrag is the actual unused export in drag.js, not initDesktopDrag. initEditorDrag was introduced by this diff but never wired up.",
+        "proposed_fix": "Add new minor finding: web/js/drag.js exports initEditorDrag but no path imports or calls it.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "grep confirms initEditorDrag appears only in drag.js (definition). No import or call site exists in any .js, .tpl, .html, or .py file. This is new in this diff."
+      },
+      {
+        "issue": "Finding D (inline onDrop duplication) is architectural, not a cleanliness violation",
+        "proposed_fix": "Reword as advisory: extract a local template helper to reduce duplication, but do not classify as a blocking cleanliness finding.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "The duplication is intentional by design (drag.js is framework-neutral). Reclassified as advisory observation."
+      },
+      {
+        "issue": "Finding F should cover both commit-hash comments and newly-introduced Finding N dev-artifact comments",
+        "proposed_fix": "Extend to include all Finding N comments in react_template.tpl and serve-trip.py as new-in-diff findings.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Finding N comments (1a, 5, 7, 8, 9, 10) are all new in this diff and constitute transient dev artifacts that should be replaced with durable intent descriptions."
+      },
+      {
+        "issue": "Finding A (dayLabelShort deprecated dead code) is valid but pre-existing, non-blocking",
+        "proposed_fix": "Keep as minor, introduced_in_diff: false.",
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "Confirmed: dayLabelShort was already in b34faf4b (0 call sites). Pre-existing artifact, not a cycle regression."
+      },
+      {
+        "issue": "Finding E (Cache-Control missing from _send_file) is out of cleanliness scope",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Correctness/security issue, not file organization. Out of scope per cleanliness inspector role definition."
+      }
+    ],
+    "feedback_incorporated": "Applied 4 of 6 codex findings: retracted false positive C, added new initEditorDrag finding, reclassified inline-onDrop handlers as advisory, extended Finding-N comment scope to cover all new dev-artifact comments. Two findings were observation_only and logged without action."
+  }
+}
