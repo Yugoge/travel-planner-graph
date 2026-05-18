@@ -1874,16 +1874,18 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
   // Non-meal slots
   const activitySlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
 
-  // Drop handler: drop from CandidatesSidebar onto CandidatesSidebar = deselect plan→candidates (M17b)
+  // Drop handler: drop from CandidatesSidebar or board onto CandidatesSidebar = deselect (M17b)
   const handleSidebarDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     try {
       const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-      if (payload.direction === 'plan-to-candidates' && payload.sourceSlotId) {
-        const key = dayNum + ':' + payload.sourceSlotId;
+      const srcSlotId = payload.sourceSlotId || payload.slotId;
+      // board card dropped onto sidebar → deselect from source slot
+      if ((payload.direction === 'plan-to-candidates' || payload.direction === 'board') && srcSlotId) {
+        const key = dayNum + ':' + srcSlotId;
         setEditorSelections(prev => ({ ...prev, [key]: null }));
-        saveMutations(dayNum, [{ type: 'select', slot: payload.sourceSlotId, option_id: null }]);
+        saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]);
       }
     } catch (_) {}
   };
