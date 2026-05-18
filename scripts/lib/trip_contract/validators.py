@@ -344,8 +344,17 @@ def _check_selected_id_exists(slot: dict, slot_id: str, position: str) -> list[V
     return []
 
 
+REQUIRED_SLOT_KEYS = ['accommodation', 'breakfast', 'lunch', 'dinner']
+
+
 def _check_stage_gate(day_dict: dict, position: str) -> list[ValidationError]:
-    """If stage >= user-selected, every non-skipped slot must have selected_option_id."""
+    """If stage >= user-selected, required non-skipped slots must have selected_option_id.
+
+    STAGE_GATE_VIOLATION is applied only for slots in REQUIRED_SLOT_KEYS
+    (accommodation, breakfast, lunch, dinner).  Activity slots are excluded from
+    the stage gate but still validated for referential integrity via
+    _check_selected_id_exists (which runs for all 7 slots).
+    """
     stage = day_dict.get("stage", "draft-options")
     stage_idx = STAGE_INDEX.get(stage, 0)
     user_selected_idx = STAGE_INDEX["user-selected"]
@@ -353,8 +362,10 @@ def _check_stage_gate(day_dict: dict, position: str) -> list[ValidationError]:
     for slot_id in NAMED_SLOTS + [ACCOMMODATION_SLOT]:
         slot = _slot_dict(day_dict, slot_id) or {}
         if slot.get("skipped"):
+            # Always verify selected_option_id (when present) actually exists in options[]
+            errs.extend(_check_selected_id_exists(slot, slot_id, position))
             continue
-        if stage_idx >= user_selected_idx and slot.get("selected_option_id") is None:
+        if slot_id in REQUIRED_SLOT_KEYS and stage_idx >= user_selected_idx and slot.get("selected_option_id") is None:
             errs.append(ValidationError(
                 code="STAGE_GATE_VIOLATION",
                 path=f"{_slot_path(position, slot_id)}.selected_option_id",
