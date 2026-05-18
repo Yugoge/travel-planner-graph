@@ -2046,7 +2046,8 @@ function NotionTravelApp() {
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
   const [mobileTab, setMobileTab] = useState('kanban'); // 'kanban'|'timeline'|'candidates'
   const [pendingSelection, setPendingSelection] = useState(null); // {optionId, slotId, originSlotId} for tap-to-select
-  const requestSeqRef = React.useRef(0);
+  const saveSeqRef = React.useRef(0);    // monotonic counter for saveMutations only
+  const budgetSeqRef = React.useRef({}); // per-day counters for recomputeBudget
   const saveStateRef = React.useRef('idle');
   const lastSaveTsRef = React.useRef(null);
   const [saveStatusText, setSaveStatusText] = useState('');
