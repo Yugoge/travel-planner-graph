@@ -1,0 +1,212 @@
+{
+  "request_id": "20260518-101127",
+  "task_id": "20260518-101127",
+  "timestamp": "2026-05-18T10:45:00Z",
+  "qa_report_path": "docs/dev/qa-report-20260518-101127.json",
+  "qa": {
+    "status": "fail",
+    "phase": "pre-dev",
+    "verdict": "Spec is NOT ready for dev: 6 blockers found across AC2 (backward compat gap), AC10/AC17 (deselect semantic conflict), AC20/M20 (client-only vs server origin_slot_id), AC24/Hint-19 (required-slot set contradiction), AC17/persistence (no save mutation specified for source clear), and validators.py stage-gate conflict with AC24.",
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed all 4 QA-identified blockers (Findings 1, 2, 5, 7) and added 2 new blockers (M17 persistence underspecified; validators.py stage-gate contract mismatch) plus 2 warnings (origin attribute naming drift; mobile breakpoint boundary ambiguity). Codex also upgraded Finding 5: 'set null explicitly' is insufficient because `null ?? persistedId` still falls back — AC10's ?? operator conflicts with AC17's clearing semantics.",
+      "feedback_incorporated": "All Codex PROPOSED_FIX items evaluated. Blockers 1-6 all incorporated into this report. Two Codex warnings incorporated as warnings W1-W2. No Codex finding rejected."
+    },
+    "blockers": [
+      {
+        "id": "B1",
+        "ac": "AC24 / M24 / Technical Hint 19",
+        "severity": "blocker",
+        "title": "Required-slot definition contradiction: AC24 specifies 4 slots; Hint 19 references a 7-slot function",
+        "description": "AC24 (ticket line 420-430) defines required slots as 'accommodation + breakfast + lunch + dinner' (4 slots). Technical Hint 19 says 'mirror _allRequiredSlotsFilled from web/js/state.js — iterate ALL_SLOT_KEYS'. But ALL_SLOT_KEYS = NAMED_SLOTS.concat(['accommodation']) = [breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity, accommodation] — 7 slots. The function _allRequiredSlotsFilled (state.js:604-610) does NOT call _isRequiredSlot (state.js:562-565); _isRequiredSlot is a separate, unused helper within that function. If dev mirrors _allRequiredSlotsFilled literally, the Approve button will be disabled whenever any ACTIVITY slot (morning_activity, afternoon_activity, evening_activity) is unfilled or absent, directly violating AC24's intent.",
+        "evidence": {
+          "ac24_required_slots": "accommodation, breakfast, lunch, dinner (ticket-20260518-101127.md:424)",
+          "hint19_text": "mirror _allRequiredSlotsFilled from web/js/state.js — iterate ALL_SLOT_KEYS (ticket line ~532)",
+          "state_js_all_slot_keys": "web/js/state.js:53 — const ALL_SLOT_KEYS = NAMED_SLOTS.concat(['accommodation'])",
+          "state_js_named_slots": "web/js/state.js:22-29 — NAMED_SLOTS = [breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity]",
+          "state_js_allrequiredslotsfilled": "web/js/state.js:604-611 — iterates ALL_SLOT_KEYS; _isRequiredSlot not called",
+          "state_js_isrequiredslot": "web/js/state.js:562-565 — separate helper, checks accommodation or MEAL_SLOTS"
+        },
+        "proposed_fix": "Replace Technical Hint 19 with explicit required-only logic: 'const REQUIRED_SLOT_KEYS = [\"accommodation\", \"breakfast\", \"lunch\", \"dinner\"]; implement allRequiredSlotsFilled iterating only REQUIRED_SLOT_KEYS — NOT ALL_SLOT_KEYS'. Add an AC24 positive edge case: 'GIVEN accommodation/breakfast/lunch/dinner are filled AND morning_activity is absent or unfilled, WHEN Approve renders, THEN Approve is enabled (if stage is draft-options or user-review)'. Apply same required-only gating to AC26 export button validation."
+      },
+      {
+        "id": "B2",
+        "ac": "AC20 / M20",
+        "severity": "blocker",
+        "title": "AC20 'client-side only, no backend call' conflicts with save.py origin_slot_id persistence path",
+        "description": "AC20 says cross-meal copy is 'client-side-only idempotent copy; no backend change'. However, scripts/lib/server/save.py:_apply_select_mutation (lines 75-104) already implements server-side cross-meal option copy when origin_slot_id is provided in the mutation. The current window.setEditorSelection bridge (react_template.tpl:1924) sends origin_slot_id: null, disabling the server copy. The new React model must decide: (a) purely client-side in editorSelections state only — but then after a page reload the server-side persisted day data will NOT have the option in dinner.options[], causing a broken state; OR (b) pass origin_slot_id in the /api/save mutation — but AC20 says 'no backend call'. The two approaches are mutually exclusive and the spec does not resolve which. Without the origin_slot_id in the save payload, a user drops a breakfast option onto dinner, it appears selected in the session, but on reload dinner.options is missing the option and the selection disappears.",
+        "evidence": {
+          "ac20_text": "client-side-only idempotent copy; no backend API call is made for the copy (ticket line 375-382)",
+          "save_py_cross_meal_copy": "scripts/lib/server/save.py:81-103 — _apply_select_mutation performs copy when origin_slot_id is set and both slots are meal slots",
+          "react_bridge_origin_null": "scripts/lib/react_template.tpl:1924 — origin_slot_id: null (hardcoded null in current bridge)",
+          "drag_js_origin": "web/js/drag.js:73 — origin_slot_id: card.dataset.originSlotId || null"
+        },
+        "proposed_fix": "Clarify AC20 to: 'The frontend copies the option object into the target slot's editorSelections or editorTripData state (client-side only for the in-session view). The /api/save mutation for this selection MUST include origin_slot_id so the existing server-side save.py persistence logic can durably copy the option into the target slot's options[] for persistence across reloads. This is NOT a new backend change — save.py already handles origin_slot_id.' Also add a reload durability test: 'GIVEN option X selected from breakfast dropped onto dinner, WHEN page is reloaded, THEN dinner still shows X as selected and dinner.options[] contains X.'"
+      },
+      {
+        "id": "B3",
+        "ac": "AC10 / M9 / AC17 / M17",
+        "severity": "blocker",
+        "title": "deselect semantics conflict: AC17 clearing with AC10's ?? fallback operator makes null set insufficient",
+        "description": "AC17 says plan→candidates drag 'clears that slot's selected_option_id'. AC10/M9 specifies that the selected candidate is identified by 'editorSelections[dayKey + \":\" + slotId] ?? slot.selected_option_id'. If dev sets editorSelections[key] = null to deselect, the ?? operator will fall through to slot.selected_option_id (the published/persisted value), which may be non-null — so the slot will STILL appear selected. Setting to null is not sufficient; deleting the key causes the same problem (key absent -> ?? -> falls back to published value). AC10 and AC17 create an unresolvable conflict: the ?? operator needed for AC10's fallback behavior makes AC17's deselection impossible without changing the lookup semantics.",
+        "evidence": {
+          "ac10_lookup": "editorSelections[dayKey + ':' + slotId] ?? slot.selected_option_id (ticket line 289)",
+          "ac17_clear": "that slot's selected_option_id is cleared (ticket line 350)",
+          "null_coalescence": "JavaScript: null ?? 'persistedId' === 'persistedId' — null does NOT prevent fallback with ?? operator"
+        },
+        "proposed_fix": "Change AC10 lookup to use key-presence semantics instead of ??: 'const key = dayKey + \":\" + slotId; const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id'. Then AC17 deselect = set editorSelections[key] = null (explicit null, key present). AC10's fallback to published value only fires when key is ABSENT (never explicitly set). Update M9/AC10 text to reflect hasOwnProperty semantics rather than ?? operator."
+      },
+      {
+        "id": "B4",
+        "ac": "AC2 / M2",
+        "severity": "blocker",
+        "title": "AC2 requires two positional args for generate_html but does not mandate trip_id=None default, leaving generate-html-interactive.py:598 as a guaranteed runtime crash",
+        "description": "AC2 (ticket line 220-226) specifies 'generate_html signature is generate_html(gen, trip_id) (two positional args)'. The existing caller at scripts/generate-html-interactive.py:598 calls _bld.generate_html(self) with ONE positional arg. If dev implements two required positional args, this call site will raise a TypeError at runtime. Technical Hint 1 (ticket line 496) mentions this risk: 'generate_html should accept trip_id=None as default OR that call site must also be updated'. However, AC2 does not REQUIRE either the default OR updating the call site — it only specifies the signature. An AC that does not mandate safe behavior is unenforceable: dev can pass AC2 with two required positional args and break the existing call site without violating any AC.",
+        "evidence": {
+          "ac2_signature": "generate_html signature is generate_html(gen, trip_id) (two positional args) (ticket line 224)",
+          "existing_caller": "scripts/generate-html-interactive.py:598 calls _bld.generate_html(self) with one arg (context JSON component_chain)",
+          "hint1_risk": "Technical Hint 1 mentions trip_id=None or updating call site — but AC2 does not require either (ticket line 496)"
+        },
+        "proposed_fix": "Update AC2 to explicitly require: 'generate_html signature is generate_html(gen, trip_id=None) with trip_id defaulting to None; OR all call sites are updated to pass trip_id; AND scripts/generate-html-interactive.py must still execute successfully after the change.' Preferred: add trip_id=None default."
+      },
+      {
+        "id": "B5",
+        "ac": "AC17 / M17",
+        "severity": "blocker",
+        "title": "AC17 bidirectional drag describes UI state clearing but does not specify required /api/save mutations for source slot clear — reload will resurrect deselected cards",
+        "description": "AC17 specifies that plan→candidates drag 'clears that slot's selected_option_id' and slot→slot move 'clears slot A's selected_option_id'. This describes React state change only. The spec does NOT require a /api/save mutation to persist the source slot clear. If only editorSelections state is updated without a backend save for the source clear, a page reload will resurrect the previously placed card in the source slot (because the server-side day JSON still has selected_option_id set). Codex flagged this as a blocker.",
+        "evidence": {
+          "ac17_text": "slot A's selected_option_id is cleared AND slot B's selected_option_id is set in a single state update (ticket line 353)",
+          "missing_save_spec": "No /api/save mutation requirement for source slot clear anywhere in AC17, M17, or Technical Hint 11",
+          "reload_risk": "Server day JSON retains old selected_option_id; on reload effectiveDay merges from server state, not editorSelections"
+        },
+        "proposed_fix": "Add to AC17: 'For plan→candidates: the frontend sends POST /api/save with mutation { type: \"select\", slot: sourceSlotId, option_id: null } to clear the server-side selection; for slot→slot: the frontend sends POST /api/save with a batch mutation clearing source and setting destination in a single request. The save must complete before the deselection is considered durable.'"
+      },
+      {
+        "id": "B6",
+        "ac": "AC24 / AC26 / validators.py",
+        "severity": "blocker",
+        "title": "validators.py stage-gate contract checks ALL 7 slots, conflicting with AC24 required-only definition — approving a day via AC8 with unfilled activity slots will trigger STAGE_GATE_VIOLATION",
+        "description": "scripts/lib/trip_contract/validators.py:_check_stage_gate (lines 347-365) checks that when stage >= user-selected, 'every non-skipped slot must have selected_option_id' — it iterates NAMED_SLOTS + [ACCOMMODATION_SLOT] (all 7 slots). AC24 says the Approve button is enabled when only accommodation + breakfast + lunch + dinner are filled. This means a user can approve a day (per AC24) with empty morning_activity/afternoon_activity/evening_activity, but the validator will then reject the save mutation with STAGE_GATE_VIOLATION because the activity slots are unfilled. The backend and the frontend spec are directly contradictory.",
+        "evidence": {
+          "validators_py": "scripts/lib/trip_contract/validators.py:353 — iterates NAMED_SLOTS + [ACCOMMODATION_SLOT] (all 7 slots)",
+          "validators_py_message": "stage='user-selected' requires non-skipped slot 'morning_activity' to have selected_option_id",
+          "ac24_enable_condition": "all non-skipped required slots (accommodation, breakfast, lunch, or dinner) have a selected_option_id (ticket line 425)"
+        },
+        "proposed_fix": "BA must resolve the conflict between validators.py and AC24 before dev starts. Two options: (1) Update validators.py stage-gate to only check required slots (accommodation, breakfast, lunch, dinner) — non-required activity slots are not gated. (2) Update AC24/M24 to require ALL non-skipped slots across all 7 slot types to be filled before Approve is enabled, matching the current validator. This is a BA/PM decision; do not leave divergent."
+      }
+    ],
+    "warnings": [
+      {
+        "id": "W1",
+        "ac": "AC19 / M19 / Technical Hint 11",
+        "severity": "warning",
+        "title": "origin attribute naming drift: Hint 11 says data-origin-slot; M19 says data-origin-slot-id; drag.js uses dataset.originSlotId",
+        "description": "M19 (ticket line 122) specifies each meal card carries 'data-origin-slot-id=<source slot key>'. Technical Hint 11 says 'the dragstart handler must set data-origin-slot on the payload' — missing the -id suffix. The existing drag.js reads dataset.originSlotId (camelCase from data-origin-slot-id). These are inconsistent. If dev follows Hint 11 and uses data-origin-slot, drag.js would read it as dataset.originSlot (undefined) and origin_slot_id would always be null.",
+        "evidence": {
+          "m19_attribute": "data-origin-slot-id (ticket line 122)",
+          "hint11_attribute": "data-origin-slot (ticket line 516)",
+          "drag_js": "web/js/drag.js:73 — card.dataset.originSlotId (reads from data-origin-slot-id)"
+        },
+        "proposed_fix": "Correct Technical Hint 11 to use data-origin-slot-id (with -id suffix), matching M19 and existing drag.js behavior."
+      },
+      {
+        "id": "W2",
+        "ac": "AC13 / M12",
+        "severity": "warning",
+        "title": "Mobile breakpoint boundary ambiguity at 768px — AC13 does not specify boundary-inclusive behavior",
+        "description": "M12 says isMobileLayout = window.innerWidth < 768. AC13 tests at 390px (mobile) and 1440px (desktop) but does not specify what happens at exactly 768px. The spec notes that existing useBreakpoint() returns 'sm' at <640px — both coexist. There is no test at the boundary (767px, 768px). A dev implementing with <= instead of < would pass all specified test widths but produce different behavior at the boundary.",
+        "evidence": {
+          "m12_condition": "isMobileLayout = window.innerWidth < 768 (ticket line 114)",
+          "ac13_test_widths": "390px mobile, 1440px desktop (ticket line 313-320)",
+          "existing_breakpoint": "useBreakpoint() uses <640px (Technical Hint 7)"
+        },
+        "proposed_fix": "Add AC13 boundary test: 'GIVEN viewport width = 767px, THEN mobile layout is active (Candidates as tab, no fixed sidebar). GIVEN viewport width = 768px, THEN desktop layout is active (3-column with sidebar).' This removes implementation ambiguity about the boundary."
+      },
+      {
+        "id": "W3",
+        "ac": "AC11 / AC25 / M10 / M25",
+        "severity": "warning",
+        "title": "Budget recompute stale-response guard uses request_seq but specification does not define scope (per-day vs global)",
+        "description": "M10/M25 both specify 'same stale-response guard (request_seq)' for budget recompute. The spec does not clarify whether request_seq is global or per-day. If the user switches between day 1 and day 2 rapidly, a global sequence counter would discard valid responses from day 2 if a stale day 1 response arrives later. A per-day counter avoids this but adds implementation complexity.",
+        "proposed_fix": "Clarify AC25: 'The stale-response guard is per-day (each day maintains its own monotonic request_seq counter for budget recompute).' or 'The stale-response guard is global (a single counter; switching days increments it).'"
+      }
+    ],
+    "per_ac_verification": {
+      "AC1": { "status": "pass", "notes": "Testable grep-based AC. EDITOR_MODE absent from generated HTML and template are both verifiable." },
+      "AC2": { "status": "fail", "blocker": "B4", "notes": "Signature requires trip_id=None default or call-site update; AC2 does not mandate either." },
+      "AC3": { "status": "pass", "notes": "DOM presence check is testable." },
+      "AC4": { "status": "pass", "notes": "Screenshot comparison AC is testable." },
+      "AC5": { "status": "pass", "notes": "Save status states testable via fetch mock." },
+      "AC6": { "status": "pass", "notes": "dispatchEvent offline/online is testable." },
+      "AC7": { "status": "pass", "notes": "Both 409-soft (HTTP 200 + body) and HTTP 409 cases specified." },
+      "AC8": { "status": "pass", "notes": "Stage mutation shape verified from save.py; user-selected stage name correct." },
+      "AC9": { "status": "pass", "notes": "Grep-based AC; unconditional effectiveDay testable." },
+      "AC10": { "status": "fail", "blocker": "B3", "notes": "?? operator conflicts with AC17 deselect semantics." },
+      "AC11": { "status": "pass", "notes": "Budget recompute endpoint verified at serve-trip.py:218." },
+      "AC12": { "status": "pass", "notes": "Correctly amended to cross-reference AC23." },
+      "AC13": { "status": "warning", "warning": "W2", "notes": "Testable but boundary ambiguous." },
+      "AC14": { "status": "pass", "notes": "Two-step tap-to-select is testable via touch simulation." },
+      "AC15": { "status": "pass", "notes": "Cover image update on accommodation change is testable." },
+      "AC16": { "status": "pass", "notes": "No direct DOM mutation + PLAN_DATA preservation testable." },
+      "AC17": { "status": "fail", "blocker": "B3 B5", "notes": "Deselect semantics conflict with AC10; source-slot save mutation unspecified." },
+      "AC18": { "status": "pass", "notes": "_isCompatible logic verified against drag.js:163-168; spec matches." },
+      "AC19": { "status": "warning", "warning": "W1", "notes": "data-origin-slot-id attribute name correct in M19; Hint 11 typo." },
+      "AC20": { "status": "fail", "blocker": "B2", "notes": "client-side only claim conflicts with needed origin_slot_id in save mutation for reload durability." },
+      "AC21": { "status": "pass", "notes": "400ms reject flash verified from drag.js:171; data-drop-active/data-drop-reject testable." },
+      "AC22": { "status": "pass", "notes": "Distinct slot states testable via DOM inspection." },
+      "AC23": { "status": "pass", "notes": "Unknown+retry UI testable; correctly amends AC12." },
+      "AC24": { "status": "fail", "blocker": "B1 B6", "notes": "Required slots definition contradicts Hint 19 and validators.py." },
+      "AC25": { "status": "warning", "warning": "W3", "notes": "Recompute on load+switch testable; request_seq scope underspecified." },
+      "AC26": { "status": "fail", "blocker": "B1", "notes": "Export gating uses same required-slot definition; inherits B1 contradiction." },
+      "AC27": { "status": "pass", "notes": "15s setInterval verified from state.js:814; testable." },
+      "AC28": { "status": "pass", "notes": "conn-status element + data-state toggle testable." },
+      "AC29": { "status": "pass", "notes": "Dismiss button additive to AC7 reload; correctly specified." }
+    },
+    "file_line_verification": {
+      "serve_trip_py_218_budget_recompute": "VERIFIED — line 218: if path == '/api/budget/recompute': return self._handle_post_budget()",
+      "serve_trip_py_222_export_dispatch": "VERIFIED — line 222: if path.startswith('/api/export/'): return self._handle_post_export(...)",
+      "serve_trip_py_308_export_handler": "VERIFIED — line 308: def _handle_post_export(self, kind: str)",
+      "serve_trip_py_52_import": "VERIFIED — line 52: from lib.render_html_builders import generate_editor_html",
+      "serve_trip_py_83_call": "VERIFIED — line 83: return generate_editor_html(gen, trip_id)",
+      "render_html_builders_py_344_html_script": "VERIFIED — line 344: HTML_SCRIPT contains EDITOR_MODE = __EDITOR_MODE__",
+      "render_html_builders_py_359_generate_html": "VERIFIED — line 359: def generate_html(gen): EDITOR_MODE=false",
+      "render_html_builders_py_375_generate_editor_html": "VERIFIED — line 375: def generate_editor_html(gen, trip_id): EDITOR_MODE=true",
+      "react_template_tpl_1930_ternary": "VERIFIED — line 1930: const day = EDITOR_MODE ? effectiveDay : publishedDay",
+      "react_template_tpl_2120_candidates_sidebar": "VERIFIED — line 2120: {EDITOR_MODE && (<CandidatesSidebar ...)}}",
+      "state_js_814_setinterval": "VERIFIED — line 814: setInterval(renderHeader, 15000)",
+      "state_js_598_612_approve": "VERIFIED — lines 590-612: renderApproveButton with _allRequiredSlotsFilled iterating ALL_SLOT_KEYS",
+      "save_py_apply_stage_mutation": "VERIFIED — line 117: _apply_stage_mutation uses to_stage; user-selected stage name correct",
+      "save_py_origin_slot_id_copy": "VERIFIED — lines 81-103: cross-meal copy fires when origin_slot_id is set and both slots are meal slots",
+      "drag_js_163_iscompatible": "VERIFIED — lines 163-168: _isCompatible logic matches M18 spec exactly"
+    },
+    "m16_not_in_spec_note": "M16 does not exist in the MoSCoW list (M1-M15 then M17-M29). This is not a bug — M16 was intentionally skipped or the numbering jumped. No blocker.",
+    "codex_additional_findings_disposition": [
+      {
+        "codex_finding": "Stage-gate contract mismatch in validators.py",
+        "disposition": "incorporated_as_blocker",
+        "blocker_id": "B6",
+        "rationale": "Real runtime conflict: approving a day per AC24 (meals + accommodation filled, activities empty) will cause a STAGE_GATE_VIOLATION from validators.py when the save mutation is processed."
+      },
+      {
+        "codex_finding": "M17 persistence underspecified — reload resurrects cleared cards",
+        "disposition": "incorporated_as_blocker",
+        "blocker_id": "B5",
+        "rationale": "UI-only state change without /api/save for source clear is not durable. Reload will resurrect the old selection."
+      },
+      {
+        "codex_finding": "Origin attribute naming drift (data-origin-slot vs data-origin-slot-id)",
+        "disposition": "incorporated_as_warning",
+        "warning_id": "W1",
+        "rationale": "Not a blocker because M19 (AC authority) is correct; Hint 11 has a typo. Dev following M19 not Hint 11 would be correct. But hint mismatch risks confusion."
+      },
+      {
+        "codex_finding": "Mobile breakpoint boundary ambiguity",
+        "disposition": "incorporated_as_warning",
+        "warning_id": "W2",
+        "rationale": "Both 390px and 1440px test widths are far from the 768px boundary; boundary behavior is ambiguous but unlikely to affect user experience."
+      }
+    ]
+  }
+}
