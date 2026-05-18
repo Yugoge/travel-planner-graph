@@ -2113,7 +2113,12 @@ function NotionTravelApp() {
     }}>
       <Sidebar
         trips={PLAN_DATA.trips} selTrip={selTrip} selDay={selDay}
-        onSelect={(ti, di) => { setSelTrip(ti); setSelDay(di); }}
+        onSelect={(ti, di) => {
+          setSelTrip(ti); setSelDay(di);
+          // Budget recompute on day switch (M25)
+          const newDay = PLAN_DATA.trips[ti] && PLAN_DATA.trips[ti].days && PLAN_DATA.trips[ti].days[di];
+          if (newDay) recomputeBudget(newDay.day);
+        }}
         isOpen={sbOpen} onClose={() => setSbOpen(false)} bp={bp}
         lang={lang}
       />
