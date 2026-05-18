@@ -2283,8 +2283,69 @@ function NotionTravelApp() {
           </div>
         )}
 
-        {day ? (
-          view === 'kanban'
+        {/* Approve Day button (M8, M24) */}
+        {TRIP_ID && day && (() => {
+          const REQUIRED_SLOT_KEYS_BTN = ['accommodation', 'breakfast', 'lunch', 'dinner'];
+          const allFilled = REQUIRED_SLOT_KEYS_BTN.every(slotId => {
+            const slot = day.slots ? day.slots[slotId] : null;
+            if (!slot) {
+              // Check effectiveDay top-level for accommodation
+              if (slotId === 'accommodation') return !!day.accommodation;
+              if (slotId === 'breakfast' || slotId === 'lunch' || slotId === 'dinner') {
+                return !!(day.meals && day.meals[slotId]);
+              }
+              return false;
+            }
+            if (slot.skipped) return true;
+            const key = day.day + ':' + slotId;
+            const resolved = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id;
+            return !!resolved;
+          });
+          const isApproved = day.stage === 'user-selected';
+          const canApprove = allFilled && (day.stage === 'draft-options' || day.stage === 'user-review');
+          const approveDisabled = isApproved || !canApprove;
+          return (
+            <div style={{ padding: '6px 20px', borderBottom: '1px solid #f0efed', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                disabled={approveDisabled}
+                onClick={() => {
+                  if (approveDisabled) return;
+                  const dayNum = day.day;
+                  saveMutations(dayNum, [{ type: 'stage', from_stage: day.stage, to_stage: 'user-selected' }]);
+                }}
+                style={{
+                  fontSize: '12px', padding: '5px 14px', borderRadius: '5px', fontWeight: '600',
+                  background: isApproved ? '#e9f5ec' : approveDisabled ? '#f5f5f3' : '#45b26b',
+                  color: isApproved ? '#1a7a32' : approveDisabled ? '#c4c4c0' : '#fff',
+                  border: '1px solid ' + (isApproved ? '#a2d9b1' : approveDisabled ? '#e0e0e0' : '#3a9a5c'),
+                  cursor: approveDisabled ? 'default' : 'pointer', transition: 'all .12s'
+                }}
+              >
+                {isApproved ? 'Approved' : 'Approve Day'}
+              </button>
+            </div>
+          );
+        })()}
+        {day ? (() => {
+          const activeView = isMobileLayout ? mobileTab : view;
+          if (isMobileLayout && activeView === 'candidates') {
+            return (
+              <CandidatesSidebar
+                editorTripData={editorTripData}
+                publishedDay={publishedDay}
+                lang={lang}
+                editorSelections={editorSelections}
+                saveMutations={saveMutations}
+                setEditorSelections={setEditorSelections}
+                editorDay={editorDay}
+                pendingSelection={pendingSelection}
+                setPendingSelection={setPendingSelection}
+                setEditorTripData={setEditorTripData}
+                inlineMode={true}
+              />
+            );
+          }
+          return activeView === 'kanban'
             ? <KanbanView
                 day={day}
                 tripSummary={PLAN_DATA.trip_summary}
@@ -2295,6 +2356,13 @@ function NotionTravelApp() {
                 onItemClick={handleItemClick}
                 onBudgetClick={handleBudgetClick}
                 editorDay={editorDay}
+                editorSelections={editorSelections}
+                saveMutations={saveMutations}
+                setEditorSelections={setEditorSelections}
+                pendingSelection={pendingSelection}
+                setPendingSelection={setPendingSelection}
+                setEditorTripData={setEditorTripData}
+                editorTripData={editorTripData}
               />
             : <TimelineView
                 day={day}
@@ -2302,8 +2370,8 @@ function NotionTravelApp() {
                 lang={lang}
                 mapProvider={mapProvider}
                 onItemClick={handleItemClick}
-              />
-        ) : (
+              />;
+        })() : (
           <div style={{ padding: `60px ${sm ? '16px' : '48px'}`, color: '#c4c4c0' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗺️</div>
             <div style={{ fontWeight: '500', fontSize: '16px', color: '#9b9a97' }}>{trip?.name}</div>
