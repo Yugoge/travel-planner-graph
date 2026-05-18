@@ -1948,6 +1948,7 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
         const selOpt = edSlot && edSlot.options && edSlot.options.find(o => o.option_id === selectedId);
         if (selOpt && (card.name_base === selOpt.name || card.name_local === selOpt.name_local)) {
           card.selected = true;
+          card.option_id = selOpt.option_id;
         }
       }
     } else {
