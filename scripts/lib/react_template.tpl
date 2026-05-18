@@ -715,7 +715,7 @@ const ExpandableNotes = ({ text, textLocal, lang, maxLines = 2 }) => {
   );
 };
 
-const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onItemClick, onBudgetClick, editorDay }) => {
+const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onItemClick, onBudgetClick, editorDay, liveDayTotal }) => {
   const sm = bp === 'sm';
   const px = sm ? '16px' : bp === 'md' ? '32px' : '48px';
 
