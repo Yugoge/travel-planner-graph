@@ -2204,14 +2204,19 @@ function NotionTravelApp() {
     setEditorSelections(prev => ({ ...prev, [key]: optionId }));
   }, [publishedDay]);
 
-  // Expose legacy bridge for compatibility
+  // Expose legacy bridge for compatibility (deps: publishedDay.day, saveMutations)
   useEffect(() => {
-    window.setEditorSelection = (slotId, optionId) => {
+    const bridge = (slotId, optionId, originSlotId = null) => {
       const dayNum = publishedDay && publishedDay.day;
+      if (!dayNum) return;
       setEditorSelections(prev => ({ ...prev, [dayNum + ':' + slotId]: optionId }));
-      saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }]);
+      saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
     };
-  });
+    window.setEditorSelection = bridge;
+    return () => {
+      if (window.setEditorSelection === bridge) delete window.setEditorSelection;
+    };
+  }, [publishedDay && publishedDay.day, saveMutations]);
 
   // Budget recompute on page load after editorTripData fetched (M25)
   const editorTripDataRef = React.useRef(null);
