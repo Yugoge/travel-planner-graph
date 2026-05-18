@@ -40,62 +40,25 @@
         "evidence": "AC11 (ticket line 300) now reads: 'WHEN any selection-changing save completes successfully — candidates→plan drop, plan→candidates deselect, slot→slot move, or tap-to-select — and POST /api/save returns 200'. All four selection-changing directions are now explicitly covered."
       }
     },
-    "blockers": [
-      {
-        "id": "NB7",
-        "ac": "AC5 / M5 / M7 / AC7",
-        "severity": "blocker",
-        "title": "AC5 does not exclude HTTP 409 from the error save state — contradicts M5's explicit exclusion",
-        "description": "M5 (ticket line 107) says: 'error on network failure or non-OK responses other than HTTP 409 (HTTP 409 is handled by ConflictBanner per M7 — it does NOT trigger the error save state)'. M5 is unambiguous: HTTP 409 must NOT set the error save state. AC7 (line 270) was fixed in NB4 to require ConflictBanner unconditionally for HTTP 409. However AC5 (ticket lines 250-253) still reads: 'shows error if the POST returns non-2xx or network error'. HTTP 409 is non-2xx. AC5 does not exclude it. A dev implementing strictly from AC5 would set error save state for HTTP 409 (violating M5's 'does NOT trigger the error save state'). The only spec text that excludes 409 from error state is M5 — but ACs are where dev implements tests. The AC layer must carry the exclusion explicitly.",
-        "evidence": {
-          "m5_text": "error on network failure or non-OK responses other than HTTP 409 (HTTP 409 is handled by ConflictBanner per M7 — it does NOT trigger the error save state) (ticket line 107)",
-          "ac5_text": "shows 'error' if the POST returns non-2xx or network error (ticket line 252) — does NOT exclude HTTP 409",
-          "ac7_text": "ConflictBanner appears (same unconditional requirement as the 409-soft case above; generic save error state is for all other non-2xx responses only) (ticket line 270)",
-          "conflict": "M5 and AC7 both say HTTP 409 must NOT trigger error save state. AC5 says error for any non-2xx, which includes 409."
-        },
-        "proposed_fix": "Update AC5 line 252 to: 'shows error if the POST returns a network error or a non-2xx response other than HTTP 409; HTTP 409 shows ConflictBanner per AC7 and does NOT set the generic save error state'."
+    "nb7_through_nb10_resolution": {
+      "NB7": {
+        "status": "resolved",
+        "evidence": "AC5 (ticket line 252) now reads: 'shows error if the POST returns a network error or a non-2xx response other than HTTP 409; HTTP 409 shows ConflictBanner per AC7 and does NOT set the generic save error state'. The 'other than HTTP 409' exclusion and 'does NOT set the generic save error state' clause are both present. M5 (line 107) alignment confirmed: 'error on network failure or non-OK responses other than HTTP 409 (HTTP 409 is handled by ConflictBanner per M7 — it does NOT trigger the error save state)'."
       },
-      {
-        "id": "NB8",
-        "ac": "AC26 / M26 / AC24",
-        "severity": "blocker",
-        "title": "AC26 export gating does not explicitly include absent required-slot key (missing state) as a disabled condition — same class as NB5 for Approve",
-        "description": "AC24 was fixed in NB5: it now explicitly states that a required slot key ABSENT from effectiveDay counts as unfilled and disables Approve. AC26 (ticket line 463) says: 'GIVEN the user is offline OR any non-skipped slot in REQUIRED_SLOT_KEYS is unfilled across ANY day'. The phrase 'unfilled' could be read as 'present but with no selected_option_id'. A day where accommodation is absent from effectiveDay entirely (missing state per AC22) would pass AC26's check literally — the absent slot is not a 'non-skipped slot that is unfilled' because there is no slot object to check. AC24 now has an explicit '(a) absent from effectiveDay entirely' clause; AC26 does not. This creates an inconsistency: export buttons would remain enabled when an accommodation slot is missing from a day, while the Approve button would correctly be disabled for that same day.",
-        "evidence": {
-          "ac26_text": "any non-skipped slot in REQUIRED_SLOT_KEYS is unfilled across ANY day (ticket line 463) — no explicit absent-key case",
-          "ac24_fix": "absent from effectiveDay entirely (missing state per AC22) counts as unfilled (ticket line 430)",
-          "conflict": "AC24 explicitly covers absent key; AC26 does not. Export buttons could remain enabled with a missing required slot."
-        },
-        "proposed_fix": "Update AC26 line 463 to: 'GIVEN the user is offline OR for any day, any key in REQUIRED_SLOT_KEYS is either absent from effectiveDay (missing state per AC22) OR present but not skipped and has no resolved selected_option_id — WHEN the buttons render — THEN both Export buttons are disabled'. Mirror AC24's exact formulation."
+      "NB8": {
+        "status": "resolved",
+        "evidence": "AC26 GIVEN clause (ticket lines 465-469) now reads: 'GIVEN the user is offline OR for ANY day in the trip (not just the active day), any key in REQUIRED_SLOT_KEYS is either (a) absent from that day's effective state entirely (missing state per AC22) OR (b) present but not skipped and has no resolved selected_option_id (no active selection per the AC10 resolver)'. The absent-key clause (a) is explicit. Footer line 469 adds: 'a required slot absent from a day's effective state counts as unfilled (no if slot exists exemption); this check spans ALL days'. Mirrors AC24's formulation."
       },
-      {
-        "id": "NB9",
-        "ac": "AC6 / M6",
-        "severity": "blocker",
-        "title": "AC6 only tests OfflineBanner visibility — M6's 'saves skipped/marked error when offline' has no acceptance criterion",
-        "description": "M6 (ticket line 108) requires: (1) OfflineBanner shown when offline, (2) saves skipped/marked error when offline, (3) no background queue/retry. AC6 (ticket lines 255-262) tests: (a) OfflineBanner appears on offline event, (b) OfflineBanner disappears on online event, (c) no background save retry queue. M6's requirement (2) — saves are proactively skipped before attempting the POST — has no THEN clause in AC6. A dev could implement: offline event → show OfflineBanner → save attempt still fires /api/save POST (which fails due to network) — and pass all AC6 assertions while violating M6. The distinction matters: M6 says saves should be proactively skipped (not just fail after), and should mark the save status as error/offline before any network attempt.",
-        "evidence": {
-          "m6_text": "saves skipped/marked error when offline; no background queue/retry (ticket line 108)",
-          "ac6_gap": "AC6 has no THEN clause for: WHEN user performs a save-triggering action while offline, THEN no /api/save POST is sent AND save status is marked error/offline",
-          "consequence": "Dev could show OfflineBanner correctly but still fire POST when offline — passes AC6, violates M6."
-        },
-        "proposed_fix": "Add to AC6: 'AND WHEN the user performs a save-triggering action (drops a candidate, clicks approve, etc.) while offline THEN no /api/save POST request is made AND the save status indicator shows error or offline state AND no background queue is created to retry later'."
+      "NB9": {
+        "status": "resolved",
+        "evidence": "AC6 (ticket lines 262-264) now includes: 'WHEN a save-triggering action (drop, approve, deselect, slot-to-slot, or tap-to-select) occurs while offline THEN no POST /api/save request is sent AND the save status indicator shows an error or offline state AND no background queue is created to retry later (this offline interception supersedes the saving phase from AC5 — offline saves never enter the saving state)'. THEN clause for proactive save skipping is present. tap-to-select listed in WHEN. AC5/AC6 interaction clarified."
       },
-      {
-        "id": "NB10",
-        "ac": "AC11 / AC25 / M10 / M25",
-        "severity": "blocker",
-        "title": "M10/AC11 say 'response day_total' (top-level field) but actual /api/budget/recompute returns days[].day_total — runtime undefined reference verified from source",
-        "description": "AC11 (ticket line 302) says: 'the displayed day total is updated from the response day_total field'. M10 (ticket line 112) says: 'update displayed day total from response day_total'. The actual /api/budget/recompute endpoint (scripts/lib/server/budget.py:181-187) returns: {schema_version, trip_id, trip_total, currency_local, days: [{day: N, day_total: X, breakdown: {...}}]}. There is NO top-level day_total field. The day total is in response.days[0].day_total (or response.days.find(d => d.day === requestedDay).day_total). A dev implementing AC11 literally would write: displayedTotal = response.day_total — which is undefined at runtime. This is a runtime bug that makes the budget recompute feature silently show nothing (undefined renders as empty/NaN). Verified directly from scripts/lib/server/budget.py lines 181-187.",
-        "evidence": {
-          "ac11_text": "the displayed day total is updated from the response day_total field (ticket line 302)",
-          "m10_text": "update displayed day total from response day_total (ticket line 112)",
-          "actual_response": "scripts/lib/server/budget.py:181-187 returns {schema_version, trip_id, trip_total, currency_local, days: [{day: N, day_total: X, breakdown: {...}}]} — no top-level day_total",
-          "runtime_effect": "response.day_total is undefined; correct access is response.days.find(d => d.day === requestedDayNumber)?.day_total"
-        },
-        "proposed_fix": "Update AC11 THEN clause to: 'the displayed day total is updated from response.days.find(d => d.day === requestedDayNumber)?.day_total where requestedDayNumber is the integer day number passed in the request body'. Update M10 to: 'update displayed day total from response.days entry matching the requested day number (response.days[].day_total)'. Add Edge Case note: 'BudgetResponse.days is always an array; when a specific day is requested, response.days contains entries for all days but trip_total is the only top-level total; look up by day number, not array position 0'."
+      "NB10": {
+        "status": "resolved",
+        "evidence": "M10 (ticket line 112) now reads: 'update displayed day total from response.days.find(d => d.day === requestedDayNumber)?.day_total (the response structure is {days: [{day: N, day_total: X}]} — there is NO top-level day_total field)'. AC11 THEN clause (ticket lines 303-305) now reads: 'the displayed day total is updated from response.days.find(d => d.day === requestedDayNumber)?.day_total where requestedDayNumber is the integer day number passed in the request body (the response shape is {days: [{day: N, day_total: X, breakdown: {...}}]} — there is NO top-level day_total field; accessing response.day_total returns undefined)'. Edge Case 8 (line 199) also uses the correct path. Source verified from budget.py:181-187."
       }
-    ],
+    },
+    "blockers": [],
     "warnings": [
       {
         "id": "W2",
