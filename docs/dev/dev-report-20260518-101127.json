@@ -192,5 +192,39 @@
       "AC15: accommodation included in effectiveDay merge for live cover image"
     ],
     "post_fix_qa_result": "fail — QA round 2 identified remaining issues: slot adjacency order wrong (AC12), TimelineView missing editor props (AC14/17/18), CandidatesSidebar missing accommodation section (AC15), AC22 visual states incomplete (missing badge, late-arrival, droppable gate, editorSelections destructuring)"
+  },
+  "fix_pass_2": {
+    "status": "applied",
+    "triggered_by": "dev cycle 2 — QA round 2 identified 6 AC blockers + Codex adversarial review found 6 additional in-scope bugs in the fix_pass_1 implementation",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "fixes_applied": [
+      "B1/AC12/AC23: Slot adjacency array changed to chronological order ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'] — both in routeCache fetch useEffect and KanbanView route gap section",
+      "B6/AC22 (FIX2): Added editorSelections to KanbanView destructuring at line 718",
+      "B5/AC18 (FIX3): Added module-level currentDragSlotId variable; all onDragStart handlers set it; all onDragOver handlers gate on _isCompatible; onDragEnd resets to null on candidate and timeline cards",
+      "B2/AC14 + B4/AC17 + B5/AC18 (FIX4): TimelineView signature extended with 8 editor props; each entry resolves timelineSlotId, timelineMatchedOptionId, timelineIsSelected (now exact option match); draggable + onDragStart + onDragEnd + extended onClick; call site updated",
+      "B3/AC15 (FIX5): Accommodation section added to CandidatesSidebar before Meals group; draggable cards with cover_image thumbnail, checkmark for selected, pendingSelection on click",
+      "B6/AC22 (FIX6): missing/skipped/late-arrival/required-empty badges + IIFE data-droppable pattern added to all 5 slot types (meal, cafe, attraction, entertainment, accommodation)",
+      "Codex C2: onDragEnd added to all 4 Kanban board placed card draggable elements (meal, cafe, attraction, entertainment)",
+      "Codex C3: Accommodation slot-drop isGated now includes edAcc.late_arrival_placeholder check",
+      "Codex C4: slot-drop onClick handlers call e.preventDefault(); e.stopPropagation() when pendingSelection exists (prevents detail sidebar opening on tap-to-select)",
+      "Codex C5: Timeline selection resolution uses timelineMatchedOptionId === timelineSelectedId instead of !!timelineSelectedId; accommodation reads editorDay.accommodation not editorDay.slots.accommodation",
+      "Codex C6: Timeline incompatible tap shows reject feedback (red outline 400ms) and returns early instead of falling through to onItemClick"
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "8 findings: (C1) optionId undefined in board drag (out_of_scope). (C2) Kanban board cards missing onDragEnd — stale currentDragSlotId. (C3) Accommodation isGated missing late_arrival_placeholder. (C4) Slot-drop onClick doesn't stopPropagation. (C5) timelineIsSelected too coarse; accommodation reads wrong path. (C6) Timeline incompatible tap falls through to onItemClick. (C7) Route gap display order (out_of_scope). (C8) AC22 missing/required when no published card exists (out_of_scope — requires new placeholder DOM, BA did not specify).",
+      "feedback_incorporated": "C2, C3, C4, C5, C6 applied (5 in-scope real bugs). C1, C7, C8 classified out_of_scope and logged as codex_observation_only.",
+      "codex_observation_only": [
+        "C1: optionId undefined in Kanban board drag — would need option_id stamped in mergeEditorSelectionsIntoPublishedDay; BA did not flag; separate cycle",
+        "C7: Route gap Kanban display order not scoped to current adjacencies — Object.entries(routeCache) unordered; BA did not specify render order fix; separate cycle",
+        "C8: AC22 missing/required badge when no published card present — requires rendering placeholder slot/drop zones from editorDay when day.meals[type] absent; BA did not specify placeholder rendering; separate cycle"
+      ]
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 1079,
+      "lines_removed": 29
+    }
   }
 }
