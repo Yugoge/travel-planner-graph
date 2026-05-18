@@ -1288,7 +1288,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             })()}
                             {(() => {
                               const edAcc = editorDay && editorDay.accommodation;
-                              const isGated = edAcc && (edAcc.skipped);
+                              const isGated = edAcc && (edAcc.skipped || edAcc.late_arrival_placeholder);
                               return <div className="slot-drop" data-slot-id="accommodation" data-droppable={isGated ? 'false' : 'true'} aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
                                 onDragOver={(e) => { e.preventDefault(); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (currentDragSlotId && !_isCompatible(currentDragSlotId, toSlotId)) { e.dataTransfer.dropEffect = 'none'; return; } e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
                                 onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
