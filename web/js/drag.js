@@ -4,13 +4,37 @@
  * Card -> slot drop. Card carries data-option-id + data-slot-id (its category).
  * Drop targets are .slot-drop nodes whose parent .slot has matching slot-id.
  * Mismatched slot categories are rejected (e.g. cannot drop dinner card on breakfast).
+ *
+ * S2 refactor: initEditorDrag() is framework-neutral. It accepts callbacks and
+ * does NOT import from state.js or mobile.js. Initialized by React useEffect.
  */
 
-import { getActiveDayNumber } from "./state.js";
-import { isMobileViewport } from "./mobile.js";
-
 let _committedRequest = null;
+let _getActiveDayNumber = null;
 
+/**
+ * Initialize editor drag-and-drop.
+ *
+ * @param {Element|null} candidatesRoot - Container holding .card-candidate elements
+ * @param {Element|null} dropRoot - Container holding .slot-drop elements
+ * @param {function} getActiveDayFn - Returns the current absolute day number
+ * @param {function} onDropFn - Called with {slotId, optionId, dayN} on successful drop
+ */
+export function initEditorDrag(candidatesRoot, dropRoot, getActiveDayFn, onDropFn) {
+  _committedRequest = onDropFn;
+  _getActiveDayNumber = getActiveDayFn;
+  if (candidatesRoot) {
+    candidatesRoot.addEventListener("dragstart", _onDragStart);
+    candidatesRoot.addEventListener("dragend", _onDragEnd);
+  }
+  if (dropRoot) {
+    dropRoot.addEventListener("dragover", _onDragOver);
+    dropRoot.addEventListener("dragleave", _onDragLeave);
+    dropRoot.addEventListener("drop", _onDrop);
+  }
+}
+
+// Legacy entry point preserved for backward compatibility (not used in React path)
 export function initDesktopDrag(_commit, requestSelectMutation) {
   _committedRequest = requestSelectMutation;
   _bindCandidatesDelegated();
