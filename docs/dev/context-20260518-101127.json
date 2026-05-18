@@ -445,6 +445,48 @@
       {"issue": "NB9: AC6 only tests OfflineBanner visibility — M6's 'saves skipped/marked error when offline' has no THEN clause, allowing dev to fire POST while offline and pass AC6", "proposed_fix": "Add THEN clause to AC6: WHEN save-triggering action while offline, THEN no POST /api/save sent AND save status shows error/offline AND no background queue created", "classification": "blocker", "disposition": "applied", "rationale": "AC6 extended with offline-save THEN clause; R6 in requirements_decomposition updated"},
       {"issue": "NB10: M10/AC11 reference response.day_total (top-level) but actual endpoint returns {days:[{day:N,day_total:X}]} — runtime undefined", "proposed_fix": "Update M10 to use response.days.find(d => d.day === requestedDayNumber)?.day_total; update AC11 THEN clause with correct nested access and note that top-level day_total does not exist; update Edge Case 8 to specify full response shape", "classification": "blocker", "disposition": "applied", "rationale": "M10 updated with correct field path; AC11 THEN clause updated with correct access expression and explicit note that response.day_total is undefined; Edge Case 8 updated with full response shape; R11 in requirements_decomposition updated; verified from scripts/lib/server/budget.py:181-187"}
     ],
-    "round4_feedback_incorporated": "Round 4 QA-blocker amendments (NB7-NB10): NB7 fixed AC5 to exclude HTTP 409 from error save state. NB8 fixed AC26 export gating to mirror AC24's absent-key predicate. NB9 added offline-save THEN clause to AC6. NB10 fixed M10, AC11, and Edge Case 8 to use correct nested response field response.days.find(d => d.day === requestedDayNumber)?.day_total instead of nonexistent top-level response.day_total."
+    "round4_feedback_incorporated": "Round 4 QA-blocker amendments (NB7-NB10): NB7 fixed AC5 to exclude HTTP 409 from error save state. NB8 fixed AC26 export gating to mirror AC24's absent-key predicate. NB9 added offline-save THEN clause to AC6. NB10 fixed M10, AC11, and Edge Case 8 to use correct nested response field response.days.find(d => d.day === requestedDayNumber)?.day_total instead of nonexistent top-level response.day_total.",
+    "codex_round4_review": {
+      "invoked": true,
+      "status": "ok",
+      "findings": [
+        {
+          "issue": "NB7: AC5 now matches M5/AC7 — HTTP 409 routes to ConflictBanner and does not set generic save error state",
+          "proposed_fix": null,
+          "classification": "observation_only",
+          "disposition": "logged",
+          "rationale": "PASS — no action needed"
+        },
+        {
+          "issue": "NB8: AC26 'for any day' references singular effectiveDay — dev could interpret as active-day-only rather than all days",
+          "proposed_fix": "Amend to say 'for ANY day in the trip (not just the active day), any key in REQUIRED_SLOT_KEYS...' and clarify check spans all days consistent with Edge Case 14",
+          "classification": "in_scope_minor",
+          "disposition": "applied",
+          "rationale": "AC26 GIVEN clause updated to say 'for ANY day in the trip (not just the active day)' and trailing note updated to cross-link Edge Case 14"
+        },
+        {
+          "issue": "NB9: AC6 offline save THEN clause omits tap-to-select — which is also a selection-changing save path per M10/AC11/AC14",
+          "proposed_fix": "Change AC6 WHEN clause to: 'WHEN a save-triggering action (drop, approve, deselect, slot-to-slot, or tap-to-select) occurs while offline'",
+          "classification": "in_scope_real_bug",
+          "disposition": "applied",
+          "rationale": "AC6 WHEN clause updated to include tap-to-select; this closes the gap where offline tap-to-select could still send POST /api/save"
+        },
+        {
+          "issue": "NB9 secondary: AC5 says 'saving...' before POST without online qualifier; AC6 says offline drops send no POST — apparent contradiction",
+          "proposed_fix": "Add to AC6 THEN clause: '(this offline interception supersedes the saving... phase from AC5 — offline saves never enter the saving state)'",
+          "classification": "in_scope_minor",
+          "disposition": "applied",
+          "rationale": "Note added to AC6 THEN clause making the override explicit; AC5 unchanged as it correctly describes the online path"
+        },
+        {
+          "issue": "NB10: M10/AC11 now use response.days.find(d => d.day === requestedDayNumber)?.day_total — matches budget.py:181-187",
+          "proposed_fix": null,
+          "classification": "observation_only",
+          "disposition": "logged",
+          "rationale": "PASS — no action needed"
+        }
+      ],
+      "feedback_incorporated": "NB7 and NB10 confirmed PASS. NB8: AC26 GIVEN clause clarified to 'for ANY day in the trip (not just the active day)' with Edge Case 14 cross-link. NB9: tap-to-select added to AC6 WHEN clause; AC5/AC6 interaction clarified via note in AC6 THEN clause."
+    }
   }
 }
