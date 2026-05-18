@@ -2132,15 +2132,15 @@ function NotionTravelApp() {
               fontSize: '17px', padding: '10px 6px 10px 2px', color: '#37352f'
             }}>☰</button>
           )}
-          {['kanban', 'timeline'].map(m => (
-            <button key={m} onClick={() => setView(m)} style={{
+          {(isMobileLayout ? ['kanban', 'timeline', 'candidates'] : ['kanban', 'timeline']).map(m => (
+            <button key={m} onClick={() => { if (isMobileLayout) setMobileTab(m); else setView(m); }} style={{
               padding: sm ? '10px 8px' : '11px 16px', background: 'none', border: 'none',
-              borderBottom: view === m ? '2px solid #37352f' : '2px solid transparent',
-              fontSize: '14px', fontWeight: view === m ? '600' : '400',
-              color: view === m ? '#37352f' : '#b4b4b4',
+              borderBottom: (isMobileLayout ? mobileTab : view) === m ? '2px solid #37352f' : '2px solid transparent',
+              fontSize: '14px', fontWeight: (isMobileLayout ? mobileTab : view) === m ? '600' : '400',
+              color: (isMobileLayout ? mobileTab : view) === m ? '#37352f' : '#b4b4b4',
               cursor: 'pointer', transition: 'all .12s', whiteSpace: 'nowrap'
             }}>
-              {m === 'kanban' ? L('kanban_view', lang) : L('timeline_view', lang)}
+              {m === 'kanban' ? L('kanban_view', lang) : m === 'timeline' ? L('timeline_view', lang) : 'Candidates'}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: sm ? '6px' : '12px', ...(sm ? { width: '100%', justifyContent: 'flex-end', paddingBottom: '6px' } : {}) }}>
