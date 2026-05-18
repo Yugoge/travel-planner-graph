@@ -1877,10 +1877,21 @@ function NotionTravelApp() {
   // Root cause fix (commit 8f2bddd): Add language toggle for bilingual POI display
   const [lang, setLang] = useState('local');  // 'local' or 'base'
   const [mapProvider, setMapProvider] = useState('gaode');  // 'gaode' or 'google'
-  // Editor-mode state (inactive when EDITOR_MODE = false)
+  // Editor state (always active — unified viewer/editor page)
   const [editorTripData, setEditorTripData] = useState(null);
   const [editorSelections, setEditorSelections] = useState({});
-  const [editorSession] = useState(() => EDITOR_MODE ? (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) : null);
+  const [editorSession] = useState(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)));
+  const [saveState, setSaveState] = useState('idle'); // 'idle'|'saving'|'saved'|'error'
+  const [lastSaveTs, setLastSaveTs] = useState(null);
+  const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
+  const [conflictDetected, setConflictDetected] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
+  const [mobileTab, setMobileTab] = useState('kanban'); // 'kanban'|'timeline'|'candidates'
+  const [pendingSelection, setPendingSelection] = useState(null); // {optionId, slotId, originSlotId} for tap-to-select
+  const requestSeqRef = React.useRef(0);
+  const saveStateRef = React.useRef('idle');
+  const lastSaveTsRef = React.useRef(null);
+  const [saveStatusText, setSaveStatusText] = useState('');
   const bp = useBreakpoint();
   const sm = bp === 'sm';
 
