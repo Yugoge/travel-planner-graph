@@ -1788,6 +1788,29 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
     });
   });
 
+  // AC15: include accommodation in merge so cover image and selection reflect editor state
+  const accKey = publishedDay.day + ':accommodation';
+  const persistedAccId = editorDay.accommodation && editorDay.accommodation.selected_option_id;
+  const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections, accKey)
+    ? editorSelections[accKey]
+    : persistedAccId;
+  if (selectedAccId && editorDay.accommodation && editorDay.accommodation.options) {
+    const selAccOpt = editorDay.accommodation.options.find(o => o.option_id === selectedAccId);
+    if (selAccOpt) {
+      // Update accommodation selected flag on PLAN_DATA card by name match
+      if (day.accommodation && Array.isArray(day.accommodation)) {
+        day.accommodation.forEach(acc => {
+          if (acc.name_base === selAccOpt.name || acc.name_local === selAccOpt.name_local) {
+            acc.selected = true;
+          }
+        });
+      }
+      // Update day.cover if the selected accommodation has an image (AC15)
+      const coverImg = selAccOpt.cover_image || selAccOpt.image;
+      if (coverImg) day.cover = coverImg;
+    }
+  }
+
   const allSlots = ['breakfast', 'lunch', 'dinner',
                     'morning_activity', 'afternoon_activity', 'evening_activity'];
 
