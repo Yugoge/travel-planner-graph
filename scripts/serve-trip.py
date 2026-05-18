@@ -49,7 +49,7 @@ from lib.server import (  # noqa: E402
     hydrate_trip,
 )
 from lib.trip_contract.errors import StateMachineError  # noqa: E402
-from lib.render_html_builders import generate_editor_html  # noqa: E402
+from lib.render_html_builders import generate_html  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Load InteractiveHTMLGenerator from hyphenated filename via importlib
