@@ -1,22 +1,67 @@
 {
   "request_id": "20260517-211850",
   "task_id": "20260517-211850",
-  "timestamp": "2026-05-18T08:00:00Z",
+  "timestamp": "2026-05-18T01:15:00Z",
   "qa": {
-    "status": "pass",
-    "verdict": "Round 6: BLOCKER-D confirmed resolved. Codex (session 019e3860, gpt-5.5, xhigh) raised two claimed blockers — both adjudicated NOT valid after spec cross-reference. No new hard blockers. Spec cleared for dev implementation.",
-    "findings": [],
+    "status": "fail",
+    "verdict": "FAIL — one hard blocker: drag-and-drop is not wired. initEditorDrag() is never called and drag.js is never loaded in the React HTML. card-candidate elements have draggable=true but no dragstart handler; slot-drop elements have no dragover/drop handlers. AC1-AC4, AC6-AC8 all pass via live browser evidence. AC5 DOM existence passes; AC5 functional drag fails.",
+    "user_verbatim_complaint": "除了供拖拽的sidebar其他地方的设计要和现在的固定页面notion风格travel plan一模一样！！！一模一样！完全一样！没有任何区别可以商量！可拖拽的页面只应该是原始页面的升级版而不是退化版！也不是完全不同的一版！就是在原有基础上升级",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "ac_results": {
+      "AC1": "PASS",
+      "AC2": "PASS",
+      "AC3": "PASS",
+      "AC4": "PASS",
+      "AC5": "FAIL — DOM element exists but drag-and-drop not wired",
+      "AC6": "PASS",
+      "AC7": "PASS",
+      "AC8": "PASS"
+    },
+    "findings": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/render_html_builders.py HTML_HEAD + scripts/lib/react_template.tpl (no initEditorDrag useEffect)",
+        "issue": "drag.js is never loaded in the React HTML (HTML_HEAD has only React/ReactDOM/Babel script tags). initEditorDrag() is exported by web/js/drag.js but never called from any useEffect in react_template.tpl. Result: card-candidate elements have draggable=true and data-option-id/data-slot-id attributes but zero event handlers. slot-drop elements have no dragover/drop handlers. window.initEditorDrag is undefined in the browser. window.setEditorSelection exists (React bridge) but can never be triggered. The drag-and-drop core feature of the editor is completely non-functional.",
+        "browser_evidence": "Playwright evaluate on live port 8770: drag_is_wired=false, card_ondragstart=false, slot_ondrop=false, slot_ondragover=false, window_initEditorDrag_defined=false. HTML_HEAD confirmed: only 3 script tags (React, ReactDOM, Babel). No drag.js src in generated HTML.",
+        "recommended_fix": "Option A (native React, no external dependency): In react_template.tpl CandidatesSidebar, add onDragStart to .card-candidate div. On each .slot-drop div in KanbanView, add onDragOver={e=>e.preventDefault()} and onDrop={e=>{e.preventDefault();const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(window.setEditorSelection)window.setEditorSelection(d.slotId,d.optionId);}}. Option B (load drag.js): add <script src='/web/js/drag.js' type='module'> to HTML_HEAD and call initEditorDrag() from useEffect gated by EDITOR_MODE.",
+        "blocks_release": true
+      }
+    ],
+    "passing_evidence": {
+      "AC1": "browser_evaluate: getComputedStyle('#root > div').fontFamily = 'ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Noto Sans SC, sans-serif'",
+      "AC2": "browser_evaluate: cover div height=200px, bg=linear-gradient...url(), no img child. ac2_cover_has_img_child=false",
+      "AC3": "browser_evaluate: 9 kanban cards at exactly 280x320px (getBoundingClientRect). Verified on Day 1 and Day 3.",
+      "AC4": "browser_evaluate: #candidates-groups position=fixed, right=0px, width=300px, top=0, bottom=900px. Kanban card width=280px with sidebar present. ac4_candidate_cards=4.",
+      "AC5_DOM": "browser_evaluate after clicking Day 3 (Jun 22): document.querySelector('.slot-drop[data-slot-id=\\'breakfast\\']').dataset.slotId='breakfast'",
+      "AC6": "curl port 8765: HTTP 200, 5395 bytes vanilla HTML (unchanged). Static generate_html() output: 'const EDITOR_MODE = false' confirmed. CandidatesSidebar gated by {EDITOR_MODE && ...} renders null.",
+      "AC7": "curl timing: TTFB 1.253ms (first request), 0.615ms (second request/cache hit). Both <2000ms.",
+      "AC8": "browser_evaluate Day 3: all 4 slot-drops bg=rgba(0,0,0,0), border=none, textContent='', ariaHidden=true. ac8_all_transparent=true, ac8_all_no_text=true, ac8_all_no_border=true."
+    },
     "codex_consult": {
       "invoked": true,
       "status": "ok",
-      "session_id": "019e3860-5b32-7f91-8550-49b64f8b66fd",
-      "model": "gpt-5.5",
-      "reasoning": "xhigh",
-      "feedback_summary": "BLOCKER-D confirmed resolved. CB-1 (F7b matching) rejected — spec provides exact field names. CB-2 (F10 vs AC5) rejected — F10 merge contract answers AC5 visual update unambiguously.",
-      "feedback_incorporated": "CB-1 and CB-2 rejected as non-blockers. All 11 blockers (A-K) now PASS."
+      "feedback_summary": "Codex verdict: not PASS. Two blockers raised. (1) marginRight:300px narrows main content vs published — 'identical except sidebar' violation. (2) drag.js initEditorDrag never called — functional AC5 fails. Risks 2 (editorDay lookup) and 3 (port 8765) classified OBSERVATION_ONLY by Codex.",
+      "feedback_incorporated": "Codex blocker 2 (drag not wired) confirmed by QA live browser evaluation and accepted as critical finding. Codex blocker 1 (marginRight:300px) classified as minor/non-blocking by QA: BA spec AC4 tests column widths not scroll viewport width, marginRight is the only correct pattern for position:fixed sidebar, and BA spec M2 prescribes this architecture. marginRight logged as minor observation."
     },
-    "all_blockers_resolved": ["BLOCKER-A","BLOCKER-B","BLOCKER-C","BLOCKER-D","BLOCKER-E","BLOCKER-F","BLOCKER-G","BLOCKER-H","BLOCKER-I","BLOCKER-J","BLOCKER-K"],
-    "iteration_needed": false,
-    "release_recommendation": "approve — spec ready for dev implementation"
+    "minor_observation": "marginRight:300px on main content div makes scroll viewport 885px vs ~1185px in published page. Kanban card widths unchanged (280px). This is the required layout reservation for the position:fixed sidebar — without it content is hidden under the sidebar. BA spec AC4 tests column widths (PASS) not viewport width. Accepted trade-off.",
+    "out_of_scope_observations": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "line": 1889,
+        "observation": "window.setEditorSelection useEffect has no dependency array — re-runs after every render. Should use [] or [publishedDay.day, editorSession] to avoid unnecessary re-assignments.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "iteration_needed": true,
+    "refined_context": {
+      "failed_criteria": ["AC5 functional drag-and-drop: initEditorDrag() never called, no dragstart/drop listeners in browser"],
+      "critical_issues": ["drag.js refactored but never loaded in React HTML. initEditorDrag() exists but never called from useEffect. card-candidate elements have draggable=true only, zero event handlers. slot-drop elements have zero dragover/drop handlers. Verified: drag_is_wired=false, card_ondragstart=false, slot_ondrop=false in live browser."],
+      "recommended_approach": "Implement drag natively in React JSX (Option A, no external dependency): add onDragStart to .card-candidate in CandidatesSidebar, add onDragOver+onDrop to .slot-drop divs in KanbanView. window.setEditorSelection is already correctly implemented — just needs drag events to trigger it.",
+      "additional_context": "All visual ACs pass. Architecture fix (serve-trip.py -> generate_editor_html -> React template) is correct and complete. Only drag wiring is missing."
+    },
+    "release_recommendation": "reject"
   }
 }
