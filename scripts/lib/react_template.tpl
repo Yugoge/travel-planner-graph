@@ -2217,8 +2217,19 @@ function NotionTravelApp() {
       saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
     };
     window.setEditorSelection = bridge;
+    // applyEditorSelection: used by slot-drop onClick for tap-to-select second step (AC14)
+    const applyBridge = (optionId, targetSlotId, originSlotId) => {
+      const dayNum = publishedDay && publishedDay.day;
+      if (!dayNum) return;
+      const key = dayNum + ':' + targetSlotId;
+      setEditorSelections(prev => ({ ...prev, [key]: optionId }));
+      saveMutations(dayNum, [{ type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }]);
+      setPendingSelection(null);
+    };
+    window.applyEditorSelection = applyBridge;
     return () => {
       if (window.setEditorSelection === bridge) delete window.setEditorSelection;
+      if (window.applyEditorSelection === applyBridge) delete window.applyEditorSelection;
     };
   }, [publishedDay && publishedDay.day, saveMutations]);
 
