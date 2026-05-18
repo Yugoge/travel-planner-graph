@@ -2779,7 +2779,7 @@ function NotionTravelApp() {
                 onClick={() => {
                   if (approveDisabled) return;
                   const dayNum = day.day;
-                  saveMutations(dayNum, [{ type: 'stage', from_stage: day.stage, to_stage: 'user-selected' }]);
+                  saveMutations(dayNum, [{ type: 'stage', from_stage: editorDay.stage, to_stage: 'user-selected' }]);
                 }}
                 style={{
                   fontSize: '12px', padding: '5px 14px', borderRadius: '5px', fontWeight: '600',
