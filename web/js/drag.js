@@ -57,7 +57,7 @@ function _bindTimelineDelegated() {
 }
 
 function _isMobile() {
-  return isMobileViewport();
+  return window.innerWidth < 640;
 }
 
 function _onDragStart(ev) {
