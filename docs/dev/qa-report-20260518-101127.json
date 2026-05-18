@@ -484,35 +484,39 @@
       "confidence": "high"
     },
     "summary": {
-      "critical_issues": 4,
-      "major_issues": 1,
-      "minor_issues": 1,
-      "total_findings": 6,
+      "critical_issues": 3,
+      "major_issues": 0,
+      "minor_issues": 2,
+      "total_findings": 5,
       "release_recommendation": "reject",
-      "acs_passing": 19,
-      "acs_failing": 10,
-      "new_passes_vs_round1": 0,
-      "regressions_vs_round1": 0
+      "acs_passing": 23,
+      "acs_failing": 6,
+      "acs_failing_list": ["AC12 (critical)", "AC17 (critical)", "AC22 (2 minor deviations)", "AC23 (critical, same root cause as AC12)"],
+      "new_passes_vs_round2": 4,
+      "new_passes_detail": [
+        "AC14: TimelineView tap-to-select now implemented with _isCompatible + reject feedback",
+        "AC15: CandidatesSidebar accommodation section + mergeEditorSelectionsIntoPublishedDay cover_image update both present",
+        "AC18: _isCompatible enforced on all 5 interaction paths including TimelineView onClick and KanbanView onDragOver",
+        "AC22 major badges: missing/late-arrival/data-droppable-false now present for all slot types (editorSelections destructuring fixed at line 718)"
+      ],
+      "regressions_vs_round2": 0
     }
   },
   "iteration_needed": true,
   "refined_context": {
     "failed_criteria": [
-      "AC12/AC23: slot adjacency order at line 2337 is wrong — fix array to chronological order",
-      "AC14: TimelineView has no tap-to-select (onClick with pendingSelection)",
-      "AC15: accommodation options not rendered in CandidatesSidebar",
-      "AC17: TimelineView has no board-drag (no draggable placed cards)",
-      "AC18: TimelineView has no _isCompatible; onDragOver unconditional",
-      "AC22: missing-state badge absent; late-arrival badge absent; data-droppable=false absent; editorSelections destructuring bug at line 718"
+      "AC12/AC23: fetchRoute POST body missing 'mode' field at line 2409 → route.py KeyError HTTP 500. Fix: add mode: ROUTE_MODE to JSON body",
+      "AC12/AC23: frontend reads data.duration_minutes at line 775 but backend returns data.segment.duration_min. Fix: change to data.segment && data.segment.duration_min",
+      "AC17: PLAN_DATA cards have no option_id; mergeEditorSelectionsIntoPublishedDay (lines 1906-1927) doesn't stamp it; board drag sends null option_id. Fix: stamp option_id during merge",
+      "AC22 minor: accommodation late-arrival badge uses check_in heuristic at line 1284 instead of edAcc.late_arrival_placeholder. Fix: 1-line change",
+      "AC22 minor: skipped badges (lines 898, 980, 1062, 1144, 1283) show literal 'skipped' instead of skipped_reason field. Fix: {edSlot.skipped_reason || 'skipped'}"
     ],
     "critical_issues": [
-      "react_template.tpl:2337 — adjacency order fix: replace [breakfast, lunch, dinner, morning_activity, afternoon_activity, evening_activity] with [morning_activity, breakfast, afternoon_activity, lunch, evening_activity, dinner]",
-      "react_template.tpl:1409 — TimelineView needs editor props: pendingSelection, setPendingSelection, applyEditorSelection, editorDay, _isCompatible; call site at lines 2659-2665 must pass these props",
-      "react_template.tpl:1620-1750 — CandidatesSidebar needs accommodation section rendering editorDay.accommodation.options",
-      "react_template.tpl:718 — add editorSelections to KanbanView destructuring",
-      "react_template.tpl:884-910 — add missing-state check, late_arrival_placeholder check, data-droppable=false for gated slots"
+      "react_template.tpl:2409 — add mode field: body JSON should include mode: 'transit' (or whichever mode route.py accepts; check route.py for valid mode values)",
+      "react_template.tpl:775 — fix response parsing: change ~'${data.duration_minutes} min' to ~'${data.segment && data.segment.duration_min} min'",
+      "react_template.tpl:860 + lines 1906-1927 — in mergeEditorSelectionsIntoPublishedDay, after resolving selectedOptionId for each slot, find the matching option object from editorDay slot options and stamp its option_id onto the placed card"
     ],
-    "recommended_approach": "Dev should address each of the 5 fix points above. The TimelineView editor prop integration is the largest change (requires adding interactions to an existing display component). The adjacency order fix is a 1-line change. The editorSelections destructuring is a 1-word change. CandidatesSidebar accommodation section is medium scope. AC22 missing/late-arrival/data-droppable is medium scope.",
-    "additional_context": "All 19 previously passing ACs remain passing — no regressions introduced by dev fix pass. Only the 6 original blockers (now mapping to 10 failing ACs due to AC23 being linked to AC12) remain open."
+    "recommended_approach": "fix_pass_3 targets 3 critical bugs and 2 minor deviations: (1) AC12/AC23 requires 2 coordinated 1-2 line changes — mode field at line 2409 and response field at line 775. (2) AC17 requires stamping option_id in mergeEditorSelectionsIntoPublishedDay — find the matching option object from editorDay slot's options array and copy its option_id. (3) AC22 minor: 1-line fix at line 1284 (late_arrival_placeholder field). (4) AC22 minor: replace 'skipped' literal in 5 badge locations with skipped_reason fallback. Total scope: ~10 targeted line changes in react_template.tpl only.",
+    "additional_context": "No regressions vs round 2. 23/29 ACs now passing. fix_pass_2 successfully resolved AC14 (TimelineView integration), AC15 (accommodation sidebar), AC18 (_isCompatible), and the major AC22 badges. Only AC12/AC23 (same fetchRoute bugs) and AC17 (PLAN_DATA option_id gap) remain as critical blockers. AC22 deviations are minor spec non-compliance but do not break core functionality."
   }
 }
