@@ -2127,7 +2127,8 @@ function NotionTravelApp() {
   // Budget recompute helper
   const recomputeBudget = useCallback((dayNum) => {
     if (!TRIP_ID) return;
-    const seq = ++requestSeqRef.current;
+    const seq = (budgetSeqRef.current[dayNum] || 0) + 1;
+    budgetSeqRef.current[dayNum] = seq;
     fetch('/api/budget/recompute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2135,7 +2136,7 @@ function NotionTravelApp() {
     })
       .then(r => r.json())
       .then(resp => {
-        if (requestSeqRef.current !== seq) return; // stale
+        if (budgetSeqRef.current[dayNum] !== seq) return; // stale
         const entry = resp.days && resp.days.find(d => d.day === dayNum);
         if (entry && entry.day_total !== undefined) {
           // Budget total update is displayed via a separate state
