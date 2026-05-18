@@ -386,13 +386,11 @@
     },
     "ui_test_results": [
       {
-        "scenario": "AC1: EDITOR_MODE removal verification",
+        "scenario": "AC1: EDITOR_MODE removal regression check",
         "url": null,
         "status": "skipped",
-        "reason": "App not running; verified via source grep (count=0)",
-        "steps_performed": [
-          "grep -c EDITOR_MODE scripts/lib/react_template.tpl"
-        ],
+        "reason": "App not running; verified via source grep (count=0 per dev report)",
+        "steps_performed": ["grep -c EDITOR_MODE scripts/lib/react_template.tpl"],
         "assertions": [
           {
             "expected": "EDITOR_MODE count = 0",
@@ -400,24 +398,50 @@
             "passed": true
           }
         ],
-        "evidence": "grep -c EDITOR_MODE = 0"
+        "evidence": "grep -c EDITOR_MODE = 0 — no regression"
       },
       {
-        "scenario": "AC12: Route gap display verification",
+        "scenario": "AC12/AC23: fetchRoute request body and response parsing cross-file verification",
         "url": null,
         "status": "skipped",
-        "reason": "App not running; verified via source inspection",
+        "reason": "App not running; verified via cross-file source inspection (react_template.tpl vs route.py backend)",
         "steps_performed": [
-          "Read react_template.tpl lines 2335-2352 (route fetch useEffect)"
+          "Read react_template.tpl lines 2401-2417 (fetchRoute function)",
+          "Read scripts/lib/server/route.py lines 50-56 (handle_route dict access)",
+          "Read scripts/lib/server/route.py lines 227-233 (_ok_response shape)",
+          "Read react_template.tpl line 775 (duration display)"
         ],
         "assertions": [
           {
-            "expected": "Chronological slot order in adjacency filter",
-            "actual": "Wrong order: breakfast,lunch,dinner,morning,afternoon,evening (meals-first, not chronological)",
+            "expected": "fetchRoute POST body includes mode field matching route.py requirement",
+            "actual": "Body at line 2409: { trip_id, from_option_id, to_option_id, request_seq } — no mode field. route.py:52 req['mode'] → KeyError → HTTP 500",
+            "passed": false
+          },
+          {
+            "expected": "Frontend reads response field matching route.py _ok_response shape",
+            "actual": "Frontend reads data.duration_minutes (line 775); route.py _ok_response returns data.segment.duration_min",
             "passed": false
           }
         ],
-        "evidence": "Line 2337 adjacency order confirmed wrong by source inspection"
+        "evidence": "react_template.tpl:2409, route.py:52, route.py:227-233, react_template.tpl:775"
+      },
+      {
+        "scenario": "AC17: Board-drag option_id availability for PLAN_DATA placed cards",
+        "url": null,
+        "status": "skipped",
+        "reason": "App not running; verified via source inspection of mergeEditorSelectionsIntoPublishedDay and onDragStart handler",
+        "steps_performed": [
+          "Read react_template.tpl lines 1906-1927 (mergeEditorSelectionsIntoPublishedDay)",
+          "Read react_template.tpl line 860 (onDragStart board-drag payload)"
+        ],
+        "assertions": [
+          {
+            "expected": "PLAN_DATA placed cards carry option_id field for board drag payload",
+            "actual": "mergeEditorSelectionsIntoPublishedDay stamps card.selected = true but NOT card.option_id; opt.option_id is undefined for PLAN_DATA cards; JSON.stringify silently drops undefined",
+            "passed": false
+          }
+        ],
+        "evidence": "react_template.tpl:1906-1927 (no option_id stamp), :860 (opt.option_id undefined for PLAN_DATA cards)"
       }
     ],
     "all_findings": [
