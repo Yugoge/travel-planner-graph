@@ -2032,6 +2032,61 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
         Candidates — Day {dayNum}
       </div>
 
+      {/* Accommodation group (AC15/FIX5): show accommodation options so user can select */}
+      {editorDay && editorDay.accommodation && editorDay.accommodation.options && editorDay.accommodation.options.length > 0 && (() => {
+        const accKey = dayNum + ':accommodation';
+        const selectedAccId = resolveSelectionLocal(accKey, editorDay.accommodation.selected_option_id);
+        return (
+          <div style={{ padding: '8px 12px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              住宿 / Accommodation
+            </div>
+            {editorDay.accommodation.options.map((rawOpt, oi) => {
+              const opt = adaptV2Option(rawOpt);
+              const isSelected = selectedAccId === rawOpt.option_id;
+              const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id && pendingSelection.slotId === 'accommodation';
+              return (
+                <div key={rawOpt.option_id || oi} className="card-candidate"
+                  draggable={true}
+                  data-option-id={rawOpt.option_id}
+                  data-slot-id="accommodation"
+                  data-origin-slot-id="accommodation"
+                  onDragStart={(e) => {
+                    currentDragSlotId = 'accommodation';
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: 'accommodation', originSlotId: 'accommodation' }));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragEnd={() => { currentDragSlotId = null; }}
+                  onClick={() => {
+                    if (isPending) { setPendingSelection && setPendingSelection(null); return; }
+                    setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'accommodation', originSlotId: 'accommodation' });
+                  }}
+                  style={{
+                    background: isPending ? '#e6f3ff' : isSelected ? '#e9f5ec' : '#fafafa',
+                    borderRadius: '6px',
+                    border: '1px solid ' + (isPending ? '#0085fe' : isSelected ? '#45b26b' : '#e5e7eb'),
+                    padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
+                    userSelect: 'none', position: 'relative'
+                  }}
+                >
+                  {isSelected && <span style={{ position: 'absolute', top: '6px', right: '8px', color: '#45b26b', fontWeight: '700', fontSize: '13px' }}>✓</span>}
+                  {(rawOpt.cover_image || rawOpt.image) && (
+                    <div style={{ width: '100%', height: '60px', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' }}>
+                      <img src={rawOpt.cover_image || rawOpt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                    </div>
+                  )}
+                  <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: isSelected ? '16px' : 0 }}>
+                    {lang === 'local' ? (opt.name_local || opt.name_base) : opt.name_base}
+                  </div>
+                  {opt.location_base && <div style={{ fontSize: '11px', color: '#9b9a97', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
+                  {opt.cost_display && <div style={{ fontSize: '11px', color: '#6b6b6b' }}>{opt.cost_display}</div>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* Unified Meals group (M19) */}
       {mealsGroup.length > 0 && (
         <div style={{ padding: '8px 12px' }}>
