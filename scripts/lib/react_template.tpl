@@ -763,6 +763,24 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               {dayLabel(day, lang)}
             </h2>
           )}
+
+          {/* Route gap summary (AC12/AC23): show travel times between consecutive filled slots */}
+          {routeCache && (() => {
+            const entries = Object.entries(routeCache);
+            if (!entries.length) return null;
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', marginBottom: '4px' }}>
+                {entries.map(([pairKey, data]) => (
+                  <span key={pairKey} style={{ fontSize: '11px', color: data.status === 'ok' ? '#6b6b6b' : '#e07c5a', background: '#f5f5f3', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {data.status === 'ok' ? ('~' + data.duration_minutes + ' min') : 'route unknown'}
+                    {(data.status === 'unknown' || data.status === 'error') && fetchRoute && (
+                      <button onClick={() => { const [a, b] = pairKey.split(':'); fetchRoute(a, b, pairKey); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#4a90d9', padding: 0 }}>retry</button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* User Plans */}
