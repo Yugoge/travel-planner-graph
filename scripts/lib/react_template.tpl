@@ -2406,7 +2406,7 @@ function NotionTravelApp() {
     fetch('/api/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, request_seq: seq }),
+      body: JSON.stringify({ trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, mode: 'driving', request_seq: seq }),
     })
       .then(r => r.json())
       .then(data => {
