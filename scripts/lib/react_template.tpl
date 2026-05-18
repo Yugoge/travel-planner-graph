@@ -1782,20 +1782,43 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
   return day;
 }
 
-// CandidatesSidebar component: fixed right panel, shown only in EDITOR_MODE
-const CandidatesSidebar = ({ editorTripData, publishedDay, lang }) => {
-  if (!EDITOR_MODE || !editorTripData) return null;
+// _isCompatible: meal slots are mutually compatible; non-meal require exact match (M18)
+const MEAL_SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'meals-any']);
+function _isCompatible(srcSlotId, tgtSlotId) {
+  if (MEAL_SLOTS.has(srcSlotId) && MEAL_SLOTS.has(tgtSlotId)) return true;
+  return srcSlotId === tgtSlotId;
+}
 
-  // F1a: find the editorDay matching the published day's absolute day number
-  const editorDay = editorTripData.days && editorTripData.days.find(
-    d => Number(d.day) === Number(publishedDay && publishedDay.day)
+// CandidatesSidebar component: fixed right panel (always active)
+const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelections, saveMutations,
+    setEditorSelections, editorDay, pendingSelection, setPendingSelection, setEditorTripData, inlineMode }) => {
+  if (!editorTripData) return (
+    <div id="candidates-groups" style={{
+      position: inlineMode ? 'static' : 'fixed', right: 0, top: 0, bottom: 0, width: inlineMode ? '100%' : '300px',
+      overflowY: 'auto', background: 'white',
+      borderLeft: inlineMode ? 'none' : '1px solid #e5e7eb', zIndex: inlineMode ? undefined : 100,
+      fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
+      padding: '16px 12px'
+    }}>
+      <div style={{ fontSize: '12px', color: '#9b9a97' }}>Loading candidates…</div>
+    </div>
   );
 
-  if (!editorDay || !editorDay.slots) return (
+  const resolveSelectionLocal = (key, publishedId) => {
+    if (Object.prototype.hasOwnProperty.call(editorSelections || {}, key)) {
+      return (editorSelections || {})[key];
+    }
+    return publishedId;
+  };
+
+  const dayNum = publishedDay && publishedDay.day;
+  const slots = editorDay && editorDay.slots;
+
+  if (!slots) return (
     <div id="candidates-groups" style={{
-      position: 'fixed', right: 0, top: 0, bottom: 0, width: '300px',
+      position: inlineMode ? 'static' : 'fixed', right: 0, top: 0, bottom: 0, width: inlineMode ? '100%' : '300px',
       overflowY: 'auto', background: 'white',
-      borderLeft: '1px solid #e5e7eb', zIndex: 100,
+      borderLeft: inlineMode ? 'none' : '1px solid #e5e7eb', zIndex: inlineMode ? undefined : 100,
       fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
       padding: '16px 12px'
     }}>
@@ -1808,21 +1831,147 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang }) => {
     morning_activity: '上午 / Morning', afternoon_activity: '下午 / Afternoon',
     evening_activity: '晚上 / Evening',
   };
-  const slotOrder = ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'];
+
+  // Build unified Meals group (M19): dedup breakfast/lunch/dinner options by option_id
+  const mealSlotIds = ['breakfast', 'lunch', 'dinner'];
+  const mealsGroup = [];
+  const seenMealIds = new Set();
+  mealSlotIds.forEach(slotId => {
+    const slot = slots[slotId];
+    if (!slot || !slot.options) return;
+    slot.options.forEach(rawOpt => {
+      if (seenMealIds.has(rawOpt.option_id)) return;
+      seenMealIds.add(rawOpt.option_id);
+      mealsGroup.push({ ...rawOpt, _originSlotId: slotId });
+    });
+  });
+
+  // Check if a meal card is selected across breakfast/lunch/dinner
+  const isMealSelected = (optionId) => {
+    return mealSlotIds.some(slotId => {
+      const slot = slots[slotId];
+      const key = dayNum + ':' + slotId;
+      const resolved = resolveSelectionLocal(key, slot && slot.selected_option_id);
+      return resolved === optionId;
+    });
+  };
+
+  // Non-meal slots
+  const activitySlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
+
+  // Drop handler: drop from CandidatesSidebar onto CandidatesSidebar = deselect plan→candidates (M17b)
+  const handleSidebarDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+      if (payload.direction === 'plan-to-candidates' && payload.sourceSlotId) {
+        const key = dayNum + ':' + payload.sourceSlotId;
+        setEditorSelections(prev => ({ ...prev, [key]: null }));
+        saveMutations(dayNum, [{ type: 'select', slot: payload.sourceSlotId, option_id: null }]);
+      }
+    } catch (_) {}
+  };
+
+  // Apply selection from candidate tap/drop
+  const applySelection = (optionId, targetSlotId, originSlotId) => {
+    const key = dayNum + ':' + targetSlotId;
+    // Cross-meal copy (M20): if meal option absent from target slot options, copy it
+    if (MEAL_SLOTS.has(targetSlotId) && targetSlotId !== 'meals-any' && setEditorTripData) {
+      setEditorTripData(prev => {
+        if (!prev) return prev;
+        const updated = JSON.parse(JSON.stringify(prev));
+        const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
+        if (!dayEntry || !dayEntry.slots) return prev;
+        const tgtSlot = dayEntry.slots[targetSlotId];
+        if (!tgtSlot) return prev;
+        if (!tgtSlot.options) tgtSlot.options = [];
+        const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId);
+        if (!alreadyThere && originSlotId && originSlotId !== 'meals-any') {
+          const srcSlot = dayEntry.slots[originSlotId];
+          if (srcSlot && srcSlot.options) {
+            const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
+            if (srcOpt) tgtSlot.options.push({ ...srcOpt });
+          }
+        }
+        return updated;
+      });
+    }
+    setEditorSelections(prev => ({ ...prev, [key]: optionId }));
+    const mutations = [{ type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }];
+    saveMutations(dayNum, mutations);
+    setPendingSelection && setPendingSelection(null);
+  };
+
+  const containerStyle = {
+    position: inlineMode ? 'static' : 'fixed', right: 0, top: 0, bottom: 0, width: inlineMode ? '100%' : '300px',
+    overflowY: 'auto', background: 'white',
+    borderLeft: inlineMode ? 'none' : '1px solid #e5e7eb', zIndex: inlineMode ? undefined : 100,
+    fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
+  };
 
   return (
-    <div id="candidates-groups" style={{
-      position: 'fixed', right: 0, top: 0, bottom: 0, width: '300px',
-      overflowY: 'auto', background: 'white',
-      borderLeft: '1px solid #e5e7eb', zIndex: 100,
-      fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
-    }}>
-      <div style={{ padding: '12px 12px 4px', borderBottom: '1px solid #f0efed', fontSize: '13px', fontWeight: '600', color: '#37352f', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
-        Candidates — Day {editorDay.day}
+    <div id="candidates-groups" style={containerStyle}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleSidebarDrop}
+    >
+      <div style={{ padding: '12px 12px 4px', borderBottom: '1px solid #f0efed', fontSize: '13px', fontWeight: '600', color: '#37352f', position: inlineMode ? 'static' : 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+        Candidates — Day {dayNum}
       </div>
-      {slotOrder.map(slotId => {
-        const slot = editorDay.slots[slotId];
+
+      {/* Unified Meals group (M19) */}
+      {mealsGroup.length > 0 && (
+        <div style={{ padding: '8px 12px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+            餐饮 / Meals
+          </div>
+          {mealsGroup.map((rawOpt, oi) => {
+            const opt = adaptV2Option(rawOpt);
+            const isSelected = isMealSelected(rawOpt.option_id);
+            const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
+            return (
+              <div key={rawOpt.option_id || oi} className="card-candidate"
+                draggable={true}
+                data-option-id={rawOpt.option_id}
+                data-slot-id="meals-any"
+                data-origin-slot-id={rawOpt._originSlotId}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', JSON.stringify({
+                    optionId: rawOpt.option_id, slotId: 'meals-any',
+                    originSlotId: rawOpt._originSlotId
+                  }));
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onClick={() => {
+                  if (isPending) { setPendingSelection && setPendingSelection(null); return; }
+                  setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'meals-any', originSlotId: rawOpt._originSlotId });
+                }}
+                style={{
+                  background: isPending ? '#e6f3ff' : isSelected ? '#e9f5ec' : '#fafafa',
+                  borderRadius: '6px',
+                  border: '1px solid ' + (isPending ? '#0085fe' : isSelected ? '#45b26b' : '#e5e7eb'),
+                  padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
+                  userSelect: 'none', position: 'relative'
+                }}
+              >
+                {isSelected && <span style={{ position: 'absolute', top: '6px', right: '8px', color: '#45b26b', fontWeight: '700', fontSize: '13px' }}>✓</span>}
+                <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: isSelected ? '16px' : 0 }}>
+                  {lang === 'local' ? (opt.name_local || opt.name_base) : opt.name_base}
+                </div>
+                {opt.location_base && <div style={{ fontSize: '11px', color: '#9b9a97', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
+                {opt.cost_display && <div style={{ fontSize: '11px', color: '#6b6b6b' }}>{opt.cost_display}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Activity slots */}
+      {activitySlots.map(slotId => {
+        const slot = slots[slotId];
         if (!slot || !slot.options || slot.options.length === 0) return null;
+        const key = dayNum + ':' + slotId;
+        const selectedId = resolveSelectionLocal(key, slot.selected_option_id);
         return (
           <div key={slotId} style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
@@ -1830,22 +1979,32 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang }) => {
             </div>
             {slot.options.map((rawOpt, oi) => {
               const opt = adaptV2Option(rawOpt);
+              const isSelected = selectedId === rawOpt.option_id;
+              const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id && pendingSelection.slotId === slotId;
               return (
-                <div key={oi} className="card-candidate"
+                <div key={rawOpt.option_id || oi} className="card-candidate"
                   draggable={true}
                   data-option-id={rawOpt.option_id}
                   data-slot-id={slotId}
+                  data-origin-slot-id={slotId}
                   onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId }));
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId }));
                     e.dataTransfer.effectAllowed = 'move';
                   }}
+                  onClick={() => {
+                    if (isPending) { setPendingSelection && setPendingSelection(null); return; }
+                    setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId });
+                  }}
                   style={{
-                    background: '#fafafa', borderRadius: '6px', border: '1px solid #e5e7eb',
+                    background: isPending ? '#e6f3ff' : isSelected ? '#e9f5ec' : '#fafafa',
+                    borderRadius: '6px',
+                    border: '1px solid ' + (isPending ? '#0085fe' : isSelected ? '#45b26b' : '#e5e7eb'),
                     padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
-                    userSelect: 'none',
+                    userSelect: 'none', position: 'relative'
                   }}
                 >
-                  <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isSelected && <span style={{ position: 'absolute', top: '6px', right: '8px', color: '#45b26b', fontWeight: '700', fontSize: '13px' }}>✓</span>}
+                  <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: isSelected ? '16px' : 0 }}>
                     {lang === 'local' ? (opt.name_local || opt.name_base) : opt.name_base}
                   </div>
                   {opt.location_base && <div style={{ fontSize: '11px', color: '#9b9a97', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
