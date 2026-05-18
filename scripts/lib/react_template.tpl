@@ -2157,7 +2157,7 @@ function NotionTravelApp() {
     }
     setSaveState('saving');
     setSaveStatusText('saving…');
-    const seq = ++requestSeqRef.current;
+    const seq = ++saveSeqRef.current;
     try {
       const resp = await fetch('/api/save', {
         method: 'POST',
@@ -2169,13 +2169,13 @@ function NotionTravelApp() {
           mutations,
         }),
       });
-      if (requestSeqRef.current !== seq) return; // stale
+      if (saveSeqRef.current !== seq) return; // stale
       if (resp.status === 409) {
         setConflictDetected(true);
         return;
       }
       const data = await resp.json();
-      if (requestSeqRef.current !== seq) return; // stale after json parse
+      if (saveSeqRef.current !== seq) return; // stale after json parse
       if (data.conflict === '409-soft') {
         setConflictDetected(true);
         return;
@@ -2192,7 +2192,7 @@ function NotionTravelApp() {
       // Post-save budget recompute (M10, M25)
       recomputeBudget(dayNum);
     } catch (_) {
-      if (requestSeqRef.current !== seq) return;
+      if (saveSeqRef.current !== seq) return;
       setSaveState('error');
       setSaveStatusText('error');
     }
