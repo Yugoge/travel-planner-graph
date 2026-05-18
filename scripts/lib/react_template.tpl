@@ -1270,6 +1270,28 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && acc.notes_local ? acc.notes_local : acc.notes_base}
                               </div>
                             </div>
+                            {/* AC22: accommodation slot visual state badges */}
+                            {editorDay && (() => {
+                              const edAcc = editorDay.accommodation;
+                              const accKey = day.day + ':accommodation';
+                              const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : (edAcc && edAcc.selected_option_id);
+                              if (!edAcc) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff0e6', border: '1px solid #f0b870', borderRadius: '4px', fontSize: '10px', color: '#c07000', padding: '1px 5px' }}>missing</div>;
+                              if (edAcc.skipped) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>skipped</div>;
+                              // Late arrival: check_in hour >= 14
+                              if (acc.check_in) { const h = parseInt(acc.check_in.split(':')[0], 10); if (h >= 14) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#e8f4fd', border: '1px solid #a8d4f0', borderRadius: '4px', fontSize: '10px', color: '#2b63b5', padding: '1px 5px' }}>late arrival</div>; }
+                              if (!selectedAccId) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff4f4', border: '1px solid #f0b3b3', borderRadius: '4px', fontSize: '10px', color: '#e07c5a', padding: '1px 5px' }}>required</div>;
+                              return null;
+                            })()}
+                            {(() => {
+                              const edAcc = editorDay && editorDay.accommodation;
+                              const isGated = edAcc && (edAcc.skipped);
+                              return <div className="slot-drop" data-slot-id="accommodation" data-droppable={isGated ? 'false' : 'true'} aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
+                                onDragOver={(e) => { e.preventDefault(); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (currentDragSlotId && !_isCompatible(currentDragSlotId, toSlotId)) { e.dataTransfer.dropEffect = 'none'; return; } e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
+                                onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
+                                onDrop={(e) => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); try { const payload = JSON.parse(e.dataTransfer.getData('text/plain')); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); const fromSlotId = payload.slotId || payload.originSlotId; if (fromSlotId && !_isCompatible(fromSlotId, toSlotId)) { const el = e.currentTarget; el.setAttribute('data-drop-reject', ''); setTimeout(() => el.removeAttribute('data-drop-reject'), 400); return; } if (window.setEditorSelection) window.setEditorSelection(toSlotId, payload.optionId, payload.originSlotId || null); } catch (_) {} }}
+                                onClick={(e) => { if (!pendingSelection) return; const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (!_isCompatible(pendingSelection.slotId, toSlotId)) { const el = e.currentTarget; el.setAttribute('data-drop-reject', ''); setTimeout(() => el.removeAttribute('data-drop-reject'), 400); return; } if (window.applyEditorSelection) window.applyEditorSelection(pendingSelection.optionId, toSlotId, pendingSelection.originSlotId); }}
+                              />;
+                            })()}
                           </div>
                         );
                       })}
