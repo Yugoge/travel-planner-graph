@@ -299,6 +299,10 @@ class TripServerHandler(BaseHTTPRequestHandler):
         except StateMachineError as e:
             _send_json(self, HTTPStatus.CONFLICT, {"error": "state_machine", "detail": str(e)})
             return
+        # Invalidate cached editor HTML so the next page load reflects the save
+        trip_id = body.get("trip_id", "")
+        if trip_id:
+            _invalidate_html_cache(trip_id)
         _send_json(self, HTTPStatus.OK, resp)
 
     def _handle_post_export(self, kind: str) -> None:
