@@ -1109,6 +1109,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                             draggable={isSelected && !!entSlotId}
                             onDragStart={isSelected && entSlotId ? (e) => { currentDragSlotId = entSlotId; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: ent.option_id, slotId: entSlotId, sourceSlotId: entSlotId, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                            onDragEnd={isSelected && entSlotId ? () => { currentDragSlotId = null; } : undefined}
                             onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false, ent.optional)}
