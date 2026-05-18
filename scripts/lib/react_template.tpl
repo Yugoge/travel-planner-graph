@@ -921,14 +921,30 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               )}
 
               {/* Attractions */}
-              {day.attractions && day.attractions.length > 0 && (
+              {day.attractions && day.attractions.length > 0 && (() => {
+                // F7b: build name->slotId map from editorDay activity slots (editor mode only)
+                const activitySlotMap = {};
+                if (EDITOR_MODE && editorDay && editorDay.slots) {
+                  ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
+                    const slot = editorDay.slots[slotKey];
+                    if (!slot || !slot.options) return;
+                    slot.options.forEach(opt => {
+                      if (opt.name) activitySlotMap[opt.name] = slotKey;
+                      if (opt.name_local) activitySlotMap[opt.name_local] = slotKey;
+                    });
+                  });
+                }
+                return (
                 <Section title={L('attractions', lang)} icon="📍">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
                       {day.attractions.map((attr, i) => {
                         const catColor = categoryColors.attractions;
+                        const actSlotId = activitySlotMap[attr.name_base] || activitySlotMap[attr.name_local] || null;
+                        const isSelected = attr.selected;
                         return (
-                          <div key={i} style={cardStyle(catColor, false, attr.optional)}
+                          <div key={i} style={{...cardStyle(catColor, false, attr.optional), position: 'relative',
+                            ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                             onClick={() => onItemClick && onItemClick(attr, 'attraction')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false, attr.optional)}
@@ -955,6 +971,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && attr.notes_local ? attr.notes_local : attr.notes_base}
                               </div>
                             </div>
+                            {EDITOR_MODE && actSlotId && <div className="slot-drop" data-slot-id={actSlotId} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }} />}
                           </div>
                         );
                       })}
@@ -962,7 +979,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <div style={fadeStyle} />
                   </div>
                 </Section>
-              )}
+                );
+              })()}
 
               {/* Entertainment */}
               {day.entertainment?.length > 0 && (
