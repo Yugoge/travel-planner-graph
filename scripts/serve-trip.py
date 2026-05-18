@@ -236,6 +236,33 @@ class TripServerHandler(BaseHTTPRequestHandler):
             return
         _send_json(self, HTTPStatus.OK, payload)
 
+    def _serve_trip_editor(self, trip_id: str) -> None:
+        """Serve the React-based editor HTML for /trip/<trip_id>.
+
+        Uses in-memory cache (S1): generated once per trip per server session,
+        invalidated when /api/save commits a change for that trip.
+        """
+        if not trip_id:
+            _send_404(self, "trip_id missing from URL")
+            return
+        try:
+            html = _get_or_generate_html(trip_id)
+        except FileNotFoundError:
+            _send_404(self, f"trip not found: {trip_id}")
+            return
+        except Exception as e:  # noqa: BLE001
+            _send_json(
+                self, HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": "html_generation_failed", "detail": str(e)},
+            )
+            return
+        encoded = html.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
     def _serve_index(self) -> None:
         index = self.web_dir / "index.html"
         if not index.exists():
