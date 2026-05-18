@@ -2164,6 +2164,24 @@ function NotionTravelApp() {
 
   const [liveDayTotal, setLiveDayTotal] = useState({});
 
+  // fetchRoute: POST /api/route for a pair of consecutive filled slots (AC12/AC23)
+  const fetchRoute = useCallback((fromOptionId, toOptionId, pairKey) => {
+    if (!TRIP_ID || !fromOptionId || !toOptionId) return;
+    routeSeqRef.current[pairKey] = (routeSeqRef.current[pairKey] || 0) + 1;
+    const seq = routeSeqRef.current[pairKey];
+    fetch('/api/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, request_seq: seq }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (routeSeqRef.current[pairKey] !== seq) return; // stale
+        setRouteCache(prev => ({ ...prev, [pairKey]: data }));
+      })
+      .catch(() => { setRouteCache(prev => ({ ...prev, [pairKey]: { status: 'error' } })); });
+  }, []);
+
   // saveMutations: central save helper (M5, M6, M7, M11)
   const saveMutations = useCallback(async (dayNum, mutations) => {
     if (isOffline) {
