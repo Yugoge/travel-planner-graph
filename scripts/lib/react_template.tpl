@@ -2449,18 +2449,14 @@ function NotionTravelApp() {
         )}
 
         {/* Approve Day button (M8, M24) */}
-        {TRIP_ID && day && (() => {
+        {TRIP_ID && day && editorDay && (() => {
           const REQUIRED_SLOT_KEYS_BTN = ['accommodation', 'breakfast', 'lunch', 'dinner'];
+          // AC24: use editorDay (v2 slot-envelope) not effectiveDay (PLAN_DATA shape)
+          const getEdSlot = (slotId) =>
+            slotId === 'accommodation' ? editorDay.accommodation : (editorDay.slots && editorDay.slots[slotId]);
           const allFilled = REQUIRED_SLOT_KEYS_BTN.every(slotId => {
-            const slot = day.slots ? day.slots[slotId] : null;
-            if (!slot) {
-              // Check effectiveDay top-level for accommodation
-              if (slotId === 'accommodation') return !!day.accommodation;
-              if (slotId === 'breakfast' || slotId === 'lunch' || slotId === 'dinner') {
-                return !!(day.meals && day.meals[slotId]);
-              }
-              return false;
-            }
+            const slot = getEdSlot(slotId);
+            if (!slot) return false; // missing slot = not filled
             if (slot.skipped) return true;
             const key = day.day + ':' + slotId;
             const resolved = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id;
