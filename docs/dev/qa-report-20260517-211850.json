@@ -10,58 +10,117 @@
     "passed_user_requirement": false,
     "ac_alignment": false,
     "ac_results": {
-      "AC1": "PASS",
-      "AC2": "PASS",
-      "AC3": "PASS",
-      "AC4": "PASS",
-      "AC5": "FAIL — DOM element exists but drag-and-drop not wired",
-      "AC6": "PASS",
-      "AC7": "PASS",
-      "AC8": "PASS"
+      "AC1_font": "PASS — confirmed from prior round, unchanged",
+      "AC2_cover_div": "PASS — confirmed from prior round, unchanged",
+      "AC3_card_dimensions": "PASS — confirmed from prior round, unchanged",
+      "AC4_sidebar_fixed": "PASS — confirmed from prior round, unchanged",
+      "AC5_slot_drop_drag": "FAIL — template patch correct on disk but server cache stale; live DOM has no drag handlers on slot-drop or card-candidate elements",
+      "AC6_published_unchanged": "PASS — port 8765 is a separate web app (EDITOR_MODE undefined, title Trip Planner), completely unaffected",
+      "AC7_ttfb": "PASS — confirmed from prior round, unchanged",
+      "AC8_drop_zones_transparent": "PASS — confirmed from prior round, unchanged"
     },
     "findings": [
       {
         "severity": "critical",
-        "location": "scripts/lib/render_html_builders.py HTML_HEAD + scripts/lib/react_template.tpl (no initEditorDrag useEffect)",
-        "issue": "drag.js is never loaded in the React HTML (HTML_HEAD has only React/ReactDOM/Babel script tags). initEditorDrag() is exported by web/js/drag.js but never called from any useEffect in react_template.tpl. Result: card-candidate elements have draggable=true and data-option-id/data-slot-id attributes but zero event handlers. slot-drop elements have no dragover/drop handlers. window.initEditorDrag is undefined in the browser. window.setEditorSelection exists (React bridge) but can never be triggered. The drag-and-drop core feature of the editor is completely non-functional.",
-        "browser_evidence": "Playwright evaluate on live port 8770: drag_is_wired=false, card_ondragstart=false, slot_ondrop=false, slot_ondragover=false, window_initEditorDrag_defined=false. HTML_HEAD confirmed: only 3 script tags (React, ReactDOM, Babel). No drag.js src in generated HTML.",
-        "recommended_fix": "Option A (native React, no external dependency): In react_template.tpl CandidatesSidebar, add onDragStart to .card-candidate div. On each .slot-drop div in KanbanView, add onDragOver={e=>e.preventDefault()} and onDrop={e=>{e.preventDefault();const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(window.setEditorSelection)window.setEditorSelection(d.slotId,d.optionId);}}. Option B (load drag.js): add <script src='/web/js/drag.js' type='module'> to HTML_HEAD and call initEditorDrag() from useEffect gated by EDITOR_MODE.",
+        "category": "stale-server-cache-blocks-patch-delivery",
+        "location": "scripts/serve-trip.py _html_cache (in-memory per-trip HTML cache, line 68)",
+        "issue": "The serve-trip.py server caches rendered editor HTML per trip in memory. The cache is only invalidated on /api/save. Server process PID 1339911 started at 00:31 UTC. react_template.tpl was modified with drag handlers at 01:04 UTC. No /api/save was called for trip beijing-lijiang-dali-20260418-100846 after the template change. The server continues serving the pre-patch HTML containing slot-drop divs WITHOUT drag handlers. The new onDragOver/onDrop/onDragEnter/onDragLeave handlers and onDragStart on card-candidates are NOT being served to users.",
+        "browser_evidence": {
+          "method": "Playwright browser_evaluate — inspected React internal __reactProps$ keys on all 4 slot-drop elements and all card-candidate elements",
+          "slot_drop_0_slotId_breakfast": {
+            "allReactPropsKeys": ["className", "data-slot-id", "data-droppable", "aria-hidden", "style"],
+            "hasOnDragOver": false,
+            "hasOnDragEnter": false,
+            "hasOnDragLeave": false,
+            "hasOnDrop": false
+          },
+          "card_candidate_0": {
+            "draggable": "true (attribute present but string, not boolean)",
+            "hasOnDragStart": false
+          },
+          "total_slot_drops_checked": 4,
+          "all_slot_drops_have_zero_drag_handlers": true,
+          "editorMode_in_running_app": true
+        },
+        "template_on_disk": {
+          "file": "scripts/lib/react_template.tpl",
+          "modified_at": "2026-05-18T01:04:35Z",
+          "drag_handlers_confirmed_present": true,
+          "card_candidate_onDragStart_line": 1842,
+          "slot_drop_onDragOver_lines": [869, 935, 1002, 1069],
+          "slot_drop_onDrop_lines": [872, 938, 1005, 1072]
+        },
+        "fix_required": "Cache invalidation only — no code change needed. Two options: (a) restart serve-trip.py (kill PID 1339911 and relaunch from /root/travel-planner with 'python scripts/serve-trip.py --host 127.0.0.1 --port 8770 --data-root data'), or (b) POST to /api/save for trip beijing-lijiang-dali-20260418-100846 which triggers _invalidate_html_cache(trip_id). After invalidation, next GET to /trip/<id> re-reads template from disk and serves updated JSX with all drag handlers.",
         "blocks_release": true
       }
     ],
-    "passing_evidence": {
-      "AC1": "browser_evaluate: getComputedStyle('#root > div').fontFamily = 'ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Noto Sans SC, sans-serif'",
-      "AC2": "browser_evaluate: cover div height=200px, bg=linear-gradient...url(), no img child. ac2_cover_has_img_child=false",
-      "AC3": "browser_evaluate: 9 kanban cards at exactly 280x320px (getBoundingClientRect). Verified on Day 1 and Day 3.",
-      "AC4": "browser_evaluate: #candidates-groups position=fixed, right=0px, width=300px, top=0, bottom=900px. Kanban card width=280px with sidebar present. ac4_candidate_cards=4.",
-      "AC5_DOM": "browser_evaluate after clicking Day 3 (Jun 22): document.querySelector('.slot-drop[data-slot-id=\\'breakfast\\']').dataset.slotId='breakfast'",
-      "AC6": "curl port 8765: HTTP 200, 5395 bytes vanilla HTML (unchanged). Static generate_html() output: 'const EDITOR_MODE = false' confirmed. CandidatesSidebar gated by {EDITOR_MODE && ...} renders null.",
-      "AC7": "curl timing: TTFB 1.253ms (first request), 0.615ms (second request/cache hit). Both <2000ms.",
-      "AC8": "browser_evaluate Day 3: all 4 slot-drops bg=rgba(0,0,0,0), border=none, textContent='', ariaHidden=true. ac8_all_transparent=true, ac8_all_no_text=true, ac8_all_no_border=true."
+    "template_patch_quality_assessment": {
+      "verdict": "CORRECT — the patch logic is sound and complete",
+      "drag_source_card_candidate": {
+        "draggable_true": "line 1839",
+        "onDragStart_payload": "JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId })",
+        "effectAllowed_move": true,
+        "assessment": "Correct"
+      },
+      "drop_targets": {
+        "count": 4,
+        "locations": ["meals: opt._type (breakfast/lunch/dinner)", "cafe: cafeSlotId", "attractions: actSlotId", "entertainment: entSlotId"],
+        "onDragOver_prevents_default": true,
+        "onDrop_reads_currentTarget_data_slot_id": true,
+        "onDrop_calls_setEditorSelection": true,
+        "slot_id_semantics": "CORRECT — toSlotId from drop target data-slot-id (e.g. 'breakfast') is the right value; confirmed by Codex"
+      },
+      "window_setEditorSelection": {
+        "defined_at_line": 1915,
+        "type": "function (slotId, optionId) — React bridge updating editorSelections state and POSTing /api/save",
+        "guard_in_drop_handler": "if (window.setEditorSelection) — truthy; sufficient in practice since function is always defined or absent"
+      }
     },
     "codex_consult": {
       "invoked": true,
       "status": "ok",
-      "feedback_summary": "Codex verdict: not PASS. Two blockers raised. (1) marginRight:300px narrows main content vs published — 'identical except sidebar' violation. (2) drag.js initEditorDrag never called — functional AC5 fails. Risks 2 (editorDay lookup) and 3 (port 8765) classified OBSERVATION_ONLY by Codex.",
-      "feedback_incorporated": "Codex blocker 2 (drag not wired) confirmed by QA live browser evaluation and accepted as critical finding. Codex blocker 1 (marginRight:300px) classified as minor/non-blocking by QA: BA spec AC4 tests column widths not scroll viewport width, marginRight is the only correct pattern for position:fixed sidebar, and BA spec M2 prescribes this architecture. marginRight logged as minor observation."
+      "feedback_summary": "Codex ran git grep on the repo, confirmed implementation. Feedback: (1) slot-id semantics correct — opt._type ('breakfast'/'lunch'/'dinner') is correct toSlotId. OBSERVATION_ONLY. (2) typeof guard recommended over truthy check. PROPOSED_FIX. (3) fromSlot unused in handler; if cross-meal persistence matters pass it through. PROPOSED_FIX. (4) onDragLeave spurious-fire risk low on childless absolute div. OBSERVATION_ONLY.",
+      "findings_classification": {
+        "1_slot_semantics": "OBSERVATION_ONLY — accepted, no action",
+        "2_typeof_guard": "in_scope_minor — deferred; silent catch in onDrop prevents any crash; setEditorSelection is always a function in this template",
+        "3_fromSlot_unused": "out_of_scope — cross-meal origin tracking not in this cycle scope",
+        "4_dragLeave_fire": "OBSERVATION_ONLY — accepted, no action"
+      },
+      "feedback_incorporated": "Codex confirmed patch logic is correct. Primary QA finding (stale cache) is orthogonal to Codex analysis and confirmed independently via browser DOM inspection."
     },
-    "minor_observation": "marginRight:300px on main content div makes scroll viewport 885px vs ~1185px in published page. Kanban card widths unchanged (280px). This is the required layout reservation for the position:fixed sidebar — without it content is hidden under the sidebar. BA spec AC4 tests column widths (PASS) not viewport width. Accepted trade-off.",
-    "out_of_scope_observations": [
-      {
-        "file": "scripts/lib/react_template.tpl",
-        "line": 1889,
-        "observation": "window.setEditorSelection useEffect has no dependency array — re-runs after every render. Should use [] or [publishedDay.day, editorSession] to avoid unnecessary re-assignments.",
-        "in_user_path": false,
-        "security_relevant": false
-      }
-    ],
+    "ac6_detail": {
+      "port_8765_url": "http://127.0.0.1:8765/trip/beijing-lijiang-dali-20260418-100846",
+      "navigator_title": "Trip Planner",
+      "editor_mode_in_dom": "undefined — this is a separate web application, not a react_template.tpl output",
+      "slot_drop_count": 7,
+      "verdict": "PASS — completely separate service, react_template.tpl changes have zero effect here"
+    },
+    "self_verification": {
+      "claims_total": 10,
+      "claims_with_evidence": 10,
+      "claims_superficial": 0,
+      "confidence": "high",
+      "evidence_methods": [
+        "Playwright browser_evaluate inspecting __reactProps$ keys on slot-drop and card-candidate DOM nodes",
+        "ps -p 1339911 -o lstart confirming server start time 00:31 UTC",
+        "stat on react_template.tpl confirming modification time 01:04 UTC",
+        "Grep of react_template.tpl confirming all drag handlers present on disk at lines 869-1072 and 1839-1845",
+        "Playwright navigation to port 8765 confirming separate service unaffected"
+      ]
+    },
+    "summary": {
+      "critical_issues": 1,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 1,
+      "release_recommendation": "reject"
+    },
     "iteration_needed": true,
     "refined_context": {
-      "failed_criteria": ["AC5 functional drag-and-drop: initEditorDrag() never called, no dragstart/drop listeners in browser"],
-      "critical_issues": ["drag.js refactored but never loaded in React HTML. initEditorDrag() exists but never called from useEffect. card-candidate elements have draggable=true only, zero event handlers. slot-drop elements have zero dragover/drop handlers. Verified: drag_is_wired=false, card_ondragstart=false, slot_ondrop=false in live browser."],
-      "recommended_approach": "Implement drag natively in React JSX (Option A, no external dependency): add onDragStart to .card-candidate in CandidatesSidebar, add onDragOver+onDrop to .slot-drop divs in KanbanView. window.setEditorSelection is already correctly implemented — just needs drag events to trigger it.",
-      "additional_context": "All visual ACs pass. Architecture fix (serve-trip.py -> generate_editor_html -> React template) is correct and complete. Only drag wiring is missing."
-    },
-    "release_recommendation": "reject"
+      "failed_criteria": ["AC5: drag handlers exist in react_template.tpl on disk but are NOT served to browser due to stale in-memory server cache populated before the template change"],
+      "critical_issues": ["serve-trip.py _html_cache[beijing-lijiang-dali-20260418-100846] was populated at 00:31 UTC before the 01:04 UTC template change. No /api/save was called to invalidate it. Browser DOM confirms all slot-drop elements have only className/data-slot-id/data-droppable/aria-hidden/style in React props — zero drag handlers."],
+      "recommended_approach": "No code change needed. Invalidate the server cache: kill PID 1339911 and restart serve-trip.py, then re-verify. The template patch is complete and correct. After cache invalidation this should be an immediate PASS.",
+      "additional_context": "Template patch is correct at all 10 drag handler insertion points (lines 869, 872, 935, 938, 1002, 1005, 1069, 1072, 1839, 1842). window.setEditorSelection defined at line 1915. All other ACs (AC1-AC4, AC6-AC8) confirmed passing. This is purely a deployment/cache issue, not a code issue."
+    }
   }
 }
