@@ -423,44 +423,37 @@
     "all_findings": [
       {
         "severity": "critical",
-        "location": "scripts/lib/react_template.tpl:2337",
-        "issue": "B1/AC12+AC23: Slot adjacency order for route fetching is chronologically incorrect. Array is [breakfast, lunch, dinner, morning_activity, afternoon_activity, evening_activity] (meals-first). Should be [morning_activity, breakfast, afternoon_activity, lunch, evening_activity, dinner] (chronological per NAMED_SLOTS in web/js/state.js). Route pairs computed between wrong consecutive slots.",
-        "recommendation": "Change the filter array order at line 2337 to match chronological NAMED_SLOTS order.",
+        "location": "scripts/lib/react_template.tpl:2409",
+        "issue": "AC12/AC23: fetchRoute POST body missing 'mode' field. route.py handle_route at line 52 executes req['mode'] as direct dict access with no default → KeyError → HTTP 500. All /api/route calls fail. Route gaps never displayed or retried successfully.",
+        "recommendation": "Add mode field to fetchRoute POST body at line 2409. Determine correct transport mode string from route.py (e.g. 'transit'). Add ROUTE_MODE constant and include in JSON body: { trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, request_seq: seq, mode: ROUTE_MODE }.",
         "blocks_release": true
       },
       {
         "severity": "critical",
-        "location": "scripts/lib/react_template.tpl:1409",
-        "issue": "B2/AC14 + B4/AC17 + B5/AC18: TimelineView component receives only display props (day, bp, lang, mapProvider, onItemClick). No editor props passed: no pendingSelection, no applyEditorSelection, no draggable placed cards, no _isCompatible. All three ACs require TimelineView interaction support.",
-        "recommendation": "Add editor props to TimelineView signature and call site. Implement tap-to-select, board-drag, and _isCompatible enforcement in TimelineView.",
+        "location": "scripts/lib/react_template.tpl:775",
+        "issue": "AC12/AC23: Route display reads data.duration_minutes (top-level) from routeCache entry. route.py _ok_response returns { status, segment: {...}, source } where travel time is in segment.duration_min — not top-level duration_minutes. Even if mode bug fixed, route duration would never display.",
+        "recommendation": "At line 775, change data.duration_minutes to: data.segment && data.segment.duration_min to match backend _ok_response shape from route.py.",
         "blocks_release": true
       },
       {
         "severity": "critical",
-        "location": "scripts/lib/react_template.tpl:1620-1750",
-        "issue": "B3/AC15: Accommodation options not rendered in CandidatesSidebar. Users cannot select a different accommodation option, making the cover-image merge code (lines 1791-1812) unreachable via normal user interaction.",
-        "recommendation": "Add accommodation section to CandidatesSidebar showing editorDay.accommodation.options as draggable/tappable cards.",
-        "blocks_release": true
-      },
-      {
-        "severity": "critical",
-        "location": "scripts/lib/react_template.tpl:718",
-        "issue": "B6/AC22: editorSelections missing from KanbanView destructuring. KanbanView closes over editorSelections as undefined (always {}), causing required-empty badge logic at line 895 to always evaluate against {} instead of actual selections. Slots filled via editorSelections appear required-empty.",
-        "recommendation": "Add editorSelections to KanbanView destructuring at line 718.",
-        "blocks_release": true
-      },
-      {
-        "severity": "major",
-        "location": "scripts/lib/react_template.tpl:884-910",
-        "issue": "B6/AC22: Missing-state badge (slot key absent from effectiveDay entirely) not implemented. Late-arrival badge (slot.late_arrival_placeholder === true) not implemented. data-droppable=false not set for skipped or missing slots — all slot-drop divs are unconditionally droppable.",
-        "recommendation": "Add missing-state check: if slot key not in effectiveDay, render missing badge and set data-droppable=false. Add late-arrival check: if slot.late_arrival_placeholder===true, render late-arrival badge. Set data-droppable=false for gated slots.",
+        "location": "scripts/lib/react_template.tpl:860 + lines 1906-1927",
+        "issue": "AC17: PLAN_DATA placed cards do not carry option_id. mergeEditorSelectionsIntoPublishedDay stamps card.selected = true but does not stamp card.option_id. onDragStart at line 860 sends opt.option_id which is undefined for all PLAN_DATA-sourced placed cards. JSON.stringify silently drops undefined → payload has no optionId. Slot-to-slot 2-mutation batch sends option_id: null → destination slot is cleared instead of receiving the moved card.",
+        "recommendation": "In mergeEditorSelectionsIntoPublishedDay (lines 1906-1927), after resolving the effective selection for each slot, stamp the matched option's option_id onto the card object. All placed cards must carry option_id before KanbanView renders. Alternatively, resolve option_id in the onDragStart handler by looking up the slot's editorSelections entry.",
         "blocks_release": true
       },
       {
         "severity": "minor",
-        "location": "scripts/lib/react_template.tpl:898",
-        "issue": "B5/AC18: onDragOver handler sets data-drag-over attribute unconditionally without _isCompatible pre-check. Visual feedback (highlight) shown even for incompatible drops. AC18 requires compatibility enforcement on ALL interactions.",
-        "recommendation": "Add _isCompatible check in onDragOver; only set data-drag-over if compatible (and have the dragged slot id available in the event, e.g., from dataTransfer).",
+        "location": "scripts/lib/react_template.tpl:1284",
+        "issue": "AC22 deviation: Accommodation late-arrival badge uses check_in heuristic (parseInt(acc.check_in.split(':')[0]) >= 14) instead of edAcc.late_arrival_placeholder field. isGated at line 1291 correctly uses edAcc.late_arrival_placeholder for droppability, but badge and gate can be inconsistent.",
+        "recommendation": "At line 1284, replace the check_in heuristic with: if (edAcc.late_arrival_placeholder) return <...>late arrival</...>.",
+        "blocks_release": false
+      },
+      {
+        "severity": "minor",
+        "location": "scripts/lib/react_template.tpl:898,980,1062,1144,1283",
+        "issue": "AC22 deviation: All 5 skipped badges render the literal string 'skipped' instead of showing the skipped_reason field. AC22 spec requires showing skipped_reason from the slot's skipped_reason field.",
+        "recommendation": "Replace 'skipped' literal text with {edSlot.skipped_reason || 'skipped'} in lines 898, 980, 1062, 1144 and {edAcc.skipped_reason || 'skipped'} in line 1283.",
         "blocks_release": false
       }
     ],
