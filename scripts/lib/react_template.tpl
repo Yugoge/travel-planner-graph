@@ -2769,8 +2769,8 @@ function NotionTravelApp() {
             const resolved = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id;
             return !!resolved;
           });
-          const isApproved = day.stage === 'user-selected';
-          const canApprove = allFilled && (day.stage === 'draft-options' || day.stage === 'user-review');
+          const isApproved = editorDay && editorDay.stage === 'user-selected';
+          const canApprove = allFilled && editorDay && (editorDay.stage === 'draft-options' || editorDay.stage === 'user-review');
           const approveDisabled = isApproved || !canApprove;
           return (
             <div style={{ padding: '6px 20px', borderBottom: '1px solid #f0efed', display: 'flex', alignItems: 'center', gap: '8px' }}>
