@@ -1277,7 +1277,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         </div>
                       ))}
                       <div style={{ borderTop: '1px solid #edece9', marginTop: '8px', paddingTop: '8px', fontWeight: '700', color: '#37352f', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{L('total', lang)}</span><span>{CURRENCY_SYMBOL}{day.budget.total.toFixed(0)}</span>
+                        <span>{L('total', lang)}</span><span>{CURRENCY_SYMBOL}{Number(liveDayTotal?.[day.day] ?? day.budget.total).toFixed(0)}</span>
                       </div>
                     </div>
                   </div>
