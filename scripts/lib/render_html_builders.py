@@ -346,7 +346,6 @@ HTML_SCRIPT = (
     "    // Embedded PLAN_DATA\n"
     "    const PLAN_DATA = __PLAN_DATA__;\n"
     '    const CURRENCY_SYMBOL = "__SYMBOL__";\n'
-    "    const EDITOR_MODE = __EDITOR_MODE__;\n"
     "    const TRIP_ID = __TRIP_ID__;\n\n"
     "    __REACT_TEMPLATE__\n\n"
     "    // Render app\n"
@@ -356,37 +355,22 @@ HTML_SCRIPT = (
 )
 
 
-def generate_html(gen):
-    """Render the full HTML document for a plan (published page — EDITOR_MODE=false)."""
-    plan_data = gen.generate_plan_data()
-    plan_data_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
-    react_template = gen._read_react_template()
-    title = plan_data["trip_summary"]["description"]
-    head = HTML_HEAD.replace("__TITLE__", title)
-    script = (HTML_SCRIPT
-              .replace("__EDITOR_MODE__", "false")
-              .replace("__TRIP_ID__", "null")
-              .replace("__PLAN_DATA__", plan_data_json)
-              .replace("__SYMBOL__", gen._display_symbol)
-              .replace("__REACT_TEMPLATE__", react_template))
-    return head + script
+def generate_html(gen, trip_id=None):
+    """Render the full HTML document for a plan (unified viewer/editor page).
 
-
-def generate_editor_html(gen, trip_id):
-    """Render the full HTML document for the editor (EDITOR_MODE=true).
-
-    Called by serve-trip.py.  Identical to generate_html() except that
-    EDITOR_MODE is injected as true and TRIP_ID is set to the actual trip id
-    so the React tree can fetch candidates and enable the interactive layer.
+    When trip_id is None (default), injects TRIP_ID = null — backward-compatible
+    with one-arg callers such as generate-html-interactive.py.
+    When trip_id is a string, injects the JSON-encoded trip id so the React tree
+    can fetch candidates and activate the interactive editor layer.
     """
     plan_data = gen.generate_plan_data()
     plan_data_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
     react_template = gen._read_react_template()
     title = plan_data["trip_summary"]["description"]
     head = HTML_HEAD.replace("__TITLE__", title)
+    trip_id_js = "null" if trip_id is None else json.dumps(trip_id)
     script = (HTML_SCRIPT
-              .replace("__EDITOR_MODE__", "true")
-              .replace("__TRIP_ID__", json.dumps(trip_id))
+              .replace("__TRIP_ID__", trip_id_js)
               .replace("__PLAN_DATA__", plan_data_json)
               .replace("__SYMBOL__", gen._display_symbol)
               .replace("__REACT_TEMPLATE__", react_template))
