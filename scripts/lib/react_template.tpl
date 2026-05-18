@@ -2479,7 +2479,11 @@ function NotionTravelApp() {
     const bridge = (slotId, optionId, originSlotId = null) => {
       const dayNum = publishedDay && publishedDay.day;
       if (!dayNum) return;
-      setEditorSelections(prev => ({ ...prev, [dayNum + ':' + slotId]: optionId }));
+      const updates = { [dayNum + ':' + slotId]: optionId };
+      if (originSlotId && _isCompatible(originSlotId, slotId)) {
+        updates[dayNum + ':' + originSlotId] = optionId;
+      }
+      setEditorSelections(prev => ({ ...prev, ...updates }));
       saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
     };
     window.setEditorSelection = bridge;
