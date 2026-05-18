@@ -2067,9 +2067,11 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   data-slot-id={slotId}
                   data-origin-slot-id={slotId}
                   onDragStart={(e) => {
+                    currentDragSlotId = slotId;
                     e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId }));
                     e.dataTransfer.effectAllowed = 'move';
                   }}
+                  onDragEnd={() => { currentDragSlotId = null; }}
                   onClick={() => {
                     if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                     setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId });
