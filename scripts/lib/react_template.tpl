@@ -2252,11 +2252,18 @@ function NotionTravelApp() {
         )}
       </div>
 
-      {EDITOR_MODE && (
+      {!isMobileLayout && (
         <CandidatesSidebar
           editorTripData={editorTripData}
           publishedDay={publishedDay}
           lang={lang}
+          editorSelections={editorSelections}
+          saveMutations={saveMutations}
+          setEditorSelections={setEditorSelections}
+          editorDay={editorDay}
+          pendingSelection={pendingSelection}
+          setPendingSelection={setPendingSelection}
+          setEditorTripData={setEditorTripData}
         />
       )}
     </div>
