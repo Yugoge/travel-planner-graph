@@ -2524,6 +2524,7 @@ function NotionTravelApp() {
                 setPendingSelection={setPendingSelection}
                 setEditorTripData={setEditorTripData}
                 editorTripData={editorTripData}
+                liveDayTotal={liveDayTotal}
               />
             : <TimelineView
                 day={day}
