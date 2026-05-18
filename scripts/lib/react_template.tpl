@@ -1,7 +1,7 @@
 // ============================================================
 // HOOKS
 // ============================================================
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useMemo } = React;
 
 const useBreakpoint = () => {
   const [bp, setBp] = useState(() => {
