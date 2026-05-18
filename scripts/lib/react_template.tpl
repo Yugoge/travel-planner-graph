@@ -875,14 +875,29 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               </Section>
 
               {/* Cafe */}
-              {day.cafe && day.cafe.length > 0 && (
+              {day.cafe && day.cafe.length > 0 && (() => {
+                const cafeSlotMap = {};
+                if (EDITOR_MODE && editorDay && editorDay.slots) {
+                  ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
+                    const slot = editorDay.slots[slotKey];
+                    if (!slot || !slot.options) return;
+                    slot.options.forEach(opt => {
+                      if (opt.name) cafeSlotMap[opt.name] = slotKey;
+                      if (opt.name_local) cafeSlotMap[opt.name_local] = slotKey;
+                    });
+                  });
+                }
+                return (
                 <Section title={L('cafe', lang)} icon="\u2615">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
                       {day.cafe.map((c, i) => {
                         const catColor = categoryColors.cafe;
+                        const cafeSlotId = cafeSlotMap[c.name_base] || cafeSlotMap[c.name_local] || null;
+                        const isSelected = c.selected;
                         return (
-                          <div key={i} style={cardStyle(catColor, false, c.optional)}
+                          <div key={i} style={{...cardStyle(catColor, false, c.optional), position: 'relative',
+                            ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                             onClick={() => onItemClick && onItemClick(c, 'cafe')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false, c.optional)}
