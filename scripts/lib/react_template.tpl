@@ -1906,9 +1906,9 @@ function NotionTravelApp() {
     ) || null;
   }, [editorTripData, publishedDay]);
 
-  // Finding 10: effectiveDay merges editor selections into published day for KanbanView
+  // effectiveDay merges editor selections into published day for both views
   const effectiveDay = useMemo(() => {
-    if (!EDITOR_MODE || !editorDay) return publishedDay;
+    if (!editorDay) return publishedDay;
     return mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections);
   }, [publishedDay, editorDay, editorSelections]);
 
