@@ -1912,12 +1912,13 @@ function NotionTravelApp() {
     return mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections);
   }, [publishedDay, editorDay, editorSelections]);
 
-  // Finding 7: fetch v2 trip data once for CandidatesSidebar candidates
+  // Fetch v2 trip data for CandidatesSidebar candidates (only when TRIP_ID is set)
   useEffect(() => {
-    if (!EDITOR_MODE || !TRIP_ID) return;
+    if (!TRIP_ID) return;
     fetch('/api/trip/' + encodeURIComponent(TRIP_ID))
       .then(r => r.json())
-      .then(data => setEditorTripData(data));
+      .then(data => setEditorTripData(data))
+      .catch(() => {});
   }, [TRIP_ID]);
 
   // Finding 5: expose React bridge for drag.js and /api/save call
