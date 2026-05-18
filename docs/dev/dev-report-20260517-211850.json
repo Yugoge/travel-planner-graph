@@ -8,7 +8,8 @@
     "files_modified": [
       "scripts/lib/render_html_builders.py",
       "scripts/serve-trip.py",
-      "scripts/lib/react_template.tpl"
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
     ],
     "files_created": [],
     "tasks_completed": [
@@ -16,7 +17,9 @@
         "id": 1,
         "description": "Added EDITOR_MODE and TRIP_ID injection to render_html_builders.py",
         "type": "code",
-        "files_modified": ["scripts/lib/render_html_builders.py"],
+        "files_modified": [
+          "scripts/lib/render_html_builders.py"
+        ],
         "changes": "Added const EDITOR_MODE = __EDITOR_MODE__; and const TRIP_ID = __TRIP_ID__; placeholders to HTML_SCRIPT. generate_html() replaces both with false/null (published page unchanged). Added generate_editor_html(gen, trip_id) replacing with true/json.dumps(trip_id).",
         "rationale": "Root cause: serve-trip.py served web/index.html (vanilla HTML) instead of the React template. Fix: inject EDITOR_MODE flag so the same React HTML is used for both published and editor views."
       },
@@ -24,7 +27,9 @@
         "id": 2,
         "description": "Added InteractiveHTMLGenerator loading + in-memory cache + /trip/<id> editor serving in serve-trip.py",
         "type": "code",
-        "files_modified": ["scripts/serve-trip.py"],
+        "files_modified": [
+          "scripts/serve-trip.py"
+        ],
         "changes": "Added importlib.util loading of InteractiveHTMLGenerator from hyphenated filename. Added _html_cache dict + per-trip threading.Lock infrastructure (Finding 9: lock held through entire generate+write cycle). Changed /trip/<id> dispatch to call _serve_trip_editor(). Added _invalidate_html_cache(trip_id) call after successful /api/save.",
         "rationale": "serve-trip.py must serve the React HTML (identical to published page) instead of static index.html. In-memory cache prevents repeated InteractiveHTMLGenerator invocations (which run subprocess calls). Per-trip lock prevents concurrent-request race (Finding 9)."
       },
@@ -32,7 +37,9 @@
         "id": 3,
         "description": "Added CandidatesSidebar, adaptV2Option, mergeEditorSelectionsIntoPublishedDay, slot-drop overlays, editor state to react_template.tpl",
         "type": "code",
-        "files_modified": ["scripts/lib/react_template.tpl"],
+        "files_modified": [
+          "scripts/lib/react_template.tpl"
+        ],
         "changes": "Added useMemo to hook destructuring. Added adaptV2Option(), mergeEditorSelectionsIntoPublishedDay() helpers before NotionTravelApp. Added CandidatesSidebar component (fixed-right panel, 300px, slot groups). In NotionTravelApp: added editorTripData/editorSelections/editorSession state; editorDay useMemo (F1a absolute-day lookup by publishedDay.day); effectiveDay useMemo (F10 merge via deep-clone + selected:true); useEffect for /api/trip fetch; useEffect for window.setEditorSelection bridge. Meal/cafe/attraction/entertainment cards get slot-drop overlays gated by EDITOR_MODE. Main content div gets marginRight: EDITOR_MODE ? '300px' : 0. KanbanView gets editorDay prop.",
         "rationale": "Editor must be the published page upgraded — not a different layout. All card additions are gated by EDITOR_MODE so the published page is byte-identical to before."
       },
@@ -40,7 +47,9 @@
         "id": 4,
         "description": "Added native React onDragStart handler to candidate cards and onDragOver/onDragEnter/onDragLeave/onDrop to all 4 slot-drop overlays",
         "type": "code",
-        "files_modified": ["scripts/lib/react_template.tpl"],
+        "files_modified": [
+          "scripts/lib/react_template.tpl"
+        ],
         "changes": "CandidatesSidebar: changed draggable='true' to draggable={true}, added onDragStart that serializes {optionId: rawOpt.option_id, slotId} to dataTransfer text/plain. KanbanView: added drag event handlers to 4 slot-drop divs (meals/cafe/attractions/entertainment). Each onDrop reads toSlotId from data-slot-id attribute and calls window.setEditorSelection(toSlotId, optionId).",
         "rationale": "drag.js was never loaded in the React HTML. Native React handlers replace the broken drag.js dependency — window.setEditorSelection is already defined via useEffect and is called directly."
       }
@@ -50,7 +59,10 @@
     "blast_radius": [
       {
         "modified": "scripts/lib/render_html_builders.py",
-        "imported_by": ["scripts/generate-html-interactive.py", "scripts/serve-trip.py"]
+        "imported_by": [
+          "scripts/generate-html-interactive.py",
+          "scripts/serve-trip.py"
+        ]
       },
       {
         "modified": "scripts/serve-trip.py",
@@ -58,7 +70,9 @@
       },
       {
         "modified": "scripts/lib/react_template.tpl",
-        "imported_by": ["scripts/lib/render_html_builders.py (read as template string)"]
+        "imported_by": [
+          "scripts/lib/render_html_builders.py (read as template string)"
+        ]
       }
     ],
     "git_rationale": {

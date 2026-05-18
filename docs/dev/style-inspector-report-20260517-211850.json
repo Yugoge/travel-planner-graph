@@ -1,0 +1,117 @@
+{
+  "request_id": "20260517-211850",
+  "timestamp": "2026-05-18T00:00:00Z",
+  "inspector": "style-inspector",
+  "scope": "changed-files",
+  "changed_files": [
+    "scripts/lib/render_html_builders.py",
+    "scripts/serve-trip.py",
+    "scripts/lib/react_template.tpl",
+    "web/js/drag.js"
+  ],
+  "violations": [
+    {
+      "standard": "no-hardcoded-values",
+      "severity": "critical",
+      "location": "scripts/lib/render_html_builders.py:328-330",
+      "finding": "Hardcoded CDN URLs for React 18, ReactDOM 18, and Babel standalone embedded in HTML_HEAD string constant: unpkg.com/react@18/..., unpkg.com/react-dom@18/..., unpkg.com/@babel/standalone/babel.min.js",
+      "recommendation": "Parameterize CDN asset URLs via config/env/generator args, or vendor assets locally. Example: accept --cdn-react/--cdn-babel flags or read from a config file.",
+      "introduced_in_diff": false
+    },
+    {
+      "standard": "english-only",
+      "severity": "critical",
+      "location": "scripts/lib/render_html_builders.py:29",
+      "finding": "Chinese character string '\\u9910\\u996e' (dining category keyword) embedded in Python source as a matcher key in _is_dining_cat(). Script files must be English-only; bilingual data keys are not explicitly exempt.",
+      "recommendation": "Move localized category keywords to an external locale data file or constant dictionary. In the Python source, reference an English identifier (e.g. DINING_CATEGORY_ZH) defined in a data module.",
+      "introduced_in_diff": false
+    }
+  ],
+  "standards_checked": 11,
+  "standards_passed": [
+    "no-inline-code (Standard 1 — scripts/lib files, not .md command/agent files)",
+    "use-source-venv (Standard 3 — serve-trip.py docstring usage line is documentation, not executable invocation)",
+    "integer-step-numbering (Standard 4 — no .md files in changed set)",
+    "meaningful-naming (Standard 5 — no forbidden name patterns in changed files)",
+    "merge-similar-scripts (Standard 7 — changed files are distinct in purpose)",
+    "concise-documentation (Standard 8 — no .md command/agent files in changed set)",
+    "parameterized-scripts (Standard 9 — all variable values in serve-trip.py accept CLI args via argparse)",
+    "dangling-references (Standard 10 — all imports in serve-trip.py and render_html_builders.py reference existing modules)",
+    "merge-conflicts (Standard 11 — no merge conflict markers in any changed file)"
+  ],
+  "out_of_scope_observations": [
+    {
+      "observation": "scripts/lib/react_template.tpl contains Chinese UI label strings at lines 29-32, 498, 644, 684-689, 1811-1813 (brand names, date format tokens, bilingual slot labels). Standard 6 scope covers scripts/*.sh and scripts/*.py only; .tpl files are outside scope. Not a violation.",
+      "standard": "english-only"
+    },
+    {
+      "observation": "web/js/drag.js:161-168 duplicates MEAL_SLOT_IDS and _isCompatible() logic that also exists in web/js/mobile.js:20-27. Standard 7 (merge-similar-scripts) covers scripts/ directory only; web/js/ is outside Standard 7 scope. Not a violation under standard definition.",
+      "standard": "merge-similar-scripts"
+    }
+  ],
+  "summary": {
+    "standards_checked": 11,
+    "violations_found": 2,
+    "critical": 2,
+    "files_audited": 4,
+    "files_total": 4,
+    "rounds_completed": 1
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex confirmed: (1) Standard 3 docstring finding is a false positive — not flagged. (2) Chinese character in render_html_builders.py:29 should be reported under Standard 6, no bilingual-key exemption exists. (3) .tpl scope ambiguity — decided as out-of-scope per strict standard definition. (4) CDN URLs in render_html_builders.py:328-330 are a real Standard 2 violation (not merely debatable). (5) Same URLs also implicate Standard 9 — but both are pre-existing (absent from this cycle's diff hunk). (6) MEAL_SLOT_IDS duplication in web/js/ is out-of-scope for Standard 7. (7) All violations are critical severity.",
+    "findings": [
+      {
+        "issue": "Standard 3 false positive on docstring usage line in serve-trip.py",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "Agreed — docstring example is not an executable invocation. Not flagged."
+      },
+      {
+        "issue": "Standard 6 Chinese character in render_html_builders.py:29 should be reported; no bilingual-key exemption in standard definition",
+        "proposed_fix": "Move localized matcher tokens to external locale/config data; reference English identifier in Python source",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "The standard has no explicit exemption. Character is pre-existing in this file (present in HEAD~1, not introduced by this diff). Violation is reported with introduced_in_diff: false."
+      },
+      {
+        "issue": "Scope ambiguity on .tpl file for Standard 6",
+        "proposed_fix": "Decide scope explicitly; if in-scope, externalize UI labels to locale data",
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "Applied strict scope definition: Standard 6 lists scripts/*.sh and scripts/*.py. The .tpl file is neither. Recorded as out-of-scope observation."
+      },
+      {
+        "issue": "CDN URLs in render_html_builders.py:328-330 are a definite Standard 2 violation, not merely debatable",
+        "proposed_fix": "Parameterize React/ReactDOM/Babel asset URLs via config/env/generator args, or use local vendored assets",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Codex is correct. The URLs are hardcoded and match Standard 2's explicit hardcoded-URL pattern. Reported. Pre-existing (not in this cycle's diff hunk — git diff shows NO_CDN_DIFF), so introduced_in_diff: false."
+      },
+      {
+        "issue": "Same CDN URLs also implicate Standard 9 (parameterized-scripts) since CDN host/version can differ by environment",
+        "proposed_fix": "Same parameterization as Standard 2 fix",
+        "classification": "major",
+        "disposition": "rejected",
+        "rationale": "The CDN URLs are in a constant (HTML_HEAD) inside a Python library module, not a script entrypoint. Standard 9 targets scripts that accept parameters for variable values at runtime. A library module's HTML template constant is distinct from a script's runtime-variable values. Additionally the violation is pre-existing. Logged as observation, not added as separate finding to avoid duplicate."
+      },
+      {
+        "issue": "MEAL_SLOT_IDS/_isCompatible() duplicated between web/js/drag.js and web/js/mobile.js — Standard 7 concern",
+        "proposed_fix": "Extract shared slot compatibility helper to web/js/slot-compat.js",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Standard 7 scope covers scripts/ directory only. web/js/ is outside Standard 7 scope by standard definition. Recorded as out-of-scope observation."
+      },
+      {
+        "issue": "All style-inspector violations must be critical severity",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "All reported violations are tagged critical per standard."
+      }
+    ],
+    "feedback_incorporated": "Two violations reported (Standard 2 CDN URLs confirmed as real violation, Standard 6 Chinese character confirmed as reportable). Standard 3 false positive not flagged. .tpl out-of-scope confirmed. web/js/ Standard 7 out-of-scope confirmed. Both violations tagged introduced_in_diff: false (pre-existing in HEAD~1)."
+  }
+}
