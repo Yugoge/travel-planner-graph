@@ -2388,8 +2388,9 @@ function NotionTravelApp() {
                 if (!editorTripData || !editorTripData.days) return true;
                 return editorTripData.days.some(edDay => {
                   return REQUIRED_SLOT_KEYS_CHECK.some(slotId => {
-                    const slot = edDay.slots && edDay.slots[slotId];
-                    if (!slot) return true; // missing
+                    // accommodation is top-level; named meal slots are under .slots
+                    const slot = slotId === 'accommodation' ? edDay.accommodation : (edDay.slots && edDay.slots[slotId]);
+                    if (!slot) return true; // missing slot = validation error
                     if (slot.skipped) return false;
                     const key = edDay.day + ':' + slotId;
                     const resolved = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id;
