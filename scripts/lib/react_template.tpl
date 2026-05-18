@@ -2705,6 +2705,14 @@ function NotionTravelApp() {
                 lang={lang}
                 mapProvider={mapProvider}
                 onItemClick={handleItemClick}
+                editorDay={editorDay}
+                editorSelections={editorSelections}
+                pendingSelection={pendingSelection}
+                setPendingSelection={setPendingSelection}
+                saveMutations={saveMutations}
+                setEditorSelections={setEditorSelections}
+                routeCache={routeCache}
+                fetchRoute={fetchRoute}
               />;
         })() : (
           <div style={{ padding: `60px ${sm ? '16px' : '48px'}`, color: '#c4c4c0' }}>
