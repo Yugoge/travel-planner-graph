@@ -2013,12 +2013,14 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                 data-slot-id="meals-any"
                 data-origin-slot-id={rawOpt._originSlotId}
                 onDragStart={(e) => {
+                  currentDragSlotId = 'meals-any';
                   e.dataTransfer.setData('text/plain', JSON.stringify({
                     optionId: rawOpt.option_id, slotId: 'meals-any',
                     originSlotId: rawOpt._originSlotId
                   }));
                   e.dataTransfer.effectAllowed = 'move';
                 }}
+                onDragEnd={() => { currentDragSlotId = null; }}
                 onClick={() => {
                   if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                   setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'meals-any', originSlotId: rawOpt._originSlotId });
