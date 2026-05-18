@@ -1749,9 +1749,15 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   onDragEnd={timelineSlotId && timelineIsSelected ? () => { currentDragSlotId = null; } : undefined}
                   onClick={(e) => {
                     setTopItemIndex(i);
-                    // Tap-to-select: if pendingSelection set and this is a compatible slot, apply it (AC14)
-                    if (pendingSelection && timelineSlotId && _isCompatible(pendingSelection.slotId, timelineSlotId)) {
-                      if (window.applyEditorSelection) window.applyEditorSelection(pendingSelection.optionId, timelineSlotId, pendingSelection.originSlotId);
+                    // Tap-to-select: if pendingSelection set and this slot is valid, apply or reject (AC14/AC18)
+                    if (pendingSelection && timelineSlotId) {
+                      if (_isCompatible(pendingSelection.slotId, timelineSlotId)) {
+                        if (window.applyEditorSelection) window.applyEditorSelection(pendingSelection.optionId, timelineSlotId, pendingSelection.originSlotId);
+                      } else {
+                        // Incompatible: show reject feedback, do not open details (AC18)
+                        e.currentTarget.style.outline = '2px solid #e07c5a';
+                        setTimeout(() => { if (e.currentTarget) e.currentTarget.style.outline = ''; }, 400);
+                      }
                       return;
                     }
                     onItemClick && onItemClick(entry, entry._type);
