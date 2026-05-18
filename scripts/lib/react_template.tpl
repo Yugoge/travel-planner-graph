@@ -1816,9 +1816,13 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang }) => {
               const opt = adaptV2Option(rawOpt);
               return (
                 <div key={oi} className="card-candidate"
-                  draggable="true"
+                  draggable={true}
                   data-option-id={rawOpt.option_id}
                   data-slot-id={slotId}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId }));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
                   style={{
                     background: '#fafafa', borderRadius: '6px', border: '1px solid #e5e7eb',
                     padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
