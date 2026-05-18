@@ -1746,9 +1746,12 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
                     'morning_activity', 'afternoon_activity', 'evening_activity'];
 
   allSlots.forEach(slotId => {
-    const localId = editorSelections[publishedDay.day + ':' + slotId];
+    const key = publishedDay.day + ':' + slotId;
     const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
-    const selectedId = localId != null ? localId : persistedId;
+    // AC10: key-presence semantics — key present+null means explicitly cleared
+    const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key)
+      ? editorSelections[key]
+      : persistedId;
     if (!selectedId) return;
 
     const isMeal = ['breakfast', 'lunch', 'dinner'].includes(slotId);
