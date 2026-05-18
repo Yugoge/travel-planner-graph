@@ -976,6 +976,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         return (
                           <div key={i} style={{...cardStyle(catColor, false, attr.optional), position: 'relative',
                             ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
+                            draggable={isSelected && !!actSlotId}
+                            onDragStart={isSelected && actSlotId ? (e) => { e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: attr.option_id, slotId: actSlotId, sourceSlotId: actSlotId, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
                             onClick={() => onItemClick && onItemClick(attr, 'attraction')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false, attr.optional)}
