@@ -1898,9 +1898,9 @@ function NotionTravelApp() {
   const trip = PLAN_DATA.trips[selTrip];
   const publishedDay = trip?.days?.[selDay];
 
-  // Finding 1a: resolve editorDay using absolute day number from PLAN_DATA
+  // Resolve editorDay using absolute day number from PLAN_DATA
   const editorDay = useMemo(() => {
-    if (!EDITOR_MODE || !editorTripData) return null;
+    if (!editorTripData) return null;
     return editorTripData.days && editorTripData.days.find(
       d => Number(d.day) === Number(publishedDay && publishedDay.day)
     ) || null;
