@@ -834,8 +834,10 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       return out;
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
+                      const isSelected = opt.selected;
                       return (
-                        <div key={gi} style={cardStyle(catColor, opt._isPrimary)}
+                        <div key={gi} style={{...cardStyle(catColor, opt._isPrimary), position: 'relative',
+                          ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                           onClick={() => onItemClick && onItemClick(opt, 'meal')}
                           onMouseEnter={hoverOn}
                           onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}
@@ -863,6 +865,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                               {lang === 'local' && opt.notes_local ? opt.notes_local : opt.notes_base}
                             </div>
                           </div>
+                          {EDITOR_MODE && <div className="slot-drop" data-slot-id={opt._type} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }} />}
                         </div>
                       );
                     })}
