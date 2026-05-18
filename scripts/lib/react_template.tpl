@@ -947,9 +947,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 
               {/* Attractions */}
               {day.attractions && day.attractions.length > 0 && (() => {
-                // F7b: build name->slotId map from editorDay activity slots (editor mode only)
+                // Build name->slotId map from editorDay activity slots
                 const activitySlotMap = {};
-                if (EDITOR_MODE && editorDay && editorDay.slots) {
+                if (editorDay && editorDay.slots) {
                   ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
                     const slot = editorDay.slots[slotKey];
                     if (!slot || !slot.options) return;
