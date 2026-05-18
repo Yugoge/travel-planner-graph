@@ -1034,6 +1034,8 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && attr.notes_local ? attr.notes_local : attr.notes_base}
                               </div>
                             </div>
+                            {/* AC22: skipped state badge for attraction activity slot */}
+                            {actSlotId && editorDay && editorDay.slots && editorDay.slots[actSlotId] && editorDay.slots[actSlotId].skipped && <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>skipped</div>}
                             {actSlotId && <div className="slot-drop" data-slot-id={actSlotId} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
                               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
                               onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
