@@ -1630,6 +1630,31 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
               // Fix #6: Use dynamic z-index based on click state
               const isTop = topItemIndex === i;
               const zIdx = isTop ? 10 : 2;
+              // Determine if this timeline entry corresponds to an editable slot
+              const TIMELINE_SLOT_MAP = { meal: null, attraction: null, entertainment: null, accommodation: 'accommodation' };
+              // For meal/activity entries, resolve the slot id from editorDay slot options
+              let timelineSlotId = null;
+              if (entry._type === 'accommodation') {
+                timelineSlotId = 'accommodation';
+              } else if (editorDay && editorDay.slots) {
+                // Try to match by name against slot options
+                const actSlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
+                const mealSlots = ['breakfast', 'lunch', 'dinner'];
+                const checkSlots = entry._type === 'meal' ? mealSlots : actSlots;
+                for (const slotId of checkSlots) {
+                  const slot = editorDay.slots[slotId];
+                  if (!slot || !slot.options) continue;
+                  const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
+                  if (match) { timelineSlotId = slotId; break; }
+                }
+              }
+              // Resolve selected option id for this slot (for draggable)
+              const timelineSlotKey = timelineSlotId && day.day ? (day.day + ':' + timelineSlotId) : null;
+              const timelineSlotEditorData = timelineSlotId && editorDay && editorDay.slots && editorDay.slots[timelineSlotId];
+              const timelineSelectedId = timelineSlotKey ? (
+                editorSelections && Object.prototype.hasOwnProperty.call(editorSelections, timelineSlotKey) ? editorSelections[timelineSlotKey] : (timelineSlotEditorData && timelineSlotEditorData.selected_option_id)
+              ) : null;
+              const timelineIsSelected = !!timelineSelectedId;
               return (
                 <div key={i} style={{
                   position: 'absolute',
@@ -1646,7 +1671,18 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
-                  onClick={() => { setTopItemIndex(i); onItemClick && onItemClick(entry, entry._type); }}
+                  draggable={!!(timelineSlotId && timelineIsSelected)}
+                  onDragStart={timelineSlotId && timelineIsSelected ? (e) => { currentDragSlotId = timelineSlotId; e.dataTransfer.setData('text/plain', JSON.stringify({ slotId: timelineSlotId, optionId: timelineSelectedId, sourceSlotId: timelineSlotId, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                  onDragEnd={timelineSlotId && timelineIsSelected ? () => { currentDragSlotId = null; } : undefined}
+                  onClick={(e) => {
+                    setTopItemIndex(i);
+                    // Tap-to-select: if pendingSelection set and this is a compatible slot, apply it (AC14)
+                    if (pendingSelection && timelineSlotId && _isCompatible(pendingSelection.slotId, timelineSlotId)) {
+                      if (window.applyEditorSelection) window.applyEditorSelection(pendingSelection.optionId, timelineSlotId, pendingSelection.originSlotId);
+                      return;
+                    }
+                    onItemClick && onItemClick(entry, entry._type);
+                  }}
                   onMouseEnter={e => { if (!isTop) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
                   onMouseLeave={e => { if (!isTop) e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
                 >
