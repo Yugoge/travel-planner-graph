@@ -2274,6 +2274,26 @@ function NotionTravelApp() {
 
   const day = effectiveDay;
 
+  // Fetch routes between consecutive filled slots after each effectiveDay change (AC12/AC23)
+  useEffect(() => {
+    if (!day || !editorDay) return;
+    const filledSlots = ['breakfast', 'lunch', 'dinner', 'morning_activity', 'afternoon_activity', 'evening_activity'].filter(slotId => {
+      const key = (day.day) + ':' + slotId;
+      const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
+      return Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : persistedId;
+    });
+    for (let i = 0; i < filledSlots.length - 1; i++) {
+      const aSlot = filledSlots[i];
+      const bSlot = filledSlots[i + 1];
+      const aKey = day.day + ':' + aSlot;
+      const bKey = day.day + ':' + bSlot;
+      const aId = Object.prototype.hasOwnProperty.call(editorSelections, aKey) ? editorSelections[aKey] : (editorDay.slots && editorDay.slots[aSlot] && editorDay.slots[aSlot].selected_option_id);
+      const bId = Object.prototype.hasOwnProperty.call(editorSelections, bKey) ? editorSelections[bKey] : (editorDay.slots && editorDay.slots[bSlot] && editorDay.slots[bSlot].selected_option_id);
+      const pairKey = aId + ':' + bId;
+      if (aId && bId && !routeCache[pairKey]) fetchRoute(aId, bId, pairKey);
+    }
+  }, [effectiveDay, editorSelections, editorDay, fetchRoute]);
+
   const handleItemClick = (item, type) => {
     setSelectedBudgetCat(null);
     setSelectedItem({ item, type });
