@@ -1853,11 +1853,57 @@ function NotionTravelApp() {
   // Root cause fix (commit 8f2bddd): Add language toggle for bilingual POI display
   const [lang, setLang] = useState('local');  // 'local' or 'base'
   const [mapProvider, setMapProvider] = useState('gaode');  // 'gaode' or 'google'
+  // Editor-mode state (inactive when EDITOR_MODE = false)
+  const [editorTripData, setEditorTripData] = useState(null);
+  const [editorSelections, setEditorSelections] = useState({});
+  const [editorSession] = useState(() => EDITOR_MODE ? (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) : null);
   const bp = useBreakpoint();
   const sm = bp === 'sm';
 
   const trip = PLAN_DATA.trips[selTrip];
-  const day = trip?.days?.[selDay];
+  const publishedDay = trip?.days?.[selDay];
+
+  // Finding 1a: resolve editorDay using absolute day number from PLAN_DATA
+  const editorDay = useMemo(() => {
+    if (!EDITOR_MODE || !editorTripData) return null;
+    return editorTripData.days && editorTripData.days.find(
+      d => Number(d.day) === Number(publishedDay && publishedDay.day)
+    ) || null;
+  }, [editorTripData, publishedDay]);
+
+  // Finding 10: effectiveDay merges editor selections into published day for KanbanView
+  const effectiveDay = useMemo(() => {
+    if (!EDITOR_MODE || !editorDay) return publishedDay;
+    return mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections);
+  }, [publishedDay, editorDay, editorSelections]);
+
+  // Finding 7: fetch v2 trip data once for CandidatesSidebar candidates
+  useEffect(() => {
+    if (!EDITOR_MODE || !TRIP_ID) return;
+    fetch('/api/trip/' + encodeURIComponent(TRIP_ID))
+      .then(r => r.json())
+      .then(data => setEditorTripData(data));
+  }, [TRIP_ID]);
+
+  // Finding 5: expose React bridge for drag.js and /api/save call
+  useEffect(() => {
+    if (!EDITOR_MODE) return;
+    window.setEditorSelection = (slotId, optionId) => {
+      setEditorSelections(prev => ({ ...prev, [publishedDay.day + ':' + slotId]: optionId }));
+      fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trip_id: TRIP_ID,
+          day: publishedDay && publishedDay.day,
+          editor_session: editorSession,
+          mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }],
+        }),
+      }).catch(() => {});
+    };
+  });
+
+  const day = EDITOR_MODE ? effectiveDay : publishedDay;
 
   const handleItemClick = (item, type) => {
     setSelectedBudgetCat(null);
