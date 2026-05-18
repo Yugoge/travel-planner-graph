@@ -1917,6 +1917,7 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
         day.accommodation.forEach(acc => {
           if (acc.name_base === selAccOpt.name || acc.name_local === selAccOpt.name_local) {
             acc.selected = true;
+            acc.option_id = selAccOpt.option_id;
           }
         });
       }
