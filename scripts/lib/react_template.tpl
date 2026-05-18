@@ -885,6 +885,16 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                               {lang === 'local' && opt.notes_local ? opt.notes_local : opt.notes_base}
                             </div>
                           </div>
+                          {/* AC22: slot visual state badge for meal slots */}
+                          {editorDay && editorDay.slots && editorDay.slots[opt._type] && (() => {
+                            const edSlot = editorDay.slots[opt._type];
+                            const slotKey = day.day + ':' + opt._type;
+                            const resolvedId = Object.prototype.hasOwnProperty.call(editorSelections || {}, slotKey) ? (editorSelections || {})[slotKey] : edSlot.selected_option_id;
+                            const isRequired = ['breakfast','lunch','dinner'].includes(opt._type);
+                            if (edSlot.skipped) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>skipped</div>;
+                            if (isRequired && !resolvedId && opt._isPrimary) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff4f4', border: '1px solid #f0b3b3', borderRadius: '4px', fontSize: '10px', color: '#e07c5a', padding: '1px 5px' }}>required</div>;
+                            return null;
+                          })()}
                           <div className="slot-drop" data-slot-id={opt._type} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
                             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
                             onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
