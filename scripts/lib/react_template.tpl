@@ -2198,8 +2198,90 @@ function NotionTravelApp() {
                 {PLAN_DATA.trip_summary.base_display || 'EN'}
               </button>
             </div>
+            {/* Save status badge (M5, M27) */}
+            <span style={{
+              fontSize: '11px', padding: '3px 7px', borderRadius: '4px',
+              background: saveState === 'saving' ? '#fff3cd' : saveState === 'saved' ? '#d4edda' : saveState === 'error' ? '#f8d7da' : '#f5f5f3',
+              color: saveState === 'saving' ? '#856404' : saveState === 'saved' ? '#155724' : saveState === 'error' ? '#721c24' : '#9b9a97',
+              border: '1px solid transparent', whiteSpace: 'nowrap'
+            }}>
+              {saveStatusText || (saveState === 'idle' ? '' : saveState)}
+            </span>
+            {/* Conn-status badge (M28) */}
+            <span className="conn-status" data-state={isOffline ? 'offline' : 'online'} style={{
+              fontSize: '11px', padding: '3px 7px', borderRadius: '4px',
+              background: isOffline ? '#f8d7da' : '#d4edda',
+              color: isOffline ? '#721c24' : '#155724',
+              border: '1px solid transparent', whiteSpace: 'nowrap'
+            }}>
+              {isOffline ? 'offline' : 'online'}
+            </span>
+            {/* Export buttons (M26) */}
+            {TRIP_ID && (() => {
+              const REQUIRED_SLOT_KEYS_CHECK = ['accommodation', 'breakfast', 'lunch', 'dinner'];
+              const _anyValidationError = () => {
+                if (!editorTripData || !editorTripData.days) return true;
+                return editorTripData.days.some(edDay => {
+                  return REQUIRED_SLOT_KEYS_CHECK.some(slotId => {
+                    const slot = edDay.slots && edDay.slots[slotId];
+                    if (!slot) return true; // missing
+                    if (slot.skipped) return false;
+                    const key = edDay.day + ':' + slotId;
+                    const resolved = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id;
+                    return !resolved;
+                  });
+                });
+              };
+              const exportDisabled = isOffline || _anyValidationError();
+              const handleExport = async (kind) => {
+                if (exportDisabled) return;
+                try {
+                  const resp = await fetch('/api/export/' + kind, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trip_id: TRIP_ID }),
+                  });
+                  const data = await resp.json();
+                  if (data.file_path) {
+                    setSaveStatusText(data.file_path);
+                  } else {
+                    setSaveStatusText('export ' + kind + ' failed');
+                    setSaveState('error');
+                  }
+                } catch (_) {
+                  setSaveStatusText('export ' + kind + ' failed');
+                  setSaveState('error');
+                }
+              };
+              return (<>
+                <button onClick={() => handleExport('pdf')} disabled={exportDisabled} style={{
+                  fontSize: '11px', padding: '4px 8px', borderRadius: '4px',
+                  background: exportDisabled ? '#f5f5f3' : '#edf2fc', color: exportDisabled ? '#c4c4c0' : '#2b63b5',
+                  border: '1px solid ' + (exportDisabled ? '#e0e0e0' : '#b4caf0'), cursor: exportDisabled ? 'default' : 'pointer'
+                }}>PDF</button>
+                <button onClick={() => handleExport('ical')} disabled={exportDisabled} style={{
+                  fontSize: '11px', padding: '4px 8px', borderRadius: '4px',
+                  background: exportDisabled ? '#f5f5f3' : '#edf2fc', color: exportDisabled ? '#c4c4c0' : '#2b63b5',
+                  border: '1px solid ' + (exportDisabled ? '#e0e0e0' : '#b4caf0'), cursor: exportDisabled ? 'default' : 'pointer'
+                }}>iCal</button>
+              </>);
+            })()}
           </div>
         </div>
+        {/* OfflineBanner (M6) */}
+        {isOffline && (
+          <div style={{ background: '#f8d7da', color: '#721c24', padding: '8px 20px', fontSize: '13px', fontWeight: '500' }}>
+            You are offline. Changes will not be saved until you reconnect.
+          </div>
+        )}
+        {/* ConflictBanner (M7, M29) */}
+        {conflictDetected && (
+          <div style={{ background: '#fff3cd', color: '#856404', padding: '8px 20px', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span>Another session modified this plan. Reload to see the latest version.</span>
+            <button onClick={() => window.location.reload()} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: '#856404', color: '#fff', border: 'none', cursor: 'pointer' }}>Reload</button>
+            <button onClick={() => setConflictDetected(false)} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '4px', background: 'transparent', color: '#856404', border: '1px solid #856404', cursor: 'pointer' }}>Dismiss</button>
+          </div>
+        )}
 
         {day ? (
           view === 'kanban'
