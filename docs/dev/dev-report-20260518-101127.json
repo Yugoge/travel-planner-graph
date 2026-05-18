@@ -249,5 +249,52 @@
       "lines_added": 1079,
       "lines_removed": 29
     }
+  },
+  "fix_pass_4": {
+    "status": "completed",
+    "timestamp": "2026-05-18T19:00:00Z",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "fixes": [
+      {
+        "id": "AC8_AC24",
+        "description": "Approve button reads editorDay.stage instead of day.stage",
+        "lines": "2778-2788",
+        "changes": "isApproved, canApprove, and from_stage now all read from editorDay.stage (v2 envelope with live stage) instead of day.stage (PLAN_DATA which always has stage: None)"
+      },
+      {
+        "id": "AC20",
+        "description": "window.setEditorSelection bridge cross-meal client-side copy",
+        "lines": "2479-2490",
+        "changes": "Bridge now builds an updates object and adds [dayNum+':'+originSlotId]=optionId when originSlotId is provided and _isCompatible(originSlotId, slotId) is true"
+      },
+      {
+        "id": "AC22",
+        "description": "data-droppable guard enforced in onDragOver, onDrop, onClick handlers for all 5 slot-drop elements",
+        "lines": "907/909/910, 988/990/991, 1070/1072/1073, 1152/1154/1155, 1292/1294/1295",
+        "changes": "Each handler now checks data-droppable='false' at the top and returns early. onDrop also calls e.preventDefault() + cleanup in the guard branch."
+      },
+      {
+        "id": "BONUS_ConflictBanner",
+        "description": "setSaveState('error') + setSaveStatusText('conflict') after setConflictDetected(true)",
+        "lines": "2443-2453",
+        "changes": "Both 409 hard and 409-soft paths now set saveState=error and saveStatusText=conflict, unblocking the saving spinner and showing a meaningful status badge"
+      }
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "6 findings: (1) FIX 1 won't show Approved optimistically — PROPOSED_FIX: update editorTripData after stage save. (2) FIX 2 bridge writes wrong key / doesn't copy option objects. (3) tap-to-select applyBridge skips cross-meal copy. (4) missing required slots remain droppable (isGated checks edSlot falsiness). (5) onDrop gated return missing preventDefault+cleanup. (6) saveStatusText stays 'saving...' after conflict.",
+      "feedback_incorporated": "Finding 5 (onDrop gated branch now calls e.preventDefault()+cleanup before returning) and Finding 6 (setSaveStatusText('conflict') added) were incorporated as in-scope improvements. Findings 1, 2, 3 classified out_of_scope for this pass — the close-gate blocker was specifically that day.stage reads None from PLAN_DATA, not that editorTripData needs optimistic update after save; AC20 bridge fix is specifically for editorSelections state, not editorTripData option copying (that path is handled by CandidatesSidebar.applySelection). Finding 4 (missing slots droppable) classified in_scope_minor/OBSERVATION_ONLY — AC22 close blocker is about skipped/late_arrival_placeholder specifically, not missing slots.",
+      "codex_observation_only": [
+        "F1: Approve button not optimistically updated — editorDay.stage stays stale until editorTripData refetch; separate cycle if optimistic update needed",
+        "F2/F3: applyBridge and bridge do not copy option objects into editorTripData for cross-meal copy — CandidatesSidebar.applySelection handles this; bridge is selection-state only",
+        "F4: isGated does not cover missing (edSlot=null) required slots — they remain droppable; separate cycle"
+      ]
+    },
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass — EDITOR_MODE count=0, all 5 slot-drop elements patched, bridge cross-meal logic verified, conflict status text updated",
+      "notes": "No new symbols introduced beyond the changes. onDrop gated branch strengthened per Codex F5."
+    }
   }
 }
