@@ -1694,6 +1694,153 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 };
 
 // ============================================================
+// EDITOR HELPERS (only active when EDITOR_MODE = true)
+// ============================================================
+
+// Finding 8: adapt v2 option fields for CandidatesSidebar card display
+function adaptV2Option(opt) {
+  return {
+    ...opt,
+    name_base: opt.name,
+    name_local: opt.name_local || '',
+    location_base: opt.location_summary || '',
+    cost_display: opt.cost ? Math.round(opt.cost) + ' CNY' : '',
+  };
+}
+
+// Finding 10: merge persisted + local selections into a cloned publishedDay
+// PLAN_DATA card objects are the BASELINE — only add `selected: true` flag.
+function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections) {
+  if (!publishedDay || !editorDay) return publishedDay;
+  const day = JSON.parse(JSON.stringify(publishedDay)); // deep clone
+
+  // Build name->option_id map for each activity slot (F7b)
+  const actSlotOpts = {};
+  ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
+    const slot = editorDay.slots && editorDay.slots[slotKey];
+    if (!slot || !slot.options) return;
+    slot.options.forEach(opt => {
+      actSlotOpts[slotKey] = actSlotOpts[slotKey] || {};
+      if (opt.name) actSlotOpts[slotKey][opt.name] = opt.option_id;
+      if (opt.name_local) actSlotOpts[slotKey][opt.name_local] = opt.option_id;
+    });
+  });
+
+  const allSlots = ['breakfast', 'lunch', 'dinner',
+                    'morning_activity', 'afternoon_activity', 'evening_activity'];
+
+  allSlots.forEach(slotId => {
+    const localId = editorSelections[publishedDay.day + ':' + slotId];
+    const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
+    const selectedId = localId != null ? localId : persistedId;
+    if (!selectedId) return;
+
+    const isMeal = ['breakfast', 'lunch', 'dinner'].includes(slotId);
+    if (isMeal) {
+      const card = day.meals && day.meals[slotId];
+      if (card) {
+        // Find selected option to check name match
+        const edSlot = editorDay.slots && editorDay.slots[slotId];
+        const selOpt = edSlot && edSlot.options && edSlot.options.find(o => o.option_id === selectedId);
+        if (selOpt && (card.name_base === selOpt.name || card.name_local === selOpt.name_local)) {
+          card.selected = true;
+        }
+      }
+    } else {
+      // activity slot: search all four arrays by name matching
+      const edSlot = editorDay.slots && editorDay.slots[slotId];
+      const selOpt = edSlot && edSlot.options && edSlot.options.find(o => o.option_id === selectedId);
+      if (!selOpt) return;
+      const arrays = ['attractions', 'entertainment', 'cafe', 'unscheduled_optionals'];
+      arrays.forEach(arr => {
+        if (!day[arr]) return;
+        day[arr].forEach(card => {
+          if (card.name_base === selOpt.name || card.name_local === selOpt.name_local) {
+            card.selected = true;
+          }
+        });
+      });
+    }
+  });
+
+  return day;
+}
+
+// CandidatesSidebar component: fixed right panel, shown only in EDITOR_MODE
+const CandidatesSidebar = ({ editorTripData, publishedDay, lang }) => {
+  if (!EDITOR_MODE || !editorTripData) return null;
+
+  // F1a: find the editorDay matching the published day's absolute day number
+  const editorDay = editorTripData.days && editorTripData.days.find(
+    d => Number(d.day) === Number(publishedDay && publishedDay.day)
+  );
+
+  if (!editorDay || !editorDay.slots) return (
+    <div id="candidates-groups" style={{
+      position: 'fixed', right: 0, top: 0, bottom: 0, width: '300px',
+      overflowY: 'auto', background: 'white',
+      borderLeft: '1px solid #e5e7eb', zIndex: 100,
+      fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
+      padding: '16px 12px'
+    }}>
+      <div style={{ fontSize: '12px', color: '#9b9a97' }}>No candidates for this day.</div>
+    </div>
+  );
+
+  const slotLabels = {
+    breakfast: '早餐 / Breakfast', lunch: '午餐 / Lunch', dinner: '晚餐 / Dinner',
+    morning_activity: '上午 / Morning', afternoon_activity: '下午 / Afternoon',
+    evening_activity: '晚上 / Evening',
+  };
+  const slotOrder = ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'];
+
+  return (
+    <div id="candidates-groups" style={{
+      position: 'fixed', right: 0, top: 0, bottom: 0, width: '300px',
+      overflowY: 'auto', background: 'white',
+      borderLeft: '1px solid #e5e7eb', zIndex: 100,
+      fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
+    }}>
+      <div style={{ padding: '12px 12px 4px', borderBottom: '1px solid #f0efed', fontSize: '13px', fontWeight: '600', color: '#37352f', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+        Candidates — Day {editorDay.day}
+      </div>
+      {slotOrder.map(slotId => {
+        const slot = editorDay.slots[slotId];
+        if (!slot || !slot.options || slot.options.length === 0) return null;
+        return (
+          <div key={slotId} style={{ padding: '8px 12px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              {slotLabels[slotId] || slotId}
+            </div>
+            {slot.options.map((rawOpt, oi) => {
+              const opt = adaptV2Option(rawOpt);
+              return (
+                <div key={oi} className="card-candidate"
+                  draggable="true"
+                  data-option-id={rawOpt.option_id}
+                  data-slot-id={slotId}
+                  style={{
+                    background: '#fafafa', borderRadius: '6px', border: '1px solid #e5e7eb',
+                    padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {lang === 'local' ? (opt.name_local || opt.name_base) : opt.name_base}
+                  </div>
+                  {opt.location_base && <div style={{ fontSize: '11px', color: '#9b9a97', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
+                  {opt.cost_display && <div style={{ fontSize: '11px', color: '#6b6b6b' }}>{opt.cost_display}</div>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================
 // APP
 // ============================================================
 function NotionTravelApp() {
