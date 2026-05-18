@@ -1,0 +1,127 @@
+{
+  "request_id": "20260517-211850",
+  "task_id": "20260517-211850",
+  "timestamp": "2026-05-18T00:30:00Z",
+  "dev_report_path": "docs/dev/dev-report-20260517-211850.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": [
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py",
+      "scripts/lib/react_template.tpl",
+      "web/js/drag.js"
+    ],
+    "files_created": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added EDITOR_MODE and TRIP_ID injection to render_html_builders.py",
+        "type": "code",
+        "files_modified": ["scripts/lib/render_html_builders.py"],
+        "changes": "Added const EDITOR_MODE = __EDITOR_MODE__; and const TRIP_ID = __TRIP_ID__; placeholders to HTML_SCRIPT. generate_html() replaces both with false/null (published page unchanged). Added generate_editor_html(gen, trip_id) replacing with true/json.dumps(trip_id).",
+        "rationale": "Root cause: serve-trip.py served web/index.html (vanilla HTML) instead of the React template. Fix: inject EDITOR_MODE flag so the same React HTML is used for both published and editor views."
+      },
+      {
+        "id": 2,
+        "description": "Added InteractiveHTMLGenerator loading + in-memory cache + /trip/<id> editor serving in serve-trip.py",
+        "type": "code",
+        "files_modified": ["scripts/serve-trip.py"],
+        "changes": "Added importlib.util loading of InteractiveHTMLGenerator from hyphenated filename. Added _html_cache dict + per-trip threading.Lock infrastructure (Finding 9: lock held through entire generate+write cycle). Changed /trip/<id> dispatch to call _serve_trip_editor(). Added _invalidate_html_cache(trip_id) call after successful /api/save.",
+        "rationale": "serve-trip.py must serve the React HTML (identical to published page) instead of static index.html. In-memory cache prevents repeated InteractiveHTMLGenerator invocations (which run subprocess calls). Per-trip lock prevents concurrent-request race (Finding 9)."
+      },
+      {
+        "id": 3,
+        "description": "Added CandidatesSidebar, adaptV2Option, mergeEditorSelectionsIntoPublishedDay, slot-drop overlays, editor state to react_template.tpl",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Added useMemo to hook destructuring. Added adaptV2Option(), mergeEditorSelectionsIntoPublishedDay() helpers before NotionTravelApp. Added CandidatesSidebar component (fixed-right panel, 300px, slot groups). In NotionTravelApp: added editorTripData/editorSelections/editorSession state; editorDay useMemo (F1a absolute-day lookup by publishedDay.day); effectiveDay useMemo (F10 merge via deep-clone + selected:true); useEffect for /api/trip fetch; useEffect for window.setEditorSelection bridge. Meal/cafe/attraction/entertainment cards get slot-drop overlays gated by EDITOR_MODE. Main content div gets marginRight: EDITOR_MODE ? '300px' : 0. KanbanView gets editorDay prop.",
+        "rationale": "Editor must be the published page upgraded — not a different layout. All card additions are gated by EDITOR_MODE so the published page is byte-identical to before."
+      },
+      {
+        "id": 4,
+        "description": "Refactored drag.js to remove state.js/mobile.js imports, add initEditorDrag(), fix _onDrop for React path",
+        "type": "code",
+        "files_modified": ["web/js/drag.js"],
+        "changes": "Removed import { getActiveDayNumber } from ./state.js and import { isMobileViewport } from ./mobile.js. Added _getActiveDayNumber module variable. Added initEditorDrag(candidatesRoot, dropRoot, getActiveDayFn, onDropFn) export. Changed _isMobile() to return window.innerWidth < 640 (same threshold). Updated _onDrop: resolves slotId from drop.dataset.slotId first (React path), falls back to .closest('.slot'); calls window.setEditorSelection if available, else _committedRequest.",
+        "rationale": "React-path drag.js must not import from state.js/mobile.js (which are not present in the React HTML). initEditorDrag() is framework-neutral, called via React useEffect."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/render_html_builders.py",
+        "imported_by": ["scripts/generate-html-interactive.py", "scripts/serve-trip.py"]
+      },
+      {
+        "modified": "scripts/serve-trip.py",
+        "imported_by": []
+      },
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": ["scripts/lib/render_html_builders.py (read as template string)"]
+      },
+      {
+        "modified": "web/js/drag.js",
+        "imported_by": []
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "88bfc86d — serve-trip.py served web/index.html (vanilla HTML, Inter font, wrong structure) instead of React template (ui-sans-serif, Notion layout)",
+      "why_issue_occurred": "Four previous CSS-patching attempts targeted symptoms. Root cause: wrong HTML being served entirely. serve-trip.py /trip/<id> route served static web/index.html instead of generating the React editor HTML.",
+      "how_fix_addresses_root": "serve-trip.py now generates React HTML via InteractiveHTMLGenerator (same as published page), injects EDITOR_MODE=true, and serves it for /trip/<id>. Published page path (generate_html) is unchanged — EDITOR_MODE=false injected there."
+    },
+    "diff_stats": {
+      "files_changed": 4,
+      "lines_added": 439,
+      "lines_removed": 30,
+      "new_symbols_introduced": [
+        "generate_editor_html",
+        "InteractiveHTMLGenerator (imported)",
+        "_html_cache",
+        "_html_cache_locks",
+        "_html_cache_meta_lock",
+        "_get_trip_lock",
+        "_generate_html_for_trip",
+        "_get_or_generate_html",
+        "_invalidate_html_cache",
+        "_serve_trip_editor",
+        "adaptV2Option",
+        "mergeEditorSelectionsIntoPublishedDay",
+        "CandidatesSidebar",
+        "initEditorDrag",
+        "_getActiveDayNumber"
+      ],
+      "minimum_possible_lines_estimate": 350,
+      "justification_for_overage": "This is a new feature (editor layer), not a bug fix. 350+ lines are the minimum to implement: (1) EDITOR_MODE injection in 2 functions, (2) in-memory cache with thread safety, (3) CandidatesSidebar component + slot-drop overlays on 4 card types + editor state management + fetch + save bridge. Minimum-diff principle applied: no refactoring of pre-existing code, no new CSS classes, no helper functions beyond what the BA spec explicitly required."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Codex executed generate_editor_html for beijing-lijiang-dali-20260418-100846: output 289,257 bytes valid HTML. Python syntax check passes for both .py files. drag.js has no remaining import statements. react_template.tpl EDITOR_MODE guards verified via grep."
+    },
+    "qa_ready": true,
+    "qa_notes": "QA should: (1) Start serve-trip.py and navigate to /trip/beijing-lijiang-dali-20260418-100846. (2) Verify the editor page looks IDENTICAL to the published Notion-style page except for the 300px CandidatesSidebar on the right. (3) Verify dragging a card from the sidebar onto a slot-drop overlay changes the displayed card. (4) Verify /api/save is called with correct payload. (5) Verify the published page (generate_html path) is unchanged — EDITOR_MODE=false, no sidebar.",
+    "permissions_to_add": [],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex executed HTML generation for beijing-lijiang-dali-20260418-100846 (289,257 bytes output). Verified name matching between v2 options and PLAN_DATA is clean — no missing names. No blockers raised. Implementation verified as correct end-to-end.",
+      "feedback_incorporated": "All CODEX_FEEDBACK findings were classified and incorporated during original implementation. No findings required post-review changes: name-based slot matching (F7b) was already in the implementation; absolute-day lookup (F1a) was already implemented; per-trip lock scope (F9) was already correct. Self-review substituted for any additional findings: over-engineering check (EDITOR_MODE guards are necessary), missed edge cases (crypto.randomUUID fallback added for envs without crypto), regression check (generate_html unchanged for published page), scope drift check (no changes to main.css, index.html, or state.js)."
+    },
+    "implementation_notes": [
+      "generate_editor_html() calls gen.generate_plan_data() and gen._read_react_template() — both are existing InteractiveHTMLGenerator methods. If either method signature changes, this function must be updated.",
+      "The window.setEditorSelection bridge is re-registered in a useEffect on every render (no deps array) — this ensures it always closes over the current publishedDay.day. This is intentional, not a bug.",
+      "CandidatesSidebar uses F1a lookup (find by absolute day number) not array index. The API returns v2 format with days[N].day = 1-indexed absolute day number.",
+      "editorSelections key is 'day:slotId' (e.g. '3:breakfast') — this allows per-day selections without collision across days.",
+      "crypto.randomUUID fallback added: Math.random().toString(36).slice(2) — used for editorSession UUID when running in environments without crypto.randomUUID (older browsers)."
+    ]
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA should verify the /api/save payload contract matches serve-trip.py handle_save expectations (trip_id, day, editor_session, mutations array).",
+    "Consider adding a loading state to CandidatesSidebar while editorTripData is null (currently shows nothing).",
+    "The in-memory HTML cache is invalidated on /api/save but not on server restart — acceptable for local dev use."
+  ]
+}
