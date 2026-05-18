@@ -25,9 +25,11 @@ Static surfaces:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 import threading
+from collections import defaultdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -47,6 +49,61 @@ from lib.server import (  # noqa: E402
     hydrate_trip,
 )
 from lib.trip_contract.errors import StateMachineError  # noqa: E402
+from lib.render_html_builders import generate_editor_html  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Load InteractiveHTMLGenerator from hyphenated filename via importlib
+# ---------------------------------------------------------------------------
+_gen_spec = importlib.util.spec_from_file_location(
+    "generate_html_interactive",
+    Path(__file__).parent / "generate-html-interactive.py",
+)
+_gen_mod = importlib.util.module_from_spec(_gen_spec)
+_gen_spec.loader.exec_module(_gen_mod)
+InteractiveHTMLGenerator = _gen_mod.InteractiveHTMLGenerator
+
+# ---------------------------------------------------------------------------
+# Per-trip HTML cache (S1: in-memory, invalidated on save)
+# ---------------------------------------------------------------------------
+_html_cache: dict[str, str] = {}
+_html_cache_locks: dict[str, threading.Lock] = {}
+_html_cache_meta_lock = threading.Lock()
+
+
+def _get_trip_lock(trip_id: str) -> threading.Lock:
+    with _html_cache_meta_lock:
+        if trip_id not in _html_cache_locks:
+            _html_cache_locks[trip_id] = threading.Lock()
+        return _html_cache_locks[trip_id]
+
+
+def _generate_html_for_trip(trip_id: str) -> str:
+    """Instantiate generator and render editor HTML for trip_id."""
+    gen = InteractiveHTMLGenerator(trip_id)
+    return generate_editor_html(gen, trip_id)
+
+
+def _get_or_generate_html(trip_id: str) -> str:
+    """Return cached editor HTML, generating it on first miss.
+
+    The per-trip lock is held for the entire generate+write cycle to prevent
+    a concurrent _invalidate_html_cache call from causing a stale-write race
+    (Finding 9).
+    """
+    trip_lock = _get_trip_lock(trip_id)
+    with trip_lock:
+        if trip_id in _html_cache:
+            return _html_cache[trip_id]
+        html = _generate_html_for_trip(trip_id)
+        _html_cache[trip_id] = html
+        return html
+
+
+def _invalidate_html_cache(trip_id: str) -> None:
+    """Remove cached HTML for trip_id so the next request regenerates it."""
+    trip_lock = _get_trip_lock(trip_id)
+    with trip_lock:
+        _html_cache.pop(trip_id, None)
 
 
 DEFAULT_HOST = "127.0.0.1"
