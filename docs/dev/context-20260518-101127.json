@@ -1,0 +1,341 @@
+{
+  "request_id": "20260518-101127",
+  "task_id": "20260518-101127",
+  "timestamp": "2026-05-18T10:11:27Z",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "One unified page at /trip/<id> that is simultaneously the published viewer AND the fully functional editor. Remove the EDITOR_MODE split entirely. All editor features are always active unconditionally. Visual output must remain 100% identical to the current Notion-style React template — no layout/CSS/color changes.",
+    "clarified": "Collapse generate_html() + generate_editor_html() into a single generate_html(gen, trip_id). Remove all EDITOR_MODE guards from react_template.tpl. Activate all 12 editor features unconditionally. Serve-trip.py import/call updated only.",
+    "what": "Unified viewer/editor page: EDITOR_MODE removal + 12 editor features",
+    "why": "The viewer/editor split creates maintenance overhead and prevents the editor from being the canonical page. The 12 features (save status, offline, conflict, approve, reactive state, candidates indicator, budget recompute, route gaps, mobile, touch, cover image, reactive render) are required for a functional editor.",
+    "where": [
+      "scripts/lib/react_template.tpl",
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py"
+    ],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl — EDITOR_MODE removal + 12 features",
+        "scripts/lib/render_html_builders.py — function collapse",
+        "scripts/serve-trip.py — import + call name update only"
+      ],
+      "excluded": [
+        "web/index.html — DO NOT MODIFY (reference only)",
+        "web/js/state.js — DO NOT MODIFY (reference only)",
+        "No new API endpoints",
+        "No layout/CSS/color changes to existing Notion-style cards"
+      ]
+    },
+    "success_criteria": [
+      "No EDITOR_MODE constant or checks remain in react_template.tpl or generated HTML",
+      "Single generate_html(gen, trip_id) function; no generate_editor_html()",
+      "All 12 editor features active and verifiable via AC1-AC16",
+      "Existing Notion-style visual output unchanged for card/timeline content"
+    ],
+    "constraints": [
+      "Babel standalone JSX (no build step) — no ES module syntax",
+      "generate_html must accept trip_id=None for backward compat or update all call sites",
+      "Do not use adaptV2Option() output for KanbanView/TimelineView cards",
+      "Budget recompute endpoint already exists — do not add a duplicate",
+      "stage name for Approve Day is 'user-selected' (verified in save.py)"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl",
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/generate-html-interactive.py — calls generate_html(self) with one arg; may need update if signature changes",
+      "scripts/lib/server/save.py — stage name verification source",
+      "scripts/lib/trip_contract/api_contract.py — BudgetRequest.day type (Optional[int])"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "web/index.html — reference only",
+      "web/js/state.js — reference only",
+      "scripts/lib/server/route.py — /api/route handler used by feature 11 (route gaps); no changes needed"
+    ]
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "The /trip/<id> page is split into a read-only viewer (EDITOR_MODE=false) and a separate editor (EDITOR_MODE=true). Editor features are gated behind EDITOR_MODE at ~15 locations. 12 editor features are missing from the current implementation.",
+    "root_cause": "Architectural split introduced in prior cycle (task 20260517-211850): generate_editor_html() injects EDITOR_MODE=true; react_template.tpl gates editor UI behind EDITOR_MODE checks. This cycle removes the split.",
+    "root_cause_commit": "task 20260517-211850 — feat: EDITOR_MODE injection + generate_editor_html + serve-trip.py wiring",
+    "why_introduced": "Prior cycle intentionally separated viewer from editor to isolate editor-only UI",
+    "why_problematic": "User wants a single unified page where editor features are always active; the split is no longer desired",
+    "timeline": "Split introduced 2026-05-17; unified page requested 2026-05-18",
+    "affected_files": [
+      "scripts/lib/react_template.tpl",
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py"
+    ],
+    "evidence_type": "inferred",
+    "observations": [
+      "scripts/lib/render_html_builders.py:359 generate_html(gen) sets EDITOR_MODE=false (inferred: Read)",
+      "scripts/lib/render_html_builders.py:375 generate_editor_html(gen, trip_id) sets EDITOR_MODE=true (inferred: Read)",
+      "scripts/lib/react_template.tpl:1930 const day = EDITOR_MODE ? effectiveDay : publishedDay (inferred: Read)",
+      "scripts/lib/react_template.tpl:2120 {EDITOR_MODE && (<CandidatesSidebar .../>)} (inferred: Read)",
+      "scripts/serve-trip.py:52 imports generate_editor_html (inferred: Read)",
+      "scripts/serve-trip.py:83 calls generate_editor_html(gen, trip_id) (inferred: Read)",
+      "scripts/serve-trip.py:218 POST /api/budget/recompute already exists (inferred: Read)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — runtime browser verification not performed)",
+    "complaint_location_keywords": [
+      "EDITOR_MODE",
+      "generate_editor_html",
+      "react_template.tpl",
+      "unified page",
+      "viewer",
+      "editor"
+    ],
+    "localization_evidence": "Direct Read of source files confirmed EDITOR_MODE split locations and all 12 missing feature gaps",
+    "located_source": "scripts/lib/react_template.tpl (EDITOR_MODE guards); scripts/lib/render_html_builders.py (function split)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "N/A",
+      "commit_message": "N/A",
+      "confirmed_by": "N/A",
+      "bisect_blocked": "Not a regression — this is a forward feature request",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "One unified page at /trip/<id> that is simultaneously the published viewer AND the fully functional editor", "acceptance_criterion": "EDITOR_MODE absent from generated HTML; editor UI always rendered"},
+    {"id": "R2", "source_phrase": "Remove the EDITOR_MODE split entirely", "acceptance_criterion": "Single generate_html(gen, trip_id); no generate_editor_html()"},
+    {"id": "R3", "source_phrase": "All editor features are always active unconditionally", "acceptance_criterion": "Slot drop overlays, CandidatesSidebar, all 12 features unconditionally rendered"},
+    {"id": "R4", "source_phrase": "Visual output must remain 100% identical to the current Notion-style React template", "acceptance_criterion": "Existing card/header/timeline styles unchanged; new chrome in defined areas only"},
+    {"id": "R5", "source_phrase": "Save status indicator (saving/saved/error during POST /api/save)", "acceptance_criterion": "saveMutations() shows saving/saved/error; stale responses ignored"},
+    {"id": "R6", "source_phrase": "Online/offline detection (navigator.onLine, OfflineBanner)", "acceptance_criterion": "OfflineBanner shows/hides with online/offline events; no retry queue"},
+    {"id": "R7", "source_phrase": "Conflict detection 409 (ConflictBanner with reload offer)", "acceptance_criterion": "ConflictBanner on HTTP 409 OR conflict:'409-soft' in response body"},
+    {"id": "R8", "source_phrase": "Approve Day button per day (fires /api/save with mutation type stage, shows Approved state)", "acceptance_criterion": "Stage mutation to 'user-selected' sent; Approved state shown when stage=user-selected"},
+    {"id": "R9", "source_phrase": "effectiveDay passed to BOTH KanbanView AND TimelineView (currently only KanbanView gets it)", "acceptance_criterion": "const day = effectiveDay unconditionally; both views receive it"},
+    {"id": "R10", "source_phrase": "Candidates sidebar marks selected items (visual indicator for already-selected options)", "acceptance_criterion": "Selected candidate has checkmark/border; derived from editorSelections"},
+    {"id": "R11", "source_phrase": "Live budget recompute after drop+save (POST /api/budget/recompute with {trip_id, day})", "acceptance_criterion": "After successful save, /api/budget/recompute called; day_total displayed"},
+    {"id": "R12", "source_phrase": "Route gap travel times between consecutive slots", "acceptance_criterion": "/api/route called for consecutive option IDs; duration shown when status=ok"},
+    {"id": "R13", "source_phrase": "Mobile layout (viewport <768px: single-pane with Tab navigation)", "acceptance_criterion": "At <768px: sidebar hidden, tab bar shown, single pane active"},
+    {"id": "R14", "source_phrase": "Touch drag support (touchstart/touchmove/touchend OR two-step tap-to-select)", "acceptance_criterion": "Two-step tap-to-select works; desktop drag-and-drop unchanged"},
+    {"id": "R15", "source_phrase": "Live cover image (when accommodation selection changes, update day header cover)", "acceptance_criterion": "Cover image updates on accommodation selection change"},
+    {"id": "R16", "source_phrase": "Full reactive re-render from shared editorSelections state on every selection change", "acceptance_criterion": "All views derive from effectiveDay useMemo; no direct DOM mutation; PLAN_DATA cards preserved"}
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/serve-trip.py",
+      "line_range": "52-83",
+      "role": "HTTP server — imports generate_editor_html, calls it for /trip/<id> route",
+      "imports_from": ["scripts/lib/render_html_builders.py"],
+      "evidence": "Read serve-trip.py lines 52 and 83",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/render_html_builders.py",
+      "line_range": "344-393",
+      "role": "HTML generation layer — HTML_SCRIPT with EDITOR_MODE/TRIP_ID injection; generate_html() and generate_editor_html() functions",
+      "imports_from": ["scripts/lib/react_template.tpl"],
+      "evidence": "Read render_html_builders.py lines 344-393; grep for generate_editor_html",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1-2129",
+      "role": "React JSX template — Babel standalone; EDITOR_MODE guards at ~15 locations; NotionTravelApp root component",
+      "imports_from": ["leaf"],
+      "evidence": "Read react_template.tpl in multiple chunks; grep for EDITOR_MODE locations",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/generate-html-interactive.py",
+      "line_range": "598-600",
+      "role": "InteractiveHTMLGenerator.generate_html() — one-arg call to render_html_builders.generate_html(self); potential breakage if signature changes without default",
+      "imports_from": ["scripts/lib/render_html_builders.py"],
+      "evidence": "grep output: ./scripts/generate-html-interactive.py:598: def generate_html(self) → calls _bld.generate_html(self)",
+      "verified_via": "grep"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1900,
+      "type": "if",
+      "code_snippet": "if (!EDITOR_MODE || !editorDay) return publishedDay;",
+      "purpose": "effectiveDay useMemo guard — falls back to publishedDay when editor not active",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1906,
+      "type": "if",
+      "code_snippet": "if (!EDITOR_MODE || !TRIP_ID) return;",
+      "purpose": "fetchTripData useEffect guard — skips fetch in viewer mode",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1914,
+      "type": "if",
+      "code_snippet": "if (!EDITOR_MODE) return;",
+      "purpose": "window.setEditorSelection guard — no-ops in viewer mode",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1791,
+      "type": "if",
+      "code_snippet": "if (!EDITOR_MODE || !editorTripData) return null;",
+      "purpose": "CandidatesSidebar early return guard",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1892,
+      "type": "if",
+      "code_snippet": "if (!EDITOR_MODE || !editorTripData) return null;",
+      "purpose": "editorDay useMemo guard",
+      "removal_authorized": true
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop (primary); 390x844 mobile (secondary — feature 9)",
+    "theme": "light",
+    "locale": "zh",
+    "auth_state": "N/A (local server, no auth)",
+    "data_state": "with-data (beijing-lijiang-dali-20260418-100846)",
+    "browser": "Chrome desktop / Chrome mobile",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "User wants one unified page that is simultaneously the published viewer AND the fully functional editor; remove the EDITOR_MODE split entirely; all editor features always active unconditionally.",
+    "measured": {
+      "value": "generate_html(gen) at line 359 sets EDITOR_MODE=false; generate_editor_html(gen, trip_id) at line 375 sets EDITOR_MODE=true; react_template.tpl has ~15 EDITOR_MODE guard locations",
+      "location": "scripts/lib/render_html_builders.py:359-393; scripts/lib/react_template.tpl:868,885,934,954,1001,1020,1068,1791,1892,1900,1906,1914,1930,1986,2120"
+    },
+    "expected": {
+      "value": "Single generate_html(gen, trip_id) function; no EDITOR_MODE in HTML_SCRIPT or react_template.tpl; all editor UI unconditionally active",
+      "source": "User requirement verbatim + codebase Read"
+    },
+    "gap": "Two separate functions must collapse to one; ~15 EDITOR_MODE guards must be removed; 12 editor features must be added"
+  },
+  "scope_expansion": {
+    "search_pattern": "EDITOR_MODE",
+    "search_scope": "scripts/lib/**",
+    "user_reported": [
+      "scripts/lib/react_template.tpl",
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py"
+    ],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:868",
+      "scripts/lib/react_template.tpl:885",
+      "scripts/lib/react_template.tpl:934",
+      "scripts/lib/react_template.tpl:954",
+      "scripts/lib/react_template.tpl:1001",
+      "scripts/lib/react_template.tpl:1020",
+      "scripts/lib/react_template.tpl:1068",
+      "scripts/lib/react_template.tpl:1791",
+      "scripts/lib/react_template.tpl:1892",
+      "scripts/lib/react_template.tpl:1900",
+      "scripts/lib/react_template.tpl:1906",
+      "scripts/lib/react_template.tpl:1914",
+      "scripts/lib/react_template.tpl:1930",
+      "scripts/lib/react_template.tpl:1986",
+      "scripts/lib/react_template.tpl:2120",
+      "scripts/lib/render_html_builders.py:344",
+      "scripts/lib/render_html_builders.py:359",
+      "scripts/lib/render_html_builders.py:375",
+      "scripts/serve-trip.py:52",
+      "scripts/serve-trip.py:83"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Direct Read of source files + Codex audit of codebase + save.py verification of stage names",
+    "url_or_location": "scripts/lib/react_template.tpl, scripts/lib/render_html_builders.py, scripts/serve-trip.py, scripts/lib/server/save.py",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260517-211850.md",
+        "proposed_solution": "Add EDITOR_MODE + TRIP_ID injection to render_html_builders.py; add generate_editor_html(gen, trip_id); wire serve-trip.py",
+        "actual_change": "render_html_builders.py gained generate_editor_html(gen, trip_id) and EDITOR_MODE injection; serve-trip.py updated; react_template.tpl gained EDITOR_MODE guards",
+        "outcome": "Successfully shipped the editor split. This cycle removes it.",
+        "failure_category": "other",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior cycle added the EDITOR_MODE split. This cycle removes it and adds 12 features — opposite direction, forward evolution."
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; EDITOR_MODE split exists in render_html_builders.py and react_template.tpl from prior cycle",
+    "recent_commits": "7b416587 feat(web): 3-column Notion layout; 8b7d4e0c fix(web): 3 close-gate blockers; dbb35f72 feat(web): Notion UI redesign",
+    "file_contents": {},
+    "dependencies": {
+      "react_template_tpl_lines": 2129,
+      "babel_standalone": "JSX transpilation at runtime — no build step",
+      "serve_trip_py": "ThreadingHTTPServer on 127.0.0.1:8765",
+      "budget_recompute_endpoint": "EXISTS at serve-trip.py:218 — do not add"
+    },
+    "environment": {
+      "trip_id": "beijing-lijiang-dali-20260418-100846",
+      "server_url": "http://127.0.0.1:8765/trip/beijing-lijiang-dali-20260418-100846"
+    }
+  },
+  "development_approach": {
+    "strategy": "Three-phase: (1) Collapse render_html_builders.py and update serve-trip.py import/call. (2) Remove all EDITOR_MODE guards from react_template.tpl and make editor state unconditional. (3) Add each of the 12 features as incremental additions to NotionTravelApp and its sub-components.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/render_html_builders.py",
+      "scripts/serve-trip.py",
+      "scripts/lib/react_template.tpl"
+    ],
+    "validation_approach": "Playwright: load /trip/beijing-lijiang-dali-20260418-100846 at 1440x900; verify EDITOR_MODE absent; verify each AC via DOM inspection or interaction simulation; screenshot desktop + mobile"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Requirement is a codebase-specific architectural change (EDITOR_MODE removal) with clear root cause from code analysis. No external pattern research needed."
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex provided 15 findings covering: feature 5 framing (effectiveDay already correct — AC updated to unconditional), EDITOR_MODE removal hard criterion added (AC3), generate_html signature specified (AC2), 409-soft vs HTTP 409 distinction clarified (AC7), save concurrency/race criteria added (AC5), offline no-queue constraint added (AC6), Approve Day stage name pinned to 'user-selected' (AC8), candidates selected-state derivation logic specified (AC10), budget recompute response shape constraint added (AC11), route gaps constrained to /api/route only (AC12), mobile breakpoint specified as <768 (AC13), touch simplified to two-step tap-to-select (AC14), cover image accommodation slot check added (AC15), reactive re-render PLAN_DATA preservation specified (AC16), visual output contradiction resolved (AC4)",
+    "findings": [
+      {"issue": "Feature 5 framing incorrect — TimelineView already gets effectiveDay when EDITOR_MODE=true", "proposed_fix": "Remove conditional, make const day = effectiveDay unconditional", "classification": "major", "disposition": "applied", "rationale": "AC9 updated to verify no EDITOR_MODE ternary and unconditional effectiveDay"},
+      {"issue": "EDITOR_MODE removal needs hard AC not just prose", "proposed_fix": "No runtime EDITOR_MODE constant or checks may remain", "classification": "major", "disposition": "applied", "rationale": "AC3 explicitly checks for EDITOR_MODE absence in page source"},
+      {"issue": "generate_html collapse underspecified for call sites", "proposed_fix": "generate_html(gen, trip_id=None), TRIP_ID = trip_id || gen.plan_id, update serve-trip.py", "classification": "major", "disposition": "applied", "rationale": "AC2 specifies two-arg signature; technical hint 1 covers backward compat"},
+      {"issue": "Conflict handling misstated — 409-soft is HTTP 200 not HTTP 409", "proposed_fix": "Check both response.status===409 OR json.conflict==='409-soft'", "classification": "major", "disposition": "applied", "rationale": "AC7 covers both cases explicitly"},
+      {"issue": "Save status lacks concurrency/race criteria", "proposed_fix": "Centralize in saveMutations(); ignore stale responses by request_id", "classification": "major", "disposition": "applied", "rationale": "AC5 specifies stale response handling"},
+      {"issue": "Offline behavior should not imply retry queue", "proposed_fix": "No background queue/retry — saves skipped/marked error", "classification": "major", "disposition": "applied", "rationale": "AC6 explicitly states no retry queue"},
+      {"issue": "Approve Day needs actual backend stage name", "proposed_fix": "to_stage: 'user-selected'; show Approved when stage===user-selected", "classification": "major", "disposition": "applied", "rationale": "AC8 uses 'user-selected' verified from save.py; Won't Have adds 'no invented approved stage'"},
+      {"issue": "Candidates selected-state requires local override logic", "proposed_fix": "editorSelections[dayKey+':'+slotId] ?? slot.selected_option_id", "classification": "major", "disposition": "applied", "rationale": "AC10 specifies the derivation formula"},
+      {"issue": "Budget recompute response-shape mismatch", "proposed_fix": "Only update day_total; do not claim per-category breakdown", "classification": "major", "disposition": "applied", "rationale": "AC11 and Won't Have both constrain to day_total only"},
+      {"issue": "Route gaps are expansionist without endpoint constraint", "proposed_fix": "Use /api/route only; no backend changes", "classification": "major", "disposition": "applied", "rationale": "AC12 specifies /api/route only; Won't Have covers no new endpoints"},
+      {"issue": "Mobile layout conflicts with bp thresholds", "proposed_fix": "Add isMobileLayout = width < 768 alongside existing bp", "classification": "major", "disposition": "applied", "rationale": "AC13 specifies <768px; technical hint 7 explains coexistence"},
+      {"issue": "Touch should choose simpler path", "proposed_fix": "Two-step tap-to-select, not custom touchstart/touchmove/touchend", "classification": "major", "disposition": "applied", "rationale": "AC14 specifies two-step tap; requirement updated"},
+      {"issue": "Live cover image needs accommodation in selection model", "proposed_fix": "Check editorDay.accommodation.options; set effectiveDay.cover from selected image", "classification": "major", "disposition": "applied", "rationale": "AC15 specifies the null check and fallback"},
+      {"issue": "Full reactive re-render too vague", "proposed_fix": "Derive from effectiveDay; no DOM mutation; preserve PLAN_DATA card shape", "classification": "major", "disposition": "applied", "rationale": "AC16 specifies no direct DOM mutation and PLAN_DATA preservation"},
+      {"issue": "100% identical visual output conflicts with always-on editor chrome", "proposed_fix": "Preserve Notion-style content areas; new chrome in defined areas only", "classification": "major", "disposition": "applied", "rationale": "AC4 and R4 both clarify that new chrome is allowed in defined areas"}
+    ],
+    "feedback_incorporated": "All 15 findings incorporated into AC definitions. Feature 5 framing corrected. 409-soft detection clarified. Stage name pinned to 'user-selected'. Touch simplified to two-step. Budget response constrained to day_total. Route gaps constrained to /api/route. Mobile breakpoint set to <768. PLAN_DATA preservation specified."
+  }
+}
