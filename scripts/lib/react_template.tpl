@@ -1854,6 +1854,9 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
   return day;
 }
 
+// Module-level drag state for onDragOver compatibility gate (AC18/FIX3)
+let currentDragSlotId = null;
+
 // _isCompatible: meal slots are mutually compatible; non-meal require exact match (M18)
 const MEAL_SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'meals-any']);
 function _isCompatible(srcSlotId, tgtSlotId) {
