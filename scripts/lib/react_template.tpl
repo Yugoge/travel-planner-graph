@@ -2596,6 +2596,8 @@ function NotionTravelApp() {
                 setEditorTripData={setEditorTripData}
                 editorTripData={editorTripData}
                 liveDayTotal={liveDayTotal}
+                routeCache={routeCache}
+                fetchRoute={fetchRoute}
               />
             : <TimelineView
                 day={day}
