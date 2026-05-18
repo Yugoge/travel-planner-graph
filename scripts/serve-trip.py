@@ -204,7 +204,8 @@ class TripServerHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/trip/"):
             return self._handle_get_trip(path[len("/api/trip/"):])
         if path.startswith("/trip/"):
-            return self._serve_index()
+            trip_id = path[len("/trip/"):]
+            return self._serve_trip_editor(trip_id)
         if path.startswith("/web/"):
             return self._serve_static(path[len("/web/"):])
         if path == "/" or path == "":
