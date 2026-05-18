@@ -2053,6 +2053,7 @@ function NotionTravelApp() {
                 mapProvider={mapProvider}
                 onItemClick={handleItemClick}
                 onBudgetClick={handleBudgetClick}
+                editorDay={editorDay}
               />
             : <TimelineView
                 day={day}
@@ -2091,6 +2092,14 @@ function NotionTravelApp() {
           />
         )}
       </div>
+
+      {EDITOR_MODE && (
+        <CandidatesSidebar
+          editorTripData={editorTripData}
+          publishedDay={publishedDay}
+          lang={lang}
+        />
+      )}
     </div>
   );
 }
