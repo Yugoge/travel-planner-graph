@@ -2334,7 +2334,7 @@ function NotionTravelApp() {
   // Fetch routes between consecutive filled slots after each effectiveDay change (AC12/AC23)
   useEffect(() => {
     if (!day || !editorDay) return;
-    const filledSlots = ['breakfast', 'lunch', 'dinner', 'morning_activity', 'afternoon_activity', 'evening_activity'].filter(slotId => {
+    const filledSlots = ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'].filter(slotId => {
       const key = (day.day) + ':' + slotId;
       const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
       return Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : persistedId;
