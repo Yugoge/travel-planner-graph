@@ -1962,6 +1962,7 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
         day[arr].forEach(card => {
           if (card.name_base === selOpt.name || card.name_local === selOpt.name_local) {
             card.selected = true;
+            card.option_id = selOpt.option_id;
           }
         });
       });
