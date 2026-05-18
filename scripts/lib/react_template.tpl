@@ -1710,7 +1710,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick }) => {
 };
 
 // ============================================================
-// EDITOR HELPERS (only active when EDITOR_MODE = true)
+// EDITOR HELPERS (always active — unified viewer/editor page)
 // ============================================================
 
 // Finding 8: adapt v2 option fields for CandidatesSidebar card display
