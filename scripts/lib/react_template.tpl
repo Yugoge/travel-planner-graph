@@ -983,14 +983,29 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               })()}
 
               {/* Entertainment */}
-              {day.entertainment?.length > 0 && (
+              {day.entertainment?.length > 0 && (() => {
+                const entSlotMap = {};
+                if (EDITOR_MODE && editorDay && editorDay.slots) {
+                  ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
+                    const slot = editorDay.slots[slotKey];
+                    if (!slot || !slot.options) return;
+                    slot.options.forEach(opt => {
+                      if (opt.name) entSlotMap[opt.name] = slotKey;
+                      if (opt.name_local) entSlotMap[opt.name_local] = slotKey;
+                    });
+                  });
+                }
+                return (
                 <Section title={L('entertainment', lang)} icon="🎭">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
                       {day.entertainment.map((ent, i) => {
                         const catColor = categoryColors.entertainment;
+                        const entSlotId = entSlotMap[ent.name_base] || entSlotMap[ent.name_local] || null;
+                        const isSelected = ent.selected;
                         return (
-                          <div key={i} style={cardStyle(catColor, false, ent.optional)}
+                          <div key={i} style={{...cardStyle(catColor, false, ent.optional), position: 'relative',
+                            ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                             onClick={() => onItemClick && onItemClick(ent, 'entertainment')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false, ent.optional)}
