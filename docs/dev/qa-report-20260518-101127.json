@@ -11,99 +11,89 @@
     "codex_consult": {
       "invoked": true,
       "status": "ok",
-      "feedback_summary": "Codex identified 6 blockers (M11 vs M23 route contradiction; Hint-12 'deleted' vs AC17 'null'; AC19 raw vs AC10 resolver; AC7 HTTP-409 'or save error' weakens M7; missing-slot gating gap in Hint-19; AC11 'drops a candidate' narrower than M10) and 2 observation-only items (AC1 verification command; save-status string normalization). All 6 Codex blockers independently verified against spec text and confirmed real.",
-      "feedback_incorporated": "All 6 Codex blockers confirmed and incorporated as NB1-NB6. Two OBSERVATION_ONLY items: AC1 verification command weakness added as W4; save-status string normalization is implementation detail not elevated. Original B1-B6 all verified resolved. W1 verified resolved."
+      "feedback_summary": "Codex confirmed 4 blockers: (1) AC5 vs M5 HTTP 409 gap — AC5 says error for non-2xx without excluding 409, contradicting M5's explicit exclusion; (2) AC26 missing-slot gap — absent key not explicitly included in export disabled condition, same class as NB5; (3) M6 offline save behavior ('saves skipped/marked error') has no AC-level test in AC6 (which only tests OfflineBanner visibility and no retry queue); (4) budget recompute response shape mismatch — spec says response.day_total (top-level) but endpoint returns days[].day_total (verified from scripts/lib/server/budget.py:181-187). Codex called M16 absence and AC8/AC24 stage consistency as OBSERVATION_ONLY. AC22 resolver ambiguity called OBSERVATION_ONLY by Codex (effectiveDay construction should propagate null via resolver).",
+      "feedback_incorporated": "All 4 Codex BLOCKER findings confirmed independently and incorporated as NB7-NB10. AC8/AC24 stage consistency confirmed consistent (both disable outside draft-options and user-review). M16 absence recorded as W5. AC22 resolver ambiguity recorded as W6. W2/W3/W4 from prior round carried forward."
     },
-    "original_blockers_resolution": {
-      "B1": { "status": "resolved", "evidence": "AC24 now leads with explicit REQUIRED_SLOT_KEYS = ['accommodation','breakfast','lunch','dinner']. Hint 19 now says 'do NOT mirror _allRequiredSlotsFilled — instead use REQUIRED_SLOT_KEYS'. No contradiction." },
-      "B2": { "status": "resolved", "evidence": "AC20 now requires origin_slot_id in /api/save mutation. save.py:_apply_select_mutation lines 81-103 confirmed to handle origin_slot_id. Reload durability test added." },
-      "B3": { "status": "resolved", "evidence": "AC10 now uses Object.prototype.hasOwnProperty.call(editorSelections, key) key-presence semantics. AC17 now says key set to null (key present, value null = explicitly cleared). Consistent." },
-      "B4": { "status": "resolved", "evidence": "AC2 now explicitly requires generate_html(gen, trip_id=None) with None default AND adds backward-compat test case for generate-html-interactive.py." },
-      "B5": { "status": "resolved", "evidence": "AC17 now specifies plan->candidates POST /api/save with option_id:null; slot->slot sends batch [clear A, set B with origin_slot_id:A]. save.py:_apply_mutations (lines 175-178) confirmed to apply all mutations in list." },
-      "B6": { "status": "resolved", "evidence": "AC24 now contains explicit note that _check_stage_gate must be updated to REQUIRED_SLOT_KEYS only. validators.py added to affected_files. Current source checking 7 slots is expected (dev must fix)." }
+    "nb1_through_nb6_resolution": {
+      "NB1": {
+        "status": "resolved",
+        "evidence": "M11 (ticket line 113) now reads: 'display route-unknown text and retry button when status===unknown OR the request fails (per M23); discard responses with stale request_seq only'. The old 'ignore stale/unknown/error responses' clause is gone. M11 now aligns with M23 and AC12/AC23."
+      },
+      "NB2": {
+        "status": "resolved",
+        "evidence": "Technical Hint 12 (ticket line 532) now reads: 'returns a new object with the source key present and set to null (NOT deleted — absent key falls back to persisted value under AC10 hasOwnProperty semantics) and the destination key set to the option_id, in one functional update call'. The 'source key deleted' wording is replaced with 'source key present and set to null'."
+      },
+      "NB3": {
+        "status": "resolved",
+        "evidence": "AC19 (ticket line 378) now reads: 'resolved via the shared AC10 hasOwnProperty resolver... the raw slot.selected_option_id field MUST NOT be checked directly'. M19 (ticket line 121) also updated: 'using the shared AC10 hasOwnProperty resolver, equal to option_id; a null resolved value means explicitly deselected and the raw slot.selected_option_id field MUST NOT be checked directly'."
+      },
+      "NB4": {
+        "status": "resolved",
+        "evidence": "AC7 (ticket line 270) now reads: 'THEN ConflictBanner appears (same unconditional requirement as the 409-soft case above; generic save error state is for all other non-2xx responses only)'. The parenthetical '(or save error state is shown)' is removed; ConflictBanner is now mandatory for HTTP 409."
+      },
+      "NB5": {
+        "status": "resolved",
+        "evidence": "AC24 (ticket line 430) now explicitly handles absent key: 'GIVEN a day where at least one key in REQUIRED_SLOT_KEYS is either (a) absent from effectiveDay entirely (missing state per AC22) OR (b) present but not skipped and has no selected_option_id'. The 'if the slot exists' exemption is explicitly prohibited. Hint 19 (ticket line 546) now says: 'if the slot key is ABSENT from effectiveDay (missing state per AC22) → not all filled (counts as unfilled, disables Approve); The if the slot exists exemption MUST NOT be applied to required slots'."
+      },
+      "NB6": {
+        "status": "resolved",
+        "evidence": "AC11 (ticket line 300) now reads: 'WHEN any selection-changing save completes successfully — candidates→plan drop, plan→candidates deselect, slot→slot move, or tap-to-select — and POST /api/save returns 200'. All four selection-changing directions are now explicitly covered."
+      }
     },
-    "w1_resolution": { "status": "resolved", "evidence": "Technical Hint 11 now reads 'data-origin-slot-id (with the -id suffix)'. Matches M19 and drag.js." },
     "blockers": [
       {
-        "id": "NB1",
-        "ac": "M11 / M23 / AC12 / AC23",
+        "id": "NB7",
+        "ac": "AC5 / M5 / M7 / AC7",
         "severity": "blocker",
-        "title": "M11 MoSCoW text still says 'ignore stale/unknown/error responses' — directly contradicts M23/AC23 which require 'route unknown' + retry UI for unknown/error",
-        "description": "M11 (ticket line 113) says: 'call /api/route with monotonic request_seq; display segment duration when status===ok; ignore stale/unknown/error responses'. M23 explicitly amends the AC layer: 'this AMENDS AC12 (which previously said ignore unknown/error responses — replace that clause with show unknown+retry)'. AC12 was correctly updated. But M11 in the MoSCoW Must-Have section was NOT updated — it still says 'ignore stale/unknown/error responses'. A dev reading the MoSCoW requirements list would implement the old behavior (ignore) for the M11 requirement, then encounter M23 amending AC12 but not M11, producing ambiguity about which governs.",
+        "title": "AC5 does not exclude HTTP 409 from the error save state — contradicts M5's explicit exclusion",
+        "description": "M5 (ticket line 107) says: 'error on network failure or non-OK responses other than HTTP 409 (HTTP 409 is handled by ConflictBanner per M7 — it does NOT trigger the error save state)'. M5 is unambiguous: HTTP 409 must NOT set the error save state. AC7 (line 270) was fixed in NB4 to require ConflictBanner unconditionally for HTTP 409. However AC5 (ticket lines 250-253) still reads: 'shows error if the POST returns non-2xx or network error'. HTTP 409 is non-2xx. AC5 does not exclude it. A dev implementing strictly from AC5 would set error save state for HTTP 409 (violating M5's 'does NOT trigger the error save state'). The only spec text that excludes 409 from error state is M5 — but ACs are where dev implements tests. The AC layer must carry the exclusion explicitly.",
         "evidence": {
-          "m11_text": "ignore stale/unknown/error responses (ticket line 113)",
-          "m23_text": "this AMENDS AC12 (which previously said ignore unknown/error responses — replace that clause with show unknown+retry) (ticket line 125)",
-          "ac12_amended": "correctly updated to include unknown+retry cross-reference to AC23 (ticket lines 312-314)",
-          "conflict": "M11 says ignore; M23/AC12/AC23 say render + retry. M11 was not updated when M23 was added."
+          "m5_text": "error on network failure or non-OK responses other than HTTP 409 (HTTP 409 is handled by ConflictBanner per M7 — it does NOT trigger the error save state) (ticket line 107)",
+          "ac5_text": "shows 'error' if the POST returns non-2xx or network error (ticket line 252) — does NOT exclude HTTP 409",
+          "ac7_text": "ConflictBanner appears (same unconditional requirement as the 409-soft case above; generic save error state is for all other non-2xx responses only) (ticket line 270)",
+          "conflict": "M5 and AC7 both say HTTP 409 must NOT trigger error save state. AC5 says error for any non-2xx, which includes 409."
         },
-        "proposed_fix": "Update M11 to: 'display segment duration when status===ok; when status===unknown OR request fails, show unknown+retry per M23; discard responses with stale request_seq only'. Remove 'ignore unknown/error responses' from M11."
+        "proposed_fix": "Update AC5 line 252 to: 'shows error if the POST returns a network error or a non-2xx response other than HTTP 409; HTTP 409 shows ConflictBanner per AC7 and does NOT set the generic save error state'."
       },
       {
-        "id": "NB2",
-        "ac": "Technical Hint 12 / AC17",
+        "id": "NB8",
+        "ac": "AC26 / M26 / AC24",
         "severity": "blocker",
-        "title": "Technical Hint 12 says source key 'deleted' in slot-to-slot move — contradicts AC17's 'set to null' and would resurrect persisted selection under AC10 hasOwnProperty semantics",
-        "description": "AC17 (ticket line 357) correctly specifies: 'slot A and slot B are updated in a single editorSelections state update: slot A key set to null'. Under AC10's hasOwnProperty semantics, key-absent triggers fallback to slot.selected_option_id (the persisted published value). Technical Hint 12 (ticket line 532) says: 'returns a new object with the source key deleted and the destination key set in one call'. If dev follows Hint 12 and DELETES the source key, the source slot will have no key in editorSelections, causing the hasOwnProperty resolver to fall back to the published selected_option_id (still set on the server), and the source slot will re-render as still selected. This is exactly the deselect semantics bug that B3 was meant to fix — Hint 12 reintroduces it.",
+        "title": "AC26 export gating does not explicitly include absent required-slot key (missing state) as a disabled condition — same class as NB5 for Approve",
+        "description": "AC24 was fixed in NB5: it now explicitly states that a required slot key ABSENT from effectiveDay counts as unfilled and disables Approve. AC26 (ticket line 463) says: 'GIVEN the user is offline OR any non-skipped slot in REQUIRED_SLOT_KEYS is unfilled across ANY day'. The phrase 'unfilled' could be read as 'present but with no selected_option_id'. A day where accommodation is absent from effectiveDay entirely (missing state per AC22) would pass AC26's check literally — the absent slot is not a 'non-skipped slot that is unfilled' because there is no slot object to check. AC24 now has an explicit '(a) absent from effectiveDay entirely' clause; AC26 does not. This creates an inconsistency: export buttons would remain enabled when an accommodation slot is missing from a day, while the Approve button would correctly be disabled for that same day.",
         "evidence": {
-          "ac17_text": "slot A's key set to null (key present, value null = explicitly cleared) (ticket line 357)",
-          "hint12_text": "returns a new object with the source key deleted and the destination key set in one call (ticket line 532)",
-          "ac10_resolver": "Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : slot.selected_option_id — absent key falls through to published value",
-          "conflict": "Hint 12 'deleted' vs AC17 'null'. Deleted key = absent key = fallback to persisted value = source slot still shows as selected after slot-to-slot move."
+          "ac26_text": "any non-skipped slot in REQUIRED_SLOT_KEYS is unfilled across ANY day (ticket line 463) — no explicit absent-key case",
+          "ac24_fix": "absent from effectiveDay entirely (missing state per AC22) counts as unfilled (ticket line 430)",
+          "conflict": "AC24 explicitly covers absent key; AC26 does not. Export buttons could remain enabled with a missing required slot."
         },
-        "proposed_fix": "Update Technical Hint 12 to: 'returns a new object with the source key present and set to null (NOT deleted — absent key falls back to persisted value under AC10 hasOwnProperty semantics) and the destination key set to the option_id, in one functional update call'."
+        "proposed_fix": "Update AC26 line 463 to: 'GIVEN the user is offline OR for any day, any key in REQUIRED_SLOT_KEYS is either absent from effectiveDay (missing state per AC22) OR present but not skipped and has no resolved selected_option_id — WHEN the buttons render — THEN both Export buttons are disabled'. Mirror AC24's exact formulation."
       },
       {
-        "id": "NB3",
-        "ac": "AC19 / M19 / AC10",
+        "id": "NB9",
+        "ac": "AC6 / M6",
         "severity": "blocker",
-        "title": "AC19 Meals selected state checks raw slot.selected_option_id — not the shared AC10 resolver — making explicit deselect/null invisible to the Meals sidebar",
-        "description": "AC10 establishes that selected state is determined via the hasOwnProperty resolver: key present + null = explicitly cleared (slot renders unselected). AC19 (ticket line 378) says: 'a card is shown as selected (visual indicator) if ANY of breakfast/lunch/dinner has selected_option_id === card.option_id'. The term selected_option_id here refers to the raw slot data field, not the resolved value. If a user deselects a meal card (editorSelections[dayKey+':'+breakfast] = null), the raw slot.selected_option_id on the published day data may still be non-null. AC19's raw-field check would still show the card as selected, directly contradicting the AC10 deselect semantics and AC17 plan->candidates drag-to-deselect behavior. AC10 explicitly states 'this same resolver is used for effectiveDay merging, cover image, route, and budget inputs' — AC19 must use it too.",
+        "title": "AC6 only tests OfflineBanner visibility — M6's 'saves skipped/marked error when offline' has no acceptance criterion",
+        "description": "M6 (ticket line 108) requires: (1) OfflineBanner shown when offline, (2) saves skipped/marked error when offline, (3) no background queue/retry. AC6 (ticket lines 255-262) tests: (a) OfflineBanner appears on offline event, (b) OfflineBanner disappears on online event, (c) no background save retry queue. M6's requirement (2) — saves are proactively skipped before attempting the POST — has no THEN clause in AC6. A dev could implement: offline event → show OfflineBanner → save attempt still fires /api/save POST (which fails due to network) — and pass all AC6 assertions while violating M6. The distinction matters: M6 says saves should be proactively skipped (not just fail after), and should mark the save status as error/offline before any network attempt.",
         "evidence": {
-          "ac19_text": "a card is shown as selected if ANY of breakfast/lunch/dinner has selected_option_id === card.option_id (ticket line 378)",
-          "ac10_shared_resolver": "this same resolver is used for effectiveDay merging, cover image update, route gap inputs, and budget recompute inputs — it is a shared utility function (ticket line 295)",
-          "conflict": "AC19 checks raw slot.selected_option_id; AC10 resolver checks editorSelections with hasOwnProperty. After deselect (editorSelections[key]=null), raw field still non-null, AC19 shows card as still selected."
+          "m6_text": "saves skipped/marked error when offline; no background queue/retry (ticket line 108)",
+          "ac6_gap": "AC6 has no THEN clause for: WHEN user performs a save-triggering action while offline, THEN no /api/save POST is sent AND save status is marked error/offline",
+          "consequence": "Dev could show OfflineBanner correctly but still fire POST when offline — passes AC6, violates M6."
         },
-        "proposed_fix": "Update AC19 to: 'a card is shown as selected if ANY of breakfast/lunch/dinner has a resolved selected id (via the shared AC10 hasOwnProperty resolver applied to editorSelections) that equals card.option_id; null resolution means unselected'. The check MUST use the shared resolver, not the raw slot.selected_option_id field."
+        "proposed_fix": "Add to AC6: 'AND WHEN the user performs a save-triggering action (drops a candidate, clicks approve, etc.) while offline THEN no /api/save POST request is made AND the save status indicator shows error or offline state AND no background queue is created to retry later'."
       },
       {
-        "id": "NB4",
-        "ac": "AC7 / M7",
+        "id": "NB10",
+        "ac": "AC11 / AC25 / M10 / M25",
         "severity": "blocker",
-        "title": "AC7 weakens HTTP 409 response requirement to '(or save error state is shown)' — allows dev to omit ConflictBanner for HTTP 409",
-        "description": "M7 requires: 'ConflictBanner appears when response.status === 409 OR response JSON contains conflict === 409-soft'. This is unambiguous — ConflictBanner for both cases. AC7 (ticket line 270) reads: 'THEN ConflictBanner also appears (or save error state is shown)'. The parenthetical '(or save error state is shown)' is a disjunction — dev can implement HTTP 409 as save-error state only (no ConflictBanner) and satisfy AC7 literally while violating M7. The 409-soft case (HTTP 200) correctly requires ConflictBanner, but the HTTP 409 case is weakened. A dev could implement: 409-soft -> ConflictBanner, HTTP 409 -> generic error state — wrong user experience, violates M7.",
+        "title": "M10/AC11 say 'response day_total' (top-level field) but actual /api/budget/recompute returns days[].day_total — runtime undefined reference verified from source",
+        "description": "AC11 (ticket line 302) says: 'the displayed day total is updated from the response day_total field'. M10 (ticket line 112) says: 'update displayed day total from response day_total'. The actual /api/budget/recompute endpoint (scripts/lib/server/budget.py:181-187) returns: {schema_version, trip_id, trip_total, currency_local, days: [{day: N, day_total: X, breakdown: {...}}]}. There is NO top-level day_total field. The day total is in response.days[0].day_total (or response.days.find(d => d.day === requestedDay).day_total). A dev implementing AC11 literally would write: displayedTotal = response.day_total — which is undefined at runtime. This is a runtime bug that makes the budget recompute feature silently show nothing (undefined renders as empty/NaN). Verified directly from scripts/lib/server/budget.py lines 181-187.",
         "evidence": {
-          "m7_text": "ConflictBanner appears when response.status === 409 OR response JSON contains conflict === 409-soft (ticket line 109)",
-          "ac7_409soft": "THEN ConflictBanner appears offering a reload option (ticket line 268) — unambiguous",
-          "ac7_http409": "THEN ConflictBanner also appears (or save error state is shown) (ticket line 270) — disjunction weakens requirement",
-          "conflict": "M7 mandates ConflictBanner for HTTP 409. AC7's '(or save error state)' clause makes ConflictBanner optional for HTTP 409."
+          "ac11_text": "the displayed day total is updated from the response day_total field (ticket line 302)",
+          "m10_text": "update displayed day total from response day_total (ticket line 112)",
+          "actual_response": "scripts/lib/server/budget.py:181-187 returns {schema_version, trip_id, trip_total, currency_local, days: [{day: N, day_total: X, breakdown: {...}}]} — no top-level day_total",
+          "runtime_effect": "response.day_total is undefined; correct access is response.days.find(d => d.day === requestedDayNumber)?.day_total"
         },
-        "proposed_fix": "Remove '(or save error state is shown)' from AC7 line 270. Update to: 'THEN ConflictBanner appears' — same unconditional requirement as the 409-soft case. ConflictBanner is mandatory for both HTTP 409 and 409-soft."
-      },
-      {
-        "id": "NB5",
-        "ac": "AC24 / Technical Hint 19 / AC26",
-        "severity": "blocker",
-        "title": "Missing required slot (absent key from effectiveDay) not explicitly defined as gating Approve/Export — Hint 19's 'if the slot exists' allows dev to skip absent required slots",
-        "description": "AC24 gates on 'non-skipped slots in REQUIRED_SLOT_KEYS that have no selected_option_id'. AC22 defines a distinct 'missing' state for slots absent from effectiveDay entirely. Technical Hint 19 (ticket line 546) says: 'for each key in REQUIRED_SLOT_KEYS, get the slot from effectiveDay; if the slot exists and is not skipped and has no selected_option_id → not all filled'. The 'if the slot exists' clause means that if a required slot key is ABSENT from effectiveDay (missing state per AC22), the Hint 19 code would NOT flag it as unfilled — it would silently skip the absent slot and potentially enable Approve. A missing required accommodation or meal slot should clearly disable Approve and Export, but the spec does not state this.",
-        "evidence": {
-          "hint19_code": "for each key in REQUIRED_SLOT_KEYS, get the slot from effectiveDay; if the slot exists and is not skipped and has no selected_option_id → not all filled (ticket line 546)",
-          "ac22_missing_state": "slot key absent from effectiveDay entirely → show missing status, data-droppable=false (ticket lines 400-404)",
-          "conflict": "Hint 19's 'if slot exists' guard means absent required slot is not counted as unfilled, potentially allowing Approve with a missing accommodation or meal."
-        },
-        "proposed_fix": "Update Hint 19 and AC24 to explicitly state: 'a required slot that is ABSENT from effectiveDay (missing state per AC22) counts as unfilled and disables Approve/Export, in addition to slots that exist but have no selected_option_id'. Change Hint 19's condition to: 'if the slot is absent OR (slot exists AND not skipped AND no selected_option_id) → not all filled'."
-      },
-      {
-        "id": "NB6",
-        "ac": "AC11 / M10",
-        "severity": "blocker",
-        "title": "AC11 budget recompute trigger 'drops a candidate' covers only candidates->plan direction — plan->candidates and slot->slot moves that change totals are excluded",
-        "description": "M10 says: 'After each successful drop+save, POST /api/budget/recompute'. The word 'drop' could be read broadly, but AC11 (ticket line 299) says: 'WHEN a user successfully drops a candidate (POST /api/save returns 200)' — the phrase 'drops a candidate' implies candidates->plan direction only. Plan->candidates deselection and slot->slot moves both change the day's selected options and therefore the day total, and both involve a successful /api/save. Without recompute after these operations, the displayed budget total will be stale after any deselection or slot swap. A dev implementing AC11 literally would only recompute after candidates->plan drops.",
-        "evidence": {
-          "m10_text": "After each successful drop+save, POST /api/budget/recompute (ticket line 112) — ambiguous direction",
-          "ac11_text": "WHEN a user successfully drops a candidate (POST /api/save returns 200) (ticket line 299) — implies candidates->plan only",
-          "missing_cases": "plan->candidates deselect changes total (clears selection); slot->slot swap changes total (swaps selections); neither covered by 'drops a candidate'"
-        },
-        "proposed_fix": "Update AC11 WHEN clause to: 'WHEN any selection-changing save completes successfully — candidates->plan drop, plan->candidates deselect, slot->slot move, or tap-to-select — and POST /api/save returns 200'."
+        "proposed_fix": "Update AC11 THEN clause to: 'the displayed day total is updated from response.days.find(d => d.day === requestedDayNumber)?.day_total where requestedDayNumber is the integer day number passed in the request body'. Update M10 to: 'update displayed day total from response.days entry matching the requested day number (response.days[].day_total)'. Add Edge Case note: 'BudgetResponse.days is always an array; when a specific day is requested, response.days contains entries for all days but trip_total is the only top-level total; look up by day number, not array position 0'."
       }
     ],
     "warnings": [
