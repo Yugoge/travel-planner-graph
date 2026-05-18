@@ -1698,8 +1698,14 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
               const TIMELINE_SLOT_MAP = { meal: null, attraction: null, entertainment: null, accommodation: 'accommodation' };
               // For meal/activity entries, resolve the slot id from editorDay slot options
               let timelineSlotId = null;
+              let timelineMatchedOptionId = null;
               if (entry._type === 'accommodation') {
                 timelineSlotId = 'accommodation';
+                // For accommodation, match against editorDay.accommodation.options
+                if (editorDay && editorDay.accommodation && editorDay.accommodation.options) {
+                  const accMatch = editorDay.accommodation.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
+                  if (accMatch) timelineMatchedOptionId = accMatch.option_id;
+                }
               } else if (editorDay && editorDay.slots) {
                 // Try to match by name against slot options
                 const actSlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
@@ -1709,16 +1715,19 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   const slot = editorDay.slots[slotId];
                   if (!slot || !slot.options) continue;
                   const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
-                  if (match) { timelineSlotId = slotId; break; }
+                  if (match) { timelineSlotId = slotId; timelineMatchedOptionId = match.option_id; break; }
                 }
               }
               // Resolve selected option id for this slot (for draggable)
               const timelineSlotKey = timelineSlotId && day.day ? (day.day + ':' + timelineSlotId) : null;
-              const timelineSlotEditorData = timelineSlotId && editorDay && editorDay.slots && editorDay.slots[timelineSlotId];
+              const timelineSlotEditorData = timelineSlotId && timelineSlotId !== 'accommodation' && editorDay && editorDay.slots && editorDay.slots[timelineSlotId];
               const timelineSelectedId = timelineSlotKey ? (
-                editorSelections && Object.prototype.hasOwnProperty.call(editorSelections, timelineSlotKey) ? editorSelections[timelineSlotKey] : (timelineSlotEditorData && timelineSlotEditorData.selected_option_id)
+                timelineSlotId === 'accommodation'
+                  ? (editorSelections && Object.prototype.hasOwnProperty.call(editorSelections, timelineSlotKey) ? editorSelections[timelineSlotKey] : (editorDay && editorDay.accommodation && editorDay.accommodation.selected_option_id))
+                  : (editorSelections && Object.prototype.hasOwnProperty.call(editorSelections, timelineSlotKey) ? editorSelections[timelineSlotKey] : (timelineSlotEditorData && timelineSlotEditorData.selected_option_id))
               ) : null;
-              const timelineIsSelected = !!timelineSelectedId;
+              // timelineIsSelected: only true if the specific matched option is the selected one
+              const timelineIsSelected = !!(timelineMatchedOptionId && timelineMatchedOptionId === timelineSelectedId);
               return (
                 <div key={i} style={{
                   position: 'absolute',
