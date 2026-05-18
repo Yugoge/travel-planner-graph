@@ -1921,25 +1921,148 @@ function NotionTravelApp() {
       .catch(() => {});
   }, [TRIP_ID]);
 
-  // Finding 5: expose React bridge for drag.js and /api/save call
+  // Shared selection resolver — key-presence semantics (AC10)
+  const resolveSelection = useCallback((selections, key, publishedId) => {
+    if (Object.prototype.hasOwnProperty.call(selections, key)) {
+      return selections[key]; // null = explicitly cleared
+    }
+    return publishedId;
+  }, []);
+
+  // Online/offline detection (M6, M28)
   useEffect(() => {
-    if (!EDITOR_MODE) return;
-    window.setEditorSelection = (slotId, optionId) => {
-      setEditorSelections(prev => ({ ...prev, [publishedDay.day + ':' + slotId]: optionId }));
-      fetch('/api/save', {
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // Mobile layout resize listener (M12)
+  useEffect(() => {
+    const h = () => setIsMobileLayout(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
+  // Save status auto-refresh every 15s (M27)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const st = saveStateRef.current;
+      const ts = lastSaveTsRef.current;
+      if (st === 'saved' && ts) {
+        const elapsed = Math.floor((Date.now() - ts) / 1000);
+        setSaveStatusText('saved ' + elapsed + 's ago');
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Keep refs in sync for setInterval stale-closure avoidance
+  useEffect(() => { saveStateRef.current = saveState; }, [saveState]);
+  useEffect(() => { lastSaveTsRef.current = lastSaveTs; }, [lastSaveTs]);
+
+  // Budget recompute helper
+  const recomputeBudget = useCallback((dayNum) => {
+    if (!TRIP_ID) return;
+    const seq = ++requestSeqRef.current;
+    fetch('/api/budget/recompute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trip_id: TRIP_ID, day: dayNum }),
+    })
+      .then(r => r.json())
+      .then(resp => {
+        if (requestSeqRef.current !== seq) return; // stale
+        const entry = resp.days && resp.days.find(d => d.day === dayNum);
+        if (entry && entry.day_total !== undefined) {
+          // Budget total update is displayed via a separate state
+          setLiveDayTotal(prev => ({ ...prev, [dayNum]: entry.day_total }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const [liveDayTotal, setLiveDayTotal] = useState({});
+
+  // saveMutations: central save helper (M5, M6, M7, M11)
+  const saveMutations = useCallback(async (dayNum, mutations) => {
+    if (isOffline) {
+      setSaveState('error');
+      setSaveStatusText('offline — not saved');
+      return;
+    }
+    setSaveState('saving');
+    setSaveStatusText('saving…');
+    const seq = ++requestSeqRef.current;
+    try {
+      const resp = await fetch('/api/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trip_id: TRIP_ID,
-          day: publishedDay && publishedDay.day,
+          day: dayNum,
           editor_session: editorSession,
-          mutations: [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }],
+          mutations,
         }),
-      }).catch(() => {});
+      });
+      if (requestSeqRef.current !== seq) return; // stale
+      if (resp.status === 409) {
+        setConflictDetected(true);
+        return;
+      }
+      const data = await resp.json();
+      if (requestSeqRef.current !== seq) return; // stale after json parse
+      if (data.conflict === '409-soft') {
+        setConflictDetected(true);
+        return;
+      }
+      if (!resp.ok) {
+        setSaveState('error');
+        setSaveStatusText('error');
+        return;
+      }
+      const ts = Date.now();
+      setSaveState('saved');
+      setLastSaveTs(ts);
+      setSaveStatusText('saved');
+      // Post-save budget recompute (M10, M25)
+      recomputeBudget(dayNum);
+    } catch (_) {
+      if (requestSeqRef.current !== seq) return;
+      setSaveState('error');
+      setSaveStatusText('error');
+    }
+  }, [isOffline, editorSession, recomputeBudget]);
+
+  // setEditorSelection bridge (also used internally)
+  const setEditorSelection = useCallback((slotId, optionId, dayNum, originSlotId) => {
+    const key = (dayNum || (publishedDay && publishedDay.day)) + ':' + slotId;
+    setEditorSelections(prev => ({ ...prev, [key]: optionId }));
+  }, [publishedDay]);
+
+  // Expose legacy bridge for compatibility
+  useEffect(() => {
+    window.setEditorSelection = (slotId, optionId) => {
+      const dayNum = publishedDay && publishedDay.day;
+      setEditorSelections(prev => ({ ...prev, [dayNum + ':' + slotId]: optionId }));
+      saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: null }]);
     };
   });
 
-  const day = EDITOR_MODE ? effectiveDay : publishedDay;
+  // Budget recompute on page load after editorTripData fetched (M25)
+  const editorTripDataRef = React.useRef(null);
+  useEffect(() => {
+    if (editorTripData && !editorTripDataRef.current && publishedDay) {
+      recomputeBudget(publishedDay.day);
+    }
+    editorTripDataRef.current = editorTripData;
+  }, [editorTripData, publishedDay, recomputeBudget]);
+
+  const day = effectiveDay;
 
   const handleItemClick = (item, type) => {
     setSelectedBudgetCat(null);
