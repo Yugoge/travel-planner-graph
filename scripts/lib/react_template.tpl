@@ -970,8 +970,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 <RedNoteLink name={c.name_local || c.name_base} />
                               </div>
                               <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
-                                {c.time && c.time.start !== '00:00' && <div>{c.time.start} \u2013 {c.time.end}{c.cost > 0 ? ' \u00b7 ' + fmtCost(c.cost, undefined, lang) : ''}</div>}
+                                {c.time && c.time.start !== '00:00' && <div>{c.time.start} \u2013 {c.time.end}{c.cost > 0 ? ' \u00b7 ' + fmtCost(c.cost, undefined, lang) : (c.cost_display ? ' \u00b7 ' + c.cost_display : '')}</div>}
                                 {!c.time && c.cost > 0 && <div>{fmtCost(c.cost, undefined, lang)}</div>}
+                                {!c.time && !(c.cost > 0) && c.cost_display && <div>{c.cost_display}</div>}
                                 {getDisplayField(c, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(c, 'type', lang)}</div>}
                                 {getDisplayField(c, 'cuisine', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(c, 'cuisine', lang)}</div>}
                                 {(c.location_base || c.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={c} lang={lang} mapProvider={mapProvider} /></div>}
