@@ -2496,7 +2496,12 @@ function NotionTravelApp() {
         updates[dayNum + ':' + originSlotId] = optionId;
       }
       setEditorSelections(prev => ({ ...prev, ...updates }));
-      saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
+      // AC20: if cross-meal drop, copy option object into editorTripData via applySelection so mergeEditorSelectionsIntoPublishedDay can find it
+      if (originSlotId) {
+        applySelection(optionId, slotId, originSlotId);
+      } else {
+        saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
+      }
     };
     window.setEditorSelection = bridge;
     // applyEditorSelection: used by slot-drop onClick for tap-to-select second step (AC14)
