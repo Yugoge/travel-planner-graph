@@ -2498,10 +2498,11 @@ function NotionTravelApp() {
   }, [editorTripData, publishedDay]);
 
   // effectiveDay merges editor selections into published day for both views
+  // R1 v3: 4-arg signature — editorTripData required for cross-day option fallback.
   const effectiveDay = useMemo(() => {
     if (!editorDay) return publishedDay;
-    return mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections);
-  }, [publishedDay, editorDay, editorSelections]);
+    return mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections, editorTripData);
+  }, [publishedDay, editorDay, editorSelections, editorTripData]);
 
   // Fetch v2 trip data for CandidatesSidebar candidates (only when TRIP_ID is set)
   useEffect(() => {
