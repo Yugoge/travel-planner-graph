@@ -1,0 +1,535 @@
+{
+  "request_id": "20260519-161933",
+  "task_id": "20260519-161933",
+  "timestamp": "2026-05-19T16:19:33Z",
+  "complexity_tier": "STANDARD",
+  "requirement": {
+    "original": "彻底修复实现我的spec目标 — thoroughly fix and implement the spec goal of the prior /redev cycle 20260518-101127, which was 改成混合模式总之就是life-ai向后兼容，除了云南之外之前的travel plan全部保留不要动 (unify viewer+editor, life-ai backward compatible, keep all prior travel plans except Yunnan unchanged).",
+    "clarified": "Fix the visual layer of unified viewer/editor drag-and-drop. Prior cycle wired events + POST /api/save but the rendered Timeline/Kanban slot card never updates because mergeEditorSelectionsIntoPublishedDay flips a .selected flag instead of replacing card content. Sidebar isSelected ✓ tracker is correct but stalls because effectiveDay never reflects the selection. CSS rules for .slot-drop drop-active/reject states are missing entirely. Yunnan trip is the only data file in scope; all other trip data and schemas remain byte-identical.",
+    "what": "Rewrite mergeEditorSelectionsIntoPublishedDay to REPLACE rendered slot card content (name, location, image, cost, time, notes, option_id) from the selected option; preserve existing time when v2 option omits it; insert synthesized card for cross-meal case where target slot has no PLAN_DATA card; filter duplicates out of meal_alternatives and across activity arrays; treat day.accommodation as an object (not array). Add a top-level inline <style> block with rules for .slot-drop[data-drop-active] / [data-drop-reject] / [data-drop-success] that override the inline transparent background via outline/box-shadow/!important. Optionally tag rendered slot cards with data-slot-card / data-slot-id / data-option-id for ACs.",
+    "why": "User reports drag fires but visual layer never updates. Prior QA verified source code only and missed the data-vs-event-handler gap. Root cause: merge() never propagates option content into the data the view reads.",
+    "where": [
+      "scripts/lib/react_template.tpl (primary; merge fn L1889-1972, sidebar isSelected derivations L2042/L2127/L2233, slot-drop overlays L906/L987/L1069/L1151/L1291, drop bridge L2491-2522, applyBridge L2525-2532, App return L2612)",
+      "scripts/serve-trip.py (only if budget recompute breaks)"
+    ],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl mergeEditorSelectionsIntoPublishedDay full rewrite",
+        "scripts/lib/react_template.tpl inline <style> block for .slot-drop states + success flash",
+        "scripts/lib/react_template.tpl optional data-slot-card/data-slot-id/data-option-id attributes on rendered slot cards",
+        "scripts/lib/react_template.tpl applyBridge + board-to-board cross-meal copy alignment (S2)"
+      ],
+      "excluded": [
+        "data/<any-other-trip>/** (per R5)",
+        "schemas/** (per R5)",
+        "scripts/exporters/** (per R5)",
+        "tests/exporters/** (per R5)",
+        "scripts/lib/render_day_data.py (PLAN-card builder unchanged)",
+        "render_html_builders.py (already unified in prior cycle)",
+        "Reverting commit 9218b6bd (forward-fix only, no destructive git verbs)",
+        "Explicit-null/deselect UX redesign (deferred per Codex Finding 4)",
+        "Budget category/donut accuracy after live mutations (deferred per Codex Finding 8)"
+      ]
+    },
+    "success_criteria": [
+      "Dropping option X on slot S replaces the visible card content in Kanban AND Timeline within 300 ms",
+      "Sidebar ✓ tracks the resolved selection (editor_selections precedence over persisted selected_option_id)",
+      "data-drop-active / -reject / -success states produce visible CSS effects (outline / box-shadow / background or animation)",
+      "A trip with no editor_selections and persisted selected_option_id matching PLAN_DATA renders byte-identical to commit 9218b6bd",
+      "git diff HEAD~1 HEAD shows no changes outside scripts/lib/react_template.tpl (+ optionally scripts/serve-trip.py) and data/beijing-lijiang-dali-20260418-100846/**"
+    ],
+    "constraints": [
+      "No revert of commit 9218b6bd (forward-fix only)",
+      "No force-push, no rollback >50 lines of approved code",
+      "No new files, no new dependencies",
+      "Preserve all 29 ACs of prior cycle",
+      "Must work for v2 options with time=None / image=None (preserve existing card values as fallbacks)"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/serve-trip.py (only if budget contract breaks; expected unchanged)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/render_day_data.py (referenced for PLAN card shape; not modified)",
+      "scripts/lib/render_html_builders.py (already unified; not modified)",
+      "tests/e2e/test_state_machine.py (existing tests preserve; QA may add a new test file)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-19T16:19:33Z",
+      "task_id": "20260519-161933",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "2492-2498",
+      "observation": "Bridge sets editorSelections[originSlotId] = optionId for cross-meal compatible drops; with R1 the source slot's card now also updates. S2 reins it in but the deeper deselect-UX is deferred.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-19T16:19:33Z",
+      "task_id": "20260519-161933",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "deselect-semantics",
+      "observation": "Explicit-null (deselect) keeps the PLAN_DATA card visible; future cycle should design an empty-slot UX (Codex Finding 4).",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-19T16:19:33Z",
+      "task_id": "20260519-161933",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "budget-categories",
+      "observation": "Donut + category rows read day.budget computed at page-load time; liveDayTotal only recomputes total. After R1 the per-category totals may not match the visible cards until next save. Deferred per Codex Finding 8.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-19T16:19:33Z",
+      "task_id": "20260519-161933",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "2569-2576",
+      "observation": "Route-gap chips fetch on effectiveDay change; with R1 if time is preserved the fetch is a no-op for same time slot but verify in QA.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "User drags a sidebar candidate onto a Timeline/Kanban slot; events fire correctly and POST /api/save returns 200, but the visible slot card content does not change. Sidebar ✓ also fails to move (because React doesn't re-render the candidate list — the effectiveDay output is identical to before, so the useMemo skips re-evaluation).",
+    "root_cause": "mergeEditorSelectionsIntoPublishedDay (scripts/lib/react_template.tpl:1889-1972) only sets card.selected=true when the selected option's name matches an existing PLAN_DATA card's name_base or name_local. It never copies the selected option's content into the card. KanbanView (L843-887) and TimelineView (L1504) read name_base/image/cost/time directly from day.meals[slotId] / day.attractions / day.entertainment — fields that merge() leaves untouched. The data layer is the missing bridge between the editor_selections state map and the rendered DOM. Additional defects: (a) accommodation branch uses Array.isArray on an object (L1915, dead code); (b) no CSS rules exist for the .slot-drop[data-drop-active] / [data-drop-reject] attributes set by the event handlers; (c) the inline 'background: transparent' on slot-drop overlays would override any plain CSS rule by specificity.",
+    "root_cause_commit": "9218b6bd - feat(web): unified viewer/editor page + bidirectional drag (M1-M29)",
+    "why_introduced": "The prior cycle's goal was to wire up the bidirectional drag event chain and the save bridge; the merge function was added to surface 'selected' state but its author conflated 'flag the selection' with 'reflect the selection in the rendered data'. QA verified source presence only and never exercised the live drag in a browser.",
+    "why_problematic": "The user-visible outcome of every drag is invisible. The editor appears broken even though the data save path is correct. Two of the three prior-cycle OUT_OF_SCOPE observations are direct manifestations of the same root cause (cross-meal merge fails because name-match cannot work when the selected option does not exist in the target slot's PLAN_DATA card).",
+    "timeline": "Introduced in commit 9218b6bd (2026-05-18). Reported by user immediately after deploy.",
+    "affected_files": [
+      "scripts/lib/react_template.tpl"
+    ],
+    "evidence_type": "mixed",
+    "observations": [
+      "merge L1948 / L1962 name-match guard (observed: Read file)",
+      "KanbanView L875-887 reads from day.meals[type] (observed: Read file)",
+      "TimelineView L1504 reads from day.meals[mealType] (observed: Read file)",
+      ".slot-drop attribute set/unset L907-910 etc. (observed: Read file)",
+      "Zero CSS rules for slot-drop[data-drop-*] (observed: Grep returned no matches)",
+      "Inline 'background: transparent' on slot-drop L906 (observed: Read file; will override CSS by specificity per Codex Finding 6)",
+      "v2 option shape has name/location_summary/time=None/image=None (observed: python3 read of data/beijing-lijiang-dali-20260418-100846/days/day-02.json)",
+      "PLAN card shape uses name_base/location_base/cost(display)/time/image (observed: Read scripts/lib/render_day_data.py L74-114)",
+      "day.accommodation is an object, but merge L1915 checks Array.isArray (observed: Read file L1242-1246 wraps as [day.accommodation])",
+      "Prior cycle QA used source verification only — element_screenshots.before_path=null, complaint_element_pointer.selector=null (observed: Read docs/dev/qa-report-20260518-101127.json L46-57)",
+      "User did not exercise the live drag at the pixel layer in QA, despite codex Round 1 (inferred: the close-report records both codex and QA passes but neither captured a screenshot)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": [
+      "drag",
+      "drop",
+      "timeline",
+      "day",
+      "拖动",
+      "拖到",
+      "slot"
+    ],
+    "localization_evidence": "Reproduced reasoning: KanbanView at L843-887 reads from day.meals[type] which is produced by effectiveDay = mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections) at L2321-2324. The merge function L1942-1951 only writes selected:true to a name-matched card; it never overwrites name_base/image/cost. So every visible Timeline/Kanban slot card derives its text from PLAN_DATA at page-load and is immune to editor mutations.",
+    "located_source": "scripts/lib/react_template.tpl:1889-1972 (merge function definition + name-match guard)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": true,
+      "suspect_commit": "9218b6bd",
+      "commit_message": "feat(web): unified viewer/editor page + bidirectional drag (M1-M29)",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "mergeEditorSelectionsIntoPublishedDay must REPLACE card content (name_base, name_local, location_base, location_local, cost, time, image, notes_base, notes_local, option_id) for the selected option, not just flip a .selected flag. Match on slot-id, not on name. If the slot in PLAN_DATA has no matching card (cross-meal case), inject the selected option's full card data into the appropriate display array. This is the single most important fix and resolves all 3 cross-meal bugs as a side effect.",
+      "acceptance_criterion": "AC1, AC2, AC3, AC4"
+    },
+    {
+      "id": "R1a",
+      "source_phrase": "DayColumn cross-meal display: mergeEditorSelectionsIntoPublishedDay name-match fails for cross-meal options",
+      "acceptance_criterion": "AC1 (duplicate filter), AC2"
+    },
+    {
+      "id": "R1b",
+      "source_phrase": "applyBridge tap cross-meal gap + Board-to-board cross-meal gap",
+      "acceptance_criterion": "AC2, AC8"
+    },
+    {
+      "id": "R1c",
+      "source_phrase": "Backward compatibility hard constraint — preserve AC15 accommodation cover_image",
+      "acceptance_criterion": "AC9"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "CandidatesSidebar's isSelected derivation must consume editor_selections as primary source ... current name-match logic must be removed",
+      "acceptance_criterion": "AC5, AC6"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Add visible CSS rules for .slot-drop[data-drop-active] (green outline + light background) and .slot-drop[data-drop-reject] (red flash animation). After a successful drop, briefly flash a 'success' visual on the target slot card",
+      "acceptance_criterion": "AC10, AC11"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "A trip with NO editor_selections and NO persisted selected_option_id (purely default published view) must render identically to today",
+      "acceptance_criterion": "AC7"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "Test target is the Yunnan trip data data/beijing-lijiang-dali-20260418-100846/. Do NOT modify other trip data files. Do NOT touch schemas.",
+      "acceptance_criterion": "AC12"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2321-2324",
+      "role": "effectiveDay useMemo that invokes the merge function and feeds both Kanban and Timeline",
+      "imports_from": "mergeEditorSelectionsIntoPublishedDay (same file L1889)",
+      "evidence": "Read L2321-2324: const effectiveDay = useMemo(() => mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections), [publishedDay, editorDay, editorSelections]);",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1889-1972",
+      "role": "merge function — produces effectiveDay from PLAN + editor state",
+      "imports_from": "leaf (no further hops, but consumes editorDay.slots from API + editorSelections from state)",
+      "evidence": "Read L1889-1972: name-match guard at L1948 and L1962; accommodation Array.isArray at L1915.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "843-887",
+      "role": "KanbanView meals slot card render — reads name_base/image/cost from day.meals[type]",
+      "imports_from": "day (= effectiveDay = merge output)",
+      "evidence": "Read L843-887: 'const meal = day.meals[type]' then renders name_base, image, cost directly.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1472-1538",
+      "role": "TimelineView meals/activities render — reads day.meals?[mealType], day.attractions, etc.",
+      "imports_from": "day (= effectiveDay)",
+      "evidence": "Read L1502-1521: pushes day.meals[mealType] and day.attractions / day.entertainment into entries.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2042-2049",
+      "role": "Sidebar Meals isMealSelected — already correct (uses resolveSelectionLocal)",
+      "imports_from": "editorSelections + slot.selected_option_id",
+      "evidence": "Read L2042-2049.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2491-2522",
+      "role": "Drop bridge — copies option object into editorTripData for cross-meal",
+      "imports_from": "saveMutations, editorDay state",
+      "evidence": "Read L2491-2522.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2525-2532",
+      "role": "applyBridge (tap-to-select) — does NOT copy option object",
+      "imports_from": "saveMutations",
+      "evidence": "Read L2525-2532. S2 addresses this gap.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "906-911,987-991,1069-1073,1151-1155,1291-1295",
+      "role": "5 x slot-drop overlays — set/unset data-drop-active and data-drop-reject attributes",
+      "imports_from": "leaf",
+      "evidence": "Grep 'data-drop-active|data-drop-reject' returns 10 matches; all in the slot-drop overlays.",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "global",
+      "role": "Style/CSS — only @keyframes slideIn at L215 and L371; no rules target .slot-drop[data-drop-*]",
+      "imports_from": "leaf",
+      "evidence": "Grep '@keyframes|slot-drop\\[' returned only the slideIn rules.",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/lib/render_day_data.py",
+      "line_range": "74-114",
+      "role": "PLAN card builder (_meal_card) — reference for v2-to-PLAN field mapping in R1",
+      "imports_from": "gen.meals JSON",
+      "evidence": "Read L74-114.",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/beijing-lijiang-dali-20260418-100846/days/day-02.json",
+      "line_range": "slots.dinner.options[0]",
+      "role": "v2 option reference shape for synthesis mapping",
+      "imports_from": "leaf",
+      "evidence": "python3 read confirmed name/name_local/location_summary/cost/time=None/image=None fields.",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1890,
+      "type": "if",
+      "code_snippet": "if (!publishedDay || !editorDay) return publishedDay;",
+      "purpose": "Returns unchanged published day when editor data hasn't loaded yet — required for AC7 backward-compat and for viewer mode (TRIP_ID=null) safety.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1936,
+      "type": "if",
+      "code_snippet": "const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : persistedId;\nif (!selectedId) return;",
+      "purpose": "Key-presence semantics (AC10 of prior cycle): editor_selections key absent = use persistedId; key present + null = explicitly cleared. Must be preserved. R1 'replace only when selectedId non-null' relies on this.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 905,
+      "type": "if",
+      "code_snippet": "const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder;",
+      "purpose": "Prior-cycle AC22 isGated fix — must keep at all 5 slot-drop sites. R3 CSS must not break this.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 890,
+      "type": "if",
+      "code_snippet": "{editorDay && opt._isPrimary && (() => { ... visual state badges ... })()}",
+      "purpose": "Prior-cycle AC22 visual state badges (missing/skipped/late-arrival/required) — must keep. Reads from editorDay.slots[opt._type], not from day.meals[type], so R1 does not affect these.",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": true,
+    "items": [
+      {
+        "check": "git bisect performed",
+        "status": "skipped",
+        "evidence": "Single suspect commit identified via git log -L on merge function: 9218b6bd is the introducing commit. No earlier history to bisect."
+      },
+      {
+        "check": "globals.css reviewed",
+        "status": "skipped",
+        "finding": "No global CSS file in this project; styles are inline in React template."
+      },
+      {
+        "check": "middleware / root layout / providers audited",
+        "status": "done",
+        "findings": []
+      },
+      {
+        "check": "getComputedStyle() read on target element",
+        "status": "skipped",
+        "computed": "BA scope is analysis; QA will perform getComputedStyle live verification per AC10/AC11."
+      },
+      {
+        "check": "build / deploy / dependency changes ruled out",
+        "status": "done"
+      }
+    ]
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop (primary); 390x844 mobile (secondary)",
+    "theme": "light",
+    "locale": "zh",
+    "auth_state": "logged-out",
+    "data_state": "with-data",
+    "browser": "Chrome desktop / Chrome mobile",
+    "url_path": "/trip/beijing-lijiang-dali-20260418-100846"
+  },
+  "evidence": {
+    "observed": "User reports drag-and-drop fires events and POST /api/save returns 200, but Timeline/Kanban slot card visual content never changes; sidebar ✓ also fails to track because effectiveDay never reflects the selection.",
+    "measured": {
+      "value": "mergeEditorSelectionsIntoPublishedDay name-match guard at L1948/L1962 sets card.selected=true only when option's name matches the PLAN card's name_base/name_local; never overwrites name_base/image/cost. Accommodation branch checks Array.isArray on an object (dead code at L1915). Zero CSS rules target .slot-drop[data-drop-active] / [data-drop-reject]; inline 'background: transparent' at L906 would override any plain CSS by specificity.",
+      "location": "scripts/lib/react_template.tpl:1889-1972, 906-911 (and 4 sibling slot-drop sites)"
+    },
+    "expected": {
+      "value": "After dropping option X onto slot S, day.meals[S] (or appropriate activity array entry) MUST have its name_base/name_local/location_base/cost/time/image/notes/option_id fields equal to the v2 option's mapped values within one React frame. The .slot-drop[data-drop-active] state MUST be visually distinct; .slot-drop[data-drop-reject] MUST flash red; a brief success indicator MUST appear on the dropped card.",
+      "source": "User dispatch verbatim (R1-R5); v2 option shape per data/beijing-lijiang-dali-20260418-100846/days/day-02.json; PLAN card shape per scripts/lib/render_day_data.py:74-114."
+    },
+    "gap": "Merge function does not propagate option content into the rendered card; CSS for drop overlay is entirely missing; accommodation branch type-guard mismatches actual shape; tap and board-to-board cross-meal paths lack option-object copy."
+  },
+  "scope_expansion": {
+    "search_pattern": "mergeEditorSelectionsIntoPublishedDay|setEditorSelection|data-drop-active|data-drop-reject|slot-drop\\[",
+    "search_scope": "scripts/**, web/**, tests/**",
+    "user_reported": [
+      "scripts/lib/react_template.tpl",
+      "scripts/serve-trip.py (only if budget breaks)"
+    ],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:1887-1972 (merge fn)",
+      "scripts/lib/react_template.tpl:2321-2324 (merge fn call site)",
+      "scripts/lib/react_template.tpl:906-911 (slot-drop meal)",
+      "scripts/lib/react_template.tpl:987-991 (slot-drop cafe)",
+      "scripts/lib/react_template.tpl:1069-1073 (slot-drop activity)",
+      "scripts/lib/react_template.tpl:1151-1155 (slot-drop entertainment)",
+      "scripts/lib/react_template.tpl:1291-1295 (slot-drop accommodation)",
+      "scripts/lib/react_template.tpl:2042-2049 (sidebar Meals isMealSelected)",
+      "scripts/lib/react_template.tpl:2127 (sidebar Accommodation isSelected)",
+      "scripts/lib/react_template.tpl:2233 (sidebar Activity isSelected)",
+      "scripts/lib/react_template.tpl:2491-2522 (drop bridge)",
+      "scripts/lib/react_template.tpl:2525-2532 (applyBridge)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "User dispatch (R1-R5 explicit) is the binding contract. V2 option shape was verified by direct read of data/beijing-lijiang-dali-20260418-100846/days/day-02.json. PLAN card shape verified by read of scripts/lib/render_day_data.py _meal_card. DOM render paths verified by reads of react_template.tpl.",
+    "url_or_location": "scripts/lib/render_day_data.py:74-114 for PLAN card shape; data/beijing-lijiang-dali-20260418-100846/days/day-02.json for v2 option shape; scripts/lib/react_template.tpl:843-887, 1502-1538, 1242-1297 for render paths.",
+    "copy_allowed": true,
+    "role_table": null
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260518-101127.md (commit 9218b6bd)",
+        "proposed_solution": "Unify viewer + editor; ship mergeEditorSelectionsIntoPublishedDay that flips .selected on name-match; ship window.setEditorSelection bridge for cross-meal copy; add 5x slot-drop overlays with data-drop-active/data-drop-reject attributes.",
+        "actual_change": "Shipped as proposed. QA passed 29 ACs via source-code verification only — element_screenshots.before_path=null per qa-report-20260518-101127.json.",
+        "outcome": "Drag fires; POST 200; but the rendered slot card never changes because merge() only flips a flag and never replaces name/image/cost. The 3 OUT_OF_SCOPE items in close-report (DayColumn cross-meal, applyBridge cross-meal, board-to-board cross-meal) are all surface symptoms of the same root cause.",
+        "failure_category": "symptom_treatment",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "Prior cycle worked at L4 (event handlers wiring editor_selections) and L1 (cosmetic UI — sidebar borders). This cycle targets L3 (data) — rewriting the data transformation produced by mergeEditorSelectionsIntoPublishedDay so the rendered view (which reads from day.meals[type], day.attractions, etc.) actually sees the selection. Also adds L1 (cosmetic) CSS for the missing drop-state visual feedback, which the prior cycle never tested at the pixel layer."
+    }
+  },
+  "context": {
+    "codebase_state": "master @ 9218b6bd; tree has several modified data files from prior runs but those are unrelated to this fix and will not be staged",
+    "recent_commits": "9218b6bd feat(web): unified viewer/editor page + bidirectional drag (M1-M29); f5282b1d chore(.gitignore); 7b416587 feat(web): 3-column Notion layout; 8b7d4e0c fix(web): 3 close-gate blockers; dbb35f72 feat(web): Notion UI redesign + meal pool unification",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {
+      "service": "serve-trip.service (systemd, port 5057)",
+      "deploy": "sudo systemctl restart serve-trip.service",
+      "trip_url": "/trip/beijing-lijiang-dali-20260418-100846"
+    }
+  },
+  "development_approach": {
+    "strategy": "1) Rewrite mergeEditorSelectionsIntoPublishedDay to perform per-slot content replacement using a v2-to-PLAN field-mapping helper. Lookup by option_id (not name). For meal: replace day.meals[slotId] with {...existingCard, ...mappedFromV2, option_id, selected:true}; filter the same option_id out of day.meal_alternatives[slotId]. For activity: find matching card across attractions/entertainment/cafe/unscheduled_optionals by ANY option in editorDay.slots[slotId].options (prefer card with time); replace in place; remove other appearances by option_id. For accommodation: treat day.accommodation as object; replace fields; update day.cover from cover_image||image. Preserve key-presence semantics (key absent = persistedId; key present + null = no replace). 2) Add a top-level inline <style> block injected via React's <style> tag at App return. CSS rules use outline + box-shadow (which are not set inline) for drop-active, animation-name for drop-reject + drop-success, with !important fallback if needed. 3) Tag rendered slot cards with data-slot-card, data-slot-id, and data-option-id (when selected) for AC selector stability. 4) Align applyBridge + board-to-board onDrop with the existing drop-bridge cross-meal copy.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/react_template.tpl"
+    ],
+    "validation_approach": "Live Playwright session at /trip/beijing-lijiang-dali-20260418-100846 with desktop 1440x900 and mobile 390x844: (a) DOM textContent assertions on data-slot-card / data-slot-id locators after simulated drag chains; (b) getComputedStyle on .slot-drop[data-drop-active|reject|success]; (c) screenshot diff against pre-cycle build for backward-compat AC7; (d) git diff stat for AC12 file-scope. /api/save POST 200 by itself is NOT acceptable evidence."
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Bug is a localized data-transformation defect in an established React/v2 schema we already understand; no industry pattern lookup adds value."
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex returned 12 numbered findings. 2 blockers (Findings 1, 2 — v2-to-PLAN mapping under-specified + activity replacement must prefer timed card and remove duplicates), 5 major (Findings 3, 4, 5, 6, 7, 9, 10 — meal_alternatives duplicate, deselect ambiguity, source-slot self-write in bridge, inline-style specificity, accommodation Array.isArray dead code, byte-identity AC over-claim, DOM hooks needed), 4 observation_only (Findings 8, 11, 12, plus deselect aspects). All blockers and major findings incorporated into R1/R1a/R1b/R1c/R3/S1/S2 and the AC bodies.",
+    "findings": [
+      {
+        "issue": "Codex Finding 1 — selOpt-derived content under-specified; v2 options use name/location_summary/cost/time=None/image=None.",
+        "proposed_fix": "Add a synthesis helper that maps v2->PLAN shape, preserves target-slot time, falls back to existing image, sets name_base/location_base/cost_local, converts/infers display cost.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Captured verbatim in the Reference Source field-mapping rule and in R1 of the spec; AC1/AC2/AC3 assert visible-text contains the synthesized values."
+      },
+      {
+        "issue": "Codex Finding 2 — Activity replacement must prefer timed card and remove duplicates.",
+        "proposed_fix": "For each activity slot, find existing card matching ANY option in the slot, prefer the timed card, replace in place preserving the slot time, and remove duplicate selected-option cards from other arrays.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Captured as R1b in the spec; AC3 asserts time preservation and AC3 last bullet asserts no duplicates."
+      },
+      {
+        "issue": "Codex Finding 3 — Meal alternatives can duplicate after R1 replaces day.meals[dinner].",
+        "proposed_fix": "After replacing day.meals[slotId], filter the selected option out of day.meal_alternatives[slotId] by option_id.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Captured as R1a in the spec; AC1 last bullet asserts no duplicate cards bearing the selected option's text."
+      },
+      {
+        "issue": "Codex Finding 4 — Explicit-null (deselect) semantics ambiguous.",
+        "proposed_fix": "Either exclude deselect from this cycle, or render empty/required placeholder for explicit-null.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Explicitly deferred to out_of_scope_observations and to Won't Have. R1 only replaces when selectedId is non-null; null cases keep the PLAN_DATA card visible (intentional for THIS cycle)."
+      },
+      {
+        "issue": "Codex Finding 5 — Bridge sets editorSelections[originSlotId] = optionId for cross-meal compatible drops; with R1 the source slot will also visibly change.",
+        "proposed_fix": "Stop setting [originSlotId]: optionId for candidate-to-slot cross-meal selection unless origin equals target; have merge resolve meal option_id across all meal slots.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Captured as S2 in the spec; out_of_scope_observations records the deeper UX question. AC8 accepts either S2-aligned behavior or the deferred state."
+      },
+      {
+        "issue": "Codex Finding 6 — Inline 'background: transparent' on .slot-drop will beat plain CSS attribute selectors by specificity.",
+        "proposed_fix": "Remove inline background, OR use !important, OR use outline / box-shadow instead. Use attribute-backed data-drop-success for state.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Captured as R3 with explicit dev guidance; AC10 accepts any of outline / background / box-shadow as proof, giving dev choice."
+      },
+      {
+        "issue": "Codex Finding 7 — day.accommodation is an object but merge L1915 checks Array.isArray (dead code).",
+        "proposed_fix": "Replace day.accommodation as object; preserve/update day.cover only when option has cover_image/image.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Captured as R1c in the spec; AC9 verifies."
+      },
+      {
+        "issue": "Codex Finding 8 — Budget/route are not fully safe as visual ACs.",
+        "proposed_fix": "Keep them out of this cycle's pass/fail unless explicitly fixed.",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Deferred to out_of_scope_observations; Won't Have."
+      },
+      {
+        "issue": "Codex Finding 9 — Byte-identity AC needs tightening; HTML byte-identity impossible since template changes globally; persisted selected_option_id differing from PLAN_DATA conflicts with 'unedited default render'.",
+        "proposed_fix": "Use file-diff ACs for data files only; for render use DOM/screenshot equivalence, not HTML byte identity.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC7 reworded to require DOM textContent equivalence (not HTML byte identity) and pixel-diff with RMSE tolerance. AC12 covers the file-diff scope (data + scripts)."
+      },
+      {
+        "issue": "Codex Finding 10 — AC template should add data-slot-card, data-slot-id, data-option-id hooks on rendered cards.",
+        "proposed_fix": "Add harmless data-* attributes; ACs assert live Playwright DOM text, computed style, file byte-diff; avoid 'POST 200' / source-string checks.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Captured as S1 in the spec; AC1/AC2/AC3 reference [data-slot-card][data-slot-id] selectors and [data-option-id]."
+      },
+      {
+        "issue": "Codex Finding 11 — Scope confirmation: R1/R3 do not require schemas, exporters, other trip data, or render_html_builders.py.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Confirmed; R5 Won't Have list and AC12 enforce."
+      },
+      {
+        "issue": "Codex Finding 12 — Destructive action: forward-fix is permissible; do not revert 9218b6bd or force-push.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Confirmed in constraints list and in spec Goal section. No destructive-verb instructions appear in this cycle."
+      }
+    ],
+    "feedback_incorporated": "Findings 1, 2, 3, 5, 6, 7, 9, 10 were applied as concrete spec changes (R1/R1a/R1b/R1c/R3/S1/S2 and AC1/AC2/AC3/AC7/AC9/AC10/AC11/AC12). Finding 4 deferred to out_of_scope_observations + Won't Have (deselect UX). Finding 8 deferred to out_of_scope_observations + Won't Have (budget categories). Findings 11, 12 are observations confirming the spec's existing scope/destructive-action stance."
+  }
+}
