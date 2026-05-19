@@ -267,13 +267,13 @@
       },
       {
         "requirement_id": "AC20",
-        "source_phrase": "Save mutations POST to /api/save; mutations array format",
-        "criterion": "saveMutations posts [{type:'select', slot, option_id}] to /api/save",
-        "verification_method": "Carried forward — no changes in fix_pass_3",
-        "status": "pass",
-        "result": "pass",
-        "details": "No changes in fix_pass_3. PASS carried forward.",
-        "evidence": "fix_pass_3 diff: 1 file changed (react_template.tpl only)"
+        "source_phrase": "Cross-meal drag: drag breakfast candidate onto dinner slot; client-side copy ensures immediate re-render; both isMealSelected(breakfast) and isMealSelected(dinner) return true",
+        "criterion": "window.setEditorSelection bridge copies option object into editorTripData for target slot; KanbanView card stamped as selected immediately after cross-meal drop",
+        "verification_method": "Inspect bridge lines 2483-2492; inspect mergeEditorSelectionsIntoPublishedDay lines 1941-1951; inspect isMealSelected line 2042; search all call sites for applySelection",
+        "status": "fail",
+        "result": "fail",
+        "details": "PARTIAL FIX CONFIRMED. Bridge (lines 2483-2492) builds updates={[dayNum+':'+slotId]:optionId} and adds [dayNum+':'+originSlotId]=optionId (line 2488) when originSlotId && _isCompatible(originSlotId, slotId). setEditorSelections called with both keys (line 2490). isMealSelected (line 2042) checks editorSelections only — sidebar checkmark DOES show for both slots. REMAINING BUG: bridge calls setEditorSelections (line 2490) and saveMutations (line 2491) only. No setEditorTripData call. mergeEditorSelectionsIntoPublishedDay at line 1946: editorDay.slots[slotId].options.find(o => o.option_id === selectedId). For cross-meal drop (breakfast option X onto dinner): option X in editorDay.slots.breakfast.options but NOT in editorDay.slots.dinner.options. find() returns null. KanbanView card not stamped as selected. Sidebar checkmark shows; board view does not update. applySelection() at line 2071 has correct setEditorTripData cross-meal copy logic (inspected) but has NO call site in file — dead code. AC20 spec: 'the frontend copies option X into the dinner slot client-side state (editorTripData) before setting dinner.selected_option_id = X (ensures immediate re-render).' FAIL.",
+        "evidence": "react_template.tpl:2490 (setEditorSelections called — editorSelections mirrored, sidebar correct); :1946 (find() in target slot options only — fails cross-meal); :2042 (isMealSelected checks editorSelections — sidebar correct); :2071 (applySelection dead code — correct logic never called). Codex: 'Cross-meal bridge still does not satisfy immediate re-render — VERDICT_IMPACT: blocks_AC20'"
       },
       {
         "requirement_id": "AC21",
