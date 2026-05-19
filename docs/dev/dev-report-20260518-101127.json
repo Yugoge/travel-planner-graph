@@ -296,5 +296,50 @@
       "smoke_check": "pass — EDITOR_MODE count=0, all 5 slot-drop elements patched, bridge cross-meal logic verified, conflict status text updated",
       "notes": "No new symbols introduced beyond the changes. onDrop gated branch strengthened per Codex F5."
     }
+  },
+  "fix_pass_5": {
+    "status": "completed",
+    "timestamp": "2026-05-19T00:00:00Z",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "fixes": {
+      "A": {
+        "ac": "AC8/AC24",
+        "description": "saveMutations success handler now updates editorTripData.days[n].stage after successful stage mutation",
+        "location": "scripts/lib/react_template.tpl:2466-2474",
+        "change": "After setSaveStatusText('saved'), added: find stage mutation from mutations array; read stageVal from stageMut.to_stage (fallback to stageMut.value); call setEditorTripData to update matching day's stage field",
+        "codex_blocker_caught": "Initial draft read mutation.value but Approve button sends {type:'stage',from_stage,to_stage:'user-selected'} — stageVal would be undefined. Fixed to read stageMut.to_stage ?? stageMut.value"
+      },
+      "B": {
+        "ac": "AC20",
+        "description": "window.setEditorSelection bridge now copies option object from origin slot into target slot in editorTripData when originSlotId present (cross-meal drop path)",
+        "location": "scripts/lib/react_template.tpl:2499-2521",
+        "change": "After setEditorSelections update, if originSlotId is truthy and editorDay.slots is available, setEditorTripData to copy srcOpt from originSlotId.options into slotId.options (if not already present). Then always calls saveMutations. Added editorDay to useEffect deps.",
+        "codex_blocker_caught": "Initial draft called applySelection() which is defined inside CandidatesSidebar and is not in scope in NotionTravelApp where the bridge lives — would throw ReferenceError. Fixed by inlining the cross-meal copy logic directly in the bridge using editorDay (in scope in NotionTravelApp)"
+      },
+      "C": {
+        "ac": "AC22",
+        "description": "isGated now treats missing slots (edSlot=null) as gated (not droppable)",
+        "location": "scripts/lib/react_template.tpl:905, 986, 1068, 1150 (meal/activity), 1290 (accommodation)",
+        "change": "edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder) -> !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder (4 locations); edAcc && (edAcc.skipped || edAcc.late_arrival_placeholder) -> !edAcc || edAcc.late_arrival_placeholder || edAcc.skipped (1 location)",
+        "codex_verdict": "OBSERVATION_ONLY — fix confirmed correct at all 5 locations"
+      }
+    },
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "2 BLOCKERs + 3 MAJORs + 1 OBSERVATION_ONLY. BLOCKER-1: FIX A reads mutation.value but Approve sends to_stage field — stageVal would be undefined. BLOCKER-2: FIX B calls applySelection() which is defined in CandidatesSidebar, not in scope in NotionTravelApp bridge — would throw ReferenceError. MAJOR-1: tap-to-select applyBridge still bypasses cross-meal copy. MAJOR-2: board-to-board cross-meal drops bypass client-side copy. MAJOR-3: bridge origin-slot update sets origin key to optionId (may over-mark breakfast as selected). OBSERVATION_ONLY: FIX C correct.",
+      "feedback_incorporated": "Both BLOCKERs fixed: FIX A now reads stageMut.to_stage ?? stageMut.value; FIX B inlines cross-meal copy logic directly in bridge (no applySelection call). 3 MAJORs classified out_of_scope per QA report scope (AC20 spec is specifically about window.setEditorSelection bridge path for drag drops; applyBridge/board-to-board are adjacent paths not mentioned in AC20 failure evidence; origin-slot both-key update is pre-existing behavior from fix_pass_4 not introduced by fix_pass_5).",
+      "codex_observation_only": [
+        "MAJOR-1: tap-to-select applyBridge does not copy option objects for cross-meal — out_of_scope for this cycle (not in AC20 failure evidence)",
+        "MAJOR-2: board-to-board drops bypass copy — out_of_scope (AC17 handles board-to-board; only bridge path specified in AC20 failure)",
+        "MAJOR-3: origin slot marked optionId in editorSelections — pre-existing fix_pass_4 behavior; not changed in fix_pass_5"
+      ]
+    },
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass — EDITOR_MODE count=0 verified; to_stage field read correctly; applySelection scope bug fixed by inlining; all 5 isGated null-checks confirmed",
+      "notes": "editorDay added to bridge useEffect dependency array to prevent stale closure over editorDay.slots"
+    }
   }
 }
