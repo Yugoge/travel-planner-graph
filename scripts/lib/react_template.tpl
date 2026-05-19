@@ -880,8 +880,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                               <RedNoteLink name={opt.name_local || opt.name_base} />
                             </div>
                             <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
-                              {opt.time && opt.time.start !== '00:00' && <div>{opt.time.start} – {opt.time.end}{opt.cost > 0 ? ' · ' + fmtCost(opt.cost, undefined, lang) : ''}</div>}
+                              {opt.time && opt.time.start !== '00:00' && <div>{opt.time.start} – {opt.time.end}{opt.cost > 0 ? ' · ' + fmtCost(opt.cost, undefined, lang) : (opt.cost_display ? ' · ' + opt.cost_display : '')}</div>}
                               {!opt.time && opt.cost > 0 && <div>{fmtCost(opt.cost, undefined, lang)}</div>}
+                              {!opt.time && !(opt.cost > 0) && opt.cost_display && <div>{opt.cost_display}</div>}
                               {getDisplayField(opt, 'cuisine', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(opt, 'cuisine', lang)}</div>}
                               {(opt.location_base || opt.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={opt} lang={lang} mapProvider={mapProvider} /></div>}
                             </div>
