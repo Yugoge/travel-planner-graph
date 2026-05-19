@@ -1762,6 +1762,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   boxShadow: isTop ? '0 4px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                   zIndex: zIdx, overflow: 'hidden', transition: 'all .15s', cursor: 'pointer'
                 }}
+                  data-timeline-entry=""
+                  data-slot-id={timelineSlotId || entry._type || undefined}
+                  data-option-id={timelineMatchedOptionId || timelineSelectedId || undefined}
                   draggable={!!(timelineSlotId && timelineIsSelected)}
                   onDragStart={timelineSlotId && timelineIsSelected ? (e) => { currentDragSlotId = timelineSlotId; e.dataTransfer.setData('text/plain', JSON.stringify({ slotId: timelineSlotId, optionId: timelineSelectedId, sourceSlotId: timelineSlotId, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
                   onDragEnd={timelineSlotId && timelineIsSelected ? () => { currentDragSlotId = null; } : undefined}
