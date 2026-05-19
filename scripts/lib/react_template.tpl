@@ -2497,12 +2497,28 @@ function NotionTravelApp() {
         updates[dayNum + ':' + originSlotId] = optionId;
       }
       setEditorSelections(prev => ({ ...prev, ...updates }));
-      // AC20: if cross-meal drop, copy option object into editorTripData via applySelection so mergeEditorSelectionsIntoPublishedDay can find it
-      if (originSlotId) {
-        applySelection(optionId, slotId, originSlotId);
-      } else {
-        saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
+      // AC20: if cross-meal drop, copy option object into editorTripData so mergeEditorSelectionsIntoPublishedDay can find it in the target slot
+      if (originSlotId && editorDay && editorDay.slots) {
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          const updated = JSON.parse(JSON.stringify(prev));
+          const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
+          if (!dayEntry || !dayEntry.slots) return prev;
+          const tgtSlot = dayEntry.slots[slotId];
+          if (!tgtSlot) return prev;
+          if (!tgtSlot.options) tgtSlot.options = [];
+          const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId);
+          if (!alreadyThere) {
+            const srcSlot = dayEntry.slots[originSlotId];
+            if (srcSlot && srcSlot.options) {
+              const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
+              if (srcOpt) tgtSlot.options.push({ ...srcOpt });
+            }
+          }
+          return updated;
+        });
       }
+      saveMutations(dayNum, [{ type: 'select', slot: slotId, option_id: optionId, origin_slot_id: originSlotId }]);
     };
     window.setEditorSelection = bridge;
     // applyEditorSelection: used by slot-drop onClick for tap-to-select second step (AC14)
