@@ -1065,7 +1065,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             })()}
                             {actSlotId && (() => {
                               const edSlot = editorDay && editorDay.slots && editorDay.slots[actSlotId];
-                              const isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder);
+                              const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder;
                               return <div className="slot-drop" data-slot-id={actSlotId} data-droppable={isGated ? 'false' : 'true'} aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
                               onDragOver={(e) => { if (e.currentTarget.getAttribute('data-droppable') === 'false') { e.preventDefault(); return; } e.preventDefault(); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (currentDragSlotId && !_isCompatible(currentDragSlotId, toSlotId)) { e.dataTransfer.dropEffect = 'none'; return; } e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
                               onDragLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; e.currentTarget.removeAttribute('data-drop-active'); }}
