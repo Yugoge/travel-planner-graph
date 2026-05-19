@@ -2165,6 +2165,18 @@ function _isCompatible(srcSlotId, tgtSlotId) {
   return srcSlotId === tgtSlotId;
 }
 
+// R3 / AC11 v3 — codex F9: success flash on the stable slot card (which survives
+// React commits), not the .slot-drop overlay (which may unmount). 600 ms window.
+function _flashSuccess(slotId) {
+  if (typeof document === 'undefined' || !slotId) return;
+  // querySelectorAll covers both Kanban primary card and Timeline entry
+  const els = document.querySelectorAll('[data-slot-card="primary"][data-slot-id="' + slotId + '"], [data-timeline-entry][data-slot-id="' + slotId + '"]');
+  els.forEach(el => {
+    el.setAttribute('data-drop-success', '');
+    setTimeout(() => { try { el.removeAttribute('data-drop-success'); } catch (_) {} }, 600);
+  });
+}
+
 // CandidatesSidebar component: fixed right panel (always active)
 const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelections, saveMutations,
     setEditorSelections, editorDay, pendingSelection, setPendingSelection, setEditorTripData, inlineMode }) => {
