@@ -620,6 +620,86 @@
       "ADV-5": "Option (b) chosen — data seed rather than route-mocking. Well within R5."
     }
   },
+  "qa_iteration_v3": {
+    "qa_report_path": "docs/dev/qa-report-20260519-161933-ba-validation-v2.json",
+    "qa_verdict": "REJECT (narrow) — 11/11 of v1 RCs addressed; 1 new RC-12 (major) from codex adversarial round + 2 advisories",
+    "rc_addressed": {
+      "RC-12": {
+        "severity": "major",
+        "concern": "v2 ticket internally contradicts itself on cost-field synthesis. Reference Source line 208 ('cost = opt.cost (already in display currency)') is FALSE — v2 option JSON persists raw CNY, _to_display_cost is a Python build-time helper that operates on meals.json PLAN cards, NOT on raw v2 option JSON at React runtime. Dev would have shipped 33 CNY displayed as 33 EUR (~7x misrepresentation). Evidence (lines 106-111) and R1 v2 line 298 correctly identify the issue but the Reference Source mapping rule is the explicit recipe dev would follow.",
+        "resolution": "v3 chose hybrid (a) → (b) alignment with codex-refined precedence. Reference Source 'Dev constraint' (lines 205-215) rewritten: synthesis MUST NOT set numeric cost = opt.cost (raw CNY); instead set cost=0 and emit cost_display = Math.round(opt.cost) + ' ' + opt.currency_local (e.g. '33 CNY') as a string. fmtCost is never invoked on a CNY value. R1 v2 Card-content selection precedence (lines 292-303) rewritten with explicit 3-step ordering: existing active PLAN card match → PLAN alternative match → synthesized v2 fallback — preserving R4 textContent equivalence on the default-render path (Day 1 dinner-1-2 → PLAN alternative card 建新园过桥米线 with cost 4.17 EUR already converted at build time). v3 changelog entry added to QA-Iteration Changelog section.",
+        "chosen_alignment": "hybrid_a_then_b",
+        "rejected_alignments": {
+          "a_alone": "Reliable for Day 1 default render (PLAN alternative exists for dinner-1-2) and same-slot meal swaps, but unreliable as the sole strategy for cross-meal injection (AC2: breakfast-2-1 → dinner slot has no PLAN dinner alternative matching breakfast-2-1).",
+          "b_alone": "Works in all synthesis cases but fails R4 — Day 1 default render would synthesize from raw v2 (cost_display='33 CNY') instead of using the PLAN alternative's already-converted 4.17 EUR display, breaking textContent equivalence vs pre-cycle build.",
+          "c_alone": "Rejected per codex OBSERVATION_ONLY: omitting cost loses informative content; sidebar already uses raw-cost-with-CNY-suffix convention at react_template.tpl:1876-1884 — v3 reuses this convention rather than inventing a new omit path."
+        },
+        "evidence": {
+          "meals_json_wrapper": "data/beijing-lijiang-dali-20260418-100846/meals.json:1-5 is agent-wrapped ({agent, status, data: {days: [...]}}); top-level .days is absent but .data.days has 9 days populated. Verified by direct Read.",
+          "meals_data_unwrap": "scripts/generate-html-interactive.py:228-231 unwraps .data field.",
+          "merge_meals_emit": "scripts/lib/render_day_data.py:99-114 emits day.meal_alternatives from data.days[*].dinner.alternatives. Day 1, 2, 7 dinner each have one PLAN alternative.",
+          "plan_alt_cost_already_converted": "output/travel-plan-beijing-lijiang-dali-20260418-100846.html:288-305 shows the Day 1 dinner alternative 建新园过桥米线 with cost=4.166666666666667 (display currency EUR) and cost_local=33 (raw CNY) — _to_display_cost ran at build time.",
+          "day_01_default_selection": "data/.../days/day-01.json:109 selected_option_id='dinner-1-2' (the alternative); R4 backward-compat requires the rendered card to show 建新园过桥米线 with EUR cost, which IS achievable via the PLAN alternative path (alignment a).",
+          "fmtCost_assumes_display_currency": "scripts/lib/react_template.tpl:453-459 fmtCost prepends CURRENCY_SYMBOL (= '€') to its input; passing raw CNY 33 yields '€33' instead of the correct '€4.17'.",
+          "sidebar_already_uses_cny_suffix": "scripts/lib/react_template.tpl:1876-1884 adaptV2Option sets cost_display = Math.round(opt.cost) + ' CNY' for sidebar candidates; v3 reuses this exact convention for synthesized fallback cards."
+        }
+      }
+    },
+    "advisories_handled": {
+      "ADV-6": "Acknowledged. Cross-day duplicate option_id ambiguity in findSelectedOption is non-blocking — current Yunnan fixture's day-N-M naming guarantees uniqueness, and cross-day fallback only fires when bridge hasn't yet copied (edge case). Future cycle may codify global option_id uniqueness invariant.",
+      "ADV-7": "Acknowledged. AC9's 'or the literal value dev seeded' escape — non-blocking because R1c v2 canonical seed name_local='文华大酒店（武一路）' does not contain '翠湖宾馆', so the negative assertion passes for the canonical seed. Discretion exists only if dev deviates."
+    },
+    "scope": "Single-finding fix. Two ticket sections edited (Reference Source 'Dev constraint' lines 205-215; R1 v2 Card-content selection precedence lines 292-303). v3 changelog entry added. All other 11 RCs (RC-1..RC-11) and their resolution locations unchanged from v2."
+  },
+  "codex_consult_v3": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex returned 5 findings (2 OBSERVATION_ONLY + 3 PROPOSED_FIX) on the v3 alignment choice. Codex pushed back on BA's initial 'empty meal_alternatives' premise (which was WRONG — meals.json is agent-wrapped under .data, not .days), and confirmed PLAN alternatives DO exist for Day 1/2/7 dinner. Codex validated hybrid (a) → (b) with refined precedence: existing active PLAN card → PLAN alternative → synthesized v2 fallback. Codex specified the synthesis rule precisely: don't write numeric cost = opt.cost; use cost_display string + cost=0; render paths must prefer cost_display before fmtCost(cost). Codex rejected (c) — sidebar already uses CNY-suffix convention.",
+    "contradiction_resolved": true,
+    "findings": [
+      {
+        "id": "F1",
+        "issue": "BA's initial 'empty meal_alternatives' premise was wrong — meals.json is agent-wrapped, .data.days has 9 days populated, merge_meals emits alternatives.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "Investigation done before v3 edit. v3 changelog explicitly cites Day 1 PLAN alternative as the load-bearing case for alignment (a)."
+      },
+      {
+        "id": "F2",
+        "issue": "Hybrid (a) → (b) precedence should be: existing active PLAN card match → PLAN alternative match → synthesized v2 fallback. This preserves R4 and prevents default persisted IDs from causing unedited text changes.",
+        "proposed_fix": "Use the 3-step precedence ordering as written.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "v3 R1 v2 Card-content selection precedence rewritten with codex's exact 3-step ordering."
+      },
+      {
+        "id": "F3",
+        "issue": "Synthesis must NOT set numeric cost = opt.cost unless that value is already display currency. For raw v2 CNY, use cost_display = '33 CNY' string label; leave numeric cost = 0.",
+        "proposed_fix": "Set cost = 0 + cost_display = Math.round(opt.cost) + ' ' + (opt.currency_local || 'CNY').",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "v3 Reference Source 'Dev constraint' rewritten with this exact rule, including the gate-on opt.cost > 0 logic and budget aggregation note."
+      },
+      {
+        "id": "F4",
+        "issue": "If using (b), Kanban + Timeline render paths must prefer cost_display before fmtCost(cost). Do not put '33 CNY' into cost; fmtCost assumes display currency and numeric comparisons/budget totals expect numeric cost.",
+        "proposed_fix": "Render paths read cost_display (plain text) when present and opt.cost > 0 is false.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "v3 Reference Source 'Dev constraint' includes the SHOULD for extending Kanban meal/activity/cafe/entertainment and Timeline renders to emit cost_display."
+      },
+      {
+        "id": "F5",
+        "issue": "Do not choose (c) — omitting cost avoids misrepresentation but loses useful information; sidebar already displays raw v2 costs with CNY suffix.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "v3 changelog explicitly cites this as the rejection rationale for alignment (c)."
+      }
+    ],
+    "feedback_incorporated": "All 5 codex v3 findings applied. F2 + F3 + F4 (the PROPOSED_FIX trio) form the core of v3's edits. F1 + F5 (OBSERVATION_ONLY) are cited in the v3 changelog as the empirical grounding for alignment (a)→(b) and the rejection of (c). No findings deferred."
+  },
   "codex_consult_v2": {
     "invoked": true,
     "status": "ok",
