@@ -1,0 +1,94 @@
+{
+  "request_id": "20260519-161933",
+  "task_id": "20260519-161933",
+  "timestamp": "2026-05-19T18:25:00Z",
+  "qa": {
+    "status": "pass",
+    "phase": "ba-validation-v3",
+    "user_verbatim_complaint": "彻底修复实现我的spec目标 — thoroughly fix the prior /redev cycle 20260518-101127's spec goal (unified viewer+editor, life-ai backward compatible, all prior travel plans except Yunnan unchanged). Prior cycle declared CLOSE: YES but the visual layer was completely broken; user reported 拖了没反应 / 拖到 timeline 没有任何反映.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "v1_rcs_locked": "11/11 from v1 verdict remain addressed (RC-1..RC-11). v3 edits are surgically scoped to Reference Source 'Dev constraint' (lines 205-249) and R1 'Card-content selection precedence' (lines 326-358) plus changelog (lines 1085-1166). No other ticket section was modified — confirmed by AC spot-check on AC1, AC5, AC9 which retain v2 RC tags and v2 wording.",
+    "v2_rc_resolved": "RC-12 closed in v3 with hybrid (a) + (b) alignment. (a) PLAN alternative card preferred (R1 step 2) when an alternative matches by option_id or name — its cost field is already display-currency-converted at build time via _to_display_cost. (b) Synthesis fallback (R1 step 3) emits cost=0 numeric + cost_display string with CNY suffix; explicit prohibition against passing opt.cost through fmtCost is recorded at ticket lines 239-242. The two changes together close the cross-section contradiction that v2 carried between Reference Source (line 208 of v2 said cost=opt.cost is already in display currency, FALSE) and Evidence/R1 (correctly identified CNY-vs-EUR mismatch).",
+    "v3_edit_verification": {
+      "edit_1_reference_source_dev_constraint": {
+        "location": "ticket lines 205-249",
+        "expected_changes_v3": ["cost = 0 numeric rule", "cost_display string with Math.round + currency_local suffix", "explicit fmtCost prohibition"],
+        "verification": "All three present. Line 227: 'Set cost = 0 (so the cost-line renders are gated out by the opt.cost > 0 predicates...)'. Lines 230-231: 'cost_display = Math.round(opt.cost) + \\' \\' + (opt.currency_local || \\'CNY\\')'. Line 239-242: 'Dev MUST NOT pass opt.cost (raw CNY) through fmtCost — that helper assumes the input is already in display currency... and would render 33 as €33 (~7x the true value). This is the contradiction RC-12 closes.'",
+        "verdict": "pass"
+      },
+      "edit_2_r1_card_content_precedence": {
+        "location": "ticket lines 326-358",
+        "expected_changes_v3": ["3-step precedence", "step 1 = existing active PLAN card match", "step 2 = PLAN alternative match (with EUR-converted cost note)", "step 3 = synthesis fallback referring back to RC-12 cost rule"],
+        "verification": "All four present. Line 330: step 1 'Existing active PLAN card match... mutate it in place to set selected = true and option_id'. Lines 338-346: step 2 'PLAN alternative match... mutate THAT card into the active slot (this is the Day 1 dinner case where selected_option_id = dinner-1-2 matches the 建新园过桥米线(宝善街店) PLAN alternative whose cost field is already display-currency-converted, e.g. 4.17 EUR for the 33 CNY raw value)'. Lines 347-354: step 3 'Synthesis fallback... Critical RC-12 rule: the synthesized fallback MUST NOT write cost = opt.cost (that value is raw opt.currency_local, typically CNY, NOT the trip's display currency). Set cost = 0 and emit cost_display as a STRING with explicit CNY suffix per the Reference Source constraint.'",
+        "verdict": "pass"
+      },
+      "edit_3_changelog": {
+        "location": "ticket lines 1085-1166",
+        "expected_changes_v3": ["v3 entry named", "RC-12 trigger named", "hybrid (a) + (b) alignment stated", "Day 1 dinner-1-2 PLAN-alternative case named explicitly"],
+        "verification": "All four present. Line 1085 heading: '### v3 (RC-12 fix)'. Lines 1087-1091: 'Trigger: QA v2 ba-validation-v2 reject_narrow verdict... codex's independent adversarial pass surfaced ONE new internal contradiction (RC-12, major severity)'. Line 1109: 'Chosen alignment: hybrid (a) → (b)'. Lines 1115-1126: 'Alignment (a) — prefer PLAN_DATA alternative card — IS reliable for the load-bearing Yunnan case... The Day 1 default render (selected_option_id = dinner-1-2 pointing at the 建新园过桥米线(宝善街店) alternative) IS satisfied by alignment (a): the PLAN alternative card has cost = 4.17 EUR already converted at build time, verified in output/travel-plan-beijing-lijiang-dali-20260418-100846.html:288-305.'",
+        "verdict": "pass"
+      }
+    },
+    "ac_drift_spot_check": {
+      "method": "Read 3 representative ACs (AC1, AC5, AC9) and compare wording against v2 baseline expectations.",
+      "ac1_meal_slot_replace": {
+        "location": "ticket lines 616-645",
+        "v2_tag_preserved": "'### AC1: Meal slot card content REPLACES on drop (R1) (revised v2 — RC-6, RC-7)' — v2 tag intact, no v3 tag added",
+        "key_assertions_present": ["data-slot-card='primary' EXACTLY ONE element", "lang='local' default", "建新园 positive + 云线楼 negative substring assertions", "data-option-id='dinner-2-2'"],
+        "verdict": "no_drift"
+      },
+      "ac5_sidebar_meals_checkmark": {
+        "location": "ticket lines 713-726",
+        "v2_tag_preserved": "'### AC5: Sidebar ✓ Meals tracks editor_selections (R2) (revised v2 — RC-7)' — v2 tag intact",
+        "key_assertions_present": ["lang='local' precondition", "computed-style border-color rgb(69,178,107) check", "isSelected ? '#45b26b' : '#e5e7eb' rule reference"],
+        "verdict": "no_drift"
+      },
+      "ac9_accommodation_cover_image": {
+        "location": "ticket lines 819-850",
+        "v2_tag_preserved": "'### AC9: Accommodation selection updates cover image and card (R1c) (revised v2 — RC-2, RC-8, codex Findings 2 + 8)' — v2 tag intact",
+        "key_assertions_present": ["data-day-cover attribute locator", "getComputedStyle().backgroundImage check", "data:image substring match", "文华大酒店 positive + 翠湖宾馆 negative substring assertions"],
+        "verdict": "no_drift"
+      },
+      "line_count_delta": "v2 = 1028 lines, v3 = 1166 lines, delta ≈ 138 lines. Consistent with BA's claim of focused edit + changelog block. The two body edits (~25 lines added/rewritten in cost rule + ~20 lines added/rewritten in precedence) plus the ~80-line changelog block account for the delta.",
+      "summary": "No AC text drift detected on spot-check. BA's v3 edit was scoped to the two body sections + changelog as claimed."
+    },
+    "ba_codex_round_2_verdict_quoted": "Clean. RC-12 is resolved in the v3 spec: no remaining operative text instructs dev to write raw opt.cost into a synthesized fallback card.",
+    "default_render_trace": {
+      "scenario": "Day 1 default render — no editor selections; published day was generated with selected_option_id='dinner-1-2' (per meals.json default).",
+      "step_1_existing_active_plan_card_match": "MISS. day.meals.dinner currently displays the primary dinner-1-1 PLAN card; option_id does NOT match the resolved selectedId 'dinner-1-2', and the primary card's name does NOT match the dinner-1-2 PLAN alternative. (The R1 step-1 condition is 'day.meals[slotId] matches resolved option by option_id or name_base/name_local'.)",
+      "step_2_plan_alternative_match": "HIT. day.meal_alternatives.dinner contains the 建新园过桥米线(宝善街店) PLAN alternative card with option_id='dinner-1-2', emitted from data.days[*].dinner.alternatives by render_day_data.py:99-114. The card's cost field is 4.17 EUR (display currency), converted at build time by _to_display_cost. R1 step 2 mutates this card into the active slot.",
+      "step_3_synthesis_fallback": "NOT INVOKED. Step 2 already produced the active card; step 3 is short-circuited.",
+      "raw_cny_path_check": "opt.cost (raw 33 CNY) is NEVER read in this trace — the synthesis branch (step 3) is the ONLY branch that touches opt.cost, and it is not reached. The PLAN alternative card already carries the EUR-converted cost as a regular numeric field that flows through fmtCost safely.",
+      "ac7_default_render_equivalence_implication": "AC7 backward-compat textContent equivalence holds on the default render path because the rendered Kanban + Timeline content is identical to the pre-cycle PLAN alternative card content — only selected=true and option_id are added (S1 attribute additions, explicitly permitted by RC-10). The cost field rendered via fmtCost stays in EUR. No 7x misrepresentation can occur on default render."
+    },
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-19T18:25:00Z",
+        "file": "docs/dev/ticket-20260519-161933.md",
+        "line": "1138",
+        "observation": "Alignment (c) (omit cost) was rejected per codex OBSERVATION_ONLY. Documented in changelog. No follow-up needed.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "verdict": "Dev can proceed to Step 8 (implementation). v3 ticket is internally consistent: Reference Source cost rule, R1 precedence step 3 synthesis fallback, and changelog all align on (a) prefer PLAN alternative whose cost is EUR-converted at build time, and (b) for synthesis fallback (no PLAN alternative exists, e.g. cross-meal AC2 path), emit cost=0 numeric + cost_display string with CNY suffix and explicitly forbid passing opt.cost through fmtCost. The Day 1 default render is satisfied by branch (a), preserving AC7 textContent equivalence. The cross-meal/cross-slot injection paths (AC2, AC9 accommodation seed if no PLAN alternative) are handled by branch (b) without ever expressing raw CNY through fmtCost.",
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    }
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null,
+    "reason": "BA v3 ran 2 codex rounds with clean verdict (codex-output-559901-1779213118.txt). Per dispatch instruction 'skip codex this round — BA v3 already consulted codex 2 rounds, both clean; you verify by reading text directly', QA verifies by direct ticket read. Self-review covered: (1) RC-12 cost rule body check, (2) R1 precedence body check, (3) changelog naming check, (4) AC drift spot-check on 3 random ACs, (5) Day 1 default render trace through the 3-step precedence, (6) line-count delta sanity check."
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
