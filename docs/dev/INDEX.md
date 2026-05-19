@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-19T11:59:05Z*
-**Total entries**: 403
+*Last updated: 2026-05-19T16:37:08Z*
+**Total entries**: 404
 **Convention**: kebab
 
 ## Tree
@@ -409,7 +409,8 @@ dev/
 ├── `ticket-20260517-195000.md` - BA Specification: Photo Card Layout Fixes — Timeline Thumbnail + Cover Resolution
 ├── `ticket-20260517-211506.md` - BA Specification: Fix .slot-selected Photo Layout + #trip-cover Visual Defect
 ├── `ticket-20260517-211850.md` - BA Specification: Trip Editor — React-Based Architecture (Visual Parity + Interactive Layer)
-└── `ticket-20260518-101127.md` - BA Specification: Unified Viewer/Editor Page — EDITOR_MODE Removal + 12 Editor Features
+├── `ticket-20260518-101127.md` - BA Specification: Unified Viewer/Editor Page — EDITOR_MODE Removal + 12 Editor Features
+└── `ticket-20260519-161933.md` - BA Specification: Fix Drag-Drop Visual Layer — Replace card content on selection
 ```
 
 ---
