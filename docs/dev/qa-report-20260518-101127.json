@@ -287,13 +287,13 @@
       },
       {
         "requirement_id": "AC22",
-        "source_phrase": "missing/skipped/late-arrival/required-empty badges; data-droppable=false for gated slots; skipped shows skipped_reason field",
-        "criterion": "All 5 slot types show correct badges; late-arrival uses edAcc.late_arrival_placeholder; skipped shows skipped_reason || 'skipped'",
-        "verification_method": "Inspect FIX D at line 1284; inspect FIX E at lines 898, 980, 1062, 1144, 1283",
-        "status": "pass",
-        "result": "pass",
-        "details": "FIX D CONFIRMED (line 1284): if (edAcc && edAcc.late_arrival_placeholder) return <div>late arrival</div>. Previously used parseInt(acc.check_in.split(':')[0]) >= 14 heuristic. FIX E CONFIRMED at all 5 locations: lines 898, 980, 1062, 1144: {edSlot.skipped_reason || 'skipped'}; line 1283: {edAcc.skipped_reason || 'skipped'}. Missing badge: present at lines 895, 979, 1061, 1143, 1282. data-droppable=false for gated slots: lines 906, 987, 1069, 1151, 1292. Required-empty badge: line 900. AC22 fully passes.",
-        "evidence": "react_template.tpl:1284 (late_arrival_placeholder); :898, :980, :1062, :1144 (skipped_reason || 'skipped'); :1283 (edAcc.skipped_reason || 'skipped'); :906, :987, :1069, :1151, :1292 (data-droppable=false)"
+        "source_phrase": "missing/skipped/late-arrival/required-empty badges; data-droppable=false for skipped/missing slots; skipped shows skipped_reason field",
+        "criterion": "Missing slots (edSlot null) get data-droppable=false; all 5 slot-drop handlers guard on data-droppable; skipped/late-arrival/missing badges correct",
+        "verification_method": "Inspect isGated at lines 895, 979, 1061, 1143, 1282; inspect onDragOver/onDrop/onClick handler guards in all 5 slot-drop elements; verify badges from fix_pass_3 unchanged",
+        "status": "fail",
+        "result": "fail",
+        "details": "PARTIAL FIX CONFIRMED. HANDLER GUARDS CORRECT (fix_pass_4): All 5 slot-drop elements have data-droppable guards: onDragOver: if(e.currentTarget.getAttribute('data-droppable')==='false'){e.preventDefault();return;}. onDrop: if(...){e.preventDefault();e.currentTarget.removeAttribute('data-drop-active');return;}. onClick: if(...)return. Handler guard fix is confirmed correct at lines 905-910, 986-991, 1068-1073, 1150-1155, 1290-1295. Badge fixes from fix_pass_3 preserved: FIX D (line 1284) late_arrival_placeholder check correct. FIX E (lines 898, 980, 1062, 1144, 1283) skipped_reason || 'skipped' correct. REMAINING BUG: isGated computation at lines 895, 979, 1061, 1143: const isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder). When edSlot=null (missing slot key absent from editorDay.slots): null&&(...) = null/false. isGated=false. data-droppable='true' set. Accommodation line 1282: const isGated = edAcc && edAcc.late_arrival_placeholder — same pattern. Close-gate blocker 3: 'drops into skipped/missing slots are not blocked.' Missing case still unblocked. Required fix: const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder. FAIL.",
+        "evidence": "react_template.tpl:895 (isGated=edSlot&&(...) — null-edSlot case false); :905-910 (handler guards — confirmed correct); :979, :1061, :1143 (same isGated pattern); :986-991, :1068-1073, :1150-1155 (handler guards correct); :1282 (isGated=edAcc&&... — null-edAcc case false); :1290-1295 (handler guards correct). Codex: 'Missing AC22 slots still render as droppable — PROPOSED_FIX: const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder — VERDICT_IMPACT: blocks_AC22'"
       },
       {
         "requirement_id": "AC23",
