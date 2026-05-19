@@ -434,7 +434,29 @@
     ],
     "script_quality_results": [],
     "generated_tests": [],
-    "all_findings": [],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:2462-2467",
+        "issue": "AC8 blocker: saveMutations success handler does not update editorTripData.days[n].stage after Approve mutation succeeds. editorDay (useMemo derived from editorTripData) stays at pre-approve stage. isApproved re-evaluates to false immediately after click. Button reverts to 'Approve' text and re-enables. User must page-reload to see Approved state.",
+        "recommendation": "In saveMutations .then() handler (line 2462), when mutation includes stage type, call setEditorTripData(prev => { const updated = JSON.parse(JSON.stringify(prev)); const dayIdx = updated.days.findIndex(d => d.day === dayNum); if (dayIdx >= 0) updated.days[dayIdx].stage = 'user-selected'; return updated; }). Detect stage mutation by checking the mutations array passed to saveMutations.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:2483-2492 (bridge), :2071 (applySelection dead code), :1946 (mergeEditorSelectionsIntoPublishedDay)",
+        "issue": "AC20 blocker: window.setEditorSelection bridge mirrors editorSelections for both target and origin meal slots (improvement — sidebar checkmark correct) but does not copy the option object into editorTripData. mergeEditorSelectionsIntoPublishedDay line 1946 find() returns null for cross-meal options not in target slot's options array. KanbanView card not stamped as selected. applySelection() at line 2071 has correct setEditorTripData copy logic but is dead code — no call site anywhere in the file.",
+        "recommendation": "Wire applySelection() (line 2071 — already has correct setEditorTripData copy logic) into the window.setEditorSelection bridge when originSlotId is provided. OR implement the option-object copy directly in the bridge: (1) look up source option in editorDay.slots[originSlotId].options, (2) call setEditorTripData to insert option into editorTripData.days[n].slots[targetSlot].options if absent, (3) set selected_option_id.",
+        "blocks_release": true
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:895, 979, 1061, 1143, 1282",
+        "issue": "AC22 blocker: isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder) returns false when edSlot is null (missing slot key absent from editorDay.slots). data-droppable='true' set for missing slots. Handler guards correctly check data-droppable='false' (handler fix confirmed correct in fix_pass_4) — only the isGated computation is wrong. Close-gate blocker 3 cited 'skipped/missing slots' — missing case remains unresolved.",
+        "recommendation": "At lines 895, 979, 1061, 1143: change to const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder. At line 1282: change to const isGated = !edAcc || edAcc.late_arrival_placeholder || edAcc.skipped. Handler guards (onDragOver/onDrop/onClick) are already correct — do NOT modify them.",
+        "blocks_release": true
+      }
+    ],
     "permissions_verification": {
       "status": "pass",
       "permissions_count": 0,
