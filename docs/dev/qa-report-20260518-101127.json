@@ -482,15 +482,31 @@
       "confidence": "high"
     },
     "summary": {
-      "critical_issues": 0,
+      "critical_issues": 3,
       "major_issues": 0,
       "minor_issues": 0,
-      "total_findings": 0,
-      "release_recommendation": "approve",
-      "acs_passing": 29,
-      "acs_total": 29
+      "total_findings": 3,
+      "release_recommendation": "reject",
+      "acs_passing": 26,
+      "acs_failing": 4,
+      "acs_total": 29,
+      "failing_acs": ["AC8", "AC20", "AC22", "AC24"],
+      "note": "AC24 fails — shares AC8 root cause (editorTripData not updated after approve). AC22 handler guards are correctly implemented in fix_pass_4; only the 5 isGated computation lines need the null-check fix."
     }
   },
-  "iteration_needed": false,
-  "refined_context": null
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "AC8: Approve button must show 'Approved' state and remain disabled after successful Approve mutation — requires editorTripData update in saveMutations success handler",
+      "AC20: Cross-meal drop must immediately stamp KanbanView card as selected — requires option object copy into editorTripData, not just editorSelections mirroring",
+      "AC22: Missing slots (edSlot=null) must get data-droppable=false — requires !edSlot case in isGated computation at 5 locations"
+    ],
+    "critical_issues": [
+      "AC8 (lines 2462-2467): Add setEditorTripData(prev => { const updated = JSON.parse(JSON.stringify(prev)); const dayIdx = updated.days.findIndex(d => d.day === dayNum); if (dayIdx >= 0) updated.days[dayIdx].stage = 'user-selected'; return updated; }) inside saveMutations .then() handler when the mutations array includes a stage mutation. The Approve button fires mutation at line 2790.",
+      "AC20 (lines 2483-2492 bridge, 2071 applySelection): Wire applySelection() into the bridge when originSlotId is provided (lowest-risk — applySelection already has correct setEditorTripData copy logic). OR implement in bridge: look up source option in editorDay.slots[originSlotId].options; call setEditorTripData to insert option into editorTripData.days[n].slots[targetSlot].options; set selected_option_id. mergeEditorSelectionsIntoPublishedDay find() at line 1946 must find the option in the target slot's options array.",
+      "AC22 (lines 895, 979, 1061, 1143, 1282): 5 single-line changes. Change const isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder) TO const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder at lines 895, 979, 1061, 1143. Change const isGated = edAcc && edAcc.late_arrival_placeholder TO const isGated = !edAcc || edAcc.late_arrival_placeholder || edAcc.skipped at line 1282. Do NOT touch the handler guards (onDragOver/onDrop/onClick) — they are already correct."
+    ],
+    "recommended_approach": "fix_pass_5 touches exactly 3 code areas. AC22 fix is 5 one-line changes — simplest fix. AC8 fix is 1 targeted addition to saveMutations handler. AC20 fix is the most complex — wire applySelection into bridge for the cross-meal path. Do NOT modify handler guards for AC22 (they are correct in fix_pass_4).",
+    "additional_context": "Codex confirmed all 3 as in_scope_real_bug with PROPOSED_FIX. The AC22 handler-guard side of fix_pass_4 is CORRECT and should be preserved. The isGated null-check fix at 5 locations is the ONLY remaining AC22 change needed. For AC20, applySelection() at line 2071 already implements the correct setEditorTripData cross-meal copy — wiring it into the bridge is the preferred approach to avoid code duplication."
+  }
 }
