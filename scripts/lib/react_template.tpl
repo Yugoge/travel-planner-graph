@@ -2465,8 +2465,9 @@ function NotionTravelApp() {
       setSaveStatusText('saved');
       // AC8: update editorTripData.days[n].stage after successful stage mutation so editorDay doesn't stay stale
       if (mutations && mutations.some(m => m.type === 'stage')) {
-        const stageVal = (mutations.find(m => m.type === 'stage') || {}).value;
-        setEditorTripData(prev => {
+        const stageMut = mutations.find(m => m.type === 'stage');
+        const stageVal = stageMut && (stageMut.to_stage != null ? stageMut.to_stage : stageMut.value);
+        if (stageVal) setEditorTripData(prev => {
           if (!prev || !prev.days) return prev;
           return { ...prev, days: prev.days.map(d => Number(d.day) === Number(dayNum) ? { ...d, stage: stageVal } : d) };
         });
