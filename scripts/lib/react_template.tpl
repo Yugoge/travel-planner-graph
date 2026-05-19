@@ -2463,6 +2463,14 @@ function NotionTravelApp() {
       setSaveState('saved');
       setLastSaveTs(ts);
       setSaveStatusText('saved');
+      // AC8: update editorTripData.days[n].stage after successful stage mutation so editorDay doesn't stay stale
+      if (mutations && mutations.some(m => m.type === 'stage')) {
+        const stageVal = (mutations.find(m => m.type === 'stage') || {}).value;
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          return { ...prev, days: prev.days.map(d => Number(d.day) === Number(dayNum) ? { ...d, stage: stageVal } : d) };
+        });
+      }
       // Post-save budget recompute (M10, M25)
       recomputeBudget(dayNum);
     } catch (_) {
