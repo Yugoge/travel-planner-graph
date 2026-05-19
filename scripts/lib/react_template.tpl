@@ -721,7 +721,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-      <div style={{
+      <div data-day-cover="" style={{
         width: '100%',
         height: sm ? '120px' : '200px',
         background: day.cover ? `linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.03) 100%), url(${day.cover})` : '#f5f5f5',
