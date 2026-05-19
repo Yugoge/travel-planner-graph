@@ -11,26 +11,50 @@
     "ac_alignment": false,
     "out_of_scope_observations": [
       {
-        "ts": "2026-05-18T12:45:00Z",
+        "ts": "2026-05-19T00:00:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2462,
+        "observation": "saveMutations success handler (lines 2462-2467) updates save status and budget but does NOT update editorTripData or call setEditorTripData. This is the upstream cause of the AC8 blocker: even after fix_pass_4 reads editorDay.stage correctly, a successful Approve mutation does not mutate editorTripData.days[n].stage, so editorDay (derived from editorTripData via useMemo) remains at the pre-approve stage value on the same page session.",
+        "in_user_path": true,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-19T00:00:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2071,
+        "observation": "applySelection() inside CandidatesSidebar (line 2071) contains correct setEditorTripData cross-meal copy logic but is NEVER called anywhere. No call site exists in the file. Candidate drops go through slot-drop handlers -> window.setEditorSelection bridge, never through applySelection. This function is dead code. It should either be wired into the bridge or deleted.",
+        "in_user_path": true,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-19T00:00:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2495,
+        "observation": "applyBridge (tap-to-select, line 2495) also does NOT copy option objects to editorTripData — only sets editorSelections for the target slot. Same root cause as window.setEditorSelection bridge for AC20.",
+        "in_user_path": true,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-19T00:00:00Z",
         "file": "schemas/v2/route_cache.schema.json",
         "line": 24,
-        "observation": "route_cache.schema.json mode field enum lists ['walk','taxi','metro','bus','transit','car','ferry'] but frontend sends mode: 'driving'. route.py _MODE_TO_COMMAND maps 'driving' -> 'driving' so no runtime crash, but cache entries written with mode='driving' would fail schema validation. Codex C2 PROPOSED_FIX: use mode: 'car' in frontend while route.py maps 'car' -> Gaode driving command, or update schema to include 'driving'. Schema non-conformance only; no AC12 runtime impact.",
+        "observation": "route_cache.schema.json mode field enum lists ['walk','taxi','metro','bus','transit','car','ferry'] but frontend sends mode: 'driving'. Schema non-conformance only; no runtime crash. Carried forward from fix_pass_3 QA.",
         "in_user_path": false,
         "security_relevant": false
       },
       {
-        "ts": "2026-05-18T12:45:00Z",
+        "ts": "2026-05-19T00:00:00Z",
         "file": "scripts/lib/react_template.tpl",
         "line": 2418,
-        "observation": "fetchRoute .catch() handler at line 2418 sets {status:'error'} without the stale-sequence guard (routeSeqRef.current[pairKey] !== seq check). A slow failing request could overwrite a newer successful result in routeCache. Codex C4 PROPOSED_FIX: add if (routeSeqRef.current[pairKey] !== seq) return; inside .catch before setRouteCache. Race condition edge case; does not prevent AC12 from working in normal flow.",
+        "observation": "fetchRoute .catch() handler at line 2418 sets {status:'error'} without the stale-sequence guard. Race condition edge case. Carried forward from fix_pass_3 QA.",
         "in_user_path": false,
         "security_relevant": false
       },
       {
-        "ts": "2026-05-18T12:45:00Z",
+        "ts": "2026-05-19T00:00:00Z",
         "file": "scripts/lib/react_template.tpl",
         "line": 1915,
-        "observation": "FIX C accommodation stamping (lines 1915-1922) is dead code: condition is Array.isArray(day.accommodation) but PLAN_DATA accommodation is always an object, never an array. Line 1246 wraps it as [day.accommodation] for .map(). So acc.option_id = selAccOpt.option_id at line 1919 never executes. This does NOT affect AC17 because KanbanView placed accommodation cards (line 1249) have no onDragStart attribute — they are not draggable in the board-drag flow. Accommodation selection in CandidatesSidebar uses rawOpt.option_id directly, not acc.option_id from PLAN_DATA. Codex C5 PROPOSED_FIX: handle object shape: if (day.accommodation && !Array.isArray(day.accommodation)) { name-match → set day.accommodation.selected=true and day.accommodation.option_id=selAccOpt.option_id }. Separate fix cycle recommended.",
+        "observation": "FIX C accommodation stamping (lines 1915-1922) is dead code: condition is Array.isArray(day.accommodation) but PLAN_DATA accommodation is always an object, never an array. Does NOT affect AC17 because KanbanView placed accommodation cards (line 1249) have no onDragStart. Carried forward from fix_pass_3 QA.",
         "in_user_path": false,
         "security_relevant": false
       }
