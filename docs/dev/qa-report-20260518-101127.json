@@ -147,13 +147,13 @@
       },
       {
         "requirement_id": "AC8",
-        "source_phrase": "Approve button gated on all required slots filled + stage >= user-selected",
-        "criterion": "Approve button disabled when any required slot has no selection or stage before user-selected",
-        "verification_method": "Carried forward — test trip has stage in PLAN_DATA",
-        "status": "pass",
-        "result": "pass",
-        "details": "Approve button stage check reads from effectiveDay (PLAN_DATA format). Test trip has stage='user-selected' in PLAN_DATA for all 9 days. No regression in fix_pass_3.",
-        "evidence": "day-01.json stage='user-selected' confirmed in PLAN_DATA format"
+        "source_phrase": "Approve button gated on all required slots filled + stage >= user-selected; on success, button shows Approved state and is disabled",
+        "criterion": "Approve button reads editorDay.stage (not PLAN_DATA); shows Approved after successful Approve mutation; remains disabled",
+        "verification_method": "Inspect fix_pass_4 lines 2780-2781 (isApproved/canApprove); inspect saveMutations success handler lines 2462-2467 for editorTripData update after stage mutation",
+        "status": "fail",
+        "result": "fail",
+        "details": "PARTIAL FIX CONFIRMED. Line 2780: const isApproved = editorDay && editorDay.stage === 'user-selected'. Line 2781: const canApprove = allFilled && editorDay && (editorDay.stage === 'draft-options' || editorDay.stage === 'user-review'). Correctly reads editorDay (v2 API envelope with live stage) not publishedDay/PLAN_DATA (stage=null). Initial-load display correct. REMAINING BUG: saveMutations success handler lines 2462-2467 calls only: setSaveState('saved'); setLastSaveTs(ts); setSaveStatusText('saved'); recomputeBudget(dayNum). No setEditorTripData call. After clicking Approve: mutation fires (line 2790 correct), HTTP 200 returned, success handler runs — editorTripData.days[n].stage unchanged at 'draft-options'/'user-review'. editorDay (useMemo from editorTripData) stays stale. isApproved re-evaluates false. Button reverts to 'Approve' text and re-enables. User must reload page to see Approved state. AC8 requires: 'on success, the button shows Approved state and is disabled.' FAIL.",
+        "evidence": "react_template.tpl:2780-2781 (isApproved/canApprove — partial fix correct for initial-load); :2462-2467 (saveMutations handler — missing setEditorTripData update); :2790 (Approve mutation fires correctly). Codex: 'Approve save does not update local day stage — VERDICT_IMPACT: blocks_AC8'"
       },
       {
         "requirement_id": "AC9",
