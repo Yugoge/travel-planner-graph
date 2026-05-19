@@ -1263,6 +1263,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         const catColor = categoryColors.accommodation;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), position: 'relative'}}
+                            data-slot-card="primary"
+                            data-slot-id="accommodation"
+                            data-option-id={acc.option_id || undefined}
                             onClick={() => onItemClick && onItemClick(acc, 'accommodation')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false)}
