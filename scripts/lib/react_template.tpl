@@ -2839,6 +2839,34 @@ function NotionTravelApp() {
       fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Noto Sans SC', sans-serif",
       background: '#ffffff', minHeight: '100vh', color: '#37352f'
     }}>
+      {/* R3 v3 — slot-drop state CSS + success/reject flash. Inline style block uses
+          !important to override the inline background:'transparent' on .slot-drop overlays. */}
+      <style>{`
+        .slot-drop[data-drop-active] {
+          outline: 2px solid rgba(69,178,107,0.85) !important;
+          outline-offset: -2px !important;
+          background: rgba(69,178,107,0.10) !important;
+          box-shadow: inset 0 0 0 1px rgba(69,178,107,0.4) !important;
+        }
+        .slot-drop[data-drop-reject] {
+          animation: slot-drop-reject-flash 0.4s ease-out !important;
+          background: rgba(224,124,90,0.22) !important;
+          outline: 2px solid rgba(224,124,90,0.85) !important;
+          outline-offset: -2px !important;
+        }
+        [data-slot-card="primary"][data-drop-success],
+        [data-timeline-entry][data-drop-success] {
+          animation: slot-drop-success-flash 0.6s ease-out !important;
+        }
+        @keyframes slot-drop-reject-flash {
+          0% { background: rgba(224,124,90,0.5); }
+          100% { background: rgba(224,124,90,0); }
+        }
+        @keyframes slot-drop-success-flash {
+          0% { box-shadow: 0 0 0 4px rgba(69,178,107,0.75); }
+          100% { box-shadow: 0 0 0 0 rgba(69,178,107,0); }
+        }
+      `}</style>
       <Sidebar
         trips={PLAN_DATA.trips} selTrip={selTrip} selDay={selDay}
         onSelect={(ti, di) => {
