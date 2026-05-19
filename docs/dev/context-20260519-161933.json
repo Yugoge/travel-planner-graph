@@ -551,5 +551,161 @@
       }
     ],
     "feedback_incorporated": "Findings 1, 2, 3, 5, 6, 7, 9, 10 were applied as concrete spec changes (R1/R1a/R1b/R1c/R3/S1/S2 and AC1/AC2/AC3/AC7/AC9/AC10/AC11/AC12). Finding 4 deferred to out_of_scope_observations + Won't Have (deselect UX). Finding 8 deferred to out_of_scope_observations + Won't Have (budget categories). Findings 11, 12 are observations confirming the spec's existing scope/destructive-action stance."
+  },
+  "qa_iteration_v2": {
+    "qa_report_path": "docs/dev/qa-report-20260519-161933-ba-validation.json",
+    "qa_verdict": "REJECT — 11 required_changes (3 fatal, 7 major, 1 minor) + 5 advisories",
+    "rcs_addressed": {
+      "RC-1": {
+        "severity": "fatal",
+        "concern": "AC3 references nonexistent option_id afternoon_activity-2-1",
+        "resolution": "AC3 rewritten to use Day 2 evening_activity-2-2 (芒果探戈咖啡馆) vs evening_activity-2-1 (纸布石书店ZBOOKS) — both verified in data/beijing-lijiang-dali-20260418-100846/days/day-02.json slots.evening_activity.options[]. Same-slot drop avoids _isCompatible cross-activity rejection."
+      },
+      "RC-2": {
+        "severity": "fatal",
+        "concern": "AC9 unverifiable — all 9 days have ≤1 accommodation option, all cover_image=null",
+        "resolution": "Chose option (b) per ADV-5. R1c v2 mandates dev seed accommodation-1-2 into data/beijing-lijiang-dali-20260418-100846/days/day-01.json accommodation.options[] with data:image/svg+xml;base64,... cover URI (codex F2 — external URL forbidden due to candidate img onError hide). Selected_option_id stays accommodation-1-1 so AC7 backward-compat holds."
+      },
+      "RC-3": {
+        "severity": "fatal",
+        "concern": "R1 says cross-day lookup via editorTripData.days[*].slots[*].options[*] but merge fn signature is only 3-arg",
+        "resolution": "R1 v2 explicitly mandates signature expansion to mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections, editorTripData), call-site update at L2321-2324, useMemo deps update. findSelectedOption(editorDay, slotId, selectedId, editorTripData) helper with precedence-ordered lookup per codex F3."
+      },
+      "RC-4": {
+        "severity": "major",
+        "concern": "AC8 had contradictory pass conditions (S2 copies source slot OR leave previous PLAN_DATA visible)",
+        "resolution": "AC8 v2 has single, load-bearing primary pass condition (target slot displays dragged source content). Source-slot post-move state explicitly out-of-scope; deselect-UX deferred."
+      },
+      "RC-5": {
+        "severity": "major",
+        "concern": "AC11 50ms timing too aggressive for React commit + attribute toggle",
+        "resolution": "Relaxed to 200ms with expect.poll/rAF polling. 600ms removal window kept. Codex F9 also incorporated: success flash MAY land on stable slot card vs only .slot-drop overlay."
+      },
+      "RC-6": {
+        "severity": "major",
+        "concern": "S1 (data-slot-card/data-slot-id/data-option-id) listed as Should but ACs depend on it",
+        "resolution": "S1 promoted to MUST. Added data-slot-card='primary'|'alternative' distinction per codex F4 to prevent primary/alternative locator collision. Added data-timeline-entry, data-day-cover. ACs use [data-slot-card='primary'][data-slot-id=X] with exact-1 count assertion; no text-content fallback locators."
+      },
+      "RC-7": {
+        "severity": "major",
+        "concern": "AC1/AC2/AC3 text matching: English names cited but data has name_base (English) + name_local (Chinese); default lang is local",
+        "resolution": "Every AC declares lang='local' precondition. Assertions use Chinese (name_local) substrings. Each text assertion is positive AND negative (e.g. INCLUDES 建新园 AND NOT INCLUDES 云线楼) per codex F5."
+      },
+      "RC-8": {
+        "severity": "major",
+        "concern": "R2 claims Sidebar ✓ covers Meals+Accommodation+Activity but only AC5/AC6 (Meals) test it",
+        "resolution": "Added AC5b (Activity ✓ via evening_activity-2-1/2-2 swap) and AC5c (Accommodation ✓ via R1c-seeded accommodation-1-1/1-2). Each requires exactly-one ✓ per slot group."
+      },
+      "RC-9": {
+        "severity": "major",
+        "concern": "AC12 'git diff HEAD~1 HEAD' brittle for multi-commit cycles",
+        "resolution": "AC12 v2 uses 'git diff --stat 9218b6bd..HEAD' (explicit pre-cycle SHA). 'git status --porcelain' clean-tree check added. AC7 backward-compat extended to all 9 Yunnan days (ADV-2)."
+      },
+      "RC-10": {
+        "severity": "minor",
+        "concern": "'byte-identical DOM' phrasing impossible (style+attr additions change DOM tree)",
+        "resolution": "Replaced with: (a) textContent equivalence at [data-slot-card='primary'] locator; (b) per-slot-type card count and ordering; (c) screenshot pixel diff < 1% RMSE. <style> injection and data-* attribute additions explicitly stated as expected and non-violating."
+      },
+      "RC-11": {
+        "severity": "minor",
+        "concern": "Ticket verifies Timeline updates after Kanban drop but NOT drag onto Timeline itself; user said 拖到 timeline 没有任何反映",
+        "resolution": "Added R6 + AC13. Timeline entries become drop targets at react_template.tpl:1502-1538 reusing Kanban drop logic with entry._slotId (not entry._type per codex F6)."
+      }
+    },
+    "advisories_handled": {
+      "ADV-1": "Logged. BA codex round 1 had 12 findings; QA codex returned 8; this v2 codex round added 10 more (novel: lang mismatch, data:URI for seeded cover, locator uniqueness, currency display, cover background-image vs src, flash on stable card, AC12 whitelist of seeded file).",
+      "ADV-2": "Incorporated into AC7 RC-9 — backward-compat extended to all 9 Yunnan days.",
+      "ADV-3": "Deselect-UX deferral acceptable per AC8 RC-4 tightening.",
+      "ADV-4": "Budget category deferral acceptable; NOT pulled into this cycle's pass/fail to keep scope narrow; logged in out_of_scope_observations.",
+      "ADV-5": "Option (b) chosen — data seed rather than route-mocking. Well within R5."
+    }
+  },
+  "codex_consult_v2": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex returned 10 findings. All have PROPOSED_FIX. F1 (lang mismatch) and F7 (CNY vs EUR cost) were the most consequential because v1 ACs would have silently failed or false-passed. F8 (cover is CSS background-image not src) was a verification-method bug. F4 (locator uniqueness) addressed by data-slot-card='primary'|'alternative' distinction. F2 (data: URI for seed) and F6 (entry._slotId not _type) and F9 (flash on stable card) and F10 (AC12 whitelist) are implementation-correctness gates. F3 (precedence-ordered findSelectedOption) and F5 (positive+negative assertions) are best-practice fits.",
+    "findings": [
+      {
+        "id": "F1",
+        "issue": "Lang mismatch — default lang state is 'local' (Chinese), but v1 ACs asserted English substrings ('Zhibushi', 'Mango Tango'); these would fail",
+        "proposed_fix": "Set UI lang to 'base' before AC1/AC2/AC3, OR assert Chinese substrings",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "All ACs (AC1-AC13) declare lang='local' precondition and use Chinese name_local substrings"
+      },
+      {
+        "id": "F2",
+        "issue": "External synthetic .jpg URL can 404; candidate img has onError hide behavior",
+        "proposed_fix": "Use stable data:image/... URI or committed/local reachable asset; explicit whitelist day-01.json in AC12",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "R1c v2 mandates data:image/svg+xml;base64,... URI; AC12 whitelist added (RC-9)"
+      },
+      {
+        "id": "F3",
+        "issue": "editorTripData lookup should be precedence-ordered, not a single blind Map<option_id, optionObject>",
+        "proposed_fix": "findSelectedOption(day, slotId, selectedId) with precedence: target slot → same-day → cross-day fallback; internal map only if preserves arrays + slot metadata",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "R1 v2 mandates findSelectedOption helper with precedence-ordered lookup"
+      },
+      {
+        "id": "F4",
+        "issue": "[data-slot-card][data-slot-id='dinner'] can match primary plus alternatives; collision risk",
+        "proposed_fix": "Require unique target locator e.g. data-slot-card='primary' or data-slot-role='active'; ACs fail if target count is not exactly 1",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "S1 v2 defines data-slot-card='primary'|'alternative'; AC locators require exact-1 count"
+      },
+      {
+        "id": "F5",
+        "issue": "Positive-only assertions can pass by matching an already-rendered alternative; negative-only can pass on blank/wrong content",
+        "proposed_fix": "Scoped target textContent must include new canonical substring AND exclude old canonical substring",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "All AC text assertions are positive AND negative (e.g. INCLUDES 建新园 AND NOT INCLUDES 云线楼)"
+      },
+      {
+        "id": "F6",
+        "issue": "Timeline drop should be in this cycle (user explicitly complained 拖到 timeline 没有任何反映); use entry._slotId not entry._type",
+        "proposed_fix": "Add Timeline drop targets minimally, reusing Kanban drop logic; meals slot id from entry._slotId; activity slot id resolved from editorDay option mapping",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "R6 + AC13 added; implementation hint specifies entry._slotId"
+      },
+      {
+        "id": "F7",
+        "issue": "R1 mapping misses CNY-to-EUR cost issue — v2 option cost is CNY, PLAN cards use display currency (EUR); v2 image often null while PLAN alternatives have images",
+        "proposed_fix": "Prefer existing PLAN_DATA card matching the selected option/name for image/cost/notes; only synthesize from v2 as fallback; do not display raw CNY as EUR",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Reference Source v2 + R1 v2 mandate PLAN-alternative-card preferred path; v2 synthesis is fallback-only"
+      },
+      {
+        "id": "F8",
+        "issue": "AC9 cover selector vague — current cover is CSS background-image, not #hero-image/src",
+        "proposed_fix": "Add stable data-day-cover attribute or require checking computed backgroundImage on known cover element",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "S1 v2 adds data-day-cover attribute; AC9 reads getComputedStyle().backgroundImage"
+      },
+      {
+        "id": "F9",
+        "issue": "Success flash can disappear if tied only to React-replaced .slot-drop overlay",
+        "proposed_fix": "Set success state synchronously before save and attach measurable flash to stable slot card as well as/instead of .slot-drop",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC11 v2 + R3 v2 permit flash on slot card in addition to/instead of .slot-drop overlay"
+      },
+      {
+        "id": "F10",
+        "issue": "AC12 must allow exactly the seeded Yunnan day file if RC-2 uses seeding; otherwise contradicts the new test-data change",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "applied",
+        "rationale": "AC12 v2 explicitly whitelists data/beijing-lijiang-dali-20260418-100846/days/day-01.json and optionally accommodation.json"
+      }
+    ],
+    "feedback_incorporated": "All 10 codex v2 findings applied to the v2 ticket revision. F1, F4, F7, F8 are the four QA missed (now closed). F2, F3, F5, F6, F9, F10 reinforce existing RC fixes. No findings deferred."
   }
 }
