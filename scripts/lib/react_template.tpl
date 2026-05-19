@@ -1057,8 +1057,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 <RedNoteLink name={attr.name_local || attr.name_base} />
                               </div>
                               <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
-                                {attr.time && <div>{attr.time.start} – {attr.time.end}{attr.cost > 0 ? ' · ' + fmtCost(attr.cost, undefined, lang) : ''}</div>}
+                                {attr.time && <div>{attr.time.start} – {attr.time.end}{attr.cost > 0 ? ' · ' + fmtCost(attr.cost, undefined, lang) : (attr.cost_display ? ' · ' + attr.cost_display : '')}</div>}
                                 {!attr.time && attr.cost > 0 && <div>{fmtCost(attr.cost, undefined, lang)}</div>}
+                                {!attr.time && !(attr.cost > 0) && attr.cost_display && <div>{attr.cost_display}</div>}
                                 {getDisplayField(attr, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(attr, 'type', lang)}</div>}
                                 {(attr.location_base || attr.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={attr} lang={lang} mapProvider={mapProvider} /></div>}
                               </div>
