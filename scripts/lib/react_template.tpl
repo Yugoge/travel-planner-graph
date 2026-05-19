@@ -1143,8 +1143,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 <RedNoteLink name={ent.name_local || ent.name_base} />
                               </div>
                               <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
-                                {ent.time && <div>{ent.time.start} – {ent.time.end}{ent.cost > 0 ? ' · ' + fmtCost(ent.cost, undefined, lang) : ''}</div>}
+                                {ent.time && <div>{ent.time.start} – {ent.time.end}{ent.cost > 0 ? ' · ' + fmtCost(ent.cost, undefined, lang) : (ent.cost_display ? ' · ' + ent.cost_display : '')}</div>}
                                 {!ent.time && ent.cost > 0 && <div>{fmtCost(ent.cost, undefined, lang)}</div>}
+                                {!ent.time && !(ent.cost > 0) && ent.cost_display && <div>{ent.cost_display}</div>}
                                 {getDisplayField(ent, 'type', lang) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayField(ent, 'type', lang)}</div>}
                                 {(ent.location_base || ent.location_local) && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><MapLink item={ent} lang={lang} mapProvider={mapProvider} /></div>}
                               </div>
