@@ -1880,6 +1880,15 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                     ))}
                     {showDetails && entry._type !== 'transportation' && <LinksRow links={entry.links} compact={sm} />}
                   </div>
+                  {/* AC13 v3 / R6 — Timeline entry as drop target (codex F6: use entry._slotId not _type) */}
+                  {timelineSlotId && (
+                    <div className="slot-drop" data-slot-id={timelineSlotId} data-droppable="true" aria-hidden="true"
+                      style={{ position: 'absolute', inset: 0, background: 'transparent', transition: 'background 0.12s' }}
+                      onDragOver={(e) => { e.preventDefault(); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); if (currentDragSlotId && !_isCompatible(currentDragSlotId, toSlotId)) { e.dataTransfer.dropEffect = 'none'; return; } e.dataTransfer.dropEffect = 'move'; e.currentTarget.setAttribute('data-drop-active', ''); }}
+                      onDragLeave={(e) => { e.currentTarget.removeAttribute('data-drop-active'); }}
+                      onDrop={(e) => { e.preventDefault(); e.currentTarget.removeAttribute('data-drop-active'); try { const payload = JSON.parse(e.dataTransfer.getData('text/plain')); const toSlotId = e.currentTarget.getAttribute('data-slot-id'); const fromSlotId = payload.slotId || payload.originSlotId; if (fromSlotId && !_isCompatible(fromSlotId, toSlotId)) { const el = e.currentTarget; el.setAttribute('data-drop-reject', ''); setTimeout(() => el.removeAttribute('data-drop-reject'), 400); return; } _flashSuccess(toSlotId); if (window.setEditorSelection) window.setEditorSelection(toSlotId, payload.optionId, payload.originSlotId || null); } catch (_) {} }}
+                    />
+                  )}
                 </div>
               );
             })}
