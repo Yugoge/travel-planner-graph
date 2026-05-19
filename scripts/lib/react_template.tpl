@@ -1884,86 +1884,266 @@ function adaptV2Option(opt) {
   };
 }
 
-// Finding 10: merge persisted + local selections into a cloned publishedDay
-// PLAN_DATA card objects are the BASELINE — only add `selected: true` flag.
-function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections) {
+// R1 v3 — locate a v2 option object for a given slot+selectedId across
+// precedence: (1) target slot options, (2) same-day cross-slot, (3) cross-day fallback.
+// Returns null if not found. Preserves slot/day context (NOT a flat map).
+function findSelectedOption(editorDay, slotId, selectedId, editorTripData) {
+  if (!selectedId) return null;
+  // 1. Target slot
+  const tgt = editorDay && editorDay.slots && editorDay.slots[slotId];
+  if (tgt && tgt.options) {
+    const hit = tgt.options.find(o => o.option_id === selectedId);
+    if (hit) return hit;
+  }
+  // 2. Same-day cross-slot
+  if (editorDay && editorDay.slots) {
+    for (const sKey of Object.keys(editorDay.slots)) {
+      if (sKey === slotId) continue;
+      const s = editorDay.slots[sKey];
+      if (!s || !s.options) continue;
+      const hit = s.options.find(o => o.option_id === selectedId);
+      if (hit) return hit;
+    }
+  }
+  // 3. Cross-day fallback (editorTripData.days[*])
+  if (editorTripData && editorTripData.days) {
+    for (const d of editorTripData.days) {
+      if (!d || !d.slots) continue;
+      for (const sKey of Object.keys(d.slots)) {
+        const s = d.slots[sKey];
+        if (!s || !s.options) continue;
+        const hit = s.options.find(o => o.option_id === selectedId);
+        if (hit) return hit;
+      }
+    }
+  }
+  return null;
+}
+
+// R1c v3 — locate a v2 accommodation option across editorDay then cross-day fallback.
+function findSelectedAccommodationOption(editorDay, editorTripData, selectedId) {
+  if (!selectedId) return null;
+  const acc = editorDay && editorDay.accommodation;
+  if (acc && acc.options) {
+    const hit = acc.options.find(o => o.option_id === selectedId);
+    if (hit) return hit;
+  }
+  if (editorTripData && editorTripData.days) {
+    for (const d of editorTripData.days) {
+      const a = d && d.accommodation;
+      if (!a || !a.options) continue;
+      const hit = a.options.find(o => o.option_id === selectedId);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+// R1 v3 synthesis helper — map a v2 option into PLAN card shape.
+// RC-12: NEVER write numeric cost = opt.cost (that is raw CNY, not display currency).
+// Emit cost = 0 and cost_display = "<int> CNY" string instead; render path falls back.
+function _synthesizeCardFromV2Option(opt, existingCard) {
+  const base = existingCard ? { ...existingCard } : {};
+  base.name_base = opt.name || base.name_base;
+  base.name_local = opt.name_local || base.name_local || '';
+  if (opt.location_summary) base.location_base = opt.location_summary;
+  if (opt.location_local) base.location_local = opt.location_local;
+  base.image = opt.cover_image || opt.image || base.image || null;
+  // Time: preserve existing card's time if v2 omits (TimelineView filters 00:00)
+  if (opt.time && opt.time.start && opt.time.start !== '00:00') base.time = opt.time;
+  // notes
+  if (opt.notes_base) base.notes_base = opt.notes_base;
+  if (opt.notes_local) base.notes_local = opt.notes_local;
+  // RC-12 cost rule: numeric cost stays 0 (gated out); cost_display is a STRING with explicit suffix
+  base.cost = 0;
+  if (opt.cost && opt.cost > 0) {
+    base.cost_display = Math.round(opt.cost) + ' ' + (opt.currency_local || 'CNY');
+  } else {
+    base.cost_display = '';
+  }
+  base.option_id = opt.option_id;
+  base.selected = true;
+  return base;
+}
+
+// R1 v3 — match an existing card against a v2 option by option_id OR name.
+function _matchesOption(card, opt) {
+  if (!card || !opt) return false;
+  if (card.option_id && opt.option_id && card.option_id === opt.option_id) return true;
+  if (card.name_base && opt.name && card.name_base === opt.name) return true;
+  if (card.name_local && opt.name_local && card.name_local === opt.name_local) return true;
+  return false;
+}
+
+// Finding 10 / R1 v3: merge persisted + local selections into a cloned publishedDay
+// REPLACES rendered slot card content for the selected option using the
+// precedence: (1) active PLAN card match, (2) PLAN alternative match (promote), (3) v2 synthesis.
+// 4-arg signature: needs editorTripData for cross-day fallback per RC-3.
+function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections, editorTripData) {
   if (!publishedDay || !editorDay) return publishedDay;
   const day = JSON.parse(JSON.stringify(publishedDay)); // deep clone
+  editorSelections = editorSelections || {};
 
-  // Build name->option_id map for each activity slot (F7b)
-  const actSlotOpts = {};
-  ['morning_activity', 'afternoon_activity', 'evening_activity'].forEach(slotKey => {
-    const slot = editorDay.slots && editorDay.slots[slotKey];
-    if (!slot || !slot.options) return;
-    slot.options.forEach(opt => {
-      actSlotOpts[slotKey] = actSlotOpts[slotKey] || {};
-      if (opt.name) actSlotOpts[slotKey][opt.name] = opt.option_id;
-      if (opt.name_local) actSlotOpts[slotKey][opt.name_local] = opt.option_id;
-    });
-  });
-
-  // AC15: include accommodation in merge so cover image and selection reflect editor state
+  // ===== Accommodation (R1c): treat as object (NOT array). =====
   const accKey = publishedDay.day + ':accommodation';
   const persistedAccId = editorDay.accommodation && editorDay.accommodation.selected_option_id;
   const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections, accKey)
     ? editorSelections[accKey]
     : persistedAccId;
-  if (selectedAccId && editorDay.accommodation && editorDay.accommodation.options) {
-    const selAccOpt = editorDay.accommodation.options.find(o => o.option_id === selectedAccId);
-    if (selAccOpt) {
-      // Update accommodation selected flag on PLAN_DATA card by name match
-      if (day.accommodation && Array.isArray(day.accommodation)) {
-        day.accommodation.forEach(acc => {
-          if (acc.name_base === selAccOpt.name || acc.name_local === selAccOpt.name_local) {
-            acc.selected = true;
-            acc.option_id = selAccOpt.option_id;
-          }
-        });
+  if (selectedAccId) {
+    const selAccOpt = findSelectedAccommodationOption(editorDay, editorTripData, selectedAccId);
+    if (selAccOpt && day.accommodation && typeof day.accommodation === 'object' && !Array.isArray(day.accommodation)) {
+      if (_matchesOption(day.accommodation, selAccOpt)) {
+        day.accommodation.selected = true;
+        day.accommodation.option_id = selAccOpt.option_id;
+      } else {
+        // Synthesis: overwrite fields on the existing accommodation object
+        const synth = _synthesizeCardFromV2Option(selAccOpt, day.accommodation);
+        // Preserve a few PLAN-only fields that synthesis would not produce
+        synth.check_in = day.accommodation.check_in || synth.check_in;
+        synth.check_out = day.accommodation.check_out || synth.check_out;
+        synth.stars = (selAccOpt.stars !== undefined ? selAccOpt.stars : day.accommodation.stars) || 0;
+        day.accommodation = synth;
       }
-      // Update day.cover if the selected accommodation has an image (AC15)
       const coverImg = selAccOpt.cover_image || selAccOpt.image;
       if (coverImg) day.cover = coverImg;
     }
   }
 
-  const allSlots = ['breakfast', 'lunch', 'dinner',
-                    'morning_activity', 'afternoon_activity', 'evening_activity'];
-
-  allSlots.forEach(slotId => {
+  // ===== Meals (R1, R1a) =====
+  const mealSlots = ['breakfast', 'lunch', 'dinner'];
+  mealSlots.forEach(slotId => {
     const key = publishedDay.day + ':' + slotId;
     const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
-    // AC10: key-presence semantics — key present+null means explicitly cleared
     const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key)
       ? editorSelections[key]
       : persistedId;
     if (!selectedId) return;
+    const selOpt = findSelectedOption(editorDay, slotId, selectedId, editorTripData);
+    if (!selOpt) return;
 
-    const isMeal = ['breakfast', 'lunch', 'dinner'].includes(slotId);
-    if (isMeal) {
-      const card = day.meals && day.meals[slotId];
-      if (card) {
-        // Find selected option to check name match
-        const edSlot = editorDay.slots && editorDay.slots[slotId];
-        const selOpt = edSlot && edSlot.options && edSlot.options.find(o => o.option_id === selectedId);
-        if (selOpt && (card.name_base === selOpt.name || card.name_local === selOpt.name_local)) {
-          card.selected = true;
-          card.option_id = selOpt.option_id;
+    if (!day.meals) day.meals = {};
+    const activeCard = day.meals[slotId];
+
+    // Step 1: active PLAN card matches → mutate in place
+    if (activeCard && _matchesOption(activeCard, selOpt)) {
+      activeCard.selected = true;
+      activeCard.option_id = selOpt.option_id;
+    } else {
+      // Step 2: PLAN alternative match → promote alternative into slot
+      const alts = (day.meal_alternatives && day.meal_alternatives[slotId]) || [];
+      const altIdx = alts.findIndex(a => _matchesOption(a, selOpt));
+      if (altIdx >= 0) {
+        const promoted = alts[altIdx];
+        promoted.selected = true;
+        promoted.option_id = selOpt.option_id;
+        // Preserve target-slot time when promoted alternative has no time
+        if ((!promoted.time || promoted.time.start === '00:00') && activeCard && activeCard.time) {
+          promoted.time = activeCard.time;
+        }
+        // Swap: move old primary into the alternatives slot to preserve visible card count
+        const newAlts = alts.slice();
+        newAlts.splice(altIdx, 1);
+        if (activeCard) {
+          // Demote old primary (clear selected/option_id flags that pertained to it being primary)
+          const demoted = { ...activeCard };
+          demoted.selected = false;
+          newAlts.push(demoted);
+        }
+        if (!day.meal_alternatives) day.meal_alternatives = {};
+        day.meal_alternatives[slotId] = newAlts;
+        day.meals[slotId] = promoted;
+      } else {
+        // Step 3: synthesis fallback (cross-meal injection — no PLAN alternative exists)
+        const synth = _synthesizeCardFromV2Option(selOpt, activeCard || {});
+        day.meals[slotId] = synth;
+        // R1a: filter the selected option out of meal_alternatives by option_id/name
+        if (day.meal_alternatives && day.meal_alternatives[slotId]) {
+          day.meal_alternatives[slotId] = day.meal_alternatives[slotId].filter(a => !_matchesOption(a, selOpt));
         }
       }
-    } else {
-      // activity slot: search all four arrays by name matching
-      const edSlot = editorDay.slots && editorDay.slots[slotId];
-      const selOpt = edSlot && edSlot.options && edSlot.options.find(o => o.option_id === selectedId);
-      if (!selOpt) return;
-      const arrays = ['attractions', 'entertainment', 'cafe', 'unscheduled_optionals'];
-      arrays.forEach(arr => {
-        if (!day[arr]) return;
-        day[arr].forEach(card => {
-          if (card.name_base === selOpt.name || card.name_local === selOpt.name_local) {
-            card.selected = true;
-            card.option_id = selOpt.option_id;
+    }
+    // R1a (always): ensure no duplicate of the selected option remains in alternatives
+    if (day.meal_alternatives && day.meal_alternatives[slotId]) {
+      day.meal_alternatives[slotId] = day.meal_alternatives[slotId].filter(a => {
+        // keep cards that don't match the selected option
+        if (_matchesOption(a, selOpt)) return false;
+        return true;
+      });
+    }
+  });
+
+  // ===== Activities (R1b) =====
+  const actSlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
+  const actArrays = ['attractions', 'entertainment', 'cafe', 'unscheduled_optionals'];
+  actSlots.forEach(slotId => {
+    const key = publishedDay.day + ':' + slotId;
+    const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
+    const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key)
+      ? editorSelections[key]
+      : persistedId;
+    if (!selectedId) return;
+    const selOpt = findSelectedOption(editorDay, slotId, selectedId, editorTripData);
+    if (!selOpt) return;
+    // Find existing anchor card across all four arrays.
+    // Prefer (a) an anchor that matches the selected option, (b) a timed anchor whose name appears
+    // in editorDay.slots[slotId].options[*] (the slot's option universe), prefer timed.
+    const slotOpts = (editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].options) || [];
+    const slotOptionNames = new Set();
+    slotOpts.forEach(o => {
+      if (o.name) slotOptionNames.add(o.name);
+      if (o.name_local) slotOptionNames.add(o.name_local);
+    });
+
+    let anchorArr = null;
+    let anchorIdx = -1;
+    // First pass: card that already matches the selected option directly
+    for (const arr of actArrays) {
+      if (!day[arr]) continue;
+      const idx = day[arr].findIndex(c => _matchesOption(c, selOpt));
+      if (idx >= 0) { anchorArr = arr; anchorIdx = idx; break; }
+    }
+    // Second pass: any card whose name is in the slot's option universe; prefer timed
+    if (anchorArr === null) {
+      let timedHit = null;
+      let untimedHit = null;
+      for (const arr of actArrays) {
+        if (!day[arr]) continue;
+        for (let i = 0; i < day[arr].length; i++) {
+          const c = day[arr][i];
+          const nm = c.name_base;
+          const nl = c.name_local;
+          if ((nm && slotOptionNames.has(nm)) || (nl && slotOptionNames.has(nl))) {
+            if (c.time && c.time.start && c.time.start !== '00:00') {
+              if (!timedHit) timedHit = { arr, i };
+            } else if (!untimedHit) {
+              untimedHit = { arr, i };
+            }
           }
-        });
+        }
+      }
+      const hit = timedHit || untimedHit;
+      if (hit) { anchorArr = hit.arr; anchorIdx = hit.i; }
+    }
+    if (anchorArr === null) return; // No anchor — synthesis-into-arbitrary-array is out of scope per codex Q3
+
+    const existing = day[anchorArr][anchorIdx];
+    if (_matchesOption(existing, selOpt)) {
+      // PLAN card already matches → mutate
+      existing.selected = true;
+      existing.option_id = selOpt.option_id;
+    } else {
+      // Replace anchor in place; preserve anchor time
+      const synth = _synthesizeCardFromV2Option(selOpt, existing);
+      if (existing.time) synth.time = existing.time;
+      day[anchorArr][anchorIdx] = synth;
+    }
+    // R1b: remove OTHER appearances of the selected option_id/name across all four arrays
+    for (const arr of actArrays) {
+      if (!day[arr]) continue;
+      day[arr] = day[arr].filter((c, i) => {
+        if (arr === anchorArr && i === anchorIdx) return true;
+        return !_matchesOption(c, selOpt);
       });
     }
   });
