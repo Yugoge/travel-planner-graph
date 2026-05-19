@@ -393,43 +393,43 @@
     },
     "ui_test_results": [
       {
-        "scenario": "AC12/AC23: fetchRoute POST body and response parsing cross-file verification",
+        "scenario": "AC8: Approve button initial-load display and post-click state after fix_pass_4",
         "url": null,
         "status": "skipped",
-        "reason": "App not deployed. Verified via cross-file source analysis: react_template.tpl:2411 (FIX A) vs route.py:52; react_template.tpl:775 (FIX B) vs route.py:227 vs test_route_endpoint.py:78. Codex: pytest 6/6 PASS.",
-        "steps_performed": ["Read react_template.tpl lines 2404-2418", "Read route.py lines 50-60 and 225-235", "Cross-reference tests/server/test_route_endpoint.py:78"],
+        "reason": "App not deployed. Verified via source analysis. Partial fix confirmed correct for initial-load. Remaining bug: saveMutations handler does not update editorTripData. Codex independently confirmed blocks_AC8.",
+        "steps_performed": ["Read react_template.tpl:2780-2781 (isApproved/canApprove)", "Read react_template.tpl:2462-2467 (saveMutations success handler)", "Traced editorDay <- useMemo(editorTripData) derivation chain"],
         "assertions": [
-          {"expected": "fetchRoute POST body includes mode field", "actual": "Line 2411: body includes mode: 'driving'", "passed": true},
-          {"expected": "route.py req['mode'] does not KeyError", "actual": "mode: 'driving' present; req['mode'] resolves", "passed": true},
-          {"expected": "Frontend reads data.segment.duration_min matching backend shape", "actual": "Line 775: data.segment && data.segment.duration_min", "passed": true}
+          {"expected": "isApproved reads editorDay.stage on initial-load", "actual": "Line 2780: const isApproved = editorDay && editorDay.stage === 'user-selected' — CORRECT", "passed": true},
+          {"expected": "canApprove reads editorDay.stage on initial-load", "actual": "Line 2781: canApprove = allFilled && editorDay && (editorDay.stage === 'draft-options' || editorDay.stage === 'user-review') — CORRECT", "passed": true},
+          {"expected": "After Approve click success, editorTripData.days[n].stage updated to 'user-selected'", "actual": "Lines 2462-2467: setSaveState + setLastSaveTs + setSaveStatusText + recomputeBudget only. No setEditorTripData call. editorDay.stage stays stale.", "passed": false}
         ],
-        "evidence": "Cross-file source analysis: react_template.tpl vs route.py vs test_route_endpoint.py"
+        "evidence": "react_template.tpl:2780-2781 (initial-load correct); :2462-2467 (missing editorTripData update)"
       },
       {
-        "scenario": "AC17: option_id stamping in mergeEditorSelectionsIntoPublishedDay",
+        "scenario": "AC20: Cross-meal drop KanbanView immediate re-render after fix_pass_4 bridge fix",
         "url": null,
         "status": "skipped",
-        "reason": "App not deployed. Verified via source analysis and test data cross-reference.",
-        "steps_performed": ["Read react_template.tpl lines 1929-1972", "Read react_template.tpl:860", "Cross-reference meals.json vs day-01.json option names"],
+        "reason": "App not deployed. Verified via source analysis. Bridge improvement confirmed (editorSelections mirroring). Remaining bug: no editorTripData option-object copy, mergeEditorSelectionsIntoPublishedDay find() fails cross-meal. Codex independently confirmed blocks_AC20.",
+        "steps_performed": ["Read react_template.tpl:2483-2492 (bridge)", "Read react_template.tpl:1941-1951 (mergeEditorSelectionsIntoPublishedDay meal logic)", "Read react_template.tpl:2042 (isMealSelected)", "Searched all call sites for applySelection — found none"],
         "assertions": [
-          {"expected": "Meal cards stamped with card.option_id", "actual": "Line 1950: card.option_id = selOpt.option_id", "passed": true},
-          {"expected": "Activity cards stamped with card.option_id", "actual": "Line 1964: card.option_id = selOpt.option_id", "passed": true},
-          {"expected": "Name-match resolves for test data", "actual": "meals.json name_base matches day-01.json option name", "passed": true},
-          {"expected": "Board drag sends populated optionId", "actual": "Line 860: opt.option_id now populated via FIX C", "passed": true}
+          {"expected": "Bridge updates editorSelections for both target and origin slots", "actual": "Lines 2488-2490: updates includes both [dayNum+':'+slotId]=optionId and [dayNum+':'+originSlotId]=optionId. setEditorSelections called — CORRECT (improvement)", "passed": true},
+          {"expected": "Bridge copies option object into editorTripData for target slot", "actual": "Bridge calls setEditorSelections (line 2490) and saveMutations (line 2491) only. No setEditorTripData call.", "passed": false},
+          {"expected": "mergeEditorSelectionsIntoPublishedDay finds cross-meal option in target slot options", "actual": "Line 1946: editorDay.slots[slotId].options.find(o => o.option_id === selectedId) — returns null for option only in source slot's options array.", "passed": false},
+          {"expected": "applySelection() wired to bridge for cross-meal drops", "actual": "applySelection at line 2071 has no call site in the file — dead code.", "passed": false}
         ],
-        "evidence": "react_template.tpl:1950, :1964, :860; test data cross-reference"
+        "evidence": "react_template.tpl:2490 (editorSelections mirroring — correct); :1946 (find() fails cross-meal); :2071 (applySelection dead code)"
       },
       {
-        "scenario": "AC22: late-arrival and skipped badges per FIX D and FIX E",
+        "scenario": "AC22: Missing slot data-droppable guard after fix_pass_4",
         "url": null,
         "status": "skipped",
-        "reason": "App not deployed. Verified via source analysis.",
-        "steps_performed": ["Read react_template.tpl:1284 (FIX D)", "Read react_template.tpl:898, 980, 1062, 1144, 1283 (FIX E)"],
+        "reason": "App not deployed. Verified via source analysis. Handler guards confirmed correct (fix partial — handler side fixed). isGated null-edSlot case still unresolved. Codex independently confirmed blocks_AC22.",
+        "steps_performed": ["Read react_template.tpl:895 (isGated for meal slot)", "Read react_template.tpl:905-910 (handler guards)", "Read react_template.tpl:979, 1061, 1143, 1282 (other slot isGated values)"],
         "assertions": [
-          {"expected": "Accommodation late-arrival uses edAcc.late_arrival_placeholder boolean", "actual": "Line 1284: if (edAcc && edAcc.late_arrival_placeholder)", "passed": true},
-          {"expected": "All 5 skipped badges show skipped_reason field", "actual": "Lines 898, 980, 1062, 1144: {edSlot.skipped_reason || 'skipped'}; Line 1283: {edAcc.skipped_reason || 'skipped'}", "passed": true}
+          {"expected": "onDragOver/onDrop/onClick handlers check data-droppable='false' at start", "actual": "All 5 slot-drop elements confirmed with guards. Handler fix CORRECT.", "passed": true},
+          {"expected": "isGated=true when edSlot is null (missing slot key)", "actual": "Line 895: const isGated = edSlot && (edSlot.skipped || edSlot.late_arrival_placeholder). When edSlot=null: false. data-droppable='true' set.", "passed": false}
         ],
-        "evidence": "react_template.tpl:1284, :898, :980, :1062, :1144, :1283"
+        "evidence": "react_template.tpl:895 (isGated — null-edSlot unhandled); :905-910 (handler guards — correct)"
       }
     ],
     "script_quality_results": [],
