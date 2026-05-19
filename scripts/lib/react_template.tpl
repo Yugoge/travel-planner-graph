@@ -2746,11 +2746,32 @@ function NotionTravelApp() {
     };
     window.setEditorSelection = bridge;
     // applyEditorSelection: used by slot-drop onClick for tap-to-select second step (AC14)
+    // S2 v3 — mirror the bridge cross-meal option-object copy so R1 lookup succeeds.
     const applyBridge = (optionId, targetSlotId, originSlotId) => {
       const dayNum = publishedDay && publishedDay.day;
       if (!dayNum) return;
       const key = dayNum + ':' + targetSlotId;
       setEditorSelections(prev => ({ ...prev, [key]: optionId }));
+      if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          const updated = JSON.parse(JSON.stringify(prev));
+          const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
+          if (!dayEntry || !dayEntry.slots) return prev;
+          const tgtSlot = dayEntry.slots[targetSlotId];
+          if (!tgtSlot) return prev;
+          if (!tgtSlot.options) tgtSlot.options = [];
+          const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId);
+          if (!alreadyThere) {
+            const srcSlot = dayEntry.slots[originSlotId];
+            if (srcSlot && srcSlot.options) {
+              const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
+              if (srcOpt) tgtSlot.options.push({ ...srcOpt });
+            }
+          }
+          return updated;
+        });
+      }
       saveMutations(dayNum, [{ type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }]);
       setPendingSelection(null);
     };
