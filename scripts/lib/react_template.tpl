@@ -1646,7 +1646,7 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{
+      <div data-day-cover="" style={{
         width: '100%', height: sm ? '100px' : '160px',
         background: day.cover ? `url(${day.cover})` : '#f5f5f5',
         backgroundSize: 'cover', backgroundPosition: 'center'
