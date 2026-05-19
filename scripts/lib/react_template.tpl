@@ -1119,6 +1119,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         return (
                           <div key={i} style={{...cardStyle(catColor, false, ent.optional), position: 'relative',
                             ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
+                            data-slot-card={isSelected ? 'primary' : 'alternative'}
+                            data-slot-id={entSlotId || undefined}
+                            data-option-id={ent.option_id || undefined}
                             draggable={isSelected && !!entSlotId}
                             onDragStart={isSelected && entSlotId ? (e) => { currentDragSlotId = entSlotId; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: ent.option_id, slotId: entSlotId, sourceSlotId: entSlotId, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
                             onDragEnd={isSelected && entSlotId ? () => { currentDragSlotId = null; } : undefined}
