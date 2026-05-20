@@ -1,0 +1,307 @@
+{
+  "request_id": "20260520-200804",
+  "task_id": "20260520-200804",
+  "timestamp": "2026-05-20T20:08:04Z",
+  "complexity_tier": "SMALL",
+  "risk_level": "low",
+  "_risk_level_doc": "SMALL tier — fix is bounded to 15 specific lines in one tpl file (additive helper-calls, no logic restructuring) + surgical doc corrections in 2 files. No schema, no data, no new files. Predecessor cycle's helper + CSS already in place; this cycle only wires them in.",
+  "predecessor_cycle": "20260519-161933",
+  "requirement": {
+    "original": "修！ — fix 2 blockers from /close 20260519-161933 → CLOSE: NO. Codex root-cause investigation already done; translate into a minimal pixel-verifiable BA ticket.",
+    "clarified": "Wire the existing _flashReject helper into the 15 gated-branch early-returns in scripts/lib/react_template.tpl (5 slot sites × 3 event handlers), and correct the doc-text drift in dev-report-20260519-161933.json (L84, L89) and ticket-20260519-161933.md (L342-346, L1121-1126) where Day 1 dinner default render is wrongly described as dinner-1-2 / 建新园 instead of the actual dinner-1-1 / Yunxian Lou.",
+    "what": "Add _flashReject call to 15 gated-branch early-returns + correct 2 stale doc assertions per artifact across 2 files.",
+    "why": "User perceives gated slots as broken (no feedback). Doc-evidence contradiction will keep tripping QA in future cycles.",
+    "where": ["scripts/lib/react_template.tpl", "docs/dev/dev-report-20260519-161933.json", "docs/dev/ticket-20260519-161933.md"],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl L911,913,914 (meal)",
+        "scripts/lib/react_template.tpl L996,998,999 (cafe)",
+        "scripts/lib/react_template.tpl L1082,1084,1085 (attractions)",
+        "scripts/lib/react_template.tpl L1168,1170,1171 (entertainment)",
+        "scripts/lib/react_template.tpl L1311,1313,1314 (accommodation)",
+        "docs/dev/dev-report-20260519-161933.json L84 (AC4) and L89 (AC7) text correction",
+        "docs/dev/ticket-20260519-161933.md L342-346 and L1121-1126 text correction"
+      ],
+      "excluded": [
+        "Timeline overlay at L1887 (data-droppable='true' always — not gated)",
+        "_flashReject helper at L2243 (already correct)",
+        ".slot-drop[data-drop-reject] CSS at L2922 (already correct)",
+        "dragleave handlers (no gated early-return)",
+        "All data/ files",
+        "All schemas/",
+        "Other ACs in the prior ticket"
+      ]
+    },
+    "success_criteria": [
+      "All 7 ACs pass under live Playwright verification at desktop and mobile",
+      "git diff --stat 9218b6bd..HEAD lists exactly the 3 expected paths"
+    ],
+    "constraints": [
+      "Pattern applied per branch must match codex log verbatim (additive — no rewriting of existing logic)",
+      "onClick conditional _flashReject only fires when pendingSelection != null (preserves idle-click no-op)",
+      "Doc corrections must be surgical replacements of wrong text — must not delete unrelated content"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl",
+      "docs/dev/dev-report-20260519-161933.json",
+      "docs/dev/ticket-20260519-161933.md"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "/close 20260519-161933 verdict NO with 2 blockers — (1) AC11 gated-slot reject flash never fires; (2) AC4/AC7 doc evidence contradicts code.",
+    "root_cause": "(1) 15 event-handler branches in react_template.tpl early-return on data-droppable='false' without calling the _flashReject helper (which exists but is never invoked from these paths). (2) Stale narrative in dev-report and ticket text claiming Day 1 dinner selected_option_id is 'dinner-1-2 / 建新园' when day-01.json:109 actually has 'dinner-1-1' (Yunxian Lou).",
+    "root_cause_commit": "9218b6bd feat(web): unified viewer/editor page + bidirectional drag (M1-M29) — this commit shipped the AC11 helper + CSS but missed wiring the helper into the gated branches; same commit shipped the stale doc text.",
+    "why_introduced": "Cycle 20260519-161933 implemented the visual reject path (_flashReject + CSS) for the compat-rejection branch but did not propagate the call into the parallel gated-droppable early-return branch. Doc text appears to have been drafted from an earlier version of the data where Day 1 was experimentally set to dinner-1-2 and not updated when the data settled on dinner-1-1.",
+    "why_problematic": "User-visible: gated slots silently swallow drag/drop/click — looks broken. Engineering-visible: doc text contradicts data, defeating future QA's ability to use it as Contract A reference.",
+    "timeline": "Defects introduced in commit 9218b6bd (the cycle that closed as /close NO). Identified by codex in this session via investigation at /var/tmp/codex-outputs/codex-output-1695287-1779267766.txt.",
+    "affected_files": [
+      "scripts/lib/react_template.tpl",
+      "docs/dev/dev-report-20260519-161933.json",
+      "docs/dev/ticket-20260519-161933.md"
+    ],
+    "evidence_type": "observed",
+    "observations": [
+      "scripts/lib/react_template.tpl:911 — onDragOver branch on meal slot early-returns without _flashReject (observed: Read of file)",
+      "scripts/lib/react_template.tpl:913 — onDrop branch on meal slot early-returns without _flashReject (observed: Read)",
+      "scripts/lib/react_template.tpl:914 — onClick branch on meal slot early-returns without _flashReject (observed: Read)",
+      "scripts/lib/react_template.tpl:996,998,999 — same pattern for cafe (observed: Read)",
+      "scripts/lib/react_template.tpl:1082,1084,1085 — same pattern for attractions (observed: Read)",
+      "scripts/lib/react_template.tpl:1168,1170,1171 — same pattern for entertainment (observed: Read)",
+      "scripts/lib/react_template.tpl:1311,1313,1314 — same pattern for accommodation (observed: Read)",
+      "scripts/lib/react_template.tpl:2243 — _flashReject helper exists and is correct (observed: Read)",
+      "scripts/lib/react_template.tpl:2922 — .slot-drop[data-drop-reject] CSS rule exists (observed: Read)",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-01.json:109 — selected_option_id is 'dinner-1-1' (observed: Read + python json load)",
+      "docs/dev/dev-report-20260519-161933.json:84 — AC4 text wrongly equates to AC1 (Day 2 alternative promotion) (observed: Read)",
+      "docs/dev/dev-report-20260519-161933.json:89 — AC7 text wrongly states selected_option_id=dinner-1-2 (observed: Read)",
+      "docs/dev/ticket-20260519-161933.md:342-346 — wrongly states dinner-1-2 / 建新园 as Day 1 example (observed: Read)",
+      "docs/dev/ticket-20260519-161933.md:1121-1126 — wrongly uses dinner-1-2 / 建新园 as alignment-(a) Day 1 illustration (observed: Read)",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-{01,02,03,07,08,09}.json contain skipped slots — Blocker 1 affects real production paths (observed: python iteration)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["AC11", "gated slot", "visual feedback", "AC4", "AC7", "dinner-1-2", "建新园", "Day 1 dinner"],
+    "localization_evidence": "Read of each cited line in scripts/lib/react_template.tpl + Read of the two doc files at the cited line ranges + python load of day-01.json confirming selected_option_id=dinner-1-1.",
+    "located_source": "scripts/lib/react_template.tpl L911,913,914 + L996,998,999 + L1082,1084,1085 + L1168,1170,1171 + L1311,1313,1314 (code); docs/dev/dev-report-20260519-161933.json L84,89 (doc); docs/dev/ticket-20260519-161933.md L342-346,1121-1126 (doc)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "9218b6bd",
+      "commit_message": "feat(web): unified viewer/editor page + bidirectional drag (M1-M29)",
+      "confirmed_by": "git-log-diff (predecessor cycle's own commit shipped both defects)",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "Apply codex diff verbatim to 15 branches (5 sites × 3 branches).", "acceptance_criterion": "AC1, AC2, AC3, AC6"},
+    {"id": "R2", "source_phrase": "Correct dev-report L84/L89 + ticket L342-346/L1121-1126 doc text.", "acceptance_criterion": "AC4, AC5"},
+    {"id": "R3", "source_phrase": "NO scope creep — don't touch other ACs, schemas, or trip data.", "acceptance_criterion": "AC7"}
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "911-914",
+      "role": "meal slot .slot-drop overlay — 3 event handlers (onDragOver, onDrop, onClick) each with a gated early-return missing _flashReject",
+      "imports_from": "_flashReject helper at L2243; CSS rule at L2922",
+      "evidence": "Read of L905-918 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "996-999",
+      "role": "cafe slot .slot-drop overlay — same pattern as meal",
+      "imports_from": "_flashReject + CSS rule (same)",
+      "evidence": "Read of L990-1010 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1082-1085",
+      "role": "attractions slot .slot-drop overlay — same pattern",
+      "imports_from": "_flashReject + CSS rule",
+      "evidence": "Read of L1076-1096 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1168-1171",
+      "role": "entertainment slot .slot-drop overlay — same pattern",
+      "imports_from": "_flashReject + CSS rule",
+      "evidence": "Read of L1162-1182 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1311-1314",
+      "role": "accommodation slot .slot-drop overlay — same pattern",
+      "imports_from": "_flashReject + CSS rule",
+      "evidence": "Read of L1305-1322 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2243-2255",
+      "role": "_flashReject helper — sets data-drop-reject attribute with 500ms throttle + 400ms auto-clear",
+      "imports_from": "leaf",
+      "evidence": "Read of L2235-2256 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2922-2927",
+      "role": ".slot-drop[data-drop-reject] CSS rule paints red animation + bg + outline",
+      "imports_from": "leaf",
+      "evidence": "Read of L2914-2940 in this session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json",
+      "line_range": "109",
+      "role": "Authoritative value for Day 1 dinner selected_option_id = 'dinner-1-1' — disproves the stale doc claim",
+      "imports_from": "leaf",
+      "evidence": "python json load + sed L105-115",
+      "verified_via": "both"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 911,
+      "type": "if",
+      "code_snippet": "if (e.currentTarget.getAttribute('data-droppable') === 'false') { e.preventDefault(); return; }",
+      "purpose": "Gates non-droppable slots (skipped / late_arrival_placeholder) against drop mutations",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 914,
+      "type": "if",
+      "code_snippet": "if (!pendingSelection) return;",
+      "purpose": "Idle-click no-op — click on .slot-drop without a pending sidebar selection does nothing",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2249,
+      "type": "if",
+      "code_snippet": "if (el.__rejectAt && (now - el.__rejectAt) < 500) return;",
+      "purpose": "Throttle _flashReject to at most once per 500ms per element — prevents animation restart on every dragover frame",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop AND 390x844 mobile",
+    "theme": "light",
+    "locale": "en",
+    "auth_state": "N/A (static HTML viewer)",
+    "data_state": "data/beijing-lijiang-dali-20260418-100846 (9-day trip with multiple skipped/gated slots verified across day-01/02/03/07/08/09)",
+    "browser": "Chrome desktop",
+    "url_path": "file:///root/travel-planner/output/travel-plan-beijing-lijiang-dali-20260418-100846.html"
+  },
+  "evidence": {
+    "observed": "/close 20260519-161933 verdict NO with 2 blockers",
+    "measured": {
+      "value": "15 gated-branch early-returns in react_template.tpl missing _flashReject call; doc text in 2 files claims dinner-1-2 / 建新园 as Day 1 default render",
+      "location": "scripts/lib/react_template.tpl L911,913,914,996,998,999,1082,1084,1085,1168,1170,1171,1311,1313,1314 + docs/dev/dev-report-20260519-161933.json L84,L89 + docs/dev/ticket-20260519-161933.md L342-346,L1121-1126"
+    },
+    "expected": {
+      "value": "All 15 gated branches call _flashReject(e.currentTarget) before return (onDragOver branches additionally set dropEffect='none'); doc text reflects Day 1 dinner default = dinner-1-1 (Yunxian Lou) primary, R1 step-2 only fires when persisted id names an alternative",
+      "source": "codex root-cause log /var/tmp/codex-outputs/codex-output-1695287-1779267766.txt + day-01.json:109 ground truth"
+    },
+    "gap": "15 missing _flashReject call sites + 4 wrong doc passages (2 in dev-report, 2 in ticket)"
+  },
+  "scope_expansion": {
+    "search_pattern": "data-droppable.*===.*'false'.*return",
+    "search_scope": "scripts/lib/",
+    "user_reported": ["scripts/lib/react_template.tpl", "docs/dev/dev-report-20260519-161933.json", "docs/dev/ticket-20260519-161933.md"],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:911",
+      "scripts/lib/react_template.tpl:913",
+      "scripts/lib/react_template.tpl:914",
+      "scripts/lib/react_template.tpl:996",
+      "scripts/lib/react_template.tpl:998",
+      "scripts/lib/react_template.tpl:999",
+      "scripts/lib/react_template.tpl:1082",
+      "scripts/lib/react_template.tpl:1084",
+      "scripts/lib/react_template.tpl:1085",
+      "scripts/lib/react_template.tpl:1168",
+      "scripts/lib/react_template.tpl:1170",
+      "scripts/lib/react_template.tpl:1171",
+      "scripts/lib/react_template.tpl:1311",
+      "scripts/lib/react_template.tpl:1313",
+      "scripts/lib/react_template.tpl:1314"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "codex investigation log + independent BA verification (Read of all 5 sites + helper + CSS + day-01.json) in this session",
+    "url_or_location": "/var/tmp/codex-outputs/codex-output-1695287-1779267766.txt + the cited code/data file:line list",
+    "copy_allowed": true,
+    "role_table": {
+      "_source": "no project CLAUDE.md role table — viewer styling uses inline CSS literals; gated reject color rgba(224,124,90,0.85) is established by the existing rule at L2922 and is the in-scope authority for this fix"
+    }
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260519-161933.md",
+        "proposed_solution": "Implement AC1-AC13 covering R1/R1a/R1b/R1c — drag-drop persistence + visual flash + accommodation seed",
+        "actual_change": "Full feature delivered including _flashReject helper at L2243 and .slot-drop[data-drop-reject] CSS at L2922; but the helper is never called from any of the 15 gated-branch early-returns. Doc text also drifted from data.",
+        "outcome": "AC11 visually fails on gated slots; /close verdict NO. Doc-evidence contradiction (dinner-1-2 vs day-01.json's dinner-1-1) creates audit-trail confusion.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior cycle stopped at 'helper + CSS exist' — this cycle wires the helper into the 15 missing call sites (parallel logic branches that were not touched). The doc fix is L3 (data — written word) addressing a separate defect. The combination is novel; the prior cycle never attempted these specific call-site wirings or doc corrections."
+    }
+  },
+  "context": {
+    "codebase_state": "master @ 9218b6bd; predecessor cycle ticket-20260519-161933.md and dev-report-20260519-161933.json on disk; helper + CSS present in tpl but not wired into gated branches",
+    "recent_commits": "9218b6bd feat(web): unified viewer/editor page + bidirectional drag (M1-M29); f5282b1d chore(.gitignore); 7b416587 feat(web): 3-column Notion layout",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Apply codex's verbatim 3-line additive patch to each of the 15 sites. Re-render the HTML output. Then surgically correct the 4 wrong doc passages without disturbing surrounding content.",
+    "files_to_create": [],
+    "files_to_modify": [
+      "scripts/lib/react_template.tpl",
+      "docs/dev/dev-report-20260519-161933.json",
+      "docs/dev/ticket-20260519-161933.md"
+    ],
+    "validation_approach": "QA runs Playwright at desktop 1440x900 + mobile 390x844 against the rebuilt output HTML. Verifies attribute set within 200ms for AC1, attribute clear within 600ms for AC2, conditional fire for AC3, doc-text grep for AC4 + AC5, regression flash for AC6, git diff --stat for AC7. The pre-cycle SHA for AC7 is 9218b6bd."
+  },
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260520-200804.json",
+  "blast_radius_map_path": ".claude/dev-registry/dev-20260520-200804/blast-radius-map.json",
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": "Dispatch instructed: 'NO need to re-invoke codex — codex investigation already complete.' Codex's prior log was used as tier_2_verified reference and cross-validated by BA's independent Read of all cited sites in this session.",
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
