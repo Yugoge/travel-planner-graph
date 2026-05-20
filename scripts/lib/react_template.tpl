@@ -1730,15 +1730,31 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   if (accMatch) timelineMatchedOptionId = accMatch.option_id;
                 }
               } else if (editorDay && editorDay.slots) {
-                // Try to match by name against slot options
+                // AC2 fix-pass: prefer explicit `entry._slotId` (tagged by
+                // TimelineView's add() when entries were pushed) over
+                // name-based resolution. Name-match falls back for any
+                // code path that did not tag (backward-compat).
                 const actSlots = ['morning_activity', 'afternoon_activity', 'evening_activity'];
                 const mealSlots = ['breakfast', 'lunch', 'dinner'];
                 const checkSlots = entry._type === 'meal' ? mealSlots : actSlots;
-                for (const slotId of checkSlots) {
-                  const slot = editorDay.slots[slotId];
-                  if (!slot || !slot.options) continue;
-                  const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
-                  if (match) { timelineSlotId = slotId; timelineMatchedOptionId = match.option_id; break; }
+                if (entry._slotId && checkSlots.includes(entry._slotId)) {
+                  timelineSlotId = entry._slotId;
+                  const slot = editorDay.slots[entry._slotId];
+                  if (slot && slot.options) {
+                    // Match displayed name against this slot's options to
+                    // recover option_id (synthesized cross-meal cards keep
+                    // the source option's name but live in the target slot).
+                    const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
+                    if (match) timelineMatchedOptionId = match.option_id;
+                  }
+                } else {
+                  // Fallback: name-based lookup across candidate slots
+                  for (const slotId of checkSlots) {
+                    const slot = editorDay.slots[slotId];
+                    if (!slot || !slot.options) continue;
+                    const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
+                    if (match) { timelineSlotId = slotId; timelineMatchedOptionId = match.option_id; break; }
+                  }
                 }
               }
               // Resolve selected option id for this slot (for draggable)
