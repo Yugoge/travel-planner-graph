@@ -1,0 +1,150 @@
+{
+  "request_id": "20260520-200804",
+  "task_id": "20260520-200804",
+  "timestamp": "2026-05-20T20:30:00Z",
+  "phase": "ba-validation",
+  "qa": {
+    "status": "pass",
+    "user_verbatim_complaint": "修！ — fix 2 blockers from /close 20260519-161933 → CLOSE: NO. Codex root-cause investigation already done; translate into a minimal pixel-verifiable BA ticket.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "out_of_scope_observations": [],
+    "verified_location_keywords": ["scripts/lib/react_template.tpl", "dev-report-20260519-161933.json", "ticket-20260519-161933.md", "data-droppable", "_flashReject", "dinner-1-1", "day-01.json"],
+    "location_overlap": ["scripts/lib/react_template.tpl", "dev-report-20260519-161933.json", "ticket-20260519-161933.md", "_flashReject", "dinner-1-1", "day-01.json"],
+    "complaint_resolution_evidence": "BA ticket translates codex root-cause findings into 7 ACs that are individually pixel/DOM/grep/git-stat verifiable. All 15 cited code lines and 4 cited doc passages confirmed accurate by independent Read in this session.",
+    "ba_validation_dimensions": {
+      "evidence_quality": "pass",
+      "scope_alignment": "pass",
+      "investigation_completeness": "pass",
+      "affected_file_accuracy": "pass",
+      "spec_text_vs_execution_drift": "pass"
+    },
+    "ac_audit": [
+      {
+        "ac_id": "AC1",
+        "purpose": "Blocker 1 — onDragOver gated slot flashes red",
+        "verifiability": "pixel_DOM",
+        "verdict": "pass",
+        "evidence_check": "Asserts data-drop-reject attribute within 200ms + computed background color (rgba(224,124,90,0.22)) + computed outline color + dropEffect='none'. No 'POST 200' substitute. No bare attribute-only check — computed style is asserted alongside.",
+        "edge_case_handling": "Correctly accounts for _flashReject 500ms throttle by asserting 'within 200ms of FIRST dragover' rather than every frame."
+      },
+      {
+        "ac_id": "AC2",
+        "purpose": "Blocker 1 — onDrop gated slot rejects + auto-clears",
+        "verifiability": "pixel_DOM",
+        "verdict": "pass",
+        "evidence_check": "Attribute set + visible style change + auto-clear within 600ms + no slot mutation (editorSelections unchanged via page state hook). Triple verification: visual, temporal, and state.",
+        "edge_case_handling": "Auto-clear timing matches the 400ms attribute-removal + 600ms padding budget noted in BA's pre_existing_guards."
+      },
+      {
+        "ac_id": "AC3",
+        "purpose": "Blocker 1 — onClick gated slot rejects only when pendingSelection set",
+        "verifiability": "DOM_with_regression_guard",
+        "verdict": "pass",
+        "evidence_check": "Positive case: data-drop-reject set + pendingSelection NOT consumed. Negative case (regression guard): idle click with pendingSelection=null leaves attribute unset. Both branches asserted — prevents over-firing.",
+        "edge_case_handling": "BA's Technical Hints section explicitly prescribes the conditional pattern: `if (pendingSelection) _flashReject(...)` — preserves the dispatch's 'don't fire on idle clicks' rule."
+      },
+      {
+        "ac_id": "AC4",
+        "purpose": "Blocker 2 — dev-report doc text correction",
+        "verifiability": "grep_with_positive_and_negative_assertions",
+        "verdict": "pass",
+        "evidence_check": "NEGATIVE: no 'dinner-1-2' paired with Day-1 default-render claim; no '建新园' paired with Day-1 default-render claim. POSITIVE: AC4 entry explicitly states Day 1 dinner = dinner-1-1 (Yunxian Lou) via merge, no R1 step-2 swap; AC7 entry preserves textContent identity for Day 1 dinner primary card. Doc-text-only verification is appropriate because the bug IS doc-text drift.",
+        "edge_case_handling": "Correctly allows Day 2's 'dinner-2-2 / 建新园' example to remain valid — the grep targets the Day-1 pairing specifically, not the strings in isolation."
+      },
+      {
+        "ac_id": "AC5",
+        "purpose": "Blocker 2 — ticket doc text correction",
+        "verifiability": "read_with_positive_and_negative_assertions",
+        "verdict": "pass",
+        "evidence_check": "Same dual-assertion pattern as AC4 applied to two passage ranges in ticket-20260519-161933.md. Line ranges (L342-346, L1121-1126) confirmed accurate against the actual file in this verification session.",
+        "edge_case_handling": "Allows two valid rewrite strategies (Day-2 example OR explicit note that Day-1 does not exercise R1 step-2) — gives Dev flexibility without weakening the assertion."
+      },
+      {
+        "ac_id": "AC6",
+        "purpose": "Regression — existing compat-rejection path still flashes",
+        "verifiability": "DOM_regression",
+        "verdict": "pass",
+        "evidence_check": "Confirms the EXISTING _flashReject call at L911 (compat-rejection branch) still fires when an incompatible-family drag (meal->attractions) is dispatched. Proves the fix is purely additive.",
+        "edge_case_handling": "BA's verification target (meal candidate onto attractions slot) matches the working baseline from cycle 20260519-161933 AC11."
+      },
+      {
+        "ac_id": "AC7",
+        "purpose": "Scope — git diff stat enforcement",
+        "verifiability": "git_stat",
+        "verdict": "pass",
+        "evidence_check": "Pre-cycle SHA 9218b6bd cited (confirmed as current master HEAD by git log). Exactly 3 paths in diff list: tpl + dev-report.json + ticket.md. PLUS untracked-file guard against scripts/, data/, schemas/, output/. Mechanical scope-creep prevention.",
+        "edge_case_handling": "AC7's 'no new untracked files' clause prevents Dev from accidentally checking in build artifacts during the HTML rebuild step (technical_hints L231)."
+      }
+    ],
+    "line_number_cross_check": {
+      "scripts/lib/react_template.tpl": {
+        "L911_meal_onDragOver": "verified — has data-droppable === 'false' early-return without _flashReject; compat-rejection further in same line DOES call _flashReject (regression baseline solid)",
+        "L913_meal_onDrop": "verified — same pattern",
+        "L914_meal_onClick": "verified — early-return is silent (correctly so for idle-click; BA's conditional pattern addresses this)",
+        "L996_998_999_cafe": "verified — same 3-branch pattern as meal",
+        "L1082_1084_1085_attractions": "verified — same 3-branch pattern",
+        "L1168_1170_1171_entertainment": "verified — same 3-branch pattern",
+        "L1311_1313_1314_accommodation": "verified — same 3-branch pattern (note: accommodation onDrop at L1313 is structurally similar but does not have the cross-slot board-move path — irrelevant to gated branch)"
+      },
+      "data/beijing-lijiang-dali-20260418-100846/days/day-01.json": {
+        "L17_breakfast_skipped": "verified — true (pre-arrival)",
+        "L24_morning_activity_skipped": "verified — true (pre-arrival)",
+        "L31_lunch_skipped": "verified — true (pre-arrival)",
+        "L38_afternoon_activity_skipped": "verified — true (pre-arrival)",
+        "L117_evening_activity_skipped": "verified — true (pre-arrival)",
+        "L109_dinner_selected_option_id": "verified — 'dinner-1-1' (NOT 'dinner-1-2'; options[0].name = 'Yunxian Lou Cross-Bridge Noodles')"
+      },
+      "docs/dev/dev-report-20260519-161933.json": {
+        "L84_AC4": "verified — text 'same swap result as AC1' where AC1 promotes 'Day 2 dinner-2-2 (建新园)' — confirmed stale framing for Day 1",
+        "L89_AC7": "verified — explicitly contains 'selected_option_id=dinner-1-2' and 'promotes 建新园' — directly contradicts day-01.json:109"
+      },
+      "docs/dev/ticket-20260519-161933.md": {
+        "L342_346": "verified — 'selected_option_id = \"dinner-1-2\"' paired with '建新园过桥米线(宝善街店)' as Day 1 case",
+        "L1121_1126": "verified — 'Day 1 default render (selected_option_id = \"dinner-1-2\" pointing at the 建新园过桥米线(宝善街店) alternative)' — wrong"
+      }
+    },
+    "forbidden_ac_pattern_audit": {
+      "post_200_only": "absent",
+      "editor_selections_key_only": "absent",
+      "source_contains_string_only_for_runtime_bugs": "absent — AC4/AC5 are grep-only because Blocker 2 IS a doc-text bug, which is the correct verification for that defect class",
+      "synthetic_dispatchEvent_bypass": "absent — AC1/AC2 use dispatchEvent but assert on real DOM mutations (attribute + computed style), not on the event firing itself"
+    },
+    "scope_alignment_audit": {
+      "universal_scope_claims_in_user_request": ["all 15 branches (5 sites × 3 branches)", "no scope creep"],
+      "ba_must_have_coverage": "complete — R1 covers all 15 sites enumerated by site:line; R2 covers all 4 doc passages; R3 enforces no-scope-creep via AC7 git-stat",
+      "wonthave_narrowing": "none — Won't Have list explicitly excludes only items that are demonstrably out-of-scope (timeline L1887 is data-droppable='true' always; helper + CSS already correct; dragleave has no gated branch; data/, schemas/ untouched)",
+      "verdict": "pass"
+    },
+    "edge_case_audit": {
+      "throttle_handling": "addressed — BA's Edge Cases section explicitly notes _flashReject 500ms throttle and adjusts AC1 timing",
+      "idle_click_semantics": "addressed — BA's Edge Cases section + Technical Hints prescribe the conditional `if (pendingSelection) _flashReject(...)` pattern with explicit regression guard in AC3",
+      "regression_path": "addressed — AC6 explicitly guards the existing compat-rejection path",
+      "rebuild_step": "addressed — Technical Hints L231 prescribes the rebuild command for QA to verify against the built HTML"
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": "Per dispatch: codex investigation already performed in prior round; log at /var/tmp/codex-outputs/codex-output-1695287-1779267766.txt is the tier_2_verified reference. BA cross-validated codex findings via independent Read of all cited sites; QA re-validated by independent Read in this session. No re-invocation needed.",
+      "feedback_incorporated": null
+    },
+    "self_verification": {
+      "claims_total": 24,
+      "claims_with_evidence": 24,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    },
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve",
+      "verdict_rationale": "All 7 ACs are individually pixel/DOM/grep/git-stat verifiable with no forbidden patterns. All 15 cited code line numbers and 4 cited doc passages confirmed accurate by independent Read. Day-01.json reachability for AC1-3 confirmed (5 skipped slots on Day 1). Day-01.json:109 ground-truth confirms BA's Blocker 2 analysis (selected_option_id='dinner-1-1', not 'dinner-1-2'). Edge cases (throttle, idle-click, regression) all addressed. Scope strictly bounded by AC7 git-stat. Ticket is implementation-ready; Dev may start."
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
