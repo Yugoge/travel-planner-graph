@@ -2204,6 +2204,24 @@ function _flashSuccess(slotId) {
   });
 }
 
+// AC11 fix-pass v2 — reject flash on the .slot-drop overlay during onDragOver
+// for incompatible drags. dragover fires many times/sec; debounce so the
+// attribute is set+reset at most once per ~500ms to avoid restarting the
+// animation every frame. Stamp the element with __rejectAt to track timing.
+function _flashReject(el) {
+  if (!el || typeof document === 'undefined') return;
+  // Already flashing? skip — let the existing 400ms animation finish.
+  if (el.hasAttribute('data-drop-reject')) return;
+  const now = Date.now();
+  // Throttle: ignore re-triggers within 500ms of last clear
+  if (el.__rejectAt && (now - el.__rejectAt) < 500) return;
+  el.__rejectAt = now;
+  el.setAttribute('data-drop-reject', '');
+  setTimeout(() => {
+    try { el.removeAttribute('data-drop-reject'); } catch (_) {}
+  }, 400);
+}
+
 // CandidatesSidebar component: fixed right panel (always active)
 const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelections, saveMutations,
     setEditorSelections, editorDay, pendingSelection, setPendingSelection, setEditorTripData, inlineMode }) => {
