@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-20T08:24:45Z*
-**Total entries**: 415
+*Last updated: 2026-05-20T20:17:41Z*
+**Total entries**: 418
 **Convention**: kebab
 
 ## Tree
@@ -421,7 +421,10 @@ dev/
 ├── `ticket-20260517-211506.md` - BA Specification: Fix .slot-selected Photo Layout + #trip-cover Visual Defect
 ├── `ticket-20260517-211850.md` - BA Specification: Trip Editor — React-Based Architecture (Visual Parity + Interactive Layer)
 ├── `ticket-20260518-101127.md` - BA Specification: Unified Viewer/Editor Page — EDITOR_MODE Removal + 12 Editor Features
-└── `ticket-20260519-161933.md` - BA Specification: Fix Drag-Drop Visual Layer — Replace card content on selection
+├── `ticket-20260519-161933.md` - BA Specification: Fix Drag-Drop Visual Layer — Replace card content on selection
+├── `ticket-20260520-200804.md` - BA Specification: Fix 2 /close blockers from cycle 20260519-161933
+├── `user-requirement-dev-20260520-200659.md` - No description
+└── `user-requirement-dev-20260520-200804.md` - No description
 ```
 
 ---
