@@ -1744,10 +1744,16 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                 const checkSlots = entry._type === 'meal' ? mealSlots : actSlots;
                 if (entry._slotId && checkSlots.includes(entry._slotId)) {
                   timelineSlotId = entry._slotId;
+                  // codex finding 1: seed timelineMatchedOptionId from the
+                  // entry's own option_id so the restored cross-meal row
+                  // stays draggable even if editorDay.slots[target].options
+                  // does not yet contain a name-matched candidate (e.g.,
+                  // freshly-synthesized cross-meal injection).
+                  if (entry.option_id) timelineMatchedOptionId = entry.option_id;
                   const slot = editorDay.slots[entry._slotId];
                   if (slot && slot.options) {
                     // Match displayed name against this slot's options to
-                    // recover option_id (synthesized cross-meal cards keep
+                    // refine option_id (synthesized cross-meal cards keep
                     // the source option's name but live in the target slot).
                     const match = slot.options.find(o => o.name === (entry.name_base || entry.name) || o.name_local === entry.name_local);
                     if (match) timelineMatchedOptionId = match.option_id;
