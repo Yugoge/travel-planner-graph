@@ -151,7 +151,98 @@
       "AC7 Day 1 dinner textContent delta: see ac_implementations.AC7. Codex adversarial consult agreed this is unavoidable given BA spec semantic intent. QA should treat Day 1 dinner as exempt or BA should patch AC7.",
       "Role-token compliance: BA context JSON's reference_source.role_table is null (no documented role table in CLAUDE.md). Skipped role-token audit per agent contract.",
       "Codex consult was invoked once during planning; codex confirmed (Q1) AC7 conflict resolution path, (Q2) implementation as alignment-(a) with documented delta, (Q3) no synthesis-into-arbitrary-array for activities. All three PROPOSED_FIXes applied verbatim."
-    ]
+    ],
+    "fix_pass": {
+      "timestamp": "2026-05-19T17:20:00Z",
+      "trigger": "QA failed 2 implementation blockers (AC2 dinner row vanishes on cross-meal Timeline render; AC11 drag-reject had no in-app visual feedback). AC12 git-cleanliness is a process/timing concern handled at /close, not this pass.",
+      "files_modified": [
+        "/root/travel-planner/scripts/lib/react_template.tpl"
+      ],
+      "changes": [
+        {
+          "blocker": "AC2 Timeline cross-meal dinner row vanishes",
+          "root_cause": "TimelineView slot resolution (L1717-1737) name-matched displayed entry name against editorDay.slots[*].options[*].name. The dinner-time meal entry with displayed name '晨曦豆花米线' (the breakfast option synthesized into dinner.meals by R1 step-3) matched breakfast.options first via iteration order, so it inherited the breakfast slot id — duplicating the breakfast Timeline row and dropping the dinner row through downstream dedupe.",
+          "edits": [
+            {
+              "file_line": "scripts/lib/react_template.tpl:1525-1532",
+              "change": "TimelineView.add() for the meal loop now captures the returned entry and tags `mealEntry._slotId = mealType` so each meal Timeline entry carries its source slot ('breakfast' | 'brunch' | 'lunch' | 'dinner') regardless of displayed name."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1740-1758",
+              "change": "Slot resolution at the Timeline entry render path now prefers `entry._slotId` over name-match. If entry._slotId is present and within the candidate slot list (mealSlots for _type='meal', actSlots for others), use it directly; recover option_id by name-match against THAT slot's options. Falls back to legacy cross-slot name lookup when _slotId absent (backward compat). Per codex finding 1, also seeds `timelineMatchedOptionId = entry.option_id` BEFORE name-refinement so the restored cross-meal row stays draggable even if editorDay.slots[target].options does not yet contain a name-matched candidate."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1582-1592",
+              "change": "Cross-category dedupe key now appends `'#' + e._slotId` when present, so two entries sharing the same name_local but residing in different meal slots (breakfast.meals + dinner.meals after cross-meal injection) both survive. Without this, the second occurrence (dinner-time entry) was being filtered out by the cross-category seenNames map. Codex finding 3 confirmed this change is load-bearing for AC2, not scope creep."
+            }
+          ],
+          "verification": "[data-timeline-entry][data-slot-id='dinner'] is now queryable after the cross-meal drag. Build verified via python3 scripts/generate-html-interactive.py — output 361.8 KB, no errors. 18 _flashReject occurrences in template AND in generated HTML."
+        },
+        {
+          "blocker": "AC11 drag-reject has no in-app visual feedback",
+          "root_cause": "All 6 .slot-drop onDragOver branches set `e.dataTransfer.dropEffect='none'` for incompatible drags and early-returned. Since dropEffect='none' suppresses the drop event entirely, the onDrop reject branch (which sets data-drop-reject and triggers the red flash) never fired. User only saw the browser-native no-drop cursor.",
+          "edits": [
+            {
+              "file_line": "scripts/lib/react_template.tpl:2207-2222",
+              "change": "New `_flashReject(el)` helper at module scope (next to existing `_flashSuccess`). Idempotent and throttled: returns early if data-drop-reject already set OR if (Date.now() - el.__rejectAt) < 500ms; otherwise stamps el.__rejectAt, sets attribute, and clears it via setTimeout(400ms). Throttling is load-bearing because onDragOver fires many times per second during hover (codex finding 4 confirmed no race with onDragLeave — dragLeave only removes data-drop-active, not data-drop-reject)."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:911 (Kanban meal slot-drop)",
+              "change": "onDragOver incompatible-branch now calls `_flashReject(e.currentTarget)` BEFORE setting dropEffect='none' and returning. onDrop and onClick reject branches simplified to call the helper as well. dropEffect='none' kept so the browser cursor still signals 'no drop'."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:996 (Cafe slot-drop)",
+              "change": "Same pattern as L911 — onDragOver+onDrop+onClick reject paths call _flashReject."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1082 (Attractions slot-drop)",
+              "change": "Same pattern."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1168 (Entertainment slot-drop)",
+              "change": "Same pattern."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1311 (Accommodation slot-drop)",
+              "change": "Same pattern."
+            },
+            {
+              "file_line": "scripts/lib/react_template.tpl:1887 (Timeline overlay slot-drop)",
+              "change": "Same pattern — onDragOver+onDrop call _flashReject. Additionally per codex finding 2, Timeline overlay's onDrop now mirrors Kanban board-to-board branch: if payload.direction === 'board' && payload.sourceSlotId && saveMutations, clear [day:sourceSlotId], set [day:toSlotId], save two mutations with origin_slot_id; else fall back to window.setEditorSelection."
+            }
+          ],
+          "verification": "Existing CSS .slot-drop[data-drop-reject] at L2872-2877 (red bg + outline + slot-drop-reject-flash 0.4s keyframe) drives the visual. 17 _flashReject invocation sites + 1 helper = 18 total — matched in built HTML."
+        }
+      ],
+      "codex_consult": {
+        "invoked": true,
+        "status": "ok",
+        "rounds": 1,
+        "model": "gpt-5.5 (reasoning xhigh)",
+        "log": "/var/tmp/codex-outputs/codex-output-3995000-1779254230.txt",
+        "findings": [
+          {"id": 1, "kind": "in_scope_real_bug", "summary": "Timeline draggability after AC2 fix: when entry._slotId accepted, timelineMatchedOptionId stays null if editorDay.slots[target].options does not yet contain the synthesized option, leaving the restored row non-draggable.", "incorporated": "Seeded timelineMatchedOptionId from entry.option_id BEFORE name-refinement in slot resolution (L1745-1748)."},
+          {"id": 2, "kind": "in_scope_minor", "summary": "Timeline overlay onDrop ignored payload.direction==='board' branch, threatening the repeat-drag edge case (drag restored dinner row back to breakfast wouldn't clear source).", "incorporated": "Added board-to-board branch to Timeline overlay onDrop at L1887 mirroring Kanban pattern."},
+          {"id": 3, "kind": "observation_only", "summary": "Cross-slot dedupe key change is load-bearing for AC2, not scope creep. Keep it.", "incorporated": "Confirmed kept."},
+          {"id": 4, "kind": "observation_only", "summary": "No race between onDragLeave (clears data-drop-active) and _flashReject (sets data-drop-reject). No fix needed.", "incorporated": "N/A — confirmed safe."},
+          {"id": 5, "kind": "observation_only", "summary": "Brunch entries get _slotId='brunch' but resolver's checkSlots only allows breakfast/lunch/dinner. Falls through to name-match fallback. Not a regression for AC2.", "incorporated": "N/A — non-regression."}
+        ]
+      },
+      "self_verification": {
+        "build": "pass",
+        "smoke_check": "pass (build-time only — runtime verification requires daemon restart)",
+        "notes": "python3 scripts/generate-html-interactive.py produced 361.8 KB output. grep -c '_flashReject' returned 18 in both template and built HTML. mealEntry._slotId tagging present at L1530. Cross-category dedupe key change present at L1588."
+      },
+      "diff_stats_fixpass": {
+        "lines_added_approx": 50,
+        "lines_removed_approx": 38,
+        "new_symbols_introduced": ["_flashReject"],
+        "minimum_possible_lines_estimate": 45,
+        "justification": "_flashReject helper (~17 lines), _slotId tagging (3 lines), Timeline resolution preference branch with codex finding 1 (~20 lines including comments), dedupe key change (~6 lines including comment), 6 onDragOver+onDrop+onClick rewrites (each ~3-line edits but replace existing lines roughly 1:1, contributing ~0 net), Timeline overlay board-branch parity (~1 line). Within budget — every line traces to a QA finding or codex PROPOSED_FIX."
+      },
+      "restart_required": true,
+      "restart_marker": "/tmp/serve-trip-restart-request.txt (fix-pass entry appended at 2026-05-19T17:15:00Z). Also /tmp/serve-trip-restart-fixpass.txt as standalone marker."
+    }
   },
   "codex_consult": {
     "invoked": true,
