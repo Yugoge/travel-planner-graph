@@ -1522,7 +1522,12 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
     const catKey = 'cat_' + mealType;
     const primary = day.meals?.[mealType];
     if (primary) {
-      add(primary, 'meal', L(catKey, lang));
+      // AC2 fix-pass: tag the meal entry with its source slot so the
+      // Timeline drop overlay can resolve `_slotId` deterministically
+      // even when the displayed entry name was synthesized from a
+      // cross-meal option (e.g., breakfast-2-1 injected into dinner.meals).
+      const mealEntry = add(primary, 'meal', L(catKey, lang));
+      if (mealEntry) mealEntry._slotId = mealType;
     }
   });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
