@@ -1576,17 +1576,22 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
     seen.add(key);
     return true;
   });
-  // Cross-category dedup: same name_local on same day keeps highest-priority category only
+  // Cross-category dedup: same name_local on same day keeps highest-priority category only.
+  // AC2 fix-pass: when entries share a name but live in different slots (e.g.,
+  // breakfast option synthesized into both breakfast.meals and dinner.meals
+  // after a cross-meal drag), keep both — they are legitimately separate slots.
   const typePriority = {transportation:0, meal:1, attraction:2, shopping:3, entertainment:4, accommodation:5, travel:6};
   const seenNames = {};
   const deduped = deduped1.filter(e => {
     const name = e.name_local || e.name_base || e.title || e._label || '';
     if (!name) return true;
-    const prev = seenNames[name];
-    if (!prev) { seenNames[name] = e; return true; }
+    // Differentiate by _slotId when present so cross-slot duplicates survive.
+    const key = e._slotId ? (name + '#' + e._slotId) : name;
+    const prev = seenNames[key];
+    if (!prev) { seenNames[key] = e; return true; }
     const prevP = typePriority[prev._type] ?? 99;
     const curP = typePriority[e._type] ?? 99;
-    if (curP < prevP) { seenNames[name] = e; return true; }
+    if (curP < prevP) { seenNames[key] = e; return true; }
     return false;
   });
 
