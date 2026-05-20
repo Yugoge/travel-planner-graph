@@ -1,24 +1,109 @@
 {
   "request_id": "20260520-200804",
   "task_id": "20260520-200804",
-  "timestamp": "2026-05-20T20:10:00Z",
+  "timestamp": "2026-05-20T20:38:00Z",
   "qa": {
-    "status": "in_progress",
+    "status": "pass",
     "phase": "post-dev",
+    "user_verbatim_complaint": "/close 20260519-161933 NO — Blocker 1: gated .slot-drop overlays silently early-return giving no visual feedback; Blocker 2: dev-report/ticket AC4/AC7 doc text claims wrong Day 1 dinner default render",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "complaint_element_pointer": {
+      "selector": ".slot-drop[data-droppable=\"false\"]",
+      "how_located": "data-droppable attribute survey via browser_evaluate; 5 gated slots found on Day 1 (breakfast, morning_activity, lunch, afternoon_activity, evening_activity)",
+      "found_in_dom": true,
+      "page_url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846"
+    },
     "ac_results": {
-      "AC1": {"status": "pending", "evidence": "not yet verified"},
-      "AC2": {"status": "pending", "evidence": "not yet verified"},
-      "AC3": {"status": "pending", "evidence": "not yet verified"},
-      "AC4": {"status": "pending", "evidence": "not yet verified"},
-      "AC5": {"status": "pending", "evidence": "not yet verified"},
-      "AC6": {"status": "pending", "evidence": "not yet verified"},
-      "AC7": {"status": "pending", "evidence": "not yet verified"}
+      "AC1": {
+        "status": "pass",
+        "evidence": "REAL Playwright mouse drag from candidate (1290,92) traversed Day 1 gated slots — MutationObserver captured data-drop-reject set on slotId=lunch (ts +0ms) and slotId=breakfast (ts +2ms). Synthetic dispatchEvent('dragover') on gated breakfast: hasRejectAfterDragOver=true, dropEffect='none', getComputedStyle backgroundColor='rgba(224, 124, 90, 0.22)', outlineColor='rgba(224, 124, 90, 0.85)' — exact match with CSS rule at scripts/lib/react_template.tpl:2922-2927. PIXEL-LAYER VERIFIED."
+      },
+      "AC2": {
+        "status": "pass",
+        "evidence": "Synthetic dispatchEvent('drop') on gated breakfast: hasReject=true, bg='rgba(224,124,90,0.22)', outline='rgba(224,124,90,0.85)'. After 500ms wait: hasReject=false (cleared by L2252 setTimeout, actually 400ms per L2254). Real mouse mouse-up phase: MutationObserver buffer shows attribute cleared on both slots at +398ms / +400ms relative to set. PIXEL-LAYER VERIFIED."
+      },
+      "AC3": {
+        "status": "pass",
+        "evidence": "NEGATIVE regression (idle click without pendingSelection on gated slot): hasReject=false, bg='rgba(0, 0, 0, 0)' — regression guard working, confirming codex's conditional `if (pendingSelection) _flashReject(...)` pattern at L914/999/1085/1171/1314 correctly suppresses idle-click flash. POSITIVE click-with-pendingSelection path: code-verified only (pendingSelection lives in React closure scope; sidebar candidates use drag affordances not click-to-select buttons). Codex adversarial review concurs: 'I would not block closure on this unless click-to-select pendingSelection is a supported user path.' Per ticket AC3 (L177-182), the primary scenario is pendingSelection state set via prior candidate interaction; pixel-layer not achievable without React DevTools. Acceptable per codex consult."
+      },
+      "AC4": {
+        "status": "pass",
+        "evidence": "docs/dev/dev-report-20260519-161933.json:84 (AC4) now reads 'Day 1 dinner resolves to persisted selected_option_id=dinner-1-1 (云线楼); merge Step 1 keeps the active PLAN card. R1 step-2 PLAN-alternative promotion applies only when the persisted/live selected id names an alternative such as dinner-1-2, which is NOT Day 1\\'s default state.' L89 (AC7) rewritten with 'Day 1 dinner default render shows 云线楼 (dinner-1-1) — unchanged from pre-cycle since persisted selected_option_id=dinner-1-1 is unchanged. ... Corrected in task 20260520-200804.' Cross-verified against data/beijing-lijiang-dali-20260418-100846/days/day-01.json:109 which reads selected_option_id='dinner-1-1'."
+      },
+      "AC5": {
+        "status": "pass",
+        "evidence": "docs/dev/ticket-20260519-161933.md:342-349 contains '(NOTE corrected in task-20260520-200804: the prior text cited Day 1 dinner with selected_option_id = \"dinner-1-2\" as the example — that was stale; Day 1 actually persists dinner-1-1 and merge Step 1 handles it.)' L1124-1131 contains '(NOTE corrected in task-20260520-200804: the prior text mis-stated Day 1 default as selected_option_id = \"dinner-1-2\" — Day 1 actually persists dinner-1-1 and merge Step 1 keeps the active 云线楼 PLAN card.)' Both passages preserved the original (now-historic) framing as a hypothetical illustration of the R1 step-2 path — appropriate."
+      },
+      "AC6": {
+        "status": "pass",
+        "evidence": "Synthetic dragstart on meal candidate (slotId=dinner) followed by dispatchEvent('dragover') on non-gated accommodation slot: hasReject=true, bg='rgba(224,124,90,0.22)', outline='rgba(224,124,90,0.85)'. The existing compat-rejection wiring at L911/996/1082/1168/1311 (which already called _flashReject before this cycle) is unbroken — the diff only PREPENDS the gated-branch check and does not alter the !_isCompatible branch. No regression. PIXEL-LAYER VERIFIED."
+      },
+      "AC7": {
+        "status": "pass",
+        "evidence": "mtime audit of working tree filtered by >2026-05-20T20:00:00Z yields exactly 3 dev-modified files: scripts/lib/react_template.tpl (20:23:21Z), docs/dev/dev-report-20260519-161933.json (20:27:32Z), docs/dev/ticket-20260519-161933.md (20:29:09Z). BA/QA artifacts (dev-report-20260520-200804.json, ticket-20260520-200804.md, context-20260520-200804.json, qa-report-20260520-200804-ba-validation.json) are expected and not dev-scope-violations. Other untracked files in working tree have mtimes from 2026-05-14/15/19 (pre-existing from prior cycles, not this cycle's responsibility per dispatch note)."
+      }
+    },
+    "code_level_verification": {
+      "flash_reject_call_sites": [911, 913, 914, 996, 998, 999, 1082, 1084, 1085, 1168, 1170, 1171, 1311, 1313, 1314],
+      "expected_call_sites": [911, 913, 914, 996, 998, 999, 1082, 1084, 1085, 1168, 1170, 1171, 1311, 1313, 1314],
+      "exact_match": true,
+      "onclick_conditional_pattern_verified": "All 5 onClick sites (L914/999/1085/1171/1314) use `if (e.currentTarget.getAttribute('data-droppable') === 'false') { if (pendingSelection) { e.preventDefault(); e.stopPropagation(); _flashReject(e.currentTarget); } return; }` — preserves codex's regression guard for idle clicks.",
+      "ondragover_dropeffect_set": "All 5 onDragOver sites (L911/996/1082/1168/1311) call _flashReject + set dataTransfer.dropEffect='none' before return — matches ticket AC1 requirement.",
+      "ondrop_remove_attribute": "All 5 onDrop sites (L913/998/1084/1170/1313) call _flashReject + removeAttribute('data-drop-active') before return — matches ticket AC2 cleanup contract.",
+      "helper_definition": "_flashReject defined at L2243-2255 with 500ms throttle (L2249) and 400ms attribute clear (L2254). Note: ticket AC2 referenced 600ms — actual is 400ms; this is a non-blocking documentation imprecision in the ticket, not a code defect (the spec intent of 'within 600ms' is satisfied by 400ms).",
+      "css_rule": ".slot-drop[data-drop-reject] at L2922-2927 paints bg=rgba(224,124,90,0.22) + outline=rgba(224,124,90,0.85) — confirmed by getComputedStyle on Day 1 breakfast during AC1/AC2 tests."
+    },
+    "served_html_verification": {
+      "url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+      "http_status": 200,
+      "flash_reject_total_count": 18,
+      "gated_branch_flash_reject_count": 15,
+      "rebuild_status": "service serves freshly-rebuilt HTML in-memory (output/ static file mtime 05:23Z is stale but irrelevant — HTTP response confirmed via curl + grep contains all 15 new wirings)"
     },
     "blockers": [],
-    "advisories": []
+    "advisories": [
+      {
+        "severity": "advisory",
+        "ac": "AC3",
+        "finding": "Positive click-with-pendingSelection path verified via code-correctness only (not pixel-layer). pendingSelection lives in React closure scope and is not externally settable from Playwright without React DevTools. Negative regression (idle click silence) IS pixel-verified. Codex adversarial review concurs this is acceptable unless click-to-select is a primary user path.",
+        "blocks_release": false,
+        "recommendation": "If click-to-select pendingSelection becomes a primary user path (currently the sidebar uses drag affordances), add a candidate-select button to enable pixel-layer AC3-positive in future cycles."
+      },
+      {
+        "severity": "advisory",
+        "ac": "code_level_verification",
+        "finding": "Ticket AC2 referenced 600ms attribute-clear interval; actual code at react_template.tpl:2254 uses 400ms. Both satisfy 'auto-clear' intent — actual is stricter than ticket. Non-blocking ticket-text imprecision.",
+        "blocks_release": false,
+        "recommendation": "Optional: update ticket AC2 wording to '400ms' for future-cycle precision."
+      },
+      {
+        "severity": "advisory",
+        "ac": "AC1_AC2_AC6",
+        "finding": "Synthetic dispatchEvent('dragover'/'drop') used as primary trigger because real HTML5 mouse drag does not reliably produce a DataTransfer object in headless Chromium without browser_drag MCP tool. However, real mouse drag was also performed and confirmed via MutationObserver (set_during_drag=true, cleared_after_drop=true for slots lunch+breakfast). Per codex consult: 'Acceptable for AC1/AC2 because the gated branches return before reading payload data; they only need currentTarget, data-droppable, _flashReject, and dropEffect. Real mouse evidence corroborates the branch fires and clears.'",
+        "blocks_release": false
+      }
+    ],
+    "evidence_artifacts": {
+      "playwright_script": "/tmp/qa-20260520-200804-verify.py",
+      "screenshot_overview": "/tmp/qa-20260520-200804-overview.png",
+      "served_html_snapshot": "/tmp/served.html",
+      "viewport": "1440x900 desktop (mobile 390x844 not exercised — defer to future cycle if needed; the gated-branch wiring is viewport-invariant pure JS attribute manipulation + CSS rule)"
+    },
+    "build_verification": {
+      "status": "pass",
+      "rationale": "Service is live at port 8765 (HTTP 200) and serves HTML that contains all 15 _flashReject wirings (grep confirmed). The dev's .tpl edit is reflected in the served output."
+    }
   },
   "codex_consult": {
-    "invoked": false,
-    "status": "not_yet_attempted"
+    "invoked": true,
+    "status": "ok",
+    "model": "gpt-5.5",
+    "reasoning_effort": "xhigh",
+    "log_path": "/var/tmp/codex-outputs/codex-output-1572500-1779309360.txt",
+    "feedback_summary": "Verdict: conditional PASS for both blockers. (1) Both blockers resolved — 15 _flashReject calls at expected sites + 400ms clear + correct CSS render; doc corrections accurate vs day-01.json:109. (2) AC4/AC5 doc-only (appropriate), AC7 file-scope only, AC3-positive code-only; AC1/AC2/AC6 have computed-style + real-mouse evidence (not merely data-layer). (3) AC3 positive-click is the main caveat — would not block closure unless click-to-select pendingSelection is a primary user path. (4) Synthetic DataTransfer acceptable for gated-branch paths since they return before payload read. No genuine regression in 15-call diff.",
+    "feedback_incorporated": "AC3 positive-coverage gap recorded as advisory (not blocker). Synthetic-event caveat recorded as advisory. Pixel-layer evidence preserved across AC1/AC2/AC6. Final verdict aligned with codex consult: PASS with advisories.",
+    "tokens_used": 80419
   }
 }
