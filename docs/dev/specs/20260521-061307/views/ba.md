@@ -7,6 +7,14 @@
 
 ---
 
+# Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
+
+**Pipeline**: BA → dev → QA (single-cycle expected; UX polish, not new features)
+**Session**: c59044cd-0bea-4cf9-9b55-61a7bb1d9f65
+**Created**: 2026-05-21T06:13:07+00:00
+
+---
+
 ## Role Mandate
 
 > **Pipeline**: BA → dev → QA (single-cycle expected; UX polish, not new features)
@@ -15,9 +23,11 @@
 
 ---
 
-# Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
-
 ## Section 1: Before
+
+<!-- WHO WRITES: PM (autonomous mode) or User (user-spec mode) or BA (if Section 1 empty and BA has context) -->
+<!-- WHAT: Screenshot path + text description of the current state BEFORE any fix attempt. -->
+<!-- This establishes the baseline so later cycles can compare. -->
 
 ### Cycle 1
 
