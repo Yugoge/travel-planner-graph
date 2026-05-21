@@ -1,7 +1,7 @@
 # specs
 
-*Last updated: 2026-05-14T20:01:17Z*
-**Total entries**: 45
+*Last updated: 2026-05-21T06:13:49Z*
+**Total entries**: 46
 **Convention**: kebab
 
 ## Tree
@@ -51,7 +51,8 @@ specs/
 ├── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 ├── `spec-20260508-221237-redev1.md` - Redev Spec — spec-20260508-221237 Cycle 5 Close Blockers
 ├── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
-└── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
+├── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
+└── `spec-20260521-061307.md` - Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
 ```
 
 ---
