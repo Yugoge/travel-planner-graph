@@ -36,6 +36,18 @@
 4. Left-side DayColumn cards are not draggable (`draggable={isSelected}` gate in `scripts/lib/react_template.tpl` never enables DayColumn cards)
 5. Drop-to-deselect does not work: cards in slots cannot be dragged BACK to the Candidates panel to unselect
 
+Affected file (primary): `/root/travel-planner/scripts/lib/react_template.tpl` (single file, ~45-60 line changes).
+
+**Codex-verified root causes** (log: `/var/tmp/codex-outputs/codex-output-2070882-1779344693.txt`):
+
+| Bug | Root cause file:line | Fix scope |
+|-----|---------------------|-----------|
+| 1 (style fragmentation) | Independent inline styles at L2418-2424 (accommodation), L2473-2478 (meals), L2524-2529 (activities) vs Kanban `cardStyle()` factory at L816-824 | Extract `candidateCardStyle()` helper; 3 sites replace inline with helper call |
+| 2 (no image on drag-in) | Slot cards check `image` only (L870, L960, L1048, L1133, L1274, L1828-1830); Candidates accommodation checks `cover_image \|\| image` at L2427-2429 — mismatch when v2 option carries `cover_image` but not `image` | 6 sites: `image` → `cover_image \|\| image` |
+| 3 (replaced option disappears) | Bridge at L2769-2773 writes new selection, saves one mutation at L2795, accommodation merge at L2063-2069 overwrites the single rendered hotel object — no demotion path. Candidate lists are sourced from `editorDay.accommodation.options.map(...)` at L2398 and `slot.options.map(...)` at L2504 — if previously-selected option isn't in `bucket.options`, it cannot reappear | Bridge captures `prevId` before writing, pushes old option object into `bucket.options[]` if absent |
+| 4 (left/main not draggable) | Accommodation primary card at L1265-1272 has **NO** `draggable`, `onDragStart`, or `onDragEnd` attributes — meals/activities have them at L862-864, L952-954, L1040-1042, L1125-1127 | Add `draggable={!!selectedAccId}` + `onDragStart` setting `direction:'board'` payload + `onDragEnd` |
+| 5 (can't drag out) | Same root cause as #4 — Candidates drop target at L2381-2383 and `handleSidebarDrop` at L2335-2338 work correctly; accommodation never emits the required `direction:'board'` payload because it has no dragstart handler | Fix #4 resolves this automatically |
+
 **Cross-bug dependency**: Fix #4 MUST precede #5 (same fix). #1 and #2 are independent. #3 should be tested after #4/#5 because drag-out/replace flows share selection state.
 
 **Codex live-DOM verification**: codex fetched the served page via Python HTTP GET + Playwright rendering and confirmed: `#candidates-groups` exists, `.card-candidate` exists, left/main `[data-slot-card]` cards exist, accommodation primary card has `data-slot-id="accommodation"` + `data-option-id="accommodation-1-2"` but NO `draggable` attribute. The bug is observable in production at travel.life-ai.app.
