@@ -71,7 +71,11 @@ _Not yet populated._
 
 ## Section 8: Attention Notes
 
+**From iteration-burnout memory (feedback_iteration_burnout.md)**: prior cycles 20260519-161933 + 20260520-200804 burned 3 close-debate rounds each on incomplete-fix iteration. For THIS cycle:
+- BA must specify "grep entire file for the symptom pattern" not "fix L<N>". Same-class issues across multiple sites must enumerate ALL sites, not a subset.
 - Dev should run the verification grep that QA + close-debate will run, before declaring complete.
+- QA should re-grep before signing off.
+- Limit close-debate cycles to ≤2 — force-close + document as out-of-scope if codex catches a 3rd round of same-class issue.
 
 **File scope**: changes confined to `scripts/lib/react_template.tpl`. No data files modified (user's binding directive: "除了云南之外之前的travel plan全部保留不要动" still applies). No schema changes. No new files.
 
