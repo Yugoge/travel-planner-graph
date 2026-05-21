@@ -42,11 +42,47 @@
 
 ---
 
+## Section 4: Current State
+
+<!-- WHO WRITES: QA (after each verification) -->
+<!-- WHAT: Actual measured values -- pixel dimensions, computed CSS, console output, screenshot paths. -->
+<!-- This gives the next cycle's Dev concrete data to work with instead of vague "it failed". -->
+
+### Cycle 1
+
+_Not yet populated._
+
+---
+
 ## Section 5: User's Acceptance Criterion
 
 下一个session修复风格完全不统一，拖动进去的没有图片，并且拖动进去之后原来的酒店没有了，没有重新出现在候选栏，并且左侧区域没法拖动，只能拖进去没法拖出去
 
 下一个session全部要修复的
+
+---
+
+## Section 6: Why Not Met
+
+<!-- WHO WRITES: QA (when verdict is fail) -->
+<!-- WHAT: Specific gap between measured state (Section 4) and acceptance criterion (Section 5). -->
+<!-- Must include evidence: actual value vs expected value. -->
+
+### Cycle 1
+
+_Not yet populated._
+
+---
+
+## Section 7: What Must Be Done
+
+<!-- WHO WRITES: QA (on fail) or PM-Retro -->
+<!-- WHAT: Prescriptive next step for this specific issue. Not generic advice -- a concrete action. -->
+<!-- Example: "Increase padding from 8px to 16px in Chat.tsx:42" not "fix the padding" -->
+
+### Cycle 1
+
+_Not yet populated._
 
 ---
 
