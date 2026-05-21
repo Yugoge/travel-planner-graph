@@ -55,6 +55,10 @@ Affected file (primary): `/root/travel-planner/scripts/lib/react_template.tpl` (
 
 ## Section 5: User's Acceptance Criterion
 
+<!-- WHO WRITES: BA (on first analysis) -->
+<!-- WHAT: Verbatim quote from user's requirement or focus string. -->
+<!-- This is the single source of truth for what "done" means. Do not paraphrase. -->
+
 下一个session修复风格完全不统一，拖动进去的没有图片，并且拖动进去之后原来的酒店没有了，没有重新出现在候选栏，并且左侧区域没法拖动，只能拖进去没法拖出去
 
 下一个session全部要修复的
