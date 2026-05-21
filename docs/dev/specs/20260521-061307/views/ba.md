@@ -67,6 +67,10 @@ Affected file (primary): `/root/travel-planner/scripts/lib/react_template.tpl` (
 
 ## Section 8: Attention Notes
 
+<!-- WHO WRITES: PM-Retro -->
+<!-- WHAT: Issue-specific traps, warnings, and things to watch out for in the next cycle/session. -->
+<!-- Example: "This file is imported by 12 components -- changes here cascade widely" -->
+
 **From iteration-burnout memory (feedback_iteration_burnout.md)**: prior cycles 20260519-161933 + 20260520-200804 burned 3 close-debate rounds each on incomplete-fix iteration. For THIS cycle:
 - BA must specify "grep entire file for the symptom pattern" not "fix L<N>". Same-class issues across multiple sites must enumerate ALL sites, not a subset.
 - Dev should run the verification grep that QA + close-debate will run, before declaring complete.
