@@ -136,17 +136,20 @@
       }
     ],
     "spec_section_updates": {
-      "section_4": "Cycle 1 QA BA-validation: BA spec for 5 drag-and-drop bugs verified against source. All 12 specific line-number claims verified correct. Single blocking objection on AC2 grep recipe (spec_text_vs_execution_drift). Shopping L1198 confirmed out of scope (card not draggable). Source file scripts/lib/react_template.tpl is 3260 lines on master branch.",
-      "section_6": "Cycle 1 BA-validation FAIL: AC2 grep recipe '.image && <img src={.*\\.image}' is a single-line pattern that will not match the timeline site at L1828 (the img src= is on the subsequent line L1830). If dev patches L870/L960/L1048/L1133/L1274 only and runs AC2 grep, they get 0 matches and falsely declare pass, while L1828 remains broken.",
-      "section_7": "Cycle 1 BA must update AC2 acceptance criterion to use per-variable grep checks for each of the 6 sites: (1) opt.image at L870, (2) c.image at L960, (3) attr.image at L1048, (4) ent.image at L1133, (5) acc.image at L1274, (6) entry.image at L1828. Each check must confirm cover_image || variable.image pattern present. Replace single-line regex recipe with explicit 6-item checklist or a multi-line-aware verification command."
+      "section_4": "Cycle 1 QA BA-validation (run 2): OBJ-1 from prior run resolved by per-site AC2 checklist. Two new blocking spec_text_vs_execution_drift issues via Codex adversarial review: (OBJ-2) AC2 timeline pattern entry\\.image && !sm checks guard L1828 only, misses <img src={entry.image}> at L1830; (OBJ-3) AC1 negative-grep background: isPending.*isSelected.*#fafafa.*borderRadius.*6px always returns 0 (background L2419 and borderRadius L2420 are on separate lines). Source file confirmed 3260 lines. All 12 prior line-number claims re-verified.",
+      "section_6": "Cycle 1 BA-validation FAIL (run 2): Two spec_text_vs_execution_drift blockers. OBJ-2: AC2 timeline 'Passes when: 0 matches for entry\\.image && !sm' — dev who patches only L1828 guard gets 0 matches but L1830 <img src={entry.image}> still renders without cover_image fallback (false PASS). OBJ-3: AC1 negative-grep 'background: isPending.*isSelected.*#fafafa.*borderRadius.*6px' never matches the current multi-line source — old-style removal cannot be verified (always returns 0 regardless of patch state).",
+      "section_7": "Cycle 1 BA must fix two ACs: (1) AC2 timeline site — extend 'Passes when' to also require 0 matches for 'src={entry\\.image}' in lines 1828-1835, so BOTH guard (L1828) and src= (L1830) are verified to use cover_image fallback. (2) AC1 negative-grep — replace 'background: isPending.*isSelected.*#fafafa.*borderRadius.*6px' with two separate scoped checks in lines 2390-2560: (a) grep 'borderRadius: .6px.' returns 0 (old radius removed); AND (b) grep 'style={candidateCardStyle(' returns 3+ matches (helper installed at all 3 sites)."
     },
-    "summary": "BA spec FAIL: one blocking spec_text_vs_execution_drift objection on AC2 grep recipe (fails to match L1828 two-line timeline site). All other dimensions pass. Shopping L1198 correctly excluded. All line-number claims verified. BA must update AC2 verification recipe before dev proceeds."
+    "summary": "BA spec FAIL (run 2): OBJ-1 resolved by per-site checklist. Two new blocking spec_text_vs_execution_drift objections (OBJ-2: AC2 misses <img src= on L1830; OBJ-3: AC1 negative-grep never matches multi-line source). Dimensions 1-4 (evidence_quality, scope_alignment, investigation_completeness, affected_file_accuracy) re-confirmed PASS. BA must update AC1 and AC2 before dev proceeds."
   },
   "iteration_needed": true,
   "refined_context": {
     "failed_dimensions": ["spec_text_vs_execution_drift"],
-    "blocking_objections": ["OBJ-1: AC2 grep recipe will not match L1828 (two-line span); fix: per-variable 6-item checklist"],
-    "recommended_approach": "BA must update ticket-20260522-082259.md AC2 to replace the single-line grep recipe with an explicit per-variable checklist for the 6 image sites. All other ACs (AC1, AC3, AC4, AC5, AC6) are well-formed and can proceed as-is.",
-    "additional_context": "Codex confirmed shopping card is display-only (no draggable attr), so BA's 6-site count is correct for the drag flow. The AC2 recipe issue is the only blocker."
+    "blocking_objections": [
+      "OBJ-2: AC2 timeline pattern entry\\.image && !sm misses L1830 <img src={entry.image}> — add 'src={entry\\.image} returns 0 in lines 1828-1835' to Passes-when clause",
+      "OBJ-3: AC1 negative-grep background: isPending.*isSelected.*#fafafa.*borderRadius.*6px is single-line, never matches multi-line source — replace with: (a) grep 'borderRadius: .6px.' in 2390-2560 returns 0; AND (b) grep 'style={candidateCardStyle(' returns 3+"
+    ],
+    "recommended_approach": "BA must update ticket-20260522-082259.md: (1) AC2 timeline row Passes-when: add src={entry\\.image} check for L1830; (2) AC1: replace single-line negative-grep with two scoped checks. All other ACs (AC3, AC4, AC5, AC6) are adequately specified.",
+    "additional_context": "Codex adversarial review was the source of both new blockers. c\\.image overlap with acc.image is benign. Cover_image count is supplemental only. AC3/AC4/AC5/AC6 improvements are in_scope_minor — not blocking BA validation."
   }
 }
