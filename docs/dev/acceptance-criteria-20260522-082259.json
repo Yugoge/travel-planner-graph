@@ -26,13 +26,62 @@
       "type": "data",
       "label": "Bug 2 — all 6 image sites use cover_image fallback",
       "given": "file scripts/lib/react_template.tpl has been modified by dev",
-      "when": "grep is run for solo .image check patterns without cover_image in lines 860-1850",
-      "then": "0 matches for pattern '\\.image && <img src=\\{.*\\.image\\}' in lines 860-1850; AND 6+ matches for '(cover_image || .*\\.image)' pattern in lines 860-1850",
+      "when": "each of 6 per-site grep patterns is run against the file",
+      "then": "all 6 per-site fail-patterns return 0 matches (any non-zero count means that site is still unpatched); AND grep for 'cover_image \\|\\|' in lines 860-1850 returns 6+ matches",
+      "note_on_L1828": "Timeline entry image at L1828-1830 spans TWO lines: '{entry.image && !sm && showDetails && (' on L1828 and '<img src={entry.image}' on L1830. A single-line grep for '\\.image && <img' will NEVER match L1828 and would produce a false PASS if L1828 is left unpatched. The correct fail-detect pattern for this site is 'entry\\.image' (simpler, matches L1828 directly). After correct patching the token 'entry.image' must appear only inside '(entry.cover_image || entry.image)'.",
       "check": {
-        "tool": "grep",
-        "pattern_fail": "\\.image && <img src=\\{.*\\.image\\}",
-        "fail_scope": "lines 860-1850",
-        "max_fail_matches": 0,
+        "tool": "grep_per_site",
+        "sites": [
+          {
+            "site": "meals slot",
+            "variable": "opt",
+            "line": 870,
+            "pattern_fail": "opt\\.image && <img",
+            "max_fail_matches": 0,
+            "rationale": "Single-line site; unpatched form is 'opt.image && <img src={opt.image}'"
+          },
+          {
+            "site": "cafe slot",
+            "variable": "c",
+            "line": 960,
+            "pattern_fail": "c\\.image && <img",
+            "max_fail_matches": 0,
+            "rationale": "Single-line site; unpatched form is 'c.image && <img src={c.image}'"
+          },
+          {
+            "site": "attractions slot",
+            "variable": "attr",
+            "line": 1048,
+            "pattern_fail": "attr\\.image && <img",
+            "max_fail_matches": 0,
+            "rationale": "Single-line site; unpatched form is 'attr.image && <img src={attr.image}'"
+          },
+          {
+            "site": "entertainment slot",
+            "variable": "ent",
+            "line": 1133,
+            "pattern_fail": "ent\\.image && <img",
+            "max_fail_matches": 0,
+            "rationale": "Single-line site; unpatched form is 'ent.image && <img src={ent.image}'"
+          },
+          {
+            "site": "accommodation slot",
+            "variable": "acc",
+            "line": 1274,
+            "pattern_fail": "acc\\.image && <img",
+            "max_fail_matches": 0,
+            "rationale": "Single-line site; unpatched form is 'acc.image && <img src={acc.image}'"
+          },
+          {
+            "site": "timeline entry",
+            "variable": "entry",
+            "line": 1828,
+            "pattern_fail": "entry\\.image && !sm",
+            "max_fail_matches": 0,
+            "rationale": "TWO-LINE SPAN: guard 'entry.image && !sm && showDetails' on L1828, '<img src={entry.image}' on L1830. A single-line pattern for '.image && <img src=' would never match L1828. Pattern 'entry\\.image && !sm' matches the guard on L1828 and fails if the site is unpatched.",
+            "two_line_span": true
+          }
+        ],
         "pattern_pass": "cover_image \\|\\|",
         "pass_scope": "lines 860-1850",
         "min_pass_matches": 6
