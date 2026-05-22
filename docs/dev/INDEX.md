@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-20T22:04:32Z*
-**Total entries**: 427
+*Last updated: 2026-05-22T08:38:26Z*
+**Total entries**: 432
 **Convention**: kebab
 
 ## Tree
@@ -18,6 +18,8 @@ dev/
 ├── screenshots/
 │   └── dev-20260505-123425/
 ├── specs/
+│   ├── 20260521-061307/
+│   │   └── views/
 │   ├── spec-20260505-221501/
 │   │   ├── views/
 │   │   └── `ba-report-init.json` - json config
@@ -35,7 +37,8 @@ dev/
 │   ├── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
 │   ├── `spec-20260508-221237-redev1.md` - Redev Spec — spec-20260508-221237 Cycle 5 Close Blockers
 │   ├── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
-│   └── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
+│   ├── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
+│   └── `spec-20260521-061307.md` - Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `architect-report-init.json` - json config
@@ -432,8 +435,10 @@ dev/
 ├── `ticket-20260518-101127.md` - BA Specification: Unified Viewer/Editor Page — EDITOR_MODE Removal + 12 Editor Features
 ├── `ticket-20260519-161933.md` - BA Specification: Fix Drag-Drop Visual Layer — Replace card content on selection
 ├── `ticket-20260520-200804.md` - BA Specification: Fix 2 /close blockers from cycle 20260519-161933
+├── `ticket-20260522-082259.md` - BA Specification: Fix 5 Drag-and-Drop UX Bugs (DayColumn Draggable, Image, Style, Hotel Reappearance)
 ├── `user-requirement-dev-20260520-200659.md` - No description
-└── `user-requirement-dev-20260520-200804.md` - No description
+├── `user-requirement-dev-20260520-200804.md` - No description
+└── `user-requirement-dev-20260522-082259.md` - No description
 ```
 
 ---
