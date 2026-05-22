@@ -10,14 +10,19 @@
       "label": "Bug 1 — candidateCardStyle helper exists and all 3 sites use it",
       "given": "file scripts/lib/react_template.tpl has been modified by dev",
       "when": "grep is run for 'candidateCardStyle' across the file",
-      "then": "at least 4 matches found: 1 function/const definition + 3 call sites (accommodation, meals, activities candidate sections); AND grep for 'borderRadius.*6px' in the 3 Candidates sections returns 0 matches (old hardcoded styles removed)",
+      "then": "at least 4 matches found: 1 function/const definition + 3 call sites (accommodation, meals, activities candidate sections); AND (a) grep for borderRadius: '6px' in lines 2390-2560 returns 0 matches (old hardcoded styles removed — unpatched source has 3 matches at L2420/L2475/L2526); AND (b) grep for style={candidateCardStyle( in lines 2390-2560 returns 3+ matches (post-patch expected state — currently 0 on unpatched source, confirming the helper is called in all 3 sites after patching)",
       "check": {
         "tool": "grep",
         "pattern_pass": "candidateCardStyle",
         "min_matches": 4,
-        "pattern_fail": "borderRadius.*['\"]6px['\"]",
-        "fail_scope": "lines 2390-2560",
-        "max_fail_matches": 0
+        "pattern_fail_a": "borderRadius: '6px'",
+        "fail_scope_a": "lines 2390-2560",
+        "max_fail_matches_a": 0,
+        "fail_a_rationale": "Unpatched source has 3 matches at L2420 (accommodation), L2475 (meals), L2526 (activities). background: and borderRadius: are on SEPARATE lines (L2419/L2420 etc.) so multi-token single-line patterns cannot detect this. Use grep -F 'borderRadius: '\\''6px'\\''' scoped to lines 2390-2560.",
+        "pattern_pass_b": "style={candidateCardStyle(",
+        "pass_scope_b": "lines 2390-2560",
+        "min_pass_matches_b": 3,
+        "pass_b_rationale": "Currently 0 matches on unpatched source; must reach 3 after patching all 3 candidate card style sites. Use grep -F 'style={candidateCardStyle(' scoped to lines 2390-2560."
       },
       "ac_uid": "ac1-candidateCardStyle-bug1"
     },
@@ -27,8 +32,8 @@
       "label": "Bug 2 — all 6 image sites use cover_image fallback",
       "given": "file scripts/lib/react_template.tpl has been modified by dev",
       "when": "each of 6 per-site grep patterns is run against the file",
-      "then": "all 6 per-site fail-patterns return 0 matches (any non-zero count means that site is still unpatched); AND grep for 'cover_image \\|\\|' in lines 860-1850 returns 6+ matches",
-      "note_on_L1828": "Timeline entry image at L1828-1830 spans TWO lines: '{entry.image && !sm && showDetails && (' on L1828 and '<img src={entry.image}' on L1830. A single-line grep for '\\.image && <img' will NEVER match L1828 and would produce a false PASS if L1828 is left unpatched. The correct fail-detect pattern for this site is 'entry\\.image' (simpler, matches L1828 directly). After correct patching the token 'entry.image' must appear only inside '(entry.cover_image || entry.image)'.",
+      "then": "all 7 per-site fail-patterns return 0 matches (any non-zero count means that site is still unpatched); AND grep for 'cover_image ||' in lines 860-1850 returns 6+ matches. Note: timeline entry has TWO patterns — guard (L1828) and src (L1830) — both must return 0.",
+      "note_on_L1828": "Timeline entry image spans TWO lines: '{entry.image && !sm && showDetails && (' on L1828 and '<img src={entry.image}' on L1830. The guard pattern 'entry.image && !sm' catches L1828. The src pattern 'src={entry.image}' catches L1830. BOTH must return 0 after correct patching. A partial fix (guard only) produces false PASS on the src check.",
       "check": {
         "tool": "grep_per_site",
         "sites": [
@@ -78,8 +83,18 @@
             "line": 1828,
             "pattern_fail": "entry\\.image && !sm",
             "max_fail_matches": 0,
-            "rationale": "TWO-LINE SPAN: guard 'entry.image && !sm && showDetails' on L1828, '<img src={entry.image}' on L1830. A single-line pattern for '.image && <img src=' would never match L1828. Pattern 'entry\\.image && !sm' matches the guard on L1828 and fails if the site is unpatched.",
+            "rationale": "TWO-LINE SPAN guard check: 'entry.image && !sm && showDetails' on L1828. Matches the guard line. After patching to (entry.cover_image || entry.image) && !sm, returns 0. ALSO requires the src check below (timeline entry src) to catch L1830.",
             "two_line_span": true
+          },
+          {
+            "site": "timeline entry src",
+            "variable": "entry",
+            "line": 1830,
+            "pattern_fail": "src={entry.image}",
+            "max_fail_matches": 0,
+            "rationale": "L1830 contains the img src attribute independently from the guard on L1828. A developer who patches only the guard (entry.image && !sm) to use cover_image but leaves src={entry.image} on L1830 would get 0 matches for the guard pattern but still render the unpatched src. Unpatched: grep -F 'src={entry.image}' returns 1 match at L1830. After correct patching to src={(entry.cover_image || entry.image)}, returns 0. Use grep -F 'src={entry.image}' scoped to lines 1828-1835.",
+            "two_line_span": true,
+            "pass_scope": "lines 1828-1835"
           }
         ],
         "pattern_pass": "cover_image \\|\\|",
