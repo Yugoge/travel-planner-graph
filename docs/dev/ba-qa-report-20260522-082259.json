@@ -21,13 +21,32 @@
       {
         "id": "OBJ-1",
         "dimension": "spec_text_vs_execution_drift",
+        "severity": "resolved",
+        "blocks_verdict": false,
+        "status": "RESOLVED",
+        "resolution_notes": "BA updated AC2 to per-site 6-item checklist with variable-specific grep patterns. Timeline site now uses 'entry\\.image && !sm' in the Passes-when column, which matches L1828 in the unpatched state. OBJ-1 is resolved. A residual gap (OBJ-2) was found by Codex: the pattern still misses L1830 <img src={entry.image}>.",
+        "title": "AC2 grep recipe literal text will miss timeline image site (L1828) and produce ambiguous results",
+        "original_description": "AC2 had a single-line recipe '.image && <img src={.*\\.image}' that could not match the two-line L1828 timeline site."
+      },
+      {
+        "id": "OBJ-2",
+        "dimension": "spec_text_vs_execution_drift",
         "severity": "blocking",
         "blocks_verdict": true,
-        "title": "AC2 grep recipe literal text will miss timeline image site (L1828) and produce ambiguous results",
-        "description": "AC2 specifies verification via: grep for `\\.image && <img src=\\{.*\\.image\\}`. The actual code at L1828 spans TWO lines:\n  L1828: {entry.image && !sm && showDetails && (\n  L1830:   <img src={entry.image} ...)\nThe `<img>` element is on a different line than the `.image &&` condition. The AC2 single-line grep pattern `\\.image && <img src=\\{.*\\.image\\}` will NOT match L1828 because src={...} is on the next line. Additionally, the same pattern will INCORRECTLY match L1198 (shop.image) which BA has explicitly excluded from scope as it is not a drag-enabled card. The literal AC2 recipe therefore risks a false-pass: dev could patch only the 5 inline-img sites, leave L1828 unfixed, run the AC2 grep, get 0 matches (because L1828 was never matched by the recipe), and declare pass.",
-        "evidence": "Confirmed by reading L1828-1830 of scripts/lib/react_template.tpl: '{entry.image && !sm && showDetails && (' is L1828, '<img src={entry.image}...' is L1830. The grep pattern requires src= on the same line as the .image && condition.",
-        "required_fix": "BA must update AC2's verification recipe to use either: (a) a two-pass grep — first grep for '.image &&' to find candidate lines, then verify each variable name has a cover_image fallback; or (b) an explicit per-variable checklist: grep for 'opt.image && <img' at L870 (fixed to cover_image), 'c.image && <img' at L960, 'attr.image && <img' at L1048, 'ent.image && <img' at L1133, 'acc.image && <img' at L1274, 'entry.image &&' at L1828 — each must show cover_image || usage. The current single-line regex is not reliable for L1828.",
-        "proposed_ac2_replacement": "AC2 verification: grep for each of the 6 variable-specific patterns and confirm each returns 0 solo-image matches: (1) grep 'opt\\.image && <img' returns 0 in L860-890; (2) grep 'c\\.image && <img' returns 0 in L950-970; (3) grep 'attr\\.image && <img' returns 0 in L1040-1060; (4) grep 'ent\\.image && <img' returns 0 in L1120-1145; (5) grep 'acc\\.image && <img' returns 0 in L1265-1285; (6) grep 'entry\\.image' in L1825-1835 must show cover_image || entry.image pattern."
+        "title": "AC2 timeline pattern entry\\.image && !sm covers guard line L1828 only — misses <img src={entry.image}> on L1830, enabling partial-patch false-pass",
+        "description": "The updated AC2 specifies the timeline site passes when '0 matches for entry\\.image && !sm without cover_image'. This pattern matches L1828 ({entry.image && !sm && showDetails && () in the unpatched state — good. However, L1830 contains the img tag: <img src={entry.image} alt=\"\" .../>. If a developer patches ONLY the guard on L1828 to {(entry.cover_image || entry.image) && !sm && showDetails && (}, the entry\\.image && !sm pattern returns 0 matches — but L1830 still renders src={entry.image} without the cover_image fallback. The AC2 recipe would declare PASS while the bug persists at the render point. The pattern must also verify the src= line.",
+        "evidence": "Confirmed by reading react_template.tpl L1828-1830: L1828 is guard '{entry.image && !sm && showDetails && (', L1830 is img tag '<img src={entry.image} alt=\"\" .../>'. Pattern entry\\.image && !sm matches only L1828. After patching L1828 guard only, grep returns 0 — false PASS while L1830 still has unpatched src.",
+        "required_fix": "AC2 timeline site: extend the 'Passes when' check to also require 0 matches for 'src={entry\\.image}' in lines 1828-1835. Both the guard line and the src= line must be patched. Updated criterion: 'Passes when: 0 matches for entry\\.image && !sm AND 0 matches for src={entry\\.image} (both without adjacent cover_image) in lines 1825-1835'."
+      },
+      {
+        "id": "OBJ-3",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "blocking",
+        "blocks_verdict": true,
+        "title": "AC1 negative-grep for old inline styles is single-line but source has background and borderRadius on separate lines — pattern never matches, old-style removal unverifiable",
+        "description": "AC1 specifies: 'AND grep for background: isPending.*isSelected.*\\#fafafa.*borderRadius.*6px returns 0 matches in the 3 Candidates sections (old hardcoded styles removed)'. The current source at L2418-2424 has the background ternary on L2419 and borderRadius: '6px' on L2420 — these are SEPARATE lines. The single-line grep requires all tokens on ONE line. Confirmed: the pattern never matches in the unpatched source — it always returns 0. If dev adds candidateCardStyle but forgets to remove the 3 old inline style objects, AC1's negative-grep still returns 0. False PASS on style removal.",
+        "evidence": "Read react_template.tpl L2418-2424: L2419 has 'background: isPending ? \"#e6f3ff\" : isSelected ? \"#e9f5ec\" : \"#fafafa\",' and L2420 has 'borderRadius: \"6px\",' — confirmed separate lines. grep for 'background: isPending.*isSelected.*#fafafa.*borderRadius.*6px' returns 0 matches on current unpatched source, confirming pattern never fires.",
+        "required_fix": "Replace the single-line negative-grep with two separate scoped checks in lines 2390-2560: (1) grep 'borderRadius: .6px.' returns 0 (old 6px radius removed from Candidates sections); AND (2) grep 'style={candidateCardStyle(' returns 3+ matches (new helper called at all 3 sites). Together these confirm old inline styles removed and new helper installed."
       }
     ],
     "dimension_results": {
