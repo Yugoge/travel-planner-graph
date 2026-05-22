@@ -1,0 +1,340 @@
+{
+  "request_id": "20260522-082259",
+  "task_id": "20260522-082259",
+  "timestamp": "2026-05-22T08:22:59Z",
+  "requirement": {
+    "original": "下一个session修复风格完全不统一，拖动进去的没有图片，并且拖动进去之后原来的酒店没有了，没有重新出现在候选栏，并且左侧区域没法拖动，只能拖进去没法拖出去\n下一个session全部要修复的",
+    "clarified": "Fix all 5 drag-and-drop UX bugs in the travel planner web app: (1) style fragmentation between Candidates and Kanban panels, (2) missing images on dragged-in cards, (3) replaced hotel not returning to Candidates panel, (4) accommodation DayColumn card not draggable, (5) unable to drag from DayColumn back out. All fixes confined to scripts/lib/react_template.tpl.",
+    "what": "Fix 5 specific D&D UX regressions in react_template.tpl: candidateCardStyle helper, cover_image fallback, preserveCurrentAccommodationOption helper, accommodation card drag attrs, direction:board payload",
+    "why": "User rated unified viewer/editor 1-star after commit 14f72e30; 5 specific UX failures make the drag-and-drop workflow unusable for accommodation selection",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "candidateCardStyle helper definition and 3 Candidates panel style call sites",
+        "6 slot card image sites patched from .image to (cover_image || .image)",
+        "preserveCurrentAccommodationOption helper + 2 bridge call sites (window.setEditorSelection + window.applyEditorSelection)",
+        "accommodation card draggable/onDragStart/onDragEnd attrs with direction:board payload",
+        "selectedAccId computation moved to card scope at L1262 before <div> at L1265"
+      ],
+      "excluded": [
+        "Transportation, shopping, or other Kanban card sections",
+        "Data files, schemas, or any file outside react_template.tpl",
+        "Published-only render path changes",
+        "Adding images to Meals/Activities Candidates panel cards",
+        "Image size/layout in Timeline (L1828)"
+      ]
+    },
+    "success_criteria": [
+      "grep candidateCardStyle returns 4+ hits (1 definition + 3 call sites)",
+      "grep for solo .image image check returns 0 matches in L860-1850",
+      "grep preserveCurrentAccommodationOption returns 3+ hits (1 def + 2 call sites)",
+      "accommodation card <div> has draggable, onDragStart, onDragEnd with direction:board payload",
+      "no JS errors on trips with no editorDay"
+    ],
+    "constraints": [
+      "Only scripts/lib/react_template.tpl may be modified",
+      "Backward-compat: PLAN-only trips (no editorDay) must still render without errors",
+      "v2 option shape must use adaptV2Option()-compatible field names: name, location_summary, cover_image",
+      "candidateCardStyle must be accessible from CandidatesSidebar scope (not inside KanbanView IIFE)",
+      "Bug 3 duplicate check: !options.some(o => o.option_id === selectedAccId) before push"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "User sees: cards in Candidates panel have different visual style than Kanban slot cards; dragged-in cards show no image; replaced hotel disappears from Candidates; accommodation left-panel card cannot be dragged; card placed in slot cannot be dragged back out",
+    "root_cause": "5 independent root causes: (1) Candidates panel inline styles (borderRadius:6px, #fafafa bg) diverge from cardStyle() factory (borderRadius:8px, white bg) — no shared helper. (2) Slot card image renders check .image only; v2 options from API carry cover_image not image. (3) PLAN hotel object (PLAN_DATA.days[n].accommodation) is not in editorDay.accommodation.options[] — only candidate v2 options are; bridge writes new selection without first synthesizing a v2 option from the PLAN hotel and pushing it into options[]. (4) Accommodation card <div> at L1265 missing draggable/onDragStart/onDragEnd attrs; selectedAccId only computed inside badge IIFE at L1300 not at card scope. (5) Resolved by Bug 4 fix — handleSidebarDrop at L2335 already handles direction:board correctly.",
+    "root_cause_commit": "14f72e30 — feat(web): unified viewer/editor page + bidirectional drag (M1-M29) — introduced the accommodation card drag handling gap and the Candidates/Kanban style split",
+    "why_introduced": "Bidirectional drag M1-M29 added drag attrs to meals/cafe/attractions/entertainment slot cards but omitted them from accommodation. Candidates panel was styled independently during sidebar layout work.",
+    "why_problematic": "Accommodation is the primary high-stakes selection; inconsistent drag behavior and visual style degrade user trust in the entire drag-and-drop UX.",
+    "timeline": "Introduced in commit 14f72e30 (most recent commit before this ticket)",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "L816-824 cardStyle() factory: borderRadius:'8px', background:'white', boxShadow:'0 1px 3px rgba(0,0,0,0.1)' (inferred: Read tool)",
+      "L2418-2424 accommodation Candidates card style: borderRadius:'6px', background:'#fafafa', border:'1px solid #e5e7eb' (inferred: Read tool)",
+      "L870 meal slot card: {opt.image && <img src={opt.image} — no cover_image fallback (inferred: Read tool)",
+      "L1940 adaptV2Option(): reads opt.name, opt.location_summary, opt.cover_image — NOT name_base/location_base (inferred: Read tool)",
+      "L2063-2069 accommodation synthesis: no demotion path back to options[] when selection changes (inferred: Read tool)",
+      "L1265-1272 accommodation card <div>: no draggable, no onDragStart, no onDragEnd (inferred: Read tool)",
+      "L1300 selectedAccId: scoped inside badge IIFE, not accessible to parent card scope (inferred: Read tool)",
+      "L2335-2338 handleSidebarDrop: already handles direction==='board' correctly (inferred: Read tool)",
+      "L2427-2430 accommodation Candidates image: already uses rawOpt.cover_image || rawOpt.image — correct (inferred: Read tool)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no Playwright/runtime measurement; QA must verify via browser)",
+    "complaint_location_keywords": ["候选栏", "Candidates", "accommodation", "酒店", "左侧区域", "拖动", "图片", "风格"],
+    "localization_evidence": "Source code read at react_template.tpl L816-2830; grep confirmed all 6 image sites, 3 inline style sites, 2 bridge sites, accommodation card missing attrs",
+    "located_source": "scripts/lib/react_template.tpl — 5 distinct root causes at L816-824, L870/960/1048/1133/1274/1828, L2063-2069/L2766/L2800, L1265-1272/L1300, L2335",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "14f72e30",
+      "commit_message": "feat(web): unified viewer/editor page + bidirectional drag (M1-M29)",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "风格完全不统一 (style completely inconsistent)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "Candidates panel cards share a common candidateCardStyle helper; grep confirms 3 sites replaced; borderRadius matches Kanban (8px)"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "拖动进去的没有图片 (no image after dragging in)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "All 6 .image slots changed to (X.cover_image || X.image); grep confirms 0 remaining solo-image sites in L860-1850"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "拖动进去之后原来的酒店没有了，没有重新出现在候选栏 (replaced hotel disappears from candidates)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "preserveCurrentAccommodationOption helper exists and is called in both window.setEditorSelection bridge and window.applyEditorSelection applyBridge"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "左侧区域没法拖动 (left area not draggable)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "Accommodation card <div> has draggable, onDragStart, onDragEnd with correct direction:board payload"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "只能拖进去没法拖出去 (can only drag in, not out)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "Resolved by R4 — handleSidebarDrop receives direction:board payload and deselects the accommodation slot"
+    },
+    {
+      "id": "R6",
+      "source_phrase": "下一个session全部要修复的 (all to be fixed next session)",
+      "classification": "user-need clause",
+      "acceptance_criterion": "All 5 bugs addressed in single dev cycle; no partial fix"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "816-824",
+      "role": "cardStyle() factory — Kanban slot card visual tokens (borderRadius:8px, white bg, shadow)",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool L816-824",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2390-2441",
+      "role": "Accommodation Candidates section — renders editorDay.accommodation.options.map()",
+      "imports_from": ["scripts/lib/react_template.tpl:1940"],
+      "evidence": "Read tool L2390-2441; grep confirmed L2398 as options.map() source",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1940-1960",
+      "role": "adaptV2Option() — maps v2 option fields for Candidates display; reads name, location_summary, cover_image",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool L1940; grep for adaptV2Option confirmed single definition",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2766-2796",
+      "role": "window.setEditorSelection bridge — drag-to-slot accommodation selection; writes new editorSelections without preserving PLAN hotel",
+      "imports_from": ["scripts/lib/react_template.tpl:2390"],
+      "evidence": "Read tool L2766-2796",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2800-2827",
+      "role": "window.applyEditorSelection applyBridge — tap-to-select path; same missing preservation",
+      "imports_from": ["scripts/lib/react_template.tpl:2390"],
+      "evidence": "Read tool L2800-2827; Codex identified applyBridge as missed path",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1262-1316",
+      "role": "Accommodation card .map() callback — renders slot card; missing draggable attrs; selectedAccId scoped inside badge IIFE only",
+      "imports_from": ["scripts/lib/react_template.tpl:2766"],
+      "evidence": "Read tool L1262-1316; grep confirmed no draggable at L1265",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2335-2345",
+      "role": "handleSidebarDrop — deselects slot when direction:board payload received; already correct",
+      "imports_from": ["leaf"],
+      "evidence": "Read tool L2335-2345; grep confirmed direction==='board' handling present",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1262,
+      "type": "if",
+      "code_snippet": "const edAcc = editorDay && editorDay.accommodation;",
+      "purpose": "Guards against null editorDay before accessing accommodation; must be preserved in Bug 4 fix",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2222,
+      "type": "if",
+      "code_snippet": "_isCompatible() — accommodation requires exact slotId match",
+      "purpose": "Prevents incompatible drops into accommodation slot",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- agent-prompt edit; cycle does not produce (1) rendered UI changes driven by this BA analysis, (2) browser interaction, (3) Playwright invocation, (4) screenshot evidence, or (5) new user-triggered code paths. NOTE: QA MUST use full setup (applicability=applicable) when verifying via Playwright on travel.life-ai.app."
+  },
+  "evidence": {
+    "observed": "下一个session修复风格完全不统一，拖动进去的没有图片，并且拖动进去之后原来的酒店没有了，没有重新出现在候选栏，并且左侧区域没法拖动，只能拖进去没法拖出去",
+    "measured": {
+      "value": "Bug1: borderRadius:'6px' at L2420 vs '8px' at L819; Bug2: 6 image sites use .image only (L870,L960,L1048,L1133,L1274,L1828); Bug3: bridge at L2766 writes new selection without preserving PLAN hotel not in options[]; Bug4: accommodation card <div> at L1265 has no draggable/onDragStart/onDragEnd; Bug5: auto-resolved by Bug4 fix",
+      "location": "scripts/lib/react_template.tpl"
+    },
+    "expected": {
+      "value": "All 5 symptoms eliminated: shared candidateCardStyle helper, (cover_image||.image) fallback, preserveCurrentAccommodationOption in both bridges, accommodation card with draggable+direction:board payload, drag-out resolved by Bug4",
+      "source": "User verbatim requirement + Codex-verified root cause analysis in spec-20260521-061307.md Section 1"
+    },
+    "gap": "3 inline style sites without shared helper; 6 image sites without cover_image fallback; 2 bridge sites without PLAN hotel preservation; 1 card div without drag attrs"
+  },
+  "scope_expansion": {
+    "search_pattern": "borderRadius.*6px|.image && <img src=|setEditorSelection|draggable|onDragStart|onDragEnd|candidateCardStyle|cover_image",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["scripts/lib/react_template.tpl"],
+    "additional_found": [],
+    "all_occurrences": [
+      "react_template.tpl:870 — Bug2 meal slot image",
+      "react_template.tpl:960 — Bug2 cafe slot image",
+      "react_template.tpl:1048 — Bug2 attractions slot image",
+      "react_template.tpl:1133 — Bug2 entertainment slot image",
+      "react_template.tpl:1274 — Bug2 accommodation slot image",
+      "react_template.tpl:1828 — Bug2 timeline entry image",
+      "react_template.tpl:2418-2424 — Bug1 accommodation Candidates inline style",
+      "react_template.tpl:2473-2478 — Bug1 meals Candidates inline style",
+      "react_template.tpl:2524-2529 — Bug1 activities Candidates inline style",
+      "react_template.tpl:2766 — Bug3 window.setEditorSelection bridge (no PLAN hotel preservation)",
+      "react_template.tpl:2800 — Bug3 window.applyEditorSelection applyBridge (no PLAN hotel preservation)",
+      "react_template.tpl:1265-1272 — Bug4 accommodation card missing draggable attrs",
+      "react_template.tpl:2335 — Bug5 handleSidebarDrop (already correct; needs Bug4 payload)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Codex-verified root cause analysis in spec-20260521-061307.md Section 1; independently verified by grepping and reading react_template.tpl in this BA session",
+    "url_or_location": "docs/dev/specs/spec-20260521-061307.md lines 35-47",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on these bugs; first-time fix cycle"
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; 111 uncommitted files; most recent commit 14f72e30 introduced the 5 bugs",
+    "recent_commits": "14f72e30 fix(web): flash red on gated slot-drop rejection + ticket-19161933 doc cleanup\n9218b6bd feat(web): unified viewer/editor page + bidirectional drag (M1-M29)\nf5282b1d chore(.gitignore): update gitignore and untrack screenshots and backup files from travel-planner",
+    "file_contents": {
+      "react_template.tpl_key_locations": {
+        "L816-824": "cardStyle(catColor, isPrimary, isOptional) factory — borderRadius:8px, white bg, shadow",
+        "L862-864": "meal slot card draggable pattern (reference for Bug4)",
+        "L1265-1272": "accommodation card <div> — MISSING draggable attrs",
+        "L1300": "selectedAccId inside badge IIFE — must be hoisted to L1262 scope",
+        "L1940": "adaptV2Option() — reads name, location_summary, cover_image",
+        "L2398": "editorDay.accommodation.options.map() — Candidates source",
+        "L2418-2424": "accommodation Candidates inline style — borderRadius:6px",
+        "L2766": "window.setEditorSelection bridge",
+        "L2800": "window.applyEditorSelection applyBridge"
+      }
+    },
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "5 surgical patches to react_template.tpl: (1) define candidateCardStyle helper at module/CandidatesSidebar scope, replace 3 inline style sites; (2) change 6 .image references to (cover_image || .image); (3) define preserveCurrentAccommodationOption helper, call in both bridges; (4) hoist selectedAccId computation to card scope, add draggable+onDragStart+onDragEnd to accommodation card <div>; (5) no separate change needed — resolved by (4)",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA verifies via Playwright E2E on travel.life-ai.app: drag accommodation candidate into slot, check image shows, drag out and check original option reappears, verify style consistency between panels; grep-based static verification for all 5 bugs"
+  },
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260522-082259.json",
+  "blast_radius_map_path": ".claude/dev-registry/dev-20260522-082259/blast-radius-map.json",
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "Single-file change but touches 5 distinct code sites across drag handling, state management, and rendering layers. Backward-compat risk for PLAN-only trips.",
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex reviewed the draft spec and returned 5 findings all with PROPOSED_FIX. All findings were in-scope real bugs or spec precision issues. No expansionist scope or out-of-path proposals identified.",
+    "findings": [
+      {
+        "issue": "candidateCardStyle should explicitly mirror Kanban visual tokens (borderRadius:8px matching cardStyle, box-shadow, transition, cursor) not just deduplicate the 3 inline style objects",
+        "proposed_fix": "Spec the helper as: candidateCardStyle(isSelected, isPending) => { borderRadius:'8px', boxShadow: isSelected ? '0 0 0 2px #3b82f6' : '0 1px 3px rgba(0,0,0,0.1)', transition:'box-shadow 0.15s', cursor:'grab', background: isSelected ? '#eff6ff' : isPending ? '#fefce8' : 'white' } — matching cardStyle visual language",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to Requirements Must Have Bug 1 and Technical Hints — spec now states the helper must mirror Kanban visual tokens including borderRadius:8px"
+      },
+      {
+        "issue": "Bug 3 fix only specified bridge (L2766) in original draft; applyBridge (L2800) tap-to-select path also needs preserveCurrentAccommodationOption call",
+        "proposed_fix": "Call preserveCurrentAccommodationOption in BOTH window.setEditorSelection (bridge, L2766) AND window.applyEditorSelection (applyBridge, L2800) before they mutate editorSelections",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied — AC3 and Requirements Must Have Bug 3 now explicitly require both call sites"
+      },
+      {
+        "issue": "Bug 3 synthesized option uses PLAN field names (name_base, location_base) but adaptV2Option() reads v2 field names (name, location_summary, cover_image)",
+        "proposed_fix": "Synthesized option must use: { option_id: selectedAccId, name: planAcc.name_base || planAcc.name, name_local: planAcc.name_local || '', location_summary: planAcc.location_base || '', cover_image: planAcc.image || null, image: planAcc.image || null, cost: planAcc.cost || 0 }",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to Technical Hints v2 option shape and Edge Cases & Risks — spec explicitly warns about v2 field name requirement"
+      },
+      {
+        "issue": "Bug 4: selectedAccId only exists inside badge IIFE at L1300; must be computed in .map() callback scope BEFORE the <div> at L1265 for draggable attr to work",
+        "proposed_fix": "In the accommodation card .map() callback at L1262, compute accKey, edAcc, selectedAccId, dragOptionId BEFORE the returned <div>. Then use dragOptionId (not selectedAccId directly) in draggable={!!dragOptionId}",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied — Requirements Must Have Bug 4 and Technical Hints now specify exact variable sequence including dragOptionId"
+      },
+      {
+        "issue": "Bug 5 drag payload must explicitly include direction:'board' and sourceSlotId:'accommodation' fields, not just optionId and slotId",
+        "proposed_fix": "onDragStart payload: JSON.stringify({ optionId: dragOptionId, slotId: 'accommodation', sourceSlotId: 'accommodation', direction: 'board' }) — handleSidebarDrop at L2335 checks direction==='board' to deselect",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Applied to Requirements Must Have Bug 4 and AC5"
+      }
+    ],
+    "feedback_incorporated": "All 5 Codex PROPOSED_FIX items applied: candidateCardStyle visual token spec, dual bridge call for preserveCurrentAccommodationOption, v2 field name correctness for synthesized option, selectedAccId hoisting to card scope with dragOptionId intermediate, explicit direction:board+sourceSlotId in drag payload"
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward multi-bug fix with clear root causes identified via code reading and Codex review; no novel architecture or pattern choices required"
+  }
+}
