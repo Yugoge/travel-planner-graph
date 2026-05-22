@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-22T08:42:56Z*
-**Total entries**: 433
+*Last updated: 2026-05-22T08:43:22Z*
+**Total entries**: 434
 **Convention**: kebab
 
 ## Tree
@@ -39,6 +39,7 @@ dev/
 │   ├── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
 │   ├── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
 │   └── `spec-20260521-061307.md` - Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
+├── `acceptance-criteria-20260522-082259.json` - json config
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `architect-report-init.json` - json config
