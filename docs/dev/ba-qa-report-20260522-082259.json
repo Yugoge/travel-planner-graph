@@ -1,0 +1,114 @@
+{
+  "request_id": "20260522-082259",
+  "task_id": "20260522-082259",
+  "timestamp": "2026-05-22T09:10:00Z",
+  "mode": "ba_validation",
+  "qa": {
+    "status": "fail",
+    "verdict": "fail",
+    "summary": "BA spec FAIL: one confirmed blocker (spec_text_vs_execution_drift on AC2 grep recipe that masks the timeline L1828 site and risks false-passing if shopping is left solo-image), with one revised finding (shopping L1198 correctly excluded by BA because shopping cards are not draggable). Codex confirmed AC2 recipe drift is the real blocker; the 7th-site claim in draft was partially wrong.",
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed shopping card at L1192-1196 has no draggable/onDragStart/data-slot-card attrs — it cannot be dragged, so BA's exclusion of L1198 from Bug2 scope is correct. Codex confirmed AC2 grep recipe is flawed: the literal pattern '.image && <img src={.*\\.image}' may miss L1828 timeline (img is on a subsequent line) and may incorrectly catch L1198 (shopping, which is not in scope). Codex proposed replacing the recipe with an explicit per-variable checklist.",
+      "feedback_incorporated": "Finding 1 revised: shopping correctly excluded by BA (not draggable). Finding 2 revised: scope alignment is actually correct for shopping exclusion. Finding 3 (spec_text_vs_execution_drift on AC2) is confirmed as the sole blocking objection. Verdict remains FAIL due to the AC2 recipe drift."
+    },
+    "user_verbatim_complaint": "下一个session修复风格完全不统一，拖动进去的没有图片，并且拖动进去之后原来的酒店没有了，没有重新出现在候选栏，并且左侧区域没法拖动，只能拖进去没法拖出去\n下一个session全部要修复的",
+    "verified_against_complaint": true,
+    "passed_user_requirement": null,
+    "ac_alignment": null,
+    "objections": [
+      {
+        "id": "OBJ-1",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "blocking",
+        "blocks_verdict": true,
+        "title": "AC2 grep recipe literal text will miss timeline image site (L1828) and produce ambiguous results",
+        "description": "AC2 specifies verification via: grep for `\\.image && <img src=\\{.*\\.image\\}`. The actual code at L1828 spans TWO lines:\n  L1828: {entry.image && !sm && showDetails && (\n  L1830:   <img src={entry.image} ...)\nThe `<img>` element is on a different line than the `.image &&` condition. The AC2 single-line grep pattern `\\.image && <img src=\\{.*\\.image\\}` will NOT match L1828 because src={...} is on the next line. Additionally, the same pattern will INCORRECTLY match L1198 (shop.image) which BA has explicitly excluded from scope as it is not a drag-enabled card. The literal AC2 recipe therefore risks a false-pass: dev could patch only the 5 inline-img sites, leave L1828 unfixed, run the AC2 grep, get 0 matches (because L1828 was never matched by the recipe), and declare pass.",
+        "evidence": "Confirmed by reading L1828-1830 of scripts/lib/react_template.tpl: '{entry.image && !sm && showDetails && (' is L1828, '<img src={entry.image}...' is L1830. The grep pattern requires src= on the same line as the .image && condition.",
+        "required_fix": "BA must update AC2's verification recipe to use either: (a) a two-pass grep — first grep for '.image &&' to find candidate lines, then verify each variable name has a cover_image fallback; or (b) an explicit per-variable checklist: grep for 'opt.image && <img' at L870 (fixed to cover_image), 'c.image && <img' at L960, 'attr.image && <img' at L1048, 'ent.image && <img' at L1133, 'acc.image && <img' at L1274, 'entry.image &&' at L1828 — each must show cover_image || usage. The current single-line regex is not reliable for L1828.",
+        "proposed_ac2_replacement": "AC2 verification: grep for each of the 6 variable-specific patterns and confirm each returns 0 solo-image matches: (1) grep 'opt\\.image && <img' returns 0 in L860-890; (2) grep 'c\\.image && <img' returns 0 in L950-970; (3) grep 'attr\\.image && <img' returns 0 in L1040-1060; (4) grep 'ent\\.image && <img' returns 0 in L1120-1145; (5) grep 'acc\\.image && <img' returns 0 in L1265-1285; (6) grep 'entry\\.image' in L1825-1835 must show cover_image || entry.image pattern."
+      }
+    ],
+    "dimension_results": {
+      "evidence_quality": {
+        "verdict": "pass",
+        "notes": "BA self-discloses evidence_type as 'inferred' and diagnosis_completeness as 'incomplete (inferred only — no Playwright/runtime measurement)'. This is honest and appropriate for the BA analysis phase. All specific line-number claims verified by QA grep and Read: cardStyle L816-824 confirmed, bridge L2766 confirmed, applyBridge L2800 confirmed, handleSidebarDrop L2335 confirmed, accommodation card L1265-1272 confirmed, all 6 image sites confirmed. The one claim about shopping being one of 6 sites is addressed separately under scope_alignment. BA explicitly notes its evidence type — no fraud or misrepresentation."
+      },
+      "scope_alignment": {
+        "verdict": "pass",
+        "notes": "Initial draft raised shopping L1198 as a scope omission, but Codex adversarial review correctly noted that the shopping card div (L1192-1196) has NO draggable attribute, NO onDragStart, NO data-slot-card, and NO data-slot-id — it is a display-only card that cannot be dragged. The user's complaint '拖动进去的没有图片' (no image after dragging in) only applies to cards that participate in the drag-and-drop flow. Shopping is NOT in that flow. BA's Won't Have exclusion of '风格变化到Shopping' is confirmed correct. The 6 image sites BA identified are exactly the 6 sites in the drag flow. AC2's LINE RANGE '860-1850' does include L1198 (shopping), so a correctly formulated grep would catch it as a false positive, not a real miss — but this is addressed under spec_text_vs_execution_drift, not scope_alignment."
+      },
+      "investigation_completeness": {
+        "verdict": "pass",
+        "notes": "BA investigated and enumerated: (1) all 3 inline style sites for Bug1 at L2418-2424, L2473-2478, L2524-2529; (2) all 6 image sites for Bug2 at L870, L960, L1048, L1133, L1274, L1828; (3) both bridge sites for Bug3 at L2766 and L2800; (4) accommodation card missing drag attrs at L1265-1272 for Bug4; (5) auto-resolution of Bug5 via Bug4. BA also identified the scope boundary (L2063-2069 render path as supplementary context), the adaptV2Option field-name mismatch risk, and the duplicate-check requirement for Bug3. Codex-verified root cause analysis from spec Section 1 was incorporated. The Section 8 QA directive (re-grep before sign-off) was carried forward into the spec. Investigation is complete for a single-file, 5-bug analysis."
+      },
+      "affected_file_accuracy": {
+        "verdict": "pass",
+        "notes": "All file:line claims verified by QA direct source read. scripts/lib/react_template.tpl exists and is 3260 lines. Specific verifications: (1) cardStyle() factory at L816-824 — CONFIRMED: 'const cardStyle = (catColor, isPrimary, isOptional) => ({' at L816, 'borderRadius: \"8px\"' at L819; (2) accommodation Candidates inline style borderRadius:6px at L2418-2424 — CONFIRMED: L2420 'borderRadius: \"6px\"'; (3) meals Candidates inline style at L2473-2478 — CONFIRMED: L2475 'borderRadius: \"6px\"'; (4) activities Candidates inline style at L2524-2529 — CONFIRMED: L2526 'borderRadius: \"6px\"'; (5) image sites at L870, L960, L1048, L1133, L1274 — ALL CONFIRMED as solo '.image && <img' patterns; (6) L1828 entry.image — CONFIRMED; (7) adaptV2Option at L1940 — CONFIRMED: reads opt.name, opt.location_summary, but NOT cover_image explicitly (uses spread+base.image assignment at L2014); (8) bridge at L2766 — CONFIRMED; (9) applyBridge at L2800 — CONFIRMED; (10) handleSidebarDrop direction==='board' at L2335 — CONFIRMED; (11) accommodation card div at L1265 — CONFIRMED: no draggable, no onDragStart, no onDragEnd; (12) selectedAccId inside badge IIFE at L1300 — CONFIRMED. All 12 specific claims check out."
+      },
+      "spec_text_vs_execution_drift": {
+        "verdict": "fail",
+        "notes": "AC2 grep recipe drifts from what is actually verifiable. See OBJ-1 for full detail. The literal recipe '.image && <img src={.*\\.image}' will not match L1828 (two-line span) and may match L1198 (shopping, out of scope). This is a blocking objection per QA agent spec Section 5 (R6 reminder / dimension 5 contract): 'if dev verification recipe differs from AC literal text, raise spec_text_vs_execution_drift regardless of equivalence judgment. QA MUST raise a blocking objection in this case; verdict MUST be FAIL.'"
+      }
+    },
+    "verified_line_numbers": {
+      "L816_824_cardStyle": "CONFIRMED - borderRadius 8px at L819",
+      "L870_meal_image": "CONFIRMED - opt.image && <img solo pattern",
+      "L960_cafe_image": "CONFIRMED - c.image && <img solo pattern",
+      "L1048_attr_image": "CONFIRMED - attr.image && <img solo pattern",
+      "L1133_ent_image": "CONFIRMED - ent.image && <img solo pattern",
+      "L1198_shop_image": "EXISTS but OUT OF SCOPE - shopping card has no draggable/onDragStart attrs (display-only)",
+      "L1265_1272_acc_card": "CONFIRMED - no draggable, onDragStart, onDragEnd",
+      "L1274_acc_image": "CONFIRMED - acc.image && <img solo pattern",
+      "L1300_selectedAccId_in_IIFE": "CONFIRMED - scoped inside badge IIFE, not in card scope",
+      "L1828_timeline_image": "CONFIRMED - entry.image && !sm && showDetails, but img src= is on L1830 (two-line span — AC2 grep won't match)",
+      "L1940_adaptV2Option": "CONFIRMED - reads opt.name, opt.location_summary; cover_image assigned via base.image at L2014",
+      "L2335_handleSidebarDrop": "CONFIRMED - direction==='board' handling correct",
+      "L2418_2424_acc_candidates_style": "CONFIRMED - borderRadius 6px, background #fafafa",
+      "L2473_2478_meals_candidates_style": "CONFIRMED - borderRadius 6px",
+      "L2524_2529_activities_candidates_style": "CONFIRMED - borderRadius 6px",
+      "L2766_bridge": "CONFIRMED - const bridge = (slotId, optionId, originSlotId = null) =>",
+      "L2800_applyBridge": "CONFIRMED - const applyBridge = (optionId, targetSlotId, originSlotId) =>"
+    },
+    "shopping_card_draggability_audit": {
+      "line_range": "L1192-1196",
+      "has_draggable_attr": false,
+      "has_onDragStart": false,
+      "has_data_slot_card": false,
+      "has_data_slot_id": false,
+      "conclusion": "Shopping card is display-only and cannot be dragged. BA exclusion from Bug2 scope is correct. L1198 shop.image is NOT in scope for the image fix."
+    },
+    "additional_observations": [
+      {
+        "id": "OBS-1",
+        "category": "minor_spec_precision",
+        "observation": "AC2's 'AND grepped for cover_image || .*\\.image returns 6+ matches in lines 860-1850' — the count of 6 assumes shopping (L1198) is out of scope, which it is. But if the line range 860-1850 is used, a broad grep of cover_image would also match L2427 (accommodation Candidates, already correct). The count should be exactly 6 at the slot-card sites, not 6+. This is minor imprecision but not a blocker.",
+        "in_user_path": false,
+        "security_relevant": false,
+        "blocks_verdict": false
+      },
+      {
+        "id": "OBS-2",
+        "category": "risk_noted",
+        "observation": "Bug3 context JSON notes L2063-2069 as 'accommodation merge at L2063-2069 overwrites the single rendered hotel object' — this is the RENDER path (mergeEditorSelectionsIntoPublishedDay), not the Candidates state path. The fix targets the bridge + applyBridge correctly. The L2063-2069 mention is supplementary context that explains WHY the PLAN hotel disappears visually, not a second fix site. BA is not wrong to mention it, but it could confuse dev into thinking L2063-2069 needs patching. The spec text is 'no demotion path back to options[] when selection changes (inferred: Read tool)' — dev should not patch L2063-2069.",
+        "in_user_path": false,
+        "security_relevant": false,
+        "blocks_verdict": false
+      }
+    ],
+    "spec_section_updates": {
+      "section_4": "Cycle 1 QA BA-validation: BA spec for 5 drag-and-drop bugs verified against source. All 12 specific line-number claims verified correct. Single blocking objection on AC2 grep recipe (spec_text_vs_execution_drift). Shopping L1198 confirmed out of scope (card not draggable). Source file scripts/lib/react_template.tpl is 3260 lines on master branch.",
+      "section_6": "Cycle 1 BA-validation FAIL: AC2 grep recipe '.image && <img src={.*\\.image}' is a single-line pattern that will not match the timeline site at L1828 (the img src= is on the subsequent line L1830). If dev patches L870/L960/L1048/L1133/L1274 only and runs AC2 grep, they get 0 matches and falsely declare pass, while L1828 remains broken.",
+      "section_7": "Cycle 1 BA must update AC2 acceptance criterion to use per-variable grep checks for each of the 6 sites: (1) opt.image at L870, (2) c.image at L960, (3) attr.image at L1048, (4) ent.image at L1133, (5) acc.image at L1274, (6) entry.image at L1828. Each check must confirm cover_image || variable.image pattern present. Replace single-line regex recipe with explicit 6-item checklist or a multi-line-aware verification command."
+    },
+    "summary": "BA spec FAIL: one blocking spec_text_vs_execution_drift objection on AC2 grep recipe (fails to match L1828 two-line timeline site). All other dimensions pass. Shopping L1198 correctly excluded. All line-number claims verified. BA must update AC2 verification recipe before dev proceeds."
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_dimensions": ["spec_text_vs_execution_drift"],
+    "blocking_objections": ["OBJ-1: AC2 grep recipe will not match L1828 (two-line span); fix: per-variable 6-item checklist"],
+    "recommended_approach": "BA must update ticket-20260522-082259.md AC2 to replace the single-line grep recipe with an explicit per-variable checklist for the 6 image sites. All other ACs (AC1, AC3, AC4, AC5, AC6) are well-formed and can proceed as-is.",
+    "additional_context": "Codex confirmed shopping card is display-only (no draggable attr), so BA's 6-site count is correct for the drag flow. The AC2 recipe issue is the only blocker."
+  }
+}
