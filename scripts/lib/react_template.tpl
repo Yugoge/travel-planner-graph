@@ -1261,11 +1261,18 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     <div style={scrollContainerStyle} className="category-scroll-container">
                       {(day.accommodation ? [day.accommodation] : []).map((acc, i) => {
                         const catColor = categoryColors.accommodation;
+                        const accKey = day.day + ':accommodation';
+                        const edAcc = editorDay && editorDay.accommodation;
+                        const selectedAccId = edAcc ? (Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : edAcc.selected_option_id) : null;
+                        const dragOptionId = acc.option_id || selectedAccId;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), position: 'relative'}}
                             data-slot-card="primary"
                             data-slot-id="accommodation"
                             data-option-id={acc.option_id || undefined}
+                            draggable={!!dragOptionId}
+                            onDragStart={dragOptionId ? (e) => { currentDragSlotId = 'accommodation'; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: dragOptionId, slotId: 'accommodation', sourceSlotId: 'accommodation', direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                            onDragEnd={dragOptionId ? () => { currentDragSlotId = null; } : undefined}
                             onClick={() => onItemClick && onItemClick(acc, 'accommodation')}
                             onMouseEnter={hoverOn}
                             onMouseLeave={e => hoverOff(e, catColor, false)}
