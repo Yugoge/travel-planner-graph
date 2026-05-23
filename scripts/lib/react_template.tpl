@@ -2840,6 +2840,7 @@ function NotionTravelApp() {
     const applyBridge = (optionId, targetSlotId, originSlotId) => {
       const dayNum = publishedDay && publishedDay.day;
       if (!dayNum) return;
+      if (targetSlotId === 'accommodation') preserveCurrentAccommodationOption();
       const key = dayNum + ':' + targetSlotId;
       setEditorSelections(prev => ({ ...prev, [key]: optionId }));
       if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
