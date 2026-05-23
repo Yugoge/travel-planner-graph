@@ -2254,6 +2254,18 @@ function _flashReject(el) {
   }, 400);
 }
 
+/// candidateCardStyle: shared helper for Candidates panel cards — mirrors Kanban cardStyle visual tokens
+// (borderRadius:8px, shadow, transition, cursor) with selected/pending state support. Root cause: commit 14f72e30.
+const candidateCardStyle = (isSelected, isPending) => ({
+  background: isPending ? '#eff6ff' : isSelected ? '#e9f5ec' : 'white',
+  borderRadius: '8px',
+  border: '1px solid ' + (isPending ? '#3b82f6' : isSelected ? '#45b26b' : '#e5e7eb'),
+  boxShadow: isSelected ? '0 0 0 2px #3b82f6' : '0 1px 3px rgba(0,0,0,0.1)',
+  transition: 'box-shadow 0.15s',
+  padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
+  userSelect: 'none', position: 'relative'
+});
+
 // CandidatesSidebar component: fixed right panel (always active)
 const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelections, saveMutations,
     setEditorSelections, editorDay, pendingSelection, setPendingSelection, setEditorTripData, inlineMode }) => {
