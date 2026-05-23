@@ -20,4 +20,24 @@ def test_AC6():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — null-guard present for PLAN-only trips")
+    import re
+
+    TPL = "scripts/lib/react_template.tpl"
+
+    def _lines_range(start, end):
+        with open(TPL) as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[start - 1:end])
+
+    # Lines 1260-1280: accommodation .map() callback — null-guard must appear before dragOptionId
+    block = _lines_range(1260, 1280)
+
+    assert re.search(r"editorDay && editorDay\.accommodation", block), (
+        "AC6 FAIL: null-guard 'editorDay && editorDay.accommodation' not found in lines 1260-1280 "
+        "(PLAN-only trips without editorDay would error without this guard)"
+    )
+
+    # dragOptionId (used in draggable={!!dragOptionId}) must also be in scope
+    assert "dragOptionId" in block, (
+        "AC6 FAIL: 'dragOptionId' variable not found in lines 1260-1280 (Bug4 fix incomplete)"
+    )
