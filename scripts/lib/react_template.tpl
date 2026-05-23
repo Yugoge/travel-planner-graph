@@ -1045,7 +1045,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             onMouseLeave={e => hoverOff(e, catColor, false, attr.optional)}
                           >
                             <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#eef4f9', flexShrink: 0 }}>
-                              {attr.image && <img src={attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />}
+                              {(attr.cover_image || attr.image) && <img src={attr.cover_image || attr.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />}
                             </div>
                             <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                               <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
