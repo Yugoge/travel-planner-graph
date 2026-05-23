@@ -20,4 +20,24 @@ def test_AC3():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — preserveCurrentAccommodationOption called in both bridges")
+    TPL = "scripts/lib/react_template.tpl"
+
+    with open(TPL) as f:
+        content = f.read()
+
+    count = content.count("preserveCurrentAccommodationOption")
+    assert count >= 3, (
+        f"AC3 FAIL: expected 3+ occurrences of 'preserveCurrentAccommodationOption' "
+        f"(1 definition + 1 call in bridge + 1 call in applyBridge), found {count}"
+    )
+
+    lines = content.splitlines()
+    # Confirm definition exists
+    defs = [ln for ln in lines if "const preserveCurrentAccommodationOption" in ln or "function preserveCurrentAccommodationOption" in ln]
+    assert len(defs) >= 1, "AC3 FAIL: no function/const definition found for preserveCurrentAccommodationOption"
+
+    # Confirm at least 2 call sites
+    calls = [ln for ln in lines if "preserveCurrentAccommodationOption()" in ln and "const " not in ln and "function " not in ln]
+    assert len(calls) >= 2, (
+        f"AC3 FAIL: expected 2+ call sites for preserveCurrentAccommodationOption(), found {len(calls)}: {calls}"
+    )
