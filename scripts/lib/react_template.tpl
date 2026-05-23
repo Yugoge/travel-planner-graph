@@ -2764,9 +2764,48 @@ function NotionTravelApp() {
 
   // Expose legacy bridge for compatibility (deps: publishedDay.day, saveMutations)
   useEffect(() => {
+    // Bug3 fix (commit 14f72e30): when accommodation selection changes, push the previously-selected
+    // PLAN hotel back into editorDay.accommodation.options[] so it reappears in the Candidates panel.
+    // The PLAN hotel is absent from options[] because options[] only contains v2 API candidates.
+    const preserveCurrentAccommodationOption = () => {
+      if (!editorDay || !editorDay.accommodation) return;
+      const dayNum = publishedDay && publishedDay.day;
+      if (!dayNum) return;
+      const accKey = dayNum + ':accommodation';
+      const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey)
+        ? (editorSelections || {})[accKey]
+        : editorDay.accommodation.selected_option_id;
+      if (!selectedAccId) return;
+      const options = editorDay.accommodation.options || [];
+      if (options.some(o => o.option_id === selectedAccId)) return; // already in candidates, no-op
+      // Current selection is a PLAN hotel not in options[]; synthesize a v2-shaped option from PLAN data
+      const planAcc = (publishedDay && publishedDay.accommodation) || {};
+      const synth = {
+        option_id: selectedAccId,
+        name: planAcc.name_base || planAcc.name || selectedAccId,
+        name_local: planAcc.name_local || '',
+        location_summary: planAcc.location_base || '',
+        cover_image: planAcc.image || null,
+        image: planAcc.image || null,
+        cost: planAcc.cost || 0
+      };
+      setEditorTripData(prev => {
+        if (!prev || !prev.days) return prev;
+        const updated = JSON.parse(JSON.stringify(prev));
+        const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+        if (!dayEntry || !dayEntry.accommodation) return prev;
+        if (!dayEntry.accommodation.options) dayEntry.accommodation.options = [];
+        if (!dayEntry.accommodation.options.some(o => o.option_id === selectedAccId)) {
+          dayEntry.accommodation.options.push(synth);
+        }
+        return updated;
+      });
+    };
+
     const bridge = (slotId, optionId, originSlotId = null) => {
       const dayNum = publishedDay && publishedDay.day;
       if (!dayNum) return;
+      if (slotId === 'accommodation') preserveCurrentAccommodationOption();
       const updates = { [dayNum + ':' + slotId]: optionId };
       if (originSlotId && _isCompatible(originSlotId, slotId)) {
         updates[dayNum + ':' + originSlotId] = optionId;
