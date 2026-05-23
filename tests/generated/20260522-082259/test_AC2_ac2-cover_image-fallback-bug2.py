@@ -20,4 +20,43 @@ def test_AC2():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — all 6 image sites use cover_image fallback")
+    import re
+
+    TPL = "scripts/lib/react_template.tpl"
+
+    def _lines_range(start, end):
+        with open(TPL) as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[start - 1:end])
+
+    with open(TPL) as f:
+        content = f.read()
+    lines = content.splitlines()
+
+    # Per-site fail patterns: each must return 0 matches after patching
+    fail_patterns = [
+        ("meals slot L870", r"opt\.image && <img"),
+        ("cafe slot L960", r"c\.image && <img"),
+        ("attractions slot L1048", r"attr\.image && <img"),
+        ("entertainment slot L1133", r"ent\.image && <img"),
+        ("accommodation slot L1274", r"acc\.image && <img"),
+        ("timeline guard L1828", r"entry\.image && !sm"),
+    ]
+    for site_name, pattern in fail_patterns:
+        matches = [ln for ln in lines if re.search(pattern, ln)]
+        assert len(matches) == 0, (
+            f"AC2 FAIL at {site_name}: unpatched pattern '{pattern}' still found {len(matches)} time(s): {matches}"
+        )
+
+    # Timeline src L1830: src={entry.image} must be absent in lines 1828-1835
+    timeline_block = _lines_range(1828, 1835)
+    assert "src={entry.image}" not in timeline_block, (
+        "AC2 FAIL: 'src={entry.image}' still present in lines 1828-1835 (L1830 src not patched)"
+    )
+
+    # Positive: cover_image || must appear 6+ times in lines 860-1850
+    slot_block = _lines_range(860, 1850)
+    cover_count = slot_block.count("cover_image ||")
+    assert cover_count >= 6, (
+        f"AC2 FAIL: expected 6+ 'cover_image ||' occurrences in lines 860-1850, found {cover_count}"
+    )
