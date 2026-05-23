@@ -20,4 +20,30 @@ def test_AC4():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — accommodation card has draggable/onDragStart/onDragEnd")
+    import re
+
+    TPL = "scripts/lib/react_template.tpl"
+
+    def _lines_range(start, end):
+        with open(TPL) as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[start - 1:end])
+
+    # Lines 1260-1290: accommodation card .map() callback area
+    block = _lines_range(1260, 1290)
+
+    # draggable attr must be present
+    assert "draggable" in block, (
+        "AC4 FAIL: 'draggable' not found in lines 1260-1290 (accommodation card div missing draggable attr)"
+    )
+
+    # direction:'board' payload must be present in onDragStart
+    drag_block = _lines_range(1265, 1290)
+    assert re.search(r"direction.*board", drag_block), (
+        "AC4 FAIL: 'direction.*board' not found in lines 1265-1290 (onDragStart payload missing direction:'board')"
+    )
+
+    # onDragEnd must be present
+    assert "onDragEnd" in block, (
+        "AC4 FAIL: 'onDragEnd' not found in lines 1260-1290 (accommodation card div missing onDragEnd attr)"
+    )
