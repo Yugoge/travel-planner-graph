@@ -1825,9 +1825,9 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                   }} />
 
                   {/* Apple Calendar style: Image only for full-height entries */}
-                  {entry.image && !sm && showDetails && (
+                  {(entry.cover_image || entry.image) && !sm && showDetails && (
                     <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                      <img src={entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
+                      <img src={entry.cover_image || entry.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
                     </div>
                   )}
 
