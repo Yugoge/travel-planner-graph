@@ -2476,13 +2476,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                   setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'meals-any', originSlotId: rawOpt._originSlotId });
                 }}
-                style={{
-                  background: isPending ? '#e6f3ff' : isSelected ? '#e9f5ec' : '#fafafa',
-                  borderRadius: '6px',
-                  border: '1px solid ' + (isPending ? '#0085fe' : isSelected ? '#45b26b' : '#e5e7eb'),
-                  padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
-                  userSelect: 'none', position: 'relative'
-                }}
+                style={candidateCardStyle(isSelected, isPending)}
               >
                 {isSelected && <span style={{ position: 'absolute', top: '6px', right: '8px', color: '#45b26b', fontWeight: '700', fontSize: '13px' }}>✓</span>}
                 <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: isSelected ? '16px' : 0 }}>
