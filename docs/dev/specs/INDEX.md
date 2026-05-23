@@ -1,12 +1,19 @@
 # specs
 
-*Last updated: 2026-05-21T06:34:58Z*
-**Total entries**: 46
+*Last updated: 2026-05-23T15:49:41Z*
+**Total entries**: 53
 **Convention**: kebab
 
 ## Tree
 ```
 specs/
+├── 20260521-061307/
+│   └── views/
+│       ├── `ba.md` - ba view of 20260521-061307
+│       ├── `dev.md` - dev view of 20260521-061307
+│       ├── `manifest.json` - json config
+│       ├── `orchestrator.md` - orchestrator view of 20260521-061307
+│       └── `qa.md` - qa view of 20260521-061307
 ├── spec-20260505-221501/
 │   ├── views/
 │   │   ├── `architect.md` - architect view of spec-20260505-221501
