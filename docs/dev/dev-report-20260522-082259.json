@@ -1,0 +1,119 @@
+{
+  "request_id": "20260522-082259",
+  "task_id": "20260522-082259",
+  "timestamp": "2026-05-23T15:55:00Z",
+  "baseline_head_sha": "14f72e301d6965bdfa2a2e7298e0f8756dc0ee9a",
+  "baseline_dirty_snapshot": " M scripts/lib/react_template.tpl",
+  "dev_report_path": "docs/dev/dev-report-20260522-082259.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [
+      "tests/generated/20260522-082259/test_AC1_ac1-candidateCardStyle-bug1.py",
+      "tests/generated/20260522-082259/test_AC2_ac2-cover_image-fallback-bug2.py",
+      "tests/generated/20260522-082259/test_AC3_ac3-preserve-plan-hotel-bug3.py",
+      "tests/generated/20260522-082259/test_AC4_ac4-accommodation-draggable-bug4.py",
+      "tests/generated/20260522-082259/test_AC5_ac5-direction-board-payload-bug5.py",
+      "tests/generated/20260522-082259/test_AC6_ac6-null-guard-backward-compat.py"
+    ],
+    "observed_preexisting": [
+      "scripts/lib/react_template.tpl (Bug1 candidateCardStyle, Bug2 cover_image, Bug4 draggable+dragOptionId, Bug5) — all four fixes confirmed present before this dev cycle via grep; appeared in baseline_dirty_snapshot as pre-dirty"
+    ],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Verified Bug 1 (candidateCardStyle) pre-existing: 5 matches including definition at L2264-2274 and 3 call sites; borderRadius:'6px' absent from lines 2390-2560",
+        "type": "verification",
+        "files_modified": [],
+        "rationale": "BA spec said fix at L2418-2424, L2473-2478, L2524-2529 — all already patched in baseline_dirty_snapshot"
+      },
+      {
+        "id": 2,
+        "description": "Verified Bug 2 (cover_image fallback) pre-existing: all 6 image sites patched; 0 unpatched patterns",
+        "type": "verification",
+        "files_modified": [],
+        "rationale": "All 6 sites (L870, L960, L1048, L1133, L1281, L1835/1837) already use (cover_image || image)"
+      },
+      {
+        "id": 3,
+        "description": "Implemented Bug 3: preserveCurrentAccommodationOption helper + 2 call sites in bridge and applyBridge",
+        "type": "code_fix",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Added preserveCurrentAccommodationOption() function inside useEffect closure before bridge definition. Reads current selectedAccId, checks if absent from accommodation.options[], synthesizes v2-shaped option using name_base/name_local/location_base/image PLAN fields, pushes via setEditorTripData. Called in bridge (drag path) and applyBridge (tap path) before setEditorSelections mutation.",
+        "rationale": "Root cause: bridge writes new selection without preserving PLAN hotel that is not in options[]. options[] is the only Candidates source, so replaced hotel disappears. Fix: synthesize v2-shaped option from PLAN data and push into options[] before overwriting selection."
+      },
+      {
+        "id": 4,
+        "description": "Verified Bug 4 (draggable + direction:board) pre-existing: dragOptionId computed at L1267, draggable={!!dragOptionId}, sourceSlotId:'accommodation', direction:'board' all present",
+        "type": "verification",
+        "files_modified": [],
+        "rationale": "Bug 4 fix was already in baseline_dirty_snapshot"
+      },
+      {
+        "id": 5,
+        "description": "Implemented all 6 generated test skeletons (AC1-AC6) replacing TEST_INCOMPLETE sentinels with real grep-based assertions. All 6 pass.",
+        "type": "test",
+        "files_created": [
+          "tests/generated/20260522-082259/test_AC1_ac1-candidateCardStyle-bug1.py",
+          "tests/generated/20260522-082259/test_AC2_ac2-cover_image-fallback-bug2.py",
+          "tests/generated/20260522-082259/test_AC3_ac3-preserve-plan-hotel-bug3.py",
+          "tests/generated/20260522-082259/test_AC4_ac4-accommodation-draggable-bug4.py",
+          "tests/generated/20260522-082259/test_AC5_ac5-direction-board-payload-bug5.py",
+          "tests/generated/20260522-082259/test_AC6_ac6-null-guard-backward-compat.py"
+        ],
+        "rationale": "test_writer_expected: true in dispatch. Tests replace pytest.fail sentinels with real assertions reading scripts/lib/react_template.tpl directly."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "14f72e30 — feat(web): unified viewer/editor page + bidirectional drag (M1-M29)",
+      "why_issue_occurred": "Bidirectional drag M1-M29 added drag attrs to meals/cafe/attractions/entertainment but omitted them from accommodation. Candidates panel styled independently. Bridge wrote new accommodation selection without preserving the replaced PLAN hotel in options[].",
+      "how_fix_addresses_root": "preserveCurrentAccommodationOption synthesizes v2-shaped option from PLAN hotel data and pushes into bucket.options[] before bridge overwrites selection, ensuring replaced hotel reappears in Candidates panel"
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 69,
+      "lines_removed": 28,
+      "new_symbols_introduced": ["preserveCurrentAccommodationOption"],
+      "minimum_possible_lines_estimate": 37,
+      "justification_for_overage": "69 insertions / 28 deletions is the total diff from baseline HEAD (14f72e30) including pre-existing dirty fixes for Bugs 1+2+4+5 already in working tree. My actual new addition this cycle is only Bug 3: ~37 lines for the helper + 2 one-line guard calls. The large headline number is explained by the baseline_dirty_snapshot showing scripts/lib/react_template.tpl was already modified before dispatch."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Run python3 -m pytest tests/generated/20260522-082259/ -v for all 6 static checks (all pass). QA must also verify via Playwright E2E on travel.life-ai.app: drag an accommodation candidate into slot (image should show), then drag it back to Candidates panel (original PLAN hotel should reappear). Verify style consistency between Candidates and Kanban panels.",
+    "permissions_to_add": []
+  },
+  "blast_radius_declarations": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "coverage_gap_severity": "n/a",
+      "addressed_by": "new_tests_written",
+      "tests": [
+        "tests/generated/20260522-082259/test_AC1_ac1-candidateCardStyle-bug1.py (AC1 — 6 passed)",
+        "tests/generated/20260522-082259/test_AC2_ac2-cover_image-fallback-bug2.py (AC2 — 6 passed)",
+        "tests/generated/20260522-082259/test_AC3_ac3-preserve-plan-hotel-bug3.py (AC3 — 6 passed)",
+        "tests/generated/20260522-082259/test_AC4_ac4-accommodation-draggable-bug4.py (AC4 — 6 passed)",
+        "tests/generated/20260522-082259/test_AC5_ac5-direction-board-payload-bug5.py (AC5 — 6 passed)",
+        "tests/generated/20260522-082259/test_AC6_ac6-null-guard-backward-compat.py (AC6 — 6 passed)"
+      ]
+    }
+  ],
+  "blocking_issues": [],
+  "recommendations": [
+    "QA: verify via Playwright E2E on travel.life-ai.app that replaced hotel reappears in Candidates after drag-in",
+    "QA: verify accommodation card is draggable from DayColumn back to Candidates panel (direction:board payload)",
+    "QA: verify style consistency between Candidates sidebar and Kanban slot cards"
+  ],
+  "self_verification": {
+    "build": "skipped (no build step — single .tpl file, no compile step applicable)",
+    "smoke_check": "pass — all 6 pytest tests pass; all verification greps pass: AC1a=0 borderRadius:'6px' in L2390-2560, AC1b=3 style={candidateCardStyle(, AC2=0 unpatched image patterns, AC3=3 preserveCurrentAccommodationOption, AC4=1 draggable, AC5=1 direction:board + sourceSlotId, AC6=1 null-guard",
+    "notes": "No discrepancies. Bug 3 helper implemented and both bridges confirmed to call it. Pre-existing Bugs 1+2+4+5 confirmed present from baseline_dirty_snapshot."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
