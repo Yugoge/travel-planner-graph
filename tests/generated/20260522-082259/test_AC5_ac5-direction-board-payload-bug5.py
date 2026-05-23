@@ -20,4 +20,35 @@ def test_AC5():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — direction:board payload includes sourceSlotId")
+    import re
+
+    TPL = "scripts/lib/react_template.tpl"
+
+    def _lines_range(start, end):
+        with open(TPL) as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[start - 1:end])
+
+    # Lines 1265-1290: accommodation card onDragStart payload area
+    block = _lines_range(1265, 1290)
+
+    # sourceSlotId: 'accommodation' must be in the payload
+    assert re.search(r"sourceSlotId.*accommodation", block), (
+        "AC5 FAIL: 'sourceSlotId.*accommodation' not found in lines 1265-1290 (onDragStart payload incomplete)"
+    )
+
+    # direction: 'board' must be in the payload
+    assert re.search(r"direction.*board", block), (
+        "AC5 FAIL: 'direction.*board' not found in lines 1265-1290 (onDragStart payload missing direction:board)"
+    )
+
+    # handleSidebarDrop at ~L2335 must handle direction==='board'
+    with open(TPL) as f:
+        full_content = f.read()
+    assert "direction" in full_content and "board" in full_content, (
+        "AC5 FAIL: handleSidebarDrop direction:board handling not found in file"
+    )
+    sidebar_block = _lines_range(2330, 2345)
+    assert re.search(r"direction.*board|board.*direction", sidebar_block), (
+        "AC5 FAIL: handleSidebarDrop at ~L2335 does not check direction==='board'"
+    )
