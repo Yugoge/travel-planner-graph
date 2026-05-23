@@ -20,4 +20,34 @@ def test_AC1():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    pytest.fail(f"TEST_INCOMPLETE: {AC_UID} — candidateCardStyle helper exists and all 3 sites use it")
+    import re
+    import subprocess
+
+    TPL = "scripts/lib/react_template.tpl"
+
+    def _lines_range(start, end):
+        with open(TPL) as f:
+            all_lines = f.readlines()
+        return "".join(all_lines[start - 1:end])
+
+    # AC1 main: candidateCardStyle appears at least 4 times (1 def + 3 call sites)
+    with open(TPL) as f:
+        content = f.read()
+    count_all = content.count("candidateCardStyle")
+    assert count_all >= 4, (
+        f"AC1 FAIL: expected 4+ occurrences of 'candidateCardStyle', found {count_all}"
+    )
+
+    # AC1a: borderRadius: '6px' must be ABSENT from candidate area (lines 2390-2560)
+    candidates_block = _lines_range(2390, 2560)
+    bad_matches = [ln for ln in candidates_block.splitlines() if "borderRadius: '6px'" in ln]
+    assert len(bad_matches) == 0, (
+        f"AC1a FAIL: found {len(bad_matches)} hardcoded borderRadius:'6px' in lines 2390-2560 "
+        f"(expected 0 after patching): {bad_matches}"
+    )
+
+    # AC1b: style={candidateCardStyle( must appear 3+ times in candidate area
+    call_matches = [ln for ln in candidates_block.splitlines() if "style={candidateCardStyle(" in ln]
+    assert len(call_matches) >= 3, (
+        f"AC1b FAIL: expected 3+ 'style={{candidateCardStyle(' in lines 2390-2560, found {len(call_matches)}"
+    )
