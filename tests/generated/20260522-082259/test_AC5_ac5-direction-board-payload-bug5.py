@@ -48,7 +48,7 @@ def test_AC5():
     assert "direction" in full_content and "board" in full_content, (
         "AC5 FAIL: handleSidebarDrop direction:board handling not found in file"
     )
-    sidebar_block = _lines_range(2330, 2345)
+    sidebar_block = _lines_range(2340, 2365)
     assert re.search(r"direction.*board|board.*direction", sidebar_block), (
-        "AC5 FAIL: handleSidebarDrop at ~L2335 does not check direction==='board'"
+        "AC5 FAIL: handleSidebarDrop (~L2347) does not check direction==='board'"
     )
