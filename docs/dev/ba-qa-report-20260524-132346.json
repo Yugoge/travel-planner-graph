@@ -1,0 +1,289 @@
+{
+  "request_id": "20260524-132346",
+  "task_id": "20260524-132346",
+  "timestamp": "2026-05-24T14:15:00Z",
+  "type": "ba-validation",
+  "verdict": "fail",
+  "qa": {
+    "status": "fail",
+    "overall_assessment": "BA output for task 20260524-132346 has 3 blocking objections that must be corrected before dev proceeds. The most critical is a systematic line-number error: loading/empty texts cited as lines 555/577 throughout the ticket and context JSON are actually at lines 2287/2309 in the source file. Additionally, the pre-spec Spec file (docs/dev/specs/spec-20260524-125921.md) that dev reads first contains a direct contradiction with the ticket's M1 requirement regarding sourceSlotId. AC1 also has a scoping defect in its must_not_contain check that would reject a correct implementation.",
+    "objections": [
+      {
+        "id": "OBJ-1",
+        "verdict": "blocking",
+        "dimension": "affected_file_accuracy",
+        "severity": "critical",
+        "title": "Wrong line numbers for loading/empty texts throughout BA artifacts",
+        "description": "The ticket's Evidence section (line 64), Technical Hints (lines 308-309), 'Lines with bugs' section (line 315), and the context JSON all cite lines 555 and 577 as the locations of loading/empty text in CandidatesSidebar. The actual source at those lines contains date-formatting helpers (formatRealDate at ~line 555, dayLabelShort at ~line 577) that have nothing to do with CandidatesSidebar. The actual loading text 'Loading candidates...' is at line 2287 and the empty text 'No candidates for this day.' is at line 2309. This error was propagated into the context JSON codex_consult.findings.proposed_fix: 'Apply lang logic to loading text (line 555), empty text (line 577)'. If dev follows the ticket's 'Lines with bugs' section literally, they will edit date-formatting code instead of the CandidatesSidebar loading states. M7 (i18n for loading/empty texts) will silently fail.",
+        "affected_artifacts": [
+          "docs/dev/ticket-20260524-132346.md:64 (Evidence section)",
+          "docs/dev/ticket-20260524-132346.md:308-309 (Technical Hints)",
+          "docs/dev/ticket-20260524-132346.md:315 ('Lines with bugs' Bug C entry)",
+          "docs/dev/context-20260524-132346.json (codex_consult.findings.proposed_fix)"
+        ],
+        "actual_source_locations": {
+          "loading_text": "scripts/lib/react_template.tpl:2287 — 'Loading candidates...'",
+          "empty_text": "scripts/lib/react_template.tpl:2309 — 'No candidates for this day.'"
+        },
+        "required_fix": "Replace all references to lines 555/577 with lines 2287/2309 in the ticket Evidence section, Technical Hints section, 'Lines with bugs' Bug C entry, and context JSON codex_consult.findings.proposed_fix. Verify every other Bug C line reference against the actual source before dev proceeds."
+      },
+      {
+        "id": "OBJ-2",
+        "verdict": "blocking",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "critical",
+        "title": "Pre-spec file (Spec file: docs/dev/specs/spec-20260524-125921.md) contradicts ticket M1 on sourceSlotId — dev reads pre-spec FIRST",
+        "description": "The /dev workflow passes docs/dev/specs/spec-20260524-125921.md as the 'Spec file:' parameter. Dev reads the global spec before the BA ticket. The pre-spec Technical Hints (lines 174-182) explicitly instruct: add 'sourceSlotId: slotId' to ALL candidate card onDragStart payloads, and the proposed onDrop condition (line 189) gates on 'payload.sourceSlotId': '(payload.direction === \"board\" || payload.direction === \"candidates\") && payload.sourceSlotId && saveMutations'. If dev follows this instruction, candidate drops will include sourceSlotId, and the gated condition will work — but the source slot will be CLEARED because the board handlers contain 'saveMutations(dayNum, [{type:select, slot:payload.sourceSlotId, option_id:null}])' in the board branch. This is the exact state-corruption bug the ticket's M1 is trying to prevent. Ticket M1 says 'Do NOT add sourceSlotId to candidate payloads' but this appears AFTER the pre-spec which says the opposite. A developer reading both documents in /dev workflow order will encounter the dangerous instruction first.",
+        "affected_artifacts": [
+          "docs/dev/specs/spec-20260524-125921.md:174-182 (Technical Hints — adds sourceSlotId)",
+          "docs/dev/specs/spec-20260524-125921.md:189 (proposed onDrop condition gating on sourceSlotId)",
+          "docs/dev/ticket-20260524-132346.md:103 (M1 — contradicts pre-spec)"
+        ],
+        "conflict": {
+          "pre_spec_says": "Add sourceSlotId: slotId to candidate payloads; gate onDrop on payload.sourceSlotId",
+          "ticket_m1_says": "Do NOT add sourceSlotId to candidate payloads"
+        },
+        "required_fix": "Either (a) remove the sourceSlotId instruction from the pre-spec Technical Hints before passing it to dev, or (b) add a prominent 'SUPERSEDED' banner to the pre-spec Technical Hints section citing the ticket M1 as the authoritative instruction, or (c) remove the pre-spec from the /dev Spec file: parameter entirely and rely solely on the ticket. The conflict must be resolved before dev receives any artifacts."
+      },
+      {
+        "id": "OBJ-3",
+        "verdict": "blocking",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "critical",
+        "title": "AC1 must_not_contain 'option_id: null' check is too broad — rejects correct implementations",
+        "description": "AC1 check specifies must_not_contain: 'option_id: null' applied to the onDrop handler block. However, the correct board-to-board drag branch (which must be preserved and will remain in the same onDrop function) legitimately contains 'option_id: null' to clear the source slot when a board card is moved. If dev correctly implements a candidates branch while preserving the board branch, the AC1 check will FAIL even though the implementation is correct. The check needs to be scoped exclusively to the payload.direction === 'candidates' code branch, not the entire onDrop handler. Additionally, the AC1 given/when description says the drop target is '.slot-drop[data-slot-id=\"S\"]' where S comes from the candidate's slotId. For meals candidates, slotId is 'meals-any' (a virtual ID), but board drop targets use real slot IDs ('breakfast', 'lunch', 'dinner'). The AC conflates candidate payload slotId with drop target data-slot-id.",
+        "affected_artifacts": [
+          "docs/dev/acceptance-criteria-20260524-132346.json:AC1.check.must_not_contain"
+        ],
+        "required_fix": "Change AC1 check from must_not_contain: 'option_id: null' to must_not_contain_in_candidates_branch: 'option_id: null' with explicit scope: 'within the payload.direction === candidates conditional block only'. Also clarify the meals case: candidate payload carries slotId='meals-any' but the drop target data-slot-id is the actual meal slot; saveMutations should use the board slot's data-slot-id as slot, not the candidate's slotId."
+      },
+      {
+        "id": "OBJ-4",
+        "verdict": "major",
+        "dimension": "affected_file_accuracy",
+        "severity": "major",
+        "title": "Symbol location errors in context JSON pre_existing_guards and imports_from",
+        "description": "The context JSON pre_existing_guards cites _isCompatible at line 497 (actual: line 2229) and MEAL_SLOTS at line 496 (actual: line 2228). The imports_from arrays reference _flashSuccess at line 504 (actual: line 2236) and _flashReject at line 518 (actual: line 2250). These are the 'do not touch' guards. Wrong line numbers mean dev cannot navigate to these guards by line number. While the function names are correct and dev can grep for them, the systematic off-by-~1730-lines error suggests the BA line-number extraction process has a fundamental bug (possibly reading a different version of the file, or the component definition offsets were miscounted from a partial file view).",
+        "affected_artifacts": [
+          "docs/dev/context-20260524-132346.json (pre_existing_guards, imports_from)"
+        ],
+        "actual_source_locations": {
+          "MEAL_SLOTS": "scripts/lib/react_template.tpl:2228",
+          "_isCompatible": "scripts/lib/react_template.tpl:2229",
+          "_flashSuccess": "scripts/lib/react_template.tpl:2236",
+          "_flashReject": "scripts/lib/react_template.tpl:2250"
+        },
+        "required_fix": "Correct all line references in pre_existing_guards and imports_from in context JSON to match actual source. Investigate whether the same offset error affects any other line references in the context JSON beyond those already identified."
+      },
+      {
+        "id": "OBJ-5",
+        "verdict": "major",
+        "dimension": "investigation_completeness",
+        "severity": "major",
+        "title": "No AC covers preservation of window.setEditorSelection bridge side effects",
+        "description": "The board onDrop handlers at lines 913, 998, 1084, 1170, 1320, and 1928 all call window.setEditorSelection (via the bridge) after saveMutations. This bridge handles cross-meal option copying into the target slot and accommodation preservation. The ticket's development approach for Bug A adds a candidates branch that calls saveMutations directly. No AC verifies that the bridge side effects are either (a) preserved in the candidates branch or (b) deliberately not needed for candidate-to-board drops. If dev adds saveMutations without the bridge call for candidates, meal option copies and accommodation merges may silently fail. This is a regression risk not covered by any acceptance criterion.",
+        "affected_artifacts": [
+          "docs/dev/acceptance-criteria-20260524-132346.json (no AC for bridge side effects)",
+          "docs/dev/ticket-20260524-132346.md (M1-M3 do not mention bridge preservation)"
+        ],
+        "required_fix": "Add an AC or explicit note in M1/M2/M3 clarifying whether window.setEditorSelection bridge must be called in the candidates branch, and if so, with what parameters. If bridge is not needed for candidates, document the rationale explicitly so dev does not add it by mistake or skip it by oversight."
+      },
+      {
+        "id": "OBJ-6",
+        "verdict": "major",
+        "dimension": "spec_text_vs_execution_drift",
+        "severity": "major",
+        "title": "AC1 slotId/toSlotId conflation for meals case",
+        "description": "AC1 given says 'candidate card with slotId=S' and when says 'drops onto .slot-drop[data-slot-id=\"S\"]'. For activity and accommodation candidates, slotId in the payload matches the board drop target. But meals candidates use slotId='meals-any' (a virtual ID that is not a real board slot). The board meal slots are 'breakfast', 'lunch', 'dinner'. The drop overlay .slot-drop for a meal board slot will have data-slot-id='breakfast' (not 'meals-any'). The saveMutations call for meals must use the board slot's data-slot-id as the slot parameter, not the candidate's slotId. AC1 as written gives the incorrect impression that the candidate's own slotId is the drop target identifier.",
+        "affected_artifacts": [
+          "docs/dev/acceptance-criteria-20260524-132346.json:AC1 (given, when, then clauses)"
+        ],
+        "required_fix": "Rewrite AC1 to distinguish: for activity/accommodation, toSlotId === candidate.slotId; for meals, toSlotId is the board drop target's data-slot-id (breakfast/lunch/dinner), not candidate.slotId ('meals-any'). saveMutations must use toSlotId (the board slot) not candidate.slotId for the slot parameter."
+      }
+    ],
+    "observations": [
+      {
+        "id": "OBS-1",
+        "dimension": "investigation_completeness",
+        "severity": "minor",
+        "title": "AC5 grep_pattern catches only one bilingual literal out of multiple",
+        "description": "AC5 check uses grep_pattern: '早餐 / Breakfast' which catches only the breakfast label. The source file also contains '住宿 / Accommodation' (line 2415) and '餐饮 / Meals' (line 2461) as bilingual section headers inside #candidates-groups. A comprehensive grep should also target these strings. A post-fix grep of '/ [A-Z]' or '住宿 /' or '餐饮 /' would catch all bilingual patterns more reliably.",
+        "in_user_path": true,
+        "security_relevant": false,
+        "recommendation": "Expand AC5 grep_pattern to use a regex that catches all bilingual slash-strings, e.g., '[\\u4e00-\\u9fff]+ / [A-Za-z]+' or list each known bilingual string explicitly."
+      },
+      {
+        "id": "OBS-2",
+        "dimension": "investigation_completeness",
+        "severity": "minor",
+        "title": "AC6 has no executable grep check — only boolean assertion",
+        "description": "AC6 check is 'chrome_labels_english_only: true' with no executable grep_pattern. Unlike AC5 which has a concrete grep pattern (albeit narrow), AC6 has no mechanical verification recipe. Dev cannot confirm compliance without browser testing or a manual source scan.",
+        "in_user_path": true,
+        "security_relevant": false,
+        "recommendation": "Add an executable check to AC6, e.g., grep_pattern with a CJK unicode range '[\\u4e00-\\u9fff]' that must have zero matches in chrome label source strings (excluding data field values). This mirrors AC5's approach for the lang===base case."
+      },
+      {
+        "id": "OBS-3",
+        "dimension": "investigation_completeness",
+        "severity": "minor",
+        "title": "Loading/empty text i18n (M7) not explicitly called out in AC5/AC6 'then' clause",
+        "description": "AC5 and AC6 describe that panel title, section headers, and slot labels must be lang-aware. The loading text 'Loading candidates...' (line 2287) and empty text 'No candidates for this day.' (line 2309) are hardcoded English strings in CandidatesSidebar chrome. These are covered by M7 in the ticket but are not mentioned in the AC5/AC6 'then' clauses. Dev could pass the ACs while leaving loading/empty texts in English-only.",
+        "in_user_path": true,
+        "security_relevant": false,
+        "recommendation": "Add loading/empty text to AC5 and AC6 'then' clauses: 'loading text and empty state text must also respect lang parameter (no hardcoded English-only strings)'."
+      }
+    ],
+    "out_of_scope_observations": [],
+    "success_criteria_results": [
+      {
+        "requirement_id": "DIM-1",
+        "criterion": "evidence_quality — BA's factual claims are backed by evidence",
+        "verification_method": "Read actual source file at cited lines to verify line accuracy",
+        "status": "fail",
+        "result": "fail",
+        "details": "Lines 555/577 cited as Bug C loading/empty locations contain date-formatting helpers, not CandidatesSidebar loading states. Actual locations: 2287/2309. Symbol location errors throughout context JSON (off by ~1730 lines for all CandidatesSidebar symbols). BA claims are not supported by evidence at the cited locations.",
+        "evidence": "Grepped react_template.tpl for 'Loading candidates' → line 2287. Grepped for 'No candidates' → line 2309. Read lines 550-580 → formatRealDate/dayLabelShort helpers. Read context JSON pre_existing_guards → line 497 for _isCompatible, actual line 2229."
+      },
+      {
+        "requirement_id": "DIM-2",
+        "criterion": "scope_alignment — BA scope matches original requirement",
+        "verification_method": "Cross-check ticket MoSCoW against 3 bugs in the dispatch prompt",
+        "status": "pass",
+        "result": "pass",
+        "details": "BA correctly identifies all 3 bugs (A: DnD payload, B: visual parity, C: i18n). MoSCoW covers M1-M8 addressing all three. No scope narrowing or renaming detected. Must-haves cover the complete user-visible requirement.",
+        "evidence": "Ticket M1-M3 (Bug A), M4-M6 (Bug B), M7-M8 (Bug C) verified against dispatch prompt bug descriptions."
+      },
+      {
+        "requirement_id": "DIM-3",
+        "criterion": "investigation_completeness — required investigations were performed",
+        "verification_method": "Check that BA verified drag payload structure, visual comparison, and i18n audit",
+        "status": "fail",
+        "result": "fail",
+        "details": "Bug A investigation is incomplete: no AC covers preservation of window.setEditorSelection bridge side effects when adding candidates branch. Bug A payload analysis confirmed direction field is missing but the AC1 check has scoping defect. Pre-spec vs ticket conflict is not resolved in the investigation — both contradictory artifacts are passed to dev without resolution.",
+        "evidence": "OBJ-2 (pre-spec conflict), OBJ-3 (AC1 scoping), OBJ-5 (bridge side effects) document investigation gaps."
+      },
+      {
+        "requirement_id": "DIM-4",
+        "criterion": "affected_file_accuracy — identified files and lines are correct",
+        "verification_method": "Read source file at all cited line numbers and verify they contain the described code",
+        "status": "fail",
+        "result": "fail",
+        "details": "Loading/empty text lines are wrong throughout (555/577 cited, 2287/2309 actual). All CandidatesSidebar symbol locations in context JSON are off by approximately 1730 lines. These errors would cause dev to navigate to wrong code locations.",
+        "evidence": "OBJ-1 and OBJ-4 document all specific line discrepancies with actual verified locations."
+      },
+      {
+        "requirement_id": "DIM-5",
+        "criterion": "spec_text_vs_execution_drift — AC literal text is executable and correct",
+        "verification_method": "Attempt to execute each AC check and verify it produces meaningful results",
+        "status": "fail",
+        "result": "fail",
+        "details": "AC1 must_not_contain check would reject correct implementations (board-to-board branch legitimately contains option_id: null). AC1 slotId/toSlotId conflation is architecturally incorrect for meals case. AC6 has no executable check. AC5 grep_pattern is too narrow.",
+        "evidence": "OBJ-3 (AC1 must_not_contain), OBJ-6 (AC1 slotId conflation), OBS-2 (AC6 no grep), OBS-1 (AC5 narrow grep)."
+      }
+    ],
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex returned 10 findings. Key ones: (1) Pre-spec sourceSlotId conflict is BLOCKING, not merely potential confusion — dev reads Spec file first so this is a guaranteed implementation error path. (2) AC1 must_not_contain: 'option_id: null' is invalid when applied to full onDrop block — board-to-board branch legitimately contains it. (3) AC1 slotId/toSlotId conflation — meals candidate slotId 'meals-any' ≠ board drop target slot IDs. (4) Missing bridge side effects AC (window.setEditorSelection). (5) AC3 overlay vs overlay-plus-actual-drop not distinguished. (6) AC5/AC6 grep weakness for multiple bilingual strings. (7) Wrong 'non-UI' setup classification — CandidatesSidebar is a UI component. (8) Mobile dimensions not in AC3. (9) Missing test for .slot-drop overlay position/size relative to card. (10) AC2 three-card-type verification needs explicit test data.",
+      "feedback_incorporated": "OBJ-2 severity upgraded from 'potential confusion' to 'blocking' per codex finding (1). OBJ-3 added per codex finding (2). OBJ-6 added per codex finding (3). OBJ-5 added per codex finding (4). OBS-1 and OBS-2 added per codex findings (6) and (7). Codex findings (5), (7), (8), (9), (10) logged as observations below.",
+      "codex_all_findings": [
+        {
+          "codex_id": "CF-1",
+          "summary": "Pre-spec sourceSlotId conflict is a guaranteed implementation error path, not potential confusion — dev reads Spec file first",
+          "classification": "in_scope_real_bug",
+          "disposition": "incorporated_as_OBJ-2_severity_upgraded_to_blocking"
+        },
+        {
+          "codex_id": "CF-2",
+          "summary": "AC1 must_not_contain 'option_id: null' is invalid when applied to full onDrop block — board-to-board branch legitimately contains it",
+          "classification": "in_scope_real_bug",
+          "disposition": "incorporated_as_OBJ-3"
+        },
+        {
+          "codex_id": "CF-3",
+          "summary": "AC1 slotId/toSlotId conflation — meals candidate uses slotId='meals-any' but board drop target data-slot-id is 'breakfast'/'lunch'/'dinner'",
+          "classification": "in_scope_real_bug",
+          "disposition": "incorporated_as_OBJ-6"
+        },
+        {
+          "codex_id": "CF-4",
+          "summary": "No AC covers preservation of window.setEditorSelection bridge side effects in the new candidates branch",
+          "classification": "in_scope_real_bug",
+          "disposition": "incorporated_as_OBJ-5"
+        },
+        {
+          "codex_id": "CF-5",
+          "summary": "AC3 does not distinguish between .slot-drop overlay being present vs correctly positioned/sized relative to the card",
+          "classification": "in_scope_minor",
+          "disposition": "logged_observation_only — AC3 presence check is sufficient for this cycle; positioning is a separate concern"
+        },
+        {
+          "codex_id": "CF-6",
+          "summary": "AC5 grep_pattern catches only one bilingual string; 住宿 / Accommodation and 餐饮 / Meals are not checked",
+          "classification": "in_scope_minor",
+          "disposition": "incorporated_as_OBS-1"
+        },
+        {
+          "codex_id": "CF-7",
+          "summary": "Bug B setup classified as 'non-UI' in context JSON but CandidatesSidebar is a UI component rendered in the browser",
+          "classification": "in_scope_minor",
+          "disposition": "logged_observation_only — misclassification does not affect dev implementation correctness"
+        },
+        {
+          "codex_id": "CF-8",
+          "summary": "AC3 specifies width/height for desktop but does not specify mobile dimensions — CandidatesSidebar may wrap on narrow viewports",
+          "classification": "in_scope_minor",
+          "disposition": "logged_observation_only — mobile dimension spec is out of scope for this BA cycle"
+        },
+        {
+          "codex_id": "CF-9",
+          "summary": "AC2 should specify explicit test data for all three card types (meals, accommodation, activity-slot-backed) not just assert 'all three card types'",
+          "classification": "in_scope_minor",
+          "disposition": "logged_observation_only — AC2 description is sufficient orientation; explicit test data is dev verification responsibility"
+        },
+        {
+          "codex_id": "CF-10",
+          "summary": "AC6 has no executable grep check — only boolean assertion chrome_labels_english_only: true",
+          "classification": "in_scope_real_bug",
+          "disposition": "incorporated_as_OBS-2"
+        }
+      ]
+    },
+    "summary": {
+      "blocking_objections": 3,
+      "major_objections": 3,
+      "minor_observations": 3,
+      "total_findings": 9,
+      "dimensions_failed": ["evidence_quality", "investigation_completeness", "affected_file_accuracy", "spec_text_vs_execution_drift"],
+      "dimensions_passed": ["scope_alignment"],
+      "release_recommendation": "reject — BA must correct all 3 blocking objections before dev proceeds",
+      "required_ba_actions": [
+        "OBJ-1: Correct lines 555/577 to 2287/2309 in ticket Evidence, Technical Hints, Lines with bugs section, and context JSON codex_consult findings",
+        "OBJ-2: Resolve pre-spec vs ticket M1 sourceSlotId conflict — either annotate pre-spec as superseded or remove it from dev's reading path",
+        "OBJ-3: Narrow AC1 must_not_contain scope to candidates branch only; clarify meals slotId/toSlotId distinction",
+        "OBJ-4 (major): Correct symbol line numbers in context JSON pre_existing_guards and imports_from",
+        "OBJ-5 (major): Add AC or explicit note for bridge side effects preservation in candidates branch",
+        "OBJ-6 (major): Rewrite AC1 given/when/then to correctly describe meals case where candidate slotId != drop target slot ID"
+      ]
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "evidence_quality: Loading/empty text lines 555/577 are wrong (actual 2287/2309); symbol locations off by ~1730 lines throughout",
+      "investigation_completeness: Pre-spec vs ticket conflict unresolved; bridge side effects not covered by any AC",
+      "affected_file_accuracy: All cited CandidatesSidebar line numbers are incorrect",
+      "spec_text_vs_execution_drift: AC1 must_not_contain too broad; AC1 slotId conflation for meals; AC6 no executable check"
+    ],
+    "blocking_objections": [
+      "OBJ-1: Fix loading/empty text line numbers throughout all BA artifacts (555/577 → 2287/2309)",
+      "OBJ-2: Resolve pre-spec sourceSlotId instruction vs ticket M1 'Do NOT add sourceSlotId' conflict before dev reads artifacts",
+      "OBJ-3: Narrow AC1 must_not_contain: 'option_id: null' to candidates branch scope only"
+    ],
+    "recommended_approach": "BA should re-read the actual source file using verified grep results for all line references before issuing revised artifacts. The pre-spec conflict resolution is most urgent: either annotate spec-20260524-125921.md with a SUPERSEDED banner on lines 174-189 and 189, or exclude it from the Spec file: parameter. All line numbers in the ticket and context JSON should be re-extracted by grep, not by memory or prior document inheritance.",
+    "additional_context": "The systematic line offset (~1730 lines) for all CandidatesSidebar symbols suggests the BA read a partial file or mistook a different component's line numbers. The component CandidatesSidebar begins around line 2266+ in the actual 3301-line file. All line references in the ticket's Bug C section appear to be offset by roughly this amount."
+  }
+}

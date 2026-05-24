@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-24T13:38:24Z*
-**Total entries**: 448
+*Last updated: 2026-05-24T13:51:03Z*
+**Total entries**: 429
 **Convention**: kebab
 
 ## Tree
@@ -18,28 +18,8 @@ dev/
 ├── screenshots/
 │   └── dev-20260505-123425/
 ├── specs/
-│   ├── 20260521-061307/
-│   │   └── views/
-│   ├── spec-20260505-221501/
-│   │   ├── views/
-│   │   └── `ba-report-init.json` - json config
-│   ├── spec-20260506-092951/
-│   │   └── views/
-│   ├── spec-20260508-221237/
-│   │   ├── views/
-│   │   └── `M2-contract.md` - M2 Contract — spec-20260508-221237
-│   ├── spec-20260513-085358/
-│   │   └── views/
-│   ├── `spec-20260412-141227.md` - Spec: Xiaohongshu (小红书) Cloudflare Worker Reverse Proxy
-│   ├── `spec-20260416-172720.md` - Spec: Fix silent data loss bug in POI agents — merge_agent_days replaces entire day object instead of merging at slot level
-│   ├── `spec-20260416-192200.md` - Spec: Unify all agent save behavior — slot-level merge as default, delete --merge-days
-│   ├── `spec-20260505-221501.md` - Spec: Travel-planner harness 升级 — Codex 共识版后验方案
-│   ├── `spec-20260506-092951.md` - Spec: Travel-planner harness root-cause hardening — block schema/semantic violations at write-time, fix accumulated data bugs, kill HEAD pollution
-│   ├── `spec-20260508-221237-redev1.md` - Redev Spec — spec-20260508-221237 Cycle 5 Close Blockers
-│   ├── `spec-20260508-221237.md` - Spec: gaode-maps harness ban (non-geo agents) + options-first day planning flow
-│   ├── `spec-20260513-085358.md` - Spec: M2 prerequisite — systematic bugs surfaced during 2026-05-13 china-20260412-092624 review
-│   ├── `spec-20260521-061307.md` - Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
-│   └── `spec-20260524-125921.md` - BA Specification: CandidatesSidebar — DnD unification + visual parity + i18n fix
+│   └── 20260521-061307/
+│       └── views/
 ├── `acceptance-criteria-20260522-082259.json` - json config
 ├── `acceptance-criteria-20260524-132346.json` - json config
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
@@ -74,6 +54,7 @@ dev/
 ├── `ba-qa-report-20260517-101502.json` - json config
 ├── `ba-qa-report-20260517-153318.json` - json config
 ├── `ba-qa-report-20260522-082259.json` - json config
+├── `ba-qa-report-20260524-132346.json` - json config
 ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
