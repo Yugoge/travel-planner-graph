@@ -1,0 +1,82 @@
+{
+  "request_id": "20260524-180339",
+  "task_id": "20260524-180339",
+  "timestamp": "2026-05-24T18:03:39Z",
+  "baseline_head_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
+  "baseline_dirty_snapshot": "",
+  "dev_report_path": "docs/dev/dev-report-20260524-180339.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fix selectedAccId null short-circuit at line 1266",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Replaced ternary that gates on edAcc presence with Object.prototype.hasOwnProperty.call pattern that checks editorSelections first, then falls back to edAcc.selected_option_id. Now returns non-null when slot has AI selection regardless of edAcc nullity.",
+        "rationale": "Root cause: selectedAccId returned null when edAcc was null, making dragOptionId=null and draggable=false. Fix mirrors the identical pattern already used at line 1307 (badge computation)."
+      },
+      {
+        "id": 2,
+        "description": "Fix accommodation drop-target isGated at line 1316",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Changed isGated from `!edAcc || edAcc.late_arrival_placeholder || edAcc.skipped` to `(!edAcc && !selectedAccId) || (edAcc && (edAcc.late_arrival_placeholder || edAcc.skipped))`. Now allows drops when selectedAccId is non-null even if edAcc object is null.",
+        "rationale": "Root cause: isGated=true purely because !edAcc blocked candidate drops on AI-selected slots. Skipped/late_arrival_placeholder guard is preserved."
+      },
+      {
+        "id": 3,
+        "description": "Rebuild and redeploy HTML for china and beijing-lijiang-dali plans",
+        "type": "deployment",
+        "files_modified": [],
+        "changes": "Regenerated HTML via generate-html-interactive.py for both active plans and deployed to /var/www/travel (nginx travel-web container at port 8094) via deploy-travel-plans.sh.",
+        "rationale": "Template changes must be embedded in static HTML for the nginx-served plans. Verified fix presence in deployed /var/www/travel/china/2026-04-12/index.html (5 occurrences of the two fix strings)."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — not a regression; original code never handled null-edAcc in selectedAccId draggable path",
+      "why_issue_occurred": "selectedAccId ternary at line 1266 short-circuited to null when edAcc was null, making dragOptionId=null||null=null and draggable=false for AI-selected accommodation cards. isGated at line 1316 also returned true on !edAcc alone.",
+      "how_fix_addresses_root": "selectedAccId now resolves from editorSelections first (regardless of edAcc), mirroring the pattern at line 1307. isGated now only gates on explicit skipped/late_arrival states, not on edAcc nullity alone."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 4,
+      "lines_removed": 2,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 3,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "QA must run a live browser drag test per Lesson 12. Steps: (1) Load http://localhost:8094/china/2026-04-12/ in editor mode with editorDay loaded; (2) Verify accommodation card has draggable='true' (selector: [data-slot-id='accommodation'][data-slot-card='primary']); (3) Drag card to CandidatesSidebar and verify slot clears + saveMutations called with option_id:null; (4) Drag a candidate from sidebar onto accommodation slot and verify data-droppable='true' on .slot-drop[data-slot-id='accommodation']; (5) Verify skipped/late_arrival_placeholder slots remain data-droppable='false'. Also verify no regression on manually-selected card drag behavior.",
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": ["scripts/generate-html-interactive.py", "scripts/lib/render_html_builders.py"]
+      }
+    ],
+    "blast_radius_declarations": [],
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "Verified fix strings present in generated HTML: grep -c of 'selectedAccId = Object.prototype.hasOwnProperty' + 'isGated = (!edAcc && !selectedAccId)' in /var/www/travel/china/2026-04-12/index.html returns 5 (4 from fix 1 one per day rendered, 1 from fix 2). Both plans regenerated and deployed successfully via deploy-travel-plans.sh."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA must perform live browser drag test — source inspection of HTML is insufficient per Lesson 12",
+    "Consider adding a build.sh script to the project root that wraps generate-html-interactive.py + deploy-travel-plans.sh for all active plans, since the orchestrator referenced it as the build command"
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  }
+}
