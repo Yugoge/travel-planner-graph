@@ -1,7 +1,7 @@
 # travel-planner
 
-*Last updated: 2026-05-14T18:16:37Z*
-**Total entries**: 849
+*Last updated: 2026-05-24T22:06:27Z*
+**Total entries**: 963
 **Convention**: kebab
 
 ## Tree
@@ -43,29 +43,22 @@ travel-planner/
 │   │   ├── `timeline.json` - json config
 │   │   └── `transportation.json` - json config
 │   ├── beijing-lijiang-dali-20260418-100846/
+│   │   ├── days/
 │   │   ├── `accommodation.json` - json config
-│   │   ├── `accommodation.json.bak` - bak file
 │   │   ├── `attractions.json` - json config
-│   │   ├── `attractions.json.bak` - bak file
 │   │   ├── `budget.json` - json config
-│   │   ├── `budget.json.bak` - bak file
 │   │   ├── `entertainment.json` - json config
-│   │   ├── `entertainment.json.bak` - bak file
 │   │   ├── `images.json` - json config
 │   │   ├── `meals.json` - json config
-│   │   ├── `meals.json.bak` - bak file
+│   │   ├── `meta.json` - json config
 │   │   ├── `modification-log.json` - json config
-│   │   ├── `modification-log.json.bak` - bak file
 │   │   ├── `plan-skeleton.json` - json config
 │   │   ├── `requirements-skeleton.json` - json config
 │   │   ├── `route-optimization.json` - json config
 │   │   ├── `shopping.json` - json config
-│   │   ├── `shopping.json.bak` - bak file
 │   │   ├── `sync-report.json` - json config
 │   │   ├── `timeline.json` - json config
-│   │   ├── `timeline.json.bak` - bak file
-│   │   ├── `transportation.json` - json config
-│   │   └── `transportation.json.bak` - bak file
+│   │   └── `transportation.json` - json config
 │   ├── china-20260412-092624/
 │   │   ├── `accommodation.json` - json config
 │   │   ├── `accommodation.json.bak` - bak file
@@ -132,50 +125,36 @@ travel-planner/
 │   │   ├── `accommodation.json` - json config
 │   │   ├── `attractions.json` - json config
 │   │   ├── `budget.json` - json config
-│   │   ├── `budget.json.bak` - bak file
 │   │   ├── `entertainment.json` - json config
 │   │   ├── `images.json` - json config
 │   │   ├── `meals.json` - json config
 │   │   ├── `modification-log.json` - json config
-│   │   ├── `modification-log.json.bak` - bak file
 │   │   ├── `plan-skeleton.json` - json config
 │   │   ├── `requirements-skeleton.json` - json config
 │   │   ├── `route-optimization.json` - json config
 │   │   ├── `shopping.json` - json config
 │   │   ├── `sync-report.json` - json config
 │   │   ├── `timeline.json` - json config
-│   │   ├── `timeline.json.bak` - bak file
-│   │   ├── `transportation.json` - json config
-│   │   └── `transportation.json.bak` - bak file
+│   │   └── `transportation.json` - json config
 │   ├── qa-merge-slots-e2e-test/
-│   │   ├── `meals.json` - json config
-│   │   └── `meals.json.bak` - bak file
+│   │   └── `meals.json` - json config
 │   ├── qa-new-format-test/
 │   │   ├── `accommodation.json` - json config
-│   │   ├── `accommodation.json.bak` - bak file
 │   │   ├── `attractions.json` - json config
 │   │   ├── `budget.json` - json config
-│   │   ├── `budget.json.bak` - bak file
 │   │   ├── `entertainment.json` - json config
-│   │   ├── `entertainment.json.bak` - bak file
 │   │   ├── `images.json` - json config
 │   │   ├── `meals.json` - json config
-│   │   ├── `meals.json.bak` - bak file
 │   │   ├── `modification-log.json` - json config
-│   │   ├── `modification-log.json.bak` - bak file
 │   │   ├── `plan-skeleton.json` - json config
 │   │   ├── `requirements-skeleton.json` - json config
 │   │   ├── `route-optimization.json` - json config
 │   │   ├── `shopping.json` - json config
-│   │   ├── `shopping.json.bak` - bak file
 │   │   ├── `sync-report.json` - json config
 │   │   ├── `timeline.json` - json config
-│   │   ├── `timeline.json.bak` - bak file
-│   │   ├── `transportation.json` - json config
-│   │   └── `transportation.json.bak` - bak file
+│   │   └── `transportation.json` - json config
 │   ├── qa-test-schema-check/
-│   │   ├── `meals.json` - json config
-│   │   └── `meals.json.bak` - bak file
+│   │   └── `meals.json` - json config
 │   ├── test-unified-scripts-20260212-190655/
 │   │   ├── `load-level1-output.json` - json config
 │   │   ├── `load-level2-output.json` - json config
@@ -183,27 +162,19 @@ travel-planner/
 │   │   └── `meals.json` - json config
 │   ├── wangfujing-dongdan-beijing-20260405-192905/
 │   │   ├── `accommodation.json` - json config
-│   │   ├── `accommodation.json.bak` - bak file
 │   │   ├── `attractions.json` - json config
 │   │   ├── `budget.json` - json config
-│   │   ├── `budget.json.bak` - bak file
 │   │   ├── `entertainment.json` - json config
-│   │   ├── `entertainment.json.bak` - bak file
 │   │   ├── `images.json` - json config
 │   │   ├── `meals.json` - json config
-│   │   ├── `meals.json.bak` - bak file
 │   │   ├── `modification-log.json` - json config
-│   │   ├── `modification-log.json.bak` - bak file
 │   │   ├── `plan-skeleton.json` - json config
 │   │   ├── `requirements-skeleton.json` - json config
 │   │   ├── `route-optimization.json` - json config
 │   │   ├── `shopping.json` - json config
-│   │   ├── `shopping.json.bak` - bak file
 │   │   ├── `sync-report.json` - json config
 │   │   ├── `timeline.json` - json config
-│   │   ├── `timeline.json.bak` - bak file
-│   │   ├── `transportation.json` - json config
-│   │   └── `transportation.json.bak` - bak file
+│   │   └── `transportation.json` - json config
 │   └── `index.md` - data Index
 ├── docs/
 │   ├── archive/
@@ -246,6 +217,11 @@ travel-planner/
 │   │   ├── `user-approvals-clean-20260216-014622.json` - json config
 │   │   ├── `user-approvals-clean-20260314-110833.json` - json config
 │   │   └── `user-approvals-clean-20260406-134403.json` - json config
+│   ├── codex/
+│   │   ├── 20260522-082259/
+│   │   ├── 20260524-132346/
+│   │   ├── 20260524-180339/
+│   │   └── 20260524-202700/
 │   ├── debug/
 │   │   ├── `accommodation-validation-report.json` - json config
 │   │   ├── `attractions-validation-report.json` - json config
@@ -268,6 +244,10 @@ travel-planner/
 │   │   ├── scratch-20260509-114002/
 │   │   ├── screenshots/
 │   │   ├── specs/
+│   │   ├── `acceptance-criteria-20260522-082259.json` - json config
+│   │   ├── `acceptance-criteria-20260524-132346.json` - json config
+│   │   ├── `acceptance-criteria-20260524-180339.json` - json config
+│   │   ├── `acceptance-criteria-20260524-202700.json` - json config
 │   │   ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 │   │   ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 │   │   ├── `architect-report-init.json` - json config
@@ -295,6 +275,13 @@ travel-planner/
 │   │   ├── `ba-qa-report-20260513-090000-round2.json` - json config
 │   │   ├── `ba-qa-report-20260513-090000.json` - json config
 │   │   ├── `ba-qa-report-20260514-103616.json` - json config
+│   │   ├── `ba-qa-report-20260515-102340.json` - json config
+│   │   ├── `ba-qa-report-20260517-071910.json` - json config
+│   │   ├── `ba-qa-report-20260517-101502.json` - json config
+│   │   ├── `ba-qa-report-20260517-153318.json` - json config
+│   │   ├── `ba-qa-report-20260522-082259.json` - json config
+│   │   ├── `ba-qa-report-20260524-132346.json` - json config
+│   │   ├── `ba-qa-report-20260524-180339.json` - json config
 │   │   ├── `ba-spec-20260405-201500.md` - BA Specification: Fix 3 Critical Bugs in Travel Plan HTML Generator
 │   │   ├── `ba-spec-20260406-010001.md` - BA Specification: Fix check-budget-overage.py Multi-Currency Support
 │   │   ├── `ba-spec-20260406-010002.md` - BA Specification: Fix NameError 'days' in check_semantics
@@ -333,6 +320,20 @@ travel-planner/
 │   │   ├── `cleanliness-inspector-report-20260506-141814.json` - json config
 │   │   ├── `cleanliness-inspector-report-20260509-114002.json` - json config
 │   │   ├── `cleanliness-inspector-report-20260513-090000.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260514-103616.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260514-200000.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260514-200530.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260515-102340.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260517-071910.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260517-101502.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260517-211850.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260518-101127.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260519-161933.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260520-200804.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260522-082259.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260524-132346.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260524-180339.json` - json config
+│   │   ├── `cleanliness-inspector-report-20260524-202700.json` - json config
 │   │   ├── `close-report-20260505-061047.md` - Close Debate Report — 20260505-061047
 │   │   ├── `close-report-20260505-123425.md` - Close Report — 20260505-123425
 │   │   ├── `close-report-20260505-124619.md` - Close Report — 20260505-124619
@@ -342,6 +343,20 @@ travel-planner/
 │   │   ├── `close-report-20260506-141814.md` - Close Debate Report — task-id 20260506-141814
 │   │   ├── `close-report-20260509-114002.md` - Close Debate Report — 20260509-114002
 │   │   ├── `close-report-20260513-090000.md` - Close Debate Report
+│   │   ├── `close-report-20260514-103616.md` - Close Report — Task 20260514-103616
+│   │   ├── `close-report-20260514-200000.md` - Close Report — Task 20260514-200000
+│   │   ├── `close-report-20260514-200530.md` - Close Debate Report
+│   │   ├── `close-report-20260515-102340.md` - Close Report: task-id 20260515-102340
+│   │   ├── `close-report-20260517-071910.md` - Close Debate Report
+│   │   ├── `close-report-20260517-101502.md` - Close-Debate Report: 20260517-101502
+│   │   ├── `close-report-20260517-211850.md` - Close Debate Report — 20260517-211850
+│   │   ├── `close-report-20260518-101127.md` - Close Debate Report
+│   │   ├── `close-report-20260519-161933.md` - Close Debate Report
+│   │   ├── `close-report-20260520-200804.md` - Close Debate Report
+│   │   ├── `close-report-20260522-082259.md` - Close Debate Report
+│   │   ├── `close-report-20260524-132346.md` - Close Debate Report
+│   │   ├── `close-report-20260524-180339.md` - Close Report: 20260524-180339
+│   │   ├── `close-report-20260524-202700.md` - Close Report: 20260524-202700
 │   │   ├── `commit-cycle-report-20260509-114002.json` - json config
 │   │   ├── `commit-manifest-20260509-114002-cycle4.json` - json config
 │   │   ├── `commit-manifest-20260509-114002.json` - json config
@@ -360,6 +375,18 @@ travel-planner/
 │   │   ├── `completion-20260506-141814.md` - Development Completion Report — 20260506-141814 (/redev follow-on)
 │   │   ├── `completion-20260509-114002.md` - Development Completion Report — 20260509-114002
 │   │   ├── `completion-20260513-090000.md` - Development Completion Report — 20260513-090000
+│   │   ├── `completion-20260517-071910.md` - Completion Report: 20260517-071910
+│   │   ├── `completion-20260517-101502.md` - Completion Report: 20260517-101502
+│   │   ├── `completion-20260517-153318.md` - Completion Report — 20260517-153318
+│   │   ├── `completion-20260517-172103.md` - Completion Report: Photo Rendering in Trip Editor
+│   │   ├── `completion-20260517-211850.md` - Completion Report — 20260517-211850
+│   │   ├── `completion-20260518-101127.md` - Completion Report — 20260518-101127
+│   │   ├── `completion-20260519-161933.md` - Completion Report — task_id 20260519-161933
+│   │   ├── `completion-20260520-200804.md` - Completion Report — task_id 20260520-200804
+│   │   ├── `completion-20260522-082259.md` - Development Completion Report — 20260522-082259
+│   │   ├── `completion-20260524-132346.md` - Development Completion Report — 20260524-132346
+│   │   ├── `completion-20260524-180339.md` - Completion Report: 20260524-180339
+│   │   ├── `completion-20260524-202700.md` - Completion Report: 20260524-202700
 │   │   ├── `context-20260320-213000.json` - json config
 │   │   ├── `context-20260321-155000.json` - json config
 │   │   ├── `context-20260405-201500.json` - json config
@@ -398,6 +425,23 @@ travel-planner/
 │   │   ├── `context-20260509-114002.json` - json config
 │   │   ├── `context-20260513-090000.json` - json config
 │   │   ├── `context-20260514-103616.json` - json config
+│   │   ├── `context-20260514-200000.json` - json config
+│   │   ├── `context-20260514-200530.json` - json config
+│   │   ├── `context-20260515-102340.json` - json config
+│   │   ├── `context-20260517-071910.json` - json config
+│   │   ├── `context-20260517-101502.json` - json config
+│   │   ├── `context-20260517-153318.json` - json config
+│   │   ├── `context-20260517-172103.json` - json config
+│   │   ├── `context-20260517-195000.json` - json config
+│   │   ├── `context-20260517-211506.json` - json config
+│   │   ├── `context-20260517-211850.json` - json config
+│   │   ├── `context-20260518-101127.json` - json config
+│   │   ├── `context-20260519-161933.json` - json config
+│   │   ├── `context-20260520-200804.json` - json config
+│   │   ├── `context-20260522-082259.json` - json config
+│   │   ├── `context-20260524-132346.json` - json config
+│   │   ├── `context-20260524-180339.json` - json config
+│   │   ├── `context-20260524-202700.json` - json config
 │   │   ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 │   │   ├── `cycle-20260505-231740.md` - Cycle Artifact: 20260505-231740
 │   │   ├── `dev-report-20260320-213000.json` - json config
@@ -453,7 +497,6 @@ travel-planner/
 │   │   ├── `dev-report-20260506-141814.json` - json config
 │   │   ├── `dev-report-20260509-114002-cycle4.json` - json config
 │   │   ├── `dev-report-20260509-114002.json` - json config
-│   │   ├── `dev-report-20260509-114002.json.cycle1+3.bak` - bak file
 │   │   ├── `dev-report-20260513-090000-W-refactor.json` - json config
 │   │   ├── `dev-report-20260513-090000-W1-patch.json` - json config
 │   │   ├── `dev-report-20260513-090000-W1.json` - json config
@@ -470,6 +513,24 @@ travel-planner/
 │   │   ├── `dev-report-20260514-103616-m4b.json` - json config
 │   │   ├── `dev-report-20260514-103616-m5.json` - json config
 │   │   ├── `dev-report-20260514-103616-m6.json` - json config
+│   │   ├── `dev-report-20260514-103616-m7.json` - json config
+│   │   ├── `dev-report-20260514-103616.json` - json config
+│   │   ├── `dev-report-20260514-200000.json` - json config
+│   │   ├── `dev-report-20260514-200530.json` - json config
+│   │   ├── `dev-report-20260515-102340.json` - json config
+│   │   ├── `dev-report-20260517-071910.json` - json config
+│   │   ├── `dev-report-20260517-101502.json` - json config
+│   │   ├── `dev-report-20260517-153318.json` - json config
+│   │   ├── `dev-report-20260517-172103.json` - json config
+│   │   ├── `dev-report-20260517-211850.json` - json config
+│   │   ├── `dev-report-20260518-101127.json` - json config
+│   │   ├── `dev-report-20260519-161933.json` - json config
+│   │   ├── `dev-report-20260520-200804.json` - json config
+│   │   ├── `dev-report-20260522-082259.json` - json config
+│   │   ├── `dev-report-20260524-132346.json` - json config
+│   │   ├── `dev-report-20260524-180339.json` - json config
+│   │   ├── `dev-report-20260524-202700.json` - json config
+│   │   ├── `dev-report-20260524-212500.json` - json config
 │   │   ├── `prompt-inspector-report-20260505-061047.json` - json config
 │   │   ├── `prompt-inspector-report-20260505-123425.json` - json config
 │   │   ├── `prompt-inspector-report-20260505-124619.json` - json config
@@ -479,6 +540,20 @@ travel-planner/
 │   │   ├── `prompt-inspector-report-20260506-141814.json` - json config
 │   │   ├── `prompt-inspector-report-20260509-114002.json` - json config
 │   │   ├── `prompt-inspector-report-20260513-090000.json` - json config
+│   │   ├── `prompt-inspector-report-20260514-103616.json` - json config
+│   │   ├── `prompt-inspector-report-20260514-200000.json` - json config
+│   │   ├── `prompt-inspector-report-20260514-200530.json` - json config
+│   │   ├── `prompt-inspector-report-20260515-102340.json` - json config
+│   │   ├── `prompt-inspector-report-20260517-071910.json` - json config
+│   │   ├── `prompt-inspector-report-20260517-101502.json` - json config
+│   │   ├── `prompt-inspector-report-20260517-211850.json` - json config
+│   │   ├── `prompt-inspector-report-20260518-101127.json` - json config
+│   │   ├── `prompt-inspector-report-20260519-161933.json` - json config
+│   │   ├── `prompt-inspector-report-20260520-200804.json` - json config
+│   │   ├── `prompt-inspector-report-20260522-082259.json` - json config
+│   │   ├── `prompt-inspector-report-20260524-132346.json` - json config
+│   │   ├── `prompt-inspector-report-20260524-180339.json` - json config
+│   │   ├── `prompt-inspector-report-20260524-202700.json` - json config
 │   │   ├── `qa-codex-consensus-20260506-081545.txt` - txt file
 │   │   ├── `qa-codex-consensus-round2-20260506-081545.txt` - txt file
 │   │   ├── `qa-full-audit-20260413.json` - json config
@@ -535,6 +610,25 @@ travel-planner/
 │   │   ├── `qa-report-20260506-141814.json` - json config
 │   │   ├── `qa-report-20260509-114002.json` - json config
 │   │   ├── `qa-report-20260513-090000.json` - json config
+│   │   ├── `qa-report-20260515-102340.json` - json config
+│   │   ├── `qa-report-20260517-071910.json` - json config
+│   │   ├── `qa-report-20260517-101502.json` - json config
+│   │   ├── `qa-report-20260517-153318.json` - json config
+│   │   ├── `qa-report-20260517-172103.json` - json config
+│   │   ├── `qa-report-20260517-195000.json` - json config
+│   │   ├── `qa-report-20260517-211603.json` - json config
+│   │   ├── `qa-report-20260517-211850.json` - json config
+│   │   ├── `qa-report-20260518-101127.json` - json config
+│   │   ├── `qa-report-20260519-161933-ba-validation-v2.json` - json config
+│   │   ├── `qa-report-20260519-161933-ba-validation-v3.json` - json config
+│   │   ├── `qa-report-20260519-161933-ba-validation.json` - json config
+│   │   ├── `qa-report-20260519-161933.json` - json config
+│   │   ├── `qa-report-20260520-200804-ba-validation.json` - json config
+│   │   ├── `qa-report-20260520-200804.json` - json config
+│   │   ├── `qa-report-20260522-082259.json` - json config
+│   │   ├── `qa-report-20260524-132346.json` - json config
+│   │   ├── `qa-report-20260524-180339.json` - json config
+│   │   ├── `qa-report-20260524-202700.json` - json config
 │   │   ├── `qa-validation-20260321.json` - json config
 │   │   ├── `qa-verification-iter2-summary.md` - QA Verification Iteration 2 Summary
 │   │   ├── `style-inspector-report-20260505-061047.json` - json config
@@ -546,6 +640,21 @@ travel-planner/
 │   │   ├── `style-inspector-report-20260506-141814.json` - json config
 │   │   ├── `style-inspector-report-20260509-114002.json` - json config
 │   │   ├── `style-inspector-report-20260513-090000.json` - json config
+│   │   ├── `style-inspector-report-20260514-103616.json` - json config
+│   │   ├── `style-inspector-report-20260514-200000.json` - json config
+│   │   ├── `style-inspector-report-20260514-200530.json` - json config
+│   │   ├── `style-inspector-report-20260515-102340.json` - json config
+│   │   ├── `style-inspector-report-20260517-071910.json` - json config
+│   │   ├── `style-inspector-report-20260517-101502.json` - json config
+│   │   ├── `style-inspector-report-20260517-211850.json` - json config
+│   │   ├── `style-inspector-report-20260518-101127.json` - json config
+│   │   ├── `style-inspector-report-20260519-161933.json` - json config
+│   │   ├── `style-inspector-report-20260520-200804.json` - json config
+│   │   ├── `style-inspector-report-20260522-082259.json` - json config
+│   │   ├── `style-inspector-report-20260524-132346.json` - json config
+│   │   ├── `style-inspector-report-20260524-180339.json` - json config
+│   │   ├── `style-inspector-report-20260524-202700.json` - json config
+│   │   ├── `test-writer-report-20260522-082259.json` - json config
 │   │   ├── `ticket-20260505-060527.md` - BA Specification: Travel Planner Render Bugs (7-bug cluster)
 │   │   ├── `ticket-20260505-061047.md` - BA Specification: Reconcile rednote-mcp source-of-truth after wrong-target patches
 │   │   ├── `ticket-20260505-123425.md` - BA Specification: Restore China-20260412 Trip Plan to Schema Compliance
@@ -558,7 +667,30 @@ travel-planner/
 │   │   ├── `ticket-20260506-141814.md` - BA Specification: Close residual gaps from spec-20260506-092951 (2-item follow-on)
 │   │   ├── `ticket-20260509-114002.md` - BA Specification: M1 — gaode-maps harness ban (six matcher surfaces) + per-agent DO-NOT prompt block
 │   │   ├── `ticket-20260513-090000.md` - BA Specification: M2-prerequisite 13-bug fix-all-at-once cycle (round-2 remediation)
-│   │   └── `ticket-20260514-103616.md` - BA Master Ticket: Complete spec-20260508-221237 §5.2-§5.13 (post-M1)
+│   │   ├── `ticket-20260514-103616.md` - BA Master Ticket: Complete spec-20260508-221237 §5.2-§5.13 (post-M1)
+│   │   ├── `ticket-20260514-200000.md` - BA Specification: spec-20260508-221237-redev1 Close Blockers (6 fixes)
+│   │   ├── `ticket-20260514-200530.md` - BA Specification: Travel-Planner Memory Content-Source Policy Restructure
+│   │   ├── `ticket-20260515-102340.md` - BA Specification: v2 Server Bug Fixes (4 bugs + 2 missing dependencies)
+│   │   ├── `ticket-20260517-071910.md` - BA Specification: Notion-style UI Redesign + 3 Bug Fixes
+│   │   ├── `ticket-20260517-101502.md` - BA Specification: UI Layout Redesign — 3-Column Notion Paradigm
+│   │   ├── `ticket-20260517-153318.md` - BA Specification: Notion-Style Visual Alignment — Web Editor (Except Candidates Sidebar)
+│   │   ├── `ticket-20260517-172103.md` - BA Specification: Add Photo Rendering to Trip Editor Cards and Cover
+│   │   ├── `ticket-20260517-195000.md` - BA Specification: Photo Card Layout Fixes — Timeline Thumbnail + Cover Resolution
+│   │   ├── `ticket-20260517-211506.md` - BA Specification: Fix .slot-selected Photo Layout + #trip-cover Visual Defect
+│   │   ├── `ticket-20260517-211850.md` - BA Specification: Trip Editor — React-Based Architecture (Visual Parity + Interactive Layer)
+│   │   ├── `ticket-20260518-101127.md` - BA Specification: Unified Viewer/Editor Page — EDITOR_MODE Removal + 12 Editor Features
+│   │   ├── `ticket-20260519-161933.md` - BA Specification: Fix Drag-Drop Visual Layer — Replace card content on selection
+│   │   ├── `ticket-20260520-200804.md` - BA Specification: Fix 2 /close blockers from cycle 20260519-161933
+│   │   ├── `ticket-20260522-082259.md` - BA Specification: Fix 5 Drag-and-Drop UX Bugs (DayColumn Draggable, Image, Style, Hotel Reappearance)
+│   │   ├── `ticket-20260524-132346.md` - BA Specification: CandidatesSidebar — DnD unification + visual parity + i18n fix
+│   │   ├── `ticket-20260524-180339.md` - BA Specification: AI-Selected Board Cards Locked / Non-Draggable
+│   │   ├── `ticket-20260524-202700.md` - Ticket: 20260524-202700
+│   │   ├── `user-requirement-dev-20260520-200659.md` - No description
+│   │   ├── `user-requirement-dev-20260520-200804.md` - No description
+│   │   ├── `user-requirement-dev-20260522-082259.md` - No description
+│   │   ├── `user-requirement-dev-20260524-132346.md` - No description
+│   │   ├── `user-requirement-dev-20260524-180339.md` - No description
+│   │   └── `user-requirement-dev-20260524-202700.md` - No description
 │   ├── guides/
 │   │   ├── `airbnb-configuration-guide.md` - Airbnb MCP 配置指南
 │   │   ├── `beijing-entertainment-quick-guide.md` - Beijing Entertainment Quick Guide
@@ -613,6 +745,8 @@ travel-planner/
 │   ├── `index.html` - html file
 │   ├── `index.md` - output Index
 │   ├── `travel-plan---help.html` - html file
+│   ├── `travel-plan---plan-id.html` - html file
+│   ├── `travel-plan---trip-id.html` - html file
 │   ├── `travel-plan---trip.html` - html file
 │   ├── `travel-plan-beijing-exchange-bucket-list-20260202-232405.html` - html file
 │   ├── `travel-plan-beijing-lijiang-dali-20260418-100846.html` - html file
@@ -626,7 +760,11 @@ travel-planner/
 │   ├── `travel-plan-gerardmer.html` - html file
 │   ├── `travel-plan-qa-new-format-test.html` - html file
 │   ├── `travel-plan-wangfujing-dongdan-beijing-20260405-192905.html` - html file
-│   └── `travel-plan-wangfujing-dongdan-beijing.html` - html file
+│   ├── `travel-plan-wangfujing-dongdan-beijing.html` - html file
+│   ├── `yunnan-preview-day2.png` - png file
+│   ├── `yunnan-preview-full.png` - png file
+│   ├── `yunnan-preview-mobile.png` - png file
+│   └── `yunnan-preview-top.png` - png file
 ├── schemas/
 │   ├── v2/
 │   │   ├── `accommodation.schema.json` - json config
@@ -733,8 +871,8 @@ travel-planner/
 │   ├── `log-modification.py` - Modification Logging Helper - Append structured log entry to modification-log.json
 │   ├── `merge-timeline-day1.py` - Timeline Day 1 Merge Script
 │   ├── `migrate_spec_20260506.py` - Run under DEV_MIGRATION_BYPASS=spec-20260506-092951 so the new write-time
+│   ├── `migrate_yunnan_v1_to_v2.py` - migrate_yunnan_v1_to_v2.py
 │   ├── `parse-agent-json.py` - Parse agent JSON response and display summary, warnings, errors
-│   ├── `validate-trip-contract.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 │   ├── `plan-validate.py` - Plan Data Validation — pre-HTML-generation gate
 │   ├── `push-to-main-repo.sh` - Push source code to main travel-planner repository (private)
 │   ├── `regen-command-index.py` - Regenerate .claude/commands/INDEX.md from frontmatter of command .md files.
@@ -753,6 +891,7 @@ travel-planner/
 │   ├── `validate-route-durations.py` - Validate duration/distance consistency across all routes in transportation.json
 │   ├── `validate-timeline-consistency.sh` - Validate timeline dictionary: keys match activity names, no time conflicts
 │   ├── `validate-timeline-data.py` - Validate timeline.json data completeness, structure, and time overlaps
+│   ├── `validate-trip-contract.py` - Validates the new options-first per-day file shape under data/<trip>/days/day-NN.json,
 │   ├── `verify-gaode-ban-contract.sh` - Description: T3 contract verifier — validates every MCP tool in the catalog
 │   ├── `verify-gaode-ban-integration.sh` - Description: T2 integration verifier — spawns pretool-tool-policy.py as subprocess,
 │   ├── `verify-gaode-ban.sh` - Description: Verify gaode-maps harness ban (spec-20260508-221237 M1 + M5).
@@ -769,6 +908,9 @@ travel-planner/
 │   │   └── `test_pdf_renderer.py` - PDF exporter tests: normal day, red-eye, missing image, atomic write.
 │   ├── fixtures/
 │   │   └── trip-contract/
+│   ├── generated/
+│   │   ├── 20260522-082259/
+│   │   └── `manifest.json` - json config
 │   ├── scripts/
 │   │   └── `validate-schema-references.py` - Checks that all 6 agent .md files and plan.md contain schema validation
 │   ├── server/
@@ -798,64 +940,36 @@ travel-planner/
 │   │   ├── `save.js` - js file
 │   │   └── `state.js` - js file
 │   └── `index.html` - html file
-├── `attractions-entertainment-section.png` - png file
 ├── `CLAUDE.md` - CLAUDE.md
-├── `day5-mobile-390.png` - png file
-├── `day7-timeline-current.png` - png file
-├── `desktop-full-page.png` - png file
+├── `current-state.png` - png file
+├── `editor-current-viewport.png` - png file
+├── `editor-day1.png` - png file
+├── `editor-day3.png` - png file
+├── `editor-desktop.png` - png file
+├── `editor-full-page-2.png` - png file
+├── `editor-full-page.png` - png file
+├── `editor-scroll-1400.png` - png file
+├── `editor-scroll-2000.png` - png file
+├── `editor-scroll-700.png` - png file
 ├── `index.html` - html file
-├── `meals-section-detail.png` - png file
-├── `mobile-current.png` - png file
+├── `investigation-fullpage.png` - png file
+├── `investigation-screenshot-1440x900.png` - png file
 ├── `package-lock.json` - json config
 ├── `package.json` - json config
-├── `qa-20260505-060527-day11-may12-no-accommodation.png` - png file
-├── `qa-20260505-060527-sidebar-mobile.png` - png file
-├── `qa-day1-kanban-overview.jpg` - jpg file
-├── `qa-day1-shopping-section.jpg` - jpg file
-├── `qa-day1-timeline-deduped.png` - png file
-├── `qa-day1-timeline.jpg` - jpg file
-├── `qa-day12-may13-shanghai.png` - png file
-├── `qa-day12-may13-timeline.png` - png file
-├── `qa-day12-mobile-393.png` - png file
-├── `qa-day12-zhenbao-hotel.png` - png file
-├── `qa-day12-zhenbao-mobile.png` - png file
-├── `qa-day13-may14-final.png` - png file
-├── `qa-day13-may14-timeline-issue.png` - png file
-├── `qa-day13-shopping-images-2.jpg` - jpg file
-├── `qa-day13-shopping-images.jpg` - jpg file
-├── `qa-day3-datong-timeline.jpg` - jpg file
-├── `qa-day4-accommodation-image.png` - png file
-├── `qa-day4-may5-transportation.png` - png file
-├── `qa-day5-may5-missing-transport.png` - png file
-├── `qa-day8-may9-dual-acc-mobile.png` - png file
-├── `qa-day9-may10-jade-mobile.png` - png file
-├── `qa-day9-may10-kanban-mobile.png` - png file
-├── `qa-day9-mobile-393.png` - png file
-├── `qa-desktop-1280.png` - png file
-├── `qa-desktop-after-click.png` - png file
-├── `qa-desktop-meals-row.png` - png file
-├── `qa-desktop-overview.png` - png file
-├── `qa-desktop-shopping-accom.png` - png file
-├── `qa-iter3-day13-may14-accommodation.png` - png file
-├── `qa-iter3-day13-may14-timeline.png` - png file
-├── `qa-iter3-final-day13-mobile-393x852.png` - png file
-├── `qa-mobile-375.png` - png file
-├── `qa-shanghai-timeline.jpg` - jpg file
-├── `qa-travel-day1-overview.png` - png file
-├── `qa-xian-timeline.jpg` - jpg file
-├── `rednote-after-login-click.png` - png file
-├── `rednote-after-notification.png` - png file
-├── `rednote-explore.png` - png file
-├── `rednote-login-dialog.png` - png file
+├── `published-page-desktop.png` - png file
+├── `qa-ac1-ac2-ac3-day1.png` - png file
+├── `qa-ac1-visual-clear-after-drag.png` - png file
+├── `qa-ac5-pass-8770.png` - png file
+├── `qa-day3-lijiang-cover.png` - png file
 ├── `requirements.txt` - txt file
+├── `static-meals.png` - png file
+├── `static-page-full.png` - png file
+├── `static-page-viewport.png` - png file
 ├── `stderr_capture.txt` - txt file
 ├── `stderr_restore.txt` - txt file
 ├── `stderr_tamper.txt` - txt file
-├── `travel-life-ai-app.png` - png file
-├── `xhs-checkbox-state.png` - png file
-├── `xhs-code-sent.png` - png file
-├── `xhs-login-modal.png` - png file
-└── `xiaohongshu-search.png` - png file
+├── `trip-photos-verification.png` - png file
+└── `verify-ac4-meals.js` - js file
 ```
 
 ---
