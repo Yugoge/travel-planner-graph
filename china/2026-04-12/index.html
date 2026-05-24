@@ -8985,6 +8985,9 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
       const coverImg = selAccOpt.cover_image || selAccOpt.image;
       if (coverImg) day.cover = coverImg;
     }
+  } else if (Object.prototype.hasOwnProperty.call(editorSelections, accKey) && editorSelections[accKey] === null) {
+    // Explicitly deselected (drag-to-sidebar): clear the accommodation card so the slot renders empty
+    day.accommodation = null;
   }
 
   // ===== Meals (R1, R1a) =====
@@ -9312,13 +9315,13 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       {editorDay && editorDay.accommodation && editorDay.accommodation.options && editorDay.accommodation.options.length > 0 && (() => {
         const accKey = dayNum + ':accommodation';
         const selectedAccId = resolveSelectionLocal(accKey, editorDay.accommodation.selected_option_id);
+        const accLabel = L('accommodation', lang);
         return (
           <div style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              {(() => { const accLabel = L('accommodation', lang); return accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
+              {accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation')}
             </div>
             {editorDay.accommodation.options.map((rawOpt, oi) => {
-              const accLabel = L('accommodation', lang);
               const opt = adaptV2Option(rawOpt);
               const isSelected = selectedAccId === rawOpt.option_id;
               const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id && pendingSelection.slotId === 'accommodation';
@@ -9367,13 +9370,14 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       })()}
 
       {/* Unified Meals group (M19) */}
-      {mealsGroup.length > 0 && (
+      {mealsGroup.length > 0 && (() => {
+        const mealsLabel = L('meals', lang);
+        return (
         <div style={{ padding: '8px 12px' }}>
           <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-            {(() => { const mealsLabel = L('meals', lang); return mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals'); })()}
+            {mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')}
           </div>
           {mealsGroup.map((rawOpt, oi) => {
-            const mealsLabel = L('meals', lang);
             const opt = adaptV2Option(rawOpt);
             const isSelected = isMealSelected(rawOpt.option_id);
             const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
@@ -9396,7 +9400,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                   setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'meals-any', originSlotId: rawOpt._originSlotId });
                 }}
-                style={{ width: '100%', maxWidth: '280px', boxSizing: 'border-box', minWidth: 0, height: '320px', flexShrink: 0, background: '#fff', borderRadius: '8px', border: isSelected ? '1.5px solid #e67e22' : 'none', boxShadow: isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '8px' }}
+                style={{ width: '100%', maxWidth: '280px', boxSizing: 'border-box', minWidth: 0, height: '320px', flexShrink: 0, background: isPending ? '#eff6ff' : '#fff', borderRadius: '8px', border: isSelected ? '1.5px solid #e67e22' : isPending ? '2px solid #3b82f6' : 'none', boxShadow: isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '8px' }}
                 onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(74,144,217,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.boxShadow = isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
@@ -9421,7 +9425,8 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* Activity slots */}
       {activitySlots.map(slotId => {
