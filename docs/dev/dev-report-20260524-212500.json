@@ -1,0 +1,94 @@
+{
+  "request_id": "20260524-212500",
+  "task_id": "20260524-212500",
+  "timestamp": "2026-05-24T21:25:00Z",
+  "baseline_head_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
+  "baseline_dirty_snapshot": "",
+  "dev_report_path": "docs/dev/dev-report-20260524-212500.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Investigated root cause: mergeEditorSelectionsIntoPublishedDay did not clear day.accommodation when editorSelections[accKey] === null",
+        "type": "investigation",
+        "files_modified": [],
+        "rationale": "When editorSelections has the accKey with value null (explicit deselect), selectedAccId resolves to null, the if(selectedAccId) branch is skipped, but day.accommodation is never cleared — it stays as the published accommodation from the deep-clone. The outer render check {day.accommodation && ...} stays truthy, so the card renders."
+      },
+      {
+        "id": 2,
+        "description": "Added else-if clause in mergeEditorSelectionsIntoPublishedDay to set day.accommodation = null when key is explicitly null",
+        "type": "bugfix",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Added 3 lines after the existing if(selectedAccId) block: else if (Object.prototype.hasOwnProperty.call(editorSelections, accKey) && editorSelections[accKey] === null) { day.accommodation = null; }",
+        "rationale": "The fix targets the root cause: when a drag-to-sidebar sets editorSelections[accKey] = null, mergeEditorSelectionsIntoPublishedDay must propagate that null into the merged day object so the render condition {day.accommodation && ...} evaluates to false and the section disappears."
+      },
+      {
+        "id": 3,
+        "description": "Regenerated HTML and deployed",
+        "type": "deploy",
+        "files_modified": [],
+        "rationale": "Standard post-fix regeneration and deploy cycle"
+      },
+      {
+        "id": 4,
+        "description": "Playwright verification: dragged Day 2 accommodation board card to sidebar, confirmed card disappeared",
+        "type": "verification",
+        "files_modified": [],
+        "rationale": "cardCount=0 after drag, cardStillExists=false — fix confirmed working"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — logic gap, not a regression from a specific commit",
+      "why_issue_occurred": "mergeEditorSelectionsIntoPublishedDay handled the selectedAccId truthy case (update accommodation) and the key-absent case (use persisted value) but had no branch for key-present-value-null (explicit deselect). The if(selectedAccId) guard silently skipped the null case without clearing day.accommodation.",
+      "how_fix_addresses_root": "Added an explicit else-if branch that detects key-present-value-null and sets day.accommodation = null, which causes the {day.accommodation && (...)} render guard in KanbanDayView to hide the entire accommodation section."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 3,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 3,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Verify by loading trip in Kanban View, dragging any accommodation board card to the sidebar, and confirming the board slot shows empty (no card, no section header). Also verify dragging a candidate card from sidebar back to the slot correctly re-renders the card.",
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "pass",
+    "smoke_check": "pass",
+    "notes": "Playwright confirmed: after drag-to-sidebar dispatch, [data-slot-card='primary'][data-slot-id='accommodation'] count = 0. Screenshot saved at /tmp/fix-visual-clear.png. Board shows Meals + Attractions + Entertainment sections for Day 2 with no Accommodation section."
+  },
+  "blast_radius": [
+    {
+      "modified": "scripts/lib/react_template.tpl",
+      "imported_by": ["scripts/generate-html-interactive.py"]
+    }
+  ],
+  "blast_radius_declarations": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "coverage_gap_severity": "medium",
+      "addressed_by": "tests_run",
+      "tests": ["Playwright drag-to-sidebar smoke: Day 2 accommodation card count = 0 after drag — PASS"]
+    }
+  ],
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider adding the same null-clear pattern to meal and activity slots in mergeEditorSelectionsIntoPublishedDay so drag-to-sidebar deselect works consistently for all slot types.",
+    "Add an automated test (playwright or jest) that exercises drag-to-sidebar and checks DOM state for all slot types."
+  ]
+}
