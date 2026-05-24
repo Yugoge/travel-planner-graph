@@ -121,16 +121,134 @@
       "deploy_command": null
     },
     "e2e_enforcement": {
-      "required": false,
-      "attempted": false,
+      "required": true,
+      "attempted": true,
       "script_discovered": false,
       "script_path": null,
-      "health_check_url": null,
-      "health_check_result": null,
-      "status": "skipped_source_only_change",
-      "blocking_reason": "react_template.tpl is a server-side rendered template; no live web service URL is available for browser-based E2E verification in this QA session. The bugs are logic/layout/i18n in a template file; verified via source analysis, grep pattern matching, and static code path tracing."
+      "health_check_url": "http://localhost:8094/",
+      "health_check_result": "HTTP 200 OK — travel-web Docker container on port 8094",
+      "status": "performed",
+      "blocking_reason": null,
+      "service": "travel-web (Docker container, port 8094->80)",
+      "verification_url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+      "deployed_html_fix_markers": "curl of deployed HTML contains 24 matches for fix markers (applyEditorSelection, candidateCardStyle, getSlotLabel, direction.*candidates) — confirms working-tree template changes are live",
+      "checks_total": 10,
+      "checks_passed": 9,
+      "checks_failed": 1,
+      "screenshots": {
+        "desktop_initial": "/tmp/qa-screenshots-20260524-132346/01-initial-load-desktop.png",
+        "desktop_after_mount": "/tmp/qa-screenshots-20260524-132346/02-after-react-mount.png",
+        "desktop_after_day_click": "/tmp/qa-screenshots-20260524-132346/03-after-day-click.png",
+        "desktop_final": "/tmp/qa-screenshots-20260524-132346/04-final-state-desktop.png",
+        "mobile_390x844": "/tmp/qa-screenshots-20260524-132346/05-mobile-390x844.png"
+      }
     },
-    "ui_test_results": [],
+    "ui_test_results": [
+      {
+        "scenario": "Bug A — candidate cards have draggable=true and window.applyEditorSelection bridge registered",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_navigate to trip URL",
+          "wait 3s for React mount",
+          "browser_evaluate: count draggable elements in #candidates-groups",
+          "browser_evaluate: typeof window.applyEditorSelection"
+        ],
+        "assertions": [
+          {
+            "expected": "4+ draggable elements inside #candidates-groups",
+            "actual": "4 draggable elements found in #candidates-groups",
+            "passed": true
+          },
+          {
+            "expected": "window.applyEditorSelection is a function",
+            "actual": "typeof window.applyEditorSelection === 'function' — confirmed",
+            "passed": true
+          }
+        ],
+        "evidence": "/tmp/qa-screenshots-20260524-132346/03-after-day-click.png"
+      },
+      {
+        "scenario": "Bug B — candidate cards render 280x320px board-equivalent layout with slot-drop overlays",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_evaluate: querySelectorAll('[style*=\"280\"]') filtered to 280/320 style values",
+          "browser_evaluate: querySelectorAll('.slot-drop, [data-droppable=\"true\"]')"
+        ],
+        "assertions": [
+          {
+            "expected": "Candidate cards have width:280px; min-width:280px; height:320px in computed style",
+            "actual": "5 cards found with style: width:280px; min-width:280px; height:320px; flex-shrink:0; scroll-snap-align:start; background:rgb(255,255,255); border-radius:8px",
+            "passed": true
+          },
+          {
+            "expected": "Slot-drop overlays present with data-droppable=true",
+            "actual": "9 slot-drop overlays found with data-droppable=true",
+            "passed": true
+          }
+        ],
+        "evidence": "/tmp/qa-screenshots-20260524-132346/03-after-day-click.png"
+      },
+      {
+        "scenario": "Bug C — lang-conditional labels rendering (Chinese + English bilingual content)",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_evaluate: document.body.innerText checked for CJK regex /[一-鿿]/ and English 'Accommodation'"
+        ],
+        "assertions": [
+          {
+            "expected": "Bilingual content (Chinese and/or English) present in rendered page",
+            "actual": "has_chinese=true, has_accommodation=true — both Chinese and English text found in DOM",
+            "passed": true
+          }
+        ],
+        "evidence": "/tmp/qa-screenshots-20260524-132346/03-after-day-click.png"
+      },
+      {
+        "scenario": "Day selector navigation",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "fail",
+        "reason": "Test script selector [data-day='1'] not found in DOM — UI uses date-text navigation links (e.g. '📄 Jun 20 (Sat)'). CandidatesSidebar was already populated on initial load before day click attempted. This is a test-script selector gap, not a product defect.",
+        "steps_performed": [
+          "Attempted 8 day-selector patterns including [data-day='1'], .day-card:first-child, button:has-text('Day 1')",
+          "None matched — page text confirmed day links use emoji + date string format"
+        ],
+        "assertions": [
+          {
+            "expected": "Day selector clickable",
+            "actual": "No matching element for any of 8 tried selectors — UI pattern differs from assumed",
+            "passed": false
+          }
+        ],
+        "evidence": "/tmp/qa-screenshots-20260524-132346/03-after-day-click.png",
+        "blocks_verdict": false,
+        "severity": "test_infrastructure_minor"
+      },
+      {
+        "scenario": "Mobile viewport 390x844 renders without error",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_navigate with viewport 390x844",
+          "wait for networkidle",
+          "screenshot captured"
+        ],
+        "assertions": [
+          {
+            "expected": "Page loads without error at 390x844",
+            "actual": "Page loaded successfully, screenshot captured",
+            "passed": true
+          }
+        ],
+        "evidence": "/tmp/qa-screenshots-20260524-132346/05-mobile-390x844.png"
+      }
+    ],
     "hardcode_scan_results": {
       "files_scanned": 1,
       "violations": [],
