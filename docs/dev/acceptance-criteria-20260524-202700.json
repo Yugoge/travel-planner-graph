@@ -1,0 +1,119 @@
+{
+  "request_id": "20260524-202700",
+  "task_id": "20260524-202700",
+  "timestamp": "2026-05-24T20:27:00Z",
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "type": "ui",
+      "given": "Day 2 accommodation board card is rendered with draggable='true' (confirmed by prior cycle 20260524-180339 AC1) and the CandidatesSidebar (#candidates-groups) drop zone is visible in the page",
+      "when": "Playwright executes a drag from the accommodation board card ([data-slot-card='primary'][data-slot-id='accommodation']) to the #candidates-groups element",
+      "then": "/api/save receives a POST request whose JSON body contains an element matching {type:'select', slot:'accommodation', option_id:null} AND the accommodation slot on the board subsequently renders without the green selection ring (no '0 0 0 2px #45b26b' box-shadow or equivalent selected-state indicator)",
+      "check": {
+        "method": "playwright_interaction",
+        "action": "drag_board_to_sidebar",
+        "setup": "page.route('/api/save', handler) to capture POST body before drag; alternatively page.waitForRequest('/api/save')",
+        "drag_source": "[data-slot-card='primary'][data-slot-id='accommodation']",
+        "drag_target": "#candidates-groups",
+        "verify_request": {
+          "url_pattern": "/api/save",
+          "method": "POST",
+          "body_contains": {"type": "select", "slot": "accommodation", "option_id": null}
+        },
+        "verify_ui": "accommodation board card loses green selection ring after drop completes",
+        "day": 2,
+        "trip_id": "beijing-lijiang-dali-20260418-100846"
+      },
+      "ac_uid": "ac1-drag-board-to-sidebar-saves-mutation"
+    },
+    {
+      "id": "AC2",
+      "type": "ui",
+      "given": "CandidatesSidebar (#candidates-groups) shows at least one accommodation candidate card (draggable=true, data-slot-id='accommodation') and the accommodation slot-drop overlay (.slot-drop[data-slot-id='accommodation'] on the board) has data-droppable='true'",
+      "when": "Playwright executes a drag from the sidebar candidate card (#candidates-groups [data-slot-id='accommodation'][draggable='true']) onto the board accommodation slot-drop overlay (.slot-drop[data-slot-id='accommodation'] scoped to KanbanDayView, not inside #candidates-groups)",
+      "then": "/api/save receives a POST request whose JSON body contains an element matching {type:'select', slot:'accommodation', option_id:<non-null string>} where option_id matches the dragged candidate's data-option-id attribute AND the board renders that candidate as the selected card",
+      "check": {
+        "method": "playwright_interaction",
+        "action": "drag_sidebar_to_slot",
+        "setup": "page.route('/api/save', handler) to capture POST body before drag; capture data-option-id from the sidebar candidate card before drag",
+        "drag_source": "#candidates-groups [data-slot-id='accommodation'][draggable='true']:first-child",
+        "drag_target": ".slot-drop[data-slot-id='accommodation']:not(#candidates-groups *)",
+        "verify_request": {
+          "url_pattern": "/api/save",
+          "method": "POST",
+          "body_contains": {"type": "select", "slot": "accommodation"},
+          "body_option_id_not_null": true
+        },
+        "verify_ui": "board accommodation card updates to display the newly selected candidate",
+        "day": 2,
+        "trip_id": "beijing-lijiang-dali-20260418-100846"
+      },
+      "ac_uid": "ac2-drop-sidebar-to-slot-saves-mutation"
+    },
+    {
+      "id": "AC3",
+      "type": "data",
+      "given": "The modified scripts/lib/react_template.tpl where candidateCardStyle dead function (previously at lines 2266-2276) has been removed",
+      "when": "grep for the string 'candidateCardStyle' in scripts/lib/react_template.tpl",
+      "then": "0 matches — the symbol is entirely absent from the file",
+      "check": {
+        "method": "grep",
+        "file": "scripts/lib/react_template.tpl",
+        "pattern": "candidateCardStyle",
+        "expected_match_count": 0
+      },
+      "ac_uid": "ac3-dead-candidateCardStyle-removed"
+    },
+    {
+      "id": "AC4",
+      "type": "ui",
+      "given": "A candidate card in CandidatesSidebar where isPending is true — i.e., the user has clicked the card once to enter pending selection state (pendingSelection.optionId matches the card's option_id)",
+      "when": "Playwright clicks a sidebar candidate card once (without clicking the slot to complete the selection) and inspects the card's computed style",
+      "then": "The card element shows a visually distinct pending state: either (a) border includes '#3b82f6' (blue) in the computed border-color, OR (b) background-color is '#eff6ff' (light blue), OR (c) a child element with a spinner or pending badge is present — distinct from both the default (white background, no colored border) and selected (green border '#27ae60' or '#45b26b') states",
+      "check": {
+        "method": "playwright_computed_style",
+        "selector": "#candidates-groups .card-candidate",
+        "action": "click_to_enter_pending",
+        "verify_style_one_of": [
+          {"property": "border-color", "contains": "59, 130, 246"},
+          {"property": "background-color", "contains": "239, 246, 255"},
+          {"child_selector": "[data-pending-indicator]", "present": true}
+        ]
+      },
+      "ac_uid": "ac4-isPending-visual-affordance"
+    },
+    {
+      "id": "AC5",
+      "type": "data",
+      "given": "The modified scripts/lib/react_template.tpl where editorSelections has been added to the useEffect dependency array that defines preserveCurrentAccommodationOption",
+      "when": "The useEffect call ending at line ~2918 (the one whose body begins with 'const preserveCurrentAccommodationOption = () => {') is inspected",
+      "then": "The dependency array argument of that useEffect call contains the identifier 'editorSelections' — grep for the specific dep array pattern confirms presence",
+      "check": {
+        "method": "grep",
+        "file": "scripts/lib/react_template.tpl",
+        "pattern": "preserveCurrentAccommodationOption|editorSelections",
+        "verify": "The useEffect closing bracket's dep array includes editorSelections alongside publishedDay and saveMutations and editorDay",
+        "expected_pattern_in_dep_array": "editorSelections"
+      },
+      "ac_uid": "ac5-stale-closure-dep-array"
+    },
+    {
+      "id": "AC6",
+      "type": "data",
+      "given": "The modified scripts/lib/react_template.tpl where the duplicate L('accommodation', lang) and L('meals', lang) IIFE expressions have been collapsed",
+      "when": "The CandidatesSidebar accommodation section (lines ~2419-2473) and meals section (lines ~2475-2528) are inspected",
+      "then": "The L('accommodation', lang) resolution expression appears at most once in the accommodation section (extracted to a const variable before use, not inlined twice in separate IIFEs); and the L('meals', lang) resolution expression appears at most once in the meals section; grep for the full IIFE pattern returns at most 1 match per section",
+      "check": {
+        "method": "grep",
+        "file": "scripts/lib/react_template.tpl",
+        "pattern": "L\\('accommodation', lang\\)",
+        "expected_context": "appears once as const variable assignment in the accommodation section, referenced by name thereafter; not duplicated as two separate inline IIFEs",
+        "also_check": {
+          "pattern": "L\\('meals', lang\\)",
+          "expected_context": "appears once as const variable assignment in the meals section, referenced by name thereafter"
+        }
+      },
+      "ac_uid": "ac6-iife-dedup"
+    }
+  ]
+}
