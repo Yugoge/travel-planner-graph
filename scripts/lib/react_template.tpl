@@ -2535,7 +2535,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
         return (
           <div key={slotId} style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              {slotLabels[slotId] || slotId}
+              {getSlotLabel(slotId)}
             </div>
             {slot.options.map((rawOpt, oi) => {
               const opt = adaptV2Option(rawOpt);
