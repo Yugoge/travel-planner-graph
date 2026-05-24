@@ -1263,7 +1263,9 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                         const catColor = categoryColors.accommodation;
                         const accKey = day.day + ':accommodation';
                         const edAcc = editorDay && editorDay.accommodation;
-                        const selectedAccId = edAcc ? (Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : edAcc.selected_option_id) : null;
+                        const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey)
+                          ? (editorSelections || {})[accKey]
+                          : (edAcc && edAcc.selected_option_id) || null;
                         const dragOptionId = acc.option_id || selectedAccId;
                         return (
                           <div key={i} style={{...cardStyle(catColor, false), position: 'relative'}}
