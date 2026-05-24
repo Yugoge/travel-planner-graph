@@ -1,0 +1,114 @@
+{
+  "request_id": "20260524-180339",
+  "task_id": "20260524-180339",
+  "timestamp": "2026-05-24T18:03:39Z",
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "type": "ui",
+      "given": "A day with AI-planned accommodation where editorDay.accommodation.selected_option_id is non-null and editorDay is loaded in editor mode",
+      "when": "KanbanDayView renders the accommodation card",
+      "then": "The accommodation card div has the HTML attribute draggable='true'",
+      "check": {
+        "method": "playwright_dom",
+        "selector": "[data-slot-id='accommodation'][data-slot-card='primary']",
+        "attribute": "draggable",
+        "expected": "true"
+      },
+      "ac_uid": "ac1-acc-draggable-ai-selected"
+    },
+    {
+      "id": "AC2",
+      "type": "ui",
+      "given": "The accommodation card is draggable (AC1 holds) and the CandidatesSidebar drop zone is visible",
+      "when": "User drags the accommodation card from the board and drops it onto the CandidatesSidebar",
+      "then": "handleSidebarDrop fires, setEditorSelections sets the accommodation key to null, and saveMutations is called with [{type:'select', slot:'accommodation', option_id:null}]. The accommodation slot subsequently renders as empty/unselected (no green selection ring).",
+      "check": {
+        "method": "playwright_interaction",
+        "action": "drag_board_to_sidebar",
+        "slot": "accommodation",
+        "verify_mutation": {
+          "type": "select",
+          "slot": "accommodation",
+          "option_id": null
+        },
+        "verify_ui": "accommodation card loses green selection ring after drop"
+      },
+      "ac_uid": "ac2-acc-deselect-via-sidebar"
+    },
+    {
+      "id": "AC3",
+      "type": "ui",
+      "given": "A day with AI-planned accommodation (editorDay loaded, edAcc non-null, not skipped, not late_arrival_placeholder)",
+      "when": "KanbanDayView renders the accommodation slot-drop overlay",
+      "then": "The slot-drop overlay div has data-droppable='true' on the accommodation card",
+      "check": {
+        "method": "playwright_dom",
+        "selector": ".slot-drop[data-slot-id='accommodation']",
+        "attribute": "data-droppable",
+        "expected": "true"
+      },
+      "ac_uid": "ac3-acc-drop-target-open"
+    },
+    {
+      "id": "AC4",
+      "type": "ui",
+      "given": "A day where accommodation.skipped=true or accommodation.late_arrival_placeholder=true",
+      "when": "KanbanDayView renders the accommodation slot-drop overlay",
+      "then": "The slot-drop overlay has data-droppable='false' (gated slots remain gated)",
+      "check": {
+        "method": "playwright_dom",
+        "selector": ".slot-drop[data-slot-id='accommodation']",
+        "attribute": "data-droppable",
+        "expected": "false"
+      },
+      "ac_uid": "ac4-acc-drop-target-gated-skipped"
+    },
+    {
+      "id": "AC5",
+      "type": "ui",
+      "given": "A day with an AI-selected activity (attraction/cafe/entertainment) where editorDay is loaded and actSlotId is non-null (editorDay.slots[slotKey] contains the activity)",
+      "when": "KanbanDayView renders the activity card",
+      "then": "The selected activity card has draggable='true'",
+      "check": {
+        "method": "playwright_dom",
+        "selector": "[data-slot-card='primary'][data-option-id]",
+        "attribute": "draggable",
+        "expected": "true",
+        "note": "Applies to attractions, entertainment, and cafe cards that are the selected option for their slot"
+      },
+      "ac_uid": "ac5-activity-draggable-ai-selected"
+    },
+    {
+      "id": "AC6",
+      "type": "ui",
+      "given": "An accommodation slot that already has an AI-selected card and the user drags a candidate from the sidebar onto the slot",
+      "when": "The candidate is dropped on the accommodation slot-drop overlay",
+      "then": "saveMutations is called with the new candidate's option_id for the accommodation slot (replacing the AI selection), and the board renders the new candidate as the selected card",
+      "check": {
+        "method": "playwright_interaction",
+        "action": "drag_sidebar_to_slot",
+        "slot": "accommodation",
+        "verify_mutation": {
+          "type": "select",
+          "slot": "accommodation",
+          "option_id": "<new_candidate_option_id>"
+        }
+      },
+      "ac_uid": "ac6-acc-candidate-drop-replaces-ai"
+    },
+    {
+      "id": "AC7",
+      "type": "ui",
+      "given": "Manually-selected board cards (not AI-selected) in any category",
+      "when": "User drags them to the sidebar or drops candidates onto their slots",
+      "then": "Existing behavior is preserved — no regression in board-to-board swap and board-to-sidebar deselect for manually-selected cards",
+      "check": {
+        "method": "playwright_regression",
+        "action": "drag_board_to_sidebar_manual_selection",
+        "note": "Verify the manually-selected accommodation and meal cards retain existing drag behavior after the fix"
+      },
+      "ac_uid": "ac7-no-regression-manual-selected"
+    }
+  ]
+}
