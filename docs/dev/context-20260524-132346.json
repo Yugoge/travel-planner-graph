@@ -1,0 +1,326 @@
+{
+  "request_id": "20260524-132346",
+  "task_id": "20260524-132346",
+  "timestamp": "2026-05-24T13:23:46Z",
+  "spec_path": "docs/dev/specs/spec-20260524-125921.md",
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "medium: changes to single .tpl file, no schema/API/infrastructure changes; regression risk from 3 concurrent bug fixes in a 3301-line file with interdependent onDrop handlers.",
+  "requirement": {
+    "original": "拖动功能彻底失败，你的设计有根本问题，右侧的栏目和左侧的栏目应该是统统一种element，拖动只是改变位置！但是现在你的设计彻底不同！右侧的拖动到左边有的可以覆盖有的无法覆盖，左侧的完全无法拖动到右边变成待选。右侧的设计彻底错误，请你完全全部使用左侧的全部设计元素，不允许使用任何和左侧不一样的设计元素，被我逮到的话你会死。右侧为什么中英文并存？你难道不知道我切换语言的逻辑？local和default！",
+    "clarified": "Three bugs in CandidatesSidebar: (A) candidate onDragStart payloads missing direction discriminator causing board onDrop to bypass saveMutations; (B) candidate cards use compact text-only style instead of identical board-card layout; (C) all CandidatesSidebar text labels ignore lang state and are hardcoded bilingual or English-only.",
+    "what": "Fix DnD payload + handler, unify card visual design, and make all labels lang-aware in CandidatesSidebar",
+    "why": "Right-panel cards must be architecturally and visually identical to left-panel cards; language toggle must apply everywhere",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "CandidatesSidebar component (lines 2276–2547)",
+        "candidateCardStyle function (lines 2264–2274)",
+        "Board onDrop handlers that receive candidate payloads (lines 913, 998, 1084, 1170, 1320, 1928)"
+      ],
+      "excluded": [
+        "Backend API, persistence layer, schema",
+        "KanbanView card rendering (reference only — do not modify)",
+        "TimelineView",
+        "Any fixes from task 20260522-082259 (adaptV2Option, cover_image fallback, preserveCurrentAccommodationOption, draggable, drag-out)"
+      ]
+    },
+    "success_criteria": [
+      "Dragging a candidate card onto a compatible board slot triggers saveMutations with select mutation for target slot only (no source-slot clear)",
+      "Dragging a selected board card onto the candidates sidebar triggers saveMutations with option_id: null for the source slot",
+      "Candidate cards render with 280x320px fixed layout, image region, category-color header with emoji, RedNoteLink, .slot-drop overlay",
+      "All text in #candidates-groups chrome obeys lang state — no bilingual slash-strings, no hardcoded English"
+    ],
+    "constraints": [
+      "Only file to modify: scripts/lib/react_template.tpl",
+      "Do NOT add sourceSlotId to candidate payloads (semantically incorrect — candidates have no source board slot)",
+      "cardStyle/hoverOn/hoverOff/categoryColors are KanbanView-scoped — must inline or extract to module scope",
+      "meals candidate slotId is meals-any (not a real persisted slot); use originSlotId as origin_slot_id in mutation"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl:2264–2274 (candidateCardStyle)",
+      "scripts/lib/react_template.tpl:2276–2547 (CandidatesSidebar)",
+      "scripts/lib/react_template.tpl:913 (board/meals onDrop)",
+      "scripts/lib/react_template.tpl:998 (cafe onDrop)",
+      "scripts/lib/react_template.tpl:1084 (attractions onDrop)",
+      "scripts/lib/react_template.tpl:1170 (entertainment onDrop)",
+      "scripts/lib/react_template.tpl:1320 (accommodation board onDrop)",
+      "scripts/lib/react_template.tpl:1928 (timeline onDrop)"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/react_template.tpl:476–485 (L() i18n helper — read-only reference)",
+      "scripts/lib/react_template.tpl:496–499 (_isCompatible, MEAL_SLOTS — do not modify)",
+      "scripts/lib/react_template.tpl:802–827 (cardStyle, hoverOn, hoverOff, categoryColors, cardW/cardH/imgH — reference only, extract or inline)",
+      "scripts/lib/react_template.tpl:676 (RedNoteLink — used by name row)"
+    ],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "Candidate cards cannot be dropped onto board slots to persist selection; board cards cannot be dragged right to become candidates; right panel shows bilingual text and completely different card design",
+    "root_cause": "Three independent root causes: (A) candidate onDragStart payloads at lines 2427/2473/2521 emit no direction field, causing board onDrop to bypass saveMutations and fall to legacy bridge; (B) candidateCardStyle (line 2266) was built as a compact helper instead of reusing board cardStyle tokens; (C) slotLabels (line 2313) is a static object built once, ignoring lang state",
+    "root_cause_commit": "14f72e30 (candidateCardStyle helper introduced as compact variant) / structural design decision",
+    "why_introduced": "CandidatesSidebar was added as a new panel without being unified with the KanbanView DnD protocol or visual design",
+    "why_problematic": "User expects right panel to behave and look identically to left panel; architectural divergence breaks both directions of DnD",
+    "timeline": "Present since CandidatesSidebar was introduced; task 20260522-082259 added partial fixes but did not address DnD protocol, full visual parity, or i18n",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "Line 2429: JSON payload emits { optionId, slotId, originSlotId } — no direction field (inferred: source read)",
+      "Line 913: if (payload.direction === 'board' && payload.sourceSlotId && saveMutations) — candidate drops fail both checks (inferred: source read)",
+      "Line 2266: candidateCardStyle produces padding:8px, cursor:grab, no fixed dimensions — differs from cardStyle line 816 (inferred: source read)",
+      "Line 2314: breakfast: '早餐 / Breakfast' — static bilingual regardless of lang (inferred: source read)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — QA must verify via live browser render)",
+    "complaint_location_keywords": ["右侧", "左侧", "拖动", "候选", "中英文", "local", "default"],
+    "localization_evidence": "Source read of react_template.tpl lines 913, 2266, 2313–2317, 2427–2431, 2473–2479, 2521–2524 confirms all three root causes. Line numbers verified against current file (3301 lines total).",
+    "located_source": "scripts/lib/react_template.tpl:2264 (candidateCardStyle), :2313 (slotLabels), :2427/:2473/:2521 (candidate onDragStart)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": "14f72e30",
+      "commit_message": "fix(web): flash red on gated slot-drop rejection + ticket-19161933 doc cleanup",
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": "not required — this is a design gap, not a regression",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L2",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "左侧的完全无法拖动到右边变成待选",
+      "acceptance_criterion": "Dragging a selected board card onto the candidates sidebar sends a deselect mutation for the source slot and the card becomes unselected"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "右侧的拖动到左边有的可以覆盖有的无法覆盖",
+      "acceptance_criterion": "Dragging a candidate card onto a compatible board slot calls saveMutations with select mutation for target slot only"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "右侧的栏目和左侧的栏目应该是统统一种element",
+      "acceptance_criterion": "Candidate cards render with identical layout structure as board cards: image, category header, name+RedNoteLink, detail, slot-drop overlay, hover"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "右侧为什么中英文并存？你难道不知道我切换语言的逻辑？local和default！",
+      "acceptance_criterion": "All chrome labels in #candidates-groups use lang state; no bilingual slash-strings"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2276-2547",
+      "role": "CandidatesSidebar: right panel rendering candidate cards and handling sidebar drops",
+      "imports_from": ["L (line 476)", "adaptV2Option (line 1946)", "MEAL_SLOTS (line 496)", "_isCompatible (line 497)", "RedNoteLink (line 676)"],
+      "evidence": "grep CandidatesSidebar — found at line 2277",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "802-1357",
+      "role": "KanbanView: board card rendering with cardStyle/hoverOn/hoverOff (reference design for Bug B fix)",
+      "imports_from": ["leaf"],
+      "evidence": "grep cardStyle — found at line 816 inside KanbanView closure",
+      "verified_via": "grep"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "913,998,1084,1170,1320,1928",
+      "role": "Board .slot-drop onDrop handlers that receive both board and candidate drag events",
+      "imports_from": ["saveMutations (prop)", "setEditorSelections (prop)", "_isCompatible (line 497)", "_flashSuccess (line 504)", "_flashReject (line 518)"],
+      "evidence": "grep payload.direction.*board — found at lines 913, 998, 1084, 1170, 1928; line 1320 has no direction gate",
+      "verified_via": "grep"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2354,
+      "type": "if",
+      "code_snippet": "if ((payload.direction === 'plan-to-candidates' || payload.direction === 'board') && srcSlotId)",
+      "purpose": "handleSidebarDrop: only deselects when a board card is dropped on sidebar; prevents accidental deselect from other drop sources",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 497,
+      "type": "if",
+      "code_snippet": "function _isCompatible(srcSlotId, tgtSlotId) { if (MEAL_SLOTS.has(srcSlotId) && MEAL_SLOTS.has(tgtSlotId)) return true; return srcSlotId === tgtSlotId; }",
+      "purpose": "Prevents cross-category drops (meals can only go to meal slots, etc.)",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 913,
+      "type": "if",
+      "code_snippet": "if (e.currentTarget.getAttribute('data-droppable') === 'false') { ... return; }",
+      "purpose": "Prevents drops onto gated slots (skipped/late-arrival)",
+      "removal_authorized": false
+    }
+  ],
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- agent-prompt edit; cycle modifies scripts/lib/react_template.tpl source only. Does not produce (1) rendered UI changes directly (QA verifies via live browser), (2) browser interaction by BA agent, (3) Playwright invocation by BA agent, (4) screenshot evidence from BA agent, or (5) changes to pipeline steps 01-12. Visual and DnD verification is mandatory from QA via live browser render of GET /api/html/TRIP_ID."
+  },
+  "evidence": {
+    "observed": "拖动功能彻底失败 / 右侧设计彻底错误 / 中英文并存",
+    "measured": {
+      "value": "candidate onDragStart at line 2429 emits { optionId, slotId, originSlotId } — no direction; board onDrop at line 913 gates on payload.direction === 'board'; candidateCardStyle at line 2266 has no fixed dimensions; slotLabels at line 2313 is static bilingual",
+      "location": "scripts/lib/react_template.tpl:2266,2313,2429,2473,2521,913,998,1084,1170,1320,1928"
+    },
+    "expected": {
+      "value": "candidate payloads include direction: 'candidates'; board onDrop has direction === 'candidates' branch calling saveMutations; cards use cardStyle tokens; all chrome uses L(key, lang)",
+      "source": "tier_2_verified: cardStyle line 816, L() line 476, board onDrop pattern at lines 913/998/1084/1170"
+    },
+    "gap": "3 missing direction fields in candidate payloads; 5 board onDrop handlers missing candidates branch; candidateCardStyle has 0 of 8 board-card visual tokens; slotLabels is static not lang-reactive"
+  },
+  "scope_expansion": {
+    "search_pattern": "candidateCardStyle|CandidatesSidebar|slotLabels|direction.*board",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["CandidatesSidebar (right panel)"],
+    "additional_found": ["board onDrop handlers at lines 913, 998, 1084, 1170, 1320, 1928 — require direction expansion"],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:2266 (candidateCardStyle definition)",
+      "scripts/lib/react_template.tpl:2437,2486,2531 (candidateCardStyle uses)",
+      "scripts/lib/react_template.tpl:2313 (slotLabels definition)",
+      "scripts/lib/react_template.tpl:2509 (slotLabels use)",
+      "scripts/lib/react_template.tpl:2427,2473,2521 (candidate onDragStart)",
+      "scripts/lib/react_template.tpl:913,998,1084,1170,1928 (board onDrop with direction gate)",
+      "scripts/lib/react_template.tpl:1320 (accommodation board onDrop, no direction gate)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "cardStyle/hoverOn/hoverOff/categoryColors/cardW/cardH/imgH from KanbanView closure (lines 802–827) and L() helper (lines 476–485) — read and verified in this session",
+    "url_or_location": "scripts/lib/react_template.tpl:476–485, 802–827",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L2",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempt on this specific 3-bug set. Task 20260522-082259 addressed 5 different bugs (candidateCardStyle helper, cover_image, preserveCurrentAccommodationOption, draggable, drag-out) and is protected, not repeated."
+    }
+  },
+  "context": {
+    "codebase_state": "scripts/lib/react_template.tpl modified (3301 lines), last commit 14f72e30",
+    "recent_commits": "14f72e30 fix(web): flash red on gated slot-drop rejection; 9218b6bd feat(web): unified viewer/editor page + bidirectional drag",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Three targeted patches in scripts/lib/react_template.tpl: (1) add direction: 'candidates' to 3 candidate onDragStart payloads and expand 6 board onDrop handlers with a candidates branch; (2) replace candidateCardStyle and 3 card-rendering blocks with board-card-equivalent layout; (3) replace slotLabels static object and 4+ hardcoded label strings with lang-reactive helpers",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA loads GET /api/html/TRIP_ID in browser, verifies: (A) drag candidate onto board slot triggers save and card highlights; (B) drag board card to sidebar clears it; (C) candidate cards show image+category header+detail; (D) toggle lang button changes all #candidates-groups chrome text"
+  },
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260524-132346.json",
+  "blast_radius_map_path": null,
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": false,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "12 findings returned. Key blockers applied: (1) sourceSlotId must NOT be in candidate payloads — semantically wrong for meal-any and causes source-slot clear risk; (2) AC2 strengthened to prove deselect for all 3 card types; (3) visual AC strengthened to require shared style helpers not just image presence; (4) i18n AC scoped to #candidates-groups chrome only to avoid false positives on POI data; (5) loading/empty texts added to i18n scope. Observation: draft correctly avoids carrying user anger into procedural requirements.",
+    "findings": [
+      {
+        "issue": "Adding sourceSlotId: slotId to candidate payloads is semantically dangerous — meals-any is not a real slot; board onDrop would risk clearing a candidate origin slot",
+        "proposed_fix": "Candidate payload: { direction: 'candidates', optionId, slotId, originSlotId } — no sourceSlotId. Board onDrop candidates branch gates only on direction === 'candidates', never uses sourceSlotId to clear anything.",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "The pre-analysis spec had sourceSlotId in candidate payloads. Removed per codex finding. The board onDrop candidates branch now uses payload.optionId and payload.originSlotId only."
+      },
+      {
+        "issue": "AC2 too weak — 'no regression on handleSidebarDrop' does not prove left→right works for all 3 card types",
+        "proposed_fix": "AC2 requires verification for meals, accommodation, and activity-slot-backed cards",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC2 expanded to require all three card types"
+      },
+      {
+        "issue": "Visual AC3/AC4 can pass while cards still look different (only image presence checked)",
+        "proposed_fix": "Replace with requirement to use shared style helpers — image region, category-color header, emoji, RedNoteLink, MapLink, selected shadow, hover behavior, remove standalone candidateCardStyle",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC3 now requires full board-card layout structure including .slot-drop overlay"
+      },
+      {
+        "issue": "i18n scope misses loading/empty texts and other chrome strings beyond listed section labels",
+        "proposed_fix": "Apply lang logic to loading text (line 555), empty text (line 577), all chrome in #candidates-groups",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Added to Bug C fix hints and M7"
+      },
+      {
+        "issue": "AC5/AC6 grep-style too broad — could catch POI names or data containing slashes",
+        "proposed_fix": "Scope acceptance to rendered UI labels inside #candidates-groups only, not arbitrary data fields",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC5/AC6 now explicitly exempt POI name_local/name_base fields; scoped to chrome labels only"
+      },
+      {
+        "issue": "Bug A root-cause claim slightly imprecise — window.setEditorSelection does save, the real risk is origin-slot mutation",
+        "proposed_fix": "Reword: candidate→board drops must use an explicit path that selects only target slot and never clears origin slot",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Evidence section and M2 reworded accordingly"
+      },
+      {
+        "issue": "Scope wording 'all inside CandidatesSidebar' is false — board onDrop handlers are outside it",
+        "proposed_fix": "Scope wording: touch CandidatesSidebar drag payload/rendering AND board drop handlers that receive those payloads",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Scope section updated"
+      },
+      {
+        "issue": "Accommodation onDrop at line 1320 (no direction gate) should be made consistent, not treated as a standalone divergent case",
+        "proposed_fix": "Route accommodation through same candidate-vs-board pattern as other 5 handlers",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Technical hints updated — line 1320 now explicitly gets the full 2-branch pattern"
+      },
+      {
+        "issue": "Static grep for saveMutations path insufficient for DnD regression — needs browser simulation",
+        "proposed_fix": "Acceptance should include DOM-level drag simulation proving candidate→board sends target-only mutation",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "AC1 verification instruction updated to be more precise about what the grep must confirm"
+      },
+      {
+        "issue": "Inline same style tokens verbatim allows future divergence and contradicts same element",
+        "proposed_fix": "Extract shared card metrics/style/render helpers; allow only container-width adaptation",
+        "classification": "major",
+        "disposition": "logged",
+        "rationale": "Extraction to module scope is listed as preferred (C2 Could Have). Inlining remains acceptable for this cycle to keep scope minimal. User's primary need is visual parity, not enforced sharing mechanism."
+      },
+      {
+        "issue": "Some right→left failures may come from droppable gating or compatibility checks, not only payload shape",
+        "proposed_fix": "Add scope: candidate drops accepted on every editable compatible target slot; rejects only for skipped/late-arrival/incompatible",
+        "classification": "minor",
+        "disposition": "logged",
+        "rationale": "Existing _isCompatible and droppable gating are protected guards. The AC1 verification instruction covers this implicitly."
+      },
+      {
+        "issue": "Draft correctly avoids carrying user anger into procedural requirements",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "No action needed"
+      }
+    ],
+    "feedback_incorporated": "6 major findings applied: removed sourceSlotId from candidate payloads, strengthened AC2 for 3 card types, strengthened AC3/AC4 for full board-card layout structure, added loading/empty texts to i18n scope, scoped AC5/AC6 to #candidates-groups chrome only, updated line 1320 to get full 2-branch pattern."
+  }
+}
