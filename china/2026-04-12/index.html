@@ -9168,18 +9168,6 @@ function _flashReject(el) {
   }, 400);
 }
 
-/// candidateCardStyle: shared helper for Candidates panel cards — mirrors Kanban cardStyle visual tokens
-// (borderRadius:8px, shadow, transition, cursor) with selected/pending state support. Root cause: commit 14f72e30.
-const candidateCardStyle = (isSelected, isPending) => ({
-  background: isPending ? '#eff6ff' : isSelected ? '#e9f5ec' : 'white',
-  borderRadius: '8px',
-  border: '1px solid ' + (isPending ? '#3b82f6' : isSelected ? '#45b26b' : '#e5e7eb'),
-  boxShadow: isSelected ? '0 0 0 2px #3b82f6' : '0 1px 3px rgba(0,0,0,0.1)',
-  transition: 'box-shadow 0.15s',
-  padding: '8px 10px', marginBottom: '6px', cursor: 'grab', fontSize: '12px',
-  userSelect: 'none', position: 'relative'
-});
-
 // CandidatesSidebar component: fixed right panel (always active)
 const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelections, saveMutations,
     setEditorSelections, editorDay, pendingSelection, setPendingSelection, setEditorTripData, inlineMode }) => {
@@ -9327,9 +9315,10 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
         return (
           <div style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
+              {(() => { const accLabel = L('accommodation', lang); return accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
             </div>
             {editorDay.accommodation.options.map((rawOpt, oi) => {
+              const accLabel = L('accommodation', lang);
               const opt = adaptV2Option(rawOpt);
               const isSelected = selectedAccId === rawOpt.option_id;
               const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id && pendingSelection.slotId === 'accommodation';
@@ -9349,7 +9338,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                     if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                     setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: 'accommodation', originSlotId: 'accommodation' });
                   }}
-                  style={{ width: '100%', maxWidth: '280px', boxSizing: 'border-box', minWidth: 0, height: '320px', flexShrink: 0, background: '#fff', borderRadius: '8px', border: isSelected ? '1.5px solid #27ae60' : 'none', boxShadow: isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '8px' }}
+                  style={{ width: '100%', maxWidth: '280px', boxSizing: 'border-box', minWidth: 0, height: '320px', flexShrink: 0, background: isPending ? '#eff6ff' : '#fff', borderRadius: '8px', border: isSelected ? '1.5px solid #27ae60' : isPending ? '2px solid #3b82f6' : 'none', boxShadow: isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '8px' }}
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(74,144,217,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.boxShadow = isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
@@ -9358,7 +9347,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   </div>
                   <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <span>🏨 {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}</span>
+                      <span>🏨 {accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation')}</span>
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                       {getDisplayName(opt, lang)}
@@ -9381,9 +9370,10 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       {mealsGroup.length > 0 && (
         <div style={{ padding: '8px 12px' }}>
           <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-            {(() => { const v = L('meals', lang); return v !== 'meals' ? v : (lang === 'local' ? '餐饮' : 'Meals'); })()}
+            {(() => { const mealsLabel = L('meals', lang); return mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals'); })()}
           </div>
           {mealsGroup.map((rawOpt, oi) => {
+            const mealsLabel = L('meals', lang);
             const opt = adaptV2Option(rawOpt);
             const isSelected = isMealSelected(rawOpt.option_id);
             const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
@@ -9415,7 +9405,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                 </div>
                 <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                    <span>🍽️ {(() => { const v = L('meals', lang); return v !== 'meals' ? v : (lang === 'local' ? '餐饮' : 'Meals'); })()}</span>
+                    <span>🍽️ {mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')}</span>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                     {getDisplayName(opt, lang)}
@@ -9820,7 +9810,7 @@ function NotionTravelApp() {
       if (window.setEditorSelection === bridge) delete window.setEditorSelection;
       if (window.applyEditorSelection === applyBridge) delete window.applyEditorSelection;
     };
-  }, [publishedDay && publishedDay.day, saveMutations, editorDay]);
+  }, [publishedDay && publishedDay.day, saveMutations, editorDay, editorSelections]);
 
   // Budget recompute on page load after editorTripData fetched (M25)
   const editorTripDataRef = React.useRef(null);
