@@ -2284,7 +2284,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
       padding: '16px 12px'
     }}>
-      <div style={{ fontSize: '12px', color: '#9b9a97' }}>Loading candidates…</div>
+      <div style={{ fontSize: '12px', color: '#9b9a97' }}>{lang === 'local' ? '加载候选项中…' : 'Loading candidates…'}</div>
     </div>
   );
 
