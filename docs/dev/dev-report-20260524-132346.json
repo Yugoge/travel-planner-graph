@@ -1,0 +1,133 @@
+{
+  "request_id": "20260524-132346",
+  "task_id": "20260524-132346",
+  "timestamp": "2026-05-24T15:45:00Z",
+  "baseline_head_sha": "1190d99b64ab6185e26bdfd61d23579860d324fb",
+  "baseline_dirty_snapshot": "",
+  "dev_report_path": "docs/dev/dev-report-20260524-132346.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Bug A — Added direction:'candidates' to all 3 candidate card onDragStart payloads",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "accommodation (~L2437), meals (~L2493), activity (~L2552) onDragStart now include direction:'candidates' in JSON payload",
+        "rationale": "Without direction field, board onDrop handlers bypass saveMutations entirely for candidate drops"
+      },
+      {
+        "id": 2,
+        "description": "Bug A — Added direction==='candidates' branch to all 6 board onDrop handlers",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Lines 913, 998, 1084, 1170, 1320, 1928: added else-if block using window.applyEditorSelection with saveMutations fallback; line 1320 (accommodation board) previously had no direction gate at all — now has full board+candidates branches",
+        "rationale": "applyEditorSelection is preferred over setEditorSelection to avoid double-save; fallback saveMutations used when bridge absent"
+      },
+      {
+        "id": 3,
+        "description": "Bug A — Fixed double-save regression: use applyEditorSelection not setEditorSelection in candidates branch",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Candidates branch calls window.applyEditorSelection(optionId, toSlotId, originSlotId) with saveMutations as fallback; does NOT call window.setEditorSelection separately (would double-save)",
+        "rationale": "Codex Finding 1: setEditorSelection also calls saveMutations internally; using both causes two saves with second missing origin_slot_id"
+      },
+      {
+        "id": 4,
+        "description": "Bug B — Replaced all 3 candidate card layouts with board-card-equivalent rendering",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Accommodation (~L2430-2466), meals (~L2484-2523), activity (~L2545-2581): outer div width:100%/maxWidth:280px/320px height, image region 140px, category-color header with emoji, name+RedNoteLink row, sub-detail, .slot-drop overlay with data-droppable=true",
+        "rationale": "candidateCardStyle was compact (no image, no fixed dimensions, wrong colors, cursor:grab); board-equivalent layout required by AC3/AC4"
+      },
+      {
+        "id": 5,
+        "description": "Bug B — Removed stopPropagation from candidate card overlay onDrop handlers",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Candidate card .slot-drop overlays retain only onDragOver; onDrop handler removed to allow board card drops to bubble to handleSidebarDrop",
+        "rationale": "Codex Finding 2: stopPropagation blocked board→sidebar deselect regression guard (AC2)"
+      },
+      {
+        "id": 6,
+        "description": "Bug B — Fixed card width overflow: width:100% maxWidth:280px instead of fixed 280px",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "All 3 card outer divs: width:'100%', maxWidth:'280px', boxSizing:'border-box', minWidth:0 (was width:'280px', minWidth:'280px')",
+        "rationale": "Codex Finding 4: sidebar padding leaves ~276px usable, fixed 280px clips horizontally"
+      },
+      {
+        "id": 7,
+        "description": "Bug C — Replaced slotLabels static object with getSlotLabel(slotId) function",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "getSlotLabel uses L(slotId, lang) with identity check (resolved !== slotId) before using; falls back to lang-aware explicit strings; panel header, accommodation/meals section headers, loading text, empty-state text all now lang-conditional",
+        "rationale": "Static bilingual slash-strings violated AC5/AC6; L() returns key as fallback (truthy) so identity check required"
+      },
+      {
+        "id": 8,
+        "description": "Bug C — Fixed L() fallback pattern: identity check not truthy check",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Accommodation and meals section headers + card category headers: '(() => { const v = L(key, lang); return v !== key ? v : (lang===local ? zh : en); })()' pattern replaces broken 'L(key,lang)||fallback' pattern",
+        "rationale": "Codex Finding 3: L() returns key string as fallback (truthy), so ||fallback chain never fires; identity check is correct guard"
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — bugs introduced during initial CandidatesSidebar feature development",
+      "why_issue_occurred": "CandidatesSidebar was implemented with incomplete DnD payload (missing direction field), compact card layout instead of board-card-equivalent, and static bilingual text strings ignoring the lang prop",
+      "how_fix_addresses_root": "Added direction:'candidates' to all drag payloads, rewrote card layouts to match board-card structure, replaced static strings with lang-conditional rendering using identity-safe L() calls"
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 83,
+      "lines_removed": 41,
+      "new_symbols_introduced": ["getSlotLabel"],
+      "minimum_possible_lines_estimate": 60,
+      "justification_for_overage": "Bug B card layout replacement from compact (3-4 lines) to full board-card (12-14 lines per card type x3) accounts for bulk of addition; minimum achievable given AC3 requirement for image/overlay/header/name/sub-detail layout"
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": []
+      }
+    ],
+    "blast_radius_declarations": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "coverage_gap_severity": "n/a",
+        "addressed_by": "exemption",
+        "reason": "Single self-contained template file; no importers found via grep. Changes are isolated to CandidatesSidebar component (~L2264-2590) and 6 board onDrop handlers (lines 913, 998, 1084, 1170, 1320, 1928). handleSidebarDrop (L2355-2368) confirmed untouched."
+      }
+    ],
+    "qa_ready": true,
+    "qa_notes": "Verify: (1) drag candidate card to board slot → saveMutations fires with {type:select, slot:<board-slot>, option_id:<X>, origin_slot_id:<O>} (AC1); (2) drag board card to sidebar → handleSidebarDrop fires, source slot cleared with option_id:null (AC2); (3) candidate card renders 280px wide with image/category-header/name/overlay (AC3/AC4); (4) no bilingual slash-strings in CandidatesSidebar chrome labels when lang=local (AC5); (5) no CJK in lang=base chrome labels (AC6). Meals drag: toSlotId from board overlay data-slot-id (breakfast/lunch/dinner), not from candidate card's meals-any data-slot-id.",
+    "permissions_to_add": []
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "5 findings: (1) double-save via setEditorSelection+saveMutations — FIXED via applyEditorSelection; (2) stopPropagation on candidate overlay broke board→sidebar deselect AC2 — FIXED by removing onDrop from candidate overlays; (3) L() fallback || chain broken because L returns key string (truthy) — FIXED with identity check; (4) width:280px overflows 276px sidebar — FIXED with width:100%/maxWidth:280px; (5) window.setEditorSelection 2 vs 3 args observation — OBSERVATION_ONLY, candidates branch uses applyEditorSelection so moot",
+    "feedback_incorporated": "All 4 blockers incorporated. Finding 5 marked OBSERVATION_ONLY and logged below.",
+    "codex_observation_only": [
+      "Finding 5: window.setEditorSelection arg count mismatch (2 vs 3) — moot because candidates branch now uses window.applyEditorSelection (3 args) with saveMutations fallback; setEditorSelection not called in candidates branch at all"
+    ]
+  },
+  "self_verification": {
+    "build": "skipped — react_template.tpl is a JSX template rendered by Python script at runtime; no standalone build step available; syntax visually verified",
+    "smoke_check": "pass",
+    "notes": "AC grep checks all pass: direction===candidates at all 6 handler lines; handleSidebarDrop has option_id:null; candidateCardStyle not used in card div styles; no bilingual slash-strings in sidebar chrome range L2264-2590; no bilingual targets (早餐/Breakfast, 住宿/Accommodation, 餐饮/Meals) found anywhere in file"
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA should verify meals drag specifically: candidate slotId=meals-any but board toSlotId should be breakfast/lunch/dinner from the board overlay's data-slot-id",
+    "QA should verify window.applyEditorSelection exists at runtime before testing; saveMutations fallback path also needs validation",
+    "The accommodation board onDrop handler (L1320) was previously missing the direction==='board' gate entirely — regression risk; QA should verify board-to-board drags on accommodation slot still work"
+  ]
+}
