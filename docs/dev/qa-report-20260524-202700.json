@@ -1,0 +1,98 @@
+{
+  "request_id": "20260524-202700",
+  "task_id": "20260524-202700",
+  "timestamp": "2026-05-24T20:52:59Z",
+  "qa": {
+    "status": "fail",
+    "verdict": "FAIL — AC6 not satisfied: L('accommodation', lang) and L('meals', lang) each appear TWICE in their respective sections (once in section-header IIFE, once as named const in map body); AC literal requires at most once",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "overall_assessment": "AC1, AC2, AC3, AC4, AC5 all independently verified and pass. AC6 fails: the IIFE deduplication was partial. The original code had two IIFEs per section (header + card body). The fix replaced the card-body IIFE with a named const inside the .map() callback but left the section-header IIFE intact. Both sections (accommodation and meals) still contain two occurrences of L('<slot>', lang) — one IIFE in the section header and one named const inside the map — violating the AC requirement of 'at most once' per section.",
+    "ac_results": [
+      {
+        "id": "AC1",
+        "ac_uid": "ac1-drag-board-to-sidebar-saves-mutation",
+        "status": "pass",
+        "verification_method": "Playwright interaction — ran /tmp/test-drag-202700-v3.py which dispatches DragEvent via JS evaluate and intercepts POST /api/save via page.route()",
+        "evidence": "POST /api/save intercepted with body: {trip_id:'beijing-lijiang-dali-20260418-100846', day:1, mutations:[{type:'select', slot:'accommodation', option_id:null}]}. Board card [data-slot-card='primary'][data-slot-id='accommodation'] confirmed draggable=true. option_id:null confirmed. No console errors."
+      },
+      {
+        "id": "AC2",
+        "ac_uid": "ac2-drop-sidebar-to-slot-saves-mutation",
+        "status": "pass",
+        "verification_method": "Playwright interaction — same test script, AC2 segment. Dispatches DragEvent from sidebar candidate to board .slot-drop and intercepts POST /api/save.",
+        "evidence": "POST /api/save intercepted with body: {trip_id:'beijing-lijiang-dali-20260418-100846', day:1, mutations:[{type:'select', slot:'accommodation', option_id:'accommodation-1-1', origin_slot_id:'accommodation'}]}. Sidebar candidate data-option-id='accommodation-1-1' confirmed (non-null). option_id in mutation matches dragged candidate. 2 sidebar accommodation candidates found."
+      },
+      {
+        "id": "AC3",
+        "ac_uid": "ac3-dead-candidateCardStyle-removed",
+        "status": "pass",
+        "verification_method": "grep -c candidateCardStyle scripts/lib/react_template.tpl; grep -r candidateCardStyle /var/www/travel/ | wc -l",
+        "evidence": "grep -c returned 0 for scripts/lib/react_template.tpl. grep against /var/www/travel/*.html returned 0 total matches. Dead function confirmed removed in both source template and deployed HTML. Diff confirms 11-line candidateCardStyle function block deleted (lines 2263-2273 in original)."
+      },
+      {
+        "id": "AC4",
+        "ac_uid": "ac4-isPending-visual-affordance",
+        "status": "pass",
+        "verification_method": "grep -n isPending scripts/lib/react_template.tpl + source code inspection of style object at line 2436",
+        "evidence": "Line 2419: const isPending computed from pendingSelection check. Line 2436 style object: background:isPending?'#eff6ff':'#fff' (light blue when pending), border:isSelected?'1.5px solid #27ae60':isPending?'2px solid #3b82f6':'none' (blue border when pending). Both #eff6ff and #3b82f6 match AC4's verify_style_one_of criteria (rgb 239,246,255 and rgb 59,130,246 respectively). isPending conditional is live in accommodation card render path."
+      },
+      {
+        "id": "AC5",
+        "ac_uid": "ac5-stale-closure-dep-array",
+        "status": "pass",
+        "verification_method": "grep -n 'editorSelections' scripts/lib/react_template.tpl scoped to line 2908 + direct source read of lines 2800-2908",
+        "evidence": "Line 2908: }, [publishedDay && publishedDay.day, saveMutations, editorDay, editorSelections]); — editorSelections is present as the 4th element in the dep array. The useEffect at line 2800 defines preserveCurrentAccommodationOption and closes over editorSelections (line 2809). Diff confirms dep array changed from [publishedDay && publishedDay.day, saveMutations, editorDay] to [..., editorSelections]."
+      },
+      {
+        "id": "AC6",
+        "ac_uid": "ac6-iife-dedup",
+        "status": "fail",
+        "verification_method": "grep -n \"L('accommodation', lang)\" scripts/lib/react_template.tpl — counted occurrences within the CandidatesSidebar accommodation section (~lines 2400-2462). Same for meals section (~lines 2464-2535).",
+        "evidence": "FAIL. Accommodation section: L('accommodation', lang) appears at lines 2413 AND 2416 — two occurrences. Line 2413: section-header IIFE '(() => { const accLabel = L(\"accommodation\", lang); return accLabel !== \"accommodation\" ? ... })()' — original IIFE left intact (only renamed v→accLabel inside). Line 2416: 'const accLabel = L(\"accommodation\", lang)' — new named const inside .map() callback. The card-body IIFE (originally at line ~2454) was eliminated and replaced by accLabel reference at line 2445. Net result: 1 IIFE + 1 const = 2 calls to L('accommodation', lang) in the accommodation section. AC requires 'at most once'. Meals section: identical pattern — line 2468 IIFE and line 2471 const mealsLabel = L('meals', lang) — 2 occurrences. AC requires at most once per section. The deduplication was partial: the card-body IIFE was eliminated but the section-header IIFE was not folded into the named const. A correct fix would extract const accLabel = L('accommodation', lang) ABOVE the section header div (before line 2412) and use it in both the header and the map body, eliminating the header IIFE entirely.",
+        "recommendation": "Extract const accLabel = L('accommodation', lang) as a single declaration before the section header <div> (before line 2412). Replace the section-header IIFE at line 2413 with a direct reference to accLabel. The map body at line 2416 should then delete its own const accLabel declaration and use the outer-scope accLabel. Same pattern for mealsLabel. This produces exactly one L() call per section."
+      }
+    ],
+    "e2e_enforcement": {
+      "status": "performed",
+      "method": "Playwright Python — ran /tmp/test-drag-202700-v3.py cold-start, dispatchEvent(DragEvent) via page.evaluate(), page.route('**/api/save') interception",
+      "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+      "health_check": "curl http://localhost:8094/ returned HTTP 200",
+      "results_file": "/tmp/ac12-results-202700.json",
+      "note": "AC1 and AC2 both passed independently. No console errors during test run. Board card confirmed draggable=true before drag. 2 sidebar accommodation candidates found for AC2."
+    },
+    "failures": [
+      {
+        "severity": "major",
+        "location": "scripts/lib/react_template.tpl:2413+2416 (accommodation), 2468+2471 (meals)",
+        "issue": "AC6 IIFE dedup is partial — section-header IIFEs remain, so L('accommodation', lang) and L('meals', lang) each appear twice in their respective sections instead of at most once as the AC requires.",
+        "recommendation": "Hoist const accLabel/mealsLabel declarations to before the section header div so the header can reference the named const instead of calling L() again in its own IIFE.",
+        "primary_cause": "dev_implementation",
+        "blocks_release": true
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 1,
+      "minor_issues": 0,
+      "total_findings": 1,
+      "release_recommendation": "reject",
+      "acs_passed": ["AC1", "AC2", "AC3", "AC4", "AC5"],
+      "acs_failed": ["AC6"]
+    },
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    },
+    "iteration_needed": true,
+    "refined_context": {
+      "failed_criteria": ["AC6: L('accommodation', lang) appears twice in accommodation section (line 2413 IIFE + line 2416 const); L('meals', lang) appears twice in meals section (line 2468 IIFE + line 2471 const)"],
+      "critical_issues": [],
+      "recommended_approach": "In CandidatesSidebar: for the accommodation section, move 'const accLabel = L(\"accommodation\", lang)' to BEFORE the section header <div> (i.e., before line 2412, inside the outer block). Remove the IIFE at line 2413 and replace with direct accLabel reference using the same ternary logic. Remove the redundant 'const accLabel' inside the .map() callback (line 2416) since accLabel is now in outer scope. Apply identical pattern for mealsLabel in the meals section. After the fix, each label string should be resolved by exactly one L() call per section.",
+      "additional_context": "The diff shows dev's change only renamed v→accLabel inside the section-header IIFE (cosmetic) while adding a separate const accLabel inside the map body. The elimination target was the SECOND IIFE (card-body span), which was correctly removed — but the first IIFE (section header) was never eliminated. The AC's 'at most once' requirement is not satisfied."
+    }
+  }
+}
