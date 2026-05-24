@@ -2462,7 +2462,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                       {opt.cost_display && <div>{opt.cost_display}</div>}
                     </div>
                   </div>
-                  <div className="slot-drop" data-slot-id="accommodation" data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent' }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }} />
+                  <div className="slot-drop" data-slot-id="accommodation" data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent' }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} />
                 </div>
               );
             })}
