@@ -2410,9 +2410,10 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
         return (
           <div style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
+              {(() => { const accLabel = L('accommodation', lang); return accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
             </div>
             {editorDay.accommodation.options.map((rawOpt, oi) => {
+              const accLabel = L('accommodation', lang);
               const opt = adaptV2Option(rawOpt);
               const isSelected = selectedAccId === rawOpt.option_id;
               const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id && pendingSelection.slotId === 'accommodation';
