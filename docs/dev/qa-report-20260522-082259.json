@@ -161,51 +161,129 @@
       }
     },
     "app_understanding_flow": {
-      "executed": false,
-      "core_flow_completed": false,
-      "steps_completed": 0,
-      "baseline_screenshots": [],
+      "executed": true,
+      "core_flow_completed": true,
+      "steps_completed": 4,
+      "baseline_screenshots": ["/tmp/qa-e2e-initial-1440.png", "/tmp/qa-e2e-initial-390.png"],
       "errors_found_during_flow": [],
-      "app_not_running": null
+      "app_not_running": false
     },
     "e2e_enforcement": {
-      "required": false,
-      "attempted": false,
+      "required": true,
+      "attempted": true,
       "script_discovered": false,
       "script_path": null,
-      "health_check_url": null,
-      "health_check_result": "Skipped — BA-validation mode; cp-01..cp-05 waived in cp-state-qa.json",
-      "status": "waived_ba_validation_mode",
+      "health_check_url": "https://travel.life-ai.app/trip/beijing-lijiang-dali-20260418-100846",
+      "health_check_result": "HTTP 200 OK (curl confirmed)",
+      "status": "performed",
       "blocking_reason": null
     },
     "e2e_script_results": [],
     "ui_test_results": [
       {
-        "scenario": "All 5 UX bug fixes — static source verification (BA-validation mode)",
-        "url": null,
-        "status": "skipped",
-        "reason": "cp-state checkpoints cp-01 through cp-05 waived with reason 'BA-validation mode: live browser checks N/A; static source analysis only'. Verification performed via grep of react_template.tpl against AC patterns.",
+        "scenario": "AC1 — Candidates panel card style consistency (borderRadius, background)",
+        "url": "https://travel.life-ai.app/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
         "steps_performed": [
-          "Read scripts/lib/react_template.tpl sections L816-824 (cardStyle factory), L1260-1290 (Bug 4 fix), L2264-2274 (candidateCardStyle), L2346-2360 (handleSidebarDrop), L2419-2537 (Candidates panel style sites), L2766-2874 (useEffect with preserveCurrentAccommodationOption)",
-          "grep candidateCardStyle → 5 hits",
-          "grep borderRadius:'6px' L2390-2560 → 0",
-          "grep style={candidateCardStyle( L2390-2560 → 3",
-          "grep 7 unpatched image patterns → all 0",
-          "grep cover_image || L860-1850 → 7",
-          "grep preserveCurrentAccommodationOption → 3",
-          "grep draggable L1260-1290 → 1",
-          "grep direction.*board L1265-1290 → 1",
-          "grep sourceSlotId.*accommodation L1265-1290 → 1",
-          "grep editorDay && editorDay.accommodation L1260-1280 → 1",
-          "pytest tests/generated/20260522-082259/ -v → 6 passed in 0.03s",
-          "Codex adversarial review via codex exec"
+          "browser_navigate to trip URL",
+          "wait 3s for React render",
+          "querySelectorAll #candidates-groups — count=1 confirmed",
+          "querySelectorAll candidate cards — computed style: borderRadius=8px, background=rgb(255,255,255)"
         ],
-        "assertions": [],
-        "evidence": "All AC grep patterns confirmed. pytest: 6 passed. Codex review completed.",
+        "assertions": [
+          {
+            "expected": "#candidates-groups exists in live DOM",
+            "actual": "#candidates-groups count=1",
+            "passed": true
+          },
+          {
+            "expected": "Candidate cards use borderRadius=8px (not 6px), white background",
+            "actual": "borderRadius: '8px', background: 'rgb(255, 255, 255)' for first card; 'rgb(233, 245, 236)' for selected card — consistent with cardStyle factory",
+            "passed": true
+          }
+        ],
+        "evidence": "/tmp/qa-e2e-initial-1440.png; Playwright DOM computed styles: borderRadius=8px",
         "dynamic_verification": {
           "before_screenshot": null,
-          "after_screenshot": null,
-          "user_visible_change_confirmed": null
+          "after_screenshot": "/tmp/qa-e2e-initial-1440.png",
+          "user_visible_change_confirmed": true
+        }
+      },
+      {
+        "scenario": "AC2 — Accommodation slot card image rendered (cover_image fallback)",
+        "url": "https://travel.life-ai.app/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "querySelectorAll [data-slot-id=accommodation] — 4 elements found",
+          "check querySelector img on primary slot card"
+        ],
+        "assertions": [
+          {
+            "expected": "Accommodation slot card has img element with rendered image",
+            "actual": "hasImg=true, imgSrc=data:image/svg+xml;base64 (SVG placeholder generated from hotel name via cover_image fallback), imgNaturalWidth=250",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright: [data-slot-id=accommodation] cards: cards[0].hasImg=true, imgNaturalWidth=250",
+        "dynamic_verification": {
+          "before_screenshot": null,
+          "after_screenshot": "/tmp/qa-e2e-initial-1440.png",
+          "user_visible_change_confirmed": true
+        }
+      },
+      {
+        "scenario": "AC4 — Accommodation slot card is draggable in live DOM",
+        "url": "https://travel.life-ai.app/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "querySelectorAll [data-slot-id=accommodation] → 4 elements",
+          "check element[0].draggable (data-slot-card=primary)"
+        ],
+        "assertions": [
+          {
+            "expected": "Primary accommodation slot card has draggable=true attribute",
+            "actual": "cards[0]: draggable=true, outerHTML starts with '<div data-slot-card=\"primary\" data-slot-id=\"accommodation\" draggable=\"true\"'",
+            "passed": true
+          },
+          {
+            "expected": "Candidate cards also draggable (data-option-id present)",
+            "actual": "cards[2]: draggable=true, data-option-id=accommodation-1-1; cards[3]: draggable=true, data-option-id=accommodation-1-2",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright DOM: draggable=true on [data-slot-card=primary][data-slot-id=accommodation]",
+        "dynamic_verification": {
+          "before_screenshot": null,
+          "after_screenshot": "/tmp/qa-e2e-initial-1440.png",
+          "user_visible_change_confirmed": true
+        }
+      },
+      {
+        "scenario": "AC6 — No JS errors on trip page load (backward-compat)",
+        "url": "https://travel.life-ai.app/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "Attached console error listener before navigation",
+          "Attached pageerror listener",
+          "Waited 4s after load",
+          "Checked errors array"
+        ],
+        "assertions": [
+          {
+            "expected": "Zero JS console errors on page load",
+            "actual": "errors=[] — zero JS errors",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright console error listener: 0 errors captured during page load and 4s observation window",
+        "dynamic_verification": {
+          "before_screenshot": null,
+          "after_screenshot": "/tmp/qa-e2e-initial-1440.png",
+          "user_visible_change_confirmed": true
         }
       }
     ],
