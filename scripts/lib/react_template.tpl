@@ -2080,6 +2080,9 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
       const coverImg = selAccOpt.cover_image || selAccOpt.image;
       if (coverImg) day.cover = coverImg;
     }
+  } else if (Object.prototype.hasOwnProperty.call(editorSelections, accKey) && editorSelections[accKey] === null) {
+    // Explicitly deselected (drag-to-sidebar): clear the accommodation card so the slot renders empty
+    day.accommodation = null;
   }
 
   // ===== Meals (R1, R1a) =====
