@@ -2306,7 +2306,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif",
       padding: '16px 12px'
     }}>
-      <div style={{ fontSize: '12px', color: '#9b9a97' }}>No candidates for this day.</div>
+      <div style={{ fontSize: '12px', color: '#9b9a97' }}>{lang === 'local' ? '今日无候选项。' : 'No candidates for this day.'}</div>
     </div>
   );
 
