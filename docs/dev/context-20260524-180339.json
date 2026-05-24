@@ -1,0 +1,301 @@
+{
+  "request_id": "20260524-180339",
+  "task_id": "20260524-180339",
+  "timestamp": "2026-05-24T18:03:39Z",
+  "spec_path": "docs/dev/specs/spec-20260524-125921.md",
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "Single-file JS logic fix in a template. Risk is medium because the accommodation draggable condition touches selectedAccId which is also used by the badge and the board-to-board swap path. Incorrect gating change could silently break the board-to-board swap.",
+
+  "requirement": {
+    "original": "Board cards that are pre-selected by AI planning (from selected_option_id in data files) appear on the left KanbanView panel but are completely locked/non-draggable. The user cannot: 1. Drag the card to the right sidebar to deselect it (slot stays filled, can't be cleared); 2. Drop a candidate from the right panel onto the slot (or it silently fails)",
+    "clarified": "Fix JS draggable condition and drop-target gating in react_template.tpl so that AI-selected board cards (where card.selected=true and card.option_id is set by mergeEditorSelectionsIntoPublishedDay) are draggable and their slots accept candidate drops when editorDay is loaded.",
+    "what": "Fix two JS conditions in react_template.tpl: (1) selectedAccId resolution at line 1266 to not return null when edAcc is null; (2) accommodation drop-target isGated at line 1316 to not gate purely on !edAcc",
+    "why": "AI-planned selections are stored as selected_option_id on the editor slot, not as option_id on the Python-rendered card. The JS draggable guard uses acc.option_id (absent) and selectedAccId (null in viewer mode), producing draggable=false.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl line 1266 — selectedAccId resolution",
+        "scripts/lib/react_template.tpl line 1316 — accommodation isGated condition"
+      ],
+      "excluded": [
+        "scripts/lib/render_day_data.py — do not add option_id to Python cards",
+        "Meals drag (line 862) — already correct",
+        "Activity cards viewer-mode drag — out of scope (requires editorDay by design)",
+        "Board-to-board swap behavior — must be preserved unchanged"
+      ]
+    },
+    "success_criteria": [
+      "Accommodation card with AI-selected option_id has draggable=true when editorDay is loaded",
+      "Dragging accommodation card to sidebar saves option_id:null mutation for the accommodation slot",
+      "Accommodation slot with AI-selected card accepts candidate drops (data-droppable=true)",
+      "No regression in board-to-board swap behavior"
+    ],
+    "constraints": [
+      "Only scripts/lib/react_template.tpl may be modified",
+      "No new drag payload fields",
+      "Preserve existing board-to-board swap and board-to-sidebar deselect behavior"
+    ]
+  },
+
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- config; the fix is a JS condition change in a template file. Does not produce (1) rendered UI element structure changes, (2) new browser interaction flows, (3) Playwright invocation requirement at BA stage, (4) screenshot evidence at BA stage, (5) changes to user-triggered pipeline code paths. QA MUST still verify via live browser drag test per Lesson 12."
+  },
+
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl:1266 — selectedAccId computed value",
+      "scripts/lib/react_template.tpl:1267 — dragOptionId and draggable condition",
+      "scripts/lib/react_template.tpl:1316 — accommodation drop-target isGated",
+      "scripts/lib/react_template.tpl:2355-2368 — handleSidebarDrop (verified correct, no change)"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/react_template.tpl:2052-2082 — mergeEditorSelectionsIntoPublishedDay accommodation block (sets acc.option_id)",
+      "scripts/lib/react_template.tpl:2291-2348 — resolveSelectionLocal (consumed by CandidatesSidebar)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/react_template.tpl:862 — meals draggable={isSelected} (correct, no fix needed)",
+      "scripts/lib/react_template.tpl:952,1040,1125 — activity draggable={isSelected && !!slotId} (viewer-mode null is by-design, out of scope)",
+      "scripts/lib/render_day_data.py:41-54 — _common_fields omits option_id (intentional per constraint)"
+    ]
+  },
+
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-24T18:03:39Z",
+      "task_id": "20260524-180339",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "862",
+      "observation": "Meals draggable={isSelected} is correct — merge function sets opt.selected=true and opt.option_id atomically. No fix needed.",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-24T18:03:39Z",
+      "task_id": "20260524-180339",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "952,1040,1125",
+      "observation": "Activity card draggable={isSelected && !!slotId} fails in viewer mode because actSlotId/cafeSlotId/entSlotId requires editorDay. This is by-design (viewer mode is read-only). Only manifests as a bug if editorDay is loaded but the slot-map lookup fails — which does not happen for normal AI-planned slots.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+
+  "root_cause_analysis": {
+    "symptom": "AI-selected board cards have draggable=false; accommodation slot has data-droppable=false",
+    "root_cause": "selectedAccId at line 1266 returns null when edAcc is null (ternary short-circuits to null). dragOptionId = acc.option_id || selectedAccId = null || null = null. draggable={!!null} = false. Drop-target isGated = !edAcc = !null = true when edAcc is absent.",
+    "root_cause_commit": "N/A — not a regression; original code never handled the null-edAcc case for selectedAccId in the draggable path",
+    "why_introduced": "The selectedAccId computation at line 1266 was written defensively for the case where edAcc is null (viewer mode), correctly returning null. But the draggable condition was written assuming acc.option_id would always be present (it is for manually-edited cards), creating a case where both sides of the OR are null for AI-selected cards in initial render.",
+    "why_problematic": "AI-planned accommodation uses selected_option_id on the edAcc object, not option_id on the rendered card. The merge function sets acc.option_id during render, but the selectedAccId ternary short-circuits before reading it from editorSelections when edAcc is present but editorSelections doesn't have the key yet.",
+    "timeline": "Present since AI-planning feature was introduced; not a regression",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "line 1266: selectedAccId = edAcc ? (...) : null — returns null when edAcc null (inferred: code read)",
+      "line 1267: dragOptionId = acc.option_id || selectedAccId — acc.option_id absent from Python-rendered cards (inferred: render_day_data.py:41-54 _common_fields does not output option_id)",
+      "line 1273: draggable={!!dragOptionId} — false when both are null (inferred)",
+      "line 1316: isGated = !edAcc || ... — true when edAcc null (inferred)",
+      "line 2067-2068: merge sets day.accommodation.selected=true AND day.accommodation.option_id=selAccOpt.option_id — so acc.option_id IS present after merge runs (inferred: code read)",
+      "line 2100-2101: merge sets meal activeCard.selected=true AND activeCard.option_id — meals drag is correct (inferred)",
+      "line 2203-2204: merge sets activity existing.selected=true AND existing.option_id — activity drag is correct when actSlotId non-null (inferred)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — live Playwright drag test not performed at BA stage)",
+    "complaint_location_keywords": ["selected_option_id", "AI planning", "locked", "non-draggable", "board", "KanbanView", "accommodation", "slot"],
+    "localization_evidence": "Code read of react_template.tpl lines 1266-1267, 1316 confirmed null-return path. render_day_data.py lines 41-54 confirmed option_id absent from _common_fields.",
+    "located_source": "scripts/lib/react_template.tpl:1266-1267 (draggable condition) and :1316 (drop-target gating)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression — present since AI-planning feature introduction",
+      "reproducibility_verified": false
+    }
+  },
+
+  "diagnosis_layer": "L4",
+
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "completely locked/non-draggable",
+      "acceptance_criterion": "Accommodation card has draggable=true when editorDay loaded and AI selected_option_id is present"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "slot stays filled, can't be cleared",
+      "acceptance_criterion": "Dragging accommodation card to sidebar calls saveMutations with option_id:null for accommodation slot"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Drop a candidate from the right panel onto the slot silently fails",
+      "acceptance_criterion": "Accommodation slot-drop overlay has data-droppable=true when slot has AI selection"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "Any card that is rendered as selected on the board should be draggable",
+      "acceptance_criterion": "Activity cards (attractions/cafe/entertainment) with isSelected=true and non-null actSlotId are draggable"
+    }
+  ],
+
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1262-1266",
+      "role": "Compute selectedAccId for accommodation card draggable and badge state",
+      "imports_from": ["editorSelections (prop)", "editorDay.accommodation (prop)"],
+      "evidence": "Read lines 1262-1266",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1267-1273",
+      "role": "dragOptionId = acc.option_id || selectedAccId; draggable={!!dragOptionId}",
+      "imports_from": ["selectedAccId (local)", "acc.option_id (card field from merge)"],
+      "evidence": "Read lines 1267-1273",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1314-1317",
+      "role": "Build isGated for accommodation drop-target overlay",
+      "imports_from": ["edAcc (editorDay.accommodation)"],
+      "evidence": "Read lines 1314-1317",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2052-2082",
+      "role": "mergeEditorSelectionsIntoPublishedDay — sets acc.option_id and acc.selected",
+      "imports_from": ["editorDay.accommodation.selected_option_id", "editorSelections"],
+      "evidence": "Read lines 2057-2081",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2355-2368",
+      "role": "handleSidebarDrop — deselects on board-to-sidebar drop (verified correct, no change)",
+      "imports_from": ["saveMutations (prop)", "setEditorSelections (prop)"],
+      "evidence": "Read lines 2355-2368",
+      "verified_via": "Read"
+    }
+  ],
+
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1316,
+      "type": "if",
+      "code_snippet": "const isGated = !edAcc || edAcc.late_arrival_placeholder || edAcc.skipped;",
+      "purpose": "Prevent drops on skipped/late-arrival accommodation slots",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 909,
+      "type": "if",
+      "code_snippet": "const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder;",
+      "purpose": "Prevent drops on skipped/late-arrival meal slots — NOT to be touched",
+      "removal_authorized": false
+    }
+  ],
+
+  "evidence": {
+    "observed": "Board cards pre-selected by AI planning appear on the left KanbanView panel but are completely locked/non-draggable",
+    "measured": {
+      "value": "selectedAccId = edAcc ? (...) : null evaluates to null when edAcc is null; dragOptionId = null || null = null; draggable = false",
+      "location": "scripts/lib/react_template.tpl:1266-1267,1273"
+    },
+    "expected": {
+      "value": "selectedAccId should resolve from editorSelections regardless of edAcc nullity, mirroring the pattern at line 1307 and line 2060",
+      "source": "react_template.tpl:1307 (badge computation uses same resolution pattern correctly) and :2060 (mergeEditorSelectionsIntoPublishedDay uses same pattern)"
+    },
+    "gap": "Line 1266 ternary gates on edAcc presence before reading editorSelections, causing selectedAccId=null and draggable=false for AI-selected accommodation when edAcc is null or editorSelections has no key yet for the accommodation slot"
+  },
+
+  "scope_expansion": {
+    "search_pattern": "draggable={|isGated =|dragOptionId",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["scripts/lib/react_template.tpl", "scripts/lib/render_day_data.py"],
+    "additional_found": [],
+    "all_occurrences": [
+      "react_template.tpl:862 — meals (correct)",
+      "react_template.tpl:952 — cafe (viewer-mode only, out of scope)",
+      "react_template.tpl:1040 — attractions (viewer-mode only, out of scope)",
+      "react_template.tpl:1125 — entertainment (viewer-mode only, out of scope)",
+      "react_template.tpl:1267/1273 — accommodation (BROKEN — in scope)",
+      "react_template.tpl:909 — meals slot-drop (correct)",
+      "react_template.tpl:994 — cafe slot-drop (viewer-mode only, out of scope)",
+      "react_template.tpl:1080 — attractions slot-drop (viewer-mode only, out of scope)",
+      "react_template.tpl:1316 — accommodation slot-drop (BROKEN — in scope)"
+    ]
+  },
+
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Direct code read of react_template.tpl and render_day_data.py in this session",
+    "url_or_location": "scripts/lib/react_template.tpl:1266-1267,1307,1316,2060",
+    "copy_allowed": true
+  },
+
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "dedup_hit",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/specs/spec-20260524-125921.md",
+        "proposed_solution": "Bidirectional drag (board-to-sidebar deselect and sidebar-to-board select)",
+        "actual_change": "Drag infrastructure including handleSidebarDrop, board-to-board swap, payload direction field",
+        "outcome": "Infrastructure works for manually-selected cards; AI-selected cards still non-draggable because selectedAccId computation not fixed",
+        "failure_category": "wrong_scope",
+        "target_layer": "L4"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior work added drag infrastructure (new handlers, payload shape). This cycle fixes the condition-evaluation bug that prevents AI-selected cards from entering that infrastructure. Same layer (L4) but different function — precondition fix vs infrastructure addition."
+    }
+  },
+
+  "context": {
+    "codebase_state": "Modified — react_template.tpl has recent drag-related changes from spec-20260524-125921",
+    "recent_commits": "14f72e30 fix(web): flash red on gated slot-drop rejection; 9218b6bd feat(web): unified viewer/editor page + bidirectional drag",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+
+  "development_approach": {
+    "strategy": "Two targeted line changes in react_template.tpl. Fix 1: change selectedAccId resolution at line 1266 to not gate on edAcc presence. Fix 2: change isGated at line 1316 to allow drops when selectedAccId is non-null. Both changes mirror existing patterns already used elsewhere in the same file.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA must perform live browser drag test: (1) load a day with AI-selected accommodation, (2) verify card is draggable, (3) drag to sidebar and verify slot clears, (4) drag a candidate back and verify slot fills. Also verify skipped/late-arrival slots remain correctly gated."
+  },
+
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260524-180339.json",
+  "blast_radius_map_path": null,
+
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": false
+  },
+
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  },
+
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward JS condition fix with clear root cause identified by the orchestrator. No new patterns or architectures involved."
+  }
+}
