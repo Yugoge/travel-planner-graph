@@ -2410,7 +2410,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       onDrop={handleSidebarDrop}
     >
       <div style={{ padding: '12px 12px 4px', borderBottom: '1px solid #f0efed', fontSize: '13px', fontWeight: '600', color: '#37352f', position: inlineMode ? 'static' : 'sticky', top: 0, background: 'white', zIndex: 1 }}>
-        Candidates — Day {dayNum}
+        {lang === 'local' ? '候选项 — 第' + dayNum + '天' : 'Candidates — Day ' + dayNum}
       </div>
 
       {/* Accommodation group (AC15/FIX5): show accommodation options so user can select */}
