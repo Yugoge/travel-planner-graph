@@ -20,7 +20,9 @@ def test_AC3():
     # TODO(dev): replace the line below with the real test body. While the
     # TEST_INCOMPLETE sentinel is present the test will hard-fail, marking
     # the AC as unimplemented for QA Phase 5.
-    TPL = "scripts/lib/react_template.tpl"
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
+    TPL = str(PROJECT_ROOT / "scripts/lib/react_template.tpl")
 
     with open(TPL) as f:
         content = f.read()
