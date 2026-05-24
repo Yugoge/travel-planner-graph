@@ -1,0 +1,233 @@
+{
+  "request_id": "20260524-132346",
+  "task_id": "20260524-132346",
+  "timestamp": "2026-05-24T16:30:00Z",
+  "qa": {
+    "status": "pass",
+    "verdict": "PASS with spec_text_vs_execution_drift on AC2b — BA spec update required before /close",
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": false,
+    "overall_assessment": "All 3 bugs fixed. Bug A: all 6 board onDrop handlers correctly discriminate direction===candidates and call saveMutations with origin_slot_id, no source-slot clear. Bug B: all 3 candidate card types render board-equivalent layout (280px wide, 140px image, category-color header, overlay). Bug C: all chrome labels are lang-conditional, zero bilingual slash-strings. One AC-deviation: AC2b literal text specifies window.setEditorSelection but dev correctly uses window.applyEditorSelection to avoid double-save. User requirement (bridge fires for cross-meal copy and accommodation preservation) is satisfied. BA spec text update required for AC2b.",
+    "ac_results": [
+      {
+        "id": "AC1",
+        "description": "candidate->board drop persists selection via saveMutations (target slot only, no source-slot clear)",
+        "status": "pass",
+        "verification_method": "grep direction.*candidates in react_template.tpl at lines 913, 998, 1084, 1170, 1320, 1928; verified candidates branch contains saveMutations and does not contain option_id: null",
+        "evidence": "All 6 onDrop handlers have: else if (payload.direction === 'candidates') { if (window.applyEditorSelection) { window.applyEditorSelection(payload.optionId, toSlotId, payload.originSlotId || null); } else if (saveMutations) { saveMutations(dayNum, [{ type: 'select', slot: toSlotId, option_id: payload.optionId, origin_slot_id: payload.originSlotId || null }]); } } — no option_id: null present in any candidates branch",
+        "details": "Candidate onDragStart payloads confirmed to include direction:'candidates' at lines 2437 (accommodation), 2493 (meals), 2552 (activity). Meals toSlotId correctly taken from board overlay data-slot-id (breakfast/lunch/dinner), not from candidate's own slotId (meals-any)."
+      },
+      {
+        "id": "AC2",
+        "description": "board->sidebar drop deselects source slot (regression guard)",
+        "status": "pass",
+        "verification_method": "grep handleSidebarDrop in react_template.tpl; verify option_id: null present at line 2347 area",
+        "evidence": "handleSidebarDrop at lines 2355-2368 checks payload.direction === 'plan-to-candidates' || payload.direction === 'board' and calls saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]). Candidate card overlays have NO onDrop handler (removed by dev task 5) so board card drops onto candidate area correctly bubble to #candidates-groups handleSidebarDrop.",
+        "details": "Verified for all 3 card types: srcSlotId = payload.sourceSlotId || payload.slotId covers accommodation/meals/activity board drag payloads."
+      },
+      {
+        "id": "AC2b",
+        "description": "window.setEditorSelection bridge called in candidates branch",
+        "status": "ac_deviation",
+        "ac_deviation_reason": "AC2b literal text requires window.setEditorSelection in candidates branch. Dev correctly uses window.applyEditorSelection (applyBridge) instead. window.setEditorSelection (bridge) also calls saveMutations internally — using both would double-save with second mutation missing origin_slot_id. window.applyEditorSelection satisfies all required side effects: setEditorSelections state update, cross-meal copy logic, preserveCurrentAccommodationOption for accommodation drops (line 2885), saveMutations with origin_slot_id, setPendingSelection(null).",
+        "user_requirement_satisfied": true,
+        "user_requirement_evidence": "applyBridge (lines 2882-2910) calls preserveCurrentAccommodationOption for accommodation drops, performs cross-meal copy logic when originSlotId !== targetSlotId, calls saveMutations with correct {type:select, slot:targetSlotId, option_id:optionId, origin_slot_id:originSlotId}. All functional requirements of the bridge call are met. The BA spec text requires update to reflect the correct function name.",
+        "drift_type": "spec_text_vs_execution_drift",
+        "anti_fraud_guard_check": "AC2b encodes a bridge-call side-effect check, not the user-need test itself. The user-need is that accommodation preservation and cross-meal copying work — which applyEditorSelection satisfies. AC2b does NOT directly encode the user-need test. Anti-fraud guard does NOT collapse to AC-FAIL.",
+        "ba_update_required": "BA must update AC2b check.grep_pattern from 'window\\.setEditorSelection' to 'window\\.applyEditorSelection' and update the note to document that applyEditorSelection is preferred to avoid double-save.",
+        "recommendation": "close-PASS via AC-deviation branch (ac_deviation_with_user_need_satisfied). BA updates AC2b before archiving."
+      },
+      {
+        "id": "AC3",
+        "description": "candidate card renders full board-equivalent layout",
+        "status": "pass",
+        "verification_method": "grep candidateCardStyle in react_template.tpl for use in card div style attributes; verify card dimensions, image region, overlay in all 3 card types",
+        "evidence": "candidateCardStyle function defined at lines 2264-2274 but has zero call sites in card div style attributes. All 3 card types (accommodation L2430-2466, meals L2484-2523, activity L2545-2582) use inline styles: outer div width:'100%' maxWidth:'280px' height:'320px' background:'#fff' cursor:'pointer' display:'flex' flexDirection:'column' overflow:'hidden' position:'relative'. Image region height:'140px'. .slot-drop overlay with data-droppable='true'. No onDrop on candidate overlays.",
+        "details": "Card width is width:100%/maxWidth:280px (not fixed 280px) per dev fix for sidebar padding overflow. This satisfies the spirit of AC3 card_width:280px — maxWidth:280px prevents overflow while width:100% fills available space."
+      },
+      {
+        "id": "AC4",
+        "description": "candidate card category-color label header matches board card categoryColors map",
+        "status": "pass",
+        "verification_method": "grep category header color values in candidate card sections of react_template.tpl",
+        "evidence": "Accommodation (line 2453): color '#27ae60' + 🏨 emoji. Meals (line 2510): color '#e67e22' + 🍽️ emoji. Activity (line 2568): color '#3498db' + 📍 emoji. All match AC4 categoryColors map exactly.",
+        "details": "Identity-check L() pattern used for category headers: (() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()"
+      },
+      {
+        "id": "AC5",
+        "description": "no bilingual slash-strings in CandidatesSidebar chrome when lang===local",
+        "status": "pass",
+        "verification_method": "grep for '早餐 / Breakfast', '住宿 / Accommodation', '餐饮 / Meals' and CJK/[A-Za-z] slash pattern in react_template.tpl chrome label range",
+        "evidence": "Zero matches for all 3 specific bilingual strings in entire file. Loading text (line 2287): lang==='local' ? '加载候选项中…' : 'Loading candidates…'. Empty-state (line 2309): lang==='local' ? '今日无候选项。' : 'No candidates for this day.'. Panel header (line 2413): lang==='local' ? '候选项 — 第'+dayNum+'天' : 'Candidates — Day '+dayNum. Accommodation and meals section headers use identity-check L() with lang-conditional string fallback. getSlotLabel function (line 2313) returns lang-conditional strings.",
+        "details": "POI name_local/name_base data fields exempt per AC5 spec and confirmed to be data field access only, not chrome label construction."
+      },
+      {
+        "id": "AC6",
+        "description": "no CJK in CandidatesSidebar chrome when lang===base",
+        "status": "pass",
+        "verification_method": "verify all chrome label ternaries return English-only strings when lang==='base'/'en'",
+        "evidence": "All chrome strings are ternary lang==='local' ? zh : en. When lang==='base': loading → 'Loading candidates…', empty-state → 'No candidates for this day.', panel header → 'Candidates — Day N', accommodation section → 'Accommodation', meals section → 'Meals', slot labels → English via getSlotLabel fallbacks, activity category headers → 'Morning'/'Afternoon'/'Evening' via getSlotLabel. Zero CJK in lang===base branches.",
+        "details": "getSlotLabel fallbacks: breakfast→'Breakfast', lunch→'Lunch', dinner→'Dinner', morning_activity→'Morning', afternoon_activity→'Afternoon', evening_activity→'Evening' when lang!=='local'."
+      }
+    ],
+    "non_regression": {
+      "status": "pass",
+      "checks": [
+        {
+          "check": "cover_image || image fallback in candidate card image regions",
+          "status": "pass",
+          "evidence": "rawOpt.cover_image || rawOpt.image present in all 3 candidate card image divs at lines 2450, 2507, 2565"
+        },
+        {
+          "check": "preserveCurrentAccommodationOption present",
+          "status": "pass",
+          "evidence": "Called at lines 2812, 2850, 2885 (inside applyBridge for accommodation drops)"
+        },
+        {
+          "check": "draggable={true} on all 3 candidate card types",
+          "status": "pass",
+          "evidence": "draggable={true} at lines 2431 (accommodation), 2485 (meals), 2546 (activity)"
+        },
+        {
+          "check": "handleSidebarDrop direction==='board' path intact",
+          "status": "pass",
+          "evidence": "handleSidebarDrop at line 2362 checks direction === 'plan-to-candidates' || direction === 'board'; srcSlotId = payload.sourceSlotId || payload.slotId; calls saveMutations with option_id: null"
+        },
+        {
+          "check": "accommodation board onDrop regression (line 1320 — previously missing direction gate)",
+          "status": "pass",
+          "evidence": "Line 1320 now has: if (payload.direction === 'board') { board-to-board branch } else if (payload.direction === 'candidates') { candidates branch } else { fallback }. Full direction discrimination added where previously absent."
+        }
+      ]
+    },
+    "issues": [
+      {
+        "id": "DRIFT-AC2b",
+        "severity": "minor",
+        "category": "spec_text_vs_execution_drift",
+        "dimension": "spec_text_vs_execution_drift",
+        "location": "docs/dev/acceptance-criteria-20260524-132346.json — AC2b check.grep_pattern",
+        "finding": "AC2b literal text specifies 'window\\.setEditorSelection' must be called in the candidates branch. Dev correctly calls 'window.applyEditorSelection' instead to avoid double-save (setEditorSelection also calls saveMutations internally). The AC literal text does not match the correct implementation.",
+        "recommendation": "BA must update AC2b: change check.grep_pattern from 'window\\.setEditorSelection' to 'window\\.applyEditorSelection'; update the note to document the double-save risk of using setEditorSelection in the candidates branch; update the 'then' clause to describe applyEditorSelection as the bridge call.",
+        "blocks_release": false,
+        "verdict_contribution": "AC-deviation-with-user-need-satisfied → close-PASS permitted per spec Section 5.4 rule 4"
+      }
+    ],
+    "build_verification": {
+      "status": "skipped",
+      "skip_reason": "react_template.tpl is a JSX template rendered by Python script at runtime; no standalone build/compile step exists for this file. Syntax verified via source analysis.",
+      "build_command": null,
+      "deploy_command": null
+    },
+    "e2e_enforcement": {
+      "required": false,
+      "attempted": false,
+      "script_discovered": false,
+      "script_path": null,
+      "health_check_url": null,
+      "health_check_result": null,
+      "status": "skipped_source_only_change",
+      "blocking_reason": "react_template.tpl is a server-side rendered template; no live web service URL is available for browser-based E2E verification in this QA session. The bugs are logic/layout/i18n in a template file; verified via source analysis, grep pattern matching, and static code path tracing."
+    },
+    "ui_test_results": [],
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "travel-planner/CLAUDE.md — no role token table declared",
+      "violations": []
+    },
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "blast_radius_phase2": {
+      "phase2_map_path": null,
+      "git_diff_files": ["scripts/lib/react_template.tpl"],
+      "phase1_phase2_delta": [],
+      "dev_declarations_complete": true,
+      "exemption_vetoes": [],
+      "note": "Single modified file. blast-radius-tool.py not available; blast_radius_declarations in dev report exempts react_template.tpl with rationale: no importers found, changes isolated to CandidatesSidebar and 6 board onDrop handlers. Exemption judged valid."
+    },
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "5 findings returned, all OBSERVATION_ONLY: (1) applyEditorSelection avoids double-save vs setEditorSelection — confirmed correct, OBSERVATION_ONLY; (2) candidate overlay onDrop removed so board-drag-to-sidebar bubbles correctly to handleSidebarDrop — confirmed correct behavior, OBSERVATION_ONLY; (3) meals-any on candidate overlay data-slot-id is irrelevant for candidate→board flow (toSlotId always from board overlay), minor potential confusion if board card dropped onto candidate card but handleSidebarDrop covers that case, OBSERVATION_ONLY; (4) no breaking concerns with _isCompatible for meals-any direction, OBSERVATION_ONLY; (5) no additional blocking issues found.",
+      "feedback_incorporated": "All 5 codex findings were OBSERVATION_ONLY with no PROPOSED_FIX required. Verdict unchanged: PASS with AC2b spec_text_vs_execution_drift."
+    },
+    "spec_section_updates": {
+      "section_4": "Cycle 1 (task 20260524-132346): Bug A — all 6 board onDrop handlers now have direction==='candidates' branch calling window.applyEditorSelection + saveMutations fallback; candidate onDragStart payloads include direction:'candidates' at all 3 card types. Bug B — all 3 candidate card types render 280px×320px board-equivalent layout with 140px image region, category-color header (#27ae60/#e67e22/#3498db), emoji, name+RedNoteLink, .slot-drop overlay with data-droppable=true; candidateCardStyle function defined but not called in any card div. Bug C — getSlotLabel(slotId) function at line 2313 provides lang-conditional labels; all chrome strings use ternary lang==='local'?zh:en; zero bilingual slash-strings; zero CJK in lang===base branches.",
+      "section_6": null,
+      "section_7": null
+    },
+    "self_verification": {
+      "claims_total": 14,
+      "claims_with_evidence": 13,
+      "claims_superficial": 1,
+      "superficial_details": ["E2E/browser test not performed — react_template.tpl is a server-side template with no live service URL available; verification is source-analysis only"],
+      "confidence": "high"
+    },
+    "success_criteria_results": [
+      {
+        "requirement_id": "R1",
+        "source_phrase": "candidate->board drop persists selection via saveMutations",
+        "criterion": "board onDrop detects payload.direction===candidates and calls saveMutations with target slot, no source-slot clear",
+        "verification_method": "Source grep of react_template.tpl lines 913/998/1084/1170/1320/1928 for direction===candidates branch containing saveMutations without option_id:null",
+        "status": "pass",
+        "result": "pass",
+        "details": "All 6 handlers verified",
+        "evidence": "direction==='candidates' branch present at all 6 handler lines; applyEditorSelection + saveMutations fallback; no option_id:null in candidates branch"
+      },
+      {
+        "requirement_id": "R2",
+        "source_phrase": "board->sidebar drop deselects source slot",
+        "criterion": "handleSidebarDrop fires saveMutations with option_id:null for all 3 card types",
+        "verification_method": "Source read of handleSidebarDrop function at lines 2355-2368",
+        "status": "pass",
+        "result": "pass",
+        "details": "handleSidebarDrop intact, direction==='board' path calls saveMutations option_id:null",
+        "evidence": "Lines 2355-2368 verified; candidate overlays have no onDrop so board card drops bubble correctly to #candidates-groups"
+      },
+      {
+        "requirement_id": "R3",
+        "source_phrase": "candidate card renders full board-equivalent layout",
+        "criterion": "280px wide, 140px image, category-color header, overlay, no candidateCardStyle in card div",
+        "verification_method": "Source read of candidate card sections lines 2430-2582",
+        "status": "pass",
+        "result": "pass",
+        "details": "width:100%/maxWidth:280px, height:320px, image 140px, overlays present, candidateCardStyle has zero card-div call sites",
+        "evidence": "All 3 card types verified in lines 2430-2466 (accommodation), 2484-2523 (meals), 2545-2582 (activity)"
+      },
+      {
+        "requirement_id": "R4",
+        "source_phrase": "no bilingual slash-strings in CandidatesSidebar chrome when lang===local; no CJK in chrome when lang===base",
+        "criterion": "All chrome labels are lang-conditional; specific bilingual strings absent",
+        "verification_method": "Grep for 早餐 / Breakfast, 住宿 / Accommodation, 餐饮 / Meals; verify getSlotLabel function and all ternary chrome strings",
+        "status": "pass",
+        "result": "pass",
+        "details": "Zero bilingual slash-strings; getSlotLabel at line 2313; all ternaries verified",
+        "evidence": "Lines 2287, 2309, 2313-2325, 2413, 2423 all verified lang-conditional"
+      }
+    ],
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 1,
+      "total_findings": 1,
+      "release_recommendation": "approve",
+      "note": "Single minor finding is spec_text_vs_execution_drift on AC2b — non-blocking per AC-deviation-with-user-need-satisfied rule. BA must update AC2b text to reference window.applyEditorSelection before /close archives the spec."
+    }
+  },
+  "iteration_needed": false,
+  "refined_context": null
+}
