@@ -2465,9 +2465,10 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       {mealsGroup.length > 0 && (
         <div style={{ padding: '8px 12px' }}>
           <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-            {(() => { const v = L('meals', lang); return v !== 'meals' ? v : (lang === 'local' ? '餐饮' : 'Meals'); })()}
+            {(() => { const mealsLabel = L('meals', lang); return mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals'); })()}
           </div>
           {mealsGroup.map((rawOpt, oi) => {
+            const mealsLabel = L('meals', lang);
             const opt = adaptV2Option(rawOpt);
             const isSelected = isMealSelected(rawOpt.option_id);
             const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
