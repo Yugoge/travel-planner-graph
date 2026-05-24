@@ -1,48 +1,61 @@
 {
   "request_id": "20260524-202700",
-  "timestamp": "2026-05-24T20:27:00Z",
+  "timestamp": "2026-05-24T20:35:00Z",
   "inspector": "cleanliness-inspector",
   "mode": "changed-files",
   "changed_files": ["scripts/lib/react_template.tpl"],
   "baseline_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
-  "diff_scope_note": "All findings are scoped exclusively to violations introduced in this diff. Per AC-12.1 Mechanism (ii), each finding carries an explicit `introduced_in_diff` tag. Pre-existing issues are not flagged.",
-  "codex_consult": {
-    "invoked": true,
-    "status": "ok",
-    "feedback_summary": "Codex confirmed the empty findings verdict is correct: the diff removes dead code and introduces no new file-organization, temp-file, orphan, archive, naming, or safety-rule cleanliness violations. Two rationale wordings were flagged as imprecise (overbroad .tpl exemption claim; overstatement of IIFE refactor scope). Both corrected in this report.",
-    "findings": [
+  "scope_contract": "AC-12.1 Mechanism (ii) inspector-side tagging. Findings emit introduced_in_diff: true|false. Only violations newly introduced in this diff are in scope. Pre-existing issues are not flagged.",
+
+  "diff_analysis": {
+    "file": "scripts/lib/react_template.tpl",
+    "stat": "1 file changed, 20 insertions(+), 23 deletions(-)",
+    "changes": [
       {
-        "issue": "Rationale #5 overbroad: .tpl files are not categorically exempt from dead_functions / obsolete_functionality / duplicate_content checks.",
-        "proposed_fix": "Reword to: 'This tracked, referenced React template is not a doc/agent/command file, so most placement/archive/orphan-command checks do not apply; code/content cleanliness checks were considered, and this diff introduces no new violations.'",
-        "classification": "observation_only",
-        "disposition": "applied",
-        "rationale": "Wording corrected in the rationale_notes below. The verdict (empty findings) is unchanged."
+        "hunk": "lines ~1263-1265",
+        "description": "Refactored selectedAccId computation in KanbanView: replaced nested ternary with cleaner null-safe pattern. Correctly resolves editorSelections even when edAcc is null (deselected-to-sidebar state).",
+        "classification": "bug_fix",
+        "cleanliness_issue": false
       },
       {
-        "issue": "Rationale #2 overstates the label refactor: fallback ternary logic is still repeated after the IIFE extraction.",
-        "proposed_fix": "Reword to: 'The accLabel/mealsLabel extractions reduce duplicated IIFE structure and repeated L() calls; remaining fallback ternary repetition is pre-existing-equivalent and not a new cleanliness issue in this diff.'",
-        "classification": "observation_only",
-        "disposition": "applied",
-        "rationale": "Wording corrected in rationale_notes. Verdict unchanged — repeated fallback ternary was already present in baseline and is not introduced by this diff."
+        "hunk": "line ~1315",
+        "description": "Fixed isGated logic for accommodation slot-drop overlay: now allows drop when edAcc is absent but selectedAccId is set.",
+        "classification": "bug_fix",
+        "cleanliness_issue": false
       },
       {
-        "issue": "No blocker: the empty findings object is correct for --changed-files cleanliness scope.",
-        "proposed_fix": "Keep findings empty and summary.total_issues = 0.",
-        "classification": "observation_only",
-        "disposition": "applied",
-        "rationale": "Confirms inspector's verdict."
+        "hunk": "lines ~2080-2082",
+        "description": "Added else-if branch in mergeEditorSelectionsIntoPublishedDay for explicit null deselection. Clean addition with explanatory comment.",
+        "classification": "bug_fix",
+        "cleanliness_issue": false
+      },
+      {
+        "hunk": "lines ~2266-2278 (deleted)",
+        "description": "Deleted candidateCardStyle function which existed in baseline with zero call-sites in source. Removal of dead code. Verified: grep candidateCardStyle in working tree returns 0 matches in react_template.tpl.",
+        "classification": "positive_cleanup",
+        "cleanliness_issue": false
+      },
+      {
+        "hunk": "lines ~2410-2465",
+        "description": "Hoisted accLabel variable out of inline IIFE in CandidatesSidebar accommodation section. Eliminates two repeated L() calls inside JSX.",
+        "classification": "refactor",
+        "cleanliness_issue": false
+      },
+      {
+        "hunk": "lines ~2465-2525",
+        "description": "Hoisted mealsLabel variable; restructured mealsGroup JSX block with IIFE wrapper to allow const declaration. Remaining fallback ternary repetition is pre-existing-equivalent in baseline.",
+        "classification": "refactor",
+        "cleanliness_issue": false
+      },
+      {
+        "hunk": "line ~2910",
+        "description": "Added editorSelections to useEffect dependency array in NotionTravelApp. Fixes React hooks exhaustive-deps: bridge callbacks now refresh when selections change.",
+        "classification": "bug_fix",
+        "cleanliness_issue": false
       }
-    ],
-    "feedback_incorporated": "1) Rationale #5 reworded from categorical .tpl exemption to scoped applicability statement. 2) Rationale #2 reworded to acknowledge remaining ternary repetition is pre-existing. 3) Core findings verdict confirmed empty — no changes to findings object required."
+    ]
   },
-  "rationale_notes": {
-    "1_dead_code_removal": "The diff removes `candidateCardStyle` (defined at lines ~2263-2274 in baseline, deleted in working tree). Confirmed zero call sites in both baseline and working tree: `grep -n 'candidateCardStyle(' scripts/lib/react_template.tpl` returns no output. The deletion removes dead code that existed in the baseline — this is not a new issue introduced by the diff; it is a correction. Flagging it would be a false positive.",
-    "2_label_variable_extraction": "The accLabel and mealsLabel variable extractions reduce duplicated IIFE structure and repeated L() calls. Remaining fallback ternary repetition (`label !== 'key' ? label : (lang === 'local' ? 'zh' : 'en')`) is pre-existing-equivalent in the baseline — not introduced by this diff.",
-    "3_logic_fixes": "The isGated boolean rewrite and the editorSelections dependency addition to the useEffect dep array are correctness fixes. Neither introduces file-organization, naming, or structural cleanliness problems.",
-    "4_inline_style_line_length": "The modified accommodation card inline style line (~600 chars) matches the length of pre-existing inline style lines in the baseline (meals card line ~580 chars, activities card line ~580 chars). This pattern is not new-in-this-diff.",
-    "5_file_type_applicability": "This is a tracked, actively referenced React template (referenced by scripts/generate-html-interactive.py:603-604). It is not a doc/agent/command file, so placement/archive/orphan-command/dev-context/naming-convention checks do not apply. Code/content cleanliness checks (dead_functions, obsolete_functionality, duplicate_content) were considered against the diff hunk; this diff introduces no new violations in those categories.",
-    "6_scope_contract": "Per --changed-files scope contract (AC-12.1 Mechanism ii): cleanliness scope = only violations newly introduced in this diff. Pre-existing historical dirt is not flagged."
-  },
+
   "findings": {
     "misplaced_docs": [],
     "naming_violations": [],
@@ -63,12 +76,78 @@
     "dead_functions": [],
     "duplicate_content": []
   },
+
+  "mandatory_script_outputs": {
+    "detect_orphan_agents": {
+      "note": "Full-repo scan result. Advisory only — no findings are in the changed_files list. Not blocking under default-safe rule.",
+      "orphan_agents": [
+        {
+          "file": "/root/.claude/agents/product-owner.md",
+          "reason": "Not referenced by any command",
+          "last_modified": "7 days ago",
+          "commit_count": 0,
+          "severity": "minor",
+          "introduced_in_diff": false
+        }
+      ],
+      "summary": { "total": 1 }
+    },
+    "detect_orphan_scripts": {
+      "note": "Full-repo scan returned 11 orphan scripts (scripts/_qa_diag.sh, _qa_diag4.sh, _qa_diag5.py, _qa_diag7.py, _qa_diag8.sh, migrate_yunnan_v1_to_v2.py, strip-image-url-fields.py, day13_chengdu_match.py, push-to-main-repo.sh, hooks/hook-session-start.py, hooks/hook-todo-state-tracker.py). None are in the changed_files list. All pre-existing. Advisory only — not blocking under default-safe rule.",
+      "in_diff_findings": [],
+      "pre_existing_count": 11
+    },
+    "detect_orphan_commands": {
+      "orphan_commands": [],
+      "summary": { "total": 0 }
+    },
+    "detect_dead_functions": {
+      "findings": [],
+      "summary": { "total": 0, "severity": "none" }
+    },
+    "detect_duplicate_content": {
+      "note": "All duplicate content findings are in .claude/worktrees/ or venv directories — not project source. All pre-existing. No in-diff findings.",
+      "in_diff_findings": []
+    }
+  },
+
   "summary": {
     "total_issues": 0,
     "critical": 0,
     "major": 0,
     "minor": 0,
     "estimated_space_saved": "0 MB",
-    "verdict": "CLEAN — no cleanliness issues introduced by this diff"
+    "diff_scoped_new_violations": 0,
+    "verdict": "CLEAN — zero cleanliness issues introduced by this diff"
+  },
+
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex confirmed zero new cleanliness violations in the draft. Three OBSERVATION_ONLY items returned, no proposed fixes, no blockers.",
+    "findings": [
+      {
+        "issue": "No blockers found. The draft correctly classifies the diff as introducing zero new cleanliness violations.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex fully agreed with the zero-violation verdict."
+      },
+      {
+        "issue": "candidateCardStyle deletion is safe/positive cleanup: the baseline source had only the definition and no source call-sites; deleting it does not violate cleanup safety rules.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Codex confirmed via git grep that baseline (fa563a3b) had candidateCardStyle defined but zero call-sites in react_template.tpl source. Deletion is safe."
+      },
+      {
+        "issue": "The 3340-line template size is correctly treated as pre-existing structural debt, not a new diff-introduced cleanliness issue.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "File size is pre-existing. Not in scope under --changed-files mode scoping contract."
+      }
+    ],
+    "feedback_incorporated": "No changes required. All three Codex findings were OBSERVATION_ONLY without PROPOSED_FIX. Draft verdict stands: zero new violations."
   }
 }
