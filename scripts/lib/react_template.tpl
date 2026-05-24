@@ -2442,7 +2442,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   </div>
                   <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <span>🏨 {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}</span>
+                      <span>🏨 {accLabel !== 'accommodation' ? accLabel : (lang === 'local' ? '住宿' : 'Accommodation')}</span>
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                       {getDisplayName(opt, lang)}
