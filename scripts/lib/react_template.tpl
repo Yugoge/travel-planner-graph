@@ -2462,13 +2462,14 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       })()}
 
       {/* Unified Meals group (M19) */}
-      {mealsGroup.length > 0 && (
+      {mealsGroup.length > 0 && (() => {
+        const mealsLabel = L('meals', lang);
+        return (
         <div style={{ padding: '8px 12px' }}>
           <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-            {(() => { const mealsLabel = L('meals', lang); return mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals'); })()}
+            {mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')}
           </div>
           {mealsGroup.map((rawOpt, oi) => {
-            const mealsLabel = L('meals', lang);
             const opt = adaptV2Option(rawOpt);
             const isSelected = isMealSelected(rawOpt.option_id);
             const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
