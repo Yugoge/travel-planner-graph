@@ -2903,7 +2903,7 @@ function NotionTravelApp() {
       if (window.setEditorSelection === bridge) delete window.setEditorSelection;
       if (window.applyEditorSelection === applyBridge) delete window.applyEditorSelection;
     };
-  }, [publishedDay && publishedDay.day, saveMutations, editorDay]);
+  }, [publishedDay && publishedDay.day, saveMutations, editorDay, editorSelections]);
 
   // Budget recompute on page load after editorTripData fetched (M25)
   const editorTripDataRef = React.useRef(null);
