@@ -1,0 +1,156 @@
+{
+  "request_id": "20260524-132346",
+  "timestamp": "2026-05-24T00:00:00Z",
+  "inspector": "cleanliness-inspector",
+  "mode": "changed-files",
+  "changed_files": ["scripts/lib/react_template.tpl"],
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex challenged 5 of 6 draft findings: (1) candidateCardStyle is genuinely dead but was NEW in this diff, not pre-existing — severity should be downgraded from major to minor; (2) stale comment introduced_in_diff is correct (not a pre-existing issue as codex claimed) — the entire candidateCardStyle block including the comment was a net-new addition per the diff; (3) closure staleness is a functional bug not mere comment debt — reclassify and recommend code fix not just TODO; (4) isPending visual-state loss is better framed as UX regression than dead-code; (5) slot-drop overlays without onDrop are intentional bubble-targets for board→sidebar deselect — CORRECT false positive, finding dropped; (6) getSlotLabel cannot directly replace the IIFEs without extension — proposed fix corrected.",
+    "findings": [
+      {
+        "issue": "candidateCardStyle severity should be minor not major; codex also claimed it was pre-existing (diff removed its call sites), not new",
+        "proposed_fix": "Change severity from major to minor. The function was introduced NEW in this diff (confirmed: lines start with '+' in the diff), so introduced_in_diff: true is correct. Codex's claim that it was pre-existing is incorrect — the diff shows it as a net addition.",
+        "classification": "major",
+        "disposition": "applied-partial",
+        "rationale": "Severity downgraded from major to minor per codex feedback. The introduced_in_diff: true label is retained because the diff confirms candidateCardStyle is a new addition, not removal of call sites from a pre-existing function."
+      },
+      {
+        "issue": "STALE_COMMENT introduced_in_diff should be false/preexisting per codex",
+        "proposed_fix": "Retain introduced_in_diff: true. The comment is part of the candidateCardStyle block which is entirely new in this diff (diff shows '///' line as a '+' addition). Codex's claim that it is pre-existing is refuted by the diff.",
+        "classification": "major",
+        "disposition": "rejected",
+        "rationale": "The diff at line 138 shows '+// (borderRadius:8px, shadow...) Root cause: commit 14f72e30.' as a new line. The comment did not exist before this diff. introduced_in_diff: true is correct."
+      },
+      {
+        "issue": "CLOSURE_STALENESS should be reclassified as functional bug with code fix, not comment debt",
+        "proposed_fix": "Reword finding to note functional stale-closure risk and recommend adding editorSelections to the dependency array or using a ref. Cleanliness scope: the absence of any comment/TODO makes the pattern invisible to maintainers; the finding is still valid as a cleanliness issue because it documents an uncalled-out design decision.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Codex is correct that the preferred fix is code (add dep or use ref), not a comment. Wording updated in final findings to reflect this."
+      },
+      {
+        "issue": "ISPENDING_VISUAL_STATE_DEAD misclassified as dead-code; isPending is still used for click behavior",
+        "proposed_fix": "Reframe as UX regression: the computed isPending variable no longer drives any style in the new 280x320 card layout, causing the pending tap-to-select state to be visually invisible. Still a valid finding but framed as a UX observation.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Codex is correct that isPending is still behaviorally used (onClick toggle). The finding is reworded from DEAD_STATE to UX_REGRESSION_PENDING_INVISIBLE."
+      },
+      {
+        "issue": "SLOT_DROP_OVERLAY_NO_ONDROP is a false positive — overlays are intentional bubble-targets",
+        "proposed_fix": "Drop the finding. The slot-drop overlays inside candidate cards intentionally have no onDrop so drop events bubble up to the #candidates-groups container where handleSidebarDrop fires. This is how board→sidebar deselect (AC3/M17b) works. Adding onDrop would break the deselect path.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Codex is correct. The architecture is: candidate card overlay onDragOver (prevent default, signal drop zone) → no onDrop on overlay → event bubbles to parent container → handleSidebarDrop fires for board direction. Verified by reading handleSidebarDrop and the parent container onDrop binding. Finding removed from output."
+      },
+      {
+        "issue": "L_IIFE proposed fix of using getSlotLabel is incorrect since getSlotLabel lacks accommodation/meals fallbacks",
+        "proposed_fix": "Extend getSlotLabel to include 'accommodation' and 'meals' as fallback keys, then replace the four IIFEs. Alternatively extract a getCandidateGroupLabel helper. Do not blindly substitute getSlotLabel('accommodation') without extending the fallbacks dict first.",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Codex is correct. getSlotLabel fallbacks dict only covers meal/activity slot IDs. Calling getSlotLabel('accommodation') would return the literal string 'accommodation' as the key. The recommendation is updated to require extending getSlotLabel before substituting."
+      }
+    ],
+    "feedback_incorporated": "1) candidateCardStyle severity downgraded to minor; 2) stale comment introduced_in_diff kept as true (codex claim refuted by diff evidence); 3) closure staleness reworded to recommend code fix over TODO; 4) isPending finding reframed as UX_REGRESSION_PENDING_INVISIBLE; 5) slot-drop-no-onDrop finding dropped as false positive; 6) L_IIFE proposed fix corrected to require extending getSlotLabel before substitution."
+  },
+  "findings": {
+    "misplaced_docs": [],
+    "naming_violations": [],
+    "archive_candidates": [],
+    "dev_context_files": [],
+    "temp_files": [],
+    "duplicate_scripts": [],
+    "duplicate_tests": [],
+    "non_functional_files": [],
+    "non_functional_folders": [],
+    "orphaned_subagents": [],
+    "unreferenced_scripts": [],
+    "orphaned_tests": [],
+    "historical_docs": [],
+    "docs_categorization": [],
+    "obsolete_functionality": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "lines": "2263-2274",
+        "reason": "DEAD_FUNCTION: `candidateCardStyle` is defined at module scope as a new addition in this diff but is never called. The three candidate card renders that were introduced in the same diff (accommodation ~line 2445, meals ~line 2502, activities ~line 2560) all use hardcoded inline style objects with 280x320px dimensions — candidateCardStyle is not referenced by any of them. The function accepts (isSelected, isPending) and returns a compact-style object that does not match the new 280x320px layout tokens (no width, height, overflow, flexDirection fields). It appears the function was drafted as a helper but the implementation chose inline styles instead, and the helper was left behind.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": true,
+        "recommendation": "Delete lines 2263-2274 (the triple-slash comment, the single-line comment, and the const candidateCardStyle arrow function). Confirm zero references first: `grep -n 'candidateCardStyle' scripts/lib/react_template.tpl` should return only the definition lines.",
+        "safe_to_delete": true
+      },
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "lines": "2265",
+        "reason": "STALE_COMMENT_MISATTRIBUTED_ROOT_CAUSE: The comment on line 2265 reads '(borderRadius:8px, shadow, transition, cursor) with selected/pending state support. Root cause: commit 14f72e30.' Commit 14f72e30 is 'fix(web): flash red on gated slot-drop rejection + ticket-19161933 doc cleanup' — it introduced the drag rejection flash, not the visual style mismatch that Bug B in this cycle corrects. The visual style mismatch originated in commit 9218b6bd ('feat(web): unified viewer/editor page + bidirectional drag (M1-M29)'). The root-cause attribution misleads anyone using git blame to trace the bug.",
+        "severity": "minor",
+        "confidence": "high",
+        "introduced_in_diff": true,
+        "recommendation": "Remove the 'Root cause: commit 14f72e30.' sentence from the comment. If the parent finding (DEAD_FUNCTION) is acted upon, the entire comment block is deleted and this issue resolves automatically."
+      }
+    ],
+    "dead_functions": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "symbol": "candidateCardStyle",
+        "lines": "2266-2274",
+        "reason": "Arrow function defined at module scope, introduced in this diff, zero call sites in the file. grep confirms only the definition lines contain the symbol.",
+        "severity": "minor",
+        "introduced_in_diff": true,
+        "safe_to_delete": true,
+        "recommendation": "Delete the function body and its comment block (lines 2263-2274)."
+      }
+    ],
+    "duplicate_content": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "lines": "2423, 2454, 2477, 2511",
+        "reason": "L_IIFE_PATTERN_DUPLICATION: The same inline IIFE pattern appears four times across two categories. For accommodation: `(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()` appears at both the section group header (line 2423) and the card category header chip (line 2454). For meals: an identical pattern for 'meals' appears at lines 2477 and 2511. The function `getSlotLabel` already exists in this scope but its fallbacks dict does not cover 'accommodation' or 'meals' keys — it only covers meal slot IDs (breakfast/lunch/dinner) and activity slot IDs. Direct substitution with getSlotLabel('accommodation') would return the literal key string as fallback.",
+        "severity": "minor",
+        "introduced_in_diff": true,
+        "recommendation": "Extend getSlotLabel's fallbacks dict to include: `accommodation: lang === 'local' ? '住宿' : 'Accommodation'` and `meals: lang === 'local' ? '餐饮' : 'Meals'`. Then replace all four inline IIFEs with `getSlotLabel('accommodation')` and `getSlotLabel('meals')` respectively. Do not substitute without extending the fallbacks first or the function will return the raw key string."
+      }
+    ],
+    "unannotated_risks": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "lines": "2809-2844 (function), 2916 (useEffect dep array)",
+        "reason": "STALE_CLOSURE_UNANNOTATED: `preserveCurrentAccommodationOption()` was introduced in this diff inside a useEffect whose dependency array is `[publishedDay && publishedDay.day, saveMutations, editorDay]`. The function reads `editorSelections` and `editorDay.accommodation.selected_option_id` from closure, but `editorSelections` is not in the dependency array. After the first render, the function sees a stale snapshot of `editorSelections`. This means `selectedAccId` inside the function may reflect an outdated selection state when the bridge fires. The code has no comment acknowledging this design choice. The preferred fix is a code change, not a comment.",
+        "severity": "minor",
+        "introduced_in_diff": true,
+        "recommendation": "Either (a) add `editorSelections` to the useEffect dependency array at line 2916 — `[publishedDay && publishedDay.day, saveMutations, editorDay, editorSelections]` — or (b) move `editorSelections` access behind a ref (`editorSelectionsRef.current`) so the function always reads the live value without needing to be in the dep array. If the stale-closure behavior is intentional (e.g., to avoid effect re-registration on every selection change), add an explicit comment explaining the trade-off."
+      },
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "lines": "2428, 2482, 2543 (isPending computed), 2445, 2502, 2560 (card style)",
+        "reason": "UX_REGRESSION_PENDING_INVISIBLE: `isPending` is computed for each candidate card type and is still used to control onClick behavior (toggle pending selection). However, the new 280x320px card style introduced in this diff does NOT render any visual differentiation for the pending state — the inline style objects for all three card types only branch on `isSelected`. The old pre-diff code rendered a blue border (#0085fe) and blue background (#e6f3ff) when isPending was true. In the new layout the pending state is invisible: a card that has been tapped (pending) looks identical to an unselected card. The previously-defined `candidateCardStyle` helper did encode pending visual tokens (blue border #3b82f6, light blue background #eff6ff), but it is itself dead code.",
+        "severity": "minor",
+        "introduced_in_diff": true,
+        "recommendation": "Restore a pending-state visual signal on the candidate cards. For each of the three card type inline styles (lines 2445, 2502, 2560), update the border branch from `isSelected ? '1.5px solid <color>' : 'none'` to `isPending ? '1.5px solid #3b82f6' : isSelected ? '1.5px solid <color>' : 'none'`. Also update the onMouseLeave handler to restore the isPending border correctly. Alternatively, if pending-state visual affordance is intentionally removed (the tap-to-select flow was redesigned), add a comment stating this and remove the now-unused isPending variable computations."
+      }
+    ]
+  },
+  "summary": {
+    "total_issues": 5,
+    "critical": 0,
+    "major": 0,
+    "minor": 5,
+    "by_category": {
+      "dead_functions": 1,
+      "stale_comments": 1,
+      "duplicate_content_patterns": 1,
+      "stale_closure_unannotated": 1,
+      "ux_regression_dead_visual_state": 1
+    },
+    "false_positives_dropped": 1,
+    "dropped_finding": "SLOT_DROP_OVERLAY_NO_ONDROP — the three slot-drop overlays inside candidate cards intentionally omit onDrop so events bubble to the parent CandidatesSidebar container where handleSidebarDrop performs board-to-sidebar deselect (AC3/M17b). Removing these overlays or adding onDrop would break the deselect flow.",
+    "estimated_space_saved": "< 1 KB (candidateCardStyle function deletion)",
+    "notes": [
+      "All 5 findings are minor severity — no blockers for closing this cycle.",
+      "The candidateCardStyle dead function (finding 1) and the stale comment (finding 2) resolve together if the comment+function block (lines 2263-2274) is deleted.",
+      "The L_IIFE duplication (finding 3) requires extending getSlotLabel before substituting — do not blindly call getSlotLabel('accommodation') without adding the fallback entry.",
+      "The stale-closure risk (finding 4) and the invisible pending state (finding 5) are functional observations introduced in this diff that warrant a follow-up fix cycle."
+    ]
+  }
+}
