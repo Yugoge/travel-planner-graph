@@ -2420,7 +2420,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
         return (
           <div style={{ padding: '8px 12px' }}>
             <div style={{ fontSize: '10px', fontWeight: '700', color: '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              {lang === 'local' ? (L('accommodation', lang) || '住宿') : (L('accommodation', lang) || 'Accommodation')}
+              {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}
             </div>
             {editorDay.accommodation.options.map((rawOpt, oi) => {
               const opt = adaptV2Option(rawOpt);
@@ -2451,7 +2451,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   </div>
                   <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', fontWeight: '700', color: '#27ae60', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <span>🏨 {lang === 'local' ? (L('accommodation', lang) || '住宿') : (L('accommodation', lang) || 'Accommodation')}</span>
+                      <span>🏨 {(() => { const v = L('accommodation', lang); return v !== 'accommodation' ? v : (lang === 'local' ? '住宿' : 'Accommodation'); })()}</span>
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                       {getDisplayName(opt, lang)}
