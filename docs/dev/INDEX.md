@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-24T17:32:05Z*
-**Total entries**: 436
+*Last updated: 2026-05-24T18:08:08Z*
+**Total entries**: 438
 **Convention**: kebab
 
 ## Tree
@@ -439,10 +439,12 @@ dev/
 ├── `ticket-20260520-200804.md` - BA Specification: Fix 2 /close blockers from cycle 20260519-161933
 ├── `ticket-20260522-082259.md` - BA Specification: Fix 5 Drag-and-Drop UX Bugs (DayColumn Draggable, Image, Style, Hotel Reappearance)
 ├── `ticket-20260524-132346.md` - BA Specification: CandidatesSidebar — DnD unification + visual parity + i18n fix
+├── `ticket-20260524-180339.md` - BA Specification: AI-Selected Board Cards Locked / Non-Draggable
 ├── `user-requirement-dev-20260520-200659.md` - No description
 ├── `user-requirement-dev-20260520-200804.md` - No description
 ├── `user-requirement-dev-20260522-082259.md` - No description
-└── `user-requirement-dev-20260524-132346.md` - No description
+├── `user-requirement-dev-20260524-132346.md` - No description
+└── `user-requirement-dev-20260524-180339.md` - No description
 ```
 
 ---
