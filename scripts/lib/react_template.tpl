@@ -2310,10 +2310,18 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
     </div>
   );
 
-  const slotLabels = {
-    breakfast: '早餐 / Breakfast', lunch: '午餐 / Lunch', dinner: '晚餐 / Dinner',
-    morning_activity: '上午 / Morning', afternoon_activity: '下午 / Afternoon',
-    evening_activity: '晚上 / Evening',
+  const getSlotLabel = (slotId) => {
+    const resolved = L(slotId, lang);
+    if (resolved !== slotId) return resolved;
+    const fallbacks = {
+      breakfast: lang === 'local' ? '早餐' : 'Breakfast',
+      lunch: lang === 'local' ? '午餐' : 'Lunch',
+      dinner: lang === 'local' ? '晚餐' : 'Dinner',
+      morning_activity: lang === 'local' ? '上午' : 'Morning',
+      afternoon_activity: lang === 'local' ? '下午' : 'Afternoon',
+      evening_activity: lang === 'local' ? '晚上' : 'Evening',
+    };
+    return fallbacks[slotId] || slotId;
   };
 
   // Build unified Meals group (M19): dedup breakfast/lunch/dinner options by option_id
