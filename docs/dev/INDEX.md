@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-24T13:37:39Z*
-**Total entries**: 447
+*Last updated: 2026-05-24T13:38:24Z*
+**Total entries**: 448
 **Convention**: kebab
 
 ## Tree
@@ -41,6 +41,7 @@ dev/
 │   ├── `spec-20260521-061307.md` - Spec: travel.life-ai.app drag-and-drop UX polish (5 issues from user 1★ feedback on task 20260520-200804)
 │   └── `spec-20260524-125921.md` - BA Specification: CandidatesSidebar — DnD unification + visual parity + i18n fix
 ├── `acceptance-criteria-20260522-082259.json` - json config
+├── `acceptance-criteria-20260524-132346.json` - json config
 ├── `architect-rednote-mcp-archprop-2-3-closeout-20260505-124619.json` - json config
 ├── `architect-rednote-mcp-source-of-truth-20260505-061800.json` - json config
 ├── `architect-report-init.json` - json config

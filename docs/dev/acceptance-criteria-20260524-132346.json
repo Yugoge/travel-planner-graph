@@ -1,0 +1,101 @@
+{
+  "request_id": "20260524-132346",
+  "task_id": "20260524-132346",
+  "generated_at": "2026-05-24T13:23:46Z",
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "ac_uid": "835412ef6ba8dd13",
+      "type": "hook",
+      "given": "a candidate card in the right panel with option_id=X, slotId=S, originSlotId=O",
+      "when": "user drags it and drops onto the board .slot-drop[data-slot-id=\"S\"][data-droppable=\"true\"] overlay",
+      "then": "board onDrop handler detects payload.direction===candidates and calls saveMutations(dayNum, [{type:select, slot:S, option_id:X, origin_slot_id:O}]) without any source-slot clear mutation",
+      "check": {
+        "grep_pattern": "direction.*candidates",
+        "in_file": "scripts/lib/react_template.tpl",
+        "at_lines": [913, 998, 1084, 1170, 1320, 1928],
+        "must_contain": "saveMutations",
+        "must_not_contain": "option_id: null"
+      },
+      "description": "Bug A — candidate→board drop persists selection via saveMutations, target slot only, no source-slot clear"
+    },
+    {
+      "id": "AC2",
+      "ac_uid": "f4976e8222932ca7",
+      "type": "hook",
+      "given": "a selected board card for slot S with direction:board in its dragStart payload (line 863, 953, 1041, 1126, 1274, or 1808)",
+      "when": "user drags it onto the #candidates-groups div",
+      "then": "handleSidebarDrop fires and calls saveMutations(dayNum, [{type:select, slot:S, option_id:null}]) for all three card types: meals, accommodation, and activity-slot-backed",
+      "check": {
+        "grep_pattern": "handleSidebarDrop",
+        "in_file": "scripts/lib/react_template.tpl",
+        "at_lines": [2347],
+        "must_contain": "option_id: null"
+      },
+      "description": "Bug A — board→sidebar drop deselects source slot (regression guard), verified for all 3 card types"
+    },
+    {
+      "id": "AC3",
+      "ac_uid": "e05535a03dea46a7",
+      "type": "ui",
+      "given": "any candidate option in the right panel",
+      "when": "CandidatesSidebar renders it",
+      "then": "card outer div has width:280px, height:320px, background:#fff, cursor:pointer, display:flex, flexDirection:column, overflow:hidden; image region div of height 140px present as first child; body div with category-color header row containing emoji present; name row with RedNoteLink present; .slot-drop overlay div with data-droppable=true present; standalone candidateCardStyle function no longer used by any card div",
+      "check": {
+        "grep_pattern": "candidateCardStyle",
+        "must_have_zero_uses_in": "card div style attribute",
+        "card_width": "280px",
+        "image_height": "140px",
+        "has_slot_drop_overlay": true
+      },
+      "description": "Bug B — candidate card renders full board-equivalent layout (image, header, name+RedNoteLink, overlay, hover)"
+    },
+    {
+      "id": "AC4",
+      "ac_uid": "4697c1d6246a1f51",
+      "type": "ui",
+      "given": "candidate option for slot morning_activity, accommodation, or meals",
+      "when": "rendered",
+      "then": "card header row uses correct category color (#3498db for morning_activity/attractions, #27ae60 for accommodation, #e67e22 for meals) and contains the matching category emoji (📍, 🏨, 🍽️)",
+      "check": {
+        "category_colors": {
+          "morning_activity": "#3498db",
+          "afternoon_activity": "#3498db",
+          "evening_activity": "#3498db",
+          "accommodation": "#27ae60",
+          "meals": "#e67e22"
+        }
+      },
+      "description": "Bug B — candidate card category-color label header matches board card categoryColors map"
+    },
+    {
+      "id": "AC5",
+      "ac_uid": "359854d96f4aacd7",
+      "type": "ui",
+      "given": "lang===local",
+      "when": "CandidatesSidebar renders",
+      "then": "inside #candidates-groups, no section header element, panel title, or slot label text contains the pattern [CJK chars] / [Latin chars] (e.g. 早餐 / Breakfast must not appear as a rendered label); panel title is Chinese-only; accommodation/meals/activity section headers are Chinese-only; POI name_local/name_base data fields are exempt from this check",
+      "check": {
+        "grep_pattern": "早餐 / Breakfast",
+        "must_have_zero_matches_in": "#candidates-groups chrome labels",
+        "data_fields_exempt": true,
+        "scope": "chrome UI labels only inside #candidates-groups"
+      },
+      "description": "Bug C — no bilingual slash-strings in CandidatesSidebar chrome when lang===local"
+    },
+    {
+      "id": "AC6",
+      "ac_uid": "b28ea65020552e45",
+      "type": "ui",
+      "given": "lang===base",
+      "when": "CandidatesSidebar renders",
+      "then": "section headers, panel title, and slot labels in #candidates-groups are English-only; no Chinese characters appear in those specific chrome UI strings; POI name_local/name_base data fields are exempt",
+      "check": {
+        "chrome_labels_english_only": true,
+        "data_fields_exempt": true,
+        "scope": "chrome UI labels only inside #candidates-groups"
+      },
+      "description": "Bug C — no bilingual slash-strings in CandidatesSidebar chrome when lang===base"
+    }
+  ]
+}
