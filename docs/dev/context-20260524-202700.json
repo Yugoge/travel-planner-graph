@@ -1,0 +1,321 @@
+{
+  "request_id": "20260524-202700",
+  "task_id": "20260524-202700",
+  "timestamp": "2026-05-24T20:27:00Z",
+  "prior_task_ids": ["20260524-180339", "20260524-132346"],
+  "user_requirement": "Continue deferred/failed items: AC2, AC6 drag interaction verification + 4 cleanliness items from 20260524-132346",
+  "complexity_tier": "STANDARD",
+  "risk_level": "low",
+  "_risk_level_doc": "All changes are to a single frontend template file. No schema changes, no auth changes, no shared infrastructure. Cleanliness items are cosmetic/structural. Drag verification is read-only live testing. Low blast radius.",
+
+  "requirement": {
+    "original": "继续完成你失败的或者被推迟的内容 — Continue completing what was failed or deferred from prior cycles.",
+    "clarified": "Run actual Playwright drag interaction tests for AC2 (board-to-sidebar deselect with mutation) and AC6 (sidebar-to-slot select with mutation) that were deferred in cycle 20260524-180339. Additionally fix 4 deferred cleanliness items from 20260524-132346: delete dead candidateCardStyle, restore isPending visual affordance, add editorSelections to useEffect dep array, and deduplicate IIFE label patterns.",
+    "what": "Live drag interaction verification + 4 source code cleanliness fixes in react_template.tpl",
+    "why": "User rated prior cycle 1 star because live mutation persistence was never tested. 4 cleanliness regressions introduced in cycle 20260524-132346 were deferred.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "Playwright drag interaction tests for accommodation board-to-sidebar and sidebar-to-slot flows",
+        "Delete candidateCardStyle dead function (lines 2266-2276)",
+        "Restore isPending visual affordance in accommodation and meals candidate cards",
+        "Add editorSelections to useEffect dep array at line 2918",
+        "Deduplicate L('accommodation') and L('meals') IIFE expressions in CandidatesSidebar render"
+      ],
+      "excluded": [
+        "Meal or activity board-to-sidebar drag verification",
+        "Changes to render_day_data.py or Python pipeline",
+        "New CandidatesSidebar features",
+        "Changes to drag payload format or handleSidebarDrop logic"
+      ]
+    },
+    "success_criteria": [
+      "Playwright live drag from Day 2 accommodation board card to sidebar triggers POST /api/save with option_id:null",
+      "Playwright live drag from sidebar candidate to accommodation slot triggers POST /api/save with non-null option_id",
+      "candidateCardStyle symbol absent from react_template.tpl",
+      "isPending candidate cards show a visually distinct state (blue border or background)",
+      "editorSelections present in the useEffect dependency array containing preserveCurrentAccommodationOption",
+      "L('accommodation', lang) and L('meals', lang) expressions each appear at most once in CandidatesSidebar render (no duplicate IIFEs)"
+    ],
+    "constraints": [
+      "BA only — no code modifications",
+      "react_template.tpl must be regenerated via generate-html-interactive.py and deployed via deploy-travel-plans.sh before any Playwright verification run",
+      "Playwright must intercept or observe /api/save POST to verify mutation payloads",
+      "useEffect dep array change must not introduce infinite render loops (preserveCurrentAccommodationOption is idempotent)"
+    ]
+  },
+
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/generate-html-interactive.py (regeneration trigger — no code changes needed)",
+      "deploy-travel-plans.sh (deploy trigger — no code changes needed)"
+    ],
+    "out_of_path_observed_but_not_touched": []
+  },
+
+  "out_of_scope_observations": [],
+
+  "root_cause_analysis": {
+    "symptom": "Prior cycle 20260524-180339 did not run live Playwright drag interactions. User rated 1 star. 4 cleanliness regressions from cycle 20260524-132346 remain unresolved.",
+    "root_cause": "Cycle 20260524-180339 correctly scoped itself to a 2-hunk diff (null-guard conditions only) and deferred live interaction testing as 'pre-existing unchanged infrastructure'. The mutation paths for board-to-sidebar and sidebar-to-slot are confirmed present in source but were never exercised by a Playwright drag. The 4 cleanliness items were tagged minor/non-blocking in the close report and deferred to a follow-up cycle.",
+    "root_cause_commit": "fa563a3befa8d18f6599629cdb427706d54ce5c6 (20260524-180339 null-guard fix)",
+    "why_introduced": "Cycle scope boundary decision: 2-hunk diff scope excluded mutation path verification",
+    "why_problematic": "User expectation: a draggable accommodation card should mean the full drag-select/deselect flow works and is proven end-to-end",
+    "timeline": "2026-05-24 — AC2/AC6 deferred at close of 20260524-180339; cleanliness items deferred at close of 20260524-132346",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "handleSidebarDrop at lines 2357-2370: direction==='board' branch calls saveMutations with option_id:null (inferred from Read)",
+      "slot-drop onDrop at line 1322: candidates branch calls saveMutations with payload.optionId (inferred from Read)",
+      "candidateCardStyle at lines 2266-2276: function defined, zero call sites in card render code (inferred from Read + Grep)",
+      "isPending computed at line 2430 (accommodation) and 2484 (meals) but not referenced in inline style (inferred from Read)",
+      "useEffect dep array at line 2918: [publishedDay && publishedDay.day, saveMutations, editorDay] — editorSelections absent (inferred from Read)",
+      "Duplicate L('accommodation') IIFE at lines 2425 and 2456; duplicate L('meals') IIFE at lines 2479 and 2513 (inferred from Grep)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — live drag interactions not run in this BA cycle; dev must run Playwright to produce observed evidence)",
+    "complaint_location_keywords": ["accommodation", "board card", "drag", "sidebar", "saveMutations", "candidateCardStyle", "isPending", "editorSelections", "useEffect", "IIFE"],
+    "localization_evidence": "Read of react_template.tpl at relevant line ranges confirms location of all 4 cleanliness items and both mutation handler paths. Live drag evidence requires Playwright execution (dev responsibility).",
+    "located_source": "scripts/lib/react_template.tpl — handleSidebarDrop at lines 2357-2370, slot-drop onDrop at line 1322, candidateCardStyle at lines 2266-2276, isPending at lines 2430/2484, useEffect dep array at line 2918, IIFE duplicates at lines 2425/2456 and 2479/2513",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression bug — these are deferred items from prior cycles, not a newly introduced break",
+      "reproducibility_verified": false
+    }
+  },
+
+  "diagnosis_layer": "L4",
+
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "AC2: Live Playwright DRAG INTERACTION: drag accommodation board card → CandidatesSidebar, verify saveMutations fires and slot clears visually",
+      "acceptance_criterion": "Playwright drag board card to #candidates-groups; /api/save POST with {type:'select', slot:'accommodation', option_id:null} received; slot renders without green selection ring"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "AC6: Live Playwright DRAG INTERACTION: drop sidebar candidate onto accommodation slot, verify saveMutations fires and board shows new candidate",
+      "acceptance_criterion": "Playwright drag sidebar candidate to .slot-drop[data-slot-id='accommodation'] on board; /api/save POST with {type:'select', slot:'accommodation', option_id:<non-null>} received; board renders new candidate as selected"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "Dead candidateCardStyle function at lines ~2263-2274 — never called, should be deleted",
+      "acceptance_criterion": "grep for candidateCardStyle in react_template.tpl returns 0 matches"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "isPending visual affordance — isPending is computed but lost its CSS visual affordance in the Bug B rewrite",
+      "acceptance_criterion": "isPending=true candidate card renders with distinct visual state (blue border #3b82f6 or blue background #eff6ff or equivalent)"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "editorSelections stale closure — editorSelections not in the useEffect dep array at line ~2916",
+      "acceptance_criterion": "useEffect dep array at end of the preserveCurrentAccommodationOption useEffect block contains editorSelections"
+    },
+    {
+      "id": "R6",
+      "source_phrase": "IIFE duplication — duplicate IIFE pattern in accommodation/meals sections at lines ~2423/2454 and ~2477/2511",
+      "acceptance_criterion": "L('accommodation', lang) and L('meals', lang) expressions each resolved once (const variable) before the map/IIFE that uses them, not duplicated in separate IIFEs"
+    }
+  ],
+
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1262-1328",
+      "role": "Accommodation board card render — sets draggable, onDragStart with direction:'board', and slot-drop overlay onDrop handler",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 1262-1328 confirmed: draggable={!!dragOptionId}, onDragStart sets direction:'board' and sourceSlotId:'accommodation', slot-drop onDrop at line 1322 handles both board and candidates directions",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2357-2370",
+      "role": "handleSidebarDrop — receives board-direction drags dropped onto the sidebar, calls saveMutations with option_id:null",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2357-2370 confirmed: payload.direction === 'board' branch: setEditorSelections sets key to null, saveMutations called with {type:'select', slot:srcSlotId, option_id:null}",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2409-2413",
+      "role": "CandidatesSidebar root div — onDragOver + onDrop bound to handleSidebarDrop, making it the sidebar drop zone",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2409-2413 confirmed: div#candidates-groups has onDragOver={e.preventDefault()} and onDrop={handleSidebarDrop}",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2427-2468",
+      "role": "Accommodation candidates map — renders draggable candidate cards with direction:'candidates' in onDragStart payload",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2427-2468 confirmed: each card has draggable=true, onDragStart sets direction:'candidates' and optionId from rawOpt.option_id",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2810-2918",
+      "role": "useEffect defining preserveCurrentAccommodationOption, bridge, and applyBridge — dep array at line 2918",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2810-2918 confirmed: dep array is [publishedDay && publishedDay.day, saveMutations, editorDay] — editorSelections absent",
+      "verified_via": "Read"
+    }
+  ],
+
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1318,
+      "type": "if",
+      "code_snippet": "const isGated = (!edAcc && !selectedAccId) || (edAcc && (edAcc.late_arrival_placeholder || edAcc.skipped));",
+      "purpose": "Gates slot-drop overlay to data-droppable='false' for skipped/late-arrival/missing accommodation — prevents inadvertent drops on gated slots",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 1320,
+      "type": "if",
+      "code_snippet": "if (e.currentTarget.getAttribute('data-droppable') === 'false') { e.preventDefault(); _flashReject(...); return; }",
+      "purpose": "onDragOver guard — rejects drag hover on gated slots",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2362,
+      "type": "if",
+      "code_snippet": "if ((payload.direction === 'plan-to-candidates' || payload.direction === 'board') && srcSlotId) {",
+      "purpose": "handleSidebarDrop direction guard — only fires deselect mutation for board-direction drags, not candidates-direction",
+      "removal_authorized": false
+    }
+  ],
+
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "en (base) — test both base and local",
+    "auth_state": "logged-in (editor mode active, editorTripData loaded)",
+    "data_state": "with-data — trip beijing-lijiang-dali-20260418-100846, Day 2 must have editorDay.accommodation with options array of length >= 1",
+    "browser": "Chrome desktop (Playwright)",
+    "url_path": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846"
+  },
+
+  "evidence": {
+    "observed": "AC2/AC6 drag interaction tests were deferred in prior cycle. 4 cleanliness items deferred in prior cycle 20260524-132346.",
+    "measured": {
+      "value": "handleSidebarDrop at line 2364 fires saveMutations with option_id:null; slot-drop onDrop at line 1322 fires saveMutations with payload.optionId; candidateCardStyle at lines 2266-2276 has 0 call sites; isPending at lines 2430/2484 unused in styles; dep array at line 2918 missing editorSelections; L() IIFEs duplicated at lines 2425/2456 and 2479/2513",
+      "location": "scripts/lib/react_template.tpl lines 1266-2918"
+    },
+    "expected": {
+      "value": "Live Playwright drags exercise both mutation paths; all 4 cleanliness items resolved",
+      "source": "close-report-20260524-180339.md (deferred AC2/AC6) + close-report-20260524-132346.md (deferred cleanliness findings 1/3/4/5)"
+    },
+    "gap": "0 live drag interactions executed in prior cycle; 4 cleanliness items pending"
+  },
+
+  "scope_expansion": {
+    "search_pattern": "candidateCardStyle|isPending|editorSelections|preserveCurrentAccommodation|L\\('accommodation'|L\\('meals'",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["scripts/lib/react_template.tpl"],
+    "additional_found": [],
+    "all_occurrences": [
+      "react_template.tpl:2266-2276 (candidateCardStyle dead fn)",
+      "react_template.tpl:2430 (isPending accommodation)",
+      "react_template.tpl:2484 (isPending meals)",
+      "react_template.tpl:2918 (useEffect dep array)",
+      "react_template.tpl:2425,2456 (L accommodation duplicate IIFEs)",
+      "react_template.tpl:2479,2513 (L meals duplicate IIFEs)"
+    ]
+  },
+
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Live source read of react_template.tpl confirming all handler locations, dep array contents, dead function, and duplicate IIFEs",
+    "url_or_location": "scripts/lib/react_template.tpl — Read tool used in this session",
+    "copy_allowed": true
+  },
+
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/ticket-20260524-180339.md",
+        "proposed_solution": "Fix two JS null-guard conditions to make AI-selected accommodation cards draggable and droppable; verify via Playwright DOM attribute checks",
+        "actual_change": "lines 1266-1268 (selectedAccId logic) and line 1318 (isGated logic) in react_template.tpl",
+        "outcome": "DOM attributes confirmed. Live drag interactions (AC2/AC6) deferred as out-of-cycle-scope. User rated 1 star.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L4"
+      },
+      {
+        "artifact_path": "docs/dev/ticket-20260524-132346.md",
+        "proposed_solution": "Fix 3 CandidatesSidebar bugs (drag-drop mutation, card layout, lang labels); minor cleanliness findings deferred",
+        "actual_change": "Major CandidatesSidebar rewrite in react_template.tpl (Bug A/B/C)",
+        "outcome": "3 bugs fixed. 5 minor cleanliness findings introduced; 4 deferred (dead fn, isPending, stale closure, IIFE duplication).",
+        "failure_category": "other",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempt 1 proved DOM structure (L4 condition logic); this attempt proves runtime behavior (L4 live interaction + /api/save POST verification). Prior attempt 2 introduced cosmetic regressions; this attempt reverses them. Different verification layer and different content from both priors."
+    }
+  },
+
+  "context": {
+    "codebase_state": "react_template.tpl at lines 1266-1268 and 1318 contain the null-guard fixes from 20260524-180339. All 4 cleanliness items are unresolved. Service running at http://localhost:8094.",
+    "recent_commits": "14f72e30 fix(web): flash red on gated slot-drop rejection + ticket-19161933 doc cleanup; 9218b6bd feat(web): unified viewer/editor page + bidirectional drag",
+    "file_contents": {
+      "react_template.tpl:2266-2276": "candidateCardStyle dead function — defined but never called",
+      "react_template.tpl:2430": "isPending computed, not used in inline style",
+      "react_template.tpl:2484": "isPending computed, not used in inline style",
+      "react_template.tpl:2918": "useEffect dep array: [publishedDay && publishedDay.day, saveMutations, editorDay]",
+      "react_template.tpl:2425,2456": "duplicate L('accommodation', lang) IIFEs",
+      "react_template.tpl:2479,2513": "duplicate L('meals', lang) IIFEs"
+    },
+    "dependencies": {},
+    "environment": {
+      "service_url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+      "regeneration_command": "python3 scripts/generate-html-interactive.py (for both active plans)",
+      "deploy_command": "bash deploy-travel-plans.sh"
+    }
+  },
+
+  "development_approach": {
+    "strategy": "Two-phase: (1) Code changes to react_template.tpl for the 4 cleanliness items, then regenerate and deploy. (2) Playwright live drag interaction tests for AC1 (board-to-sidebar) and AC2 (sidebar-to-slot) with /api/save POST interception to verify mutation payloads.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "Playwright drag interaction with page.route or page.waitForRequest to intercept /api/save POST and assert mutation payload JSON. DOM inspection for isPending visual state. Grep for candidateCardStyle (expect 0 matches). Grep for editorSelections in dep array (expect present). Grep for duplicate L() IIFEs (expect at most 1 each)."
+  },
+
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260524-202700.json",
+  "blast_radius_map_path": ".claude/dev-registry/dev-20260524-202700/blast-radius-map.json",
+
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
