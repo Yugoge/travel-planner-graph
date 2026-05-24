@@ -2541,7 +2541,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   data-origin-slot-id={slotId}
                   onDragStart={(e) => {
                     currentDragSlotId = slotId;
-                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId }));
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId, direction: 'candidates' }));
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragEnd={() => { currentDragSlotId = null; }}
@@ -2549,14 +2549,27 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                     if (isPending) { setPendingSelection && setPendingSelection(null); return; }
                     setPendingSelection && setPendingSelection({ optionId: rawOpt.option_id, slotId: slotId, originSlotId: slotId });
                   }}
-                  style={candidateCardStyle(isSelected, isPending)}
+                  style={{ width: '280px', minWidth: '280px', height: '320px', flexShrink: 0, background: '#fff', borderRadius: '8px', border: isSelected ? '1.5px solid #3498db' : 'none', boxShadow: isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', marginBottom: '8px' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(74,144,217,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = isSelected ? '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  {isSelected && <span style={{ position: 'absolute', top: '6px', right: '8px', color: '#45b26b', fontWeight: '700', fontSize: '13px' }}>✓</span>}
-                  <div style={{ fontWeight: '600', color: '#37352f', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: isSelected ? '16px' : 0 }}>
-                    {lang === 'local' ? (opt.name_local || opt.name_base) : opt.name_base}
+                  <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
+                    {(rawOpt.cover_image || rawOpt.image) && <img src={rawOpt.cover_image || rawOpt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />}
                   </div>
-                  {opt.location_base && <div style={{ fontSize: '11px', color: '#9b9a97', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
-                  {opt.cost_display && <div style={{ fontSize: '11px', color: '#6b6b6b' }}>{opt.cost_display}</div>}
+                  <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#3498db', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      <span>📍 {getSlotLabel(slotId)}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                      {getDisplayName(opt, lang)}
+                      <RedNoteLink name={rawOpt.name_local || rawOpt.name_base} />
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b6b6b', lineHeight: 1.6, flexShrink: 0 }}>
+                      {opt.location_base && <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.location_base}</div>}
+                      {opt.cost_display && <div>{opt.cost_display}</div>}
+                    </div>
+                  </div>
+                  <div className="slot-drop" data-slot-id={slotId} data-droppable="true" aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'transparent' }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }} />
                 </div>
               );
             })}
