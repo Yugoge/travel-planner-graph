@@ -2517,7 +2517,8 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* Activity slots */}
       {activitySlots.map(slotId => {
