@@ -22,7 +22,9 @@ def test_AC2():
     # the AC as unimplemented for QA Phase 5.
     import re
 
-    TPL = "scripts/lib/react_template.tpl"
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
+    TPL = str(PROJECT_ROOT / "scripts/lib/react_template.tpl")
 
     def _lines_range(start, end):
         with open(TPL) as f:
