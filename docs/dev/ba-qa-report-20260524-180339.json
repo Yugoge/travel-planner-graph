@@ -1,0 +1,73 @@
+{
+  "request_id": "20260524-180339",
+  "task_id": "20260524-180339",
+  "timestamp": "2026-05-24T18:03:39Z",
+  "verdict": "PASS",
+  "root_cause_confirmed": true,
+  "fix_sufficient": true,
+
+  "evidence_summary": {
+    "line_1266_verified": "CONFIRMED. Actual code at line 1266: `const selectedAccId = edAcc ? (Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : edAcc.selected_option_id) : null;` — returns null when edAcc is null exactly as BA described.",
+    "line_1267_verified": "CONFIRMED. `const dragOptionId = acc.option_id || selectedAccId;` at line 1267. draggable={!!dragOptionId} at line 1273. With acc.option_id absent from Python-rendered cards (merge writes option_id only to the deep-cloned day object; the rendered acc object IS the merge output when merge runs) and selectedAccId null under edAcc-null path, dragOptionId=null and draggable=false.",
+    "line_1316_verified": "CONFIRMED. `const isGated = !edAcc || edAcc.late_arrival_placeholder || edAcc.skipped;` at line 1316. edAcc computed at line 1315 as `editorDay && editorDay.accommodation`. Falsy edAcc makes isGated=true unconditionally.",
+    "line_1307_badge_verified": "CONFIRMED. Badge block at line 1307 uses pattern `Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : (edAcc && edAcc.selected_option_id)` — independent const re-declaration inside the editorDay IIFE at line 1304. Fix at line 1266 mirrors this pattern exactly.",
+    "line_862_meals_verified": "CONFIRMED. `draggable={isSelected}` at line 862, `isSelected = opt.selected` at line 855. Meals drag is already correct as BA stated.",
+    "line_952_cafe_verified": "CONFIRMED. `draggable={isSelected && !!cafeSlotId}` at line 952. cafeSlotId from cafeSlotMap lookup at line 944.",
+    "line_1040_attractions_verified": "CONFIRMED. `draggable={isSelected && !!actSlotId}` at line 1040. actSlotId from activitySlotMap at line 1032.",
+    "line_1125_entertainment_verified": "CONFIRMED. `draggable={isSelected && !!entSlotId}` at line 1125. entSlotId from entSlotMap at line 1117.",
+    "merge_function_verified": "CONFIRMED. mergeEditorSelectionsIntoPublishedDay at lines 2052-2081 sets day.accommodation.option_id = selAccOpt.option_id at line 2068 when the published card matches the selected option. This IS the card object rendered in the board (deep clone of publishedDay). So acc.option_id is present after merge — meaning dragOptionId at line 1267 can be non-null via acc.option_id alone when merge ran successfully. The fix at line 1266 is still needed for the fallback path where edAcc is null or editorSelections has the key.",
+    "handleSidebarDrop_verified": "CONFIRMED. Lines 2362-2365 correctly call setEditorSelections and saveMutations with option_id:null. No fix needed."
+  },
+
+  "fix_sufficiency_analysis": {
+    "accommodation_draggable": "After fixing line 1266: selectedAccId = editorSelections[accKey] if key present, else edAcc.selected_option_id. For AI-planned card: edAcc.selected_option_id is set by the AI plan -> selectedAccId non-null -> dragOptionId non-null -> draggable=true. Additionally, even before the fix, when merge runs (editorDay loaded), acc.option_id IS set on the rendered card at line 2068 — so dragOptionId at line 1267 is already non-null via acc.option_id in the successful-merge path. The line 1266 fix handles the edge case where edAcc is null or merge path uses synthesis (line 2071-2076) where the synth object IS set with option_id from selAccOpt.",
+    "accommodation_drop_target": "After fixing line 1316: isGated = (!edAcc && !selectedAccId) || (edAcc && (edAcc.late_arrival_placeholder || edAcc.skipped)). Skipped/late-arrival guard preserved. An AI-selected slot with edAcc non-null and not skipped/placeholder correctly gets isGated=false -> data-droppable=true.",
+    "regression_at_line_1307": "NO REGRESSION RISK. The badge block at lines 1304-1313 contains its own independent const selectedAccId declaration (line 1307) inside the editorDay IIFE. It already uses the correct resolution pattern. The fix at line 1266 does not affect line 1307.",
+    "activities_no_fix_needed": "Confirmed. Activity draggable conditions (lines 952, 1040, 1125) fail in viewer mode (editorDay null -> slot map null -> actSlotId null) but when editorDay IS loaded, isSelected is true (set by merge) and actSlotId is non-null -> draggable=true. This is already working in editor mode. Viewer-mode activity drag is intentionally excluded (Non-Goals)."
+  },
+
+  "objections": [
+    {
+      "dimension": "spec_text_vs_execution_drift",
+      "severity": "minor",
+      "description": "The ticket's Acceptance Criteria section (ticket-20260524-180339.md) enumerates 4 ACs (AC1-AC4). The acceptance-criteria JSON (acceptance-criteria-20260524-180339.json) defines 7 ACs (AC1-AC7). The ticket's Requirements Decomposition table also has only 4 rows (R1-R4) yet AC5 (activity card draggable), AC6 (candidate drop replaces AI selection), and AC7 (no regression for manually-selected cards) are in the authoritative JSON but not in the ticket's AC table. QA will need to verify all 7 ACs from the JSON. BA should update the ticket's AC table to include AC5-AC7 or document why they are JSON-only.",
+      "blocking": false,
+      "proposed_fix": "BA to add AC5, AC6, AC7 rows to the ticket's Acceptance Criteria section to match the acceptance-criteria JSON, or add a note saying 'See acceptance-criteria-20260524-180339.json for full AC list'."
+    }
+  ],
+
+  "observations": [
+    {
+      "dimension": "investigation_completeness",
+      "note": "BA correctly identified that the acc.option_id IS set by the merge function (line 2068), which means in the primary merge path (card matches the selected option), dragOptionId at line 1267 is already non-null via acc.option_id. The line 1266 fix primarily addresses (a) the synthesis fallback path where the synthesized card also has option_id set, and (b) defensive handling when edAcc is null but editorSelections has an explicit selection. BA's diagnosis_completeness is correctly marked 'incomplete (inferred only)' — live browser test is still required by QA.",
+      "in_user_path": true,
+      "security_relevant": false
+    },
+    {
+      "dimension": "affected_file_accuracy",
+      "note": "All BA-claimed line numbers verified accurate: 862, 944/952, 1032/1040, 1117/1125, 1266, 1267, 1273, 1305-1307, 1315-1316, 2052-2081, 2362-2368. render_day_data.py constraint (do not modify) is consistent with merge function writing option_id to the card object.",
+      "in_user_path": true,
+      "security_relevant": false
+    }
+  ],
+
+  "ac_testability_review": {
+    "AC1": "Testable. Playwright DOM check on [data-slot-id='accommodation'][data-slot-card='primary'] attribute draggable='true'. Requires test data with AI-selected accommodation and editorDay loaded.",
+    "AC2": "Testable. Playwright drag interaction from board to sidebar. Requires verifying saveMutations call or observing slot rendering change. May need to intercept/spy on the mutation save or observe the UI state after drop.",
+    "AC3": "Testable. Playwright DOM check on .slot-drop[data-slot-id='accommodation'] attribute data-droppable='true'. Straightforward.",
+    "AC4": "Testable. Playwright DOM check on .slot-drop[data-slot-id='accommodation'] attribute data-droppable='false' when accommodation.skipped=true or late_arrival_placeholder=true. Requires test data with those flags set.",
+    "AC5": "Testable. Playwright DOM check on [data-slot-card='primary'][data-option-id] attribute draggable='true'. Requires editorDay loaded with an AI-selected activity slot.",
+    "AC6": "Testable. Playwright drag from sidebar to slot, verify board renders new candidate as selected. Requires observing UI state change.",
+    "AC7": "Testable. Playwright regression test with manually-selected cards. Existing drag behavior should still work after the fix.",
+    "all_testable": true
+  },
+
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+
+  "summary": "BA package is sound. Root cause correctly identified and verified by direct code reading. Both fix targets (line 1266 selectedAccId resolution, line 1316 isGated condition) match actual code exactly. Fix strategy mirrors the already-correct pattern at line 1307. No regression risk at badge computation. Meals drag and activity cards confirmed as described. One minor spec-text-vs-execution-drift objection: ticket AC table has 4 entries while acceptance-criteria JSON has 7 — non-blocking. All 7 ACs are testable. QA must perform live browser drag verification per Lesson 12 before issuing a PASS verdict on the dev implementation."
+}
