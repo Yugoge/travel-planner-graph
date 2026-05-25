@@ -882,6 +882,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             {(opt.cover_image || opt.image) && <img src={opt.cover_image || opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={e => { e.target.style.display = 'none'; }} />}
                           </div>
+                          {opt._empty && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60px', color: '#9ca3af', fontSize: '12px', fontStyle: 'italic' }}>
+                              {opt._label}
+                            </div>
+                          )}
                           <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? catColor : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                               <span>{opt._emoji} {opt._label}</span>
