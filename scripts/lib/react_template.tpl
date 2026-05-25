@@ -857,15 +857,23 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
                       const isSelected = opt.selected;
+                      const edSlot = editorDay && editorDay.slots && editorDay.slots[opt._type];
+                      const mealSlotKey = day.day + ':' + opt._type;
+                      const mealExplicitNull = Object.prototype.hasOwnProperty.call(editorSelections || {}, mealSlotKey) && (editorSelections || {})[mealSlotKey] === null;
+                      const mealDragOptionId = (!opt._isPrimary || mealExplicitNull || opt._empty) ? null
+                        : (opt.option_id
+                          || (edSlot && edSlot.selected_option_id)
+                          || (edSlot && edSlot.options && edSlot.options[0] && edSlot.options[0].option_id)
+                          || null);
                       return (
                         <div key={gi} style={{...cardStyle(catColor, opt._isPrimary), position: 'relative',
                           ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                           data-slot-card={opt._isPrimary ? 'primary' : 'alternative'}
                           data-slot-id={opt._type}
-                          data-option-id={opt.option_id || undefined}
-                          draggable={isSelected}
-                          onDragStart={isSelected ? (e) => { currentDragSlotId = opt._type; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: opt.option_id, slotId: opt._type, sourceSlotId: opt._type, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
-                          onDragEnd={isSelected ? () => { currentDragSlotId = null; } : undefined}
+                          data-option-id={mealDragOptionId || undefined}
+                          draggable={!!mealDragOptionId}
+                          onDragStart={mealDragOptionId ? (e) => { currentDragSlotId = opt._type; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: mealDragOptionId, slotId: opt._type, sourceSlotId: opt._type, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                          onDragEnd={mealDragOptionId ? () => { currentDragSlotId = null; } : undefined}
                           onClick={() => onItemClick && onItemClick(opt, 'meal')}
                           onMouseEnter={hoverOn}
                           onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}
