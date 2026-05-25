@@ -1295,6 +1295,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 onError={e => { e.target.style.display = 'none'; }} />}
                             </div>
                             <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                              {!acc.name_base && !acc.name_local && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60px', color: '#9ca3af', fontSize: '12px', fontStyle: 'italic' }}>
+                                  {L('accommodation', lang)}
+                                </div>
+                              )}
                               <div style={{ fontSize: '10px', fontWeight: '700', color: catColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', flexShrink: 0 }}>
                                 🏨 {L('accommodation', lang)}
                                 {acc.stars > 0 && <span style={{ color: '#e9b200', marginLeft: '4px', letterSpacing: '1px' }}>{'★'.repeat(acc.stars)}</span>}
