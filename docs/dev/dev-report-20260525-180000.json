@@ -1,0 +1,98 @@
+{
+  "request_id": "20260525-acc-empty-slot",
+  "task_id": "20260525-acc-empty-slot",
+  "timestamp": "2026-05-25T18:00:00+08:00",
+  "baseline_head_sha": "6072d84e0d4578eea96d69b7594d4685bb859c8d",
+  "baseline_dirty_snapshot": " M .claude/dev-registry/agent-index.json\n M .claude/worktrees/overnight-20260412-c6ec78c9\n M data/beijing-lijiang-dali-20260418-100846/accommodation.json\n M data/beijing-lijiang-dali-20260418-100846/attractions.json\n M data/beijing-lijiang-dali-20260418-100846/budget.json\n ...(truncated, see git status)",
+  "dev_report_path": "docs/dev/dev-report-20260525-180000.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": ["output/travel-plan-beijing-lijiang-dali-20260418-100846.html", "output/travel-plan-china-20260412-092624.html"],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Replace outer `day.accommodation &&` gate with IIFE that also renders when deselected (accDeselected && edAcc)",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Lines 1258-1262: replaced boolean gate with IIFE that checks _accDeselected+_edAcc; changed [day.accommodation] fallback to [{}] for empty-card render",
+        "rationale": "Root cause: `day.accommodation && (` hid the entire Section when mergeEditorSelectionsIntoPublishedDay set day.accommodation=null after deselect. Fix retains section visibility whenever editorSelections has an explicit null for the key AND editorDay.accommodation exists (meaning there are candidates to drag back)."
+      },
+      {
+        "id": 2,
+        "description": "Close IIFE — replace `)}` with `); })()}` at end of accommodation Section",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Line 1343: changed `)}` to `); })()}` to close the IIFE return and call",
+        "rationale": "Required structural close for Change 1's IIFE wrapper."
+      },
+      {
+        "id": 3,
+        "description": "Add empty-state visual inside card body when acc has no name fields",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "After line 1292 (image div close): inserted conditional block rendering italic placeholder text when !acc.name_base && !acc.name_local",
+        "rationale": "When acc={} (empty object from [{}] fallback), the card body would otherwise show category label + stars + cost fields all empty/blank. The empty-state div provides visual affordance that this is a drop target."
+      },
+      {
+        "id": 4,
+        "description": "Regenerate HTML for both trips and deploy",
+        "type": "build",
+        "files_modified": [],
+        "changes": "Ran generate-html-interactive.py for beijing-lijiang-dali-20260418-100846 and china-20260412-092624; deployed both via deploy-travel-plans.sh",
+        "rationale": "Template change requires HTML regeneration and deployment to take effect in the live app."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": ["scripts/generate-html-interactive.py"]
+      }
+    ],
+    "blast_radius_declarations": [
+      {
+        "file": "scripts/lib/react_template.tpl",
+        "coverage_gap_severity": "n/a",
+        "addressed_by": "tests_run",
+        "tests": [
+          "Playwright: applyEditorSelection(null, 'accommodation', null) → slot_drop_visible=true, droppable=true, board_card_visible=true, section_header=FOUND"
+        ]
+      }
+    ],
+    "git_rationale": {
+      "root_cause_commit": "N/A — logic bug in existing code",
+      "why_issue_occurred": "The accommodation Section was gated on `day.accommodation &&` — when mergeEditorSelectionsIntoPublishedDay merges editorSelections={key:null} into publishedDay, day.accommodation becomes null, hiding the entire Section. No empty drop zone remained for the user to drag a candidate back.",
+      "how_fix_addresses_root": "IIFE checks both day.accommodation (normal case) and the _accDeselected+_edAcc condition (deselected but candidates exist). When deselected, [{}] provides an empty acc object so the card renders as an empty drop zone with slot-drop overlay. The existing slot-drop onDrop handler is untouched and works as-is."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 13,
+      "lines_removed": 3,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 10,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "Test by: (1) open trip in Kanban view, (2) drag accommodation board card to sidebar, (3) verify Section header '🏨 Accommodation' is still visible in board, (4) verify .slot-drop[data-slot-id='accommodation'] has data-droppable='true', (5) drag a candidate from sidebar back to the slot — card should appear.",
+    "permissions_to_add": [],
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Playwright run_code test: applyEditorSelection(null,'accommodation',null) → slot_drop_visible=true, droppable=true, board_card_visible=true, section_header=FOUND (in board, not sidebar). Both HTML files regenerated and deployed successfully."
+    }
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Consider applying the same empty-drop-zone pattern to other singleton slots (meals sub-types) if users report similar disappearance on deselect."
+  ]
+}
