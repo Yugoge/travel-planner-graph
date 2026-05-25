@@ -1255,11 +1255,16 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
               )}
 
               {/* Accommodation */}
-              {day.accommodation && (
+              {(() => {
+                const _accKey = day.day + ':accommodation';
+                const _edAcc = editorDay && editorDay.accommodation;
+                const _accDeselected = Object.prototype.hasOwnProperty.call(editorSelections || {}, _accKey) && (editorSelections || {})[_accKey] === null;
+                if (!day.accommodation && !(_accDeselected && _edAcc)) return null;
+                return (
                 <Section title={L('accommodation', lang)} icon="🏨">
                   <div style={categoryRowStyle}>
                     <div style={scrollContainerStyle} className="category-scroll-container">
-                      {(day.accommodation ? [day.accommodation] : []).map((acc, i) => {
+                      {(day.accommodation ? [day.accommodation] : [{}]).map((acc, i) => {
                         const catColor = categoryColors.accommodation;
                         const accKey = day.day + ':accommodation';
                         const edAcc = editorDay && editorDay.accommodation;
