@@ -841,8 +841,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                 <div style={categoryRowStyle}>
                   <div style={scrollContainerStyle} className="category-scroll-container">
                     {['breakfast', 'lunch', 'dinner'].flatMap(type => {
-                      const meal = day.meals[type];
-                      if (!meal) return [];
+                      const meal = day.meals?.[type];
+                      const _edSlotT = editorDay && editorDay.slots && editorDay.slots[type];
+                      const _skT = day.day + ':' + type;
+                      const _explicitT = Object.prototype.hasOwnProperty.call(editorSelections || {}, _skT) && (editorSelections || {})[_skT] === null;
+                      if (!meal && !(_explicitT && _edSlotT)) return [];
+                      if (!meal) return [{ _type: type, _emoji: mealEmoji[type] || '', _label: L(type, lang), _isPrimary: true, _oi: 0, _empty: true }];
                       const emoji = mealEmoji[type] || '';
                       const label = L(type, lang);
                       const out = [{...meal, _type: type, _emoji: emoji, _label: label, _isPrimary: true, _oi: 0}];
