@@ -7746,8 +7746,12 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                 <div style={categoryRowStyle}>
                   <div style={scrollContainerStyle} className="category-scroll-container">
                     {['breakfast', 'lunch', 'dinner'].flatMap(type => {
-                      const meal = day.meals[type];
-                      if (!meal) return [];
+                      const meal = day.meals?.[type];
+                      const _edSlotT = editorDay && editorDay.slots && editorDay.slots[type];
+                      const _skT = day.day + ':' + type;
+                      const _explicitT = Object.prototype.hasOwnProperty.call(editorSelections || {}, _skT) && (editorSelections || {})[_skT] === null;
+                      if (!meal && !(_explicitT && _edSlotT)) return [];
+                      if (!meal) return [{ _type: type, _emoji: mealEmoji[type] || '', _label: L(type, lang), _isPrimary: true, _oi: 0, _empty: true }];
                       const emoji = mealEmoji[type] || '';
                       const label = L(type, lang);
                       const out = [{...meal, _type: type, _emoji: emoji, _label: label, _isPrimary: true, _oi: 0}];
@@ -7758,15 +7762,23 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
                       const isSelected = opt.selected;
+                      const edSlot = editorDay && editorDay.slots && editorDay.slots[opt._type];
+                      const mealSlotKey = day.day + ':' + opt._type;
+                      const mealExplicitNull = Object.prototype.hasOwnProperty.call(editorSelections || {}, mealSlotKey) && (editorSelections || {})[mealSlotKey] === null;
+                      const mealDragOptionId = (!opt._isPrimary || mealExplicitNull || opt._empty) ? null
+                        : (opt.option_id
+                          || (edSlot && edSlot.selected_option_id)
+                          || (edSlot && edSlot.options && edSlot.options[0] && edSlot.options[0].option_id)
+                          || null);
                       return (
                         <div key={gi} style={{...cardStyle(catColor, opt._isPrimary), position: 'relative',
                           ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                           data-slot-card={opt._isPrimary ? 'primary' : 'alternative'}
                           data-slot-id={opt._type}
-                          data-option-id={opt.option_id || undefined}
-                          draggable={isSelected}
-                          onDragStart={isSelected ? (e) => { currentDragSlotId = opt._type; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: opt.option_id, slotId: opt._type, sourceSlotId: opt._type, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
-                          onDragEnd={isSelected ? () => { currentDragSlotId = null; } : undefined}
+                          data-option-id={mealDragOptionId || undefined}
+                          draggable={!!mealDragOptionId}
+                          onDragStart={mealDragOptionId ? (e) => { currentDragSlotId = opt._type; e.dataTransfer.setData('text/plain', JSON.stringify({ optionId: mealDragOptionId, slotId: opt._type, sourceSlotId: opt._type, direction: 'board' })); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                          onDragEnd={mealDragOptionId ? () => { currentDragSlotId = null; } : undefined}
                           onClick={() => onItemClick && onItemClick(opt, 'meal')}
                           onMouseEnter={hoverOn}
                           onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}
@@ -7775,6 +7787,11 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             {(opt.cover_image || opt.image) && <img src={opt.cover_image || opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={e => { e.target.style.display = 'none'; }} />}
                           </div>
+                          {opt._empty && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60px', color: '#9ca3af', fontSize: '12px', fontStyle: 'italic' }}>
+                              {opt._label}
+                            </div>
+                          )}
                           <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? catColor : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                               <span>{opt._emoji} {opt._label}</span>
@@ -9014,7 +9031,13 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
     const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key)
       ? editorSelections[key]
       : persistedId;
-    if (!selectedId) return;
+    if (!selectedId) {
+      if (Object.prototype.hasOwnProperty.call(editorSelections, key) && editorSelections[key] === null) {
+        if (!day.meals) day.meals = {};
+        day.meals[slotId] = null;
+      }
+      return;
+    }
     const selOpt = findSelectedOption(editorDay, slotId, selectedId, editorTripData);
     if (!selOpt) return;
 
