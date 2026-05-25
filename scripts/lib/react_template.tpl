@@ -1340,7 +1340,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                     </div>
                   </div>
                 </Section>
-              )}
+                ); })()}
 
               {/* Transportation */}
               {(day.transportation || (day.intra_routes && day.intra_routes.length > 0)) && (
