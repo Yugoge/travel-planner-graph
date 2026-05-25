@@ -2126,7 +2126,13 @@ function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSe
     const selectedId = Object.prototype.hasOwnProperty.call(editorSelections, key)
       ? editorSelections[key]
       : persistedId;
-    if (!selectedId) return;
+    if (!selectedId) {
+      if (Object.prototype.hasOwnProperty.call(editorSelections, key) && editorSelections[key] === null) {
+        if (!day.meals) day.meals = {};
+        day.meals[slotId] = null;
+      }
+      return;
+    }
     const selOpt = findSelectedOption(editorDay, slotId, selectedId, editorTripData);
     if (!selOpt) return;
 
