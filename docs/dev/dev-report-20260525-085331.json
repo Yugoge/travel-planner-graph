@@ -1,0 +1,82 @@
+{
+  "request_id": "20260525-085331-acc-drag",
+  "task_id": "20260525-085331-acc-drag",
+  "timestamp": "2026-05-25T08:53:31Z",
+  "baseline_head_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
+  "baseline_dirty_snapshot": " M scripts/lib/react_template.tpl",
+  "dev_report_path": "docs/dev/dev-report-20260525-085331.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fixed dragOptionId computation to use edAcc.options[0].option_id fallback for v1 flat accommodation objects",
+        "type": "bugfix",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Replaced `acc.option_id || selectedAccId` (always null for v1 flat objects) with a 5-level fallback chain: selectedAccId || acc.selected_option_id || acc.options[0].option_id || edAcc.options[0].option_id || null. Added editorHasExplicitNull guard to prevent false positives on explicitly-deselected slots.",
+        "rationale": "Root cause: acc = day.accommodation is a v1 flat object with no option_id/options[]. acc.option_id = undefined. selectedAccId = null (editorDay.accommodation.selected_option_id is null, nothing in editorSelections). All fallbacks in cycle 1 fix also null because acc.options is absent. The actual option IDs live in editorDay.accommodation.options[] (loaded from /api/trip which returns v2 day data). edAcc is already computed in scope; edAcc.options[0].option_id = 'accommodation-1-1'."
+      },
+      {
+        "id": 2,
+        "description": "Fixed data-option-id attribute to use dragOptionId instead of acc.option_id",
+        "type": "bugfix",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Changed `data-option-id={acc.option_id || undefined}` to `data-option-id={dragOptionId || undefined}` so the DOM attribute reflects the resolved option ID.",
+        "rationale": "Consistency: the draggable attribute and onDragStart payload already used dragOptionId; data-option-id must match."
+      },
+      {
+        "id": 3,
+        "description": "Regenerated HTML and deployed both trips, busted serve-trip.py in-memory cache",
+        "type": "deploy",
+        "files_modified": [],
+        "changes": "Re-ran generate-html-interactive.py for both trips, deployed via deploy-travel-plans.sh, invalidated serve-trip.py in-memory HTML cache via POST /api/save with empty mutations.",
+        "rationale": "serve-trip.py caches generated HTML in memory; cache invalidation required for the live /trip/ endpoint to serve updated code."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — data structure mismatch (v1 flat accommodation.json vs v2 days/day-NN.json slot format)",
+      "why_issue_occurred": "dragOptionId was computed as `acc.option_id || selectedAccId`. For trips using v1 flat accommodation.json data, acc.option_id is always undefined. selectedAccId is null when editorDay.accommodation.selected_option_id is null and editorSelections has no entry. The actual option IDs are only in editorDay.accommodation.options[] (from /api/trip v2 response), which was never consulted.",
+      "how_fix_addresses_root": "Added edAcc.options[0].option_id as the last fallback before null. edAcc = editorDay.accommodation is already computed in scope and contains the v2 slot data with options[]. This makes the board card draggable as soon as editorTripData loads (async, ~100ms after page render)."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 8,
+      "lines_removed": 2,
+      "new_symbols_introduced": ["editorHasExplicitNull"],
+      "minimum_possible_lines_estimate": 6,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": ["scripts/generate-html-interactive.py", "scripts/serve-trip.py (runtime generation)"]
+      }
+    ],
+    "blast_radius_declarations": [],
+    "qa_ready": true,
+    "qa_notes": "1. Verify card 0 (board primary accommodation card for Day 1) has draggable='true' and data-option-id='accommodation-1-1' after page load + 3s wait. 2. Verify drag from board to candidates sidebar triggers POST /api/save with mutations=[{type:'select',slot:'accommodation',option_id:null}]. 3. Verify board accommodation count drops to 0 after drag. 4. Verify all 9 days have draggable accommodation cards. 5. Note: serve-trip.py in-memory cache requires a POST /api/save (or server restart) to invalidate after template changes — the static deploy files are NOT used by /trip/ endpoint.",
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "pass",
+      "notes": "Playwright verification confirmed: before fix draggable='false' data-option-id=null; after fix draggable='true' data-option-id='accommodation-1-1'. /api/save intercepted with mutations=[{type:'select',slot:'accommodation',option_id:null}]. Board accommodation DOM count after drag: 0."
+    },
+    "permissions_to_add": [],
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "serve-trip.py should expose a /api/admin/cache-invalidate endpoint (or auto-invalidate on template mtime change) to avoid stale HTML after template edits without a save event.",
+    "Consider adding selected_option_id to the v1 flat accommodation objects during data migration so the simpler fallbacks suffice without reaching into editorDay."
+  ]
+}
