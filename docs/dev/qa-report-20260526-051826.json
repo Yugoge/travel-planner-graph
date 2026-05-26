@@ -328,15 +328,129 @@
       "release_recommendation": "reject"
     }
   },
-  "iteration_needed": true,
-  "refined_context": {
-    "failed_criteria": ["AC3 — move semantics (sidebar-to-board removes card from sidebar)", "AC4 — budget category rows update after recomputeBudget"],
-    "critical_issues": [
-      "AC3: applyBridge cross-slot copy block adds option to targetSlotId.options[] before removal block removes it from originSlotId.options[]. mealsGroup finds option via targetSlot — card survives in sidebar. Fix: remove the cross-slot options[] copy; rely on editorSelections state to drive board selection display.",
-      "AC4: recomputeBudget writes editorTripData.days[n].budget but budget display reads effectiveDay.budget = mergeEditorSelectionsIntoPublishedDay(...) which deep-clones publishedDay without budget propagation. Fix: add one line in mergeEditorSelectionsIntoPublishedDay after publishedDay clone: if (editorDay && editorDay.budget) { day.budget = Object.assign({}, day.budget, editorDay.budget); }"
-    ],
-    "recommended_approach": "Both fixes are small and surgical. AC3 fix: find the setEditorTripData cross-slot copy block in applyBridge (lines ~2927-2945 that copies option from originSlotId to targetSlotId options[]) and remove it. The board card selection is driven by the editorSelections update (line 2874) not by options[] membership. AC4 fix: find mergeEditorSelectionsIntoPublishedDay (~line 2040) and add budget propagation after the JSON.parse(JSON.stringify(publishedDay)) clone. These are independent fixes in separate functions.",
-    "additional_context": "AC1/AC2/AC6/AC22 are all correctly implemented and verified. Only AC3 and AC4 need rework. The same-slot guard in AC3 (originSlotId === targetSlotId skips removal) is correct and must be preserved. The budgetSeqRef guard in AC5 is correctly implemented and must be preserved for the AC4 fix."
+  "iteration_needed": false,
+  "refined_context": null,
+  "r2_verification": {
+    "timestamp": "2026-05-26T09:30:00Z",
+    "iteration": "R2",
+    "overall_verdict": "pass",
+    "ac_results": {
+      "AC1": {
+        "status": "pass",
+        "evidence": "browser_evaluate returned { sidebar_after: ['breakfast:board-default'], breakfast_board_default_appeared: true }. Sidebar count 0→1 for breakfast:board-default after board-to-sidebar drag event.",
+        "regression_from_r1": false
+      },
+      "AC2": {
+        "status": "pass",
+        "evidence": "synthesized card rendered with option_id='breakfast:board-default', originSlotId='breakfast', label='🍽️ 餐厅', name='机场早餐/飞机餐', cost='5 CNY', draggable=true. Correct v2 shape.",
+        "regression_from_r1": false
+      },
+      "AC3": {
+        "status": "pass",
+        "evidence": "browser_evaluate returned { sidebarMealCardsAfter: [], count: 0, dinner_1_1_in_sidebar: false } after window.applyEditorSelection('dinner-1-1', 'dinner', 'lunch'). Card absent from sidebar on next render.",
+        "r2_fix_verified": "True move semantics in applyBridge and bridge: capture srcOpt from originSlot.options[], push to targetSlot.options[] if absent, filter from originSlot.options[]. isSelected guard at line 2502 (if (isSelected) return null) provides belt-and-suspenders defense. Both fixes confirmed in deployed HTML at /var/www/travel/beijing-lijiang-dali/2026-04-18/index.html.",
+        "same_slot_guard": "window.applyEditorSelection with originSlotId===targetSlotId: structural guard (originSlotId !== slotId) skips removal block. Card disappears from sidebar due to isMealSelected returning true (option now selected) — correct behavior for a selected/on-board card.",
+        "regression_from_r1": "n/a (was fail in R1)"
+      },
+      "AC4": {
+        "status": "pass",
+        "evidence": "Dynamic test: switching accommodation selection from accommodation-1-2 (580 CNY) to accommodation-1-1 (680 CNY) updated budget display from [Meals:€33, Accommodation:€580, Total:€613] to [Meals:€88, Accommodation:€680, Total:€768] within 2 seconds.",
+        "r2_fix_verified": "Two-part fix: (1) mergeEditorSelectionsIntoPublishedDay adds Object.assign({}, day.budget, editorDay.budget) at line 2041-2043 — effectiveDay.budget now reflects editorDay.budget. (2) recomputeBudget maps entry.breakdown keys to editorTripData.days[n].budget with correct key mapping (breakdown.activities→budget.attractions) and Number() type cast. Both confirmed in deployed HTML.",
+        "regression_from_r1": "n/a (was fail in R1)"
+      },
+      "AC5": {
+        "status": "pass",
+        "evidence": "Source verification: budgetSeqRef guard at line 2730 covers setLiveDayTotal; second guard at line 2741 covers the new setEditorTripData budget merge call. Both inside same .then() callback. Structurally correct.",
+        "note": "Behavioral test of stale-seq race not separately triggered. Source-level verification sufficient per R1 baseline.",
+        "regression_from_r1": false
+      },
+      "AC6": {
+        "status": "pass",
+        "evidence": "browser_evaluate returned { ac6_pass: true, bad_labels_found: [] }. No 'dinner'/'lunch'/'breakfast' labels found in sidebar meal cards. '🍽️ 餐厅' label confirmed in Local mode.",
+        "regression_from_r1": false
+      },
+      "AC22": {
+        "status": "pass",
+        "evidence": "browser_evaluate returned { ac22_pass: true, badge_element_count: 0, status_badge_count: 0 }.",
+        "regression_from_r1": false
+      }
+    },
+    "build_verification": {
+      "status": "pass",
+      "deployed_html_path": "/var/www/travel/beijing-lijiang-dali/2026-04-18/index.html",
+      "deployed_html_size_bytes": 215099,
+      "deployed_html_mtime": "2026-05-26T06:52:29",
+      "r2_changes_confirmed_in_bundle": {
+        "isSelected_guard": 1,
+        "srcOpt_instances": 8,
+        "editorDay_budget_instances": 2
+      },
+      "server_url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+      "server_healthy": true
+    },
+    "provenance_check": {
+      "baseline_head_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
+      "files_modified_declared": ["scripts/lib/react_template.tpl"],
+      "files_modified_in_diff": ["scripts/lib/react_template.tpl"],
+      "files_created_declared": [],
+      "diff_stats": { "files_changed": 1, "lines_added": 151, "lines_removed": 105 },
+      "under_report_check": "pass",
+      "over_report_check": "pass"
+    },
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "output_file": "/root/travel-planner/docs/codex/20260526-051826/dev-r2.txt",
+      "findings_count": 5,
+      "findings_classification": [
+        {
+          "id": "CF1",
+          "summary": "AC3 BLOCKER — applyBridge doesn't preserve option in target slot options[]",
+          "classification": "out_of_scope",
+          "rationale": "R2 already implements exactly this fix. Source at lines 2926-2956 confirms true move semantics: srcOpt captured, pushed to tgtSlot.options[], filtered from srcSlot.options[]. Codex was working from the R1 code description in its prompt — this gap was the R1 failure, addressed in R2."
+        },
+        {
+          "id": "CF2",
+          "summary": "AC3 BLOCKER — bridge() sets both target and origin to same optionId when _isCompatible",
+          "classification": "out_of_scope",
+          "rationale": "The _isCompatible dual-slot selection (line 2895) is a pre-existing design choice (M17b cross-meal showing). AC3 is scoped to 'card absent from sidebar' — not to board slot selection semantics. The isSelected guard definitively hides the card from sidebar regardless of _isCompatible behavior. Not an AC3 failure."
+        },
+        {
+          "id": "CF3",
+          "summary": "AC3 GAP — selected-card hiding is meal-only; accommodation and activity candidates still copy",
+          "classification": "out_of_scope",
+          "rationale": "AC3 spec explicitly says 'meal candidate' and 'board meal slot.' Non-meal candidates are out of scope for this cycle."
+        },
+        {
+          "id": "CF4",
+          "summary": "AC4 THREAT — intra_city API budget discarded, transportation row can go stale",
+          "classification": "out_of_scope",
+          "rationale": "The spec technical hints explicitly say 'breakdown.intra_city has no direct UI counterpart — either fold its amount into budget.transportation or discard'. Dev chose discard and documented it with a comment. Spec-sanctioned choice."
+        },
+        {
+          "id": "CF5",
+          "summary": "AC4 THREAT — strict day comparison (===) can silently skip API budget entry",
+          "classification": "out_of_scope",
+          "rationale": "R2 already fixes this. Source at line 2731 shows Number(d.day) === Number(dayNum). Codex was working from R1 state description."
+        }
+      ],
+      "blocking_findings": 0,
+      "verdict_impact": "No Codex findings change the verdict. All 5 findings are either already addressed by R2 or explicitly out_of_scope per spec."
+    },
+    "summary": {
+      "ac_pass_count": 7,
+      "ac_fail_count": 0,
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "verdict": "pass",
+      "release_recommendation": "approve"
+    },
+    "spec_section_updates": {
+      "section_4": "Cycle 1 R2 Post-Dev Measured State:\n- AC3: window.applyEditorSelection('dinner-1-1', 'dinner', 'lunch') → sidebarMealCardsAfter=[], count=0, dinner_1_1_in_sidebar=false. PASS.\n- AC4: accommodation selection switch triggered /api/budget/recompute [200 OK]. Budget rows updated: Meals €33→€88, Accommodation €580→€680, Total €613→€768 within 2s. PASS.\n- AC1: breakfast:board-default appeared in sidebar (count 0→1) after board-to-sidebar drag. PASS.\n- AC2: synthesized card: option_id='breakfast:board-default', draggable=true, label='🍽️ 餐厅', cost='5 CNY'. PASS.\n- AC5: budgetSeqRef guard at lines 2730 and 2741 cover both setLiveDayTotal and setEditorTripData budget merge. PASS.\n- AC6: bad_labels_found=[], '🍽️ 餐厅' confirmed in Local mode. PASS.\n- AC22: badge_element_count=0. PASS.",
+      "section_6": null,
+      "section_7": null
+    }
   }
 }
     "codex_consult": {
