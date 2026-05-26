@@ -1,0 +1,312 @@
+{
+  "request_id": "20260526-201620",
+  "task_id": "20260526-201620",
+  "timestamp": "2026-05-26T20:16:20Z",
+  "requirement": {
+    "original": "4 meal UX bugs: (1) dinner can only return to dinner after board→sidebar; (2) images inconsistent between board and sidebar; (3) airplane meal disappears from sidebar after deselect; (4) multiple restaurants per meal slot — 2nd+ should show optional badge.",
+    "clarified": "Fix handleSidebarDrop synthesis to use editorTripData-sourced option objects (not PLAN-field reconstruction), expand mealSlotIds to include meals-any for sidebar scanning, and add _isOptional flag + badge rendering for meal alternatives on board.",
+    "what": "4 surgical fixes in react_template.tpl: (a) handleSidebarDrop synthesis fallback uses prev-state lookup + correct _originSlotId; (b) planItem fallback populates both cover_image and image; (c) mealSlotIds split to cover meals-any without breaking isMealSelected; (d) meal_alternatives get _isOptional flag, cardStyle/hoverOff updated, badge rendered.",
+    "why": "Users reported repeated frustration (stated 'countless times') with meal drag restrictions, image inconsistency after sidebar round-trips, airplane meal disappearing, and missing optional indicators on multiple-restaurant meal cards.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl lines 855, 869, 879, 893, 2314-2334, 2353-2379"
+      ],
+      "excluded": [
+        "scripts/lib/server/save.py — meals-any durability across page reload is a separate cycle",
+        "Any schema files",
+        "Any other JS or template files"
+      ]
+    },
+    "success_criteria": [
+      "Dinner card dragged to sidebar then dragged back to breakfast renders correctly on breakfast slot",
+      "Board and sidebar meal cards for same option_id display identical image",
+      "Airplane meal (meals-any slot) reappears in sidebar Meals group after deselect",
+      "meal_alternatives entries on board display optional badge matching cafe/attraction style"
+    ],
+    "constraints": [
+      "Do not change mergeEditorSelectionsIntoPublishedDay signature",
+      "Do not add new state variables or API calls",
+      "Do not modify schema files",
+      "Preserve seenMealIds dedup in mealsGroup",
+      "isMealSelected must NOT check meals-any slot (only concrete board slots)",
+      "stale-closure: all editorDay lookups inside setEditorTripData must use prev, not closed-over editorDay"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl:855 (alts.forEach — _isOptional flag)",
+      "scripts/lib/react_template.tpl:869 (cardStyle call — 3rd arg)",
+      "scripts/lib/react_template.tpl:879 (hoverOff call — 4th arg)",
+      "scripts/lib/react_template.tpl:893 (optional badge JSX)",
+      "scripts/lib/react_template.tpl:2314 (mealSlotIds declaration)",
+      "scripts/lib/react_template.tpl:2329 (isMealSelected iteration — must use mealSelectionSlotIds)",
+      "scripts/lib/react_template.tpl:2353-2379 (handleSidebarDrop synthesis block)"
+    ],
+    "path_dependent_shared_infra": [],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/server/save.py — meals-any origin_slot_id not handled in backend save"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-26T20:16:20Z",
+      "task_id": "20260526-201620",
+      "file": "scripts/lib/server/save.py",
+      "line": null,
+      "observation": "Codex finding #5: save.py copies cross-meal options only when origin_slot_id is a concrete meal slot (breakfast/lunch/dinner); meals-any is not included. Fixing AC3 durability across page reload requires backend change. Current fix is UI-session-only.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Four independent meal UX defects: cross-slot return restriction, image loss after round-trip, airplane meal disappearance, missing optional badges",
+    "root_cause": "Three convergent data-path bugs in react_template.tpl: (1) handleSidebarDrop synthesis only handles planItem path, missing editorTripData-resident options and stale _originSlotId; (2) mealSlotIds omits meals-any; (3) meal_alternatives not flagged _isOptional.",
+    "root_cause_commit": "N/A — incremental regression across multiple prior fix cycles (AC1/AC2 prior session partial fix visible in comment at line 2350)",
+    "why_introduced": "Prior AC1/AC2 fix synthesized back from planItem only — sufficient for PLAN-default meals but missed meals-any and cross-slot-moved items",
+    "why_problematic": "User-visible: meal drags are unpredictably restricted; images disappear after round-trips; airplane meals vanish permanently; optional restaurants are indistinguishable from primary",
+    "timeline": "Synthesis block introduced in prior cycle (comment at line 2350 references AC1/AC2)",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "Line 2314 confirmed: mealSlotIds = ['breakfast', 'lunch', 'dinner'] — no meals-any (inferred from Read)",
+      "Line 2357 confirmed: if (planItem) guard — synthesis skipped when planItem null (inferred from Read)",
+      "Line 2855 confirmed: alts.forEach adds no _isOptional flag (inferred from Read)",
+      "Line 869 confirmed: cardStyle(catColor, opt._isPrimary) — 2 args, no isOptional (inferred from Read)",
+      "Line 969 confirmed: cafe optional badge style = { padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' } (inferred from Read)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — no live browser session)",
+    "complaint_location_keywords": ["dinner", "sidebar", "候选项", "飞机餐", "optional", "meals-any", "mealsGroup", "handleSidebarDrop"],
+    "localization_evidence": "Code read confirmed all four root causes at specific line numbers in react_template.tpl",
+    "located_source": "scripts/lib/react_template.tpl lines 855, 869, 879, 893, 2314, 2329, 2353-2379",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression complaint — multiple independent omissions in existing code",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L3",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "dinner只能放回dinner，只要是一个meal我想放到哪里就可以放到哪里",
+      "acceptance_criterion": "After board→sidebar→board cycle across different meal slots, sidebar card _originSlotId reflects current slot, not original PLAN slot"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "放到右侧和放到左侧渲染使用图片应该是一样的",
+      "acceptance_criterion": "Synthesized editorTripData option has both cover_image and image fields populated; board and sidebar img[src] match"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "飞机餐被放到右边之后不能再放回去了",
+      "acceptance_criterion": "meals-any slot items appear in sidebar Meals group and reappear after deselect"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "第二个及以后的都是optional",
+      "acceptance_criterion": "meal_alternatives entries render with optional badge matching cafe/attraction style"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "843-922",
+      "role": "Board Meals flatMap — builds opt objects for each meal slot primary + alternatives",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 843-922",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2313-2325",
+      "role": "mealsGroup build in CandidatesSidebar — iterates mealSlotIds, dedupes by option_id",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2313-2325",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2341-2385",
+      "role": "handleSidebarDrop — deselects board cards, synthesizes items back to editorTripData",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2341-2385",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2926-2956",
+      "role": "applyBridge — sidebar→board selection; moves option object between slots in editorTripData",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2926-2956",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2357,
+      "type": "if",
+      "code_snippet": "if (planItem) {",
+      "purpose": "Guards synthesis from running when no PLAN meal exists for the slot",
+      "removal_authorized": true
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2401,
+      "type": "if",
+      "code_snippet": "if (!alreadyThere && originSlotId && originSlotId !== 'meals-any') {",
+      "purpose": "Prevents applySelection from trying to copy from meals-any (which has no concrete source slot)",
+      "removal_authorized": false
+    }
+  ],
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh",
+    "auth_state": "logged-in",
+    "data_state": "trip with multiple meal options per slot including a meals-any PLAN_DATA item",
+    "browser": "Chrome desktop",
+    "url_path": "/trip/<TRIP_ID>"
+  },
+  "evidence": {
+    "observed": "4 user-reported meal UX bugs (cross-slot drop restriction, image discrepancy, airplane meal disappearance, missing optional badge)",
+    "measured": {
+      "value": "mealSlotIds=['breakfast','lunch','dinner'] at line 2314; if(planItem) guard at line 2357; alts.forEach no _isOptional at line 855; cardStyle 2-arg call at line 869",
+      "location": "scripts/lib/react_template.tpl:855,869,879,893,2314,2357"
+    },
+    "expected": {
+      "value": "mealSlotIds includes meals-any; synthesis fallback uses editorTripData prev-state lookup first; alts tagged _isOptional; cardStyle receives 3rd arg",
+      "source": "User schema contract (multiple restaurants per slot, 2nd+ optional) + existing optional badge pattern at lines 969, 1048"
+    },
+    "gap": "4 independent omissions: missing meals-any in array, missing editorDay fallback path, missing planItem fallback image field parity, missing _isOptional flag and badge"
+  },
+  "scope_expansion": {
+    "search_pattern": "mealSlotIds|handleSidebarDrop|_isOptional|meal_alternatives|planItem",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["meal drag UX", "sidebar candidates", "board card rendering"],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:855",
+      "scripts/lib/react_template.tpl:869",
+      "scripts/lib/react_template.tpl:879",
+      "scripts/lib/react_template.tpl:893",
+      "scripts/lib/react_template.tpl:2314",
+      "scripts/lib/react_template.tpl:2329",
+      "scripts/lib/react_template.tpl:2353-2379"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Direct code read of react_template.tpl; optional badge style verified at lines 969 and 1048",
+    "url_or_location": "scripts/lib/react_template.tpl:969,1048",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "git_log",
+    "attempts": [
+      {
+        "artifact_path": "comment at scripts/lib/react_template.tpl:2350 (AC1/AC2 prior session)",
+        "proposed_solution": "Synthesize deselected meal back into editorTripData.slots[srcSlotId].options[] using planItem fields",
+        "actual_change": "Added if(planItem) synthesis block in handleSidebarDrop",
+        "outcome": "Works for PLAN-default meals with publishedDay.meals[srcSlotId] entry; fails for meals-any items (no planItem) and fails to update _originSlotId after cross-slot moves",
+        "failure_category": "wrong_scope",
+        "target_layer": "L3"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L3",
+      "differs_from_all_priors": true,
+      "rationale": "This attempt adds the editorTripData prev-state lookup path (missing from prior), fixes _originSlotId propagation, covers meals-any slot, and adds image field parity — addressing the specific gaps that caused the prior attempt to fail"
+    }
+  },
+  "context": {
+    "codebase_state": "react_template.tpl ~3400 lines; single React JSX template; prior AC1/AC2 fix present but incomplete",
+    "recent_commits": "fa563a3b fix(web): CandidatesSidebar DnD persistence; 1190d99b fix(web): 5 drag-and-drop UX bugs",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "5 surgical edits to react_template.tpl; no new state, no new API calls, no schema changes",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA verifies 4 ACs via Playwright: drag a dinner card to sidebar + back to breakfast; check image parity; deselect airplane meal + verify sidebar; check optional badge on alternatives"
+  },
+  "acceptance_criteria_path": null,
+  "blast_radius_map_path": null,
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "Changes to shared drag-and-drop logic in a 3400-line single-file template. Medium risk: affects board and sidebar state in one component; prior fixes show history of regression; bounded by UI-only (no schema/backend changes).",
+  "test_writer_expected": true,
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": false,
+    "integer_step_numbering": false,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex confirmed all 4 root causes. 7 findings: (1) AC1 wording precision — findSelectedOption finds via target slot step 1 after applyBridge, not cross-slot step 2; (2) proposed fallback should use prev-state inside updater to avoid stale editorDay closure; (3) AC2 board also uses image field, not only cover_image — fix must populate both; (4) AC3 mealSlotIds split needed to avoid breaking isMealSelected; (5) save.py durability out of scope for this cycle; (6) all meal_alternatives entries are optional (ai=0 is already 2nd restaurant); (7) cardStyle and hoverOff need 3rd/4th arg for optional styling.",
+    "findings": [
+      {
+        "issue": "AC1 wording: findSelectedOption hits target slot step 1 (not cross-slot step 2) after applyBridge moves the option there",
+        "proposed_fix": "Reword: 'After applyBridge copies the option to the target slot, findSelectedOption finds it there. The problem is in re-synthesis on sidebar drop, not in merge lookup.'",
+        "classification": "minor",
+        "disposition": "applied",
+        "rationale": "Wording corrected in spec Evidence section"
+      },
+      {
+        "issue": "AC1/AC2 fallback uses closed-over editorDay which is stale inside setEditorTripData",
+        "proposed_fix": "Resolve source from prev (the updater argument) not from closed-over editorDay",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Change 5 uses dayEntry from updated = JSON.parse(JSON.stringify(prev)), iterates dayEntry.slots — no stale closure"
+      },
+      {
+        "issue": "AC2 board also renders opt.image (line 882), PLAN cards use image not cover_image — planItem fallback must populate both",
+        "proposed_fix": "Populate both cover_image and image in planItem fallback path",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Change 5 planItem fallback now sets both cover_image: planImg and image: planImg"
+      },
+      {
+        "issue": "AC3: adding meals-any to mealSlotIds breaks isMealSelected which uses the same array",
+        "proposed_fix": "Split into mealSlotIds (source scan) and mealSelectionSlotIds (selected-state check)",
+        "classification": "blocker",
+        "disposition": "applied",
+        "rationale": "Change 4 introduces mealSelectionSlotIds = ['breakfast','lunch','dinner'] and uses it in isMealSelected"
+      },
+      {
+        "issue": "AC3 save.py durability: backend does not handle meals-any origin_slot_id for reload persistence",
+        "proposed_fix": "Either scope AC3 as in-session UI only, or extend backend",
+        "classification": "observation_only",
+        "disposition": "logged",
+        "rationale": "Scoped as UI-session-only per user scope; documented in out_of_scope_observations for separate cycle"
+      },
+      {
+        "issue": "AC4 off-by-one: meal_alternatives contains only alternatives (not primary), so ai===0 is already the 2nd restaurant — all entries are optional",
+        "proposed_fix": "Mark every meal_alternatives entry _isOptional: true (not only ai >= 1)",
+        "classification": "minor",
+        "disposition": "applied",
+        "rationale": "Change 1 marks all alts entries _isOptional: true unconditionally"
+      },
+      {
+        "issue": "AC4 cardStyle and hoverOff lack optional arg for meal cards — dashed border not applied",
+        "proposed_fix": "Use cardStyle(catColor, opt._isPrimary, opt._isOptional) and hoverOff(e, catColor, opt._isPrimary, opt._isOptional)",
+        "classification": "major",
+        "disposition": "applied",
+        "rationale": "Changes 2 and 3 update both calls"
+      }
+    ],
+    "feedback_incorporated": "All 5 non-observation findings applied: stale-closure fix, both image fields, mealSelectionSlotIds split, all-alternatives optional, cardStyle/hoverOff 3rd/4th args. Observation (save.py durability) logged to out_of_scope_observations."
+  }
+}
