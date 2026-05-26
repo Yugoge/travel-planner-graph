@@ -1,10 +1,344 @@
 {
   "request_id": "20260526-051826",
   "task_id": "20260526-051826",
-  "timestamp": "2026-05-26T06:30:00Z",
+  "timestamp": "2026-05-26T07:45:00Z",
   "qa": {
     "status": "fail",
-    "phase": "pre-dev",
+    "phase": "post-dev",
+    "user_verbatim_complaint": "AC1/AC2: PLAN-format meal items not returning to sidebar after board deselect. AC3: Sidebar card stays after drag to board (should disappear). AC4/AC5: Budget category rows remain stale after editor selection changes. AC6: Meal candidate label shows slot name instead of restaurant category. AC22: Status badges (required/missing/late arrival/skipped) cluttering card view.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "overall_assessment": "Two of six acceptance criteria fail. AC3 (move semantics) fix is structurally defeated by the cross-slot copy block that runs before the removal block — mealsGroup finds the option via the target slot's options[]. AC4 (budget display) fix writes to the wrong state object — editorTripData.days[n].budget is updated but effectiveDay.budget is what the display reads, and mergeEditorSelectionsIntoPublishedDay never propagates editorDay.budget. AC6 and AC22 pass cleanly. AC1/AC2 pass (synthesized option appeared in sidebar after board deselect).",
+    "verified_location_keywords": ["sidebar", "board", "drag", "meal", "budget", "label", "badge", "candidates"],
+    "location_overlap": ["sidebar", "board", "meal", "budget", "label", "badge"],
+    "complaint_element_pointer": {
+      "selector": "[data-component='CandidatesSidebar']",
+      "how_located": "data-component attribute on sidebar panel",
+      "found_in_dom": true,
+      "page_url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846"
+    },
+    "build_verification": {
+      "status": "pass",
+      "build_command": "N/A — static HTML bundle generation via html_generator.py",
+      "deploy_command": "Deployed HTML at /var/www/travel/beijing-lijiang-dali/2026-04-18/index.html",
+      "build_output_summary": "Deployed HTML confirmed serving updated template content (grep confirmed AC6 fix at line 2528, AC22 badge blocks absent). Server confirmed at http://localhost:8094",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "success_criteria_results": [
+      {
+        "requirement_id": "AC1",
+        "source_phrase": "When a meal option that exists only in publishedDay.meals is deselected from the board (board to sidebar drag), it must reappear as a candidate card in CandidatesSidebar",
+        "criterion": "PLAN-format meal options synthesized back into editorTripData.days[n].slots[slotId].options[] on board-to-sidebar drag",
+        "verification_method": "Playwright: navigated to trip page, waited for editorTripData load, injected synthetic DragEvent with direction='board' for breakfast:board-default (PLAN-default flight meal item not in editorDay.slots options), counted sidebar items before and after",
+        "status": "pass",
+        "result": "pass",
+        "details": "Before synthetic drag: 4 sidebar items. After handleSidebarDrop fired with direction='board' on breakfast:board-default: 5 sidebar items. The breakfast:board-default option appeared as a new unselected candidate card. This is a PLAN-format item that was not in editorDay.slots[breakfast].options[] prior to the drag.",
+        "evidence": "Playwright browser_evaluate: sidebar item count 4 to 5, new item data-option-id='breakfast:board-default' confirmed with isSelected=false"
+      },
+      {
+        "requirement_id": "AC2",
+        "source_phrase": "Synthesized option card must have the same shape as a regular v2 option (option_id, name, cost fields populated from publishedDay.meals data)",
+        "criterion": "Synthesized option in sidebar has correct v2 shape",
+        "verification_method": "Playwright: inspected DOM of the synthesized card after AC1 test",
+        "status": "pass",
+        "result": "pass",
+        "details": "The synthesized breakfast:board-default card rendered in sidebar with data-option-id attribute present and the card appeared in unselected state (no selected border styling). Card structure consistent with other sidebar candidate cards.",
+        "evidence": "Playwright browser_snapshot confirmed card element presence with correct data attributes"
+      },
+      {
+        "requirement_id": "AC3",
+        "source_phrase": "When a candidate card is dragged from sidebar to board (sidebar to board), the card must disappear from CandidatesSidebar on next render (move semantics, not copy)",
+        "criterion": "Option removed from sidebar after sidebar-to-board drag",
+        "verification_method": "Playwright: called window.applyEditorSelection('dinner-1-1', 'lunch', 'dinner') to simulate cross-slot sidebar-to-board drag; checked sidebar for dinner-1-1 before and after",
+        "status": "fail",
+        "result": "fail",
+        "details": "dinner-1-1 was present in sidebar before the call. After applyEditorSelection: board correctly showed dinner-1-1 selected on the lunch slot. But sidebar still contained dinner-1-1 with _originSlotId now set to 'lunch'. Root cause: applyBridge has two sequential setEditorTripData calls — (1) copies option from dinner.options[] to lunch.options[], (2) removes option from dinner.options[]. After both complete: option absent from dinner.options[] but present in lunch.options[]. mealsGroup iterates all three meal slots (breakfast/lunch/dinner) and deduplicates by option_id — it finds dinner-1-1 via lunch.options[], so the card reappears in sidebar with updated _originSlotId.",
+        "evidence": "Playwright browser_evaluate: sidebar still contained element with data-option-id='dinner-1-1' after applyEditorSelection call. _originSlotId attribute changed from 'dinner' to 'lunch', confirming option survived via target slot's options[]."
+      },
+      {
+        "requirement_id": "AC4",
+        "source_phrase": "After recomputeBudget completes, budget category rows (meals, accommodation, transportation, attractions) in the day panel must display the values from entry.breakdown",
+        "criterion": "Budget category rows update after recomputeBudget API response",
+        "verification_method": "Playwright: intercepted /api/budget/recompute response (returned meals.amount=33, accommodation.amount=580, activities.amount=120, transportation.amount=45), observed budget row display values before and after",
+        "status": "fail",
+        "result": "fail",
+        "details": "API call fired and returned breakdown data. setEditorTripData was called and updated editorTripData.days[n].budget correctly. However budget display rows showed no change — meals still displayed EUR16.2, accommodation still displayed EUR86.0. Root cause: budget display reads day.budget[r.k] where day = effectiveDay. effectiveDay = mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections, editorTripData). This function starts with const day = JSON.parse(JSON.stringify(publishedDay)) and never propagates editorDay.budget (or editorTripData.days[n].budget) into the result. effectiveDay.budget always equals static publishedDay.budget regardless of what setEditorTripData writes.",
+        "evidence": "Playwright: budget row DOM values unchanged after confirmed API response. Source confirmed: mergeEditorSelectionsIntoPublishedDay (lines 2038-2040) deep-clones publishedDay and has no budget merge step."
+      },
+      {
+        "requirement_id": "AC5",
+        "source_phrase": "Stale recomputeBudget responses (sequence number mismatch) must not overwrite current budget data",
+        "criterion": "budgetSeqRef guard prevents stale API responses from overwriting budget",
+        "verification_method": "Source code inspection — AC4 display is broken so full behavioral verification not possible",
+        "status": "pass",
+        "result": "pass",
+        "details": "budgetSeqRef guard is present at lines 2726 and 2737 in recomputeBudget. The setEditorTripData call for breakdown merge is inside the stale-seq guard. Code correctly checks budgetSeqRef.current[dayNum] !== seq before both the liveDayTotal update and the new budget merge. Guard logic is structurally correct even though AC4 display path is broken. AC5 is a code-level correctness criterion that passes independently of the display path.",
+        "evidence": "Source lines 2726-2752 read directly: guard at line 2737 gates both the existing liveDayTotal set and the new breakdown merge setEditorTripData call."
+      },
+      {
+        "requirement_id": "AC6",
+        "source_phrase": "Meal candidate card type label must show 'Restaurant' (base) or the local equivalent — not the meal slot name",
+        "criterion": "Meal candidate card header shows lang-conditional restaurant label, not slot name",
+        "verification_method": "Static grep of deployed template + live DOM inspection in Playwright",
+        "status": "pass",
+        "result": "pass",
+        "details": "Line 2528 in react_template.tpl confirmed: <span> with lang conditional 'local' showing the Chinese restaurant character and 'Restaurant' in base mode. No mealsLabel conditional remains. Live DOM in Playwright confirmed sidebar meal cards show the correct restaurant label in Local mode. No 'dinner', 'lunch', or 'breakfast' labels visible in sidebar card headers.",
+        "evidence": "grep react_template.tpl line 2528 + Playwright browser_snapshot showing restaurant label in sidebar candidate cards"
+      },
+      {
+        "requirement_id": "AC22",
+        "source_phrase": "Status badges (required, missing, late arrival, skipped) must not appear on any card type in the editor view",
+        "criterion": "Zero badge elements in rendered DOM",
+        "verification_method": "Playwright browser_evaluate counting badge elements in DOM",
+        "status": "pass",
+        "result": "pass",
+        "details": "Zero badge elements found in DOM. Template grep confirmed all 5 AC22-marked badge blocks removed (meals slot badge, cafe activity badge, attraction activity badge, entertainment activity badge, accommodation badge). Deployed HTML grep shows no badge-related spans with status annotation classes.",
+        "evidence": "Playwright browser_evaluate: badge selector count = 0. Template grep for AC22 badge patterns returns 0 matches."
+      }
+    ],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:applyBridge (~lines 2927-2960)",
+        "issue": "AC3 FAIL: applyBridge cross-slot move semantics incomplete. The fix adds removal of option from originSlotId.options[] but the preceding cross-meal copy block (lines 2927-2945) adds the same option to targetSlotId.options[]. mealsGroup iterates all meal slots and deduplicates by option_id — the option survives in sidebar via targetSlotId.options[]. Net result: option card does not disappear from sidebar after sidebar-to-board drag.",
+        "recommendation": "Remove the setEditorTripData cross-slot options[] copy block from applyBridge. Board selection display is driven by editorSelections[targetKey]=optionId (already set at line 2874) — not by options[] membership. The option stays in originSlotId.options[] for sidebar display; the removal block then correctly removes it. Same-slot guard (originSlotId === targetSlotId) must be preserved.",
+        "blocks_release": true,
+        "primary_cause": "dev_implementation"
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:mergeEditorSelectionsIntoPublishedDay (~lines 2038-2040)",
+        "issue": "AC4 FAIL: recomputeBudget writes updated budget to editorTripData.days[n].budget via setEditorTripData but budget display reads effectiveDay.budget. effectiveDay is computed by mergeEditorSelectionsIntoPublishedDay which deep-clones publishedDay (line 2040) and never propagates editorDay.budget into the result. Budget display always shows static publishedDay.budget.",
+        "recommendation": "Add budget propagation in mergeEditorSelectionsIntoPublishedDay after publishedDay clone: if (editorDay && editorDay.budget) { day.budget = Object.assign({}, day.budget, editorDay.budget); }. editorDay here is editorTripData.days[n], so editorDay.budget is exactly what recomputeBudget writes.",
+        "blocks_release": true,
+        "primary_cause": "dev_implementation"
+      }
+    ],
+    "failures": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:applyBridge cross-slot copy + removal",
+        "issue": "AC3: Move semantics defeated by cross-slot copy — option survives in sidebar via targetSlotId.options[] after removal from originSlotId.options[]",
+        "recommendation": "Remove cross-slot options[] copy block from applyBridge; rely on editorSelections for board display selection state",
+        "primary_cause": "dev_implementation"
+      },
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:mergeEditorSelectionsIntoPublishedDay (no budget propagation)",
+        "issue": "AC4: Budget display reads effectiveDay.budget (always publishedDay.budget clone) — editorTripData.days[n].budget written by recomputeBudget fix never surfaced to display",
+        "recommendation": "Add budget merge step in mergeEditorSelectionsIntoPublishedDay: Object.assign(day.budget, editorDay.budget) after publishedDay clone",
+        "primary_cause": "dev_implementation"
+      }
+    ],
+    "root_cause_verification": {
+      "addressed": false,
+      "confidence": "high",
+      "rationale": "AC1/AC2/AC6/AC22 root causes addressed and verified working in live browser. AC3 root cause (mealsGroup reads all meal slots) is understood but fix is structurally defeated by the copy-before-remove ordering. AC4 root cause (effectiveDay never reads editorDay.budget) confirmed — fix writes to a state object not read by the display path."
+    },
+    "e2e_enforcement": {
+      "required": true,
+      "attempted": true,
+      "script_discovered": false,
+      "script_path": null,
+      "health_check_url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+      "health_check_result": "HTTP 200 OK — page loaded, editorTripData fetched via /api/trip/",
+      "status": "performed",
+      "blocking_reason": null
+    },
+    "ui_test_results": [
+      {
+        "scenario": "AC6: Meal candidate label shows restaurant category not slot name",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_navigate to trip URL",
+          "browser_wait_for sidebar to load (3s)",
+          "browser_snapshot to inspect sidebar meal card labels",
+          "Confirmed restaurant label text on meal candidate cards in Local mode"
+        ],
+        "assertions": [
+          {
+            "expected": "Meal candidate card header shows restaurant label in Local mode",
+            "actual": "Found restaurant category label in sidebar meal candidate card headers — no 'dinner'/'lunch'/'breakfast' text present",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright browser_snapshot confirmed sidebar cards with correct restaurant label"
+      },
+      {
+        "scenario": "AC22: No status badges in card views",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_evaluate: document.querySelectorAll('[class*=badge],[class*=Badge],[data-badge]').length",
+          "browser_evaluate: check for 'required'/'missing'/'late arrival'/'skipped' text in card elements"
+        ],
+        "assertions": [
+          {
+            "expected": "Zero badge elements in DOM",
+            "actual": "Badge element count = 0",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright browser_evaluate returned 0 for badge selector"
+      },
+      {
+        "scenario": "AC1/AC2: Board-to-sidebar drag synthesizes PLAN-default meal into sidebar",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_evaluate: count initial sidebar items (4 items)",
+          "browser_evaluate: dispatch synthetic DragEvent with direction='board', srcSlotId='breakfast', optionId='breakfast:board-default'",
+          "browser_evaluate: count sidebar items after event (5 items)",
+          "browser_evaluate: confirm breakfast:board-default card present with isSelected=false"
+        ],
+        "assertions": [
+          {
+            "expected": "Sidebar item count increases from 4 to 5 after board-to-sidebar drag of PLAN-default meal",
+            "actual": "Sidebar item count: 4 to 5. New item data-option-id='breakfast:board-default' appeared as unselected candidate",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright browser_evaluate confirmed sidebar count 4 to 5 with new synthesized card"
+      },
+      {
+        "scenario": "AC3: Sidebar-to-board drag removes card from sidebar (move semantics)",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "fail",
+        "reason": "dinner-1-1 remains in sidebar after cross-slot drag — option survives via lunch.options[] after being copied there by applyBridge cross-slot copy block",
+        "steps_performed": [
+          "browser_evaluate: confirm dinner-1-1 present in sidebar before test",
+          "browser_evaluate: window.applyEditorSelection('dinner-1-1', 'lunch', 'dinner') — cross-slot drag simulation",
+          "browser_evaluate: check if dinner-1-1 still in sidebar after call",
+          "browser_evaluate: inspect _originSlotId attribute of dinner-1-1 card"
+        ],
+        "assertions": [
+          {
+            "expected": "dinner-1-1 absent from sidebar after sidebar-to-board drag to lunch slot",
+            "actual": "dinner-1-1 still present in sidebar; _originSlotId changed from 'dinner' to 'lunch' (confirming option survived via lunch.options[])",
+            "passed": false
+          }
+        ],
+        "evidence": "Playwright confirmed element with data-option-id='dinner-1-1' still in sidebar after applyEditorSelection call; _originSlotId='lunch' proves it persisted via targetSlot copy"
+      },
+      {
+        "scenario": "AC4: Budget category rows update after recomputeBudget",
+        "url": "http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "fail",
+        "reason": "Budget display values unchanged after API response — mergeEditorSelectionsIntoPublishedDay does not propagate editorDay.budget into effectiveDay",
+        "steps_performed": [
+          "browser_evaluate: record current budget row values (meals: EUR16.2, accommodation: EUR86.0)",
+          "browser_network_requests: confirmed /api/budget/recompute fired and returned meals.amount=33, accommodation.amount=580",
+          "browser_evaluate: observe budget row values after API response"
+        ],
+        "assertions": [
+          {
+            "expected": "Budget row for meals shows updated value (33) after API response",
+            "actual": "Budget row for meals still shows EUR16.2 — unchanged from initial value",
+            "passed": false
+          },
+          {
+            "expected": "Budget row for accommodation shows updated value (580) after API response",
+            "actual": "Budget row for accommodation still shows EUR86.0 — unchanged from initial value",
+            "passed": false
+          }
+        ],
+        "evidence": "Playwright confirmed budget display rows unchanged after confirmed API response containing new breakdown values"
+      }
+    ],
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      }
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "No role table defined in travel-planner CLAUDE.md",
+      "violations": []
+    },
+    "permissions_verification": {
+      "status": "pass",
+      "permissions_count": 0,
+      "validated_permissions": [],
+      "issues": []
+    },
+    "regression_test_results": [
+      {
+        "test": "AC6 and AC22 functionality — no regression on previously working features",
+        "result": "pass",
+        "details": "Page loads, editorTripData fetches correctly, sidebar renders, board drag interactions functional. No console errors on page load."
+      },
+      {
+        "test": "Same-slot guard in AC3 fix — originSlotId === targetSlotId drag does not remove option from sidebar",
+        "result": "pass",
+        "details": "window.applyEditorSelection('dinner-1-2', 'dinner', 'dinner') — same-slot drag. Sidebar dinner-1-2 correctly remained in sidebar (guard condition originSlotId !== targetSlotId skipped the removal block as intended)."
+      }
+    ],
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-26T07:45:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": "2038-2040",
+        "observation": "mergeEditorSelectionsIntoPublishedDay clones publishedDay but does not propagate any editorDay scalar fields. Future cycles adding per-day state to editorTripData will face the same display-path issue unless this function is updated to propagate those fields.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-26T07:45:00Z",
+        "file": "scripts/lib/server/save.py",
+        "line": "81-104",
+        "observation": "Server save handler copies cross-meal options into target slot but does not remove from origin slot. After AC3 frontend fix (once correctly implemented), a page reload will re-fetch editorTripData from /api/trip — option will reappear in origin slot. If reload persistence is required for AC3, a server-side change is also needed. Current AC3 spec says 'absent from sidebar on next render' — no reload persistence clause.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex performed extensive source code inspection of react_template.tpl. Confirmed AC3 root cause: applyBridge cross-slot copy block adds to targetSlotId.options[] while removal block removes from originSlotId.options[]; mealsGroup scans all meal slots so option survives via target slot. Confirmed AC4 root cause: mergeEditorSelectionsIntoPublishedDay deep-clones publishedDay without budget propagation; effectiveDay.budget is always static publishedDay.budget. Codex analysis aligned with QA findings. No contradicting findings emerged.",
+      "feedback_incorporated": "Codex source inspection confirmed both AC3 and AC4 root causes as identified by QA. No new findings changed the verdict. Codex confirmed same fix paths identified by QA (remove cross-slot copy for AC3, add budget propagation in mergeEditorSelectionsIntoPublishedDay for AC4)."
+    },
+    "self_verification": {
+      "claims_total": 10,
+      "claims_with_evidence": 9,
+      "claims_superficial": 1,
+      "superficial_details": ["AC5 guard verification — stale-seq guard confirmed by source reading only; full behavioral test not possible because AC4 display path is broken"],
+      "confidence": "high"
+    },
+    "spec_section_updates": {
+      "section_4": "Cycle 1 Post-Dev Measured State:\n- AC6 (line 2528): lang conditional restaurant label confirmed. Live DOM shows correct restaurant label in sidebar meal cards. PASS.\n- AC22: Zero badge elements in DOM. All 5 AC22-marked badge blocks absent from deployed HTML. PASS.\n- AC1/AC2: Synthesis block fires on board-to-sidebar drag. Sidebar count 4 to 5 for PLAN-default breakfast:board-default item. PASS.\n- AC3: dinner-1-1 remains in sidebar after window.applyEditorSelection('dinner-1-1', 'lunch', 'dinner'). _originSlotId changed to 'lunch' confirming survival via targetSlot copy. FAIL.\n- AC4: /api/budget/recompute returned meals.amount=33 / accommodation.amount=580. Budget rows still display EUR16.2 / EUR86.0. effectiveDay.budget = publishedDay.budget (static). FAIL.",
+      "section_6": "Cycle 1 Why Not Met:\n- AC3: applyBridge AC3 fix (remove from originSlotId.options[]) is structurally defeated. The immediately-preceding cross-meal copy block adds the option to targetSlotId.options[]. mealsGroup iterates ALL meal slots and deduplicates by option_id — it finds the option via targetSlotId and renders it in sidebar. Removal from origin is correct but insufficient while the option also exists in target.\n- AC4: recomputeBudget writes to editorTripData.days[n].budget via setEditorTripData. Budget display reads day.budget where day = effectiveDay = mergeEditorSelectionsIntoPublishedDay(publishedDay, ...). mergeEditorSelectionsIntoPublishedDay deep-clones publishedDay (line 2040) and never reads editorDay.budget. The write destination and the read source are two different state objects that are never reconciled.",
+      "section_7": "Cycle 1 What Must Be Done:\n- AC3 fix: In applyBridge, remove the setEditorTripData cross-slot copy block (lines ~2927-2945 that adds option to targetSlotId.options[]). Board card selection is driven by editorSelections state (set at line 2874), not by options[] membership. After removing the copy block, the existing removal block correctly removes the option from originSlotId.options[] and sidebar stops showing it.\n- AC4 fix: In mergeEditorSelectionsIntoPublishedDay (~line 2040), after the JSON.parse(JSON.stringify(publishedDay)) clone, add: if (editorDay && editorDay.budget) { day.budget = Object.assign({}, day.budget, editorDay.budget); }. editorDay is editorTripData.days[n] passed into the function, so editorDay.budget is exactly what recomputeBudget writes via setEditorTripData."
+    },
+    "summary": {
+      "critical_issues": 2,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 2,
+      "release_recommendation": "reject"
+    }
+  },
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": ["AC3 — move semantics (sidebar-to-board removes card from sidebar)", "AC4 — budget category rows update after recomputeBudget"],
+    "critical_issues": [
+      "AC3: applyBridge cross-slot copy block adds option to targetSlotId.options[] before removal block removes it from originSlotId.options[]. mealsGroup finds option via targetSlot — card survives in sidebar. Fix: remove the cross-slot options[] copy; rely on editorSelections state to drive board selection display.",
+      "AC4: recomputeBudget writes editorTripData.days[n].budget but budget display reads effectiveDay.budget = mergeEditorSelectionsIntoPublishedDay(...) which deep-clones publishedDay without budget propagation. Fix: add one line in mergeEditorSelectionsIntoPublishedDay after publishedDay clone: if (editorDay && editorDay.budget) { day.budget = Object.assign({}, day.budget, editorDay.budget); }"
+    ],
+    "recommended_approach": "Both fixes are small and surgical. AC3 fix: find the setEditorTripData cross-slot copy block in applyBridge (lines ~2927-2945 that copies option from originSlotId to targetSlotId options[]) and remove it. The board card selection is driven by the editorSelections update (line 2874) not by options[] membership. AC4 fix: find mergeEditorSelectionsIntoPublishedDay (~line 2040) and add budget propagation after the JSON.parse(JSON.stringify(publishedDay)) clone. These are independent fixes in separate functions.",
+    "additional_context": "AC1/AC2/AC6/AC22 are all correctly implemented and verified. Only AC3 and AC4 need rework. The same-slot guard in AC3 (originSlotId === targetSlotId skips removal) is correct and must be preserved. The budgetSeqRef guard in AC5 is correctly implemented and must be preserved for the AC4 fix."
+  }
+}
     "codex_consult": {
       "invoked": true,
       "status": "ok",
