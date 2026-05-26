@@ -2344,6 +2344,37 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       // board card dropped onto sidebar → deselect from source slot
       if ((payload.direction === 'plan-to-candidates' || payload.direction === 'board') && srcSlotId) {
         const key = dayNum + ':' + srcSlotId;
+        // AC1/AC2: synthesize the deselected meal option back into options[] so it reappears in sidebar.
+        // Mirrors preserveCurrentAccommodationOption pattern. Needed when the item exists only in
+        // publishedDay.meals (PLAN-default) and was never in editorDay.slots[srcSlotId].options[].
+        if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData) {
+          const planMeals = publishedDay && publishedDay.meals;
+          const planItem = planMeals && planMeals[srcSlotId];
+          const optionId = payload.optionId;
+          if (planItem) {
+            setEditorTripData(prev => {
+              if (!prev || !prev.days) return prev;
+              const updated = JSON.parse(JSON.stringify(prev));
+              const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+              if (!dayEntry || !dayEntry.slots) return prev;
+              if (!dayEntry.slots[srcSlotId]) dayEntry.slots[srcSlotId] = { options: [] };
+              if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];
+              const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
+              if (!already) {
+                dayEntry.slots[srcSlotId].options.push({
+                  option_id: optionId,
+                  name: planItem.name_base || planItem.name || optionId,
+                  name_local: planItem.name_local || '',
+                  cost: planItem.cost || 0,
+                  cover_image: planItem.cover_image || planItem.image || null,
+                  notes_base: planItem.notes_base || '',
+                  notes_local: planItem.notes_local || '',
+                });
+              }
+              return updated;
+            });
+          }
+        }
         setEditorSelections(prev => ({ ...prev, [key]: null }));
         saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]);
       }
