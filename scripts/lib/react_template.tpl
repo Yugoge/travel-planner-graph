@@ -2327,7 +2327,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
 
   // Check if a meal card is selected across breakfast/lunch/dinner
   const isMealSelected = (optionId) => {
-    return mealSlotIds.some(slotId => {
+    return mealSelectionSlotIds.some(slotId => {
       const slot = slots[slotId];
       const key = dayNum + ':' + slotId;
       const resolved = resolveSelectionLocal(key, slot && slot.selected_option_id);
