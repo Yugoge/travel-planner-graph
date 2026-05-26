@@ -2499,6 +2499,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
           {mealsGroup.map((rawOpt, oi) => {
             const opt = adaptV2Option(rawOpt);
             const isSelected = isMealSelected(rawOpt.option_id);
+            if (isSelected) return null;
             const isPending = pendingSelection && pendingSelection.optionId === rawOpt.option_id;
             return (
               <div key={rawOpt.option_id || oi} className="card-candidate"
