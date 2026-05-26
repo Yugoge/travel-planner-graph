@@ -2366,12 +2366,13 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
             const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
             if (!already) {
               let srcOpt = null;
+              let foundSlotKey = null;
               for (const sKey of Object.keys(dayEntry.slots)) {
                 if (!MEAL_SLOTS.has(sKey)) continue;
                 const s = dayEntry.slots[sKey];
                 if (!s || !s.options) continue;
                 const hit = s.options.find(o => o.option_id === optionId);
-                if (hit) { srcOpt = hit; break; }
+                if (hit) { srcOpt = hit; foundSlotKey = sKey; break; }
               }
               if (srcOpt) {
                 const img = srcOpt.cover_image || srcOpt.image || null;
@@ -2380,6 +2381,9 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                   cover_image: srcOpt.cover_image || img,
                   image: srcOpt.image || img,
                 });
+                if (foundSlotKey && foundSlotKey !== srcSlotId) {
+                  dayEntry.slots[foundSlotKey].options = dayEntry.slots[foundSlotKey].options.filter(o => o.option_id !== optionId);
+                }
               } else if (planItem) {
                 const planImg = planItem.cover_image || planItem.image || null;
                 dayEntry.slots[srcSlotId].options.push({
