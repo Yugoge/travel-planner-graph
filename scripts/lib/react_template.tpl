@@ -2896,7 +2896,7 @@ function NotionTravelApp() {
         updates[dayNum + ':' + originSlotId] = optionId;
       }
       setEditorSelections(prev => ({ ...prev, ...updates }));
-      // AC3: move semantics — remove option from origin slot options[] so sidebar card disappears
+      // AC3: true move semantics — copy option to target slot options[] then remove from origin
       if (originSlotId && originSlotId !== slotId && editorDay && editorDay.slots) {
         setEditorTripData(prev => {
           if (!prev || !prev.days) return prev;
@@ -2905,6 +2905,14 @@ function NotionTravelApp() {
           if (!dayEntry || !dayEntry.slots) return prev;
           const srcSlot = dayEntry.slots[originSlotId];
           if (srcSlot && srcSlot.options) {
+            const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
+            const tgtSlot = dayEntry.slots[slotId];
+            if (srcOpt && tgtSlot) {
+              if (!tgtSlot.options) tgtSlot.options = [];
+              if (!tgtSlot.options.some(o => o.option_id === optionId)) {
+                tgtSlot.options.push({ ...srcOpt });
+              }
+            }
             srcSlot.options = srcSlot.options.filter(o => o.option_id !== optionId);
           }
           return updated;
