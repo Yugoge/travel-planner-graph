@@ -2355,29 +2355,46 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
           const planMeals = publishedDay && publishedDay.meals;
           const planItem = planMeals && planMeals[srcSlotId];
           const optionId = payload.optionId;
-          if (planItem) {
-            setEditorTripData(prev => {
-              if (!prev || !prev.days) return prev;
-              const updated = JSON.parse(JSON.stringify(prev));
-              const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
-              if (!dayEntry || !dayEntry.slots) return prev;
-              if (!dayEntry.slots[srcSlotId]) dayEntry.slots[srcSlotId] = { options: [] };
-              if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];
-              const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
-              if (!already) {
+          setEditorTripData(prev => {
+            if (!prev || !prev.days) return prev;
+            const updated = JSON.parse(JSON.stringify(prev));
+            const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+            if (!dayEntry || !dayEntry.slots) return prev;
+            if (!dayEntry.slots[srcSlotId]) dayEntry.slots[srcSlotId] = { options: [] };
+            if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];
+            const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
+            if (!already) {
+              let srcOpt = null;
+              for (const sKey of Object.keys(dayEntry.slots)) {
+                if (!MEAL_SLOTS.has(sKey)) continue;
+                const s = dayEntry.slots[sKey];
+                if (!s || !s.options) continue;
+                const hit = s.options.find(o => o.option_id === optionId);
+                if (hit) { srcOpt = hit; break; }
+              }
+              if (srcOpt) {
+                const img = srcOpt.cover_image || srcOpt.image || null;
+                dayEntry.slots[srcSlotId].options.push({
+                  ...srcOpt,
+                  cover_image: srcOpt.cover_image || img,
+                  image: srcOpt.image || img,
+                });
+              } else if (planItem) {
+                const planImg = planItem.cover_image || planItem.image || null;
                 dayEntry.slots[srcSlotId].options.push({
                   option_id: optionId,
                   name: planItem.name_base || planItem.name || optionId,
                   name_local: planItem.name_local || '',
                   cost: planItem.cost || 0,
-                  cover_image: planItem.cover_image || planItem.image || null,
+                  cover_image: planImg,
+                  image: planImg,
                   notes_base: planItem.notes_base || '',
                   notes_local: planItem.notes_local || '',
                 });
               }
-              return updated;
-            });
-          }
+            }
+            return updated;
+          });
         }
         setEditorSelections(prev => ({ ...prev, [key]: null }));
         saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]);
