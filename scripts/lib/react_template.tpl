@@ -1297,17 +1297,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && acc.notes_local ? acc.notes_local : acc.notes_base}
                               </div>
                             </div>
-                            {/* AC22: accommodation slot visual state badges */}
-                            {editorDay && (() => {
-                              const edAcc = editorDay.accommodation;
-                              const accKey = day.day + ':accommodation';
-                              const selectedAccId = Object.prototype.hasOwnProperty.call(editorSelections || {}, accKey) ? (editorSelections || {})[accKey] : (edAcc && edAcc.selected_option_id);
-                              if (!edAcc) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff0e6', border: '1px solid #f0b870', borderRadius: '4px', fontSize: '10px', color: '#c07000', padding: '1px 5px' }}>missing</div>;
-                              if (edAcc.skipped) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>{edAcc.skipped_reason || 'skipped'}</div>;
-                              if (edAcc && edAcc.late_arrival_placeholder) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#e8f4fd', border: '1px solid #a8d4f0', borderRadius: '4px', fontSize: '10px', color: '#2b63b5', padding: '1px 5px' }}>late arrival</div>;
-                              if (!selectedAccId) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff4f4', border: '1px solid #f0b3b3', borderRadius: '4px', fontSize: '10px', color: '#e07c5a', padding: '1px 5px' }}>required</div>;
-                              return null;
-                            })()}
                             {(() => {
                               const edAcc = editorDay && editorDay.accommodation;
                               const isGated = (!edAcc && !selectedAccId) || (edAcc && (edAcc.late_arrival_placeholder || edAcc.skipped));
