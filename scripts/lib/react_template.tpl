@@ -866,7 +866,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           || (edSlot && edSlot.options && edSlot.options[0] && edSlot.options[0].option_id)
                           || (opt._type + ':board-default'));
                       return (
-                        <div key={gi} style={{...cardStyle(catColor, opt._isPrimary), position: 'relative',
+                        <div key={gi} style={{...cardStyle(catColor, opt._isPrimary, opt._isOptional), position: 'relative',
                           ...(isSelected ? { boxShadow: '0 0 0 2px #45b26b, 0 1px 3px rgba(0,0,0,0.06)' } : {})}}
                           data-slot-card={opt._isPrimary ? 'primary' : 'alternative'}
                           data-slot-id={opt._type}
