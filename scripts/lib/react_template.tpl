@@ -876,7 +876,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                           onDragEnd={mealDragOptionId ? () => { currentDragSlotId = null; } : undefined}
                           onClick={() => onItemClick && onItemClick(opt, 'meal')}
                           onMouseEnter={hoverOn}
-                          onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}
+                          onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary, opt._isOptional)}
                         >
                           <div style={{ width: '100%', height: imgH + 'px', overflow: 'hidden', background: '#f5f3ef', flexShrink: 0 }}>
                             {(opt.cover_image || opt.image) && <img src={opt.cover_image || opt.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
