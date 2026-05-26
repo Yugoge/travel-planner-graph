@@ -852,7 +852,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                       const out = [{...meal, _type: type, _emoji: emoji, _label: label, _isPrimary: true, _oi: 0}];
                       // Bug-1: meal alternatives surface as additional non-primary cards
                       const alts = (day.meal_alternatives && day.meal_alternatives[type]) || [];
-                      alts.forEach((alt, ai) => out.push({...alt, _type: type, _emoji: emoji, _label: label, _isPrimary: false, _oi: ai + 1}));
+                      alts.forEach((alt, ai) => out.push({...alt, _type: type, _emoji: emoji, _label: label, _isPrimary: false, _isOptional: true, _oi: ai + 1}));
                       return out;
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
