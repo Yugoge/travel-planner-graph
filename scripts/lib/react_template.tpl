@@ -1140,14 +1140,6 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                                 {lang === 'local' && ent.notes_local ? ent.notes_local : (lang === 'local' && ent.note_local ? ent.note_local : ent.note_base)}
                               </div>
                             </div>
-                            {/* AC22: visual state badges for entertainment activity slot */}
-                            {entSlotId && editorDay && (() => {
-                              const edSlot = editorDay.slots && editorDay.slots[entSlotId];
-                              if (!edSlot) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#fff0e6', border: '1px solid #f0b870', borderRadius: '4px', fontSize: '10px', color: '#c07000', padding: '1px 5px' }}>missing</div>;
-                              if (edSlot.skipped) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#f5f5f3', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '10px', color: '#9b9a97', padding: '1px 5px' }}>{edSlot.skipped_reason || 'skipped'}</div>;
-                              if (edSlot.late_arrival_placeholder) return <div style={{ position: 'absolute', top: '6px', left: '6px', pointerEvents: 'none', zIndex: 3, background: '#e8f4fd', border: '1px solid #a8d4f0', borderRadius: '4px', fontSize: '10px', color: '#2b63b5', padding: '1px 5px' }}>late arrival</div>;
-                              return null;
-                            })()}
                             {entSlotId && (() => {
                               const edSlot = editorDay && editorDay.slots && editorDay.slots[entSlotId];
                               const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder;
