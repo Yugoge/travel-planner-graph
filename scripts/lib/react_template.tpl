@@ -2729,6 +2729,27 @@ function NotionTravelApp() {
           // Budget total update is displayed via a separate state
           setLiveDayTotal(prev => ({ ...prev, [dayNum]: entry.day_total }));
         }
+        // AC4/AC5: map entry.breakdown per-category values onto editorTripData.days[n].budget
+        // Key mapping: breakdown.meals→budget.meals, breakdown.activities→budget.attractions,
+        // breakdown.accommodation→budget.accommodation, breakdown.transportation→budget.transportation
+        // UI-only keys (entertainment, shopping, cafe) are preserved unchanged.
+        if (entry && entry.breakdown && setEditorTripData) {
+          if (budgetSeqRef.current[dayNum] !== seq) return; // stale guard for budget merge
+          const bd = entry.breakdown;
+          setEditorTripData(prev => {
+            if (!prev || !prev.days) return prev;
+            const updated = JSON.parse(JSON.stringify(prev));
+            const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+            if (!dayEntry) return prev;
+            if (!dayEntry.budget) dayEntry.budget = {};
+            if (bd.meals !== undefined) dayEntry.budget.meals = bd.meals.amount !== undefined ? bd.meals.amount : bd.meals;
+            if (bd.activities !== undefined) dayEntry.budget.attractions = bd.activities.amount !== undefined ? bd.activities.amount : bd.activities;
+            if (bd.accommodation !== undefined) dayEntry.budget.accommodation = bd.accommodation.amount !== undefined ? bd.accommodation.amount : bd.accommodation;
+            if (bd.transportation !== undefined) dayEntry.budget.transportation = bd.transportation.amount !== undefined ? bd.transportation.amount : bd.transportation;
+            // intra_city has no direct UI slot — discard
+            return updated;
+          });
+        }
       })
       .catch(() => {});
   }, []);
