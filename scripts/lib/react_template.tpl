@@ -891,6 +891,7 @@ const KanbanView = ({ day, tripSummary, showSummary, bp, lang, mapProvider, onIt
                             <div style={{ fontSize: '10px', fontWeight: '700', color: opt._isPrimary ? catColor : '#9b9a97', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                               <span>{opt._emoji} {opt._label}</span>
                               {opt.option_label && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97' }}>{(L('option', lang) || 'Option') + ' ' + opt.option_label}</span>}
+                              {opt._isOptional && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97', border: '1px solid #e0e0e0' }}>{L('optional', lang)}</span>}
                             </div>
                             <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                               {getDisplayName(opt, lang)}
