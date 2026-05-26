@@ -2311,7 +2311,8 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
   };
 
   // Build unified Meals group (M19): dedup breakfast/lunch/dinner options by option_id
-  const mealSlotIds = ['breakfast', 'lunch', 'dinner'];
+  const mealSlotIds = ['breakfast', 'lunch', 'dinner', 'meals-any'];
+  const mealSelectionSlotIds = ['breakfast', 'lunch', 'dinner'];
   const mealsGroup = [];
   const seenMealIds = new Set();
   mealSlotIds.forEach(slotId => {
