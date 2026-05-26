@@ -5,140 +5,92 @@
   "qa": {
     "status": "fail",
     "phase": "post_dev",
-    "overall_assessment": "All 5 proposed changes validated against actual source. Exact old strings confirmed, function signatures confirmed, scope confirmed. Codex adversarial consultation completed — no hard blockers. 2 minor findings surfaced for dev consideration.",
+    "overall_assessment": "AC4 PASS (optional badge live-verified in browser). AC1 FAIL (blocker): synthesis loop clone-without-remove causes multi-slot contamination and wrong _originSlotId. AC2 and AC3 code-verified only — no trip data with meal images or meals-any options available.",
     "verified_against_complaint": true,
-    "passed_user_requirement": true,
-    "ac_alignment": true,
-    "change_validations": [
-      {
-        "change_id": "C1",
-        "description": "Add _isOptional: true to non-primary alt options in normalisation push (line 855)",
-        "old_string_confirmed": true,
-        "old_string_location": "scripts/lib/react_template.tpl:855",
-        "old_string_exact": "alts.forEach((alt, ai) => out.push({...alt, _type: type, _emoji: emoji, _label: label, _isPrimary: false, _oi: ai + 1}));",
-        "syntax_valid": true,
-        "signature_check": "cardStyle at line 816 is (catColor, isPrimary, isOptional) — 3-arg, isOptional already wired at line 820 ('border: isOptional ? ...'). Field will be consumed correctly.",
-        "status": "pass"
-      },
-      {
-        "change_id": "C2",
-        "description": "Pass opt._isOptional as 3rd arg to cardStyle (line 869)",
-        "old_string_confirmed": true,
-        "old_string_location": "scripts/lib/react_template.tpl:869",
-        "old_string_exact": "<div key={gi} style={{...cardStyle(catColor, opt._isPrimary), position: 'relative',",
-        "syntax_valid": true,
-        "signature_check": "cardStyle(catColor, isPrimary, isOptional) at line 816 — new call cardStyle(catColor, opt._isPrimary, opt._isOptional) is correct 3-arg match.",
-        "status": "pass"
-      },
-      {
-        "change_id": "C3",
-        "description": "Pass opt._isOptional as 4th arg to hoverOff (line 879) and fix opt.option_label span (line 893)",
-        "old_string_confirmed": true,
-        "old_string_location_879": "scripts/lib/react_template.tpl:879",
-        "old_string_exact_879": "onMouseLeave={e => hoverOff(e, catColor, opt._isPrimary)}",
-        "old_string_location_893": "scripts/lib/react_template.tpl:893",
-        "old_string_exact_893": "{opt.option_label && <span style={{ padding: '1px 4px', background: '#f5f5f3', borderRadius: '3px', fontSize: '9px', color: '#9b9a97' }}>{(L('option', lang) || 'Option') + ' ' + opt.option_label}</span>}",
-        "syntax_valid": true,
-        "signature_check": "hoverOff(e, catColor, isPrimary, isOptional) at line 827 — new call hoverOff(e, catColor, opt._isPrimary, opt._isOptional) is correct 4-arg match.",
-        "status": "pass"
-      },
-      {
-        "change_id": "C4",
-        "description": "Split mealSlotIds into mealSlotIds + mealSelectionSlotIds; update isMealSelected to use mealSelectionSlotIds (lines 2314 + 2329)",
-        "old_string_confirmed": true,
-        "old_string_location_2314": "scripts/lib/react_template.tpl:2314",
-        "old_string_exact_2314": "const mealSlotIds = ['breakfast', 'lunch', 'dinner'];",
-        "old_string_location_2329": "scripts/lib/react_template.tpl:2329",
-        "old_string_exact_2329": "return mealSlotIds.some(slotId => {",
-        "scope_check": "mealSelectionSlotIds is declared on the new line immediately after the split (new line 2315), before mealsGroup build and before isMealSelected usage. Line 2329 shifts to 2330 due to the inserted line. mealSelectionSlotIds is in scope at that line.",
-        "meals_any_guard": "mealSlotIds (used for mealsGroup) will include meals-any. mealSelectionSlotIds (used for isMealSelected) will exclude meals-any. MEAL_SLOTS at line 2226 is new Set(['breakfast','lunch','dinner','meals-any']) — consistent.",
-        "status": "pass"
-      },
-      {
-        "change_id": "C5",
-        "description": "Replace if(planItem) guard with unconditional setEditorTripData synthesis in handleSidebarDrop (lines 2353-2379)",
-        "old_string_confirmed": true,
-        "old_string_location": "scripts/lib/react_template.tpl:2353-2379",
-        "stale_closure_check": "Loop uses prev-derived dayEntry inside setEditorTripData updater — no stale closure. Correct pattern.",
-        "ordering_check": "setEditorTripData fires before setEditorSelections at line 2381 — option is added to editorTripData before selection is cleared. mealsGroup rebuild finds the option.",
-        "plan_item_guard_removal": "if(planItem) guard was preventing synthesis when planItem is null (meals-any and PLAN_DATA scenarios). Removal is correct; guard was on an unrelated variable that blocked the entire synthesis.",
-        "ac3_flow_trace": {
-          "initial_state": "meals-any option lives in slots['meals-any'].options[] from data load.",
-          "sidebar_to_board": "applyBridge (line 2933) runs because originSlotId='meals-any' !== targetSlotId='breakfast'. Copies option to slots['breakfast'].options[], removes from slots['meals-any'].options[].",
-          "board_to_sidebar": "srcSlotId='breakfast'. srcOpt loop scans dayEntry.slots, finds option in slots['breakfast'].options[]. already=true (option already there). Synthesis no-ops. setEditorSelections clears. mealsGroup builds from slots['breakfast'] — option appears in sidebar.",
-          "result": "Correct. Option persists in sidebar after deselect."
-        },
-        "status": "pass"
-      }
-    ],
+    "passed_user_requirement": false,
+    "ac_alignment": false,
+    "spec_section_updates": {
+      "section_4": "AC4: Live browser confirmed optional badge on [data-slot-card='alternative'] dinner cards — border: 1px solid rgb(224, 224, 224), badge text 'Optional' present. Board card dashed border: 1.5px dashed rgba(230, 126, 34, 0.5) confirmed. Primary cards confirmed to have no badge.\n\nAC1: Live test — deselected dinner-1-2 from dinner board slot via DragEvent simulation. Sidebar card shows data-origin-slot-id='lunch' (incorrect, should be 'dinner'). day-01.json confirmed: dinner-1-2 present in BOTH lunch.options[] and dinner.options[] simultaneously — multi-slot contamination state.\n\nAC2: No meal options with non-null cover_image or image URLs found in any available trip data (china-20260412-092624 and beijing-lijiang-dali-20260418-100846). All meal option image fields are null. Code change verified correct in isolation only.\n\nAC3: No meals-any slot options present in any available trip data. Code change (mealSlotIds split to include meals-any) verified correct via code analysis only.",
+      "section_6": "AC1 failure: synthesis loop at lines 2368-2382 (handleSidebarDrop, Change 5) scans Object.keys(dayEntry.slots) to find srcOpt, locates it in slot sKey, clones it into srcSlotId.options[], but does NOT remove it from sKey. Option now exists in two slots simultaneously. mealsGroup iterates ['breakfast','lunch','dinner','meals-any'] in fixed order and assigns _originSlotId from whichever slot is first. For items previously moved via applyBridge (dinner to lunch to dinner), the option survives in lunch; mealsGroup hits lunch before dinner and assigns _originSlotId='lunch' (wrong). Live evidence: dinner-1-2 deselected from dinner board shows data-origin-slot-id='lunch' in sidebar.",
+      "section_7": "AC1 fix at scripts/lib/react_template.tpl lines 2368-2382: after pushing the cloned option into dayEntry.slots[srcSlotId].options[], add: `dayEntry.slots[sKey].options = dayEntry.slots[sKey].options.filter(o => o.option_id !== optionId);` Track sKey before the break statement so it is accessible at the removal site. This mirrors applyBridge move semantics at line 2968 — remove from found slot, add to target slot. Without this, clone-without-move permanently corrupts editorTripData state after each cross-slot deselect."
+    },
     "success_criteria_results": [
       {
         "requirement_id": "AC1",
-        "criterion": "Cross-slot meal drop: sidebar card from any meal slot can be dropped to any compatible meal slot",
-        "verification_method": "Traced _type/_originSlotId assignment in normalisation loop and isMealSelected usage; confirmed mealSelectionSlotIds split allows meals-any items to appear in sidebar without polluting isSelected check",
-        "status": "pass",
-        "result": "pass",
-        "details": "Change 4 correctly separates display list (mealSlotIds+meals-any) from selection check list (mealSelectionSlotIds). _isCompatible handles cross-slot drops via MEAL_SLOTS membership."
+        "source_phrase": "After dinner-to-sidebar-to-breakfast-to-sidebar drag cycle, sidebar card must show data-origin-slot-id='breakfast'",
+        "criterion": "data-origin-slot-id attribute on sidebar meal card must reflect the most recent board slot after cross-slot moves",
+        "verification_method": "Live Playwright test: loaded trip beijing-lijiang-dali-20260418-100846, simulated deselect of dinner-1-2 from dinner board slot via DragEvent evaluation, inspected data-origin-slot-id on resulting sidebar card. Read day-01.json to confirm state.",
+        "status": "fail",
+        "result": "fail",
+        "details": "Observed data-origin-slot-id='lunch' — should be 'dinner'. Data corruption confirmed: day-01.json shows dinner-1-2 in both lunch.options[] and dinner.options[] simultaneously. Root cause: synthesis loop clones without removing from source slot (sKey).",
+        "evidence": "Live Playwright DragEvent simulation on http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846. Sidebar card DOM: data-origin-slot-id='lunch'. day-01.json: lunch.options contains [dinner-1-1, dinner-1-2]; dinner.options contains [dinner-1-1, dinner-1-2]."
       },
       {
         "requirement_id": "AC2",
-        "criterion": "Image parity: board and sidebar show same image for same item",
-        "verification_method": "Traced srcOpt clone path in new Change 5 synthesis block; both renderers use cover_image||image fallback",
+        "source_phrase": "Board and sidebar meal cards for same option_id must display identical image",
+        "criterion": "img[src] on board meal card equals img[src] on sidebar meal card for same option_id",
+        "verification_method": "Code review of synthesis block lines 2355-2399 and data inspection across all available trip data",
         "status": "pass",
         "result": "pass",
-        "details": "Both renderers use cover_image||image fallback chain consistently. See minor finding F1 re: explicit normalization recommendation."
+        "details": "Code change correct: planItem fallback sets both cover_image: planImg and image: planImg. srcOpt clone path normalizes: cover_image: srcOpt.cover_image || img, image: srcOpt.image || img. No meal options with non-null images found in available trip data — live comparison not possible. Code-verified only.",
+        "evidence": "scripts/lib/react_template.tpl lines 2377-2395 code inspection. All meal option cover_image and image fields null in both available trips. Live pixel-comparison not possible."
       },
       {
         "requirement_id": "AC3",
-        "criterion": "Airplane meal (meals-any) persists in sidebar after deselect from board",
-        "verification_method": "Full state machine trace: applyBridge move semantics, Change 5 synthesis logic, setEditorSelections ordering",
+        "source_phrase": "meals-any PLAN_DATA items reappear in sidebar after deselect — sidebar meals group count must not decrease",
+        "criterion": "After dragging a meals-any sidebar card to a board slot then back to sidebar, sidebar meals group count >= original count",
+        "verification_method": "Code review of mealSlotIds split lines 2315-2316 and isMealSelected check line 2331. Data inspection for meals-any items.",
         "status": "pass",
         "result": "pass",
-        "details": "applyBridge moves option from meals-any to concrete slot. Change 5 synthesis finds option in concrete slot (already=true), synthesis no-ops, option remains available. Ordering correct."
+        "details": "Code change correct: mealSlotIds now includes meals-any for sidebar scan. mealSelectionSlotIds excludes meals-any so isMealSelected does not false-positive. Reappear path has same clone-without-remove issue as AC1, but item still appears in sidebar under the board slot's _originSlotId — count-based criterion satisfied. No meals-any test data available.",
+        "evidence": "scripts/lib/react_template.tpl lines 2315-2331 code inspection. No meals-any slot options found in any available trip data."
       },
       {
         "requirement_id": "AC4",
-        "criterion": "Optional badge displays on 2nd+ options per board meal slot",
-        "verification_method": "Confirmed _isOptional:true set by C1 for non-primary alts; cardStyle and hoverOff consume isOptional; dashed border and badge rendered",
+        "source_phrase": "2nd+ meal alternatives show Optional badge with dashed border on board; primary meal card has no badge",
+        "criterion": "data-slot-card='alternative' meal board cards render: (a) dashed border, (b) Optional badge text. data-slot-card='primary' cards have no Optional badge.",
+        "verification_method": "Live Playwright browser test: inspected dinner board slot cards on http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
         "status": "pass",
         "result": "pass",
-        "details": "C1+C2+C3 chain: _isOptional set on alt objects -> passed to cardStyle/hoverOff -> visual badge and dashed border applied."
+        "details": "Alternative cards confirmed: border 1.5px dashed rgba(230, 126, 34, 0.5), span with Optional text, badge border 1px solid rgb(224, 224, 224). Primary card confirmed: no Optional badge span. All 4 code changes (lines 855, 869, 879, 894) present and correct.",
+        "evidence": "Playwright DOM inspection of dinner board slot. data-slot-card='alternative' card: dashed border confirmed, Optional badge text confirmed. data-slot-card='primary' card: no Optional span."
       }
     ],
     "findings": [
       {
         "id": "F1",
-        "severity": "minor",
-        "category": "image_normalization",
-        "source": "codex_adversarial",
-        "description": "In the Change 5 srcOpt clone path, both cover_image and image fields are not explicitly normalized — they are spread from srcOpt as-is. If srcOpt has one field populated and the other absent, the sidebar and board renderers both use cover_image||image fallback so parity holds in practice. But dev should consider explicit normalization for defensive correctness.",
-        "location": "scripts/lib/react_template.tpl — new synthesis push block (Change 5)",
-        "proposed_fix": "In the push call inside Change 5, normalize both image fields: const img = srcOpt.cover_image || srcOpt.image || null; push({...srcOpt, cover_image: srcOpt.cover_image || img, image: srcOpt.image || img, ...other_fields}). This makes both image fields consistent regardless of source data shape.",
-        "blocks_implementation": false
-      },
-      {
-        "id": "F2",
-        "severity": "minor",
-        "category": "defensive_scope",
-        "source": "codex_adversarial",
-        "description": "The srcOpt lookup loop in Change 5 iterates Object.keys(dayEntry.slots) — all slot keys, not just meal slots. A corrupt duplicate option_id in an activity slot could cause a cross-contamination false match. In practice this is unlikely but not impossible.",
-        "location": "scripts/lib/react_template.tpl — new srcOpt loop in Change 5",
-        "proposed_fix": "Restrict loop to meal slots: for (const sKey of Object.keys(dayEntry.slots).filter(k => MEAL_SLOTS.has(k))). MEAL_SLOTS is already in scope at line 2226.",
-        "blocks_implementation": false
+        "ac": "AC1",
+        "severity": "blocker",
+        "category": "logic_error",
+        "source": "qa_live_browser",
+        "description": "handleSidebarDrop synthesis loop (lines 2368-2382, Change 5) finds srcOpt in slot sKey and clones it to srcSlotId.options[] but does NOT remove it from dayEntry.slots[sKey].options[]. Option duplicated across meal slots. mealsGroup picks wrong _originSlotId from whichever slot appears first in ['breakfast','lunch','dinner','meals-any'] iteration order.",
+        "location": "scripts/lib/react_template.tpl:2368-2382",
+        "proposed_fix": "After the push into dayEntry.slots[srcSlotId].options[], add: `dayEntry.slots[sKey].options = dayEntry.slots[sKey].options.filter(o => o.option_id !== optionId);` Declare `let foundSlotKey = null;` before the loop; set `foundSlotKey = sKey;` before break; use `foundSlotKey` in the filter. This mirrors applyBridge move semantics at line 2968.",
+        "blocks_release": true
       }
     ],
     "out_of_scope_observations": [
       {
-        "id": "OBS1",
-        "source": "codex_adversarial",
-        "description": "Direct board-to-board meal moves (dragging from breakfast board slot directly to lunch board slot, no sidebar intermediary) do not copy option objects in editorTripData. If user then drags that lunch board card to sidebar, Change 5 may find the option still in breakfast slot and synthesize from there. This is outside the AC1-AC3 scope of the 5 changes (spec scope is board→sidebar→board).",
+        "ts": "2026-05-26T21:30:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2407,
+        "observation": "applySelection function appears unused — drops go through window.applyEditorSelection/applyBridge. Pre-existing condition, not introduced by this cycle.",
         "in_user_path": false,
         "security_relevant": false
       },
       {
-        "id": "OBS2",
-        "source": "qa_self",
-        "description": "The spec's AC3 rationale comment says 'finds the option in slots[meals-any].options[] itself (it wasn't removed yet at synthesis time)'. This is only true for the very first board→sidebar drop before any applyBridge call. After applyBridge has executed (which it always does for meals-any→concrete-slot drops), the option lives in the concrete slot, not meals-any. Both code paths produce correct results; the spec explanatory comment is slightly imprecise.",
+        "ts": "2026-05-26T21:30:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2968,
+        "observation": "mealDragOptionId fallback chain uses edSlot.options[0].option_id which may produce wrong option for PLAN-only board meals. Pre-existing condition.",
+        "in_user_path": false,
+        "security_relevant": false
+      },
+      {
+        "ts": "2026-05-26T21:30:00Z",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 2378,
+        "observation": "already=true path — cover_image/image not normalized when option already exists in target slot. Pre-existing condition, scope expansion beyond the 5 specified changes.",
         "in_user_path": false,
         "security_relevant": false
       }
@@ -146,41 +98,217 @@
     "codex_consult": {
       "invoked": true,
       "status": "ok",
-      "feedback_summary": "5 findings from gpt-5.5 xhigh reasoning: (1) draft description used double-quotes for Change 4 old string which uses single quotes — cosmetic wording only; (2) AC2 srcOpt clone path does not explicitly normalize both image fields — parity works via fallback but explicit normalization is more defensive; (3) srcOpt lookup scans all slots not just MEAL_SLOTS — cross-contamination risk low but resolvable; (4) out-of-scope: direct board-to-board moves without sidebar intermediary don't move option objects; (5) confirmed QA's own AC3 rationale correction. Net codex verdict: no hard blocker against PASS for the proposed changes.",
-      "feedback_incorporated": "F1 added as minor (AC2 srcOpt image normalization, from codex finding 2); F2 added as minor (srcOpt loop scope restriction to MEAL_SLOTS, from codex finding 3); OBS1 added as out_of_scope observation (board-to-board, from codex finding 4); OBS2 confirms QA's own AC3 rationale observation (from codex finding 5); codex finding 1 is cosmetic wording in QA draft only — not surfaced as a finding."
+      "feedback_summary": "Codex confirmed AC1 finding is real: synthesis loop does not remove option from found slot (sKey), causing multi-slot contamination and wrong _originSlotId. Data evidence confirmed: dinner-1-2 in both lunch.options[] and dinner.options[] in day-01.json with all image fields null. AC3 count-based pass accepted. OBSERVATION_ONLY: optional badge changes at lines 855/869/879/894 look scoped correctly.",
+      "feedback_incorporated": "AC1 finding confirmed and retained as blocker. AC2 code-only verification retained — no image data available. AC3 pass retained — count-based criterion met. Three codex out-of-scope observations (applySelection wiring, mealDragOptionId fallback, already=true normalization) logged as separate-cycle candidates."
     },
     "root_cause_verification": {
-      "addressed": true,
+      "addressed": false,
       "confidence": "high",
-      "rationale": "All 4 root causes identified in context JSON are addressed by the 5 changes: (1) _isOptional flag missing — fixed by C1+C2+C3; (2) mealsGroup not scanning meals-any slot — fixed by C4; (3) isMealSelected incorrectly including meals-any — fixed by C4 split; (4) handleSidebarDrop if(planItem) guard blocking synthesis — fixed by C5."
+      "rationale": "AC4 root cause (_isOptional flag + badge JSX missing) fully addressed. AC1 root cause partially addressed: if(planItem) guard correctly removed and prev-state srcOpt lookup correctly added, but the loop performs a clone not a move — stale option copies remain in prior slots, causing mealsGroup to assign wrong _originSlotId. AC2 and AC3 code changes correct but cannot be live-verified."
     },
+    "app_understanding_flow": {
+      "executed": true,
+      "core_flow_completed": true,
+      "steps_completed": 4,
+      "baseline_screenshots": [],
+      "errors_found_during_flow": [],
+      "app_not_running": false
+    },
+    "e2e_enforcement": {
+      "required": true,
+      "attempted": true,
+      "script_discovered": false,
+      "script_path": null,
+      "health_check_url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+      "health_check_result": "HTTP 200 OK — trip page loaded, React app rendered",
+      "status": "performed",
+      "blocking_reason": null
+    },
+    "e2e_script_results": [],
+    "ui_test_results": [
+      {
+        "scenario": "AC4: Optional badge on alternative meal board cards",
+        "url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "pass",
+        "reason": null,
+        "steps_performed": [
+          "browser_navigate to trip page",
+          "browser_snapshot to locate Day 1 dinner board slot cards",
+          "browser_evaluate to inspect [data-slot-card='alternative'] CSS computed border",
+          "browser_evaluate to confirm Optional badge text",
+          "browser_evaluate to confirm [data-slot-card='primary'] has no Optional badge"
+        ],
+        "assertions": [
+          {
+            "expected": "[data-slot-card='alternative'] has dashed border",
+            "actual": "border: 1.5px dashed rgba(230, 126, 34, 0.5) confirmed",
+            "passed": true
+          },
+          {
+            "expected": "Optional badge span present with correct styling",
+            "actual": "Found span with 'Optional' text, badge border: 1px solid rgb(224, 224, 224)",
+            "passed": true
+          },
+          {
+            "expected": "[data-slot-card='primary'] has NO Optional badge",
+            "actual": "No Optional span inside primary card confirmed",
+            "passed": true
+          }
+        ],
+        "evidence": "Playwright DOM inspection — alternative dinner card: dashed border and Optional badge confirmed. Primary card: no badge."
+      },
+      {
+        "scenario": "AC1: Cross-slot meal deselect — data-origin-slot-id after dinner board card dragged to sidebar",
+        "url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "fail",
+        "reason": "data-origin-slot-id='lunch' observed, expected 'dinner'. Synthesis loop clone-without-remove confirmed.",
+        "steps_performed": [
+          "browser_navigate to trip page Day 1",
+          "browser_evaluate: dispatched DragEvent from dinner board slot dinner-1-2 card to sidebar",
+          "browser_evaluate: read data-origin-slot-id on resulting sidebar candidate card for dinner-1-2",
+          "Read day-01.json to confirm post-synthesis data state"
+        ],
+        "assertions": [
+          {
+            "expected": "Sidebar card for dinner-1-2 shows data-origin-slot-id='dinner'",
+            "actual": "data-origin-slot-id='lunch' — item found in lunch.options[] first by Object.keys() ordering",
+            "passed": false
+          },
+          {
+            "expected": "day-01.json: dinner-1-2 in dinner.options[] only",
+            "actual": "dinner-1-2 in BOTH lunch.options[] and dinner.options[] — contamination confirmed",
+            "passed": false
+          }
+        ],
+        "evidence": "DOM: data-origin-slot-id='lunch'. day-01.json: lunch.options=[dinner-1-1, dinner-1-2], dinner.options=[dinner-1-1, dinner-1-2], all image fields null."
+      },
+      {
+        "scenario": "AC2: Image parity between board and sidebar meal cards",
+        "url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "skipped",
+        "reason": "No meal options with non-null image URLs in any available trip data. Code change verified correct — no live comparison possible.",
+        "steps_performed": [
+          "Inspected all meal options in both available trips",
+          "All cover_image and image fields confirmed null"
+        ],
+        "assertions": [],
+        "evidence": "day-01.json and china trip meal options: all image fields null."
+      },
+      {
+        "scenario": "AC3: meals-any items reappear in sidebar after deselect",
+        "url": "http://localhost:8765/trip/beijing-lijiang-dali-20260418-100846",
+        "status": "skipped",
+        "reason": "No meals-any slot options in any available trip data. Code change verified correct via static analysis.",
+        "steps_performed": [
+          "Inspected meals-any slot in all available trip days",
+          "No meals-any options found"
+        ],
+        "assertions": [],
+        "evidence": "All day files: meals-any slot present, options[] empty."
+      }
+    ],
+    "generated_tests": [],
+    "all_findings": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:2368-2382",
+        "issue": "AC1 BLOCKER: handleSidebarDrop synthesis loop finds srcOpt in sKey slot and clones to srcSlotId.options[] without removing from sKey. Option exists in two slots simultaneously. mealsGroup assigns _originSlotId from first slot hit in fixed iteration order — wrong for items previously moved cross-slot via applyBridge. Live: dinner-1-2 deselect shows data-origin-slot-id='lunch' instead of 'dinner'.",
+        "recommendation": "After push into srcSlotId.options[], add: dayEntry.slots[foundSlotKey].options = dayEntry.slots[foundSlotKey].options.filter(o => o.option_id !== optionId); where foundSlotKey is sKey captured before break.",
+        "blocks_release": true
+      }
+    ],
+    "failures": [
+      {
+        "severity": "critical",
+        "location": "scripts/lib/react_template.tpl:2368-2382",
+        "issue": "AC1: synthesis loop clones option without removing from found slot. Multi-slot contamination. Wrong data-origin-slot-id in sidebar. Live evidence: data-origin-slot-id='lunch' when 'dinner' expected. Data evidence: dinner-1-2 in both lunch.options[] and dinner.options[].",
+        "recommendation": "Add removal filter after push. See all_findings for exact fix.",
+        "primary_cause": "dev_implementation"
+      }
+    ],
+    "regression_test_results": [
+      {
+        "test": "Provenance: git diff vs dev.files_modified",
+        "result": "pass",
+        "details": "baseline_dirty_snapshot includes M scripts/lib/react_template.tpl. File in dev.files_modified. No unlisted modified files."
+      },
+      {
+        "test": "AC4 non-regression: primary meal cards unaffected by _isOptional changes",
+        "result": "pass",
+        "details": "Live browser: primary dinner card (dinner-1-1) has no Optional badge. _isOptional pushed only in alts.forEach path, not primary push at line 850."
+      }
+    ],
+    "code_quality_findings": [],
     "permissions_verification": {
       "status": "pass",
       "permissions_count": 0,
       "validated_permissions": [],
-      "issues": [],
-      "note": "Pre-dev validation — no scripts created yet."
+      "issues": []
     },
     "hardcode_scan_results": {
-      "files_scanned": 0,
+      "files_scanned": 1,
       "violations": [],
-      "summary": { "critical": 0, "major": 0, "minor": 0 },
-      "note": "Pre-dev validation — no new files to scan yet."
+      "summary": { "critical": 0, "major": 0, "minor": 0 }
     },
     "build_verification": {
-      "status": "skipped",
-      "skip_reason": "Pre-dev validation — implementation not yet performed. Build verification is dev's responsibility post-implementation."
+      "status": "pass",
+      "build_command": "python3 scripts/generate-html-interactive.py china-20260412-092624",
+      "deploy_command": "Server pre-existing on port 8765",
+      "build_output_summary": "HTML regenerated (602.5KB per dev self-verification). Key strings confirmed: _isOptional (4 hits), mealSelectionSlotIds (2 hits), MEAL_SLOTS.has(sKey) (1 hit).",
+      "service_healthy": true,
+      "changes_verified_live": true,
+      "skip_reason": null
+    },
+    "manifest_verification": {
+      "manifest_path": "tests/generated/20260526-201620/manifest.json",
+      "global_index_path": "tests/generated/manifest.json",
+      "global_index_kind": "index",
+      "manifest_exists": false,
+      "active_tests_count": 0,
+      "active_tests_importable": null,
+      "pytest_collected_ok": null,
+      "pytest_failures": []
+    },
+    "blast_radius_phase2": {
+      "phase2_map_path": ".claude/dev-registry/dev-20260526-201620/blast-radius-map-phase2.json",
+      "git_diff_files": ["scripts/lib/react_template.tpl"],
+      "phase1_phase2_delta": [],
+      "dev_declarations_complete": true,
+      "exemption_vetoes": []
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "No role table declared in travel-planner/CLAUDE.md",
+      "violations": []
+    },
+    "self_verification": {
+      "claims_total": 8,
+      "claims_with_evidence": 6,
+      "claims_superficial": 2,
+      "superficial_details": [
+        "AC2: code change correct — code-only, no live image comparison possible",
+        "AC3: mealSlotIds split correct — code-only, no meals-any test data"
+      ],
+      "confidence": "high"
     },
     "summary": {
-      "critical_issues": 0,
+      "critical_issues": 1,
       "major_issues": 0,
-      "minor_issues": 2,
-      "total_findings": 2,
-      "release_recommendation": "approve",
-      "note": "2 minor findings (F1, F2) are dev-side recommendations for defensive improvement, not blockers. Implementation may proceed."
+      "minor_issues": 0,
+      "total_findings": 1,
+      "release_recommendation": "reject"
     },
-    "verdict": "PASS: safe to implement. All 5 change old strings confirmed in source. All function signatures support new arg counts. Scope confirmed. Codex adversarial consultation: no hard blockers. 2 minor findings for dev consideration."
+    "verdict": "FAIL: 1 blocker — AC1 synthesis loop clone-without-remove at scripts/lib/react_template.tpl:2368-2382 causes multi-slot option contamination and wrong data-origin-slot-id on sidebar cards. AC4 PASS (live-verified). AC2 and AC3 code-verified only (no trip data with images or meals-any options)."
   },
-  "iteration_needed": false,
-  "refined_context": null
+  "iteration_needed": true,
+  "refined_context": {
+    "failed_criteria": [
+      "AC1: data-origin-slot-id must equal the most recent board slot after cross-slot drag cycle"
+    ],
+    "critical_issues": [
+      "scripts/lib/react_template.tpl:2368-2382 — synthesis loop finds option in sKey and clones to srcSlotId.options[] but does not remove from sKey. Option survives in both slots. mealsGroup iterates ['breakfast','lunch','dinner','meals-any'] in fixed order — hits whichever slot comes first and assigns that as _originSlotId. For items previously cross-slot moved (dinner to lunch to dinner via applyBridge), option is in lunch; mealsGroup assigns _originSlotId='lunch' (wrong). Fix: track foundSlotKey before break; after push, filter: dayEntry.slots[foundSlotKey].options = dayEntry.slots[foundSlotKey].options.filter(o => o.option_id !== optionId)."
+    ],
+    "recommended_approach": "Single surgical addition: declare `let foundSlotKey = null;` before the Object.keys loop in handleSidebarDrop synthesis block (around line 2368). Set `foundSlotKey = sKey;` before the break. After the push into srcSlotId.options[], add the filter removal. This mirrors applyBridge move semantics at line 2968.",
+    "additional_context": "day-01.json is already in corrupted multi-slot state. Fix prevents new corruption but does not repair existing data. Consider data cleanup for existing affected trips."
+  }
 }
