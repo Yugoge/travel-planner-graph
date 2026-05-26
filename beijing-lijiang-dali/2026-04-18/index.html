@@ -2468,6 +2468,37 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
       // board card dropped onto sidebar → deselect from source slot
       if ((payload.direction === 'plan-to-candidates' || payload.direction === 'board') && srcSlotId) {
         const key = dayNum + ':' + srcSlotId;
+        // AC1/AC2: synthesize the deselected meal option back into options[] so it reappears in sidebar.
+        // Mirrors preserveCurrentAccommodationOption pattern. Needed when the item exists only in
+        // publishedDay.meals (PLAN-default) and was never in editorDay.slots[srcSlotId].options[].
+        if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData) {
+          const planMeals = publishedDay && publishedDay.meals;
+          const planItem = planMeals && planMeals[srcSlotId];
+          const optionId = payload.optionId;
+          if (planItem) {
+            setEditorTripData(prev => {
+              if (!prev || !prev.days) return prev;
+              const updated = JSON.parse(JSON.stringify(prev));
+              const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+              if (!dayEntry || !dayEntry.slots) return prev;
+              if (!dayEntry.slots[srcSlotId]) dayEntry.slots[srcSlotId] = { options: [] };
+              if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];
+              const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
+              if (!already) {
+                dayEntry.slots[srcSlotId].options.push({
+                  option_id: optionId,
+                  name: planItem.name_base || planItem.name || optionId,
+                  name_local: planItem.name_local || '',
+                  cost: planItem.cost || 0,
+                  cover_image: planItem.cover_image || planItem.image || null,
+                  notes_base: planItem.notes_base || '',
+                  notes_local: planItem.notes_local || '',
+                });
+              }
+              return updated;
+            });
+          }
+        }
         setEditorSelections(prev => ({ ...prev, [key]: null }));
         saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]);
       }
@@ -2618,7 +2649,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                 </div>
                 <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                    <span>🍽️ {mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')}</span>
+                    <span>🍽️ {lang === 'local' ? '餐厅' : 'Restaurant'}</span>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                     {getDisplayName(opt, lang)}
@@ -2822,6 +2853,27 @@ function NotionTravelApp() {
           // Budget total update is displayed via a separate state
           setLiveDayTotal(prev => ({ ...prev, [dayNum]: entry.day_total }));
         }
+        // AC4/AC5: map entry.breakdown per-category values onto editorTripData.days[n].budget
+        // Key mapping: breakdown.meals→budget.meals, breakdown.activities→budget.attractions,
+        // breakdown.accommodation→budget.accommodation, breakdown.transportation→budget.transportation
+        // UI-only keys (entertainment, shopping, cafe) are preserved unchanged.
+        if (entry && entry.breakdown && setEditorTripData) {
+          if (budgetSeqRef.current[dayNum] !== seq) return; // stale guard for budget merge
+          const bd = entry.breakdown;
+          setEditorTripData(prev => {
+            if (!prev || !prev.days) return prev;
+            const updated = JSON.parse(JSON.stringify(prev));
+            const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+            if (!dayEntry) return prev;
+            if (!dayEntry.budget) dayEntry.budget = {};
+            if (bd.meals !== undefined) dayEntry.budget.meals = bd.meals.amount !== undefined ? bd.meals.amount : bd.meals;
+            if (bd.activities !== undefined) dayEntry.budget.attractions = bd.activities.amount !== undefined ? bd.activities.amount : bd.activities;
+            if (bd.accommodation !== undefined) dayEntry.budget.accommodation = bd.accommodation.amount !== undefined ? bd.accommodation.amount : bd.accommodation;
+            if (bd.transportation !== undefined) dayEntry.budget.transportation = bd.transportation.amount !== undefined ? bd.transportation.amount : bd.transportation;
+            // intra_city has no direct UI slot — discard
+            return updated;
+          });
+        }
       })
       .catch(() => {});
   }, []);
@@ -3012,6 +3064,20 @@ function NotionTravelApp() {
               const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
               if (srcOpt) tgtSlot.options.push({ ...srcOpt });
             }
+          }
+          return updated;
+        });
+      }
+      // AC3: move semantics — remove option from origin slot options[] so sidebar card disappears
+      if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          const updated = JSON.parse(JSON.stringify(prev));
+          const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
+          if (!dayEntry || !dayEntry.slots) return prev;
+          const srcSlot = dayEntry.slots[originSlotId];
+          if (srcSlot && srcSlot.options) {
+            srcSlot.options = srcSlot.options.filter(o => o.option_id !== optionId);
           }
           return updated;
         });
