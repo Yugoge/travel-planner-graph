@@ -1,0 +1,164 @@
+{
+  "request_id": "20260526-051826",
+  "task_id": "20260526-051826",
+  "timestamp": "2026-05-26T06:30:00Z",
+  "qa": {
+    "status": "fail",
+    "phase": "pre-dev",
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "feedback_summary": "Codex confirmed: (1) Issue 9 BA diagnosis critically wrong — API returns entry.breakdown not entry.budget, and the breakdown shape (keys: meals/activities/accommodation/transportation/intra_city, each {amount, unknown_count}) differs from UI shape (keys: meals/attractions/entertainment/accommodation/shopping/cafe/transportation, flat numbers). (2) Issue 5 fix location wrong — applyBridge is the active path, not applySelection. (3) Issue 5 may also need source-slot selection clearing. (4) Issue 5 has server-side persistence risk. (5) Issue 1+4 synthesis source not fully specified. (6) Issue 2 label fix prescription valid but needs to unconditionally replace the whole expression, not just the fallback branch.",
+      "feedback_incorporated": "Codex findings 1, 2, 5, 6 fully incorporated as blocking findings. Finding 3 incorporated as a sequencing-risk clarification. Finding 4 classified as out_of_scope_observation (reload persistence not in AC scope). Finding 2 bridge-also-affected note incorporated."
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "critical",
+        "dimension": "affected_file_accuracy",
+        "category": "wrong_fix_target",
+        "issue": "Issue 5 fix target is wrong: BA's technical hint directs dev to modify applySelection (lines 2354-2381), but that function is dead code — it is defined but never called anywhere in the file. The actual runtime path for direction='candidates' drag-to-board is window.applyEditorSelection, which maps to applyBridge (lines 2869-2897). All slot-drop onDrop handlers (lines 916, 993, 1071, 1149, 1306, 1914) call window.applyEditorSelection(payload.optionId, toSlotId, payload.originSlotId) when payload.direction === 'candidates'. Dev implementing the fix inside applySelection would produce a no-op — the bug would not be fixed.",
+        "evidence": "grep of react_template.tpl confirms applySelection appears only at line 2354 (definition) and is never invoked. All onDrop handlers call window.applyEditorSelection which is assigned applyBridge at line 2898. Verified by reading lines 916, 993, 1071, 1149, 1306, 1914 directly.",
+        "ba_claim": "Technical hint says: 'In applySelection (lines 2354-2381), after the existing setEditorTripData cross-meal-copy block, add a removal block'",
+        "actual": "applySelection is dead code. The active function is applyBridge (lines 2869-2897), exposed as window.applyEditorSelection at line 2898.",
+        "required_correction": "BA must update the technical hint to target applyBridge (lines 2869-2897) / window.applyEditorSelection. Additionally, the window.setEditorSelection bridge (lines 2834-2865) is a legacy fallback with the same copy-without-remove behavior and should also be addressed or explicitly left as-is with documented rationale.",
+        "blocks_proceed": true
+      },
+      {
+        "id": "F2",
+        "severity": "critical",
+        "dimension": "evidence_quality",
+        "category": "wrong_api_field_name",
+        "issue": "Issue 9 fix prescription references entry.budget but the /api/budget/recompute API response contains entry.breakdown, not entry.budget. A dev implementing 'merge entry.budget into editorTripData.days[n].budget' would merge undefined — a silent no-op.",
+        "evidence": "Read scripts/lib/server/budget.py lines 140-148: _compute_day_entry() returns {day: day_n, day_total: ..., breakdown: {meals: {amount, unknown_count}, activities: {amount, unknown_count}, accommodation: {amount, unknown_count}, transportation: {amount, unknown_count}, intra_city: {amount, unknown_count}}}. There is no 'budget' key in the response. BA spec says 'entry.budget per-category object in the response is silently discarded' — but entry.budget does not exist.",
+        "ba_claim": "recomputeBudget discards entry.budget from API response; fix should merge entry.budget into editorTripData.days[n].budget",
+        "actual": "API response has entry.breakdown (not entry.budget). The breakdown shape {meals: {amount, unknown_count}, ...} also differs from the UI's day.budget shape {meals: Number, attractions: Number, entertainment: Number, accommodation: Number, shopping: Number, cafe: Number, transportation: Number}. Key names also differ: API uses 'activities' where UI uses 'attractions', API has 'intra_city' where UI has no equivalent, and UI has 'entertainment'/'shopping'/'cafe' not present in API breakdown.",
+        "required_correction": "BA must (a) correct the field name from entry.budget to entry.breakdown, (b) specify the mapping between API breakdown keys and UI budget keys (meals->meals, activities->attractions or a new mapping), (c) decide how to handle UI-only keys (entertainment, shopping, cafe) which are absent from the API breakdown, (d) decide the state mechanism — either merge into editorTripData.days[n].budget (which effectiveDay merges via mergeEditorSelectionsIntoPublishedDay if that function propagates budget) or use a dedicated liveDayBudget state parallel to liveDayTotal.",
+        "blocks_proceed": true
+      },
+      {
+        "id": "F3",
+        "severity": "major",
+        "dimension": "evidence_quality",
+        "category": "inaccurate_diagnosis_label_fix",
+        "issue": "BA's diagnosis for Issue 2 (label) states line 2497 'renders _originSlotId slot name via mealsLabel', but this is technically incorrect. mealsLabel is L('meals', lang) — the localization function result — not rawOpt._originSlotId. The conditional at line 2497 is: mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals'). When lang='local' and L('meals','local') returns a non-'meals' translated value (e.g. '餐饮' from ui_labels.local.meals), the card renders that translation, NOT the _originSlotId slot name (e.g. 'dinner'). The actual user-visible symptom described by BA ('makes the user believe the card is restricted to that slot type like dinner/breakfast/lunch') cannot arise from this code path — mealsLabel never takes the value of _originSlotId.",
+        "evidence": "Line 2459: const mealsLabel = L('meals', lang). Line 2497: mealsLabel !== 'meals' ? mealsLabel : (lang==='local' ? '餐饮' : 'Meals'). L() function at lines 476-485 returns labels.local['meals'] or labels.base['meals'] or the key 'meals'. _originSlotId is tagged on rawOpt at line 2320 but is not referenced at line 2497 at all.",
+        "ba_claim": "meal card type label at line 2497 renders mealsLabel which equals the _originSlotId slot name (e.g. 'dinner')",
+        "actual": "mealsLabel = L('meals', lang), not _originSlotId. The rendered text is always a variation of 'meals'/'餐饮' or the localized translation of the 'meals' key — never the per-card _originSlotId value ('breakfast'/'lunch'/'dinner').",
+        "required_correction": "BA must correct the diagnosis. The label is NOT rendering the slot name. However, the fix prescription (replace with fixed '餐厅'/'Restaurant') is still correct and AC6 is still valid. Additionally: since mealsLabel is computed from L('meals', lang) and may already return a translated value other than 'meals', the fix must unconditionally replace the entire expression `mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')` with the fixed `(lang === 'local' ? '餐厅' : 'Restaurant')` — changing only the fallback branch is insufficient.",
+        "blocks_proceed": false
+      },
+      {
+        "id": "F4",
+        "severity": "major",
+        "dimension": "investigation_completeness",
+        "category": "incomplete_synthesis_source",
+        "issue": "Issues 1+4 fix prescription (synthesize removed meal back into options[]) does not specify the data source for synthesis when the payload only carries optionId and sourceSlotId. The preserveCurrentAccommodationOption pattern (which BA says to mirror) reads from publishedDay.accommodation — the equivalent for meals would be publishedDay.meals[srcSlotId]. But handleSidebarDrop at lines 2338-2351 has no direct access to publishedDay.meals at the point the synthesis needs to happen. BA's hint says 'synthesize a minimal option object from publishedDay.meals[slotId] data' but does not specify how the option's name/cost/image are sourced when the item may not be in editorDay.slots[src].options (that is the whole problem). The fix needs to either (a) read from publishedDay.meals[srcSlotId] (but CandidatesSidebar receives publishedDay as a prop so this is feasible) or (b) read from effectiveDay.meals (which has the merged data). BA should specify this explicitly.",
+        "evidence": "handleSidebarDrop at lines 2338-2351: only has access to payload.sourceSlotId, payload.optionId. CandidatesSidebar props (line 2260-2261) include publishedDay — so publishedDay.meals[srcSlotId] is accessible. BA technical hint says 'synthesize a minimal option object from publishedDay.meals[slotId] data' — this is correct in principle but leaves the implementation path underspecified given CandidatesSidebar is a separate component from the parent that has publishedDay.",
+        "required_correction": "BA should explicitly confirm: CandidatesSidebar receives publishedDay as a prop (verified at line 2260), so the synthesis can read from publishedDay.meals[srcSlotId] directly within handleSidebarDrop. The spec should also clarify that the synthesis guard (skip if already in options[]) mirrors line 2809 of preserveCurrentAccommodationOption pattern.",
+        "blocks_proceed": false
+      },
+      {
+        "id": "F5",
+        "severity": "minor",
+        "dimension": "scope_alignment",
+        "category": "sequencing_risk",
+        "issue": "Issue 5 fix in applyBridge may need to also clear the source-slot selection state when the moved option is currently selected in originSlotId. applyBridge currently sets editorSelections for targetSlotId (line 2874) but does not clear originSlotId selection. If the user drags a selected meal option (green border) from sidebar to board, the card disappears from sidebar options[] (after fix) but the originSlotId's editorSelections key still points to that optionId. This could produce a stale selected state. BA's AC3 requires only 'card is absent from sidebar on next render' — this edge case is not covered by AC3.",
+        "evidence": "applyBridge lines 2869-2897: sets [key] = optionId for target, then runs setEditorTripData cross-copy. No clearing of origin's selection. isMealSelected (lines 2325-2332) checks all three meal slots — after the move, if the option is removed from originSlotId.options[] but originSlotId's editorSelections still resolves to optionId, the selection would attempt to render a selected card that no longer exists in mealsGroup.",
+        "required_correction": "BA should either (a) add an AC covering the case where the moved option was selected at origin — verifying the origin selection is also cleared, or (b) explicitly document 'selection semantics for the moved item: applyBridge already sets the target selection so cross-slot clearing is implicit when both slots are in the same mealsGroup' and verify this reasoning is correct. This is a medium-risk sequencing concern, not blocking.",
+        "blocks_proceed": false
+      }
+    ],
+    "root_cause_accuracy": {
+      "issues_1_4_mealsGroup_build": {
+        "status": "accurate",
+        "line_numbers_correct": true,
+        "verified": "Lines 2310-2322 confirmed: mealsGroup built exclusively from editorDay.slots[slotId].options[]. No synthesis of publishedDay.meals items. handleSidebarDrop at 2338-2351 confirmed: only sets editorSelections[key]=null, never writes to options[]."
+      },
+      "issue_5_applySelection": {
+        "status": "wrong_fix_target",
+        "line_numbers_correct": "Line range 2354-2381 is accurate but the function is dead code",
+        "verified": "applySelection defined at 2354, never called. All direction='candidates' drops go through window.applyEditorSelection = applyBridge (line 2898). See F1."
+      },
+      "issue_9_recomputeBudget": {
+        "status": "correct_symptom_wrong_field_name",
+        "line_numbers_correct": true,
+        "verified": "recomputeBudget at 2684-2703 confirmed: only stores entry.day_total, no other fields. BUT field is entry.breakdown not entry.budget in the API response. See F2."
+      },
+      "issue_2_label": {
+        "status": "diagnosis_inaccurate_fix_directionally_correct",
+        "line_numbers_correct": true,
+        "verified": "Line 2497 confirmed. mealsLabel = L('meals', lang) at line 2459, not _originSlotId. The rendered text is a meals-category label not a slot name. Fix prescription to replace with '餐厅'/'Restaurant' is still correct but must replace the whole conditional expression. See F3."
+      },
+      "preserveCurrentAccommodationOption_reference_pattern": {
+        "status": "accurate",
+        "line_numbers_correct": true,
+        "verified": "Lines 2799-2832 confirmed as an accurate reference pattern. Pattern reads from publishedDay.accommodation, synthesizes v2-shaped option, pushes via setEditorTripData."
+      }
+    },
+    "ac_completeness": {
+      "AC1": "testable and sufficient given F1 correction (fix will be in applyBridge/handleSidebarDrop)",
+      "AC2": "testable, but synthesis source needs clarification per F4",
+      "AC3": "testable once fix is in applyBridge per F1; edge case of selected-item move not covered",
+      "AC4": "needs revision — criterion says 'reflect entry.budget values' but field is entry.breakdown with different shape/keys. AC text must be updated after F2 correction",
+      "AC5": "testable — budget sequence guard verification still valid",
+      "AC6": "testable and sufficient once fix prescription is corrected per F3 (unconditional replacement)"
+    },
+    "scope_deferred_assessment": {
+      "issue_3_multiselect": "correctly_deferred — schema change required, out of scope",
+      "issue_6_mobile_bottom": "correctly_deferred — tab navigation functional, layout restructuring deferred",
+      "issue_7_timeline_candidates": "correctly_deferred — net-new feature, no slot mechanism in TimelineView",
+      "issue_8_transportation_drag": "correctly_deferred — static object, no slot mechanism, architectural decision needed"
+    },
+    "sequencing_risks": [
+      {
+        "risk": "Fix order: Issue 1+4 (handleSidebarDrop synthesis) should be implemented before Issue 5 (applyBridge removal) to avoid a scenario where synthesis adds an item and removal immediately removes it on the same interaction",
+        "severity": "low",
+        "mitigation": "The two handlers are different code paths (handleSidebarDrop = board->sidebar, applyBridge = sidebar->board) and do not interact on a single drag event. No ordering dependency."
+      },
+      {
+        "risk": "recomputeBudget dependency: the budgetSeqRef guard must remain in place for the new entry.breakdown merge. BA correctly calls this out.",
+        "severity": "low",
+        "mitigation": "Existing guard at line 2695 applies to both setLiveDayTotal and any new setEditorTripData call for budget, as long as both are inside the same .then() callback after the stale guard check."
+      }
+    ],
+    "out_of_scope_observations": [
+      {
+        "ts": "2026-05-26T06:30:00Z",
+        "file": "scripts/lib/server/save.py",
+        "line": "81-104",
+        "observation": "Server save handler copies cross-meal options into target slot but does not remove from origin slot. After the Issue 5 frontend fix removes the option from originSlot.options[] client-side, a page reload will re-fetch editorTripData from /api/trip which re-populates from server state — meaning the option will reappear in origin slot after reload. If AC3 is interpreted as requiring persistence across reload, a server-side change is also needed. Current AC3 only says 'absent from sidebar on next render' — no reload persistence clause. This is out of scope of the current BA cycle unless reload persistence is required.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "verdict": "FAIL — BA spec has two critical errors that would cause dev to implement no-ops: (1) Issue 5 technical hint targets dead code applySelection instead of active applyBridge; (2) Issue 9 references entry.budget which does not exist in the API response — the field is entry.breakdown with a different key schema. BA must revise before dev proceeds.",
+    "proceed_to_dev": false,
+    "required_ba_revisions": [
+      {
+        "id": "R1",
+        "priority": "blocking",
+        "issue": "Issue 5 fix target: replace all references to applySelection with applyBridge (lines 2869-2897) in Technical Hints and component_chain. Note that applySelection (lines 2354-2381) is dead code. Also address whether window.setEditorSelection bridge (lines 2834-2865) also needs the removal block.",
+        "affected_spec_sections": ["Technical Hints (Issue 5)", "component_chain entry for applySelection", "pre_existing_guards entry at line 2366"]
+      },
+      {
+        "id": "R2",
+        "priority": "blocking",
+        "issue": "Issue 9 API field: correct entry.budget -> entry.breakdown throughout. Specify the key mapping between breakdown keys (meals, activities, accommodation, transportation, intra_city) and UI budget keys (meals, attractions, entertainment, accommodation, shopping, cafe, transportation). Specify state mechanism for surfacing live category values to day.budget[r.k] at line 1385.",
+        "affected_spec_sections": ["Evidence section Issue 9 measured.value", "Technical Hints recomputeBudget fix", "AC4 acceptance criterion text", "context.measured.value"]
+      },
+      {
+        "id": "R3",
+        "priority": "recommended",
+        "issue": "Issue 2 label diagnosis: correct 'renders _originSlotId slot name via mealsLabel' to accurate description. Specify that the fix must unconditionally replace the whole expression at line 2497, not just the fallback branch.",
+        "affected_spec_sections": ["Evidence section Issue 2 measured", "Technical Hints meal label fix line 2497"]
+      },
+      {
+        "id": "R4",
+        "priority": "recommended",
+        "issue": "Issues 1+4 synthesis source: confirm that CandidatesSidebar receives publishedDay as a prop and that publishedDay.meals[srcSlotId] is the intended data source for synthesis within handleSidebarDrop.",
+        "affected_spec_sections": ["Technical Hints handleSidebarDrop fix", "Edge Cases synthesized option shape"]
+      }
+    ]
+  }
+}
