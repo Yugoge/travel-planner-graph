@@ -2494,7 +2494,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
                 </div>
                 <div style={{ padding: '8px 10px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                    <span>🍽️ {mealsLabel !== 'meals' ? mealsLabel : (lang === 'local' ? '餐饮' : 'Meals')}</span>
+                    <span>🍽️ {lang === 'local' ? '餐厅' : 'Restaurant'}</span>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#37352f', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
                     {getDisplayName(opt, lang)}
