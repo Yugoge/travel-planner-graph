@@ -2728,7 +2728,7 @@ function NotionTravelApp() {
       .then(r => r.json())
       .then(resp => {
         if (budgetSeqRef.current[dayNum] !== seq) return; // stale
-        const entry = resp.days && resp.days.find(d => d.day === dayNum);
+        const entry = resp.days && resp.days.find(d => Number(d.day) === Number(dayNum));
         if (entry && entry.day_total !== undefined) {
           // Budget total update is displayed via a separate state
           setLiveDayTotal(prev => ({ ...prev, [dayNum]: entry.day_total }));
