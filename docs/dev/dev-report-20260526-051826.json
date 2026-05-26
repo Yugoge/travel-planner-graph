@@ -1,0 +1,100 @@
+{
+  "request_id": "20260526-051826",
+  "task_id": "20260526-051826",
+  "timestamp": "2026-05-26T06:16:43Z",
+  "baseline_head_sha": "fa563a3befa8d18f6599629cdb407706d54ce5c6",
+  "baseline_dirty_snapshot": "",
+  "dev_report_path": "docs/dev/dev-report-20260526-051826.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "AC1/AC2 — handleSidebarDrop: synthesize deselected meal option back into editorTripData slots options[]",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Inside handleSidebarDrop (line ~2338), when direction=board and srcSlotId is a meal slot: check if the option exists only in publishedDay.meals (PLAN-format, never in editorDay.slots[slotId].options[]). If so, push a synthesized option object into editorTripData.days[n].slots[srcSlotId].options[] before calling setEditorSelections null. Mirrors preserveCurrentAccommodationOption pattern.",
+        "rationale": "CandidatesSidebar mealsGroup is built exclusively from editorDay.slots[slotId].options[]. Items present only in publishedDay.meals were never synthesized and therefore never reappeared in sidebar after board→sidebar drag."
+      },
+      {
+        "id": 2,
+        "description": "AC3 — applyBridge (~line 2921): move semantics — remove option from originSlotId.options[] after sidebar→board drag",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Added a second setEditorTripData call inside applyBridge after the cross-slot option-copy block. When originSlotId differs from targetSlotId, filters out the moved option_id from editorTripData.days[n].slots[originSlotId].options[]. Same-slot drags (originSlotId === targetSlotId) are unaffected.",
+        "rationale": "applyBridge previously used highlight-not-move semantics (M17b original spec). Users reported the sidebar card stays after board drop — expectation is move, not copy."
+      },
+      {
+        "id": 3,
+        "description": "AC4/AC5 — recomputeBudget (~line 2715): merge entry.breakdown into editorTripData.days[n].budget with key mapping",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "After the fetch('/api/budget/recompute') response, added a setEditorTripData call that maps: breakdown.meals→budget.meals, breakdown.activities→budget.attractions, breakdown.accommodation→budget.accommodation, breakdown.transportation→budget.transportation. Supports both scalar and object-with-amount breakdown shapes. Stale-seq guard applied before the merge.",
+        "rationale": "recomputeBudget previously discarded entry.breakdown entirely, persisting only day_total in liveDayTotal. Budget category rows remained stale after editor selections."
+      },
+      {
+        "id": 4,
+        "description": "AC6 — Meals candidate label (~line 2525): fixed to lang-conditional '餐厅' / 'Restaurant'",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Replaced conditional mealsLabel (which rendered the slot name, e.g. 'dinner'/'lunch'/'breakfast') with fixed `lang === 'local' ? '餐厅' : 'Restaurant'` in the candidate card header span.",
+        "rationale": "mealsLabel rendered the origin slot name, misleading users into thinking the option was restricted to that specific meal slot. Category label should be the cuisine type, not slot."
+      },
+      {
+        "id": 5,
+        "description": "AC22 — Remove required/late-arrival/missing/skipped badges from all card types (5 blocks removed)",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Removed 5 badge blocks: meals slot badge block, cafe activity badge block, attraction activity badge block, entertainment activity badge block, accommodation badge block. All were marked with AC22 comment.",
+        "rationale": "Badge UI was cluttering card view with status annotations that users found confusing and unnecessary in the editor context."
+      }
+    ],
+    "scripts_created": [],
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": [],
+        "note": "Template is consumed by html_generator.py to produce self-contained HTML bundles. Changes affect all generated trip HTML files. The beijing-lijiang-dali-20260418-100846 trip HTML was regenerated and deployed."
+      }
+    ],
+    "blast_radius_declarations": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — original design gaps, not regressions",
+      "why_issue_occurred": "CandidatesSidebar built from editorDay.slots[].options[] only; PLAN-format items in publishedDay.meals never bridged. recomputeBudget designed to update total display only. applyBridge designed for highlight-not-move per M17b spec.",
+      "how_fix_addresses_root": "AC1/AC2: synthesize publishedDay.meals items into options[] on board→sidebar drag. AC3: filter removed option from originSlot.options[] on sidebar→board drag. AC4/AC5: merge breakdown categories into editorTripData.budget after recompute. AC6: use fixed category label independent of slot name."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 71,
+      "lines_removed": 35,
+      "new_symbols_introduced": ["handleSidebarDrop (extended)", "recomputeBudget (extended)", "applyBridge (extended)"],
+      "minimum_possible_lines_estimate": 55,
+      "justification_for_overage": "Five distinct fixes across separate functions; badge removals account for 20 of the 35 deleted lines (5 blocks x ~4 lines each). No padding or unnecessary additions."
+    },
+    "fix_layer": "L2",
+    "scope_review_requested": false,
+    "self_verification": {
+      "build": "pass",
+      "smoke_check": "partial",
+      "notes": "Code-level verification confirmed: handleSidebarDrop at line 2338 contains AC1/AC2 synthesis block; applyBridge at line 2949 contains AC3 filter block; recomputeBudget at line 2737 contains AC4/AC5 breakdown merge; line 2528 shows lang-conditional '餐厅'/'Restaurant' label; AC22 badge blocks absent from deployed HTML (grep count=0). Playwright behavioral smoke check: AC6 confirmed (sidebar shows '🍽️ 餐厅' in Local mode, no 'dinner'/'lunch'/'breakfast' labels). AC22 confirmed (badge count=0 in DOM). AC1/AC2 partial: board dinner card became non-draggable after synthetic board→sidebar drag event (deselection triggered), but synthetic DragEvent cannot invoke React onDrop handlers directly — full behavioral proof requires interactive QA session. AC3 similarly not fully verifiable via synthetic events. AC4/AC5 require a live selection + /api/budget/recompute call to verify budget row update. Deployed HTML (05:51 2026-05-26) at /var/www/travel/beijing-lijiang-dali/2026-04-18/index.html contains all fix patterns (grep confirmed 13 occurrences of key fix identifiers). Live server at localhost:8094 confirmed serving updated content."
+    },
+    "qa_ready": true,
+    "qa_notes": "AC6 and AC22 are directly observable in the UI. AC1/AC2 require: select a dinner from board (so it is in editorSelections), then drag it back to sidebar — verify it reappears as a candidate card. AC3 requires: drag a candidate from sidebar to a board slot — verify the candidate card disappears from sidebar. AC4/AC5 require: make any selection change, wait for recomputeBudget fetch to complete, verify budget category rows update. Test URL: http://localhost:8094/trip/beijing-lijiang-dali-20260418-100846",
+    "permissions_to_add": [],
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    }
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA should test AC1/AC2 with an item that exists only in publishedDay.meals (not in editorDay.slots[].options[]) — flight-day meals (breakfast/lunch) are ideal candidates as they are PLAN-format only.",
+    "AC3 same-slot drag (originSlotId === targetSlotId) should be explicitly verified not to remove the option from sidebar.",
+    "AC4/AC5 budget merge should be tested with both scalar and object-with-amount breakdown shapes from /api/budget/recompute."
+  ]
+}
