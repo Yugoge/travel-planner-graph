@@ -2923,6 +2923,20 @@ function NotionTravelApp() {
           return updated;
         });
       }
+      // AC3: move semantics — remove option from origin slot options[] so sidebar card disappears
+      if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          const updated = JSON.parse(JSON.stringify(prev));
+          const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
+          if (!dayEntry || !dayEntry.slots) return prev;
+          const srcSlot = dayEntry.slots[originSlotId];
+          if (srcSlot && srcSlot.options) {
+            srcSlot.options = srcSlot.options.filter(o => o.option_id !== optionId);
+          }
+          return updated;
+        });
+      }
       saveMutations(dayNum, [{ type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }]);
       setPendingSelection(null);
     };
