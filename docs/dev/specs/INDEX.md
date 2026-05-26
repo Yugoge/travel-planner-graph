@@ -1,6 +1,6 @@
 # specs
 
-*Last updated: 2026-05-26T05:45:12Z*
+*Last updated: 2026-05-26T20:32:34Z*
 **Total entries**: 7
 **Convention**: kebab
 
