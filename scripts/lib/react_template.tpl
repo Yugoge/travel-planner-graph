@@ -2924,26 +2924,6 @@ function NotionTravelApp() {
       if (targetSlotId === 'accommodation') preserveCurrentAccommodationOption();
       const key = dayNum + ':' + targetSlotId;
       setEditorSelections(prev => ({ ...prev, [key]: optionId }));
-      if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
-        setEditorTripData(prev => {
-          if (!prev || !prev.days) return prev;
-          const updated = JSON.parse(JSON.stringify(prev));
-          const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
-          if (!dayEntry || !dayEntry.slots) return prev;
-          const tgtSlot = dayEntry.slots[targetSlotId];
-          if (!tgtSlot) return prev;
-          if (!tgtSlot.options) tgtSlot.options = [];
-          const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId);
-          if (!alreadyThere) {
-            const srcSlot = dayEntry.slots[originSlotId];
-            if (srcSlot && srcSlot.options) {
-              const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
-              if (srcOpt) tgtSlot.options.push({ ...srcOpt });
-            }
-          }
-          return updated;
-        });
-      }
       // AC3: move semantics — remove option from origin slot options[] so sidebar card disappears
       if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
         setEditorTripData(prev => {
