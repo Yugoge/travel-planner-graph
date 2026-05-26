@@ -1,0 +1,320 @@
+{
+  "request_id": "20260526-051826",
+  "task_id": "20260526-051826",
+  "timestamp": "2026-05-26T05:18:26Z",
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "medium: touches 4 bugs in a single 3330-line React template; blast radius bounded to editorTripData state mutations and budget display; no auth/infra/pipeline surface.",
+  "test_writer_expected": true,
+  "requirement": {
+    "original": "1. 从行程中移除餐厅后（拖到右侧），右侧候选列表中看不到该餐厅了\n2. 餐厅类型不能锁定——餐厅就是餐厅，不区分早/午/晚\n3. 同一顿晚餐可以有多个备选餐厅（options[]）\n4. 移除飞机餐（飞行日）后，右侧候选列表不更新了\n5. 从右侧拖到左侧后，右侧的卡片还在——应该是移动，不是复制\n6. 右侧面板不支持移动端——移动端应该移到底部\n7. 拖放应该影响时间线右侧：时间线右侧应只显示已在面板中选中的项，用户拖到时间线来排定时间\n8. 交通卡片不能拖拽\n9. 修改计划后预算不更新",
+    "clarified": "Fix four confirmed bugs in react_template.tpl: (1+4) items removed from board vanish from sidebar instead of reappearing unselected; (5) sidebar→board drag should remove card from sidebar (move not copy); (9) per-category budget breakdown goes stale after plan changes. Also fix cosmetic label (2): meal cards should show neutral 'Restaurant' label not slot-specific label. Issues 3/6/7/8 are deferred.",
+    "what": "Bug fixes in CandidatesSidebar visibility, move semantics, and budget category update logic",
+    "why": "Four user-reported functional regressions degrade the core trip editing workflow — users cannot see candidates they removed, cannot tell moved items are gone from sidebar, and see stale budget figures.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "handleSidebarDrop — synthesize removed meal back into editorTripData.slots.options[]",
+        "applySelection — remove option from origin slot options[] on 'candidates' direction drag",
+        "recomputeBudget — merge entry.budget into editorTripData.days[n].budget",
+        "CandidatesSidebar meal card type label — replace _originSlotId label with fixed 'Restaurant'"
+      ],
+      "excluded": [
+        "Multi-select per slot (Issue 3) — schema change required",
+        "Mobile bottom placement (Issue 6) — tab navigation already exists",
+        "Timeline candidates panel (Issue 7) — net new feature",
+        "Transportation drag (Issue 8) — no slot mechanism exists"
+      ]
+    },
+    "success_criteria": [
+      "After board→sidebar drag, removed meal item visible in sidebar as unselected card",
+      "After sidebar→board drag, card absent from sidebar",
+      "After any plan change, per-category budget rows display recomputed values from API",
+      "Meal sidebar card type label reads 'Restaurant' (en) / '餐厅' (zh)"
+    ],
+    "constraints": [
+      "Single-file template; no build step — changes are in JSX within react_template.tpl",
+      "Fix must use setEditorTripData for state mutations — no parallel state",
+      "Budget sequence guard (budgetSeqRef) must remain in effect for new budget merge logic",
+      "Synthesized option shape must mirror preserveCurrentAccommodationOption pattern (lines 2799-2832)"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl:2338-2351 (handleSidebarDrop)",
+      "scripts/lib/react_template.tpl:2354-2381 (applySelection)",
+      "scripts/lib/react_template.tpl:2684-2703 (recomputeBudget)",
+      "scripts/lib/react_template.tpl:2799-2832 (preserveCurrentAccommodationOption — reference pattern)",
+      "scripts/lib/react_template.tpl:2310-2322 (mealsGroup build)",
+      "scripts/lib/react_template.tpl:2497 (meal card type label)"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/react_template.tpl:2222-2227 (_isCompatible — unchanged but must remain compatible)",
+      "scripts/lib/react_template.tpl:1375-1394 (budget display — reads effectiveDay.budget; fixed by propagating entry.budget into editorTripData)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/react_template.tpl:1318-1365 (transportation rendering — no slot mechanism)",
+      "scripts/lib/react_template.tpl:1484+ (TimelineView — no candidates sidebar)"
+    ]
+  },
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-26T05:18:26Z",
+      "task_id": "20260526-051826",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "2310",
+      "observation": "mealsGroup dedup uses _originSlotId tag but this tag is never used to enforce slot restriction in _isCompatible — label is cosmetic only; no filtering bug in drag logic",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-26T05:18:26Z",
+      "task_id": "20260526-051826",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "1484",
+      "observation": "TimelineView receives no editorTripData prop and has no candidates-sidebar rendering — adding a timeline candidates panel is a net-new feature beyond this cycle's scope (Issue 7)",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-26T05:18:26Z",
+      "task_id": "20260526-051826",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "1318",
+      "observation": "Transportation rendering has no draggable attribute or slot mechanism; making it draggable requires an architectural decision about what drag semantics mean for a static plan field (Issue 8)",
+      "in_user_path": false,
+      "security_relevant": false
+    },
+    {
+      "ts": "2026-05-26T05:18:26Z",
+      "task_id": "20260526-051826",
+      "file": "scripts/lib/react_template.tpl",
+      "line": "null",
+      "observation": "Multi-select per slot (Issue 3) requires changing selected_option_id from scalar to array — affects mergeEditorSelectionsIntoPublishedDay, saveMutations schema, and API contract; deferred as architectural",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
+  "root_cause_analysis": {
+    "symptom": "Four user-reported bugs: (1+4) removed board items disappear from sidebar; (5) sidebar card stays after board drop; (9) budget categories stale after edits; (2) meal type label implies slot restriction",
+    "root_cause": "Issues 1+4: CandidatesSidebar.mealsGroup is built exclusively from editorDay.slots[slotId].options[] — items present only in publishedDay.meals are never synthesized into options[] and therefore never appear in sidebar, before or after drag. Issue 5: applySelection never removes option from editorTripData.slots[originSlotId].options[] — by M17b design, selection is highlighted not moved. Issue 9: recomputeBudget discards entry.budget from API response; only day_total is persisted; effectiveDay.budget traces to static publishedDay.budget. Issue 2: mealsLabel at line 2497 renders _originSlotId slot name, misleading user into thinking option is slot-restricted.",
+    "root_cause_commit": "N/A — not a regression; original design gaps",
+    "why_introduced": "CandidatesSidebar was designed to show only v2-format options from editorTripData; PLAN-format items in publishedDay were not bridged. recomputeBudget was designed to update the total display only. M17b spec specified highlight-not-move for sidebar selections.",
+    "why_problematic": "Users expect removed items to be recoverable from the sidebar; they expect a drag-to-board to be a move; they expect budget figures to refresh after edits.",
+    "timeline": "Original implementation; no recent regression identified.",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [],
+    "diagnosis_completeness": "incomplete (inferred only — no Playwright runtime observation performed; dev must verify against running instance)",
+    "complaint_location_keywords": ["sidebar", "candidates", "budget", "drag", "remove", "airplane meal", "flight day", "restaurant", "type"],
+    "localization_evidence": "Source reading of react_template.tpl lines 2310-2322 (mealsGroup), 2338-2351 (handleSidebarDrop), 2354-2381 (applySelection), 2684-2703 (recomputeBudget), 1375-1394 (budget display), 2799-2832 (preserveCurrentAccommodationOption reference pattern), 2497 (meal label)",
+    "located_source": "scripts/lib/react_template.tpl (multiple line ranges — see component_chain)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "non-regression bugs — original design gaps, not introduced by a specific commit",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "After removing a restaurant from board (drag to sidebar), it disappears from sidebar candidates panel — not visible",
+      "acceptance_criterion": "After board→sidebar drag, the removed meal item is visible in sidebar as unselected card"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "After removing airplane meal (flight day), sidebar list no longer updates — item completely gone",
+      "acceptance_criterion": "After board→sidebar drag of a flight-day meal, the item reappears in sidebar"
+    },
+    {
+      "id": "R3",
+      "source_phrase": "After dragging from right sidebar to left board, card STILL shows in right sidebar — should move (not copy)",
+      "acceptance_criterion": "After sidebar→board drag, the card is absent from sidebar on next render"
+    },
+    {
+      "id": "R4",
+      "source_phrase": "After changing the plan, budget doesn't update",
+      "acceptance_criterion": "Per-category budget rows reflect entry.budget from /api/budget/recompute after any plan change"
+    },
+    {
+      "id": "R5",
+      "source_phrase": "Restaurant type cannot be locked — a restaurant is a restaurant, any restaurant should work for any meal slot",
+      "acceptance_criterion": "Meal sidebar cards show neutral 'Restaurant' (en) / '餐厅' (zh) type label"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2310-2322",
+      "role": "mealsGroup build — iterates breakfast/lunch/dinner options, deduped by option_id",
+      "imports_from": ["editorDay.slots[slotId].options (from editorTripData state)"],
+      "evidence": "Read lines 2310-2322 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2338-2351",
+      "role": "handleSidebarDrop — sets editorSelections[key]=null on board→sidebar drag; does NOT add item back to options[]",
+      "imports_from": ["setEditorSelections", "saveMutations"],
+      "evidence": "Read lines 2338-2351 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2354-2381",
+      "role": "applySelection — sets editorSelections[key]=optionId; cross-meal copies option to target slot; does NOT remove from origin slot",
+      "imports_from": ["setEditorTripData", "setEditorSelections", "saveMutations"],
+      "evidence": "Read lines 2354-2381 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2684-2703",
+      "role": "recomputeBudget — fetches /api/budget/recompute; stores only entry.day_total into liveDayTotal; discards entry.budget",
+      "imports_from": ["setLiveDayTotal", "budgetSeqRef"],
+      "evidence": "Read lines 2684-2703 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2799-2832",
+      "role": "preserveCurrentAccommodationOption — reference pattern: synthesizes PLAN-default option into editorTripData.accommodation.options[] via setEditorTripData",
+      "imports_from": ["setEditorTripData", "publishedDay", "editorSelections"],
+      "evidence": "Read lines 2799-2832 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "1375-1394",
+      "role": "budget display — reads day.budget[r.k] from effectiveDay.budget; traces to publishedDay.budget (static, never updated by recomputeBudget)",
+      "imports_from": ["effectiveDay (mergeEditorSelectionsIntoPublishedDay result)"],
+      "evidence": "Read lines 1375-1394 directly in session",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2497",
+      "role": "meal card type label — renders mealsLabel which evaluates to _originSlotId slot name",
+      "imports_from": ["mealsLabel", "lang"],
+      "evidence": "Read lines 2490-2509 directly in session",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2695,
+      "type": "if",
+      "code_snippet": "if (budgetSeqRef.current[dayNum] !== seq) return;",
+      "purpose": "Prevents stale recomputeBudget responses from overwriting newer results",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2366,
+      "type": "if",
+      "code_snippet": "const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId); if (!alreadyThere && originSlotId && originSlotId !== 'meals-any') {",
+      "purpose": "Prevents cross-meal duplicate copy into target slot options[]",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2809,
+      "type": "if",
+      "code_snippet": "if (options.some(o => o.option_id === selectedAccId)) return;",
+      "purpose": "Prevents duplicate synthesis of accommodation option into options[]",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- agent-prompt edit; cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, (4) screenshot evidence, or (5) any change to user-triggered code paths. This is a BA analysis cycle only. Dev cycle will require browser-level QA."
+  },
+  "evidence": {
+    "observed": "Issues 1+4: items removed from board vanish from sidebar; Issue 5: sidebar card stays after drag to board; Issue 9: budget doesn't update after plan changes; Issue 2: restaurant type label implies slot restriction",
+    "measured": {
+      "value": "mealsGroup sourced from editorDay.slots[slotId].options[] only (lines 2310-2322); recomputeBudget stores only entry.day_total (lines 2697-2699); applySelection never removes from origin options[] (lines 2354-2381); label at line 2497 renders _originSlotId",
+      "location": "scripts/lib/react_template.tpl:2310-2322,2354-2381,2684-2703,2497"
+    },
+    "expected": {
+      "value": "Removed items synthesized back into options[]; moved items removed from sidebar options[]; entry.budget merged into editorTripData; label fixed to 'Restaurant'",
+      "source": "User requirement + preserveCurrentAccommodationOption reference pattern (lines 2799-2832)"
+    },
+    "gap": "No synthesis of PLAN-default meals into editorDay.slots.options[]; no removal of moved option from sidebar options[]; budget API response entry.budget discarded; label shows slot name instead of neutral type"
+  },
+  "scope_expansion": {
+    "search_pattern": "mealsGroup|handleSidebarDrop|recomputeBudget|preserveCurrentAccommodationOption|_originSlotId|mealsLabel|isMealSelected",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["scripts/lib/react_template.tpl"],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:2310-2322 (mealsGroup build)",
+      "scripts/lib/react_template.tpl:2325-2332 (isMealSelected)",
+      "scripts/lib/react_template.tpl:2338-2351 (handleSidebarDrop)",
+      "scripts/lib/react_template.tpl:2354-2381 (applySelection)",
+      "scripts/lib/react_template.tpl:2684-2703 (recomputeBudget)",
+      "scripts/lib/react_template.tpl:2799-2832 (preserveCurrentAccommodationOption)",
+      "scripts/lib/react_template.tpl:1375-1394 (budget display)",
+      "scripts/lib/react_template.tpl:2497 (meal card type label)",
+      "scripts/lib/react_template.tpl:2320 (_originSlotId assignment)"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Source code of react_template.tpl read directly in this session",
+    "url_or_location": "/root/travel-planner/scripts/lib/react_template.tpl",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on these specific bugs"
+    }
+  },
+  "context": {
+    "codebase_state": "react_template.tpl 3330 lines; single-file React JSX template; editorTripData fetched once at load via v2 API; editorSelections is local React state dict",
+    "recent_commits": "fa563a3b fix(web): CandidatesSidebar — DnD persistence, board-equivalent cards, lang-conditional labels",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Four targeted surgical changes within react_template.tpl: (1) handleSidebarDrop gains a 'preserveMealOption' helper (mirrors preserveCurrentAccommodationOption) that synthesizes the deselected meal back into editorTripData.slots[srcSlotId].options[]; (2) applySelection gains a removal block that removes the option from origin slot options[] when direction is 'candidates'; (3) recomputeBudget extends its .then handler to merge entry.budget into editorTripData.days[n].budget via setEditorTripData, guarded by budgetSeqRef; (4) line 2497 label replaced with fixed 'Restaurant'/'餐厅'.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA verifies via browser: (a) drag a plan-default meal from board to sidebar and confirm it reappears unselected; (b) drag a sidebar candidate to board and confirm it disappears from sidebar; (c) make any selection and confirm budget category rows update; (d) confirm meal card labels in sidebar show 'Restaurant' not slot names."
+  },
+  "acceptance_criteria_path": null,
+  "blast_radius_map_path": null,
+  "codex_consult": {
+    "invoked": true,
+    "status": "failed_parse",
+    "feedback_summary": "Codex was invoked with the BA draft analysis. The Codex agent read source files extensively (1.2MB output) but did not produce the requested structured CODEX_FEEDBACK list format. Self-review substituted per graceful fallback rule.",
+    "findings": [],
+    "feedback_incorporated": "self-review substituted — self-review questions addressed: (1) Is scope minimal? Yes — 4 surgical changes to one function/handler each, no new components. (2) Any out-of-path fix dressed as in-scope? No — Issues 3/6/7/8 explicitly deferred. (3) Over-engineering risk? No — budget merge is a 4-line addition; meal synthesis mirrors existing pattern verbatim. (4) Greedy grep widening? No — all affected_files bounded to react_template.tpl. (5) /close debate readiness? The four fixes are independently verifiable — none require each other to pass AC."
+  },
+  "research_findings": {
+    "searched": false,
+    "reason": "Straightforward bug fixes with clear root causes identified from source reading — no architectural pattern research needed"
+  },
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  }
+}

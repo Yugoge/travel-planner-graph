@@ -1,7 +1,7 @@
 # dev
 
-*Last updated: 2026-05-25T10:01:16Z*
-**Total entries**: 464
+*Last updated: 2026-05-26T05:31:31Z*
+**Total entries**: 471
 **Convention**: kebab
 
 ## Tree
@@ -134,6 +134,9 @@ dev/
 ├── `close-report-20260524-180339.md` - Close Report: 20260524-180339
 ├── `close-report-20260524-202700.md` - Close Report: 20260524-202700
 ├── `close-report-20260525-085331.md` - Close Debate Report (FORCED)
+├── `close-report-20260525-100038.md` - Close Debate Report (FORCED)
+├── `close-report-20260525-203756.md` - Close Debate Report (FORCED)
+├── `close-report-20260525-212348.md` - Close Debate Report (FORCED)
 ├── `commit-cycle-report-20260509-114002.json` - json config
 ├── `commit-manifest-20260509-114002-cycle4.json` - json config
 ├── `commit-manifest-20260509-114002.json` - json config
@@ -219,6 +222,7 @@ dev/
 ├── `context-20260524-132346.json` - json config
 ├── `context-20260524-180339.json` - json config
 ├── `context-20260524-202700.json` - json config
+├── `context-20260526-051826.json` - json config
 ├── `context-xhs-login-fix.md` - Context Document: XHS/RedNote Login Fix
 ├── `cycle-20260505-231740.md` - Cycle Artifact: 20260505-231740
 ├── `dev-report-20260320-213000.json` - json config
@@ -311,6 +315,8 @@ dev/
 ├── `dev-report-20260525-085331.json` - json config
 ├── `dev-report-20260525-100038.json` - json config
 ├── `dev-report-20260525-180000.json` - json config
+├── `dev-report-20260525-203756.json` - json config
+├── `dev-report-20260525-212348.json` - json config
 ├── `prompt-inspector-report-20260505-061047.json` - json config
 ├── `prompt-inspector-report-20260505-123425.json` - json config
 ├── `prompt-inspector-report-20260505-124619.json` - json config
@@ -470,7 +476,8 @@ dev/
 ├── `user-requirement-dev-20260522-082259.md` - No description
 ├── `user-requirement-dev-20260524-132346.md` - No description
 ├── `user-requirement-dev-20260524-180339.md` - No description
-└── `user-requirement-dev-20260524-202700.md` - No description
+├── `user-requirement-dev-20260524-202700.md` - No description
+└── `user-requirement-dev-20260526-051826.md` - No description
 ```
 
 ---
