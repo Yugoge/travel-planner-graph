@@ -3019,23 +3019,16 @@ function NotionTravelApp() {
         updates[dayNum + ':' + originSlotId] = optionId;
       }
       setEditorSelections(prev => ({ ...prev, ...updates }));
-      // AC20: if cross-meal drop, copy option object into editorTripData so mergeEditorSelectionsIntoPublishedDay can find it in the target slot
-      if (originSlotId && editorDay && editorDay.slots) {
+      // AC3: move semantics — remove option from origin slot options[] so sidebar card disappears
+      if (originSlotId && originSlotId !== slotId && editorDay && editorDay.slots) {
         setEditorTripData(prev => {
           if (!prev || !prev.days) return prev;
           const updated = JSON.parse(JSON.stringify(prev));
           const dayEntry = updated.days && updated.days.find(d => Number(d.day) === Number(dayNum));
           if (!dayEntry || !dayEntry.slots) return prev;
-          const tgtSlot = dayEntry.slots[slotId];
-          if (!tgtSlot) return prev;
-          if (!tgtSlot.options) tgtSlot.options = [];
-          const alreadyThere = tgtSlot.options.some(o => o.option_id === optionId);
-          if (!alreadyThere) {
-            const srcSlot = dayEntry.slots[originSlotId];
-            if (srcSlot && srcSlot.options) {
-              const srcOpt = srcSlot.options.find(o => o.option_id === optionId);
-              if (srcOpt) tgtSlot.options.push({ ...srcOpt });
-            }
+          const srcSlot = dayEntry.slots[originSlotId];
+          if (srcSlot && srcSlot.options) {
+            srcSlot.options = srcSlot.options.filter(o => o.option_id !== optionId);
           }
           return updated;
         });
