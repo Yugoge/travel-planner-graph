@@ -2038,6 +2038,9 @@ function _matchesOption(card, opt) {
 function mergeEditorSelectionsIntoPublishedDay(publishedDay, editorDay, editorSelections, editorTripData) {
   if (!publishedDay || !editorDay) return publishedDay;
   const day = JSON.parse(JSON.stringify(publishedDay)); // deep clone
+  if (editorDay && editorDay.budget) {
+    day.budget = Object.assign({}, day.budget, editorDay.budget);
+  }
   editorSelections = editorSelections || {};
 
   // ===== Accommodation (R1c): treat as object (NOT array). =====
