@@ -21,35 +21,59 @@
       },
       {
         "id": 2,
-        "description": "AC3 — applyBridge (~line 2921): move semantics — remove option from originSlotId.options[] after sidebar→board drag",
+        "description": "AC3 R2 — bridge (window.setEditorSelection DnD path): true move semantics replacing R1 filter-only",
         "type": "code_edit",
         "files_modified": ["scripts/lib/react_template.tpl"],
-        "changes": "Added a second setEditorTripData call inside applyBridge after the cross-slot option-copy block. When originSlotId differs from targetSlotId, filters out the moved option_id from editorTripData.days[n].slots[originSlotId].options[]. Same-slot drags (originSlotId === targetSlotId) are unaffected.",
-        "rationale": "applyBridge previously used highlight-not-move semantics (M17b original spec). Users reported the sidebar card stays after board drop — expectation is move, not copy."
+        "changes": "Replaced R1 filter-only block in bridge (~line 2899) with true move semantics: capture srcOpt = srcSlot.options.find(o => o.option_id === optionId), ensure tgtSlot.options[] exists, push {...srcOpt} if absent, then filter from srcSlot. Codex Finding 1 fix: findSelectedOption needs the option in targetSlot.options[] to render board card correctly.",
+        "rationale": "R1 filter-only removed from origin but didn't add to target. On next re-render, findSelectedOption couldn't locate the option in targetSlot.options[], causing the board card to disappear."
       },
       {
         "id": 3,
-        "description": "AC4/AC5 — recomputeBudget (~line 2715): merge entry.breakdown into editorTripData.days[n].budget with key mapping",
+        "description": "AC3 R2 — applyBridge (window.applyEditorSelection tap-to-select path): same true move semantics",
         "type": "code_edit",
         "files_modified": ["scripts/lib/react_template.tpl"],
-        "changes": "After the fetch('/api/budget/recompute') response, added a setEditorTripData call that maps: breakdown.meals→budget.meals, breakdown.activities→budget.attractions, breakdown.accommodation→budget.accommodation, breakdown.transportation→budget.transportation. Supports both scalar and object-with-amount breakdown shapes. Stale-seq guard applied before the merge.",
-        "rationale": "recomputeBudget previously discarded entry.breakdown entirely, persisting only day_total in liveDayTotal. Budget category rows remained stale after editor selections."
+        "changes": "Same true move semantics applied to applyBridge (~line 2924): capture srcOpt before filtering, push to targetSlotId.options[] if absent, then filter from originSlotId.options[].",
+        "rationale": "applyBridge is the tap-to-select path (AC14). Both selection paths must have identical move semantics."
       },
       {
         "id": 4,
-        "description": "AC6 — Meals candidate label (~line 2525): fixed to lang-conditional '餐厅' / 'Restaurant'",
+        "description": "AC3 R1 — CandidatesSidebar mealsGroup.map(): hide cards whose option_id is currently selected",
         "type": "code_edit",
         "files_modified": ["scripts/lib/react_template.tpl"],
-        "changes": "Replaced conditional mealsLabel (which rendered the slot name, e.g. 'dinner'/'lunch'/'breakfast') with fixed `lang === 'local' ? '餐厅' : 'Restaurant'` in the candidate card header span.",
-        "rationale": "mealsLabel rendered the origin slot name, misleading users into thinking the option was restricted to that specific meal slot. Category label should be the cuisine type, not slot."
+        "changes": "Added `if (isSelected) return null;` at top of mealsGroup.map() callback (~line 2499). Hides sidebar meal cards whose option_id is in editorSelections for any meal slot.",
+        "rationale": "Even after move semantics, a selected option can still appear in mealsGroup if it exists in a different meal slot's options[] (e.g. the dinner default option lives in dinner.options[] even when also selected as lunch). The isSelected guard definitively hides already-on-board cards."
       },
       {
         "id": 5,
+        "description": "AC4 R1 — mergeEditorSelectionsIntoPublishedDay: propagate editorDay.budget into rendered day",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Added 3-line block: `if (editorDay && editorDay.budget) { day.budget = Object.assign({}, day.budget, editorDay.budget); }` after deep-clone in mergeEditorSelectionsIntoPublishedDay (~line 2042).",
+        "rationale": "mergeEditorSelectionsIntoPublishedDay deep-cloned publishedDay but never propagated editorDay.budget, so budget rows always showed static published values."
+      },
+      {
+        "id": 6,
+        "description": "AC4 R1 — recomputeBudget: map entry.breakdown categories onto editorTripData.days[n].budget; Finding 5 Number() type fix",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "After fetch('/api/budget/recompute') response, added setEditorTripData call mapping breakdown categories to budget fields. Changed `d.day === dayNum` to `Number(d.day) === Number(dayNum)` in resp.days.find (codex Finding 5).",
+        "rationale": "recomputeBudget discarded entry.breakdown, persisting only day_total. Strict === could miss day match if types differ (string vs number)."
+      },
+      {
+        "id": 7,
+        "description": "AC6 — Meals candidate label: fixed to lang-conditional '餐厅' / 'Restaurant'",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Replaced mealsLabel (slot name) with fixed `lang === 'local' ? '餐厅' : 'Restaurant'` in candidate card header span.",
+        "rationale": "mealsLabel rendered the origin slot name, misleading users."
+      },
+      {
+        "id": 8,
         "description": "AC22 — Remove required/late-arrival/missing/skipped badges from all card types (5 blocks removed)",
         "type": "code_edit",
         "files_modified": ["scripts/lib/react_template.tpl"],
-        "changes": "Removed 5 badge blocks: meals slot badge block, cafe activity badge block, attraction activity badge block, entertainment activity badge block, accommodation badge block. All were marked with AC22 comment.",
-        "rationale": "Badge UI was cluttering card view with status annotations that users found confusing and unnecessary in the editor context."
+        "changes": "Removed 5 badge blocks: meals, cafe, attraction, entertainment, accommodation badge blocks.",
+        "rationale": "Badge UI was cluttering card view."
       }
     ],
     "scripts_created": [],
