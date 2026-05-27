@@ -2953,6 +2953,17 @@ function NotionTravelApp() {
       if (targetSlotId === 'accommodation') preserveCurrentAccommodationOption();
       const key = dayNum + ':' + targetSlotId;
       setEditorSelections(prev => ({ ...prev, [key]: optionId }));
+      // R2: clear skipped flag so gated pre-arrival slots become droppable after re-select
+      if (MEAL_SLOTS && MEAL_SLOTS.has(targetSlotId) && setEditorTripData) {
+        setEditorTripData(prev => {
+          if (!prev || !prev.days) return prev;
+          const updated = JSON.parse(JSON.stringify(prev));
+          const dayEntry = updated.days.find(d => Number(d.day) === Number(dayNum));
+          if (!dayEntry || !dayEntry.slots || !dayEntry.slots[targetSlotId]) return prev;
+          dayEntry.slots[targetSlotId].skipped = false;
+          return updated;
+        });
+      }
       // AC3: true move semantics — copy option to target slot options[] then remove from origin
       if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {
         setEditorTripData(prev => {
