@@ -2363,6 +2363,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
             if (!dayEntry || !dayEntry.slots) return prev;
             if (!dayEntry.slots[srcSlotId]) dayEntry.slots[srcSlotId] = { options: [] };
             if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];
+            dayEntry.slots[srcSlotId].skipped = false;
             const already = dayEntry.slots[srcSlotId].options.some(o => o.option_id === optionId);
             if (!already) {
               let srcOpt = null;
