@@ -1,0 +1,230 @@
+{
+  "request_id": "20260527-062755",
+  "task_id": "20260527-062755",
+  "timestamp": "2026-05-27T06:27:55Z",
+  "requirement": {
+    "original": "早餐午餐移除默认之后就无法添加新的了",
+    "clarified": "After dragging a default breakfast or lunch board card to the sidebar (deselect), the slot's skipped flag in editorTripData is never cleared. isGated stays true, keeping data-droppable=false permanently. The user cannot drag any new candidate back into that slot.",
+    "what": "Clear edSlot.skipped = false in handleSidebarDrop and applyBridge so gated pre-arrival meal slots become re-droppable after deselect",
+    "why": "Day 1 breakfast/lunch are seeded server-side with skipped: true (pre-arrival placeholders). The client never clears that flag after the user removes the default card, permanently blocking re-adds.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "handleSidebarDrop setEditorTripData updater — add skipped = false after slot is guaranteed to exist",
+        "applyBridge — add unconditional setEditorTripData call to clear skipped on MEAL_SLOTS target slot"
+      ],
+      "excluded": [
+        "Cafe, activity, entertainment isGated logic (no skipped pre-seeding for those slot types)",
+        "Lines 3213, 3280 (sidebar/timeline filter logic)",
+        "late_arrival_placeholder — must not be touched"
+      ]
+    },
+    "success_criteria": [
+      "After board-to-sidebar drag on a skipped meal slot, editorTripData.days[N].slots[slotId].skipped is false",
+      "isGated evaluates to false on next render; data-droppable becomes 'true'",
+      "applyBridge clears skipped on any MEAL_SLOTS target regardless of originSlotId value",
+      "late_arrival_placeholder is not mutated by either fix",
+      "Dinner slot drag-and-drop behavior is unchanged (no regression)"
+    ],
+    "constraints": [
+      "Only scripts/lib/react_template.tpl is modified",
+      "Do NOT clear late_arrival_placeholder",
+      "MEAL_SLOTS constant (line 2227) is the correct scope guard for the applyBridge fix"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": [
+      "scripts/lib/react_template.tpl:2359-2402 (handleSidebarDrop setEditorTripData updater)",
+      "scripts/lib/react_template.tpl:2949-2979 (applyBridge)"
+    ],
+    "path_dependent_shared_infra": [
+      "scripts/lib/react_template.tpl:913 (isGated — reads edSlot.skipped, gated by R1/R2 fix)",
+      "scripts/lib/react_template.tpl:2227 (MEAL_SLOTS constant — scope guard for R2 fix)"
+    ],
+    "out_of_path_observed_but_not_touched": [
+      "scripts/lib/react_template.tpl:990 (cafe isGated — same pattern, no skipped pre-seeding)",
+      "scripts/lib/react_template.tpl:1068 (activity isGated — same pattern, no skipped pre-seeding)",
+      "scripts/lib/react_template.tpl:1146 (entertainment isGated — same pattern, no skipped pre-seeding)",
+      "scripts/lib/react_template.tpl:3213 (sidebar filter: if (slot.skipped) return false)",
+      "scripts/lib/react_template.tpl:3280 (timeline filter: if (slot.skipped) return true)"
+    ]
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "After dragging default breakfast/lunch board card to sidebar, the slot stays permanently gated (data-droppable=false). All subsequent drag attempts are rejected via _flashReject.",
+    "root_cause": "Day 1 breakfast/lunch are seeded with skipped: true by the server. handleSidebarDrop's setEditorTripData updater populates options[] but never writes skipped = false. applyBridge's setEditorTripData is only invoked when originSlotId is non-null and differs from targetSlotId — this guard excludes the sidebar-to-board path where originSlotId is null.",
+    "root_cause_commit": "N/A — not a regression; pre-arrival skipped flag was always present but the deselect+re-add flow was not previously supported",
+    "why_introduced": "The skipped flag was added to handle pre-arrival placeholder display. No clearing code was added because the add-back flow was not originally in scope.",
+    "why_problematic": "isGated (line 913) checks edSlot.skipped unconditionally. Once skipped is true it stays true, so the slot can never accept a drop even after the user explicitly removes the default item.",
+    "timeline": "Present since Day 1 pre-arrival handling was introduced; surfaced only when user attempted to add back after removing",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "inferred",
+    "observations": [
+      "handleSidebarDrop setEditorTripData updater at lines 2359-2402 confirmed by Read tool: no assignment to .skipped anywhere in the updater body (inferred)",
+      "applyBridge at lines 2949-2979 confirmed by Read tool: setEditorTripData block is under guard 'if (originSlotId && originSlotId !== targetSlotId ...)' at line 2956; sidebar-originating drops pass null as originSlotId so the block is skipped (inferred)",
+      "isGated at line 913 confirmed by Read tool: 'edSlot.skipped || edSlot.late_arrival_placeholder' — no other path clears skipped in the codebase (grep result: only lines 3213, 3280 read skipped, neither writes it) (inferred)"
+    ],
+    "diagnosis_completeness": "incomplete (inferred only — browser runtime not measured)",
+    "complaint_location_keywords": ["早餐", "午餐", "breakfast", "lunch", "移除", "remove", "添加", "add"],
+    "localization_evidence": "Source-reading confirmed: handleSidebarDrop synthesis block (lines 2355-2402) and applyBridge (lines 2949-2979) are the only two write paths for editorTripData meal slot state. Neither writes skipped = false.",
+    "located_source": "scripts/lib/react_template.tpl:2364 (handleSidebarDrop), scripts/lib/react_template.tpl:2954 (applyBridge)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": null,
+      "bisect_blocked": "not a regression bug; skipped flag always present; git bisect not applicable",
+      "reproducibility_verified": false
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {
+      "id": "R1",
+      "source_phrase": "早餐午餐移除默认之后就无法添加新的了",
+      "acceptance_criterion": "After board-to-sidebar drag, editorTripData.days[N].slots[srcSlotId].skipped is false inside the setEditorTripData updater"
+    },
+    {
+      "id": "R2",
+      "source_phrase": "无法添加新的 (cannot add new ones)",
+      "acceptance_criterion": "applyBridge clears editorTripData.days[N].slots[targetSlotId].skipped = false for MEAL_SLOTS targets regardless of originSlotId value"
+    }
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "863-867",
+      "role": "Computes mealDragOptionId; falls back to opt._type + ':board-default' for primary board items without explicit option_id",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 855-876",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2342-2408",
+      "role": "handleSidebarDrop — deselect path; synthesizes option back into editorTripData options[] but never clears skipped flag",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2340-2408",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "911-920",
+      "role": "isGated computation and slot-drop div rendering; reads edSlot.skipped || edSlot.late_arrival_placeholder to set data-droppable",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 911-920; grep result for isGated",
+      "verified_via": "both"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2949-2979",
+      "role": "applyBridge — select path; called by onDrop (direction=candidates) and onClick tap-to-select; setEditorTripData block guarded by originSlotId presence",
+      "imports_from": ["leaf"],
+      "evidence": "Read lines 2949-2979",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 913,
+      "type": "if",
+      "code_snippet": "const isGated = !edSlot || edSlot.skipped || edSlot.late_arrival_placeholder;",
+      "purpose": "Gates drop zone for slots that are skipped (pre-arrival) or late_arrival_placeholder",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2956,
+      "type": "if",
+      "code_snippet": "if (originSlotId && originSlotId !== targetSlotId && editorDay && editorDay.slots) {",
+      "purpose": "Cross-slot option copy only when origin differs from target — the R2 fix must add a separate unconditional block rather than modifying this guard",
+      "removal_authorized": false
+    }
+  ],
+  "regression_investigation_checklist": {
+    "triggered": false,
+    "items": []
+  },
+  "setup": {
+    "applicability": "N/A",
+    "reason": "non-UI -- hook; cycle does not produce (1) rendered UI changes, (2) browser interaction, (3) Playwright invocation, (4) screenshot evidence, or (5) any change to user-triggered code paths outside of in-memory state mutation inside drag event callbacks. Pipeline/API code exemption does not apply: this is client-side React state logic, not a pipeline step or API endpoint."
+  },
+  "evidence": {
+    "observed": "早餐午餐移除默认之后就无法添加新的了 — after removing default breakfast/lunch items from the board, they cannot be added back",
+    "measured": {
+      "value": "handleSidebarDrop setEditorTripData updater (lines 2359-2401): no .skipped assignment present. applyBridge setEditorTripData block (lines 2957-2975): only runs when originSlotId is non-null.",
+      "location": "scripts/lib/react_template.tpl:2359-2402, 2956"
+    },
+    "expected": {
+      "value": "dayEntry.slots[slotId].skipped = false after deselect; dayEntry.slots[slotId].skipped = false after re-select",
+      "source": "isGated logic at line 913 requires skipped to be falsy for data-droppable to be 'true'"
+    },
+    "gap": "skipped is set server-side to true and never cleared by any client mutation path"
+  },
+  "scope_expansion": {
+    "search_pattern": "skipped",
+    "search_scope": "scripts/lib/react_template.tpl",
+    "user_reported": ["scripts/lib/react_template.tpl"],
+    "additional_found": [],
+    "all_occurrences": [
+      "scripts/lib/react_template.tpl:913",
+      "scripts/lib/react_template.tpl:990",
+      "scripts/lib/react_template.tpl:1068",
+      "scripts/lib/react_template.tpl:1146",
+      "scripts/lib/react_template.tpl:1303",
+      "scripts/lib/react_template.tpl:3213",
+      "scripts/lib/react_template.tpl:3280"
+    ]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "react_template.tpl source code read directly in this session",
+    "url_or_location": "scripts/lib/react_template.tpl lines 913, 2359-2402, 2949-2979",
+    "copy_allowed": true
+  },
+  "prior_attempts": {
+    "triggered": false,
+    "trigger_source": null,
+    "attempts": [],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "No prior attempts on this specific bug"
+    }
+  },
+  "context": {
+    "codebase_state": "master branch; last relevant commit: fa563a3b (DnD persistence, board-equivalent cards)",
+    "recent_commits": "fa563a3b fix(web): CandidatesSidebar — DnD persistence, board-equivalent cards, lang-conditional labels",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "Two targeted insertions in scripts/lib/react_template.tpl. (1) After line 2365 in handleSidebarDrop's setEditorTripData updater, insert dayEntry.slots[srcSlotId].skipped = false unconditionally. (2) After line 2954 in applyBridge, add an independent setEditorTripData call scoped to MEAL_SLOTS that clears skipped on the target slot, regardless of originSlotId. Neither change touches late_arrival_placeholder.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "validation_approach": "QA verifies via Playwright: drag Day 1 breakfast/lunch card to sidebar; confirm data-droppable becomes 'true'; drag sidebar card back to slot; confirm drop succeeds. Also confirm dinner slot drag unaffected."
+  },
+  "acceptance_criteria_path": null,
+  "blast_radius_map_path": null,
+  "complexity_tier": "SMALL",
+  "risk_level": "low",
+  "_risk_level_doc": "Single-file change; two localized insertions; no schema change; no cross-service dependency. Only affects pre-arrival meal slots on Day 1.",
+  "test_writer_expected": false,
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
