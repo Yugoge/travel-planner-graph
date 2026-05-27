@@ -15,42 +15,42 @@
       {
         "requirement_id": "AC1",
         "source_phrase": "早餐午餐移除默认之后就无法添加新的了",
-        "criterion": "After board-to-sidebar drag, editorTripData.days[N].slots[srcSlotId].skipped is false",
-        "verification_method": "Read react_template.tpl lines 2359-2403; checked placement of inserted line relative to options guard and already check",
+        "criterion": "After board-to-sidebar drag, breakfast slot data-droppable becomes 'true' (handleSidebarDrop Fix Site 1 clears skipped)",
+        "verification_method": "Playwright drag: breakfast board card (center 630.5,829) dragged to candidates-groups sidebar (center 1755,496). page.evaluate measured data-droppable before and after.",
         "status": "pass",
         "result": "pass",
-        "details": "Line 2366: dayEntry.slots[srcSlotId].skipped = false; is present. It appears immediately after line 2365 (the options-array guard). The assignment is unconditional — not nested inside the if (!already) block which begins on line 2368. After this runs, edSlot.skipped is false, isGated at line 913 evaluates to false, data-droppable is 'true', drop accepted.",
-        "evidence": "react_template.tpl:2364-2368 read directly; line 2366 = `            dayEntry.slots[srcSlotId].skipped = false;`"
+        "details": "BEFORE: breakfast='false', lunch='false', dinner='true'. AFTER board-to-sidebar drag: breakfast='true', lunch='false' (unchanged), dinner='true' (unchanged). Fix Site 1 (react_template.tpl line 2366: dayEntry.slots[srcSlotId].skipped=false) fired correctly. Output HTML confirmed to contain fix at line 5606.",
+        "evidence": "page.evaluate slotStateAfter={breakfast:'true',lunch:'false',dinner:'true'} after drag. Output HTML grep: 'skipped = false' at lines 5606 (Fix Site 1) and 6203 (Fix Site 2)."
       },
       {
         "requirement_id": "AC2",
-        "source_phrase": "implied: the slot must accept a new drop after R1",
-        "criterion": "applyBridge clears skipped on target slot regardless of originSlotId value",
-        "verification_method": "Read react_template.tpl lines 2950-2991; verified new block placement and guard conditions",
+        "source_phrase": "implied: the slot must accept a new drop after AC1",
+        "criterion": "Sidebar meal candidate dropped onto deselected breakfast slot is accepted; applyBridge Fix Site 2 fires (skipped stays false)",
+        "verification_method": "Playwright drag: sidebar candidate 云线楼过桥米线 (1748,909) → breakfast slot (630.5,865, droppable=true). page.evaluate checked breakfastHasCard and slot state after drop.",
         "status": "pass",
         "result": "pass",
-        "details": "Lines 2956-2966: independent setEditorTripData block guarded by MEAL_SLOTS.has(targetSlotId). Placed after setEditorSelections() at line 2955 and BEFORE the originSlotId guard at line 2968. Sets dayEntry.slots[targetSlotId].skipped = false at line 2963. Fires even when originSlotId is null (sidebar drop path).",
-        "evidence": "react_template.tpl:2956-2966; comment at 2956 = '// R2: clear skipped flag so gated pre-arrival slots become droppable after re-select'; line 2963 = `          dayEntry.slots[targetSlotId].skipped = false;`"
+        "details": "After sidebar-to-breakfast drop: breakfastHasCard=true, cardText='🌅 Breakfast云线楼过桥米线...88 CNY...', breakfast data-droppable='true' (skipped stayed false — applyBridge Fix Site 2 fired). No flash-reject. Drop accepted.",
+        "evidence": "page.evaluate: {slotDroppable:{breakfast:'true',lunch:'false',dinner:'true'}, breakfastHasCard:true, breakfastCardText:'🌅 Breakfast云线楼过桥米线小红书07:00 – 08:00 · 88 CNY机场便餐A昆'}"
       },
       {
         "requirement_id": "AC3",
         "source_phrase": "late_arrival_placeholder is NOT cleared",
-        "criterion": "late_arrival_placeholder field is not written by either fix site",
-        "verification_method": "grep -n 'late_arrival_placeholder' react_template.tpl",
+        "criterion": "Lunch slot (also pre-arrival skipped=true, not dragged) remains gated at data-droppable='false' throughout all drag operations",
+        "verification_method": "page.evaluate checked stillGatedSlots after full drag sequence (breakfast board→sidebar, sidebar→breakfast, dinner board→sidebar, sidebar→dinner)",
         "status": "pass",
         "result": "pass",
-        "details": "grep shows late_arrival_placeholder only at lines 913, 990, 1068, 1146, 1303 — all isGated read sites. Zero occurrences in Fix Site 1 (lines 2355-2403) or Fix Site 2 (lines 2950-2991). Constraint satisfied.",
-        "evidence": "grep output: 5 lines, none in fix sites"
+        "details": "Lunch slot remained at data-droppable='false' throughout all operations. Fix is surgical: only the breakfast slot was cleared because it was explicitly dragged. Lunch was never touched. AC3 constraint satisfied.",
+        "evidence": "page.evaluate: stillGatedSlots=[{slotId:'lunch',droppable:'false',parentText:'☀️ Lunch飞机餐小红书12:20 – 13:20飞机餐A飞机上长途飞行中午餐。'}]"
       },
       {
         "requirement_id": "AC4",
         "source_phrase": "Previously working slots unaffected; no regression to task 20260526-201620 fixes",
-        "criterion": "Dinner slot drag-and-drop behavior identical; prior 5 fixes still present",
-        "verification_method": "Read lines 855, 869, 879, 894, 2315-2316, 2355-2406",
+        "criterion": "Dinner board-to-sidebar drag deselects; sidebar-to-dinner drop succeeds; no flash-reject",
+        "verification_method": "Playwright: (1) dragged dinner card (1214.5,867) to sidebar — dinnerCardCount became 0. (2) dragged sidebar candidate (建新园过桥米线) to dinner slot — dinnerHasCard=true, noFlashRejectClass=true.",
         "status": "pass",
         "result": "pass",
-        "details": "Line 855 (alts.forEach alternative-card push), line 869 (cardStyle div with isSelected boxShadow), line 879 (onMouseLeave hoverOff with _isPrimary/_isOptional), line 894 (opt._isOptional optional-label span), lines 2315-2316 (mealSlotIds/mealSelectionSlotIds declarations) — all present and unmodified. Both new fix blocks are additive-only; no existing lines were removed or changed.",
-        "evidence": "Read tool output at ranges 850-895, 2310-2320, 2355-2409, 2940-2991"
+        "details": "Dinner deselect: dinnerCardCount=0, regression='pass_deselected'. Dinner re-select: dinnerHasCard=true, cardText='🌙 Dinner建新园过桥米线(宝善街店)...', slotStates={breakfast:'true',lunch:'false',dinner:'true'}, noFlashRejectClass=true.",
+        "evidence": "page.evaluate: regression='pass_deselected'; afterState={dinnerHasCard:true, noFlashRejectClass:true, slotStates:{breakfast:'true',lunch:'false',dinner:'true'}}"
       }
     ],
     "root_cause_verification": {
