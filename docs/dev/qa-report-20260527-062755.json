@@ -1,0 +1,53 @@
+{
+  "request_id": "20260527-062755",
+  "task_id": "20260527-062755",
+  "timestamp": "2026-05-27T06:30:00Z",
+  "qa": {
+    "phase": "pre_dev",
+    "status": "pass",
+    "checks": [
+      {
+        "id": "CHECK-1",
+        "title": "Spec completeness — ACs cover the user requirement",
+        "result": "pass",
+        "detail": "User requirement: after removing default breakfast/lunch board card, the slot must accept a new drop. AC1 covers the deselect path (handleSidebarDrop clears skipped). AC2 covers the re-select path (applyBridge clears skipped unconditionally for MEAL_SLOTS, including when originSlotId is null). AC3 preserves late_arrival_placeholder. AC4 guards regression. Together AC1+AC2 close the full remove-then-add-back loop. No gap identified."
+      },
+      {
+        "id": "CHECK-2",
+        "title": "Fix sites correct — line references verified against source",
+        "result": "pass",
+        "detail": "Fix site 1 (handleSidebarDrop): spec says 'after line 2365'. Source confirms line 2365 = `if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];`. At that point dayEntry.slots[srcSlotId] is guaranteed non-null (created on line 2364 if absent). Insertion of `dayEntry.slots[srcSlotId].skipped = false` immediately after is correct — slot object is live, placement is before the `already` check at line 2366, so the flag is cleared regardless of whether option synthesis runs. Fix site 2 (applyBridge): spec says 'after line 2954'. Source confirms line 2954 = `setEditorSelections(prev => ({ ...prev, [key]: optionId }));` and line 2956 is the `if (originSlotId && originSlotId !== targetSlotId ...)` guard. Inserting an unconditional new setEditorTripData block between lines 2954 and 2956 correctly bypasses the originSlotId guard. Both line references accurate."
+      },
+      {
+        "id": "CHECK-3",
+        "title": "AC3 — late_arrival_placeholder must not be touched",
+        "result": "pass",
+        "detail": "isGated at line 913 reads `edSlot.skipped || edSlot.late_arrival_placeholder`. The spec explicitly states R3 'Do NOT clear late_arrival_placeholder' in Requirements, Scope/excluded, Reference Source dev constraint, and AC3. Both hint code blocks write only `dayEntry.slots[...].skipped = false` and contain no reference to late_arrival_placeholder. The pre_existing_guards entry for line 913 has removal_authorized: false. No ambiguity exists that could lead dev to accidentally touch late_arrival_placeholder."
+      },
+      {
+        "id": "CHECK-4",
+        "title": "AC4 — regression prevention for task 20260526-201620 fixes",
+        "result": "pass",
+        "detail": "Fix site 1: the `skipped = false` write is inside the MEAL_SLOTS guard at line 2355 (`if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData)`), limiting the change to meal slots only. Dinner slots are in MEAL_SLOTS but are never server-seeded with skipped: true, so the assignment is a benign no-op for dinner. Fix site 2: the new block also guards on `MEAL_SLOTS.has(targetSlotId)`. The existing originSlotId-guarded block at line 2956 is explicitly marked removal_authorized: false and is not modified. Both insertions are additive-only — no existing code is removed or changed. The four fixes from task 20260526-201620 (DnD persistence, board-equivalent cards, flash-reject, bidirectional drag) are in unrelated code paths and are not touched. AC4 constraint ('dinner slot drag-and-drop behavior is identical') is satisfied by the MEAL_SLOTS scope guard making the fix a no-op for slots without skipped: true."
+      },
+      {
+        "id": "CHECK-5",
+        "title": "Ambiguity analysis",
+        "result": "pass",
+        "detail": "No ambiguities that would cause an incorrect implementation. One note: Fix Site 2's hint code includes a defensive `MEAL_SLOTS &&` existence check on the constant — MEAL_SLOTS is module-level (line 2227) and always defined, so the check is redundant but harmless; it cannot mislead dev. The `dayNum` reference inside the new applyBridge setEditorTripData closure correctly closes over `const dayNum` declared at line 2950 (local to applyBridge), not the outer useEffect dayNum — the hint code is consistent with the actual variable scope. Placement instruction 'immediately after setEditorSelections call at line 2954, before the existing if (originSlotId...) block at line 2956' is unambiguous. No conditional logic in the hints that could be misread."
+      }
+    ],
+    "out_of_scope_observations": [
+      {
+        "id": "OBS-1",
+        "file": "scripts/lib/react_template.tpl",
+        "line": 1303,
+        "observation": "accommodation isGated at line 1303 also checks edAcc.skipped. This is a different code path from the meal slot fix and is correctly excluded from scope. No action needed for this cycle.",
+        "in_user_path": false,
+        "security_relevant": false
+      }
+    ],
+    "findings": [],
+    "verdict": "Spec is implementable. All five checks pass. Fix sites are accurately located. AC coverage is complete for the user requirement. late_arrival_placeholder preservation is unambiguous. Regression guard is sufficient. Dev may proceed with the two insertions as specified in the Technical Hints section."
+  }
+}
