@@ -1,53 +1,139 @@
 {
   "request_id": "20260527-062755",
   "task_id": "20260527-062755",
-  "timestamp": "2026-05-27T06:30:00Z",
+  "timestamp": "2026-05-27T07:10:00Z",
   "qa": {
-    "phase": "pre_dev",
+    "phase": "post_dev",
     "status": "pass",
-    "checks": [
+    "verified_against_complaint": true,
+    "passed_user_requirement": true,
+    "ac_alignment": true,
+    "user_verbatim_complaint": "早餐午餐移除默认之后就无法添加新的了",
+    "overall_assessment": "Both fix sites confirmed present, correctly placed, and structurally correct. AC1, AC2, AC3, and AC4 all pass. No regressions to prior task 20260526-201620 fixes detected.",
+    "findings": [],
+    "success_criteria_results": [
       {
-        "id": "CHECK-1",
-        "title": "Spec completeness — ACs cover the user requirement",
+        "requirement_id": "AC1",
+        "source_phrase": "早餐午餐移除默认之后就无法添加新的了",
+        "criterion": "After board-to-sidebar drag, editorTripData.days[N].slots[srcSlotId].skipped is false",
+        "verification_method": "Read react_template.tpl lines 2359-2403; checked placement of inserted line relative to options guard and already check",
+        "status": "pass",
         "result": "pass",
-        "detail": "User requirement: after removing default breakfast/lunch board card, the slot must accept a new drop. AC1 covers the deselect path (handleSidebarDrop clears skipped). AC2 covers the re-select path (applyBridge clears skipped unconditionally for MEAL_SLOTS, including when originSlotId is null). AC3 preserves late_arrival_placeholder. AC4 guards regression. Together AC1+AC2 close the full remove-then-add-back loop. No gap identified."
+        "details": "Line 2366: dayEntry.slots[srcSlotId].skipped = false; is present. It appears immediately after line 2365 (the options-array guard). The assignment is unconditional — not nested inside the if (!already) block which begins on line 2368. After this runs, edSlot.skipped is false, isGated at line 913 evaluates to false, data-droppable is 'true', drop accepted.",
+        "evidence": "react_template.tpl:2364-2368 read directly; line 2366 = `            dayEntry.slots[srcSlotId].skipped = false;`"
       },
       {
-        "id": "CHECK-2",
-        "title": "Fix sites correct — line references verified against source",
+        "requirement_id": "AC2",
+        "source_phrase": "implied: the slot must accept a new drop after R1",
+        "criterion": "applyBridge clears skipped on target slot regardless of originSlotId value",
+        "verification_method": "Read react_template.tpl lines 2950-2991; verified new block placement and guard conditions",
+        "status": "pass",
         "result": "pass",
-        "detail": "Fix site 1 (handleSidebarDrop): spec says 'after line 2365'. Source confirms line 2365 = `if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];`. At that point dayEntry.slots[srcSlotId] is guaranteed non-null (created on line 2364 if absent). Insertion of `dayEntry.slots[srcSlotId].skipped = false` immediately after is correct — slot object is live, placement is before the `already` check at line 2366, so the flag is cleared regardless of whether option synthesis runs. Fix site 2 (applyBridge): spec says 'after line 2954'. Source confirms line 2954 = `setEditorSelections(prev => ({ ...prev, [key]: optionId }));` and line 2956 is the `if (originSlotId && originSlotId !== targetSlotId ...)` guard. Inserting an unconditional new setEditorTripData block between lines 2954 and 2956 correctly bypasses the originSlotId guard. Both line references accurate."
+        "details": "Lines 2956-2966: independent setEditorTripData block guarded by MEAL_SLOTS.has(targetSlotId). Placed after setEditorSelections() at line 2955 and BEFORE the originSlotId guard at line 2968. Sets dayEntry.slots[targetSlotId].skipped = false at line 2963. Fires even when originSlotId is null (sidebar drop path).",
+        "evidence": "react_template.tpl:2956-2966; comment at 2956 = '// R2: clear skipped flag so gated pre-arrival slots become droppable after re-select'; line 2963 = `          dayEntry.slots[targetSlotId].skipped = false;`"
       },
       {
-        "id": "CHECK-3",
-        "title": "AC3 — late_arrival_placeholder must not be touched",
+        "requirement_id": "AC3",
+        "source_phrase": "late_arrival_placeholder is NOT cleared",
+        "criterion": "late_arrival_placeholder field is not written by either fix site",
+        "verification_method": "grep -n 'late_arrival_placeholder' react_template.tpl",
+        "status": "pass",
         "result": "pass",
-        "detail": "isGated at line 913 reads `edSlot.skipped || edSlot.late_arrival_placeholder`. The spec explicitly states R3 'Do NOT clear late_arrival_placeholder' in Requirements, Scope/excluded, Reference Source dev constraint, and AC3. Both hint code blocks write only `dayEntry.slots[...].skipped = false` and contain no reference to late_arrival_placeholder. The pre_existing_guards entry for line 913 has removal_authorized: false. No ambiguity exists that could lead dev to accidentally touch late_arrival_placeholder."
+        "details": "grep shows late_arrival_placeholder only at lines 913, 990, 1068, 1146, 1303 — all isGated read sites. Zero occurrences in Fix Site 1 (lines 2355-2403) or Fix Site 2 (lines 2950-2991). Constraint satisfied.",
+        "evidence": "grep output: 5 lines, none in fix sites"
       },
       {
-        "id": "CHECK-4",
-        "title": "AC4 — regression prevention for task 20260526-201620 fixes",
+        "requirement_id": "AC4",
+        "source_phrase": "Previously working slots unaffected; no regression to task 20260526-201620 fixes",
+        "criterion": "Dinner slot drag-and-drop behavior identical; prior 5 fixes still present",
+        "verification_method": "Read lines 855, 869, 879, 894, 2315-2316, 2355-2406",
+        "status": "pass",
         "result": "pass",
-        "detail": "Fix site 1: the `skipped = false` write is inside the MEAL_SLOTS guard at line 2355 (`if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData)`), limiting the change to meal slots only. Dinner slots are in MEAL_SLOTS but are never server-seeded with skipped: true, so the assignment is a benign no-op for dinner. Fix site 2: the new block also guards on `MEAL_SLOTS.has(targetSlotId)`. The existing originSlotId-guarded block at line 2956 is explicitly marked removal_authorized: false and is not modified. Both insertions are additive-only — no existing code is removed or changed. The four fixes from task 20260526-201620 (DnD persistence, board-equivalent cards, flash-reject, bidirectional drag) are in unrelated code paths and are not touched. AC4 constraint ('dinner slot drag-and-drop behavior is identical') is satisfied by the MEAL_SLOTS scope guard making the fix a no-op for slots without skipped: true."
-      },
-      {
-        "id": "CHECK-5",
-        "title": "Ambiguity analysis",
-        "result": "pass",
-        "detail": "No ambiguities that would cause an incorrect implementation. One note: Fix Site 2's hint code includes a defensive `MEAL_SLOTS &&` existence check on the constant — MEAL_SLOTS is module-level (line 2227) and always defined, so the check is redundant but harmless; it cannot mislead dev. The `dayNum` reference inside the new applyBridge setEditorTripData closure correctly closes over `const dayNum` declared at line 2950 (local to applyBridge), not the outer useEffect dayNum — the hint code is consistent with the actual variable scope. Placement instruction 'immediately after setEditorSelections call at line 2954, before the existing if (originSlotId...) block at line 2956' is unambiguous. No conditional logic in the hints that could be misread."
+        "details": "Line 855 (alts.forEach alternative-card push), line 869 (cardStyle div with isSelected boxShadow), line 879 (onMouseLeave hoverOff with _isPrimary/_isOptional), line 894 (opt._isOptional optional-label span), lines 2315-2316 (mealSlotIds/mealSelectionSlotIds declarations) — all present and unmodified. Both new fix blocks are additive-only; no existing lines were removed or changed.",
+        "evidence": "Read tool output at ranges 850-895, 2310-2320, 2355-2409, 2940-2991"
       }
     ],
+    "root_cause_verification": {
+      "addressed": true,
+      "confidence": "high",
+      "rationale": "Root cause was skipped flag never cleared on the deselect path (handleSidebarDrop) and the re-select path (applyBridge). Both paths now write skipped=false. isGated at line 913 evaluates edSlot.skipped || edSlot.late_arrival_placeholder — with skipped cleared, gated pre-arrival meal slots return isGated=false on next render and data-droppable='true'."
+    },
+    "build_verification": {
+      "status": "skipped",
+      "skip_reason": "Spec marks applicability N/A: non-UI hook. Fix is JS state mutation inside drag handlers compiled into a browser bundle. Playwright drag-sequence is the correct final verification but is noted in the spec as QA responsibility for a live session."
+    },
+    "e2e_enforcement": {
+      "required": false,
+      "attempted": false,
+      "status": "skipped_per_spec",
+      "blocking_reason": "Spec Setup/Environment: 'non-UI — hook; cycle does not produce rendered UI changes, browser interaction, Playwright invocation, screenshot evidence, or any change to user-triggered code paths other than state mutation inside the drag handler'"
+    },
+    "hardcode_scan_results": {
+      "files_scanned": 1,
+      "violations": [],
+      "summary": { "critical": 0, "major": 0, "minor": 0 }
+    },
+    "standards_compliance": {
+      "checked": true,
+      "role_table_source": "No role table found in project CLAUDE.md",
+      "violations": []
+    },
+    "regression_test_results": [
+      {
+        "test": "Prior fix lines (task 20260526-201620) present and unmodified",
+        "result": "pass",
+        "details": "All 5 code blocks verified at lines 855, 869, 879, 894, 2315-2316"
+      },
+      {
+        "test": "late_arrival_placeholder not written in either fix site",
+        "result": "pass",
+        "details": "grep confirms zero occurrences in lines 2355-2403 and 2950-2991"
+      },
+      {
+        "test": "Fix Site 1 placement: unconditional, after options guard, before already check",
+        "result": "pass",
+        "details": "Line 2366 confirmed between line 2365 (options guard) and line 2368 (already check)"
+      },
+      {
+        "test": "Fix Site 2 placement: before originSlotId guard, covers null-originSlotId path",
+        "result": "pass",
+        "details": "Lines 2956-2966 confirmed before the if (originSlotId...) block at line 2968"
+      }
+    ],
+    "all_findings": [],
+    "failures": [],
     "out_of_scope_observations": [
       {
-        "id": "OBS-1",
+        "ts": "2026-05-27T07:10:00Z",
         "file": "scripts/lib/react_template.tpl",
         "line": 1303,
-        "observation": "accommodation isGated at line 1303 also checks edAcc.skipped. This is a different code path from the meal slot fix and is correctly excluded from scope. No action needed for this cycle.",
+        "observation": "Accommodation isGated at line 1303 checks edAcc.skipped — different code path, correctly excluded from scope per spec Won't Have.",
         "in_user_path": false,
         "security_relevant": false
       }
     ],
-    "findings": [],
-    "verdict": "Spec is implementable. All five checks pass. Fix sites are accurately located. AC coverage is complete for the user requirement. late_arrival_placeholder preservation is unambiguous. Regression guard is sufficient. Dev may proceed with the two insertions as specified in the Technical Hints section."
-  }
+    "codex_consult": {
+      "invoked": false,
+      "status": "not_requested",
+      "feedback_summary": null,
+      "feedback_incorporated": null
+    },
+    "self_verification": {
+      "claims_total": 6,
+      "claims_with_evidence": 6,
+      "claims_superficial": 0,
+      "superficial_details": [],
+      "confidence": "high"
+    },
+    "summary": {
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 0,
+      "total_findings": 0,
+      "release_recommendation": "approve"
+    },
+    "verdict": "PASS. Both fix sites confirmed present, correctly placed, and structurally correct against all 4 ACs. AC1: skipped=false at line 2366, unconditional, after options guard, before already check. AC2: independent MEAL_SLOTS-guarded block at lines 2956-2966, before originSlotId guard at 2968, covering null-originSlotId sidebar-drop path. AC3: late_arrival_placeholder untouched in both fix sites. AC4: all prior task 20260526-201620 fix lines verified present and unmodified."
+  },
+  "iteration_needed": false,
+  "refined_context": null
 }
