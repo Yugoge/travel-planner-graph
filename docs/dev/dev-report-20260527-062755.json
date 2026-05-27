@@ -1,0 +1,75 @@
+{
+  "request_id": "20260527-062755",
+  "task_id": "20260527-062755",
+  "timestamp": "2026-05-27T06:27:55Z",
+  "baseline_head_sha": "dc75f3973041213f9cf316b11ef46042cd914290",
+  "baseline_dirty_snapshot": " M scripts/lib/react_template.tpl",
+  "dev_report_path": "docs/dev/dev-report-20260527-062755.json",
+  "dev": {
+    "status": "completed",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": [],
+    "observed_preexisting": [],
+    "changes_summary": "Two targeted insertions in scripts/lib/react_template.tpl: (1) Fix Site 1 — added `dayEntry.slots[srcSlotId].skipped = false;` after the options-array guard in handleSidebarDrop's setEditorTripData updater (line 2366), unconditionally clearing the skipped flag whenever the deselect path touches the slot. (2) Fix Site 2 — added an independent setEditorTripData block in applyBridge after setEditorSelections(), scoped to MEAL_SLOTS, that clears dayEntry.slots[targetSlotId].skipped = false regardless of originSlotId value (line 2956–2966).",
+    "iteration": "R1",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Fix Site 1: Clear skipped flag in handleSidebarDrop setEditorTripData updater",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Inserted `dayEntry.slots[srcSlotId].skipped = false;` at line 2366, immediately after `if (!dayEntry.slots[srcSlotId].options) dayEntry.slots[srcSlotId].options = [];`. Placed unconditionally before the `already` check so it fires whether or not option synthesis runs.",
+        "rationale": "R1: Day 1 breakfast/lunch are seeded with skipped:true by the server. handleSidebarDrop's updater never wrote skipped=false, leaving isGated permanently true and data-droppable permanently false after board-to-sidebar drag."
+      },
+      {
+        "id": 2,
+        "description": "Fix Site 2: Add unconditional setEditorTripData block in applyBridge to clear skipped on MEAL_SLOTS targets",
+        "type": "code_edit",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Inserted an independent setEditorTripData block guarded by `MEAL_SLOTS && MEAL_SLOTS.has(targetSlotId) && setEditorTripData` immediately after setEditorSelections() and before the existing `if (originSlotId && originSlotId !== targetSlotId && ...)` block. The new block clears dayEntry.slots[targetSlotId].skipped = false unconditionally, covering the sidebar-to-board path where originSlotId is null.",
+        "rationale": "R2: applyBridge's prior setEditorTripData block was guarded by `originSlotId && originSlotId !== targetSlotId`, skipping it entirely when originSlotId=null (sidebar drop). The new block fires independently of that guard, ensuring skipped is cleared even when dropping from sidebar with no origin slot."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — not a regression; pre-arrival skipped flag was always present but the deselect+re-add flow was not previously supported",
+      "why_issue_occurred": "The skipped flag was added to handle pre-arrival placeholder display. No clearing code was added because the add-back flow was not originally in scope.",
+      "how_fix_addresses_root": "Both write paths (deselect via handleSidebarDrop, re-select via applyBridge) now unconditionally clear skipped=false for MEAL_SLOTS. isGated evaluates edSlot.skipped || edSlot.late_arrival_placeholder — with skipped cleared, gated pre-arrival slots become droppable on next render."
+    },
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": []
+      }
+    ],
+    "blast_radius_declarations": [],
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 11,
+      "lines_removed": 0,
+      "new_symbols_introduced": [],
+      "minimum_possible_lines_estimate": 11,
+      "justification_for_overage": null
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "qa_ready": true,
+    "qa_notes": "QA should verify via Playwright: (1) AC1 — drag Day 1 breakfast/lunch board card to sidebar; confirm data-droppable becomes 'true' on slot-drop div; (2) AC2 — drag a sidebar meal card onto the now-droppable slot; confirm drop succeeds and skipped stays false; (3) AC3 — confirm late_arrival_placeholder is not cleared (slot with late_arrival_placeholder: true still has data-droppable='false'); (4) AC4 — confirm dinner slot drag-and-drop is unaffected (no regression from task 20260526-201620 fixes).",
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "skipped",
+    "smoke_check": "skipped (no executable criteria — JS in compiled template; browser runtime required per spec)",
+    "notes": "Both insertions verified by Read tool at lines 2366 and 2956-2966. Fix Site 1: dayEntry.slots[srcSlotId].skipped = false inserted after options guard, before already check. Fix Site 2: R2 block inserted after setEditorSelections(), before existing originSlotId guard at line 2968. late_arrival_placeholder untouched in both sites. The `if (originSlotId && ...)` block at line 2968 is unchanged."
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "not_requested",
+    "feedback_summary": null,
+    "feedback_incorporated": null
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "QA should run a Playwright drag sequence: board meal card to sidebar (triggers handleSidebarDrop), then sidebar card back to slot (triggers applyBridge). Both skipped=false writes should fire in sequence."
+  ]
+}
