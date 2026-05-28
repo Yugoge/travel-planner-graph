@@ -137,10 +137,18 @@
   "pre_existing_guards": [
     {
       "file": "scripts/lib/react_template.tpl",
+      "line": 2227,
+      "type": "css-selector-negation",
+      "code_snippet": "const MEAL_SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'meals-any']);",
+      "purpose": "Existing UI meal-slot set. It INCLUDES the non-schema 'meals-any' pseudo-slot, so it is UNSAFE as a skip-emit guard. The React-state .skipped clears may keep using it, but skip emits MUST use the NEW SKIPPABLE_MEAL_SLOTS instead. Do NOT remove meals-any from MEAL_SLOTS (UI relies on it); ADD a separate SKIPPABLE_MEAL_SLOTS for emits.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
       "line": 2355,
       "type": "if",
       "code_snippet": "if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData)",
-      "purpose": "Site A un-gate is meal-only; skip emit must stay inside this guard so it never fires for non-meal slots.",
+      "purpose": "Site A React-state un-gate guard (meal-only incl. meals-any). The React-state clear may keep this guard; the BACKEND skip emit must additionally pass SKIPPABLE_MEAL_SLOTS.has(srcSlotId).",
       "removal_authorized": false
     },
     {
@@ -148,7 +156,15 @@
       "line": 2957,
       "type": "if",
       "code_snippet": "if (MEAL_SLOTS && MEAL_SLOTS.has(targetSlotId) && setEditorTripData)",
-      "purpose": "Site B un-gate is meal-only; skip emit must stay tied to this guard.",
+      "purpose": "Site B React-state un-gate guard (meal-only incl. meals-any). The React-state clear may keep this guard; the BACKEND skip emit must additionally pass SKIPPABLE_MEAL_SLOTS.has(targetSlotId).",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/server/save.py",
+      "line": 65,
+      "type": "validator",
+      "code_snippet": "return day.setdefault(\"slots\", {}).setdefault(slot_id, {\"slot_id\": slot_id, \"options\": []})",
+      "purpose": "_get_or_create_slot creates ANY slot_id with no schema validation. This is why the front-end SKIPPABLE_MEAL_SLOTS guard is load-bearing: a skip with slot:'meals-any' would write a schema-forbidden slots['meals-any'] key here. Do NOT weaken; do NOT rely on server to reject bad slot keys.",
       "removal_authorized": false
     },
     {
