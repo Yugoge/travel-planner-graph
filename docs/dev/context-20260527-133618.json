@@ -240,23 +240,27 @@
     "environment": {}
   },
   "development_approach": {
-    "strategy": "At each meal-slot un-gate/selection site, add a 'skip' mutation (skipped:false, skipped_reason:null) to the saveMutations call alongside the existing select emission. Site A (handleSidebarDrop, emit inside MEAL_SLOTS guard not at the shared 2406 line), Site B (applyBridge, inside MEAL_SLOTS guard), Site C (Timeline drop line 1915 — board + setEditorSelection-fallback branches, guarded by meal-slot check on toSlotId; candidates branch already covered via applyBridge=Site B). Batch skip+select into one saveMutations array per site. No server/schema changes; no new gating logic for the codex-F2 stage-gate edge (documented as validation-time observation, out of scope).",
+    "strategy": "Introduce a NEW const SKIPPABLE_MEAL_SLOTS = new Set(['breakfast','lunch','dinner']) adjacent to MEAL_SLOTS (2227) and a recommended shared helper buildSkipMuts(...ids) => [...new Set(ids)].filter(s=>s && SKIPPABLE_MEAL_SLOTS.has(s)).map(s=>({type:'skip',slot:s,extra:{skipped:false,skipped_reason:null}})) that centralizes the restricted guard + de-dup. At each meal-slot un-gate/selection site, PREPEND buildSkipMuts(...) to the existing saveMutations array. Site A (handleSidebarDrop 2406): buildSkipMuts(srcSlotId) -- source-only. Site B (applyBridge 2989): buildSkipMuts(targetSlotId, originSlotId-if-set-and-distinct) -- target + origin. Site C (Timeline drop 1915): board branch buildSkipMuts(payload.sourceSlotId, toSlotId) -- BOTH source and target (QA Defect 2 fix); candidates-applyBridge-absent fallback buildSkipMuts(toSlotId); setEditorSelection else-branch emit skip for toSlotId (separate saveMutations if not threadable into bridge). All emits gated by SKIPPABLE_MEAL_SLOTS (never MEAL_SLOTS) so meals-any/accommodation/activity never reach disk. No server/schema changes; no new gating logic for the codex-F2/QA-F4 stage-gate edge (documented as validation-time observation, out of scope).",
     "files_to_create": [],
     "files_to_modify": ["scripts/lib/react_template.tpl"],
     "key_line_numbers": {
+      "meal_slots_decl": "react_template.tpl:2227 (existing MEAL_SLOTS incl meals-any; add SKIPPABLE_MEAL_SLOTS + buildSkipMuts helper adjacent)",
       "site_a_ungate": "react_template.tpl:2366",
-      "site_a_meal_guard": "react_template.tpl:2355",
-      "site_a_existing_emit": "react_template.tpl:2406",
+      "site_a_react_guard": "react_template.tpl:2355 (MEAL_SLOTS — React-state clear only)",
+      "site_a_existing_emit": "react_template.tpl:2406 (prepend buildSkipMuts(srcSlotId))",
       "site_b_ungate": "react_template.tpl:2963",
-      "site_b_meal_guard": "react_template.tpl:2957",
-      "site_b_existing_emit": "react_template.tpl:2989",
-      "site_c_timeline_drop": "react_template.tpl:1915 (onDrop arrow; board branch + setEditorSelection fallback need skip emit; candidates branch delegates to applyBridge=Site B)",
+      "site_b_react_guard": "react_template.tpl:2957 (MEAL_SLOTS — React-state clear only)",
+      "site_b_move_out": "react_template.tpl:2967-2988 (origin emptied when originSlotId set)",
+      "site_b_existing_emit": "react_template.tpl:2989 (prepend buildSkipMuts(targetSlotId, originSlotId-if-distinct))",
+      "site_c_timeline_drop": "react_template.tpl:1915 (onDrop arrow). board branch: buildSkipMuts(payload.sourceSlotId, toSlotId) — BOTH sides (QA Defect 2). candidates-fallback: buildSkipMuts(toSlotId). else/setEditorSelection: skip for toSlotId. candidates-with-applyEditorSelection delegates to Site B (covered).",
       "autosave_function": "react_template.tpl:2806 (saveMutations useCallback)",
       "server_handler": "scripts/lib/server/save.py:107-114",
+      "get_or_create_slot": "scripts/lib/server/save.py:57-65 (no slot-key validation — front-end guard is load-bearing)",
       "dispatch_table": "scripts/lib/server/save.py:158-166",
-      "stage_gate_validator": "scripts/lib/trip_contract/validators.py:368 (_check_stage_gate — codex F2, validation-time only, not save-time)"
+      "day_schema_slots": "schemas/v2/day.schema.json:53-66 (slot allow-list, additionalProperties:false; valid meal slots = breakfast/lunch/dinner)",
+      "stage_gate_validator": "scripts/lib/trip_contract/validators.py (_check_stage_gate — codex F2/QA-F4, validation-time only, not save-time)"
     },
-    "validation_approach": "Live Playwright on both desktop 1440x900 and mobile 390x844: un-gate Day 1 breakfast (drag default to sidebar + drop candidate), wait for autosave, reload, assert day-01.json breakfast skipped:false/skipped_reason:null/selected_option_id==placed AND board renders selection + slot droppable. Plus regression spot-check of prior working behaviors (AC5)."
+    "validation_approach": "Live Playwright on both desktop 1440x900 and mobile 390x844: (1) un-gate Day 1 breakfast (drag default to sidebar + drop candidate), wait for autosave, reload, assert day-01.json breakfast skipped:false/skipped_reason:null/selected_option_id==placed AND board renders selection + slot droppable (AC3). (2) Board-move an item OUT of a skipped meal slot to another slot; reload; assert the SOURCE meal slot reads skipped:false on disk (AC2b). (3) Static grep: every type:'skip' emit is behind a SKIPPABLE_MEAL_SLOTS check, and SKIPPABLE_MEAL_SLOTS contains exactly breakfast/lunch/dinner (no meals-any); after any drop involving meals-any, day-NN.json has NO slots['meals-any'] key and is schema-valid (AC7). Plus regression spot-check of prior working behaviors (AC5)."
   },
   "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260527-133618.json",
   "blast_radius_map_path": ".claude/dev-registry/dev-20260527-133618/blast-radius-map.json",
