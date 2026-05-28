@@ -1,0 +1,239 @@
+{
+  "request_id": "20260527-133618",
+  "task_id": "20260527-133618",
+  "timestamp": "2026-05-28T00:00:00Z",
+  "spec_path": "docs/dev/specs/spec-20260527-133618.md",
+  "requirement": {
+    "original": "我告诉你我要的就是极致的用户体验，你自己好自为之",
+    "clarified": "Persist meal-slot un-gating (skipped:false, skipped_reason:null) across page reload by emitting the existing 'skip' mutation through the existing autosave pipeline at the two React-state un-gating sites. Use existing standard schema only; no new field/mutation types.",
+    "what": "Wire the existing-but-unused 'skip' mutation into the two front-end un-gating sites so skipped:false persists to day-NN.json on reload.",
+    "why": "Prior cycle fixed un-gating in React state only; on reload the slot re-gates and selection can be lost, violating the ultimate-UX requirement.",
+    "where": ["scripts/lib/react_template.tpl"],
+    "scope": {
+      "included": [
+        "scripts/lib/react_template.tpl handleSidebarDrop (line 2366 / emit 2406)",
+        "scripts/lib/react_template.tpl applyBridge (line 2963 / emit 2989)"
+      ],
+      "excluded": [
+        "scripts/lib/server/save.py (handler already correct)",
+        "schemas/v2/poi-common.schema.json (schema already models skipped/skipped_reason)",
+        "bridge function (line 2914 — does not clear .skipped)",
+        "debounce / autosave pipeline internals",
+        "late_arrival_placeholder semantics"
+      ]
+    },
+    "success_criteria": [
+      "skip mutation emitted at both un-gate sites alongside existing select emission",
+      "day-01.json breakfast reads skipped:false, skipped_reason:null, selected_option_id==placed after reload",
+      "in-session un-gate and all prior working behaviors unchanged"
+    ],
+    "constraints": [
+      "No new mutation type; no new slot_envelope field",
+      "skip payload top-level field is 'slot' (not slot_id)",
+      "skipped/skipped_reason nest under 'extra'",
+      "only skipped + skipped_reason mutated; late_arrival_placeholder untouched"
+    ]
+  },
+  "scope_boundary": {
+    "in_user_path": ["scripts/lib/react_template.tpl"],
+    "path_dependent_shared_infra": ["scripts/lib/server/save.py (read-only reference: _apply_skip_mutation contract)", "schemas/v2/poi-common.schema.json (read-only reference: slot_envelope)"],
+    "out_of_path_observed_but_not_touched": []
+  },
+  "out_of_scope_observations": [],
+  "root_cause_analysis": {
+    "symptom": "User un-gates a meal slot in-session (drag away default + place new restaurant); on reload the slot re-gates and the new selection can be lost.",
+    "root_cause": "The two React-state writes that clear slots[X].skipped=false (react_template.tpl:2366, 2963) never emit a 'skip' mutation, so day-NN.json retains skipped:true, skipped_reason:'pre-arrival'. The front-end has zero 'skip' mutation emit sites despite the server handler and schema fully supporting it.",
+    "root_cause_commit": "N/A - persistence was explicitly out-of-scope in prior cycle 20260527-062755",
+    "why_introduced": "Prior cycle scoped the fix to in-session React state only; persistence deferred.",
+    "why_problematic": "Disk state diverges from in-session state; reload reverts the un-gate, breaking ultimate-UX expectation.",
+    "timeline": "Gap present since prior cycle 20260527-062755 added the React-state un-gate writes.",
+    "affected_files": ["scripts/lib/react_template.tpl"],
+    "evidence_type": "observed",
+    "observations": [
+      "react_template.tpl:2366 sets dayEntry.slots[srcSlotId].skipped=false in React state (observed: Read)",
+      "react_template.tpl:2406 emits only {type:'select', slot:srcSlotId, option_id:null}; no skip (observed: Read)",
+      "react_template.tpl:2963 sets dayEntry.slots[targetSlotId].skipped=false in React state (observed: Read)",
+      "react_template.tpl:2989 emits only {type:'select', slot:targetSlotId, option_id, origin_slot_id}; no skip (observed: Read)",
+      "Zero type:'skip' occurrences in react_template.tpl (observed: Grep returned no matches)",
+      "data/beijing-lijiang-dali-20260418-100846/days/day-01.json breakfast = skipped:true, skipped_reason:'pre-arrival', selected_option_id:'dinner-1-1', late_arrival_placeholder:None (observed: python json read)",
+      "save.py:107-114 _apply_skip_mutation reads mut.get('slot') and extra.get('skipped'/'skipped_reason') (observed: Read)"
+    ],
+    "diagnosis_completeness": "complete",
+    "complaint_location_keywords": ["meal", "breakfast", "skipped", "reload", "refresh", "极致用户体验"],
+    "localization_evidence": "Static localization via source read + disk-state read: two React-state .skipped write sites confirmed by grep (exactly 2 hits), neither paired with a skip mutation emit; disk day-01.json confirms skipped:true persists.",
+    "located_source": "scripts/lib/react_template.tpl:2366 (handleSidebarDrop) and :2963 (applyBridge)",
+    "localization_blocked": null,
+    "git_bisect_result": {
+      "triggered": false,
+      "suspect_commit": null,
+      "commit_message": null,
+      "confirmed_by": "git-log-diff",
+      "bisect_blocked": null,
+      "reproducibility_verified": true
+    }
+  },
+  "diagnosis_layer": "L4",
+  "requirements_decomposition": [
+    {"id": "R1", "source_phrase": "极致的用户体验 + persistence-gap brief", "acceptance_criterion": "un-gating survives reload (AC1, AC2, AC3)"},
+    {"id": "R2", "source_phrase": "using the existing standard schema — NO new field types, NO new mutation types", "acceptance_criterion": "reuse skip mutation + slot_envelope only (AC4, AC6)"},
+    {"id": "R3", "source_phrase": "preserve the prior fix sites' React-state mutation (in-session UX must remain)", "acceptance_criterion": "no regression to in-session un-gate (AC5)"}
+  ],
+  "component_chain": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2343-2409",
+      "role": "handleSidebarDrop — deselect handler; clears skipped in React state (Site A), emits select(null)",
+      "imports_from": "saveMutations (react_template.tpl:2806)",
+      "evidence": "Read lines 2340-2409; .skipped=false at 2366; saveMutations call at 2406",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2950-2991",
+      "role": "applyBridge — tap/drop selection; clears skipped in React state (Site B), emits select(optionId)",
+      "imports_from": "saveMutations (react_template.tpl:2806)",
+      "evidence": "Read lines 2940-2997; .skipped=false at 2963; saveMutations call at 2989",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line_range": "2806-2865",
+      "role": "saveMutations — autosave pipeline; POSTs mutations array to /api/save",
+      "imports_from": "leaf (fetch /api/save)",
+      "evidence": "Read lines 2806-2865; fetch /api/save at 2816, body includes mutations at 2823",
+      "verified_via": "Read"
+    },
+    {
+      "file": "scripts/lib/server/save.py",
+      "line_range": "107-166",
+      "role": "_apply_skip_mutation consumes {type:'skip', slot, extra:{skipped,skipped_reason}}; dispatch table maps 'skip'",
+      "imports_from": "leaf",
+      "evidence": "Read lines 1-222; _apply_skip_mutation 107-114; _MUTATION_HANDLERS 158-166",
+      "verified_via": "Read"
+    }
+  ],
+  "pre_existing_guards": [
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2355,
+      "type": "if",
+      "code_snippet": "if (MEAL_SLOTS && MEAL_SLOTS.has(srcSlotId) && payload.optionId && setEditorTripData)",
+      "purpose": "Site A un-gate is meal-only; skip emit must stay inside this guard so it never fires for non-meal slots.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/react_template.tpl",
+      "line": 2957,
+      "type": "if",
+      "code_snippet": "if (MEAL_SLOTS && MEAL_SLOTS.has(targetSlotId) && setEditorTripData)",
+      "purpose": "Site B un-gate is meal-only; skip emit must stay tied to this guard.",
+      "removal_authorized": false
+    },
+    {
+      "file": "scripts/lib/server/save.py",
+      "line": 113,
+      "type": "validator",
+      "code_snippet": "slot[\"skipped\"] = bool(extra.get(\"skipped\", True))",
+      "purpose": "Defaults to skipped=True when extra omits it; the fix MUST pass extra.skipped=false explicitly to un-gate.",
+      "removal_authorized": false
+    }
+  ],
+  "setup": {
+    "applicability": "applicable",
+    "viewport": "1440x900 desktop",
+    "theme": "light",
+    "locale": "zh",
+    "auth_state": "logged-out",
+    "data_state": "with-data — beijing-lijiang-dali-20260418-100846, Day 1 breakfast skipped:true skipped_reason:pre-arrival",
+    "browser": "Chromium (Playwright)",
+    "url_path": "generated editor HTML for trip beijing-lijiang-dali-20260418-100846 served by /api/save backing server"
+  },
+  "evidence": {
+    "observed": "drag away default meal → place new restaurant → refresh → slot re-gates and new selection possibly lost",
+    "measured": {
+      "value": "skipped:true, skipped_reason:'pre-arrival' persists on disk; zero skip emit sites in front-end",
+      "location": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json (breakfast); react_template.tpl:2366,2406,2963,2989"
+    },
+    "expected": {
+      "value": "skipped:false, skipped_reason:null persisted after un-gate; selected_option_id==placed for placement path",
+      "source": "schemas/v2/poi-common.schema.json#/$defs/slot_envelope + save.py:_apply_skip_mutation"
+    },
+    "gap": "2 missing 'skip' mutation emissions (one per un-gate site)"
+  },
+  "scope_expansion": {
+    "search_pattern": "\\.skipped\\s*= ; type:['\"]skip['\"] ; saveMutations(",
+    "search_scope": "scripts/lib/react_template.tpl, scripts/lib/server/save.py",
+    "user_reported": ["scripts/lib/react_template.tpl"],
+    "additional_found": [],
+    "all_occurrences": ["react_template.tpl:2366", "react_template.tpl:2963"]
+  },
+  "reference_source": {
+    "tier": "tier_2_verified",
+    "description": "Server skip-mutation handler contract + slot_envelope schema (both verified this session by Read). NOTE: zero pre-existing front-end skip emit sites; the canonical payload shape is derived from _apply_skip_mutation, NOT from a front-end precedent.",
+    "url_or_location": "scripts/lib/server/save.py:107-114 ; schemas/v2/poi-common.schema.json:194-202",
+    "copy_allowed": true,
+    "role_table": null,
+    "canonical_skip_payload": {"type": "skip", "slot": "<slotId>", "extra": {"skipped": false, "skipped_reason": null}}
+  },
+  "prior_attempts": {
+    "triggered": true,
+    "trigger_source": "user_phrasing",
+    "attempts": [
+      {
+        "artifact_path": "docs/dev/specs/spec-20260527-062755.md",
+        "proposed_solution": "Clear slots[X].skipped in React state at handleSidebarDrop and applyBridge so gated meal slots become droppable in-session.",
+        "actual_change": "Added dayEntry.slots[srcSlotId].skipped=false (line 2366) and dayEntry.slots[targetSlotId].skipped=false (line 2963); persistence explicitly out-of-scope.",
+        "outcome": "In-session un-gate works; on reload the slot re-gates because skipped:false was never persisted to day-NN.json.",
+        "failure_category": "wrong_scope",
+        "target_layer": "L1"
+      }
+    ],
+    "novelty_check": {
+      "this_attempt_layer": "L4",
+      "differs_from_all_priors": true,
+      "rationale": "Prior attempt targeted React-state (presentation/L1) only. This attempt targets the data-flow/persistence layer (L4): emit the existing 'skip' mutation through the autosave pipeline so the un-gate reaches disk. Different layer, addresses the persistence gap the prior cycle deferred."
+    }
+  },
+  "context": {
+    "codebase_state": "master; data/.../day-01.json and meta.json modified in working tree (prior cycle artifacts)",
+    "recent_commits": "dc75f397 CandidatesSidebar move-semantics; e5bf3568 Meals draggable when edSlot null; 1c640044 meals cards draggable + deselect clear",
+    "file_contents": {},
+    "dependencies": {},
+    "environment": {}
+  },
+  "development_approach": {
+    "strategy": "At each of the two React-state un-gate sites, add a 'skip' mutation (skipped:false, skipped_reason:null) to the saveMutations call alongside the existing select emission. Batch skip+select into one saveMutations array call per site to avoid a second round-trip. No server/schema changes.",
+    "files_to_create": [],
+    "files_to_modify": ["scripts/lib/react_template.tpl"],
+    "key_line_numbers": {
+      "site_a_ungate": "react_template.tpl:2366",
+      "site_a_existing_emit": "react_template.tpl:2406",
+      "site_b_ungate": "react_template.tpl:2963",
+      "site_b_existing_emit": "react_template.tpl:2989",
+      "autosave_function": "react_template.tpl:2806 (saveMutations useCallback)",
+      "server_handler": "scripts/lib/server/save.py:107-114",
+      "dispatch_table": "scripts/lib/server/save.py:158-166"
+    },
+    "validation_approach": "Live Playwright on both desktop 1440x900 and mobile 390x844: un-gate Day 1 breakfast (drag default to sidebar + drop candidate), wait for autosave, reload, assert day-01.json breakfast skipped:false/skipped_reason:null/selected_option_id==placed AND board renders selection + slot droppable. Plus regression spot-check of prior working behaviors (AC5)."
+  },
+  "acceptance_criteria_path": "docs/dev/acceptance-criteria-20260527-133618.json",
+  "blast_radius_map_path": ".claude/dev-registry/dev-20260527-133618/blast-radius-map.json",
+  "complexity_tier": "STANDARD",
+  "risk_level": "medium",
+  "_risk_level_doc": "medium = single-file front-end change touching the autosave/persistence path; user-facing UX but bounded to two meal-only un-gate sites; reuses existing mutation+schema.",
+  "test_writer_expected": true,
+  "standards_to_enforce": {
+    "no_hardcoded_values": true,
+    "yaml_frontmatter_description_only": true,
+    "integer_step_numbering": true,
+    "meaningful_naming": true,
+    "git_root_cause_reference": true
+  },
+  "codex_consult": {
+    "invoked": false,
+    "status": "pending_post_draft",
+    "feedback_summary": null,
+    "findings": [],
+    "feedback_incorporated": null
+  }
+}
