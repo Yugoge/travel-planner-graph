@@ -189,29 +189,31 @@
   "evidence": {
     "observed": "drag away default meal → place new restaurant → refresh → slot re-gates and new selection possibly lost",
     "measured": {
-      "value": "skipped:true, skipped_reason:'pre-arrival' persists on disk; zero skip emit sites in front-end",
-      "location": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json (breakfast); react_template.tpl:2366,2406,2963,2989"
+      "value": "skipped:true, skipped_reason:'pre-arrival' persists on disk; zero skip emit sites in front-end; candidate guard MEAL_SLOTS includes non-schema 'meals-any'; Site C board branch + Site B origin empty a SOURCE meal slot without un-gating it",
+      "location": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json (breakfast); react_template.tpl:1915,2227,2366,2406,2963,2989; save.py:57-65; schemas/v2/day.schema.json:53-66"
     },
     "expected": {
-      "value": "skipped:false, skipped_reason:null persisted after un-gate; selected_option_id==placed for placement path",
-      "source": "schemas/v2/poi-common.schema.json#/$defs/slot_envelope + save.py:_apply_skip_mutation"
+      "value": "skipped:false, skipped_reason:null persisted after un-gate for BOTH source and target meal slots; selected_option_id==placed for placement path; NO non-schema slot key (meals-any) ever written; emits restricted to breakfast/lunch/dinner",
+      "source": "schemas/v2/day.schema.json (slot allow-list, additionalProperties:false) + schemas/v2/poi-common.schema.json#/$defs/slot_envelope + save.py:_apply_skip_mutation"
     },
-    "gap": "2 missing 'skip' mutation emissions (one per un-gate site)"
+    "gap": "(1) missing 'skip' mutation emissions at 3 sites; (2) MEAL_SLOTS guard too broad (admits meals-any -> schema-invalid disk write); (3) source-side meal slots in moves not un-gated"
   },
   "scope_expansion": {
-    "search_pattern": "\\.skipped\\s*= ; type:['\"]skip['\"] ; saveMutations(",
-    "search_scope": "scripts/lib/react_template.tpl, scripts/lib/server/save.py",
+    "search_pattern": "\\.skipped\\s*= ; type:['\"]skip['\"] ; saveMutations( ; MEAL_SLOTS",
+    "search_scope": "scripts/lib/react_template.tpl, scripts/lib/server/save.py, schemas/v2/day.schema.json",
     "user_reported": ["scripts/lib/react_template.tpl"],
     "additional_found": [],
-    "all_occurrences": ["react_template.tpl:2366", "react_template.tpl:2963"]
+    "all_occurrences": ["react_template.tpl:2366", "react_template.tpl:2963", "react_template.tpl:1915 (Site C — no .skipped= write but selects onto/away from meal slots)"]
   },
   "reference_source": {
     "tier": "tier_2_verified",
-    "description": "Server skip-mutation handler contract + slot_envelope schema (both verified this session by Read). NOTE: zero pre-existing front-end skip emit sites; the canonical payload shape is derived from _apply_skip_mutation, NOT from a front-end precedent.",
-    "url_or_location": "scripts/lib/server/save.py:107-114 ; schemas/v2/poi-common.schema.json:194-202",
+    "description": "Server skip-mutation handler contract + day/slot schemas (all verified this session by Read). NOTE: zero pre-existing front-end skip emit sites; the canonical payload shape is derived from _apply_skip_mutation, NOT from a front-end precedent. The valid persisted meal-slot list (breakfast/lunch/dinner) is copied verbatim from day.schema.json slots properties (additionalProperties:false). _get_or_create_slot (save.py:65) does NOT validate slot keys, so the front-end SKIPPABLE_MEAL_SLOTS guard is the only protection against a schema-invalid meals-any write.",
+    "url_or_location": "scripts/lib/server/save.py:57-65,107-114 ; schemas/v2/day.schema.json:53-66 ; schemas/v2/poi-common.schema.json#/$defs/slot_envelope",
     "copy_allowed": true,
     "role_table": null,
-    "canonical_skip_payload": {"type": "skip", "slot": "<slotId>", "extra": {"skipped": false, "skipped_reason": null}}
+    "canonical_skip_payload": {"type": "skip", "slot": "<slotId in {breakfast,lunch,dinner}>", "extra": {"skipped": false, "skipped_reason": null}},
+    "skippable_meal_slots": ["breakfast", "lunch", "dinner"],
+    "non_persistable_pseudo_slots": ["meals-any"]
   },
   "prior_attempts": {
     "triggered": true,
