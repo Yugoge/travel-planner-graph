@@ -5,31 +5,36 @@
   "spec_path": "docs/dev/specs/spec-20260527-133618.md",
   "requirement": {
     "original": "我告诉你我要的就是极致的用户体验，你自己好自为之",
-    "clarified": "Persist meal-slot un-gating (skipped:false, skipped_reason:null) across page reload by emitting the existing 'skip' mutation through the existing autosave pipeline at the two React-state un-gating sites. Use existing standard schema only; no new field/mutation types.",
-    "what": "Wire the existing-but-unused 'skip' mutation into the two front-end un-gating sites so skipped:false persists to day-NN.json on reload.",
-    "why": "Prior cycle fixed un-gating in React state only; on reload the slot re-gates and selection can be lost, violating the ultimate-UX requirement.",
+    "clarified": "Persist meal-slot un-gating (skipped:false, skipped_reason:null) across page reload by emitting the existing 'skip' mutation through the existing autosave pipeline at the three un-gating/selection sites. Restrict skip emits to the 3 real persisted meal slots (breakfast/lunch/dinner) via a NEW SKIPPABLE_MEAL_SLOTS set so the non-schema 'meals-any' pseudo-slot never reaches disk; cover BOTH source and target meal slots of any move (de-duplicated) so neither re-gates. Use existing standard schema only; no new field/mutation types.",
+    "what": "Wire the existing-but-unused 'skip' mutation into the front-end un-gating/selection sites so skipped:false persists to day-NN.json on reload, gated by a NEW SKIPPABLE_MEAL_SLOTS=Set(breakfast,lunch,dinner) (NOT MEAL_SLOTS, which includes the non-schema meals-any), with symmetric source+target coverage at all 3 sites.",
+    "why": "Prior cycle fixed un-gating in React state only; on reload the slot re-gates and selection can be lost, violating the ultimate-UX requirement. QA round 1 rejected v1 for (1) gating on MEAL_SLOTS which admits meals-any -> schema-invalid disk write, and (2) not un-gating the SOURCE slot of a move (Site C board branch) -> source re-gates on reload.",
     "where": ["scripts/lib/react_template.tpl"],
     "scope": {
       "included": [
-        "scripts/lib/react_template.tpl handleSidebarDrop Site A (line 2366 / emit 2406) — skip emit inside MEAL_SLOTS guard at 2355",
-        "scripts/lib/react_template.tpl applyBridge Site B (line 2963 / emit 2989) — inside MEAL_SLOTS guard at 2957",
-        "scripts/lib/react_template.tpl Timeline-drop Site C (line 1915) — board + setEditorSelection-fallback branches, skip emit guarded by meal-slot check on toSlotId (codex F4)"
+        "scripts/lib/react_template.tpl NEW const SKIPPABLE_MEAL_SLOTS = Set(['breakfast','lunch','dinner']) adjacent to MEAL_SLOTS at 2227; ALL skip emits gated by SKIPPABLE_MEAL_SLOTS.has(slotId)",
+        "scripts/lib/react_template.tpl handleSidebarDrop Site A (line 2366 / emit 2406) — source-only skip emit gated by SKIPPABLE_MEAL_SLOTS.has(srcSlotId)",
+        "scripts/lib/react_template.tpl applyBridge Site B (line 2963 / emit 2989) — skip for targetSlotId AND (when originSlotId set and != target) originSlotId, de-duplicated, gated by SKIPPABLE_MEAL_SLOTS",
+        "scripts/lib/react_template.tpl Timeline-drop Site C (line 1915) — board branch emits skip for BOTH sourceSlotId and toSlotId (QA Defect 2); candidates-fallback + setEditorSelection branches emit skip for toSlotId; all gated by SKIPPABLE_MEAL_SLOTS, de-duplicated"
       ],
       "excluded": [
-        "scripts/lib/server/save.py (handler already correct)",
-        "schemas/v2/poi-common.schema.json (schema already models skipped/skipped_reason)",
-        "bridge function (line 2914 — does not clear .skipped)",
+        "scripts/lib/server/save.py (handler already correct; no server-side slot-key validation hardening this cycle — logged as out-of-scope observation)",
+        "schemas/v2/poi-common.schema.json + schemas/v2/day.schema.json (reference-only)",
+        "bridge selection logic (line 2914 — only thread/add Site-C else-branch skip for toSlotId; do not modify bridge's select logic)",
         "debounce / autosave pipeline internals",
         "late_arrival_placeholder semantics"
       ]
     },
     "success_criteria": [
-      "skip mutation emitted at both un-gate sites alongside existing select emission",
+      "skip mutation emitted at all 3 sites alongside existing select emission, gated by SKIPPABLE_MEAL_SLOTS (never MEAL_SLOTS)",
+      "symmetric source+target coverage: both sides of a move persist skipped:false, de-duplicated",
+      "no skip emit ever carries meals-any/accommodation/activity slots; day-NN.json never gains a slots['meals-any'] key (schema-valid)",
       "day-01.json breakfast reads skipped:false, skipped_reason:null, selected_option_id==placed after reload",
       "in-session un-gate and all prior working behaviors unchanged"
     ],
     "constraints": [
       "No new mutation type; no new slot_envelope field",
+      "skip emits gated ONLY by SKIPPABLE_MEAL_SLOTS=Set(breakfast,lunch,dinner); NEVER MEAL_SLOTS (admits meals-any)",
+      "symmetric source+target skip coverage at all move sites, de-duplicated (Set-based)",
       "skip payload top-level field is 'slot' (not slot_id)",
       "skipped/skipped_reason nest under 'extra'",
       "only skipped + skipped_reason mutated; late_arrival_placeholder untouched"
