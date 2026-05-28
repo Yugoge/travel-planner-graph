@@ -1,0 +1,123 @@
+{
+  "request_id": "20260527-133618",
+  "task_id": "20260527-133618",
+  "timestamp": "2026-05-28T00:00:00Z",
+  "qa": {
+    "phase": "pre_dev",
+    "status": "fail",
+    "user_verbatim_complaint": "我要的就是极致的用户体验 — every skipped-slot meal change must survive a page reload by persisting through the standard schema.",
+    "verified_against_complaint": true,
+    "passed_user_requirement": null,
+    "ac_alignment": null,
+    "verdict": "BA spec is mostly correct (payload shape, autosave signature, emit-site discovery, AC3 reproduction data all verified against source) BUT contains a blocking internal contradiction: it prescribes MEAL_SLOTS.has() as the skip-emit guard at Sites A/B while simultaneously requiring breakfast/lunch/dinner-only scope. MEAL_SLOTS includes 'meals-any', which day.schema.json forbids as a slot key (additionalProperties:false). A dev following the Technical Hints literally would emit skip for 'meals-any' and write schema-invalid data. Additionally the board-move source-deselect path (Site C board branch) leaves the SOURCE meal slot skipped on disk after reload — an uncovered persistence gap. Spec must be corrected before dev: introduce a SKIPPABLE_MEAL_SLOTS=new Set(['breakfast','lunch','dinner']) guard for ALL skip emits, and decide/cover the board-move source-slot skip-false emit.",
+    "validation_checks": [
+      {
+        "check": "1. Mutation payload shape correctness",
+        "result": "pass",
+        "evidence": "save.py:108-114 _apply_skip_mutation reads mut.get('slot') (top-level field is 'slot', NOT 'slot_id') and extra=mut.get('extra') or {}; slot['skipped']=bool(extra.get('skipped',True)); slot['skipped_reason']=extra.get('skipped_reason'). Spec canonical payload {type:'skip', slot:'<id>', extra:{skipped:false, skipped_reason:null}} matches EXACTLY. Confirmed by codex F1."
+      },
+      {
+        "check": "2. Autosave function signature",
+        "result": "pass",
+        "evidence": "react_template.tpl:2806 — const saveMutations = useCallback(async (dayNum, mutations) => {...}, [isOffline, editorSession, recomputeBudget]). POSTs {trip_id:TRIP_ID, day:dayNum, editor_session:editorSession, mutations} to /api/save at 2816-2825. Signature documented correctly in spec Technical Hints."
+      },
+      {
+        "check": "3. All emit sites identified",
+        "result": "pass_with_gap",
+        "evidence": "grep '\\.skipped\\s*=[^=]' returns EXACTLY 2 hits: react_template.tpl:2366 (handleSidebarDrop=Site A) and 2963 (applyBridge=Site B). Site C (Timeline-drop onDrop @1915) does NOT write .skipped but routes selections onto meal slots via board/candidates/setEditorSelection branches — correctly identified by spec via codex F4. No 4th .skipped write exists. HOWEVER codex F3 surfaces that the Site C 'board' branch emits select(sourceSlotId,null)+select(toSlotId) and the spec only prescribes a skip emit for toSlotId — leaving a skipped SOURCE meal slot un-persisted (source stays skipped:true on reload). This is an uncovered emit case, not a missed .skipped write."
+      },
+      {
+        "check": "4. Existing skip-emit precedent",
+        "result": "pass",
+        "evidence": "grep 'type:\\s*[\\'\"]skip[\\'\"]' returns ZERO matches in react_template.tpl. Confirmed: no existing front-end skip emit; server handler exists but was never wired up client-side. Dev must ground payload shape on _apply_skip_mutation (tier_2), no front-end precedent to mirror. Spec states this correctly."
+      },
+      {
+        "check": "5. select-mutation persistence for the placement",
+        "result": "pass",
+        "evidence": "Site B emits select at react_template.tpl:2989 ({type:'select', slot:targetSlotId, option_id:optionId, origin_slot_id}). Site C board branch emits select at 1915. AC3's placement path persists selected_option_id via the existing select emit, which the spec preserves. _apply_select_mutation (save.py:75-104) writes slot['selected_option_id']."
+      },
+      {
+        "check": "6. Schema conformance",
+        "result": "fail",
+        "evidence": "skip mutation type and slot_envelope.skipped/skipped_reason already exist (no new types). skipped_reason:null is schema-valid when skipped=false (poi-common.schema.json:198-201 enum includes null; validator rejects null only when skipped=true). BUT: day.schema.json:56-65 declares slots with additionalProperties:false and enum {breakfast, morning_activity, lunch, afternoon_activity, dinner, evening_activity}. 'meals-any' is NOT a valid slot key. The spec's prescribed guard MEAL_SLOTS.has() (=Set with 'meals-any') would allow a skip emit for 'meals-any', and _get_or_create_slot (save.py:64-65, setdefault) would create day.slots['meals-any'] => schema-invalid data on disk. SCHEMA DRIFT introduced by the spec's own implementation prescription. Codex F2."
+      },
+      {
+        "check": "7. AC3 reproduction target",
+        "result": "pass",
+        "evidence": "data/beijing-lijiang-dali-20260418-100846/days/day-01.json breakfast = {skipped:true, skipped_reason:'pre-arrival', selected_option_id:'dinner-1-1'} (lines 49-51). Matches spec data_state EXACTLY. Day stage='user-selected' (line 9) — relevant to codex F6 stage-gate edge case."
+      }
+    ],
+    "findings": [
+      {
+        "id": "QA-F1",
+        "severity": "critical",
+        "category": "spec_internal_contradiction",
+        "source": "codex F2 (verified independently against day.schema.json)",
+        "location": "spec-20260527-133618.md Must-Have lines 71-72, Technical Hints line 154; react_template.tpl:2227 (MEAL_SLOTS def), 2355/2957 (guards used at Sites A/B)",
+        "finding": "The spec's stated intent is breakfast/lunch/dinner-only skip emits, but it prescribes placing the emit 'inside the existing MEAL_SLOTS.has(...) guard'. MEAL_SLOTS = new Set(['breakfast','lunch','dinner','meals-any']) — it INCLUDES 'meals-any'. day.schema.json:56-65 forbids 'meals-any' as a slot key (additionalProperties:false). _apply_skip_mutation -> _get_or_create_slot (save.py:64-65) would setdefault-create day.slots['meals-any'], writing schema-invalid data. A dev following Technical Hints literally introduces schema drift. The spec's prose-intent and prescribed-mechanism conflict.",
+        "proposed_fix": "Spec must introduce a dedicated guard for skip emits: SKIPPABLE_MEAL_SLOTS = new Set(['breakfast','lunch','dinner']) (NOT MEAL_SLOTS). Use it for the skip emit at ALL sites (A, B, C). The existing MEAL_SLOTS.has() guard around the .skipped-clear React state write at 2355/2957 may stay (React state for meals-any is harmless), but the new skip MUTATION emit must be gated on SKIPPABLE_MEAL_SLOTS so it never fires for meals-any. Update Must-Have, Edge Cases (the 'NOT meals-any' note), and Technical Hints to reference SKIPPABLE_MEAL_SLOTS rather than MEAL_SLOTS.has().",
+        "classification": "in_scope_real_bug",
+        "blocks_release": true
+      },
+      {
+        "id": "QA-F2",
+        "severity": "major",
+        "category": "uncovered_persistence_path",
+        "source": "codex F3 (verified against react_template.tpl:1915)",
+        "location": "spec-20260527-133618.md AC2b / Site C; react_template.tpl:1915 (board branch)",
+        "finding": "The Site C 'board' branch emits saveMutations(dayNum, [{select, slot:payload.sourceSlotId, option_id:null}, {select, slot:toSlotId, option_id}]). The spec only prescribes a skip(false) emit for toSlotId. If the SOURCE slot (payload.sourceSlotId) is itself a skipped real meal slot (a board card moved away from a gated meal slot to another meal slot), the source is deselected but its skipped:true persists on disk — on reload the source slot re-gates. Symmetric to Site A (handleSidebarDrop deselect) which DOES un-gate the source. Site C board branch does not. This violates the ultimate-UX persistence requirement for the source slot.",
+        "proposed_fix": "Either (a) emit skip(false) for EVERY touched real meal slot in the Site C board branch — i.e. for sourceSlotId when it is a skippable meal AND for toSlotId — de-duped; OR (b) explicitly document in the spec that source-slot deselect via board-move intentionally leaves the source skipped (and justify why that is the desired UX). Option (a) is consistent with Site A semantics and the stated requirement. The spec must make an explicit decision, not leave it ambiguous.",
+        "classification": "in_scope_real_bug",
+        "blocks_release": true
+      },
+      {
+        "id": "QA-F3",
+        "severity": "minor",
+        "category": "shared_path_robustness",
+        "source": "codex F4 (verified against react_template.tpl:2914 bridge)",
+        "location": "react_template.tpl:2914 (bridge = window.setEditorSelection), 2945 (select emit)",
+        "finding": "window.setEditorSelection = bridge (2914) persists select at 2945 and does NOT clear .skipped. The spec's Site C 'else (setEditorSelection fallback)' branch covers the case where the Timeline-drop handler calls into bridge. But bridge is a general window-global; any OTHER caller of window.setEditorSelection that targets a skipped meal slot would also bypass skip persistence. Within THIS cycle's scope (the 3 identified drop paths) the spec's Site C coverage is adequate, but a centralized skip-emit helper would be more robust than per-call-site duplication.",
+        "proposed_fix": "Preferred: centralize the skip+select mutation construction in one helper (e.g. buildMealMutations(slotId, optionId, originSlotId)) used by applyBridge, the Timeline board/candidates/fallback branches, and bridge — so any new selection-onto-meal path inherits skip persistence. Acceptable: spec stays per-site (A/B/C) IF it explicitly notes that any future window.setEditorSelection caller onto a meal slot must also emit skip. Not blocking for this cycle's 3 paths.",
+        "classification": "in_scope_minor",
+        "blocks_release": false
+      },
+      {
+        "id": "QA-F4",
+        "severity": "minor",
+        "category": "validation_semantics",
+        "source": "codex F6 (matches spec's pre-documented codex-F2 edge case, spec line 97)",
+        "location": "spec-20260527-133618.md Edge Cases line 97; scripts/lib/trip_contract/validators.py:368 (_check_stage_gate)",
+        "finding": "Site A deselect on day-01 (stage='user-selected') sets a required meal (breakfast) to skipped:false + selected_option_id:null, which a later validation pass (_check_stage_gate / day-type tolerance) would flag. The spec already documents this as a validation-time-only concern out of scope for the 'no new logic' cycle. Codex independently re-flagged it. Confirmed it does NOT block save-time persistence (save.py does not run the stage gate).",
+        "proposed_fix": "No spec change required — already documented as an out-of-scope, validation-time observation. Logged for QA AC5 regression awareness. If the user later reports a validation failure after deselect on approved days, that is a separate cycle.",
+        "classification": "in_scope_minor",
+        "blocks_release": false
+      },
+      {
+        "id": "QA-F5",
+        "severity": "info",
+        "category": "confirmation",
+        "source": "codex F1 + F5",
+        "location": "react_template.tpl:2412 (applySelection), 2868 (setEditorSelection useCallback)",
+        "finding": "Confirmations: (F1) skip payload shape is exactly what _apply_skip_mutation consumes; do not stringify false or omit extra.skipped. (F5) applySelection at 2412 is dead (definition only, no call sites); the local setEditorSelection useCallback at 2868 only updates state, not the persistence bridge. No .skipped writes beyond 2366 and 2963 — corroborates the spec's grep completeness.",
+        "proposed_fix": null,
+        "classification": "observation_only",
+        "blocks_release": false
+      }
+    ],
+    "codex_consult": {
+      "invoked": true,
+      "status": "ok",
+      "model": "gpt-5.5 (xhigh)",
+      "feedback_summary": "Codex read save.py, common.py, loaders.py, day.schema.json, poi-common.schema.json and the relevant tpl sites. Confirmed payload shape correct (F1) and applySelection dead/no extra .skipped writes (F5). Raised 4 actionable findings: F2 (MEAL_SLOTS.has() includes meals-any => schema-invalid day.slots['meals-any'] — use SKIPPABLE_MEAL_SLOTS), F3 (board-move source deselect leaves source meal slot skipped on reload), F4 (centralize skip-emit / patch shared bridge fallback), F6 (stage-gate / day-type tolerance validator may reject skipped:false required meal).",
+      "feedback_incorporated": "F2 -> QA-F1 (critical, blocking; verified against day.schema.json additionalProperties:false). F3 -> QA-F2 (major, blocking; verified at react_template.tpl:1915 board branch). F4 -> QA-F3 (minor, non-blocking; Site C covers the 3 cycle paths, centralization is a robustness improvement). F6 -> QA-F4 (minor, matches spec's pre-documented edge case). F1+F5 -> QA-F5 (confirmations). Verdict driven by F2/F3 (blocking) — spec not safely implementable as written."
+    },
+    "summary": {
+      "critical_findings": 1,
+      "major_findings": 1,
+      "minor_findings": 2,
+      "info_findings": 1,
+      "blocking_findings": 2,
+      "recommendation": "reject_spec — return to BA to (1) replace the MEAL_SLOTS.has() skip-emit guard with a SKIPPABLE_MEAL_SLOTS={breakfast,lunch,dinner} guard at all sites to prevent schema-invalid day.slots['meals-any'] writes, and (2) explicitly cover or scope-out the board-move source-slot skip-false emit (Site C board branch). The payload shape, autosave signature, emit-site discovery, and AC3 reproduction data are all correct and require no change."
+    }
+  }
+}
