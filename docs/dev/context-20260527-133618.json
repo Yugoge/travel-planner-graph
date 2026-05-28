@@ -45,10 +45,20 @@
     "path_dependent_shared_infra": ["scripts/lib/server/save.py (read-only reference: _apply_skip_mutation contract)", "schemas/v2/poi-common.schema.json (read-only reference: slot_envelope)"],
     "out_of_path_observed_but_not_touched": []
   },
-  "out_of_scope_observations": [],
+  "out_of_scope_observations": [
+    {
+      "ts": "2026-05-28T00:00:00Z",
+      "task_id": "20260527-133618",
+      "file": "scripts/lib/server/save.py",
+      "line": 65,
+      "observation": "_get_or_create_slot calls day['slots'].setdefault(slot_id, ...) with NO validation against day.schema.json's slot allow-list, so any client-supplied slot (e.g. meals-any, typos) silently writes a schema-forbidden key. This cycle guards client-side via SKIPPABLE_MEAL_SLOTS; a defense-in-depth server-side slot-key allow-list check would be more robust but is path-external to the user-stated un-gating need. Recorded for visibility; not fixed this cycle.",
+      "in_user_path": false,
+      "security_relevant": false
+    }
+  ],
   "root_cause_analysis": {
     "symptom": "User un-gates a meal slot in-session (drag away default + place new restaurant); on reload the slot re-gates and the new selection can be lost.",
-    "root_cause": "The two React-state writes that clear slots[X].skipped=false (react_template.tpl:2366, 2963) never emit a 'skip' mutation, so day-NN.json retains skipped:true, skipped_reason:'pre-arrival'. The front-end has zero 'skip' mutation emit sites despite the server handler and schema fully supporting it.",
+    "root_cause": "The two React-state writes that clear slots[X].skipped=false (react_template.tpl:2366, 2963) never emit a 'skip' mutation, so day-NN.json retains skipped:true, skipped_reason:'pre-arrival'. The front-end has zero 'skip' mutation emit sites despite the server handler and schema fully supporting it. Two correctness sub-causes surfaced by QA round 1: (a) MEAL_SLOTS (the candidate guard) includes the non-schema 'meals-any' pseudo-slot, so gating skip emits on it would write a forbidden slots['meals-any'] key to disk; (b) move handlers (Site C board branch, Site B origin) empty a SOURCE meal slot but only the TARGET was un-gated, leaving the source skipped:true on disk -> re-gates on reload.",
     "root_cause_commit": "N/A - persistence was explicitly out-of-scope in prior cycle 20260527-062755",
     "why_introduced": "Prior cycle scoped the fix to in-session React state only; persistence deferred.",
     "why_problematic": "Disk state diverges from in-session state; reload reverts the un-gate, breaking ultimate-UX expectation.",
