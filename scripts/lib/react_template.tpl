@@ -2225,6 +2225,24 @@ let currentDragSlotId = null;
 
 // _isCompatible: meal slots are mutually compatible; non-meal require exact match (M18)
 const MEAL_SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'meals-any']);
+// SKIPPABLE_MEAL_SLOTS: the 3 real persisted meal slots per day.schema.json (additionalProperties:false).
+// MEAL_SLOTS includes the UI-only 'meals-any' pseudo-slot which is NOT a valid persisted key — a skip
+// mutation with slot:'meals-any' would write a schema-forbidden slots['meals-any'] key on disk.
+// Therefore ALL backend `skip` mutation emits must be gated by SKIPPABLE_MEAL_SLOTS, not MEAL_SLOTS.
+const SKIPPABLE_MEAL_SLOTS = new Set(['breakfast', 'lunch', 'dinner']);
+// buildSkipMuts: produce de-duplicated, SKIPPABLE_MEAL_SLOTS-filtered skip mutations
+// with the canonical payload shape {type:'skip', slot, extra:{skipped:false, skipped_reason:null}}.
+// Returns [] when no input id is a valid persisted meal slot (filter no-ops for non-meal callers).
+const buildSkipMuts = (...ids) => {
+  const seen = new Set();
+  const muts = [];
+  for (const id of ids) {
+    if (!id || !SKIPPABLE_MEAL_SLOTS.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    muts.push({ type: 'skip', slot: id, extra: { skipped: false, skipped_reason: null } });
+  }
+  return muts;
+};
 function _isCompatible(srcSlotId, tgtSlotId) {
   if (MEAL_SLOTS.has(srcSlotId) && MEAL_SLOTS.has(tgtSlotId)) return true;
   return srcSlotId === tgtSlotId;
