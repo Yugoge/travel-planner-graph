@@ -1,0 +1,112 @@
+{
+  "request_id": "20260527-133618",
+  "task_id": "20260527-133618",
+  "timestamp": "2026-05-29T00:00:00Z",
+  "baseline_head_sha": "44c900e81124e737e49a49a5d7bec5467c14b6ed",
+  "baseline_dirty_snapshot": " M data/beijing-lijiang-dali-20260418-100846/days/day-01.json\n M data/beijing-lijiang-dali-20260418-100846/meta.json\n M docs/dev/INDEX.md\n M docs/dev/specs/INDEX.md\n",
+  "dev_report_path": "docs/dev/dev-report-20260527-133618.json",
+  "rank_acknowledged": null,
+  "range_acknowledged": null,
+  "recent_events_digest_acknowledged": null,
+  "score_injection_action": null,
+  "dev": {
+    "status": "completed",
+    "iteration": "R1",
+    "files_modified": ["scripts/lib/react_template.tpl"],
+    "files_created": ["docs/dev/dev-report-20260527-133618.json"],
+    "observed_preexisting": [],
+    "changes_summary": "Wired the standard `skip` mutation into every meal-slot un-gate / select code path in scripts/lib/react_template.tpl so the `skipped:false` state survives page reload. Added SKIPPABLE_MEAL_SLOTS=Set(breakfast,lunch,dinner) plus a buildSkipMuts(...ids) helper adjacent to MEAL_SLOTS at line 2227 — the helper de-dupes, filters by SKIPPABLE_MEAL_SLOTS (excluding meals-any/accommodation/activity), and produces the canonical payload {type:'skip', slot, extra:{skipped:false, skipped_reason:null}}. Prepended ...buildSkipMuts(srcSlotId) at Site A (handleSidebarDrop ~line 2406, now 2424). Prepended ...buildSkipMuts(targetSlotId, originSlotId||null) at Site B (applyBridge ~line 2989, now 3007). At Site C, applied buildSkipMuts coverage to all SIX board-drop onDrop handlers (lines 917, 994, 1072, 1150, 1307, 1915) across all three sub-branches: `direction==='board'` prepends buildSkipMuts(payload.sourceSlotId, toSlotId) covering BOTH source and target; `direction==='candidates'` applyEditorSelection-absent fallback prepends buildSkipMuts(toSlotId); `else` setEditorSelection branch emits a separate saveMutations(day.day, buildSkipMuts(toSlotId)) only when non-empty. The four non-meal handlers (994 cafe / 1072 activity / 1150 entertainment / 1307 accommodation) become schema-safe no-ops because buildSkipMuts returns [] for non-SKIPPABLE_MEAL_SLOTS ids. MEAL_SLOTS (still containing meals-any) is preserved for UI _isCompatible checks. The two existing React-state `.skipped=false` clears at lines 2366 and 2963 are untouched. late_arrival_placeholder is never written.",
+    "tasks_completed": [
+      {
+        "id": 1,
+        "description": "Added SKIPPABLE_MEAL_SLOTS constant and buildSkipMuts helper",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Inserted after MEAL_SLOTS at line 2227: `const SKIPPABLE_MEAL_SLOTS = new Set(['breakfast','lunch','dinner'])` plus a buildSkipMuts(...ids) helper that de-dupes via a local Set, filters by SKIPPABLE_MEAL_SLOTS.has(id), and emits the canonical {type:'skip', slot, extra:{skipped:false, skipped_reason:null}} payload (top-level `slot`, flags nested under `extra` — mirrors _apply_skip_mutation in save.py:107-114).",
+        "rationale": "MEAL_SLOTS includes the UI-only pseudo-slot 'meals-any' which is NOT a valid persisted slot key per day.schema.json (additionalProperties:false). Gating skip emits on SKIPPABLE_MEAL_SLOTS prevents a schema-invalid slots['meals-any'] key from ever being written to disk. Helper centralizes the restricted-guard + dedup logic in one place so every emit site reuses identical safety semantics."
+      },
+      {
+        "id": 2,
+        "description": "Site A handleSidebarDrop — prepend buildSkipMuts(srcSlotId) to saveMutations array",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Line 2424 (was 2406): `saveMutations(dayNum, [{ type:'select', slot:srcSlotId, option_id:null }])` -> `saveMutations(dayNum, [...buildSkipMuts(srcSlotId), { type:'select', slot:srcSlotId, option_id:null }])`",
+        "rationale": "Site A clears slots[srcSlotId].skipped=false in React state at line 2366 (deselect-from-source). Without an accompanying skip mutation, day-NN.json retains skipped:true and the slot re-gates on reload."
+      },
+      {
+        "id": 3,
+        "description": "Site B applyBridge — prepend buildSkipMuts(targetSlotId, originSlotId||null) to saveMutations array",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Line 3007 (was 2989): `saveMutations(dayNum, [{ type:'select', slot:targetSlotId, option_id:optionId, origin_slot_id:originSlotId||null }])` -> `saveMutations(dayNum, [...buildSkipMuts(targetSlotId, originSlotId||null), { type:'select', slot:targetSlotId, option_id:optionId, origin_slot_id:originSlotId||null }])`",
+        "rationale": "Site B clears slots[targetSlotId].skipped=false at line 2963. The helper handles both target AND origin un-gating: when originSlotId is set and is a real meal slot, the move empties it and the slot must not stay gated. De-dup inside buildSkipMuts collapses origin==target to a single mutation; null/non-meal origin produces zero skip for origin."
+      },
+      {
+        "id": 4,
+        "description": "Site C — all six board-drop onDrop handlers, board branch: prepend buildSkipMuts(payload.sourceSlotId, toSlotId)",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Lines 917, 994, 1072, 1150, 1307, 1915 — direction==='board' branch in each onDrop. Substring `saveMutations(dayNum, [{ type:'select', slot:payload.sourceSlotId, option_id:null }, { type:'select', slot:toSlotId, option_id:payload.optionId, origin_slot_id:payload.sourceSlotId }])` replaced via replace_all (byte-identical across all 6 handlers — confirmed grep count = 6 before and after) with `saveMutations(dayNum, [...buildSkipMuts(payload.sourceSlotId, toSlotId), { type:'select', slot:payload.sourceSlotId, option_id:null }, { type:'select', slot:toSlotId, option_id:payload.optionId, origin_slot_id:payload.sourceSlotId }])`",
+        "rationale": "Covers BOTH source and target meal slots of a board move so neither re-gates on reload (QA Defect 2). Spec codex round-2 finding: the move pattern is duplicated across six board surfaces, not just 1915. The SKIPPABLE_MEAL_SLOTS filter inside buildSkipMuts makes handlers 994/1072/1150/1307 (cafe/activity/entertainment/accommodation) schema-safe no-ops because their toSlotId/sourceSlotId are not in {breakfast,lunch,dinner}. Handlers 917 (Kanban meals row) and 1915 (TimelineView slot) are the real emitters."
+      },
+      {
+        "id": 5,
+        "description": "Site C — all six board-drop onDrop handlers, candidates-fallback branch: prepend buildSkipMuts(toSlotId)",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Lines 917, 994, 1072, 1150, 1307, 1915 — direction==='candidates' branch fallback (when window.applyEditorSelection is absent). Substring `saveMutations(dayNum, [{ type:'select', slot:toSlotId, option_id:payload.optionId, origin_slot_id:payload.originSlotId||null }])` replaced via replace_all (grep count = 6) with `saveMutations(dayNum, [...buildSkipMuts(toSlotId), { type:'select', slot:toSlotId, option_id:payload.optionId, origin_slot_id:payload.originSlotId||null }])`",
+        "rationale": "Spec AC2c requires the candidates-fallback to emit skip for the target meal slot when applyEditorSelection is absent. Codex adversarial review (round 3) flagged this gap as in_scope. Filter makes non-meal handlers no-ops."
+      },
+      {
+        "id": 6,
+        "description": "Site C — all six board-drop onDrop handlers, else (setEditorSelection) branch: emit separate saveMutations skip-only call when target is a meal slot",
+        "type": "code",
+        "files_modified": ["scripts/lib/react_template.tpl"],
+        "changes": "Lines 917, 994, 1072, 1150, 1307, 1915 — else branch. Substring `else if (window.setEditorSelection) window.setEditorSelection(toSlotId, payload.optionId, payload.originSlotId || null);` replaced via replace_all (grep count = 6) with `else if (window.setEditorSelection) { window.setEditorSelection(toSlotId, payload.optionId, payload.originSlotId || null); const _skipMutsElse = buildSkipMuts(toSlotId); if (saveMutations && _skipMutsElse.length) saveMutations(day && day.day, _skipMutsElse); }`",
+        "rationale": "setEditorSelection is a state-only bridge (line 2869-2872) that doesn't itself persist; emitting a separate saveMutations call with the skip-only array when the target is a meal slot persists the un-gate. Guarded by `_skipMutsElse.length` so non-meal targets emit nothing (zero network calls). Spec AC2c."
+      }
+    ],
+    "scripts_created": [],
+    "git_rationale": {
+      "root_cause_commit": "N/A — persistence was explicitly out-of-scope in prior cycle 20260527-062755 (in-session React-state un-gate only).",
+      "why_issue_occurred": "Prior cycle added React-state writes that cleared slots[X].skipped=false in-session but emitted no skip mutation. Server's _apply_skip_mutation handler and slot_envelope schema already supported skipped:false persistence; the front-end had zero `type:'skip'` emit sites.",
+      "how_fix_addresses_root": "Closes the persistence gap by emitting the canonical {type:'skip', slot, extra:{skipped:false, skipped_reason:null}} mutation at every meal-slot un-gate/select code path, through the existing saveMutations autosave pipeline. Filtered by SKIPPABLE_MEAL_SLOTS so meals-any (UI pseudo-slot) and non-meal slots never reach disk."
+    },
+    "diff_stats": {
+      "files_changed": 1,
+      "lines_added": 38,
+      "lines_removed": 8,
+      "new_symbols_introduced": ["SKIPPABLE_MEAL_SLOTS", "buildSkipMuts"],
+      "minimum_possible_lines_estimate": 30,
+      "justification_for_overage": "38 lines comprises: 18 lines for the new constant + helper + docstring comments at 2227 (could be ~6 lines minified, but multi-line layout matches surrounding code style and lets each `if` condition stay readable); 1 line edit at Site A; 1 line edit at Site B; 6 board-drop handler lines with three in-line buildSkipMuts call-sites each (replace_all on existing dense single-line onDrop arrows — no new lines added at handler sites, only substring substitutions within existing lines). The lines_added=38 count comes from the helper block; Site A/B/C changes contributed zero net new lines."
+    },
+    "fix_layer": "L4",
+    "scope_review_requested": false,
+    "blast_radius": [
+      {
+        "modified": "scripts/lib/react_template.tpl",
+        "imported_by": "scripts/lib/render_react.py and scripts/lib/generate_react_html.py — this .tpl is read as a string template, injected into a generated HTML file per trip. No further JS module imports. Run-time consumers are the generated per-trip editor HTML files served by the /api/save backing server."
+      }
+    ],
+    "blast_radius_declarations": [],
+    "qa_ready": true,
+    "qa_notes": "Run live Playwright on 1440x900 desktop + 390x844 mobile against data/beijing-lijiang-dali-20260418-100846 trip. AC3 happy path: Day 1 breakfast starts skipped:true / skipped_reason:'pre-arrival' / selected_option_id:'dinner-1-1'. Drag breakfast default to sidebar, drop sidebar candidate onto breakfast, wait for autosave debounce, hard-reload page, assert disk day-01.json breakfast reads skipped:false / skipped_reason:null / selected_option_id == placed option_id AND board renders the new selection AND slot is droppable. AC2b symmetric source: at the Kanban meals-row handler (917) and TimelineView handler (1915), board-drag a default meal item OUT of a skipped meal slot to another slot; reload; assert SOURCE meal slot reads skipped:false on disk. AC7 static + live: grep confirms every `type:'skip'` emit is produced only via buildSkipMuts (1 occurrence in helper body, 0 inline elsewhere); SKIPPABLE_MEAL_SLOTS = Set(['breakfast','lunch','dinner']) excludes meals-any; after drops onto non-meal targets (cafe/activity/accommodation), day-NN.json contains NO slots['meals-any'] key. AC5 regression: cross-slot meal drag, optional badge, meals-any UI visibility, image parity, and in-session skipped-gate un-gating (task 20260527-062755) all still work. Test via the canvas verification harness if needed. Helper-logic unit verification via node REPL (already done): 7 test cases pass (basic, dedup, distinct, meals-any-filtered, non-meal-filtered, null-tolerant, target-only).",
+    "permissions_to_add": []
+  },
+  "self_verification": {
+    "build": "skipped (template file, not directly compiled — embeds into generated HTML at render time)",
+    "smoke_check": "pass — node REPL unit test of buildSkipMuts helper passes 7 cases (single, dedup, two-distinct, meals-any filtered out, accommodation/activity filtered out, null/undefined tolerated, target-only Site-B-style call); grep confirms `type: 'skip'` appears exactly 1 time (inside helper body — never inline elsewhere), `buildSkipMuts` reference lines = 10 (1 declaration + 1 helper push + 1 Site A + 1 Site B + 6 board-drop handler lines covering all 3 sub-branches each)",
+    "notes": "Template .tpl file is consumed as a string by the HTML generator; no direct TS/JS compile step in repo. Helper logic verified out-of-band by running the exact JS in node and checking dedup + filter + payload shape."
+  },
+  "codex_consult": {
+    "invoked": true,
+    "status": "ok",
+    "feedback_summary": "Codex (gpt-5.5 xhigh) confirmed A-G all clean for the modified sites: payload shape matches save.py:107-114 exactly (top-level `slot`, flags under `extra`); SKIPPABLE_MEAL_SLOTS filter safely produces [] for meals-any/accommodation/activity; source+target coverage at all 6 board handlers verified by static count = 6; late_arrival_placeholder untouched; no double-emit / self-drop issue (Set dedup collapses source==target to one mutation); helper not over-engineered. Flagged ONE in_scope_real_bug: candidates-fallback branch (6 occurrences) and else (setEditorSelection) branch (6 occurrences) at Site C did NOT have skip(false) coverage for toSlotId. Per spec AC2c these branches must also persist the target un-gate. Applied codex's proposed fix exactly: candidates-fallback now prepends `...buildSkipMuts(toSlotId)` (replace_all on byte-identical substring, count=6); else-branch now wraps the existing setEditorSelection call to additionally emit `saveMutations(day && day.day, buildSkipMuts(toSlotId))` when the helper returns non-empty (replace_all on byte-identical substring, count=6). Helper's SKIPPABLE_MEAL_SLOTS filter keeps the 4 non-meal handlers (cafe/activity/entertainment/accommodation) schema-safe no-ops on these branches too.",
+    "feedback_incorporated": "Applied codex's PROPOSED_FIX to both the candidates-fallback and the else (setEditorSelection) branches across all 6 board-drop handlers. Verified post-edit: `type: 'skip'` still appears exactly 1 time (inside the helper body — confirms all skip emits route through buildSkipMuts), `buildSkipMuts` reference lines = 10 (covers helper decl/body + Site A + Site B + 6 dense Site C handlers carrying the three sub-branch refs in-line). Node REPL re-tested for the new candidates-fallback and else-branch shapes — meal-target emits skip+select / skip-only respectively; non-meal target emits select-only / zero. No other findings to address."
+  },
+  "blocking_issues": [],
+  "recommendations": [
+    "Out-of-scope but flagged for visibility: scripts/lib/server/save.py _get_or_create_slot (line 65) has no schema-allow-list check on slot_id — a defense-in-depth server-side allow-list would catch any future client bug that bypasses SKIPPABLE_MEAL_SLOTS. Front-end guard is load-bearing today; consider hardening in a future cycle.",
+    "QA-F4 / codex F2 stage-gate edge: persisting a required meal slot as {skipped:false, selected_option_id:null} (the Site A / board-source deselect state) on an already user-selected day would trip STAGE_GATE_VIOLATION at validation time (not save time). Spec marks this as out-of-scope; the user's explicit deselect action is honored at save time. Separate cycle if/when validation-on-deselect surfaces as user-visible."
+  ]
+}
