@@ -3004,7 +3004,7 @@ function NotionTravelApp() {
           return updated;
         });
       }
-      saveMutations(dayNum, [{ type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }]);
+      saveMutations(dayNum, [...buildSkipMuts(targetSlotId, originSlotId || null), { type: 'select', slot: targetSlotId, option_id: optionId, origin_slot_id: originSlotId || null }]);
       setPendingSelection(null);
     };
     window.applyEditorSelection = applyBridge;
