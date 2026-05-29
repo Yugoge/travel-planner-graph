@@ -2421,7 +2421,7 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, editorSelection
           });
         }
         setEditorSelections(prev => ({ ...prev, [key]: null }));
-        saveMutations(dayNum, [{ type: 'select', slot: srcSlotId, option_id: null }]);
+        saveMutations(dayNum, [...buildSkipMuts(srcSlotId), { type: 'select', slot: srcSlotId, option_id: null }]);
       }
     } catch (_) {}
   };
