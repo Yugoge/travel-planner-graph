@@ -8017,15 +8017,31 @@ const CandidatesSidebar = ({ editorTripData, publishedDay, lang, mapProvider, ed
   // Used to suppress the 🗑 control on the rendered-primary candidate card.
   const effectivePrimaryId = (slotId, slot) => {
     if (!slot) return null;
-    if (Object.prototype.hasOwnProperty.call(slot, 'rendered_primary_option_id')) {
+    // Client-side derivation for a slot the user has actively TOUCHED in Edit mode: selected
+    // option (if present), else options[0] for an unskipped meal/accommodation slot, else null.
+    // This is EXACTLY the server resolver's precedence for the client-known case — the only
+    // branch the client cannot reproduce is the legacy-name match for STALE-selection slots,
+    // which only applies to UNTOUCHED slots (see below).
+    const localDerivedPrimary = () => {
+      const opts = slot.options || [];
+      const resolved = resolveSelectionLocal(dayNum + ':' + slotId, slot.selected_option_id);
+      if (resolved && opts.some(o => o.option_id === resolved)) return resolved;
+      const isMealOrAcc = MEAL_SLOT_IDS_TPL.includes(slotId) || slotId === 'accommodation';
+      if (isMealOrAcc && !slot.skipped && opts.length > 0) return opts[0].option_id;
+      return null;
+    };
+    // Approach (b): once the local editor has SUPERSEDED the server's view of this slot (the user
+    // selected in Edit mode → editorSelections holds this slot's key), the server-stamped
+    // rendered_primary_option_id is STALE for the candidate sidebar — it still names the
+    // pre-select primary. For a TOUCHED slot the rendered primary is simply selected-else-options[0],
+    // which the client computes correctly, so the delete-control visibility flips immediately with
+    // NO refetch. UNTOUCHED slots keep the server stamp verbatim, preserving the stale-selection
+    // legacy-name-match branch the client cannot reproduce.
+    const locallyTouched = Object.prototype.hasOwnProperty.call(editorSelections || {}, dayNum + ':' + slotId);
+    if (Object.prototype.hasOwnProperty.call(slot, 'rendered_primary_option_id') && !locallyTouched) {
       return slot.rendered_primary_option_id;
     }
-    const opts = slot.options || [];
-    const resolved = resolveSelectionLocal(dayNum + ':' + slotId, slot.selected_option_id);
-    if (resolved && opts.some(o => o.option_id === resolved)) return resolved;
-    const isMealOrAcc = MEAL_SLOT_IDS_TPL.includes(slotId) || slotId === 'accommodation';
-    if (isMealOrAcc && !slot.skipped && opts.length > 0) return opts[0].option_id;
-    return null;
+    return localDerivedPrimary();
   };
 
   // Non-meal slots
