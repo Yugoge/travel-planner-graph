@@ -6,7 +6,7 @@
   <title>Travel Plan</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { overflow-x: hidden; }
@@ -18,7 +18,8 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
+  <script type="text/babel" data-presets="react">
+    /* @jsxRuntime classic */
     // Embedded PLAN_DATA
     const PLAN_DATA = {
   "trip_summary": {
@@ -384,10 +385,10 @@
             {
               "name_base": "Beijing PEK to Kunming KMG (CA1413 — connecting flight)",
               "name_local": "北京PEK → 昆明KMG（CA1413 接驳航班）",
-              "from_base": "",
-              "to_base": "",
-              "from_local": "",
-              "to_local": "",
+              "from_base": "Beijing",
+              "to_base": "Kunming",
+              "from_local": "北京",
+              "to_local": "昆明",
               "departure_point_base": "Beijing Capital International Airport (PEK) Terminal 3",
               "departure_point_local": "北京首都国际机场（PEK）T3航站楼",
               "arrival_point_base": "Kunming Changshui International Airport (KMG)",
@@ -5507,7 +5508,21 @@ const KanbanView = ({ day, publishedDay, tripSummary, showSummary, bp, lang, map
           // hydrate_trip. They render, select, deselect, become candidates, and persist
           // through the normal normalizeSlotEnvelope → OptionCard path exactly like any
           // other meal — NO client special-casing.
-          const _interCityTransport = day.transportation ? [day.transportation] : [];
+          // Inter-city transport = the day's location_change flight PLUS any genuine
+          // connecting/intra FLIGHT legs (e.g. a domestic connecting flight like CA1413
+          // Beijing→Kunming) carried in day.intra_routes. Those are real flights the Kanban
+          // transport section must show; local taxi/transit intra-routes (no route_number,
+          // non-flight type) are intentionally left to TimelineView. _build_intra_card emits
+          // the SAME fields this card render reads (from_base/to_base/type_base/route_number/
+          // company_base/status_base/cost/time), so they render through the same loop.
+          const _connectingFlights = (day.intra_routes || []).filter(r =>
+            r && ((r.type_base && /flight|航班/i.test(r.type_base)) ||
+                  (r.route_number && /^[A-Za-z]{2}\d{2,}$/.test(r.route_number)))
+          );
+          const _interCityTransport = [
+            ...(day.transportation ? [day.transportation] : []),
+            ..._connectingFlights,
+          ];
           const _transportSection = (_interCityTransport.length > 0) ? (
             <Section title={L('transportation', lang)} icon={(day.transportation && day.transportation.icon) || '✈️'}>
               <div style={categoryRowStyle}>
@@ -7486,13 +7501,24 @@ function normalizeSlotEnvelope({ dayNum, slotId, editorDay, editorTripData, edit
   const sel = editorSelections || {};
   const isAccommodation = slotId === 'accommodation';
   const key = dayNum + ':' + slotId;
-  let selectedId;
-  if (isAccommodation) {
-    const persisted = editorDay && editorDay.accommodation && editorDay.accommodation.selected_option_id;
-    selectedId = Object.prototype.hasOwnProperty.call(sel, key) ? sel[key] : persisted;
-  } else {
-    const persisted = editorDay && editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
-    selectedId = Object.prototype.hasOwnProperty.call(sel, key) ? sel[key] : persisted;
+  const slotObj = isAccommodation
+    ? (editorDay && editorDay.accommodation)
+    : (editorDay && editorDay.slots && editorDay.slots[slotId]);
+  const locallyTouched = Object.prototype.hasOwnProperty.call(sel, key);
+  const persisted = slotObj && slotObj.selected_option_id;
+  let selectedId = locallyTouched ? sel[key] : persisted;
+  // BUG 3 (task 20260616): an UNTOUCHED slot with no explicit selection must still render the
+  // server-stamped rendered primary (rendered_primary_option_id) — else options[0] for an
+  // unskipped meal/accommodation slot — so the recommended option (e.g. Jianxinyuan) shows as the
+  // MAIN card in EDIT mode, not the first `included` alternate. Mirrors CandidatesSidebar's
+  // effectivePrimaryId and the static viewer. A locally TOUCHED slot (incl. an explicit clear,
+  // sel[key]=null) is respected verbatim — no fallback — so a deliberate clear stays empty.
+  if (!locallyTouched && (selectedId === undefined || selectedId === null) && slotObj) {
+    if (slotObj.rendered_primary_option_id) {
+      selectedId = slotObj.rendered_primary_option_id;
+    } else if (!slotObj.skipped && Array.isArray(slotObj.options) && slotObj.options.length) {
+      selectedId = slotObj.options[0].option_id;
+    }
   }
   const rawPrimary = selectedId
     ? (isAccommodation
