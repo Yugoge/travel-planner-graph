@@ -17,6 +17,9 @@
   </style>
 </head>
 <body>
+  <div style="position:sticky;top:0;z-index:200;display:flex;justify-content:flex-end;padding:6px 12px;background:rgba(255,255,255,0.97);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid #f0efed;">
+    <a data-open-editor="" href="/trip/beijing-lijiang-dali-20260418-100846" aria-label="Open the live editor (opens elsewhere)" title="Open the live editor / 打开在线编辑器" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:9px 16px;border:1px solid #d6d4cf;border-radius:6px;background:#ffffff;color:#37352f;font:600 13px system-ui,-apple-system,sans-serif;text-decoration:none;cursor:pointer;transition:all .12s;white-space:nowrap;"><span aria-hidden="true">✎</span>Open editor / 打开编辑器<span aria-hidden="true">↗</span></a>
+  </div>
   <div id="root"></div>
   <script type="text/babel" data-presets="react">
     /* @jsxRuntime classic */
@@ -272,7 +275,7 @@
             "notes_local": "CA934：巴黎CDG 2026-06-19晚20:20出发（前一天），2026-06-20 12:20抵达北京PEK。乘客仅Yuge（唐语歌），Jade不在此航段。飞行约10小时。抵达PEK T3国际到达；转T3国内乘CA1413（同航站楼，约2.5小时中转）。已购票每人7020元多程票。",
             "booking_required": false,
             "time": {
-              "start": "20:20",
+              "start": "00:01",
               "end": "12:20"
             },
             "from_local": "巴黎",
@@ -5433,7 +5436,7 @@ const KanbanView = ({ day, publishedDay, tripSummary, showSummary, bp, lang, map
                   <span key={pairKey} data-route-gap data-route-status={data && data.status} style={{ fontSize: '11px', color: isOk ? '#6b6b6b' : '#e07c5a', background: '#f5f5f3', fontVariantNumeric: 'tabular-nums', borderRadius: '4px', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {label}
                     {!isOk && fetchRoute && (
-                      <button data-route-retry onClick={() => { const [a, b] = pairKey.split(':'); fetchRoute(a, b, pairKey); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#4a90d9', padding: 0 }}>retry</button>
+                      <button data-route-retry onClick={() => { const _seg = pairKey.split(':'); const a = _seg[0]; const b = _seg[1]; const m = _seg[2]; fetchRoute(a, b, pairKey, m); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#4a90d9', padding: 0 }}>retry</button>
                     )}
                   </span>
                   );
@@ -5793,9 +5796,7 @@ const KanbanView = ({ day, publishedDay, tripSummary, showSummary, bp, lang, map
                       const emoji = mealEmoji[type] || '';
                       const label = L(type, lang);
                       const out = [{...meal, _type: type, _emoji: emoji, _label: label, _isPrimary: true, _oi: 0}];
-                      // Bug-1: meal alternatives surface as additional non-primary cards
-                      const alts = (day.meal_alternatives && day.meal_alternatives[type]) || [];
-                      alts.forEach((alt, ai) => out.push({...alt, _type: type, _emoji: emoji, _label: label, _isPrimary: false, _isOptional: true, _oi: ai + 1}));
+
                       return out;
                     }).map((opt, gi) => {
                       const catColor = categoryColors.meals;
@@ -6612,7 +6613,7 @@ const TimelineResizeHandles = ({ dayNum, slotId, optionId, time, saveMutations, 
 // ============================================================
 // TIMELINE VIEW
 // ============================================================
-const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, editorSelections, pendingSelection, setPendingSelection, saveMutations, setEditorSelections, routeCache, fetchRoute, setEditorTripData }) => {
+const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, editorSelections, pendingSelection, setPendingSelection, saveMutations, setEditorSelections, routeCache, fetchRoute, setEditorTripData, editorTripData, routeChoice, setRouteChoice, invalidateRoutePair }) => {
   // Fix #6: Add z-index state for click handling of overlapping items
   const [topItemIndex, setTopItemIndex] = useState(null);
   const sm = bp === 'sm';
@@ -6695,11 +6696,11 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
     // (primary + included); viewer mode merges day.meals + day.meal_alternatives
     // with the alternates time-normalized so add() (2567-2570) does not skip them.
     const mealCards = resolveMealCards(day, mealType);
-    mealCards.forEach((primary, _oi) => {
-      if (!primary) return;
-      const mealEntry = add(primary, 'meal', L(catKey, lang));
-      if (mealEntry) { mealEntry._slotId = mealType; mealEntry._mealOrdinal = _oi; }
-    });
+    const mealPrimary = mealCards[0];
+    if (mealPrimary) {
+      const mealEntry = add(mealPrimary, 'meal', L(catKey, lang));
+      if (mealEntry) { mealEntry._slotId = mealType; mealEntry._mealOrdinal = 0; }
+    }
   });
   day.attractions?.forEach(a => add(a, 'attraction', L('cat_attraction', lang)));
   day.entertainment?.forEach(e => add(e, 'entertainment', L('cat_entertainment', lang)));
@@ -7258,13 +7259,61 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                 gap so it visibly sits BETWEEN the two items on the timeline. */}
             {editorDay && routeCache && entriesWithLayout.map((entry, i) => {
               if (i === 0) return null;
-              const prev = entriesWithLayout[i - 1];
-              const aId = prev && prev.option_id;
+              const prevNeighbor = entriesWithLayout[i - 1]; // immediate timeline neighbor (for positioning)
               const bId = entry && entry.option_id;
-              if (!aId || !bId || aId === bId) return null;
-              const pairKey = aId + ':' + bId + ':car';
-              const data = routeCache[pairKey];
-              const midTop = (top(prev.time.end) + top(entry.time.start)) / 2;
+              // A route gap is only meaningful when the TARGET is a routable located item
+              // (coord-bearing, non-transport). A no-coords meal target has nowhere to route TO.
+              if (!bId) return null;
+              if (_routeItemIsTransport(entry) || !_routeItemHasCoords(entry)) return null;
+
+              // task 20260616-231026 (Work Item B): per-target-block route ORIGIN + MODE chooser.
+              // Origin candidates: (1) the previous LOCATED item — the nearest preceding
+              // coord-bearing non-transport entry (AC-B1b skips the no-coords lunch between the
+              // two activities); (2) the day's accommodation. Default origin = prev-located,
+              // default mode = car; a user choice (routeChoice[bId]) overrides both for THIS block.
+              const choice = (routeChoice && routeChoice[bId]) || {};
+              const chosenMode = ROUTE_MODES.includes(choice.mode) ? choice.mode : DEFAULT_ROUTE_MODE;
+
+              // nearest preceding located (coord-bearing, non-transport) entry as the prev-item origin
+              let prevLocated = null;
+              for (let j = i - 1; j >= 0; j--) {
+                const cand = entriesWithLayout[j];
+                if (cand && cand.option_id && cand.option_id !== bId && !_routeItemIsTransport(cand) && _routeItemHasCoords(cand)) { prevLocated = cand; break; }
+              }
+              const prevId = prevLocated && prevLocated.option_id;
+
+              // accommodation origin candidate (resolve raw option for coords + city_context).
+              // codex finding 4: honor an in-session accommodation re-selection (editorSelections)
+              // exactly like normalizeSlotEnvelope, else fall back to the persisted selected_option_id —
+              // otherwise the chooser keeps offering the OLD accommodation after the user changes it.
+              const _accKey = (day && day.day) + ':accommodation';
+              const accSelId = (editorSelections && Object.prototype.hasOwnProperty.call(editorSelections, _accKey))
+                ? editorSelections[_accKey]
+                : (editorDay.accommodation && editorDay.accommodation.selected_option_id);
+              const accRaw = accSelId ? findSelectedAccommodationOption(editorDay, editorTripData, accSelId) : null;
+              const accItem = accRaw ? { option_id: accSelId, coordinates: accRaw.coordinates, city_context: accRaw.city_context, _type: 'accommodation', _slotId: 'accommodation' } : null;
+
+              // eligibility per the shared AC-B4 predicate (same-city + both coord-bearing, not transport).
+              const prevEligible = !!prevLocated && prevItemOriginEligible(prevLocated, entry, editorDay, editorTripData);
+              const accEligible = !!accItem && prevItemOriginEligible(accItem, entry, editorDay, editorTripData);
+              // accommodation may be same-city but lack coords (B-E2 routability block): distinguish
+              // so the disabled cue explains WHY (no-coords) vs simply not-applicable.
+              const accNoCoords = !!accItem && !_routeItemHasCoords(accItem);
+              // a gap with NO eligible origin at all still renders (disabled cue, no silent error).
+
+              // resolve the active origin (codex finding 1: NEVER default fromId to an ineligible
+              // prevId — start null and assign only inside an eligible branch, so a gap with no
+              // eligible origin produces fromId=null and disables the route fetch entirely; this
+              // prevents a cross-city / no-coords pair ever reaching fetchRoute).
+              let fromId = null, originKind = 'none';
+              if (choice.fromOptionId === (accItem && accItem.option_id) && accEligible) { fromId = accItem.option_id; originKind = 'accommodation'; }
+              else if (choice.fromOptionId === prevId && prevEligible) { fromId = prevId; originKind = 'prev'; }
+              else if (prevEligible) { fromId = prevId; originKind = 'prev'; }
+              else if (accEligible) { fromId = accItem.option_id; originKind = 'accommodation'; }
+
+              const pairKey = (fromId || 'none') + ':' + bId + ':' + chosenMode;
+              const data = fromId ? routeCache[pairKey] : null;
+              const midTop = (top(prevNeighbor.time.end) + top(entry.time.start)) / 2;
               const status = data && data.status;
               const isOk = status === 'ok';
               const seg = (data && (data.segment || data)) || {};
@@ -7275,18 +7324,84 @@ const TimelineView = ({ day, bp, lang, mapProvider, onItemClick, editorDay, edit
                 if (seg.mode) parts.push(seg.mode);
                 if (seg.cost != null) parts.push(fmtCost(seg.cost, undefined, lang));
               }
-              const label = isOk ? (parts.join(' · ') || 'route') : (data ? 'route pending' : 'add route');
+              const isLoading = !!data && status !== 'ok' && status !== 'error' && status !== 'unknown';
+              const label = isOk ? (parts.join(' · ') || 'route')
+                : status === 'error' ? (lang === 'local' ? '路线出错' : 'route error')
+                : status === 'unknown' ? (lang === 'local' ? '无法定位' : 'no coords')
+                : isLoading ? (lang === 'local' ? '计算中…' : 'routing…')
+                : (lang === 'local' ? '加路线' : 'add route');
+              const modeIcon = (ROUTE_MODE_LABELS[chosenMode] || ROUTE_MODE_LABELS.car).icon;
+
+              // re-route helper: invalidate the previously rendered pair (B-E5) and record the choice.
+              // codex finding 8: do NOT explicitly fetch here — the auto-route effect re-runs on the
+              // updated routeChoice and issues the SINGLE fetch for the new pair+mode (no duplicate POST).
+              const chooseRoute = (nextFrom, nextMode) => {
+                if (!nextFrom) return;
+                // codex finding 5 (AC-B5): re-clicking the ALREADY-active origin+mode is a no-op —
+                // do NOT invalidate+refetch the current ok pair (that would transiently drop the
+                // active route and open a same-key ok/stale save race for zero user benefit).
+                if (nextFrom === fromId && nextMode === chosenMode) return;
+                if (invalidateRoutePair) invalidateRoutePair(pairKey);
+                if (setRouteChoice) setRouteChoice(prevC => ({ ...prevC, [bId]: { fromOptionId: nextFrom, mode: nextMode, _slotId: entry._slotId } }));
+              };
+
+              const segBtn = (active, disabled) => ({
+                background: active ? '#37352f' : 'transparent', color: disabled ? '#c4c4c0' : (active ? '#fff' : '#37352f'),
+                border: 'none', borderRadius: '3px', padding: '0 6px', minHeight: sm ? '44px' : '20px', minWidth: sm ? '44px' : 'auto',
+                fontSize: '10px', cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background 0.12s, color 0.12s',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
+              });
+
               return (
-                <div key={'route-' + pairKey} data-route-gap data-route-status={status || 'missing'} data-route-pair={pairKey}
+                <div key={'route-' + pairKey} data-route-gap data-route-status={status || 'missing'} data-route-pair={pairKey} data-route-origin={originKind} data-route-mode={chosenMode}
                   style={{ position: 'absolute', top: Math.max(0, midTop - 9), left: '12px', zIndex: 2,
-                    fontSize: '11px', color: isOk ? '#6b6b6b' : '#e07c5a', background: '#f5f5f3',
-                    fontVariantNumeric: 'tabular-nums',
-                    borderRadius: '4px', padding: '1px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span aria-hidden="true">🚕</span>
-                  <span>{label}</span>
-                  {!isOk && fetchRoute && (
-                    <button data-route-retry onClick={(e) => { e.stopPropagation(); fetchRoute(aId, bId, pairKey); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#4a90d9', padding: 0 }}>retry</button>
+                    fontSize: '11px', color: '#37352f', background: '#f5f5f3',
+                    fontVariantNumeric: 'tabular-nums', border: '1px solid #e9e9e7',
+                    borderRadius: '4px', padding: '2px 6px', display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', maxWidth: sm ? '88vw' : '420px' }}>
+                  <span aria-hidden="true">{modeIcon}</span>
+                  <span style={{ color: isOk ? '#6b6b6b' : (status === 'error' ? '#e07c5a' : '#9b9a97') }}>{label}</span>
+                  {isLoading && <span data-route-loading aria-label="loading" style={{ fontSize: '10px', color: '#9b9a97' }} role="status">⏳</span>}
+
+                  {/* origin chooser: previous item | day accommodation (B1, B-E1/E2/E3) */}
+                  <span data-route-origin-chooser role="group" aria-label={lang === 'local' ? '选择起点' : 'choose origin'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', borderLeft: '1px solid #e9e9e7', paddingLeft: '4px' }}>
+                    <button type="button" data-origin-opt="prev" aria-pressed={originKind === 'prev'} disabled={!prevEligible}
+                      title={prevEligible ? (lang === 'local' ? '从上一项出发' : 'from previous item') : (lang === 'local' ? '上一项不可作为起点（跨城/无坐标/为交通段）' : 'previous item ineligible (cross-city / no coords / transport)')}
+                      onClick={(e) => { e.stopPropagation(); if (prevEligible) chooseRoute(prevId, chosenMode); }}
+                      style={segBtn(originKind === 'prev', !prevEligible)}>
+                      <span aria-hidden="true">↖</span><span>{lang === 'local' ? '上一项' : 'prev'}</span>
+                    </button>
+                    <button type="button" data-origin-opt="accommodation" aria-pressed={originKind === 'accommodation'} disabled={!accEligible}
+                      aria-disabled={!accEligible}
+                      title={accEligible ? (lang === 'local' ? '从住宿出发' : 'from accommodation') : accNoCoords ? (lang === 'local' ? '住宿无坐标，无法定位' : 'accommodation has no coordinates') : (lang === 'local' ? '住宿不可作为起点' : 'accommodation ineligible')}
+                      onClick={(e) => { e.stopPropagation(); if (accEligible && accItem) chooseRoute(accItem.option_id, chosenMode); }}
+                      style={segBtn(originKind === 'accommodation', !accEligible)}>
+                      <span aria-hidden="true">{accEligible ? '🏨' : '🚫'}</span>
+                      <span>{lang === 'local' ? '住宿' : 'accom'}</span>
+                      {!accEligible && accNoCoords && <span data-no-coords-cue style={{ fontSize: '9px' }}>{lang === 'local' ? '·无坐标' : '· no coords'}</span>}
+                    </button>
+                  </span>
+
+                  {/* mode chooser: car | walk | transit only (B2/B-E4) */}
+                  <span data-route-mode-chooser role="group" aria-label={lang === 'local' ? '选择方式' : 'choose mode'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', borderLeft: '1px solid #e9e9e7', paddingLeft: '4px' }}>
+                    {ROUTE_MODES.map(m => {
+                      const ml = ROUTE_MODE_LABELS[m];
+                      return (
+                        <button type="button" key={'mode-' + m} data-mode-opt={m} aria-pressed={chosenMode === m} disabled={!fromId}
+                          title={!fromId ? (lang === 'local' ? '无可用起点' : 'no available origin') : (lang === 'local' ? ml.local : ml.base)}
+                          onClick={(e) => { e.stopPropagation(); if (fromId) chooseRoute(fromId, m); }}
+                          style={segBtn(chosenMode === m, !fromId)}>
+                          <span aria-hidden="true">{ml.icon}</span>
+                          <span>{lang === 'local' ? ml.local : ml.base}</span>
+                        </button>
+                      );
+                    })}
+                  </span>
+
+                  {!isOk && !isLoading && fromId && fetchRoute && (
+                    <button data-route-retry onClick={(e) => { e.stopPropagation(); fetchRoute(fromId, bId, pairKey, chosenMode); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#4a90d9', padding: 0, minHeight: sm ? '44px' : 'auto' }}>{lang === 'local' ? '重试' : 'retry'}</button>
                   )}
                 </div>
               );
@@ -7359,6 +7474,63 @@ function findSelectedAccommodationOption(editorDay, editorTripData, selectedId) 
     }
   }
   return null;
+}
+
+// ============================================================
+// ROUTE ORIGIN/MODE CHOOSER helpers (task 20260616-231026, Work Item B)
+// Per-timeline-block route ORIGIN (previous located item | day accommodation)
+// + MODE (walk|car|transit) chooser. Pure logic mirrors the AC-B4 Python oracle
+// in tests/generated/20260616-231026/test_AC_B4_*.py::prev_item_origin_eligible.
+// Keep these two predicates in lock-step. Server is unchanged (route.py accepts
+// arbitrary origin + the {car,walk,transit} modes it maps in _mode_to_command).
+// ============================================================
+
+// Modes the server's _mode_to_command actually maps to real gaode commands
+// (route.py:102-115). metro/bus/ferry are NOT offered: they sit in the route_cache
+// enum but have no command mapping (silently fall back to walking) — offering them
+// would mislead the user.
+const ROUTE_MODES = ['car', 'walk', 'transit'];
+const DEFAULT_ROUTE_MODE = 'car'; // module-level default; both TimelineView and NotionTravelApp read this
+const ROUTE_MODE_LABELS = { car: { base: 'Drive', local: '驾车', icon: '🚕' }, walk: { base: 'Walk', local: '步行', icon: '🚶' }, transit: { base: 'Transit', local: '公交', icon: '🚌' } };
+
+// Coordinates are ROUTABILITY only, never city identity. Shape: {latitude||lat, longitude||lng}.
+function _routeItemHasCoords(item) {
+  const c = item && item.coordinates;
+  return !!(c && (c.latitude != null || c.lat != null) && (c.longitude != null || c.lng != null));
+}
+
+// A transportation/travel slot is never an eligible route ORIGIN (mirrors the
+// Python oracle _is_transport: transportation/travel/flight excluded).
+function _routeItemIsTransport(item) {
+  const t = (item && (item._type || item.slot_type || item.kind || item.type) || '').toString().toLowerCase();
+  return t === 'transportation' || t === 'transport' || t === 'travel' || t === 'flight';
+}
+
+// Resolve an item's authoritative city_id from city_context (mandatory per-option in
+// the v2 schema). Prefer the field already on the display entry; else resolve the raw
+// option by option_id (the display entry may not preserve city_context).
+function _routeCityId(item, editorDay, editorTripData) {
+  const direct = item && item.city_context && item.city_context.city_id;
+  if (direct != null) return direct;
+  if (!item || !item.option_id) return null;
+  const raw = findSelectedOption(editorDay, item._slotId, item.option_id, editorTripData)
+    || findSelectedAccommodationOption(editorDay, editorTripData, item.option_id);
+  const cc = raw && raw.city_context;
+  return (cc && cc.city_id != null) ? cc.city_id : null;
+}
+
+// previous-item origin eligibility — EXACT mirror of the AC-B4 Python oracle
+// prev_item_origin_eligible(frm, to): same calendar day (caller's responsibility —
+// pair comes from one day's timeline), same city_context.city_id, both
+// coordinate-bearing, candidate origin not transport/travel. Cross-city => ineligible
+// (no cross-city ground route, B-E3); transport candidate => ineligible regardless of city.
+function prevItemOriginEligible(frm, to, editorDay, editorTripData) {
+  if (_routeItemIsTransport(frm) || _routeItemIsTransport(to)) return false;
+  if (!_routeItemHasCoords(frm) || !_routeItemHasCoords(to)) return false;
+  const a = _routeCityId(frm, editorDay, editorTripData);
+  const b = _routeCityId(to, editorDay, editorTripData);
+  if (a == null || b == null) return false;
+  return a === b;
 }
 
 // R1 v3 synthesis helper — map a v2 option into PLAN card shape.
@@ -8866,9 +9038,21 @@ function NotionTravelApp() {
   const [ingestOpen, setIngestOpen] = useState(false); // Cycle-3: Add-from-link panel
   const [pendingSelection, setPendingSelection] = useState(null); // {optionId, slotId, originSlotId} for tap-to-select
   const [routeCache, setRouteCache] = useState({}); // {pairKey: {status, duration_minutes}} for route gaps (AC12/AC23)
+  // task 20260616-231026 (Work Item B): per-TARGET-block route choice override
+  // {targetOptionId: {fromOptionId, mode}}. The auto-route default pairs prev->current
+  // at ROUTE_MODE; a user-chosen origin/mode for a target block overrides which pair is
+  // fetched AND rendered for that block (codex finding 4). Auto-route remains the default.
+  const [routeChoice, setRouteChoice] = useState({});
   // Cycle-2: undo/redo (client-only)
   const { toastMsg: undoToastMsg, record: undoRecord } = useUndoRedo();
   const routeSeqRef = React.useRef({}); // per-pair monotonic seq for stale-response guard
+  // task 20260616-231026 (AC-B5 fix): authoritative synchronous mirror of routeCache.
+  // invalidateRoutePair must read a pair's PRIOR status deterministically — reading a flag
+  // assigned INSIDE a setRouteCache(updater) fails because React runs the updater later, so the
+  // flag is still stale when read (the read-after-setState race that left superseded route_refs
+  // status:'ok' and made budget.py multi-count a leg). This ref is written synchronously by every
+  // routeCache mutation (and mirrored by an effect as a safety net) so prior-status reads never race.
+  const routeCacheRef = React.useRef({});
   const saveSeqRef = React.useRef(0);    // monotonic counter for saveMutations only
   const budgetSeqRef = React.useRef({}); // per-day counters for recomputeBudget
   const saveStateRef = React.useRef('idle');
@@ -8942,7 +9126,52 @@ function NotionTravelApp() {
             const seg = entries[k] || {};
             hydrated[k] = { status: seg.status || 'unresolved', segment: seg };
           });
-          if (Object.keys(hydrated).length) setRouteCache(prev => ({ ...hydrated, ...prev }));
+          if (Object.keys(hydrated).length) {
+            // AC-B5: sync the ref in the SAME path so a re-choice right after load reads the
+            // hydrated prior status deterministically (not just after the [routeCache] effect).
+            routeCacheRef.current = { ...hydrated, ...routeCacheRef.current };
+            setRouteCache(prev => ({ ...hydrated, ...prev }));
+          }
+        }
+        // task 20260616-231026 (AC-B8 reload durability): hydrate routeChoice from each day's
+        // persisted intra_city_routes so a reload preserves the user's chosen origin+mode instead
+        // of silently reverting the block to the default (prev-item / car). Only status:'ok' entries
+        // are active legs; 'stale'/'unresolved' superseded refs are skipped (this is why the AC-B5
+        // fix above — marking the prior ref stale — is what keeps reload from re-hydrating the OLD
+        // mode). routeChoice is keyed by TARGET option_id (the route_ref's to_option_id); the 3-part
+        // key is from:to:mode and option_ids in this schema carry a -<day>-<slot> infix so the target
+        // id is stable/unique across days (no cross-day collision). Persisted choice is written ONLY
+        // where it differs from the auto-route default (prev-located + DEFAULT_ROUTE_MODE); a default
+        // leg needs no override and re-resolves automatically.
+        const choiceFromDays = {};
+        const days = (data && data.days) || [];
+        days.forEach(d => {
+          const routes = d && d.intra_city_routes;
+          if (!routes || typeof routes !== 'object' || Array.isArray(routes)) return;
+          Object.keys(routes).forEach(k => {
+            const ref = routes[k] || {};
+            if (ref.status !== 'ok') return; // only the active leg defines the current choice
+            // codex finding 4: do NOT rely on a positional 3-way split (an option_id is only
+            // required to be a non-empty string and could in principle contain a colon). The
+            // mode is authoritatively the persisted ref.mode (a ROUTE_MODES enum token); recover
+            // from:to by stripping the known trailing ':<mode>' suffix, then taking the LAST colon
+            // as the from/to boundary. Falls back to the positional split only if the suffix is absent.
+            const key = String(k);
+            const mode = ROUTE_MODES.includes(ref.mode) ? ref.mode : (key.split(':').pop());
+            if (!ROUTE_MODES.includes(mode)) return;
+            const suffix = ':' + mode;
+            const fromTo = key.endsWith(suffix) ? key.slice(0, -suffix.length) : key.split(':').slice(0, 2).join(':');
+            const lastColon = fromTo.lastIndexOf(':');
+            if (lastColon <= 0) return;
+            const fromId = fromTo.slice(0, lastColon), toId = fromTo.slice(lastColon + 1);
+            if (!toId || !fromId) return;
+            // Last ok-entry for a target wins (there should be exactly one after the AC-B5 fix).
+            choiceFromDays[toId] = { fromOptionId: fromId, mode };
+          });
+        });
+        if (Object.keys(choiceFromDays).length) {
+          // do NOT clobber an in-session choice the user just made before this fetch resolved.
+          setRouteChoice(prev => ({ ...choiceFromDays, ...(prev || {}) }));
         }
       })
       .catch(() => {});
@@ -9019,6 +9248,9 @@ function NotionTravelApp() {
   // Keep refs in sync for setInterval stale-closure avoidance
   useEffect(() => { saveStateRef.current = saveState; }, [saveState]);
   useEffect(() => { lastSaveTsRef.current = lastSaveTs; }, [lastSaveTs]);
+  // task 20260616-231026 (AC-B5): keep routeCacheRef mirroring routeCache (safety net; the
+  // mutators below also write the ref synchronously so prior-status reads never race a commit).
+  useEffect(() => { routeCacheRef.current = routeCache; }, [routeCache]);
 
   // Budget recompute helper
   const recomputeBudget = useCallback((dayNum) => {
@@ -9089,19 +9321,23 @@ function NotionTravelApp() {
   // persist a route_ref into the day-file so membership + budget survive reload (M5).
   // saveMutations + the live day number are read through refs (set by effects below) to
   // avoid a TDZ on the later const declarations and keep fetchRoute dependency-stable.
-  const ROUTE_MODE = 'car';
-  const routePairKey = useCallback((a, b) => a + ':' + b + ':' + ROUTE_MODE, []);
+  const ROUTE_MODE = DEFAULT_ROUTE_MODE; // default mode; per-gap chooser (Work Item B) overrides it
+  // task 20260616-231026: pairKey/fetchRoute now take an explicit mode so a non-car
+  // mode threads through the cache key, the POST body, AND the persisted route_ref. The
+  // mode defaults to ROUTE_MODE so existing auto-route/retry callers keep working.
+  const routePairKey = useCallback((a, b, mode) => a + ':' + b + ':' + (mode || ROUTE_MODE), []);
   const saveMutationsRef = React.useRef(null);
   const currentDayNumRef = React.useRef(null);
-  const fetchRoute = useCallback((fromOptionId, toOptionId, pairKey) => {
+  const fetchRoute = useCallback((fromOptionId, toOptionId, pairKey, mode) => {
     if (!TRIP_ID || !fromOptionId || !toOptionId) return;
-    const key = pairKey || (fromOptionId + ':' + toOptionId + ':' + ROUTE_MODE);
+    const useMode = mode || ROUTE_MODE;
+    const key = pairKey || (fromOptionId + ':' + toOptionId + ':' + useMode);
     routeSeqRef.current[key] = (routeSeqRef.current[key] || 0) + 1;
     const seq = routeSeqRef.current[key];
     fetch('/api/route', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, mode: ROUTE_MODE, request_seq: seq }),
+      body: JSON.stringify({ trip_id: TRIP_ID, from_option_id: fromOptionId, to_option_id: toOptionId, mode: useMode, request_seq: seq }),
     })
       .then(r => r.json())
       .then(data => {
@@ -9110,16 +9346,59 @@ function NotionTravelApp() {
         // unknown->unresolved (day enum has no 'unknown'). Persist a day route_ref only
         // when the route resolves OK so a known cost can join the budget.
         const seg = (data && data.segment) || {};
+        routeCacheRef.current = { ...routeCacheRef.current, [key]: data }; // sync mirror (AC-B5)
         setRouteCache(prev => ({ ...prev, [key]: data }));
         if (data && data.status === 'ok' && saveMutationsRef.current && currentDayNumRef.current) {
           saveMutationsRef.current(currentDayNumRef.current, [{ type: 'route_ref', extra: {
-            from_option_id: fromOptionId, to_option_id: toOptionId, mode: ROUTE_MODE,
+            from_option_id: fromOptionId, to_option_id: toOptionId, mode: useMode,
             status: 'ok',
             duration_min: seg.duration_min, distance_km: seg.distance_km, cost: seg.cost,
           } }]);
         }
       })
-      .catch(() => { setRouteCache(prev => ({ ...prev, [key]: { status: 'error' } })); });
+      .catch(() => {
+        // codex finding 7: guard stale FAILURES too — a superseded/invalidated request that rejects
+        // must NOT write 'error' back (it could resurrect an old pair or clobber a newer success).
+        if (routeSeqRef.current[key] !== seq) return;
+        routeCacheRef.current = { ...routeCacheRef.current, [key]: { status: 'error' } }; // sync mirror (AC-B5)
+        setRouteCache(prev => ({ ...prev, [key]: { status: 'error' } }));
+      });
+  }, []);
+
+  // task 20260616-231026 (B-E5 + codex finding 6): drop a specific rendered route so a stale
+  // route never renders after the user re-chooses origin/mode for a gap (extends the time/coord
+  // prune at the delete/mirror path). Bumps the seq guard so an in-flight response for the old
+  // key is ignored, removes the key from routeCache, AND — if that old pair had resolved OK and
+  // been persisted — marks the persisted day route_ref 'stale' so the superseded leg stops
+  // contributing to budget/reload (a 3-part key is from:to:mode).
+  const invalidateRoutePair = useCallback((pairKey) => {
+    if (!pairKey) return;
+    routeSeqRef.current[pairKey] = (routeSeqRef.current[pairKey] || 0) + 1;
+    // AC-B5 FIX: read the pair's PRIOR status DETERMINISTICALLY from the synchronous ref mirror —
+    // NOT from a flag mutated inside the setRouteCache updater (which React runs later, after this
+    // function returns, so the flag would still be stale at read time). routeCacheRef is written
+    // synchronously by fetchRoute and here, and mirrored by an effect, so it always reflects the
+    // committed-or-just-set cache. This is what makes the route_ref status:'stale' mutation actually
+    // fire, so exactly one status:'ok' entry per block survives and budget.py never multi-counts a leg.
+    const prior = routeCacheRef.current && routeCacheRef.current[pairKey];
+    const wasOk = !!(prior && prior.status === 'ok');
+    routeCacheRef.current = (() => {
+      const next = { ...(routeCacheRef.current || {}) };
+      delete next[pairKey];
+      return next;
+    })();
+    setRouteCache(prev => {
+      if (!prev || !(pairKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[pairKey];
+      return next;
+    });
+    const seg = pairKey.split(':');
+    if (wasOk && seg.length >= 3 && saveMutationsRef.current && currentDayNumRef.current) {
+      saveMutationsRef.current(currentDayNumRef.current, [{ type: 'route_ref', extra: {
+        from_option_id: seg[0], to_option_id: seg[1], mode: seg[2], status: 'stale',
+      } }]);
+    }
   }, []);
 
   // saveMutations: central save helper (M5, M6, M7, M11)
@@ -9282,14 +9561,62 @@ function NotionTravelApp() {
           return updated;
         });
         const editedIds = new Set(_timeMuts.map(m => m.option_id));
-        setRouteCache(prev => {
+        // AC-B5: prune the ref in the SAME synchronous path as the state so a subsequent
+        // invalidateRoutePair reads the pruned cache deterministically (not one effect-tick late).
+        const _pruneTime = (src) => {
           const next = {};
-          Object.keys(prev || {}).forEach(k => {
+          Object.keys(src || {}).forEach(k => {
             const pair = k.split(':').slice(0, 2);  // from:to (mode is the last token)
-            if (!pair.some(id => editedIds.has(id))) next[k] = prev[k];
+            if (!pair.some(id => editedIds.has(id))) next[k] = src[k];
           });
           return next;
+        };
+        routeCacheRef.current = _pruneTime(routeCacheRef.current);
+        setRouteCache(prev => _pruneTime(prev));
+      }
+      // task 20260616-231026 (codex finding 5 — AC-B5): a SELECT / SKIP / DELETE in a slot changes
+      // which option occupies it, so any rendered route referencing the OLD or NEW option id in that
+      // slot is stale. Prune those routeCache keys (KanbanView renders the cache generically, so a
+      // stale cost would otherwise linger) AND drop any per-block route choice that references the
+      // affected ids — so the chooser re-resolves the default eligible pair instead of a stale one.
+      const _selMuts = (mutations || []).filter((m, i) => (m.type === 'select' || m.type === 'skip' || m.type === 'delete_option') && _isApplied(i));
+      if (_selMuts.length) {
+        const affectedIds = new Set();
+        _selMuts.forEach(m => {
+          if (m.option_id) affectedIds.add(m.option_id);
+          // a `select` replaces the slot's previously-selected option — that prior id's routes are also stale.
+          if (m.type === 'select' && m.slot) {
+            const key = Number(dayNum) + ':' + m.slot;
+            const prevSel = Object.prototype.hasOwnProperty.call(editorSelections, key)
+              ? editorSelections[key]
+              : (editorDay && editorDay.slots && editorDay.slots[m.slot] && editorDay.slots[m.slot].selected_option_id);
+            if (prevSel) affectedIds.add(prevSel);
+          }
         });
+        if (affectedIds.size) {
+          // AC-B5: prune the ref in the SAME synchronous path as the state (see time-prune above).
+          const _pruneSel = (src) => {
+            const next = {};
+            Object.keys(src || {}).forEach(k => {
+              const pair = k.split(':').slice(0, 2);
+              if (!pair.some(id => affectedIds.has(id))) next[k] = src[k];
+            });
+            return next;
+          };
+          routeCacheRef.current = _pruneSel(routeCacheRef.current);
+          setRouteCache(prev => _pruneSel(prev));
+          setRouteChoice(prev => {
+            if (!prev) return prev;
+            let changed = false;
+            const next = {};
+            Object.keys(prev).forEach(tId => {
+              const c = prev[tId];
+              if (affectedIds.has(tId) || (c && affectedIds.has(c.fromOptionId))) { changed = true; return; }
+              next[tId] = c;
+            });
+            return changed ? next : prev;
+          });
+        }
       }
       // AC8: update editorTripData.days[n].stage after a successful stage mutation so editorDay
       // doesn't stay stale. FAIL-CLOSED (housekeeping #2): mirror ONLY an APPLIED stage mutation,
@@ -9557,26 +9884,56 @@ function NotionTravelApp() {
     currentDayNumRef.current = day && day.day;
   }, [saveMutations, day]);
 
-  // Fetch routes between consecutive filled slots after each effectiveDay change (AC12/AC23)
+  // Fetch routes between consecutive LOCATED filled slots after each effectiveDay change (AC12/AC23).
+  // task 20260616-231026: pair each located (coord-bearing, non-transport) target with its nearest
+  // preceding located origin — skipping no-coords meal slots — so the DEFAULT route auto-resolves for
+  // the exact pair the TimelineView renders (prev-located -> target), not a no-coords meal pair.
   useEffect(() => {
     if (!day || !editorDay) return;
-    const filledSlots = ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity'].filter(slotId => {
+    const slotSelId = (slotId) => {
       const key = (day.day) + ':' + slotId;
       const persistedId = editorDay.slots && editorDay.slots[slotId] && editorDay.slots[slotId].selected_option_id;
       return Object.prototype.hasOwnProperty.call(editorSelections, key) ? editorSelections[key] : persistedId;
-    });
-    for (let i = 0; i < filledSlots.length - 1; i++) {
-      const aSlot = filledSlots[i];
-      const bSlot = filledSlots[i + 1];
-      const aKey = day.day + ':' + aSlot;
-      const bKey = day.day + ':' + bSlot;
-      const aId = Object.prototype.hasOwnProperty.call(editorSelections, aKey) ? editorSelections[aKey] : (editorDay.slots && editorDay.slots[aSlot] && editorDay.slots[aSlot].selected_option_id);
-      const bId = Object.prototype.hasOwnProperty.call(editorSelections, bKey) ? editorSelections[bKey] : (editorDay.slots && editorDay.slots[bSlot] && editorDay.slots[bSlot].selected_option_id);
-      // Canonical 3-part key from:to:car (the old 2-part a:b silently missed the server key).
-      const pairKey = aId + ':' + bId + ':' + ROUTE_MODE;
-      if (aId && bId && !routeCache[pairKey]) fetchRoute(aId, bId, pairKey);
+    };
+    // ordered located options (coord-bearing, non-transport) in slot order. The opt carries the
+    // raw v2 option so we can apply the SAME same-city eligibility predicate the render uses.
+    const located = ['breakfast', 'morning_activity', 'lunch', 'afternoon_activity', 'dinner', 'evening_activity']
+      .map(slotId => ({ slotId, id: slotSelId(slotId) }))
+      .filter(s => s.id)
+      .map(s => ({ ...s, opt: findSelectedOption(editorDay, s.slotId, s.id, editorTripData) }))
+      .filter(s => s.opt && _routeItemHasCoords(s.opt) && !_routeItemIsTransport(s.opt));
+    for (let i = 1; i < located.length; i++) {
+      const aId = located[i - 1].id;
+      const bId = located[i].id;
+      const aOpt = located[i - 1].opt;
+      const bOpt = located[i].opt;
+      // task 20260616-231026 (B5 + codex finding 2/3): honor a user-chosen origin/mode for this
+      // target block ONLY when the chosen origin is STILL eligible (same-city, coord-bearing,
+      // non-transport) — a stale choice (option re-selected / day changed) is ignored, falling
+      // back to the default prev-located pair. codex finding 2: the DEFAULT pair must ALSO pass
+      // the same-city predicate so the auto-route never produces a cross-city ground route.
+      const choice = routeChoice && routeChoice[bId];
+      let useFrom = aId, useMode = ROUTE_MODE;
+      const choiceFrom = choice && choice.fromOptionId;
+      if (choiceFrom) {
+        // resolve the chosen origin's raw option (slot item or accommodation) and re-validate.
+        const chosenOpt = findSelectedOption(editorDay, choice._slotId, choiceFrom, editorTripData)
+          || findSelectedAccommodationOption(editorDay, editorTripData, choiceFrom);
+        if (chosenOpt && prevItemOriginEligible(chosenOpt, bOpt, editorDay, editorTripData)) {
+          useFrom = choiceFrom;
+          useMode = ROUTE_MODES.includes(choice.mode) ? choice.mode : ROUTE_MODE;
+        }
+      }
+      // same-city guard on the resolved pair (default OR validated choice): no cross-city ground route.
+      const fromOpt = (useFrom === aId) ? aOpt
+        : (findSelectedOption(editorDay, choice && choice._slotId, useFrom, editorTripData)
+          || findSelectedAccommodationOption(editorDay, editorTripData, useFrom));
+      if (!fromOpt || !prevItemOriginEligible(fromOpt, bOpt, editorDay, editorTripData)) continue;
+      // Canonical 3-part key from:to:mode (the old 2-part a:b silently missed the server key).
+      const pairKey = useFrom + ':' + bId + ':' + useMode;
+      if (useFrom && bId && !routeCache[pairKey]) fetchRoute(useFrom, bId, pairKey, useMode);
     }
-  }, [effectiveDay, editorSelections, editorDay, fetchRoute]);
+  }, [effectiveDay, editorSelections, editorDay, editorTripData, fetchRoute, routeChoice, routeCache]);
 
   // Cycle-2: Keyboard DnD global handler
   useEffect(() => {
@@ -10109,6 +10466,10 @@ function NotionTravelApp() {
                 saveMutations={saveMutations}
                 setEditorSelections={setEditorSelections}
                 setEditorTripData={setEditorTripData}
+                editorTripData={editorTripData}
+                routeChoice={routeChoice}
+                setRouteChoice={setRouteChoice}
+                invalidateRoutePair={invalidateRoutePair}
                 routeCache={routeCache}
                 fetchRoute={fetchRoute}
               />;
